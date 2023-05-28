@@ -18,7 +18,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import config, user
+from data.model import TagImmutableException, config, user
 from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -115,6 +115,29 @@ def get_child_manifests(repo_id: int, manifest_id: int):
     return ManifestChild.select(ManifestChild.child_manifest).where(
         ManifestChild.repository == repo_id,
         ManifestChild.manifest == manifest_id,
+    )
+
+
+def get_immutable_tags_for_manifest(manifest_id):
+    """
+    Returns True if the given manifest has any immutable tags.
+    """
+    return Tag.select().where(Tag.manifest == manifest_id, Tag.immutable == True)
+
+
+def has_immutable_tags_for_manifest(manifest_id):
+    """
+    Returns True if the given manifest has any immutable tags.
+    """
+    return Tag.select().where(Tag.manifest == manifest_id, Tag.immutable == True).exists()
+
+
+def has_expiring_tags_for_manifest(manifest_id):
+    """
+    Returns True if the given manifest has any expiring tags.
+    """
+    return (
+        Tag.select().where(Tag.manifest == manifest_id, Tag.lifetime_end_ms.is_null(False)).exists()
     )
 
 
@@ -454,6 +477,21 @@ def retarget_tag(
         # as expired.
         existing_tag = get_tag(manifest.repository_id, tag_name)
         if existing_tag is not None:
+            if existing_tag.immutable:
+                logger.error(
+                    "Tried to retarget immutable tag `%s` in repository `%s`",
+                    tag_name,
+                    manifest.repository_id,
+                )
+
+                if raise_on_error:
+                    raise TagImmutableException(
+                        "Tried to retarget to immutable tag `%s` in repository `%s`"
+                        % (tag_name, manifest.repository_id)
+                    )
+
+                return None
+
             _, okay = set_tag_end_ms(existing_tag, now_ms)
 
             # TODO: should we retry here and/or use a for-update?
@@ -474,6 +512,42 @@ def retarget_tag(
         return created
 
 
+def set_tag_mutable(repository_id, tag_name):
+    return set_tag_immutability(repository_id, tag_name, False)
+
+
+def set_tag_immmutable(repository_id, tag_name):
+    return set_tag_immutability(repository_id, tag_name, True)
+
+
+def set_tag_immutability(repository_id, tag_name, immutable):
+    """
+    Sets the immutable flag on the given tag. If the tag did not exist or has an expiration date, returns None.
+    """
+    tag = get_tag(repository_id, tag_name)
+    if tag is None:
+        return None
+
+    if tag.lifetime_end_ms is not None:
+        return None
+
+    return _set_tag_immutability(repository_id, tag, immutable)
+
+
+def _set_tag_immutability(repository_id, tag, immutable):
+    """
+    Sets the immutable flag on the given tag.
+    """
+    with db_transaction():
+        updated = (
+            Tag.update(immutable=immutable, lifetime_end_ms=None).where(Tag.id == tag.id).execute()
+        )
+        if updated != 1:
+            return None
+
+        return tag
+
+
 def delete_tag(repository_id, tag_name):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
@@ -491,6 +565,10 @@ def _delete_tag(tag, now_ms):
     """
     Deletes the given tag by marking it as expired.
     """
+
+    if tag.immutable:
+        return None
+
     with db_transaction():
         # clean notifications for tag expiry
         delete_tag_notifications_for_tag(tag)
@@ -519,9 +597,13 @@ def delete_tags_for_manifest(manifest):
     tags = list(query)
     now_ms = get_epoch_timestamp_ms()
 
+    if any(tag.immutable for tag in tags):
+        return None
+
     with db_transaction():
         for tag in tags:
-            _delete_tag(tag, now_ms)
+            if _delete_tag(tag, now_ms) is None:
+                return None
 
     return tags
 
@@ -559,11 +641,28 @@ def set_tag_expiration_sec_for_manifest(manifest_id, expiration_seconds):
     tags = list(query)
     for tag in tags:
         assert not tag.hidden
-        set_tag_end_ms(tag, tag.lifetime_start_ms + (expiration_seconds * 1000))
+        if set_tag_end_ms(tag, tag.lifetime_start_ms + (expiration_seconds * 1000)) is None:
+            return None
 
     return tags
 
 
+def set_tag_immutable_for_manifest(manifest_id):
+    """
+    Sets immutability for any tags that point to the given manifest ID.
+    """
+    query = Tag.select().where(Tag.manifest == manifest_id)
+    query = filter_to_alive_tags(query)
+    tags = list(query)
+    for tag in tags:
+        assert not tag.hidden
+        assert not tag.lifetime_end_ms
+        set_tag_immmutable(tag.repository_id, tag.name)
+
+    return tags
+
+
+# this seems unused?
 def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
     """
     Sets the tag expiration for any tags that point to the given manifest ID.
@@ -571,6 +670,13 @@ def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
     query = Tag.select().where(Tag.manifest == manifest_id)
     query = filter_to_alive_tags(query)
     tags = list(query)
+
+    if any(tag.immutable for tag in tags):
+        logger.error(
+            "Cannot change expiration of a manifest %s that has immutable tags", manifest_id
+        )
+        return None
+
     for tag in tags:
         assert not tag.hidden
         change_tag_expiration(tag, expiration_datetime)
@@ -578,7 +684,7 @@ def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
     return tags
 
 
-def change_tag_expiration(tag_id, expiration_datetime):
+def change_tag_expiration(tag_id, expiration_datetime, raise_on_error=False):
     """
     Changes the expiration of the specified tag to the given expiration datetime.
 
@@ -588,6 +694,15 @@ def change_tag_expiration(tag_id, expiration_datetime):
     try:
         tag = Tag.get(id=tag_id)
     except Tag.DoesNotExist:
+        return (None, False)
+
+    if tag.immutable:
+        logger.error("Cannot change expiration of immutable tag %s", tag_id)
+
+        if raise_on_error:
+            raise TagImmutableException(
+                "Cannot change expiration of tag %s because it is immutable" % tag.name
+            )
         return (None, False)
 
     new_end_ms = None
@@ -629,6 +744,9 @@ def set_tag_end_ms(tag, end_ms):
 
     Should only be called by change_tag_expiration or tests.
     """
+
+    if tag.immutable and end_ms:
+        return (None, False)
 
     with db_transaction():
         # clean notifications for tag expiry
@@ -722,7 +840,6 @@ def remove_tag_from_timemachine(
     increment = 1
     updated = False
     if is_alive:
-
         # Ensure the tag is actually alive
         alive_tag = get_tag(repo_id, tag_name)
         if alive_tag is None:

@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 LABEL_EXPIRY_KEY = "quay.expires-after"
+LABEL_IMMUTABLE_KEY = "quay.immutable"
 
 
 def _expires_after(label_dict, manifest, model):
@@ -23,8 +24,25 @@ def _expires_after(label_dict, manifest, model):
     model.set_tags_expiration_for_manifest(manifest, total_seconds)
 
 
+def _immutable(label_dict, manifest, model):
+    """
+    Sets the immutability of a manifest based on the quay.immutable label.
+    """
+
+    try:
+        immutable = label_dict["value"] == "true"
+
+        if immutable:
+            logger.debug("Labeling manifest %s with immutability of %s", manifest, immutable)
+            model.set_tags_immutable_for_manifest(manifest)
+    except ValueError:
+        logger.exception("Could not convert %s to boolean", label_dict["value"])
+        return
+
+
 _LABEL_HANDLERS = {
     LABEL_EXPIRY_KEY: _expires_after,
+    LABEL_IMMUTABLE_KEY: _immutable,
 }
 
 

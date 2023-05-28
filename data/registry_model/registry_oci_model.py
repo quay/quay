@@ -23,13 +23,10 @@ from data.registry_model.datatypes import (
     Blob,
     BlobUpload,
     Label,
-    LegacyImage,
-    LikelyVulnerableTag,
     Manifest,
     ManifestIndex,
     ManifestLayer,
     RepositoryReference,
-    SecurityScanStatus,
     ShallowTag,
     Tag,
 )
@@ -523,6 +520,7 @@ class OCIModel(RegistryDataInterface):
         storage,
         legacy_manifest_key,
         is_reversion=False,
+        raise_on_error=False,
     ):
         """
         Creates, updates or moves a tag to a new entry in history, pointing to the manifest or
@@ -591,17 +589,26 @@ class OCIModel(RegistryDataInterface):
                 manifest_id,
                 is_reversion=is_reversion,
                 expiration_seconds=expiration_seconds,
+                raise_on_error=raise_on_error,
             )
 
             return Tag.for_tag(tag, self._legacy_image_id_handler)
 
-    def delete_tag(self, model_cache, repository_ref, tag_name):
+    def delete_tag(self, model_cache, repository_ref, tag_name, raise_on_error=False):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """
         with db_disallow_replica_use():
             deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name)
             if deleted_tag is None:
+                tag = oci.tag.get_tag(repository_ref._db_id, tag_name)
+
+                if tag is not None and tag.immutable:
+                    if raise_on_error:
+                        raise model.TagImmutableException(
+                            "Cannot delete tag %s because it is immutable" % tag_name
+                        )
+
                 return None
 
             manifest_cache_key = cache_key.for_repository_manifest(
@@ -611,7 +618,7 @@ class OCIModel(RegistryDataInterface):
 
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
-    def delete_tags_for_manifest(self, model_cache, manifest):
+    def delete_tags_for_manifest(self, model_cache, manifest, raise_on_error=False):
         """
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
@@ -625,9 +632,24 @@ class OCIModel(RegistryDataInterface):
             model_cache.invalidate(manifest_cache_key)
 
             deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
+
+            if deleted_tags is None:
+                immutable_tags = self.get_immutable_tags_for_manifest(manifest)
+
+                if immutable_tags is not None:
+                    if raise_on_error:
+                        raise model.TagImmutableException(
+                            "Cannot delete manifest %s because it has immutable tags: %s"
+                            % (
+                                manifest.digest,
+                                ", ".join(immutable_tag.name for immutable_tag in immutable_tags),
+                            )
+                        )
+                return None
+
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
-    def change_repository_tag_expiration(self, tag, expiration_date):
+    def change_repository_tag_expiration(self, tag, expiration_date, raise_on_error=False):
         """
         Sets the expiration date of the tag under the matching repository to that given.
 
@@ -635,7 +657,7 @@ class OCIModel(RegistryDataInterface):
         previous expiration timestamp in seconds (if any), and whether the operation succeeded.
         """
         with db_disallow_replica_use():
-            return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
+            return oci.tag.change_tag_expiration(tag._db_id, expiration_date, raise_on_error)
 
     def reset_security_status(self, manifest_or_legacy_image):
         """
@@ -672,11 +694,94 @@ class OCIModel(RegistryDataInterface):
 
         return layers
 
-    def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
+    def has_immutable_tags_for_manifest(self, manifest):
+        """
+        Returns whether the given manifest has any tags that are immutable.
+        """
+        return oci.tag.has_immutable_tags_for_manifest(manifest._db_id)
+
+    def get_immutable_tags_for_manifest(self, manifest):
+        """
+        Returns any immutable tags that a manifest may have.
+        """
+        immutable_tags = oci.tag.get_immutable_tags_for_manifest(manifest._db_id)
+
+        return [
+            Tag.for_tag(
+                tag,
+                self._legacy_image_id_handler,
+            )
+            for tag in immutable_tags
+        ]
+
+    def set_tag_mutable(self, tag, raise_on_error=False):
+        """
+        Sets the given tag to mutable and returns it, returns None if errors occured
+        and optionally raises an exception if raise_on_error is True.
+        """
+        return self._set_tag_immutability(tag, False, raise_on_error)
+
+    def set_tag_immutable(self, tag, raise_on_error=False):
+        """
+        Sets the given tag to immutable and returns it, returns None if errors occured
+        and optionally raises an exception if raise_on_error is True.
+        """
+        return self._set_tag_immutability(tag, True, raise_on_error)
+
+    def _set_tag_immutability(self, tag, immutable, raise_on_error=False):
+        """
+        Sets the immutable flag on the given tag to that specified.
+        """
+        with db_disallow_replica_use():
+            if tag.lifetime_end_ms is not None and immutable:
+                if raise_on_error:
+                    raise model.TagImmutableException(
+                        "Cannot set immutable flag on tag %s because it has an expiration date"
+                        % tag.name
+                    )
+
+                return None
+
+            if immutable:
+                return Tag.for_tag(
+                    oci.tag.set_tag_immmutable(tag.repository.id, tag.name),
+                    self._legacy_image_id_handler,
+                )
+            else:
+                return Tag.for_tag(
+                    oci.tag.set_tag_mutable(tag.repository.id, tag.name),
+                    self._legacy_image_id_handler,
+                )
+
+    # this only exists for manifest label-based immutability setting
+    def set_tags_immutable_for_manifest(self, manifest, raise_on_error=False):
+        """
+        Sets the immutable flag on all tags that point to the given manifest to that specified.
+        """
+        with db_disallow_replica_use():
+            if oci.tag.has_expiring_tags_for_manifest(manifest._db_id):
+                if raise_on_error:
+                    raise model.TagImmutableException(
+                        "Cannot set all tags of a manifest to be immutable because some of them are expiring"
+                    )
+                return None
+
+            oci.tag.set_tag_immutable_for_manifest(manifest._db_id)
+
+    # this only exists for manifest label-based expiration setting
+    def set_tags_expiration_for_manifest(self, manifest, expiration_sec, raise_on_error=False):
         """
         Sets the expiration on all tags that point to the given manifest to that specified.
         """
         with db_disallow_replica_use():
+            if self.has_immutable_tags_for_manifest(manifest):
+                if raise_on_error:
+                    raise model.TagImmutableException(
+                        "Cannot set expiration on manifest %s that has immutable tags"
+                        % manifest.digest
+                    )
+                return None
+
             oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
     def get_schema1_parsed_manifest(

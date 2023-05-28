@@ -39,9 +39,7 @@ from image.docker.schema1 import (
     DockerSchema1Manifest,
     DockerSchema1ManifestBuilder,
 )
-from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from image.oci.index import OCIIndexBuilder
 from image.shared.types import ManifestImageLayer
 from test.fixtures import *
 from util.bytes import Bytes
@@ -389,6 +387,35 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
 
 
 @pytest.mark.parametrize(
+    "via_manifest",
+    [
+        False,
+        True,
+    ],
+)
+def test_delete_immutable_tag(via_manifest, registry_model):
+    # Get a tag.
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
+
+    # Set the tag to be immutable.
+    registry_model.set_tag_immutable(latest_tag)
+
+    # Attempt to delete the immutable tag.
+    with pytest.raises(model.TagImmutableException):
+        if via_manifest:
+            manifest = registry_model.get_manifest_for_tag(latest_tag)
+            registry_model.delete_tags_for_manifest(model_cache, manifest, raise_on_error=True)
+        else:
+            registry_model.delete_tag(repository_ref, latest_tag.name, raise_on_error=True)
+
+    # Ensure the tag still exists.
+    tag = registry_model.get_repo_tag(repository_ref, latest_tag.name)
+    assert tag is not None
+    assert tag.immutable
+
+
+@pytest.mark.parametrize(
     "use_manifest",
     [
         True,
@@ -430,6 +457,30 @@ def test_retarget_tag_history(use_manifest, registry_model):
     assert len(new_history) == len(history) + 1
 
 
+def test_retarget_tag_history_with_immutable_tag(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "history")
+    history, _ = registry_model.list_repository_tag_history(repository_ref)
+
+    # Set the tag to be immutable.
+    registry_model.set_tag_immutable(history[0])
+
+    # Retarget the tag.
+    manifest_or_legacy_image = registry_model.lookup_manifest_by_digest(
+        repository_ref, history[0].manifest_digest, allow_dead=True
+    )
+    assert manifest_or_legacy_image
+    with pytest.raises(model.TagImmutableException):
+        registry_model.retarget_tag(
+            repository_ref,
+            "latest",
+            manifest_or_legacy_image,
+            storage,
+            docker_v2_signing_key,
+            is_reversion=True,
+            raise_on_error=True,
+        )
+
+
 def test_change_repository_tag_expiration(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
@@ -443,6 +494,162 @@ def test_change_repository_tag_expiration(registry_model):
 
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     assert tag.lifetime_end_ts is not None
+
+
+def test_change_repository_tag_expiration_immutable_tag(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    registry_model.set_tag_immutable(tag)
+
+    new_datetime = datetime.utcnow() + timedelta(days=2)
+    previous, okay = registry_model.change_repository_tag_expiration(tag, new_datetime)
+
+    assert not okay
+    assert previous is None
+
+    with pytest.raises(model.TagImmutableException):
+        registry_model.change_repository_tag_expiration(tag, new_datetime, raise_on_error=True)
+
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert tag.lifetime_end_ts is None
+
+
+@pytest.mark.parametrize(
+    "with_exception",
+    [
+        True,
+        False,
+    ],
+)
+def test_set_tag_immutability(with_exception, registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not tag.immutable
+
+    registry_model.set_tag_immutable(tag)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert tag.immutable
+
+    registry_model.set_tag_mutable(tag)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not tag.immutable
+
+    _, okay = registry_model.change_repository_tag_expiration(
+        tag, datetime.utcnow() + timedelta(days=2)
+    )
+    assert okay
+
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+
+    if with_exception:
+        with pytest.raises(model.TagImmutableException):
+            registry_model.set_tag_immutable(tag, raise_on_error=with_exception)
+    else:
+        assert registry_model.set_tag_immutable(tag) is None
+
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not tag.immutable
+
+
+def test_has_immutable_tags_for_manifest(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not registry_model.has_immutable_tags_for_manifest(tag.manifest)
+
+    registry_model.set_tag_immutable(tag)
+    assert registry_model.has_immutable_tags_for_manifest(tag.manifest)
+
+    registry_model.set_tag_mutable(tag)
+    assert not registry_model.has_immutable_tags_for_manifest(tag.manifest)
+
+
+def test_get_immutable_tags_for_manifest(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not registry_model.get_immutable_tags_for_manifest(tag.manifest)
+
+    registry_model.set_tag_immutable(tag)
+
+    assert tag in registry_model.get_immutable_tags_for_manifest(tag.manifest)
+
+
+def test_set_immutable_tags_for_manifest(registry_model):
+    manifest, v2_manifest_tag = _create_v2_manifest_and_tag(
+        "devtable", "simple", "v2_manifest_tag", registry_model
+    )
+    repository_ref = manifest.repository
+
+    another_v2_manifest_tag = registry_model.retarget_tag(
+        repository_ref, "another_v2_manifest_tag", manifest, storage, docker_v2_signing_key
+    )
+
+    assert not registry_model.get_immutable_tags_for_manifest(manifest)
+
+    registry_model.set_tags_immutable_for_manifest(manifest)
+
+    immutable_manifest_tags = registry_model.get_immutable_tags_for_manifest(manifest)
+
+    v2_manifest_tag = registry_model.get_repo_tag(repository_ref, "v2_manifest_tag")
+    another_v2_manifest_tag = registry_model.get_repo_tag(repository_ref, "another_v2_manifest_tag")
+
+    assert v2_manifest_tag in immutable_manifest_tags
+    assert another_v2_manifest_tag in immutable_manifest_tags
+
+
+def test_set_immutable_tag_for_manifest_with_expiring_tags(registry_model):
+    manifest, tag = _create_v2_manifest_and_tag(
+        "devtable", "simple", "v2_manifest_tag", registry_model
+    )
+    repository_ref = manifest.repository
+
+    another_tag = registry_model.retarget_tag(
+        repository_ref, "another_v2_manifest_tag", manifest, storage, docker_v2_signing_key
+    )
+
+    assert not registry_model.has_immutable_tags_for_manifest(manifest)
+
+    registry_model.set_tags_expiration_for_manifest(manifest, timedelta(days=2).total_seconds())
+
+    assert another_tag.lifetime_end_ms is None
+
+    with pytest.raises(model.TagImmutableException):
+        registry_model.set_tags_immutable_for_manifest(manifest, raise_on_error=True)
+
+
+def test_set_tag_expiration_for_manifest(registry_model):
+    manifest, _ = _create_v2_manifest_and_tag("devtable", "simple", "sometag", registry_model)
+    repository_ref = manifest.repository
+
+    registry_model.retarget_tag(
+        repository_ref, "anothertag", manifest, storage, docker_v2_signing_key
+    )
+    assert not registry_model.has_immutable_tags_for_manifest(manifest)
+
+    registry_model.set_tags_expiration_for_manifest(manifest, timedelta(days=2).total_seconds())
+
+    some_tag = registry_model.get_repo_tag(repository_ref, "sometag")
+    another_tag = registry_model.get_repo_tag(repository_ref, "anothertag")
+
+    assert some_tag.lifetime_end_ms is not None
+    assert another_tag.lifetime_end_ms is not None
+
+
+def test_set_tags_expiration_for_manifest_with_immutable_tags(registry_model):
+    manifest, _ = _create_v2_manifest_and_tag("devtable", "simple", "sometag", registry_model)
+    repository_ref = manifest.repository
+
+    another_tag = registry_model.retarget_tag(
+        repository_ref, "anothertag", manifest, storage, docker_v2_signing_key
+    )
+
+    assert not registry_model.has_immutable_tags_for_manifest(manifest)
+
+    registry_model.set_tag_immutable(another_tag)
+
+    with pytest.raises(model.TagImmutableException):
+        registry_model.set_tags_expiration_for_manifest(
+            manifest, timedelta(days=2).total_seconds(), raise_on_error=True
+        )
 
 
 @pytest.fixture()
@@ -1140,3 +1347,41 @@ def test_tag_names_for_manifest(initialized_db, registry_model):
                 found_tag = registry_model.get_repo_tag(repo_ref, found_name)
                 assert registry_model.get_manifest_for_tag(found_tag) == manifest
     assert verified_tag
+
+
+def _create_v2_manifest_and_tag(namespace_name, repo_name, tag_name, registry_model):
+    repo_ref = registry_model.lookup_repository(namespace_name, repo_name)
+
+    with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        app_config = {"TESTING": True}
+        config_json = json.dumps(
+            {
+                "config": {
+                    "author": "Repo Mirror",
+                },
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [
+                    {
+                        "created": "2019-07-30T18:37:09.284840891Z",
+                        "created_by": "base",
+                        "author": "Repo Mirror",
+                    },
+                ],
+            }
+        )
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+        assert blob
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(blob.digest, blob.compressed_size)
+    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    manifest = builder.build()
+
+    manifest, tag = registry_model.create_manifest_and_retarget_tag(
+        repo_ref, manifest, tag_name, storage, raise_on_error=True
+    )
+    assert tag
+    assert tag.name == tag_name
+
+    return manifest, tag
