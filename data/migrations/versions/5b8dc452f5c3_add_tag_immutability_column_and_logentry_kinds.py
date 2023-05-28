@@ -14,7 +14,6 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
-
     # add column to track tack immutability
     op.add_column(
         table_name="tag",
@@ -50,9 +49,22 @@ def upgrade(op, tables, tester):
         unique=False,
     )
 
+    # add logentrykind for tag immutability changes
+    op.bulk_insert(
+        tables.logentrykind,
+        [
+            {"name": "change_tag_immutability"},
+        ],
+    )
+
 
 def downgrade(op, tables, tester):
     op.drop_index(table_name="tag", index_name="tag_repository_id_immutable")
     op.drop_index(table_name="tag", index_name="tag_manifest_id_immutable")
     op.drop_index(table_name="tag", index_name="tag_manifest_id_lifetime_end_ms")
     op.drop_column(table_name="tag", column_name="immutable")
+    op.execute(
+        tables.logentrykind.delete().where(
+            tables.logentrykind.name == op.inline_literal("change_tag_immutability")
+        )
+    )
