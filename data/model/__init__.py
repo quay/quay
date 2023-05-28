@@ -116,6 +116,9 @@ class ServiceNameInvalid(DataModelException):
 class TagDoesNotExist(DataModelException):
     pass
 
+class TagImmutableException(DataModelException):
+    pass
+
 
 class TagAlreadyCreatedException(DataModelException):
     pass
