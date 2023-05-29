@@ -696,7 +696,7 @@ def change_tag_expiration(tag_id, expiration_datetime, raise_on_error=False):
     except Tag.DoesNotExist:
         return (None, False)
 
-    if tag.immutable:
+    if expiration_datetime is not None and tag.immutable:
         logger.error("Cannot change expiration of immutable tag %s", tag_id)
 
         if raise_on_error:
