@@ -17,6 +17,7 @@ class ApiErrorType(Enum):
     exceeds_license = "exceeds_license"
     not_found = "not_found"
     downstream_issue = "downstream_issue"
+    precondition_failed = "precondition_failed"
 
 
 ERROR_DESCRIPTION = {
@@ -30,6 +31,7 @@ ERROR_DESCRIPTION = {
     ApiErrorType.exceeds_license.value: "The action was refused because the current license does not allow it.",
     ApiErrorType.not_found.value: "The resource was not found.",
     ApiErrorType.downstream_issue.value: "An error occurred in a downstream service.",
+    ApiErrorType.precondition_failed.value: "The request failed because a precondition was not met.",
 }
 
 
@@ -106,6 +108,10 @@ class InvalidToken(ApiException):
 class ExpiredToken(ApiException):
     def __init__(self, error_description, payload=None):
         ApiException.__init__(self, ApiErrorType.expired_token, 401, error_description, payload)
+
+class PreconditionFailed(ApiException):
+    def __init__(self, error_description, payload=None):
+        ApiException.__init__(self, ApiErrorType.precondition_failed, 412, error_description, payload)
 
 
 class Unauthorized(ApiException):
