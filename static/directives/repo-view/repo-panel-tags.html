@@ -29,6 +29,12 @@
      <div class="cor-checkable-menu-item" item-filter="noTagFilter(item)">
       <i class="fa fa-square-o"></i>No Tags
      </div>
+     <div class="cor-checkable-menu-item" item-filter="immutableTagFilter(item)">
+      <i class="fa immutable-lock"></i>Immutable Tags
+     </div>
+     <div class="cor-checkable-menu-item" item-filter="mutableTagFilter(item)">
+      <i class="fa mutable-lock"></i>Mutable Tags
+     </div>
      <div class="cor-checkable-menu-item" item-filter="signedTagFilter(item)">
       <i class="fa fa-shield"></i>Signed Tags
      </div>
@@ -59,6 +65,18 @@
         <li>
           <a ng-click="showHistory(checkedTags.checked)">
             <i class="fa fa-history"></i><span class="text">View Tags History</span>
+          </a>
+        </li>
+        <li ng-if="repository.can_write && !inReadOnlyMode">
+          <a ng-click="askMakeTagsImmutable(checkedTags.checked)"
+             ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+            <i class="fa immutable-lock"></i><span class="text">Make tags immutable</span>
+          </a>
+        </li>
+        <li ng-if="repository.can_write && !inReadOnlyMode">
+          <a ng-click="askMakeTagsMutable(checkedTags.checked)"
+             ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+            <i class="fa mutable-lock"></i><span class="text">Make tags mutable</span>
           </a>
         </li>
         <li ng-if="repository.can_write && !inReadOnlyMode">
@@ -152,6 +170,9 @@
           <span bo-text="tag.name"></span>
           <span class="signing-valid" ng-if="::tag.cosign_signature_tag">
             <i class="fa shield-icon ci-shield-check-full" data-title="This tag has been signed via cosign." bs-tooltip></i>
+          </span>
+          <span ng-if="::tag.immutable">
+            <i class="fa immutable-lock" data-title="This tag is immutable." bs-tooltip></i>
           </span>
         </span>
         <span class="manifest-list-icons" bo-if="tag.is_manifest_list">
@@ -249,15 +270,23 @@
                   ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
               <i class="fa fa-plus"></i> Add New Tag
             </span>
-            <span class="cor-option" option-click="showLabelEditor(tag)"
+            <span ng-if="!tag.immutable" class="cor-option" option-click="showLabelEditor(tag)"
                   ng-if="tag.manifest_digest">
               <i class="fa fa-tags"></i> Edit Labels
             </span>
-            <span class="cor-option" option-click="askDeleteTag(tag.name)"
+            <span ng-if="!tag.immutable" class="cor-option" option-click="askMakeTagImmutable(tag.name)"
+                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+              <i class="fa immutable-lock"></i> Make immutable
+            </span>
+            <span ng-if="tag.immutable" class="cor-option" option-click="askMakeTagMutable(tag.name)"
+                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+              <i class="fa mutable-lock"></i> Make mutable
+            </span>
+            <span ng-if="!tag.immutable" class="cor-option" option-click="askDeleteTag(tag.name)"
                   ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
               <i class="fa fa-times"></i> Delete Tag
             </span>
-            <span class="cor-option" option-click="askChangeTagsExpiration([tag])"
+            <span ng-if="!tag.immutable" class="cor-option" option-click="askChangeTagsExpiration([tag])"
                   ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
               <i class="fa fa-clock-o"></i> Change Expiration
             </span>
@@ -321,6 +350,11 @@
           <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
         </div>
         
+        <!-- Immutable -->
+        <div class="immutable-row" ng-if="tag.immutable">
+          <span data-title="The tag cannot be overwritten, deleted or expire. Labels cannot be changed." class="immutable-element" bs-tooltip>Tag is immutable</span>
+        </div>
+
         <!-- Labels -->
         <div class="manifest-label-list" repository="repository"
              manifest-digest="tag.manifest_digest" cache="labelCache"></div>

@@ -1,10 +1,7 @@
 """
 Manage the tags of a repository.
 """
-from ast import In
 from datetime import datetime
-from email import message
-from os import name
 
 from flask import abort, request
 
@@ -56,6 +53,7 @@ def _tag_dict(tag):
     tag_info["manifest_digest"] = tag.manifest_digest
     tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
     tag_info["size"] = tag.manifest_layers_size
+    tag_info["immutable"] = tag.immutable
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         last_modified = format_date(datetime.utcfromtimestamp(tag.lifetime_start_ts))
