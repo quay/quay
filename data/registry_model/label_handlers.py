@@ -33,7 +33,7 @@ def _immutable(label_dict, manifest, model):
         immutable = label_dict["value"] == "true"
 
         if immutable:
-            logger.debug("Labeling manifest %s with immutability of %s", manifest, immutable)
+            logger.debug("Labeling manifest %s as immutable", manifest)
             model.set_tags_immutable_for_manifest(manifest)
     except ValueError:
         logger.exception("Could not convert %s to boolean", label_dict["value"])

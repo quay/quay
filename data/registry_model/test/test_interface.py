@@ -196,7 +196,28 @@ def test_manifest_labels(registry_model):
     assert created not in registry_model.list_manifest_labels(found_manifest)
 
 
-def test_manifest_label_handlers(registry_model):
+def test_manifest_label_with_immutable_tags(registry_model):
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert not tag.immutable
+
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    created = registry_model.create_manifest_label(manifest, "foo", "bar", "api")
+
+    registry_model.set_tag_immutable(tag)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    assert tag.immutable
+
+    with pytest.raises(model.TagImmutableException):
+        registry_model.create_manifest_label(manifest, "foo", "baz", "api", raise_on_error=True)
+
+    with pytest.raises(model.TagImmutableException):
+        registry_model.delete_manifest_label(manifest, created.uuid, raise_on_error=True)
+
+
+def test_manifest_label_expiry_handler(registry_model):
     repo = model.repository.get_repository("devtable", "simple")
     repository_ref = RepositoryReference.for_repo_obj(repo)
     found_tag = registry_model.get_repo_tag(repository_ref, "latest")
@@ -213,6 +234,26 @@ def test_manifest_label_handlers(registry_model):
     assert updated_tag.lifetime_end_ts == (updated_tag.lifetime_start_ts + (60 * 60 * 2))
 
 
+def test_manifest_label_immutability_handler(registry_model):
+    repo = model.repository.get_repository("devtable", "simple")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.get_repo_tag(repository_ref, "prod")
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    # Ensure the tag has no expiration.
+    assert found_tag.lifetime_end_ts is None
+
+    # Ensure the tag is not immutable alread.
+    assert not found_tag.immutable
+
+    # Create a new label with an immutable.
+    registry_model.create_manifest_label(found_manifest, "quay.immutable", "true", "api")
+
+    # Ensure the tag is now immutable.
+    updated_tag = registry_model.get_repo_tag(repository_ref, "prod")
+    assert updated_tag.immutable
+
+
 def test_batch_labels(registry_model):
     repo = model.repository.get_repository("devtable", "history")
     repository_ref = RepositoryReference.for_repo_obj(repo)
@@ -226,6 +267,23 @@ def test_batch_labels(registry_model):
 
     # Ensure we can look them up.
     assert len(registry_model.list_manifest_labels(found_manifest)) == 3
+
+
+def test_batch_labels_fail_with_immutable_tags(registry_model):
+    repo = model.repository.get_repository("devtable", "history")
+    repository_ref = RepositoryReference.for_repo_obj(repo)
+    found_tag = registry_model.find_matching_tag(repository_ref, ["latest"])
+    found_manifest = registry_model.get_manifest_for_tag(found_tag)
+
+    registry_model.set_tag_immutable(found_tag)
+
+    with pytest.raises(model.TagImmutableException):
+        with registry_model.batch_create_manifest_labels(
+            found_manifest, raise_on_error=True
+        ) as add_label:
+            add_label("foo", "1", "api")
+            add_label("bar", "2", "api")
+            add_label("baz", "3", "api")
 
 
 @pytest.mark.parametrize(
