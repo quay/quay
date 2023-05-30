@@ -9,7 +9,7 @@ from typing import List, Optional
 from flask import request
 
 from app import label_validator, storage
-from data.model import InvalidLabelKeyException, InvalidMediaTypeException
+from data.model import InvalidLabelKeyException, InvalidMediaTypeException, TagImmutableException
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -30,7 +30,7 @@ from endpoints.api import (
     resource,
     validate_json_request,
 )
-from endpoints.exception import NotFound
+from endpoints.exception import NotFound, PreconditionFailed
 from util.validation import VALID_LABEL_KEY_REGEX
 
 BASE_MANIFEST_ROUTE = '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>'
@@ -210,7 +210,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
         label = None
         try:
             label = registry_model.create_manifest_label(
-                manifest, label_data["key"], label_data["value"], "api", label_data["media_type"]
+                manifest, label_data["key"], label_data["value"], "api", label_data["media_type"], raise_on_error=True
             )
         except InvalidLabelKeyException:
             message = (
@@ -223,6 +223,9 @@ class RepositoryManifestLabels(RepositoryParamResource):
                 "Media type is invalid please use a valid media type: text/plain, application/json"
             )
             abort(400, message=message)
+        except TagImmutableException:
+            message = ("Cannot set label on manifest with immutable tag")
+            raise PreconditionFailed(message)
 
         if label is None:
             raise NotFound()
@@ -299,7 +302,13 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        deleted = registry_model.delete_manifest_label(manifest, labelid)
+        deleted = None
+        
+        try: 
+            deleted = registry_model.delete_manifest_label(manifest, labelid, raise_on_error=True)
+        except TagImmutableException:
+            raise PreconditionFailed("Cannot delete label on manifest with immutable tag")
+        
         if deleted is None:
             raise NotFound()
 

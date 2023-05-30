@@ -7,7 +7,6 @@ from email import message
 from os import name
 
 from flask import abort, request
-from sqlalchemy import false
 
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
@@ -17,7 +16,6 @@ from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
-    deprecated,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
@@ -71,7 +69,6 @@ def _tag_dict(tag):
 
 
 def _set_tag_immutable(tag_ref, repository, namespace):
-
     if tag_ref.immutable:
         return True
 
@@ -97,7 +94,6 @@ def _set_tag_immutable(tag_ref, repository, namespace):
 
 
 def _set_tag_mutable(tag_ref, repository, namespace):
-
     if not AdministerRepositoryPermission(namespace, repository).can():
         raise Unauthorized("User does not have permission to set tag immutability.")
 
@@ -126,9 +122,10 @@ def _set_tag_mutable(tag_ref, repository, namespace):
 
 
 def _set_tag_expiration(tag_ref, repository, namespace, expiration_date):
-
     try:
-        existing_end_ts, ok = registry_model.change_repository_tag_expiration(tag_ref, expiration_date, raise_on_error=True)
+        existing_end_ts, ok = registry_model.change_repository_tag_expiration(
+            tag_ref, expiration_date, raise_on_error=True
+        )
         if ok:
             if not (existing_end_ts is None and expiration_date is None):
                 log_action(
@@ -301,7 +298,7 @@ class RepositoryTag(RepositoryParamResource):
                     raise InvalidRequest(
                         "Could not update tag expiration; Tag has probably changed"
                     )
-                
+
                 tag_ref = registry_model.get_repo_tag(repo_ref, tag)
 
                 if _set_tag_immutable(tag_ref, repository, namespace) is False:
@@ -319,7 +316,6 @@ class RepositoryTag(RepositoryParamResource):
                 raise InvalidRequest("Could not update tag expiration; Tag has probably changed")
 
         if "manifest_digest" in request.get_json():
-
             manifest_digest = None
 
             manifest_digest = request.get_json()["manifest_digest"]
@@ -329,9 +325,9 @@ class RepositoryTag(RepositoryParamResource):
 
             if manifest is None:
                 raise NotFound()
-            
+
             existing_tag = registry_model.get_repo_tag(repo_ref, tag)
-            
+
             if existing_tag is not None and existing_tag.immutable:
                 raise PreconditionFailed(
                     "Cannot point tag %s to manifest %s, tag is immutable" % (tag, manifest_digest)
@@ -379,9 +375,13 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
-        if tag_ref is None:
-            raise NotFound()
+        try:
+            tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag, raise_on_error=True)
+
+            if tag_ref is None:
+                raise NotFound()
+        except TagImmutableException:  # TODO: add log audit handling
+            raise PreconditionFailed("Cannot delete tag %s because it is immutable" % tag)
 
         username = get_authenticated_user().username
         log_action(
@@ -451,14 +451,20 @@ class RestoreTag(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        if not registry_model.retarget_tag(
-            repo_ref,
-            tag,
-            manifest,
-            storage,
-            docker_v2_signing_key,
-            is_reversion=True,
-        ):
+        try:
+            if not registry_model.retarget_tag(
+                repo_ref,
+                tag,
+                manifest,
+                storage,
+                docker_v2_signing_key,
+                is_reversion=True,
+                raise_on_error=True,
+            ):
+                raise InvalidRequest("Could not restore tag")
+        except TagImmutableException as e:  # TODO add log audit handling
+            raise PreconditionFailed("Cannot restore tag %s because it is immutable" % tag)
+        except Exception:
             raise InvalidRequest("Could not restore tag")
 
         log_action("revert_tag", namespace, log_data, repo_name=repository)
