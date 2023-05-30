@@ -198,6 +198,52 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         }, errorHandler);
       };
 
+      $scope.toggleTagsImmutability = function(tags, immutable, callback) {
+        if (!$scope.repository.can_write) { return; }
+
+        var count = tags.length;
+        var perform = function(index) {
+          if (index >= count) {
+            callback(true);
+            markChanged([tags], []);
+            return;
+          }
+
+          var tag_info = tags[index];
+          if (!tag_info) { return; }
+
+          $scope.toggleTagImmutability(tag_info.name, immutable, function(result) {
+            if (!result) {
+              callback(false);
+              return;
+            }
+
+            perform(index + 1);
+          }, true);
+        };
+
+        perform(0);
+      };
+      
+      $scope.toggleTagImmutability = function(tag, immutable, callback, opt_skipmarking=false) {
+        if (!$scope.repository.can_write) { return; }
+
+        var params = {
+          'repository': $scope.repository.namespace + '/' + $scope.repository.name,
+          'tag': tag
+        };
+
+        var data = {
+          'immutable': immutable
+        };
+
+        var errorHandler = ApiService.errorDisplay('Cannot set tag to immutable', callback);
+        ApiService.changeTag(data, params).then(function() {
+          callback(true);
+          !opt_skipmarking && markChanged([tag], []);
+        }, errorHandler);
+      };
+
       $scope.restoreTag = function(tag, manifest_digest, callback) {
         if (!$scope.repository.can_write) { return; }
 
@@ -324,6 +370,46 @@ angular.module('quay').directive('tagOperationsDialog', function () {
       };
 
       $scope.actionHandler = {
+        'askMakeTagImmutable': function(tag) {
+          if ($scope.alertOnTagOpsDisabled()) {
+            return;
+          }
+
+          $scope.immutableTagInfo = {
+            'tag': tag
+          };
+        },
+
+        'askMakeTagMutable': function(tag) {
+          if ($scope.alertOnTagOpsDisabled()) {
+            return;
+          }
+
+          $scope.mutableTagInfo = {
+            'tag': tag
+          };
+        },
+
+        'askMakeTagsImmutable': function(tags) {
+          if ($scope.alertOnTagOpsDisabled()) {
+            return;
+          }
+
+          $scope.immutableTagsInfo = {
+            'tags': tags
+          };
+        },
+
+        'askMakeTagsMutable': function(tags) {
+          if ($scope.alertOnTagOpsDisabled()) {
+            return;
+          }
+
+          $scope.mutableTagsInfo = {
+            'tags': tags
+          };
+        },
+
         'askDeleteTag': function(tag) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;

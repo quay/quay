@@ -113,6 +113,7 @@ angular.module('quay').directive('repoPanelTags', function () {
             'name': tag,
             'last_modified_datetime': TableService.getReversedTimestamp(tagData.last_modified),
             'expiration_date': tagData.expiration ? TableService.getReversedTimestamp(tagData.expiration) : null,
+            'immutable': tagData.immutable ? true : false,
             'cosign_signature_tag': $scope.cosignedManifests.hasOwnProperty(tagData.manifest_digest) ? $scope.cosignedManifests[tagData.manifest_digest].signatureTagName : null,
             'cosign_signature_manifest_digest': $scope.cosignedManifests.hasOwnProperty(tagData.manifest_digest) ? $scope.cosignedManifests[tagData.manifest_digest].signatureManifestDigest : null,
           });
@@ -406,6 +407,22 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.tagActionHandler.askDeleteTag(tag);
       };
 
+      $scope.askMakeTagImmutable = function(tag) {
+        $scope.tagActionHandler.askMakeTagImmutable(tag);
+      };
+
+      $scope.askMakeTagMutable = function(tag) {
+        $scope.tagActionHandler.askMakeTagMutable(tag);
+      };
+
+      $scope.askMakeTagsImmutable = function(tag) {
+        $scope.tagActionHandler.askMakeTagsImmutable(tag);
+      };
+
+      $scope.askMakeTagsMutable = function(tag) {
+        $scope.tagActionHandler.askMakeTagsMutable(tag);
+      };
+
       $scope.askDeleteMultipleTags = function(tags) {
         if (tags.length == 1) {
           $scope.askDeleteTag(tags[0].name);
@@ -457,6 +474,14 @@ angular.module('quay').directive('repoPanelTags', function () {
         return tag.name.match(r);
       };
 
+      $scope.immutableTagFilter = function(tag) {
+        return tag.hasOwnProperty("immutable") && tag.immutable;
+      };
+
+      $scope.mutableTagFilter = function(tag) {
+        return !tag.hasOwnProperty("immutable") || (tag.hasOwnProperty("immutable") && tag.immutable == false );
+      };
+      
       $scope.signedTagFilter = function(tag) {
         return tag.hasOwnProperty("cosign_signature_manifest_digest") && tag.cosign_signature_manifest_digest != null;
       };

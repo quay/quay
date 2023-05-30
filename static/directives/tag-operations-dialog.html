@@ -124,6 +124,76 @@
     </form>
   </div>
 
+  <!-- Immutable Tag Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="immutableTagInfo"
+       dialog-action="toggleTagImmutability(info.tag, true, callback)"
+       dialog-title="Make Tag immutable"
+       dialog-action-title="Make immutable">
+    Are you sure you want to make the tag
+    <span class="label label-default tag">{{ deleteTagInfo.tag }} immutable</span>?
+
+    <div class="co-alert co-alert-warning">
+      This will prevent the tag from being deleted, overwritten, expire or restored to until it is made mutable again.
+      Immutable tags cannot have their manifests labels changed.
+      Manifests, that have immutable tags pointing to them cannot be deleted.
+      Only repository administrators can make tags mutable again.
+    </div>
+  </div>
+
+  <!-- Mutable Tag Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="mutableTagInfo"
+       dialog-action="toggleTagImmutability(info.tag, false,callback)"
+       dialog-title="Make Tag mutable"
+       dialog-action-title="Make mutable">
+    Are you sure you want to make the tag
+    <span class="label label-default tag">{{ deleteTagInfo.tag }} mutable</span>?
+
+    <div class="co-alert co-alert-warning">
+      This will allow the tag to be deleted, overwritten, expire or restored to.
+    </div>
+  </div>
+
+  <!-- Immutable Tags Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="immutableTagsInfo"
+       dialog-action="toggleTagsImmutability(info.tags, true, callback)"
+       dialog-title="Make Tags immutable"
+       dialog-action-title="Make immutable">
+    Are you sure you want to make the following tags immutable:
+    <ul class="immutable-tag-list">
+      <li ng-repeat="tag_info in immutableTagsInfo.tags">
+        <span class="label label-default tag">{{ tag_info.name }}</span>
+      </li>
+    </ul>
+
+    <div class="co-alert co-alert-warning">
+      This will prevent these tag from being deleted, overwritten, expire or restored to until it is made mutable again.
+      Immutable tags cannot have their manifests labels changed.
+      Manifests, that have immutable tags pointing to them cannot be deleted.
+      Only repository administrators can make tags mutable again.
+    </div>
+  </div>
+
+  <!-- Mutable Tags Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="mutableTagsInfo"
+       dialog-action="toggleTagsImmutability(info.tags, false,callback)"
+       dialog-title="Make Tags mutable"
+       dialog-action-title="Make mutable">
+    Are you sure you want to make the following tags mutable:
+    <ul class="immutable-tag-list">
+      <li ng-repeat="tag_info in mutableTagsInfo.tags">
+        <span class="label label-default tag">{{ tag_info.name }}</span>
+      </li>
+    </ul>
+
+    <div class="co-alert co-alert-warning">
+      This will allow these tags to be deleted, overwritten, expire or restored to.
+    </div>
+  </div>
+
   <!-- Delete Tag Confirm -->
   <div class="cor-confirm-dialog"
        dialog-context="deleteTagInfo"
