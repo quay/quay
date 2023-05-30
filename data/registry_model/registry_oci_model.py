@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from contextlib import contextmanager
 
 from peewee import fn
@@ -15,7 +14,7 @@ from data.database import (
     db_disallow_replica_use,
     db_transaction,
 )
-from data.model import DataModelException, QuotaExceededException, namespacequota, oci
+from data.model import ManifestDoesNotExist, QuotaExceededException, namespacequota, oci
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatype import FromDictionaryException
@@ -232,7 +231,9 @@ class OCIModel(RegistryDataInterface):
 
         return []
 
-    def create_manifest_label(self, manifest, key, value, source_type_name, media_type_name=None):
+    def create_manifest_label(
+        self, manifest, key, value, source_type_name, media_type_name=None, raise_on_error=False
+    ):
         """
         Creates a label on the manifest with the given key and value.
         """
@@ -247,6 +248,7 @@ class OCIModel(RegistryDataInterface):
             value,
             source_type_name,
             media_type_name,
+            raise_on_error=raise_on_error,
         )
         if label is None:
             return None
@@ -257,7 +259,7 @@ class OCIModel(RegistryDataInterface):
         return Label.for_label(label)
 
     @contextmanager
-    def batch_create_manifest_labels(self, manifest):
+    def batch_create_manifest_labels(self, manifest, raise_on_error=False):
         """
         Returns a context manager for batch creation of labels on a manifest.
 
@@ -283,7 +285,9 @@ class OCIModel(RegistryDataInterface):
         for label_data in labels_to_add:
             with db_transaction():
                 # Create the label itself.
-                oci.label.create_manifest_label(manifest._db_id, **label_data)
+                oci.label.create_manifest_label(
+                    manifest._db_id, raise_on_error=raise_on_error, **label_data
+                )
 
                 # Apply any changes to the manifest that the label prescribes.
                 apply_label_to_manifest(label_data, manifest, self)
@@ -304,13 +308,17 @@ class OCIModel(RegistryDataInterface):
         """
         return Label.for_label(oci.label.get_manifest_label(label_uuid, manifest._db_id))
 
-    def delete_manifest_label(self, manifest, label_uuid):
+    def delete_manifest_label(self, manifest, label_uuid, raise_on_error=False):
         """
         Delete the label with the specified UUID on the manifest.
 
         Returns the label deleted or None if none.
         """
-        return Label.for_label(oci.label.delete_manifest_label(label_uuid, manifest._db_id))
+        return Label.for_label(
+            oci.label.delete_manifest_label(
+                label_uuid, manifest._db_id, raise_on_error=raise_on_error
+            )
+        )
 
     def lookup_active_repository_tags(self, repository_ref, last_pagination_tag_name, limit):
         """
@@ -444,41 +452,18 @@ class OCIModel(RegistryDataInterface):
                 created_manifest.manifest, self._legacy_image_id_handler
             )
 
-            # Optional expiration label
-            # NOTE: Since there is currently only one special label on a manifest that has an effect on its tags (expiration),
-            #       it is just simpler to set that value at tag creation time (plus it saves an additional query).
-            #       If we were to define more of these "special" labels in the future, we should use the handlers from
-            #       data/registry_model/label_handlers.py
-            if not created_manifest.newly_created:
-                label_dict = next(
-                    (
-                        label.asdict()
-                        for label in self.list_manifest_labels(
-                            wrapped_manifest,
-                            key_prefix="quay",
-                        )
-                        if label.key == LABEL_EXPIRY_KEY
-                    ),
-                    None,
-                )
-            else:
-                label_dict = next(
-                    (
-                        dict(key=label_key, value=label_value)
-                        for label_key, label_value in created_manifest.labels_to_apply.items()
-                        if label_key == LABEL_EXPIRY_KEY
-                    ),
-                    None,
-                )
-
-            expiration_seconds = None
-
-            if label_dict is not None:
-                try:
-                    expiration_td = convert_to_timedelta(label_dict["value"])
-                    expiration_seconds = expiration_td.total_seconds()
-                except ValueError:
-                    pass
+            labels_to_apply = (
+                [
+                    dict(key=label_key, value=label_value)
+                    for label_key, label_value in created_manifest.labels_to_apply.items()
+                    if label_key.startswith("quay")
+                ]
+                if created_manifest.newly_created
+                else [
+                    label.asdict()
+                    for label in self.list_manifest_labels(wrapped_manifest, key_prefix="quay")
+                ]
+            )
 
             if verify_quota:
                 quota = namespacequota.verify_namespace_quota(repository_ref)
@@ -500,10 +485,15 @@ class OCIModel(RegistryDataInterface):
                 tag_name,
                 created_manifest.manifest,
                 raise_on_error=raise_on_error,
-                expiration_seconds=expiration_seconds,
             )
             if tag is None:
                 return (None, None)
+
+            # Apply labels to manifest
+            [
+                apply_label_to_manifest(label_dict, wrapped_manifest, self)
+                for label_dict in labels_to_apply
+            ]
 
             return (
                 wrapped_manifest,
@@ -760,6 +750,10 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             if oci.tag.has_expiring_tags_for_manifest(manifest._db_id):
+                logger.debug(
+                    "Tried to manifest %s as immutable but it has immutable tags", manifest
+                )
+
                 if raise_on_error:
                     raise model.TagImmutableException(
                         "Cannot set all tags of a manifest to be immutable because some of them are expiring"

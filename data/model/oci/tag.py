@@ -120,25 +120,28 @@ def get_child_manifests(repo_id: int, manifest_id: int):
 
 def get_immutable_tags_for_manifest(manifest_id):
     """
-    Returns True if the given manifest has any immutable tags.
+    Returns immutable *active* tags fo the given manifest if it has any.
     """
-    return Tag.select().where(Tag.manifest == manifest_id, Tag.immutable == True)
+    query = Tag.select().where(Tag.manifest == manifest_id, Tag.immutable == True)
+    return filter_to_alive_tags(query)
 
 
 def has_immutable_tags_for_manifest(manifest_id):
     """
-    Returns True if the given manifest has any immutable tags.
+    Returns True if the given manifest has any *active* immutable tags.
     """
-    return Tag.select().where(Tag.manifest == manifest_id, Tag.immutable == True).exists()
+    query = Tag.select().where(Tag.manifest == manifest_id, Tag.immutable == True)
+    query = filter_to_alive_tags(query)
+    return query.exists()
 
 
 def has_expiring_tags_for_manifest(manifest_id):
     """
-    Returns True if the given manifest has any expiring tags.
+    Returns True if the given manifest has any expiring *active* tags.
     """
-    return (
-        Tag.select().where(Tag.manifest == manifest_id, Tag.lifetime_end_ms.is_null(False)).exists()
-    )
+    query = Tag.select().where(Tag.manifest == manifest_id, Tag.lifetime_end_ms.is_null(False))
+    query = filter_to_alive_tags(query)
+    return query.exists()
 
 
 def tag_names_for_manifest(manifest_id, limit=None):

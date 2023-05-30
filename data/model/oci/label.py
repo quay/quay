@@ -1,5 +1,6 @@
 import logging
 
+from data import model
 from data.database import (
     Label,
     LabelSourceType,
@@ -14,6 +15,7 @@ from data.model import (
     InvalidLabelKeyException,
     InvalidMediaTypeException,
 )
+from data.model.oci.tag import has_immutable_tags_for_manifest
 from data.text import prefix_search
 from util.validation import is_json, validate_label_key
 
@@ -58,7 +60,7 @@ def get_manifest_label(label_uuid, manifest):
         return None
 
 
-def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None):
+def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None, raise_on_error=False):
     """
     Creates a new manifest label on a specific tag manifest.
     """
@@ -92,7 +94,16 @@ def create_manifest_label(manifest_id, key, value, source_type_name, media_type_
             .get()
         )
     except Manifest.DoesNotExist:
+        if raise_on_error:
+            raise model.ManifestDoesNotExist("Cannot create label '%s=%s', requested manifest does not exist" % (key, value))
         return None
+    
+    # raise TagImmutableException() if manifest has immutable tags
+    if has_immutable_tags_for_manifest(manifest.id):
+        if raise_on_error:
+            raise model.TagImmutableException("Cannot add label to manifest %s which has immutable tags" % manifest.digest)
+        else:
+            return None    
 
     repository = manifest.repository
 
@@ -107,7 +118,7 @@ def create_manifest_label(manifest_id, key, value, source_type_name, media_type_
     return label
 
 
-def delete_manifest_label(label_uuid, manifest):
+def delete_manifest_label(label_uuid, manifest, raise_on_error=False):
     """
     Deletes the manifest label on the tag manifest with the given ID.
 
@@ -117,9 +128,18 @@ def delete_manifest_label(label_uuid, manifest):
     label = get_manifest_label(label_uuid, manifest)
     if label is None:
         return None
+    
+    if has_immutable_tags_for_manifest(manifest):
+        if raise_on_error:
+            raise model.TagImmutableException("Cannot delete label from manifest which has immutable tags")
+        else:
+            return None
 
     if not label.source_type.mutable:
-        raise DataModelException("Cannot delete immutable label")
+        if raise_on_error:
+            raise DataModelException("Cannot delete immutable label")
+        else:
+            return None
 
     # Delete the mapping records and label.
     with db_transaction():
