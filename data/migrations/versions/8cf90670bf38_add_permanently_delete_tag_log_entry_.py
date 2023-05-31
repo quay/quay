@@ -1,14 +1,14 @@
 """add permanently delete tag log entry kind
 
 Revision ID: 8cf90670bf38
-Revises: 43fea47d641f
+Revises: ab5a24478052
 Create Date: 2023-05-15 16:45:59.245515
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '8cf90670bf38'
-down_revision = '43fea47d641f'
+down_revision = 'ab5a24478052'
 
 import sqlalchemy as sa
 
