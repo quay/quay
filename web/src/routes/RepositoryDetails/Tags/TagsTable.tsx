@@ -1,32 +1,32 @@
-import {Spinner} from '@patternfly/react-core';
+import {Spinner, Tooltip} from '@patternfly/react-core';
+import {DownloadIcon, LockIcon, LockOpenIcon} from '@patternfly/react-icons';
 import {
   ExpandableRowContent,
   Table,
-  Thead,
-  Tr,
-  Th,
   Tbody,
   Td,
+  Th,
+  Thead,
+  Tr,
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest} from 'src/resources/TagResource';
-import {useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
-import {getTagDetailPath} from 'src/routes/NavigationPath';
-import TablePopover from './TablePopover';
-import SecurityDetails from './SecurityDetails';
-import {formatDate} from 'src/libs/utils';
+import {useResetRecoilState} from 'recoil';
 import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
-import ColumnNames from './ColumnNames';
-import {DownloadIcon} from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
-import TagActions from './TagsActions';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import ManifestListSize from 'src/components/Table/ManifestListSize';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {formatDate} from 'src/libs/utils';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {Manifest, Tag} from 'src/resources/TagResource';
+import {getTagDetailPath} from 'src/routes/NavigationPath';
+import ColumnNames from './ColumnNames';
+import SecurityDetails from './SecurityDetails';
+import TablePopover from './TablePopover';
+import TagActions from './TagsActions';
 import TagExpiration from './TagsTableExpiration';
-import ManifestListSize from 'src/components/Table/ManifestListSize';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -170,6 +170,13 @@ function TagsTableRow(props: RowProps) {
             loadTags={props.loadTags}
           />
         </Td>
+        <Td dataLabel={ColumnNames.immutable}>
+          {tag.immutable && (
+            <Tooltip content="This tag is immutable">
+              <LockIcon />
+            </Tooltip>
+          )}
+        </Td>
         <Td dataLabel={ColumnNames.digest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
@@ -256,6 +263,9 @@ export default function TagsTable(props: TableProps) {
             <Th>Size</Th>
             <Th>Last Modified</Th>
             <Th>Expires</Th>
+            <Th>
+              <LockIcon /> / <LockOpenIcon />
+            </Th>
             <Th>Manifest</Th>
             <Th>Pull</Th>
             <Th />
