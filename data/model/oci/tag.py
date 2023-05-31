@@ -481,7 +481,7 @@ def retarget_tag(
         existing_tag = get_tag(manifest.repository_id, tag_name)
         if existing_tag is not None:
             if existing_tag.immutable:
-                logger.error(
+                logger.debug(
                     "Tried to retarget immutable tag `%s` in repository `%s`",
                     tag_name,
                     manifest.repository_id,
