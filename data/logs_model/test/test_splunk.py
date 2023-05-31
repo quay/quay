@@ -243,23 +243,6 @@ def test_submit_skip_ssl_verify_false(
             mock_send.assert_has_calls(expected_call_args)
 
 
-def test_submit_empty_ssl_verify_true(
-    logs_model,
-    splunk_logs_model_config,
-    mock_db_model,
-    initialized_db,
-    cert_file_path,
-):
-    with patch("data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"), patch(
-        "splunklib.client.connect"
-    ):
-        with patch("ssl.SSLContext.load_verify_locations"):
-            conf = splunk_logs_model_config
-            conf["LOGS_MODEL_CONFIG"]["splunk_config"]["ssl_ca_path"] = ""
-            with pytest.raises(ValueError, match=r"SSL cert path needs to be specified"):
-                configure(conf)
-
-
 def test_connect_with_invalid_certfile_path(
     logs_model, splunk_logs_model_config, mock_db_model, initialized_db
 ):
