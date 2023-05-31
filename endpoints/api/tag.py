@@ -400,12 +400,18 @@ class TagTimeMachineDelete(RepositoryParamResource):
         )
         if not tags_updated:
             raise NotFound()
-        
+
         username = get_authenticated_user().username
         log_action(
             "permanently_delete_tag",
             namespace,
-            {"username": username, "repo": repository, "namespace": namespace, "tag": tag, "manifest_digest": manifest_ref.digest},
+            {
+                "username": username,
+                "repo": repository,
+                "namespace": namespace,
+                "tag": tag,
+                "manifest_digest": manifest_ref.digest,
+            },
             repo_name=repository,
         )
         return "", 200
