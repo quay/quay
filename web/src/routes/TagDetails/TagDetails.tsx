@@ -37,6 +37,7 @@ export default function TagDetails() {
     last_modified: '',
     manifest_digest: '',
     reversion: false,
+    immutable: false,
     size: 0,
     start_ts: 0,
     manifest_list: {
