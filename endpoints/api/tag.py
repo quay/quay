@@ -93,7 +93,7 @@ def _set_tag_immutable(tag_ref, repository, namespace):
 
 def _set_tag_mutable(tag_ref, repository, namespace):
     if not AdministerRepositoryPermission(namespace, repository).can():
-        raise Unauthorized("User does not have permission to set tag immutability.")
+        raise Unauthorized()
 
     if not tag_ref.immutable:
         return True
