@@ -469,8 +469,8 @@ def _write_manifest(
         raise QuotaExceeded()
     except TagImmutableException as tie:
         raise TagImmutable(
-            message="Could not create manifest pointing to %s" % tag_name,
-            detail={"message": str(tie)},
+            message="Could not create manifest pointing to immutable tag %s " % tag_name,
+            detail={"message": str(tie)}
         )
 
     if manifest is None:
