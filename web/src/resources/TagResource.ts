@@ -24,6 +24,7 @@ export interface Tag {
   manifest_list: ManifestList;
   expiration?: string;
   end_ts?: number;
+  immutable?: boolean;
 }
 
 export interface ManifestList {
