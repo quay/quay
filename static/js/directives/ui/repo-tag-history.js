@@ -53,6 +53,13 @@ angular.module('quay').directive('repoTagHistory', function () {
 
         // For each tag, turn the tag into create, move, delete, restore, etc entries.
         tags.forEach(function(tag) {
+          // NOTE: We identify permanently deleted tags when their start time is 
+          // greater than their end time. This assumption may change in the future.
+          // If tag has been permanently deleted, prevent it from being shown in 
+          // tag history.
+          if(tag.start_ts > tag.end_ts){
+            return
+          }
           var tagName = tag.name;
           var manifestDigest = tag.manifest_digest;
 
