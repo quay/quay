@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_NETWORK_TIMEOUT = 10.0  # seconds
 _DEFAULT_TIMEOUT = 10.0  # seconds
 _DEFAULT_PAGE_SIZE = 1000
+# setting config LDAP_FOLLOW_REFERRALS: 0 to disable referral lookups
+_DEFAULT_REFERRALS = True
 
 
 class LDAPConnectionBuilder(object):
@@ -25,6 +27,7 @@ class LDAPConnectionBuilder(object):
         allow_tls_fallback=False,
         timeout=None,
         network_timeout=None,
+        referrals=_DEFAULT_REFERRALS,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -32,6 +35,7 @@ class LDAPConnectionBuilder(object):
         self._allow_tls_fallback = allow_tls_fallback
         self._timeout = timeout
         self._network_timeout = network_timeout
+        self._referrals = int(referrals)
 
     def get_connection(self):
         return LDAPConnection(
@@ -41,6 +45,7 @@ class LDAPConnectionBuilder(object):
             self._allow_tls_fallback,
             self._timeout,
             self._network_timeout,
+            self._referrals,
         )
 
 
@@ -53,6 +58,7 @@ class LDAPConnection(object):
         allow_tls_fallback=False,
         timeout=None,
         network_timeout=None,
+        referrals=_DEFAULT_REFERRALS,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -60,13 +66,14 @@ class LDAPConnection(object):
         self._allow_tls_fallback = allow_tls_fallback
         self._timeout = timeout
         self._network_timeout = network_timeout
+        self._referrals = int(referrals)
         self._conn = None
 
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
         self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
-        self._conn.set_option(ldap.OPT_REFERRALS, 1)
+        self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
         )
@@ -107,11 +114,18 @@ class LDAPUsers(FederatedUsers):
         ldap_user_filter=None,
         ldap_superuser_filter=None,
         ldap_restricted_user_filter=None,
+        ldap_referrals=_DEFAULT_REFERRALS,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
         self._ldap = LDAPConnectionBuilder(
-            ldap_uri, admin_dn, admin_passwd, allow_tls_fallback, timeout, network_timeout
+            ldap_uri,
+            admin_dn,
+            admin_passwd,
+            allow_tls_fallback,
+            timeout,
+            network_timeout,
+            referrals=ldap_referrals,
         )
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
@@ -122,6 +136,7 @@ class LDAPUsers(FederatedUsers):
         self._ldap_user_filter = ldap_user_filter
         self._ldap_superuser_filter = ldap_superuser_filter
         self._ldap_restricted_user_filter = ldap_restricted_user_filter
+        self._ldap_referrals = int(ldap_referrals)
 
         # Note: user_rdn is a list of RDN pieces (for historical reasons), and secondary_user_rds
         # is a list of RDN strings.
@@ -577,6 +592,9 @@ class LDAPUsers(FederatedUsers):
                         # Yield any users found.
                         for userdata in rdata:
                             found_results = found_results + 1
+                            if isinstance(userdata[1], list):
+                                # we do not follow referrals here
+                                continue
                             yield self._build_user_information(userdata[1])
 
                         logger.debug(

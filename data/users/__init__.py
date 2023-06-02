@@ -67,6 +67,7 @@ def get_users_handler(config, _, override_config_dir):
         ldap_user_filter = config.get("LDAP_USER_FILTER", None)
         ldap_superuser_filter = config.get("LDAP_SUPERUSER_FILTER", None)
         ldap_restricted_user_filter = config.get("LDAP_RESTRICTED_USER_FILTER", None)
+        ldap_referrals = int(config.get("LDAP_FOLLOW_REFERRALS", True))
 
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(
@@ -85,6 +86,7 @@ def get_users_handler(config, _, override_config_dir):
             ldap_user_filter=ldap_user_filter,
             ldap_superuser_filter=ldap_superuser_filter,
             ldap_restricted_user_filter=ldap_restricted_user_filter,
+            ldap_referrals=ldap_referrals,
         )
 
     if authentication_type == "JWT":
