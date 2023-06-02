@@ -62,6 +62,52 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
+          <DescriptionListGroup data-testid="immutable">
+            <DescriptionListTerm>Immutable</DescriptionListTerm>
+            <DescriptionListDescription>
+              {props.tag.immutable ? (
+                "Yes"
+              ) : (
+                "No"
+              )}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup data-testid="expiration">
+            <DescriptionListTerm>Expiration</DescriptionListTerm>
+            <DescriptionListDescription>
+              {props.tag.expiration ? (
+                formatDate(props.tag.last_modified)
+              ) : (
+                "Never"
+              )}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup data-testid="vulnerabilities">
+            <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
+            <DescriptionListDescription>
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={props.digest}
+                tag={props.tag.name}
+                cacheResults={true}
+              />
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+         <DescriptionListGroup data-testid="size">
+            <DescriptionListTerm>Size</DescriptionListTerm>
+            <DescriptionListDescription>
+              {props.digest != '' ? (
+                <ImageSize
+                  org={props.org}
+                  repo={props.repo}
+                  digest={props.digest}
+                />
+              ) : (
+                <Skeleton width="100%"></Skeleton>
+              )}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
           <DescriptionListGroup>
             <DescriptionListTerm>Digest</DescriptionListTerm>
             <DescriptionListDescription>
@@ -78,32 +124,6 @@ export default function Details(props: DetailsProps) {
               ) : (
                 <Skeleton width="100%"></Skeleton>
               )}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup data-testid="size">
-            <DescriptionListTerm>Size</DescriptionListTerm>
-            <DescriptionListDescription>
-              {props.digest != '' ? (
-                <ImageSize
-                  org={props.org}
-                  repo={props.repo}
-                  digest={props.digest}
-                />
-              ) : (
-                <Skeleton width="100%"></Skeleton>
-              )}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-          <DescriptionListGroup data-testid="vulnerabilities">
-            <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
-            <DescriptionListDescription>
-              <SecurityDetails
-                org={props.org}
-                repo={props.repo}
-                digest={props.digest}
-                tag={props.tag.name}
-                cacheResults={true}
-              />
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup data-testid="labels">

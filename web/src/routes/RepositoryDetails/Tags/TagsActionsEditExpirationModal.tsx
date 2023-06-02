@@ -12,11 +12,12 @@ import {
   TimePicker,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
+import {AlertVariant} from 'src/atoms/AlertState';
+import Conditional from 'src/components/empty/Conditional';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useSetExpiration} from 'src/hooks/UseTags';
-import {AlertVariant} from 'src/atoms/AlertState';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
-import Conditional from 'src/components/empty/Conditional';
+import {Tag} from 'src/resources/TagResource';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
   const [date, setDate] = useState<Date>(null);
@@ -212,7 +213,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
             <DescriptionListTerm>Tags that will be updated</DescriptionListTerm>
             <DescriptionListDescription id="edit-expiration-tags">
               {props.tags.map((tag) => (
-                <Label key={tag}>{tag}</Label>
+                <Label key={tag.name}>{tag.name}</Label>
               ))}
             </DescriptionListDescription>
           </DescriptionListGroup>
@@ -255,7 +256,7 @@ interface EditExpirationModalProps {
   repo: string;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  tags: string[];
+  tags: Tag[];
   loadTags: () => void;
   expiration?: string;
   onComplete?: () => void;

@@ -1,3 +1,12 @@
 .delete-modal-readonly-alert {
     padding-bottom: 5px;
 }
+
+.immutable-modal-readonly-alert {
+    padding-bottom: 5px;
+}
+
+.dangerous-dropdown-item {
+--pf-c-dropdown__menu-item--Color: red;
+--pf-c-dropdown__menu-item--hover--Color: red;
+}
