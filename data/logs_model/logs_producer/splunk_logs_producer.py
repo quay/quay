@@ -32,23 +32,21 @@ class SplunkLogsProducer(LogProducerInterface):
             "scheme": url_scheme,
             "verify": verify_ssl,
         }
+        # Create an SSLContext object for cert validation
+        context = ssl.create_default_context()
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        if not verify_ssl:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
         if ssl_ca_path:
-            # Create an SSLContext object for cert validation
-            context = ssl.create_default_context()
-            context.check_hostname = True
-            context.verify_mode = ssl.CERT_REQUIRED
-            if not verify_ssl:
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
             try:
                 context.load_verify_locations(cafile=ssl_ca_path)
             except ssl.SSLError as e:
                 raise Exception("SSL cert is not valid %s" % e)
             except FileNotFoundError as e:
                 raise Exception("Path to cert file is not valid %s" % e)
-            connect_args["context"] = context
-        elif verify_ssl:
-            raise ValueError("SSL cert path needs to be specified")
+        connect_args["context"] = context
 
         # establish connection with splunk
         service = client.connect(**connect_args)
