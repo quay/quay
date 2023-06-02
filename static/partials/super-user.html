@@ -68,16 +68,18 @@
 
         <!-- Organizations tab -->
         <cor-tab-pane id="organizations">
-          <div class="resource-view" resource="organizationsResource"
-               error-message="'Could not load organizations'">
+            <div class="co-alert co-alert-warning" ng-show="errorLoadingOrgs">
+              Could not load organizations
+            </div>
+            <div class="cor-loader" ng-show="organizations.length == 0 && backgroundLoadingOrgs"></div>
             <div class="manager-header" header-title="Organizations
-              {{ Features.QUOTA_MANAGEMENT ? '(Total Quota Consumption: ' + bytesToHumanReadableString(registryQuota) + ')' : '' }}
+              {{ Features.QUOTA_MANAGEMENT && !backgroundLoadingOrgs ? '(Total Quota Consumption: ' + bytesToHumanReadableString(registryQuota) + ')' : '' }}
             ">
             </div>
 
             <div class="co-top-bar">
               <span class="co-filter-box">
-                <span class="page-controls" total-count="orderedOrgs.entries.length" current-page="options.page" page-size="orgsPerPage"></span>
+                <span class="page-controls" loading="backgroundLoadingOrgs" total-count="orderedOrgs.entries.length" current-page="options.page" page-size="orgsPerPage"></span>
                 <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Organizations..." style="margin-right: 10px;">
               </span>
             </div>
@@ -144,7 +146,6 @@
                 </td>
               </tr>
             </table>
-          </div> <!-- /resource -->
         </cor-tab-pane> <!-- organizations tab -->
 
         <!-- Users tab -->
@@ -155,7 +156,10 @@
     </cor-tab-panel>
 
     <!-- Modal quota configuration -->
-      <div ng-repeat="current_org in orderedOrgs.entries" class="org-row">
+    <div ng-if="orderedOrgs.entries.length" >
+      <div ng-repeat="current_org in orderedOrgs.entries  | slice
+        :(orgsPerPage * options.page)
+        :(orgsPerPage * (options.page + 1))" class="org-row">
           <div class="co-dialog modal fade" id="quotaConfigModal-{{ current_org.name }}">
             <div class="modal-dialog">
               <div class="modal-content padding-2percent">
@@ -168,6 +172,7 @@
             </div>
           </div>
       </div>
+    </div>
 
 
     <!-- Modal message dialog -->
