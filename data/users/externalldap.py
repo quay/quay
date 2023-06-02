@@ -118,7 +118,13 @@ class LDAPUsers(FederatedUsers):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
         self._ldap = LDAPConnectionBuilder(
-            ldap_uri, admin_dn, admin_passwd, allow_tls_fallback, timeout, network_timeout, referrals=ldap_referrals
+            ldap_uri, 
+            admin_dn, 
+            admin_passwd, 
+            allow_tls_fallback, 
+            timeout, 
+            network_timeout, 
+            referrals=ldap_referrals
         )
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
