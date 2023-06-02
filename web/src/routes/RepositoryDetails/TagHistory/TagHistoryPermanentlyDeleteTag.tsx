@@ -66,7 +66,7 @@ export default function PermanentlyDeleteTag(props: RestoreTagProps) {
             key="modal-action-button"
             variant="primary"
             onClick={() =>
-              permanentlyDeleteTag({tag: tagEntry.tag.name, digest: digest})
+              permanentlyDeleteTag({tag: tagEntry.tag, digest: digest})
             }
           >
             Permanently delete tag

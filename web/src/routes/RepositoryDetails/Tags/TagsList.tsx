@@ -48,13 +48,13 @@ export default function TagsList(props: TagsProps) {
   // Control selected tags
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const selectAllTags = (isSelecting = true) => {
-    setSelectedTags(isSelecting ? tags.map((t) => t.name) : []);
+    setSelectedTags(isSelecting ? tags.map((t) => t) : []);
   };
   const selectTag = (tag: Tag, rowIndex = 0, isSelecting = true) =>
     setSelectedTags((prevSelected) => {
-      const otherSelectedtagNames = prevSelected.filter((r) => r !== tag.name);
+      const otherSelectedtagNames = prevSelected.filter((r) => r !== tag);
       return isSelecting
-        ? [...otherSelectedtagNames, tag.name]
+        ? [...otherSelectedtagNames, tag]
         : otherSelectedtagNames;
     });
 

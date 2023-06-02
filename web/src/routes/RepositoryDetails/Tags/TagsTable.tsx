@@ -122,7 +122,7 @@ function TagsTableRow(props: RowProps) {
             rowIndex,
             onSelect: (_event, isSelecting) =>
               props.selectTag(tag, rowIndex, isSelecting),
-            isSelected: props.selectedTags.includes(tag.name),
+            isSelected: props.selectedTags.includes(tag),
           }}
         />
         <Td dataLabel={ColumnNames.name}>
@@ -264,7 +264,13 @@ export default function TagsTable(props: TableProps) {
             <Th>Last Modified</Th>
             <Th>Expires</Th>
             <Th>
-              <LockIcon /> / <LockOpenIcon />
+              <Tooltip content="Tag Immutability">
+                <LockIcon />
+              </Tooltip>{' '}
+              /{' '}
+              <Tooltip content="Tag Immutability">
+                <LockOpenIcon />
+              </Tooltip>
             </Th>
             <Th>Manifest</Th>
             <Th>Pull</Th>
@@ -302,7 +308,7 @@ interface TableProps {
   tags: Tag[];
   loading: boolean;
   selectAllTags: (isSelecting: boolean) => void;
-  selectedTags: string[];
+  selectedTags: Tag[];
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
@@ -313,7 +319,7 @@ interface RowProps {
   repo: string;
   tag: Tag;
   rowIndex: number;
-  selectedTags: string[];
+  selectedTags: Tag[];
   isTagExpanded: (tag: Tag) => boolean;
   setTagExpanded: (tag: Tag, isExpanding?: boolean) => void;
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
