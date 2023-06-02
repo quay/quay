@@ -17,6 +17,7 @@ _DEFAULT_PAGE_SIZE = 1000
 # setting config LDAP_FOLLOW_REFERRALS: 0 to disable referral lookups
 _DEFAULT_REFERRALS = True
 
+
 class LDAPConnectionBuilder(object):
     def __init__(
         self,
@@ -113,18 +114,18 @@ class LDAPUsers(FederatedUsers):
         ldap_user_filter=None,
         ldap_superuser_filter=None,
         ldap_restricted_user_filter=None,
-        ldap_referrals=_DEFAULT_REFERRALS
+        ldap_referrals=_DEFAULT_REFERRALS,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
         self._ldap = LDAPConnectionBuilder(
-            ldap_uri, 
-            admin_dn, 
-            admin_passwd, 
-            allow_tls_fallback, 
-            timeout, 
-            network_timeout, 
-            referrals=ldap_referrals
+            ldap_uri,
+            admin_dn,
+            admin_passwd,
+            allow_tls_fallback,
+            timeout,
+            network_timeout,
+            referrals=ldap_referrals,
         )
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
@@ -590,7 +591,6 @@ class LDAPUsers(FederatedUsers):
 
                         # Yield any users found.
                         for userdata in rdata:
-
                             found_results = found_results + 1
                             if isinstance(userdata[1], list):
                                 # we do not follow referrals here
