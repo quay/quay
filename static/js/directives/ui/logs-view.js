@@ -464,6 +464,14 @@ angular.module('quay').directive('logsView', function () {
           }
         },
 
+        'change_tag_immutability': function(metadata) {
+          if (metadata.immutable) {
+            return 'Tag {tag} set to immutable';
+          } else {
+            return 'Tag {tag} set to mutable';
+          }
+        },
+
         'create_app_specific_token': 'Created external application token {app_specific_token_title}',
         'revoke_app_specific_token': 'Revoked external application token {app_specific_token_title}',
         'repo_mirror': function (metadata) {
@@ -688,6 +696,7 @@ angular.module('quay').directive('logsView', function () {
         'manifest_label_add': 'Add Manifest Label',
         'manifest_label_delete': 'Delete Manifest Label',
         'change_tag_expiration': 'Change tag expiration',
+        'change_tag_immutability': 'Change tag immutability',
         'create_app_specific_token': 'Create external app token',
         'revoke_app_specific_token': 'Revoke external app token',
         'repo_mirror_enabled': 'Enable Repository Mirror',
