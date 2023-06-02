@@ -7,6 +7,7 @@ import {
 } from '@patternfly/react-core';
 import {useEffect} from 'react';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {Tag, bulkDeleteTags} from 'src/resources/TagResource';
 import './Tags.css';
 import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
@@ -14,12 +15,12 @@ import {useDeleteTag} from 'src/hooks/UseTags';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
 
-export interface ModalOptions {
+export interface DeleteModalOptions {
   isOpen: boolean;
   force: boolean;
 }
 
-export function DeleteModal(props: ModalProps) {
+export function DeleteModal(props: DeleteModalProps) {
   const {
     deleteTags,
     successDeleteTags,
@@ -105,6 +106,7 @@ export function DeleteModal(props: ModalProps) {
       <Modal
         id="tag-deletion-modal"
         title={title}
+        titleIconVariant={ props.modalOptions.force ? 'danger' : 'warning'}
         description={
           <Conditional if={props.modalOptions.force}>
             <span style={{color: 'red'}}>
@@ -136,7 +138,7 @@ export function DeleteModal(props: ModalProps) {
             }}
           >
             Cancel
-          </Button>,
+          </Button>, 
           <Button
             key="modal-action-button"
             variant="primary"
@@ -159,8 +161,8 @@ export function DeleteModal(props: ModalProps) {
           <div className="delete-modal-readonly-alert" />
         </Conditional>
         {props.tags?.map((tag) => (
-          <span key={tag}>
-            <Label>{tag}</Label>{' '}
+          <span key={tag.name}>
+            <Label>{tag.name}</Label>{' '}
           </span>
         ))}
         <Conditional if={props.tags?.length > 20}>
@@ -173,10 +175,10 @@ export function DeleteModal(props: ModalProps) {
   );
 }
 
-type ModalProps = {
-  modalOptions: ModalOptions;
+export type DeleteModalProps = {
+  modalOptions: DeleteModalOptions;
   setModalOptions: (modalOptions) => void;
-  tags: string[];
+  tags: Tag[];
   onComplete?: () => void;
   loadTags: () => void;
   org: string;

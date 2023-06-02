@@ -5,6 +5,7 @@ import {
   createTag,
   permanentlyDeleteTag,
   bulkDeleteTags,
+  Tag,
 } from 'src/resources/TagResource';
 import {getTags, restoreTag} from 'src/resources/TagResource';
 
@@ -55,7 +56,7 @@ export function useSetExpiration(org: string, repo: string) {
     isError: errorSetExpiration,
     error: errorSetExpirationDetails,
   } = useMutation(
-    async ({tags, expiration}: {tags: string[]; expiration: number}) =>
+    async ({tags, expiration}: {tags: Tag[]; expiration: number}) =>
       bulkSetExpiration(org, repo, tags, expiration),
   );
 
@@ -75,7 +76,7 @@ export function useDeleteTag(org: string, repo: string) {
     isError: errorDeleteTags,
     error: errorDeleteTagDetails,
   } = useMutation(
-    async ({tags, force}: {tags: string[]; force: boolean}) =>
+    async ({tags, force}: {tags: Tag[]; force: boolean}) =>
       bulkDeleteTags(org, repo, tags, force),
     {},
   );
@@ -117,7 +118,7 @@ export function useRestoreTag(org: string, repo: string) {
 export function usePermanentlyDeleteTag(org: string, repo: string) {
   const queryClient = useQueryClient();
   const {mutate, isError, isSuccess} = useMutation(
-    async ({tag, digest}: {tag: string; digest: string}) =>
+    async ({tag, digest}: {tag: Tag; digest: string}) =>
       permanentlyDeleteTag(org, repo, tag, digest),
     {
       onSuccess: () => {
