@@ -391,14 +391,32 @@ class SuperUserList(ApiResource):
     @query_param(
         "disabled", "If false, only enabled users will be returned.", type=truthy_bool, default=True
     )
+    @query_param(
+        "limit",
+        "Limit to the number of results to return per page. Max 100.",
+        type=int,
+        default=None,
+    )
     @require_scope(scopes.SUPERUSER)
-    def get(self, parsed_args):
+    @page_support()
+    def get(self, parsed_args, page_token):
         """
         Returns a list of all users in the system.
         """
         if SuperUserPermission().can():
-            users = pre_oci_model.get_active_users(disabled=parsed_args["disabled"])
-            return {"users": [user.to_dict() for user in users]}
+            if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
+                raise InvalidRequest("Page limit cannot be above 100")
+
+            if parsed_args["limit"] is None:
+                users = pre_oci_model.get_active_users(disabled=parsed_args["disabled"])
+                return {"users": [user.to_dict() for user in users]}, None
+            else:
+                users, next_page_token = pre_oci_model.get_active_users_paginated(
+                    disabled=parsed_args["disabled"],
+                    limit=parsed_args["limit"],
+                    page_token=page_token,
+                )
+                return {"users": [user.to_dict() for user in users]}, next_page_token
 
         raise Unauthorized()
 
