@@ -166,7 +166,9 @@ class OCIModel(RegistryDataInterface):
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler)
 
-    def create_manifest_label(self, manifest, key, value, source_type_name, media_type_name=None, raise_on_error=False):
+    def create_manifest_label(
+        self, manifest, key, value, source_type_name, media_type_name=None, raise_on_error=False
+    ):
         """
         Creates a label on the manifest with the given key and value.
         """
@@ -218,7 +220,9 @@ class OCIModel(RegistryDataInterface):
         for label_data in labels_to_add:
             with db_transaction():
                 # Create the label itself.
-                oci.label.create_manifest_label(manifest._db_id, raise_on_error=raise_on_error, **label_data)
+                oci.label.create_manifest_label(
+                    manifest._db_id, raise_on_error=raise_on_error, **label_data
+                )
 
                 # Apply any changes to the manifest that the label prescribes.
                 apply_label_to_manifest(label_data, manifest, self)
@@ -245,7 +249,11 @@ class OCIModel(RegistryDataInterface):
 
         Returns the label deleted or None if none.
         """
-        return Label.for_label(oci.label.delete_manifest_label(label_uuid, manifest._db_id, raise_on_error=raise_on_error))
+        return Label.for_label(
+            oci.label.delete_manifest_label(
+                label_uuid, manifest._db_id, raise_on_error=raise_on_error
+            )
+        )
 
     def lookup_active_repository_tags(self, repository_ref, start_pagination_id, limit):
         """
@@ -415,12 +423,17 @@ class OCIModel(RegistryDataInterface):
                 return (None, None)
 
             # Apply labels to manifest
-            [apply_label_to_manifest(label_dict, wrapped_manifest, self) for label_dict in labels_to_apply]
-            
+            [
+                apply_label_to_manifest(label_dict, wrapped_manifest, self)
+                for label_dict in labels_to_apply
+            ]
+
             return (
                 wrapped_manifest,
                 Tag.for_tag(
-                    tag, self._legacy_image_id_handler, manifest_row=created_manifest.manifest
+                    oci.tag.get_tag_by_id(tag.id),
+                    self._legacy_image_id_handler,
+                    manifest_row=created_manifest.manifest,
                 ),
             )
 
@@ -672,7 +685,9 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             if oci.tag.has_expiring_tags_for_manifest(manifest._db_id):
-                logger.debug("Tried to manifest %s as immutable but it has immutable tags", manifest)
+                logger.debug(
+                    "Tried to manifest %s as immutable but it has immutable tags", manifest
+                )
 
                 if raise_on_error:
                     raise model.TagImmutableException(
