@@ -134,7 +134,7 @@ def validate_app_oauth_token(token):
                     "token": validated.token_name,
                     "application_name": validated.application.name,
                     "oauth_token_id": validated.id,
-                    "oauth_token_application_id": validated.application.client.id,
+                    "oauth_token_application_id": validated.application.client_id,
                     "oauth_token_application": validated.application.name,
                     "username": validated.authorized_user.username,
                     "useragent": request.user_agent.string,
