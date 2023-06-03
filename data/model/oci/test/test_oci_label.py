@@ -48,6 +48,7 @@ def test_create_manifest_label(key, value, source_type, expected_error, initiali
     with assert_query_count(1):
         assert get_manifest_label(label.uuid, manifest) == label
 
+
 def test_create_manifest_label_with_immutable_tags(initialized_db):
     tag = Tag.get()
     repo = tag.repository
@@ -61,11 +62,12 @@ def test_create_manifest_label_with_immutable_tags(initialized_db):
 
     assert immutable_tag
     assert immutable_tag.manifest
-    
+
     manifest = immutable_tag.manifest
 
     with pytest.raises(TagImmutableException):
         label = create_manifest_label(manifest, "foo", "bar", "manifest", raise_on_error=True)
+
 
 def test_list_manifest_labels(initialized_db):
     manifest = Manifest.get()
@@ -112,11 +114,14 @@ def test_delete_manifest_label(initialized_db):
             assert get_manifest_label(manifest_label.label.uuid, manifest_label.manifest) is None
         else:
             with pytest.raises(DataModelException):
-                delete_manifest_label(manifest_label.label.uuid, manifest_label.manifest)
+                delete_manifest_label(
+                    manifest_label.label.uuid, manifest_label.manifest, raise_on_error=True
+                )
 
         found = True
 
     assert found
+
 
 def test_delete_manifest_label_with_immutable_tags(initialized_db):
     tag = Tag.get()
@@ -134,6 +139,6 @@ def test_delete_manifest_label_with_immutable_tags(initialized_db):
 
     assert immutable_tag
     assert immutable_tag.manifest
-    
+
     with pytest.raises(TagImmutableException):
         delete_manifest_label(label.uuid, immutable_tag.manifest, raise_on_error=True)

@@ -1,8 +1,11 @@
 from test.fixtures import *
 
 import pytest
+from data.registry_model import registry_model
 
-from data.model.organization import get_organization, get_organizations
+from data.model.repository import create_repository
+from data.model.organization import get_organization, get_organizations, has_immutable_tags
+from data.model.test.test_repository import _create_tag
 from data.model.user import mark_namespace_for_deletion
 from data.queue import WorkQueue
 
@@ -25,3 +28,22 @@ def test_get_organizations(deleted, initialized_db):
 
     deleted_found = [org for org in orgs if org.id == deleted_org.id]
     assert bool(deleted_found) == deleted
+
+def test_check_for_repositories_with_immutable_tags(initialized_db):
+    # Create a repository and some tags
+    repo = create_repository(
+        "sellnsmall", "somenewrepo", None, repo_kind="image", visibility="public"
+    )
+    _ = _create_tag(repo, "tag1")
+    _ = _create_tag(repo, "tag2")
+    _ = _create_tag(repo, "tag3")
+
+    # Expect the organization to not have repositories with immutable tags
+    assert not has_immutable_tags("sellnsmall")
+
+    # Set one of the tags to immutable
+    tag = _create_tag(repo, "tag4")
+    registry_model.set_tag_immutable(tag)
+
+    # Expect the organization to have repositories with immutable tags
+    assert has_immutable_tags("sellnsmall")
