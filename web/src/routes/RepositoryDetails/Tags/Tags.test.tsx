@@ -10,6 +10,7 @@ import {
   getSecurityDetails,
   SecurityDetailsResponse,
   VulnerabilitySeverity,
+  setTagsMutability,
 } from 'src/resources/TagResource';
 import {MemoryRouter} from 'react-router-dom';
 
@@ -40,6 +41,7 @@ const createTag = (name = 'latest'): Tag => {
     reversion: false,
     start_ts: 1654197152,
     manifest_list: null,
+    immutable: false,
   };
 };
 const createSecurityDetailsResponse = (): SecurityDetailsResponse => {
@@ -300,6 +302,50 @@ test('Delete a single tag', async () => {
   expect(await screen.findByText('This repository is empty.')).toBeTruthy();
 });
 
+test('Set a single tag to immutable', async () => {
+  const tagName = 'latest';
+  const mockResponse = createTagResponse();
+  mockResponse.tags.push(createTag(tagName));
+  mocked(getTags, true)
+    .mockResolvedValueOnce(mockResponse)
+    .mockResolvedValueOnce(createTagResponse());
+  mocked(setTagsMutability, true).mockResolvedValue();
+  mocked(getSecurityDetails, true).mockResolvedValue(
+    createSecurityDetailsResponse(),
+  );
+  render(
+    <RecoilRoot>
+      <Tags organization={testOrg} repository={testRepo} />
+    </RecoilRoot>,
+    {wrapper: MemoryRouter},
+  );
+  expect(await screen.findByText(tagName)).toBeTruthy();
+  const rowSelect = screen.getByLabelText('Select all rows', {
+    selector: 'input',
+  });
+  fireEvent(
+    rowSelect,
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  const actionsKebab = screen.getByLabelText('Actions', {selector: 'button'});
+  fireEvent(
+    actionsKebab,
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  fireEvent(
+    screen.getByText('Set Immutable'),
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  expect(await screen.findByText(`Set the following tag to immutable?`)).toBeTruthy();
+  expect(screen.getByText('Cancel')).toBeTruthy();
+  expect(screen.getByText('Set Immutable')).toBeTruthy();
+  const setImmutableButton = screen.getByText('Set Immutable');
+  fireEvent(
+    setImmutableButton,
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+});
+
 test('Delete a multiple tags', async () => {
   const tagNames = ['latest', 'slim', 'alpine'];
   const mockResponse = createTagResponse();
@@ -353,4 +399,55 @@ test('Delete a multiple tags', async () => {
     new MouseEvent('click', {bubbles: true, cancelable: true}),
   );
   expect(await screen.findByText('This repository is empty.')).toBeTruthy();
+});
+
+test('Set multiple tags to immutable', async () => {
+  const tagNames = ['latest', 'slim', 'alpine'];
+  const mockResponse = createTagResponse();
+  for (const tag of tagNames) {
+    mockResponse.tags.push(createTag(tag));
+  }
+  mocked(getTags, true)
+    .mockResolvedValueOnce(mockResponse)
+    .mockResolvedValueOnce(createTagResponse());
+  mocked(setTagsMutability, true).mockResolvedValue();
+  mocked(getSecurityDetails, true).mockResolvedValue(
+    createSecurityDetailsResponse(),
+  );
+  render(
+    <RecoilRoot>
+      <Tags organization={testOrg} repository={testRepo} />
+    </RecoilRoot>,
+    {wrapper: MemoryRouter},
+  );
+  expect(await screen.findByText('latest')).toBeTruthy();
+  expect(await screen.findByText('slim')).toBeTruthy();
+  expect(await screen.findByText('alpine')).toBeTruthy();
+  const rowSelect = screen.getByLabelText('Select all rows', {
+    selector: 'input',
+  });
+  fireEvent(
+    rowSelect,
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  const actionsKebab = screen.getByLabelText('Actions', {selector: 'button'});
+  fireEvent(
+    actionsKebab,
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  fireEvent(
+    screen.getByText('Set Immutable'),
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  expect(await screen.findByText('Set the following tags as immutable?')).toBeTruthy();
+  expect(screen.getByTestId('set-immutable-tags-modal')).toHaveTextContent('latest');
+  expect(screen.getByTestId('set-immutable-tags-modal')).toHaveTextContent('slim');
+  expect(screen.getByTestId('set-immutable-tags-modal')).toHaveTextContent('alpine');
+  expect(screen.getByText('Cancel')).toBeTruthy();
+  expect(screen.getByText('Set Immutable')).toBeTruthy();
+  fireEvent(
+    screen.getByText('Set Immutable'),
+    new MouseEvent('click', {bubbles: true, cancelable: true}),
+  );
+  expect(await screen.findByText('Successfully set tags as immutable.')).toBeTruthy();
 });
