@@ -85,9 +85,13 @@ class TagExpired(V2RegistryException):
     def __init__(self, message=None, detail=None):
         super(TagExpired, self).__init__("TAG_EXPIRED", message or "Tag has expired", detail, 404)
 
+
 class TagImmutable(V2RegistryException):
     def __init__(self, message=None, detail=None):
-        super(TagImmutable, self).__init__("TAG_IMMUTABLE", message or "Tag is immutable", detail, 412)
+        super(TagImmutable, self).__init__(
+            "TAG_IMMUTABLE", message or "Tag is immutable", detail, 412
+        )
+
 
 class ManifestUnverified(V2RegistryException):
     def __init__(self, detail=None):

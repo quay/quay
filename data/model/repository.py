@@ -643,6 +643,7 @@ def get_repository_state(namespace_name, repository_name):
 
     return None
 
+
 def has_immutable_tags(repo):
     """
     Returns true if the given repository has any tags that are set to immutable.

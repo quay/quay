@@ -4,7 +4,6 @@ from data.database import (
     Namespace,
     Repository,
     RepositoryPermission,
-    Tag,
     Team,
     TeamMember,
     TeamRole,

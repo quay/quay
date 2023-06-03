@@ -224,7 +224,9 @@ def __create_manifest_and_tags(
         )
 
 
-def __generate_repository(user_obj, name, description, is_public, permissions, structure, builder=None):
+def __generate_repository(
+    user_obj, name, description, is_public, permissions, structure, builder=None
+):
     repo = model.repository.create_repository(user_obj.username, name, user_obj)
 
     if is_public:

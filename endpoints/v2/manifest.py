@@ -470,7 +470,7 @@ def _write_manifest(
     except TagImmutableException as tie:
         raise TagImmutable(
             message="Could not create manifest pointing to immutable tag %s " % tag_name,
-            detail={"message": str(tie)}
+            detail={"message": str(tie)},
         )
 
     if manifest is None:

@@ -376,7 +376,7 @@ class RegistryDataInterface(object):
         """
         Sets the expiration on all tags that point to the given manifest to that specified.
         """
-    
+
     @abstractmethod
     def set_tags_immutable_for_manifest(self, manifest):
         """
