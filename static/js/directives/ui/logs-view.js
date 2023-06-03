@@ -647,6 +647,7 @@ angular.module('quay').directive('logsView', function () {
         'delete_repo_permission': 'Remove user permission from repository',
         'change_repo_visibility': 'Change repository visibility',
         'change_repo_trust': 'Change repository trust settings',
+        'change_repo_state': 'Change repository state',
         'add_repo_accesstoken': 'Create access token',
         'delete_repo_accesstoken': 'Delete access token',
         'set_repo_description': 'Change repository description',
