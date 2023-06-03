@@ -147,7 +147,6 @@ def validate_app_oauth_token(token):
 
     # Don't allow disabled users to login.
     if not validated.authorized_user.enabled:
-
         error_message = "Granter of the oauth access token is disabled"
 
         if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
