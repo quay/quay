@@ -768,7 +768,7 @@ def test_remove_tag_from_timemachine_submanifests(initialized_db):
 
     updated_tag = Tag.select().where(Tag.id == created_tag.id).get()
     assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
-    assert updated_tag.hidden
+    assert not updated_tag.hidden
 
     child_manifests = [
         cm.child_manifest
