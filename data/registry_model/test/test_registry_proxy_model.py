@@ -36,7 +36,6 @@ from data.registry_model.datatypes import Manifest as ManifestType
 from data.registry_model.registry_proxy_model import ProxyModel
 from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
@@ -297,6 +296,7 @@ class TestRegistryProxyModelCreateProxyCacheConfig:
                 expiration_s=self.expiration_s,
                 raise_on_error=True,
             )
+
 
 class TestRegistryProxyModelCreateManifestAndRetargetTag:
     upstream_registry = "quay.io"

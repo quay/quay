@@ -196,6 +196,7 @@ def add_user_as_admin(user_obj, org_obj):
     except team.UserAlreadyInTeam:
         pass
 
+
 def has_immutable_tags(org_name):
     """
     Returns true if the given organization has any repositories containing tags that are set to immutable.

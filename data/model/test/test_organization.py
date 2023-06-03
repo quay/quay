@@ -29,6 +29,7 @@ def test_get_organizations(deleted, initialized_db):
     deleted_found = [org for org in orgs if org.id == deleted_org.id]
     assert bool(deleted_found) == deleted
 
+
 def test_check_for_repositories_with_immutable_tags(initialized_db):
     # Create a repository and some tags
     repo = create_repository(
