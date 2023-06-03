@@ -206,7 +206,10 @@ DROP INDEX IF EXISTS public.tag_repository_id_name_hidden;
 DROP INDEX IF EXISTS public.tag_repository_id_name;
 DROP INDEX IF EXISTS public.tag_repository_id_lifetime_start_ms;
 DROP INDEX IF EXISTS public.tag_repository_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_repository_id_immutable;
 DROP INDEX IF EXISTS public.tag_repository_id;
+DROP INDEX IF EXISTS public.tag_manifest_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_manifest_id_immutable;
 DROP INDEX IF EXISTS public.tag_manifest_id;
 DROP INDEX IF EXISTS public.tag_linked_tag_id;
 DROP INDEX IF EXISTS public.tag_lifetime_end_ms;
@@ -4139,7 +4142,8 @@ CREATE TABLE public.tag (
     hidden boolean DEFAULT false NOT NULL,
     reversion boolean DEFAULT false NOT NULL,
     tag_kind_id integer NOT NULL,
-    linked_tag_id integer
+    linked_tag_id integer,
+    immutable boolean DEFAULT false NOT NULL
 );
 
 
@@ -6298,6 +6302,7 @@ COPY public.logentrykind (id, name) FROM stdin;
 108	create_repository_autoprune_policy
 109	update_repository_autoprune_policy
 110	delete_repository_autoprune_policy
+111	change_tag_immutability
 \.
 
 
@@ -8148,7 +8153,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 110, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 111, true);
 
 
 --
@@ -11415,10 +11420,31 @@ CREATE INDEX tag_manifest_id ON public.tag USING btree (manifest_id);
 
 
 --
+-- Name: tag_manifest_id_immutable; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_manifest_id_immutable ON public.tag USING btree (manifest_id, immutable);
+
+
+--
+-- Name: tag_manifest_id_lifetime_end_ms; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_manifest_id_lifetime_end_ms ON public.tag USING btree (manifest_id, lifetime_end_ms);
+
+
+--
 -- Name: tag_repository_id; Type: INDEX; Schema: public; Owner: quay
 --
 
 CREATE INDEX tag_repository_id ON public.tag USING btree (repository_id);
+
+
+--
+-- Name: tag_repository_id_immutable; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_repository_id_immutable ON public.tag USING btree (repository_id, immutable);
 
 
 --
