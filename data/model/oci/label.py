@@ -60,7 +60,9 @@ def get_manifest_label(label_uuid, manifest):
         return None
 
 
-def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None, raise_on_error=False):
+def create_manifest_label(
+    manifest_id, key, value, source_type_name, media_type_name=None, raise_on_error=False
+):
     """
     Creates a new manifest label on a specific tag manifest.
     """
@@ -95,15 +97,19 @@ def create_manifest_label(manifest_id, key, value, source_type_name, media_type_
         )
     except Manifest.DoesNotExist:
         if raise_on_error:
-            raise model.ManifestDoesNotExist("Cannot create label '%s=%s', requested manifest does not exist" % (key, value))
+            raise model.ManifestDoesNotExist(
+                "Cannot create label '%s=%s', requested manifest does not exist" % (key, value)
+            )
         return None
-    
+
     # raise TagImmutableException() if manifest has immutable tags
     if has_immutable_tags_for_manifest(manifest.id):
         if raise_on_error:
-            raise model.TagImmutableException("Cannot add label to manifest %s which has immutable tags" % manifest.digest)
+            raise model.TagImmutableException(
+                "Cannot add label to manifest %s which has immutable tags" % manifest.digest
+            )
         else:
-            return None    
+            return None
 
     repository = manifest.repository
 
@@ -128,10 +134,12 @@ def delete_manifest_label(label_uuid, manifest, raise_on_error=False):
     label = get_manifest_label(label_uuid, manifest)
     if label is None:
         return None
-    
+
     if has_immutable_tags_for_manifest(manifest):
         if raise_on_error:
-            raise model.TagImmutableException("Cannot delete label from manifest which has immutable tags")
+            raise model.TagImmutableException(
+                "Cannot delete label from manifest which has immutable tags"
+            )
         else:
             return None
 

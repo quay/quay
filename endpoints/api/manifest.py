@@ -210,7 +210,12 @@ class RepositoryManifestLabels(RepositoryParamResource):
         label = None
         try:
             label = registry_model.create_manifest_label(
-                manifest, label_data["key"], label_data["value"], "api", label_data["media_type"], raise_on_error=True
+                manifest,
+                label_data["key"],
+                label_data["value"],
+                "api",
+                label_data["media_type"],
+                raise_on_error=True,
             )
         except InvalidLabelKeyException:
             message = (
@@ -224,7 +229,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
             )
             abort(400, message=message)
         except TagImmutableException:
-            message = ("Cannot set label on manifest with immutable tag")
+            message = "Cannot set label on manifest with immutable tag"
             raise PreconditionFailed(message)
 
         if label is None:
@@ -303,12 +308,12 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
             raise NotFound()
 
         deleted = None
-        
-        try: 
+
+        try:
             deleted = registry_model.delete_manifest_label(manifest, labelid, raise_on_error=True)
         except TagImmutableException:
             raise PreconditionFailed("Cannot delete label on manifest with immutable tag")
-        
+
         if deleted is None:
             raise NotFound()
 

@@ -109,9 +109,12 @@ class ExpiredToken(ApiException):
     def __init__(self, error_description, payload=None):
         ApiException.__init__(self, ApiErrorType.expired_token, 401, error_description, payload)
 
+
 class PreconditionFailed(ApiException):
     def __init__(self, error_description, payload=None):
-        ApiException.__init__(self, ApiErrorType.precondition_failed, 412, error_description, payload)
+        ApiException.__init__(
+            self, ApiErrorType.precondition_failed, 412, error_description, payload
+        )
 
 
 class Unauthorized(ApiException):
