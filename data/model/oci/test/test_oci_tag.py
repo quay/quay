@@ -384,6 +384,7 @@ def test_delete_tag(initialized_db):
 
     assert found
 
+
 def test_delete_tag_immutable_tag(initialized_db):
     tag = Tag.get()
     repo = tag.repository
@@ -445,6 +446,7 @@ def test_delete_tags_for_manifest(initialized_db):
 
             assert get_tag(repo, tag.name) is None
 
+
 def test_delete_tags_for_manifest_same_manifest(initialized_db):
     with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
         new_repo = model.repository.create_repository("devtable", "newrepo", None)
@@ -493,6 +495,7 @@ def test_delete_tags_for_manifests_immutable_tag(initialized_db):
 
     assert get_tag(new_repo.id, mutable_tag.name) is not None
     assert get_tag(new_repo.id, immutable_tag.name) is not None
+
 
 @pytest.mark.parametrize(
     "timedelta, expected_timedelta",
