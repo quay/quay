@@ -498,7 +498,9 @@ class OCIModel(RegistryDataInterface):
             return (
                 wrapped_manifest,
                 Tag.for_tag(
-                    tag, self._legacy_image_id_handler, manifest_row=created_manifest.manifest
+                    oci.tag.get_tag_by_id(tag.id),
+                    self._legacy_image_id_handler,
+                    manifest_row=created_manifest.manifest,
                 ),
             )
 

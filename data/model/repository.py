@@ -8,17 +8,11 @@ from enum import Enum
 from cachetools.func import ttl_cache
 from peewee import JOIN, SQL, Case, IntegrityError, fn
 
-import data
+
 from data.database import (
-    ApprTag,
     BlobUpload,
     DeletedRepository,
     ExternalNotificationEvent,
-    ImageStorage,
-    Label,
-    Manifest,
-    ManifestBlob,
-    ManifestChild,
     Namespace,
     QuotaRepositorySize,
     Repository,
@@ -34,22 +28,15 @@ from data.database import (
     Tag,
     User,
     Visibility,
-    db_concat_func,
-    db_for_update,
-    db_random_func,
-    get_epoch_timestamp,
-    get_epoch_timestamp_ms,
 )
 from data.model import (
     DataModelException,
+    TagImmutableException,
     _basequery,
     config,
     db_transaction,
-    oci,
     permission,
-    storage,
 )
-from data.text import prefix_search
 from util.itertoolrecipes import take
 
 logger = logging.getLogger(__name__)
@@ -656,8 +643,27 @@ def get_repository_state(namespace_name, repository_name):
 
     return None
 
+def has_immutable_tags(repo):
+    """
+    Returns true if the given repository has any tags that are set to immutable.
 
-def set_repository_state(repo, state):
+    Otherwise, returns None.
+    """
+    return (
+        Tag.select()
+        .join(Repository)
+        .where((Repository.id == repo.id) & (Tag.immutable == True))
+        .exists()
+    )
+
+
+def set_repository_state(repo, state, raise_on_error=False):
+    if state == RepositoryState.MIRROR and has_immutable_tags(repo):
+        raise TagImmutableException(
+            "Cannot set repository %s to mirror state which which contains immutable tags."
+            % repo.name
+        )
+
     repo.state = state
     repo.save()
 

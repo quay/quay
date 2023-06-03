@@ -1,6 +1,6 @@
 from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig, User
-from data.model import InvalidProxyCacheConfigException
-from data.model.organization import get_organization
+from data.model import InvalidProxyCacheConfigException, TagImmutableException
+from data.model.organization import get_organization, has_immutable_tags
 
 
 def has_proxy_cache_config(org_name):
@@ -18,11 +18,21 @@ def create_proxy_cache_config(
     upstream_registry_password=None,
     expiration_s=DEFAULT_PROXY_CACHE_EXPIRATION,
     insecure=False,
+    raise_on_error=False,
 ):
     """
     Creates proxy cache configuration for the given organization name
     """
     org = get_organization(org_name)
+
+    if has_immutable_tags(org_name):
+        if raise_on_error:
+            raise TagImmutableException(
+                "Cannot set proxy cache config for organization %s: it contains one or more repositories with immutable tags"
+                % org_name
+            )
+        else:
+            return None
 
     new_entry = ProxyCacheConfig.create(
         organization=org,

@@ -3,7 +3,6 @@ List, create and manage repositories.
 """
 
 import logging
-from collections import defaultdict
 from datetime import datetime, timedelta
 
 from flask import abort, request
@@ -21,14 +20,13 @@ from auth.permissions import (
     AdministerRepositoryPermission,
     CreateRepositoryPermission,
     ModifyRepositoryPermission,
-    ReadRepositoryPermission,
 )
 from data.database import RepositoryState
+from data.model import TagImmutableException
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
     allow_if_superuser,
-    format_date,
     log_action,
     nickname,
     page_support,
@@ -46,12 +44,12 @@ from endpoints.api import (
 )
 from endpoints.api.billing import get_namespace_plan, lookup_allowed_private_repos
 from endpoints.api.repository_models_pre_oci import pre_oci_model as model
-from endpoints.api.subscribe import check_repository_usage
 from endpoints.exception import (
     DownstreamIssue,
     ExceedsLicenseException,
     InvalidRequest,
     NotFound,
+    PreconditionFailed,
     Unauthorized,
 )
 from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX
@@ -145,7 +143,6 @@ class RepositoryList(ApiResource):
             and usermanager.is_restricted_user(owner.username)
             and owner.username == namespace_name
         ):
-
             repository_name = req["repository"]
             visibility = req["visibility"]
 
@@ -527,7 +524,10 @@ class RepositoryStateResource(RepositoryParamResource):
         if state is None:
             return {"detail": "%s is not a valid Repository state." % state_name}, 400
 
-        model.set_repository_state(namespace, repository, state)
+        try:
+            model.set_repository_state(namespace, repository, state)
+        except TagImmutableException as e:
+            raise PreconditionFailed(str(e))
 
         log_action(
             "change_repo_state",
