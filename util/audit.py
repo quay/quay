@@ -87,16 +87,14 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
 
     # Log the action to the database.
     logger.debug("Logging the %s to logs system", event_name)
-    try:
-        logs_model.log_action(
-            event_name,
-            namespace_name,
-            performer=get_authenticated_user(),
-            ip=get_request_ip(),
-            metadata=metadata,
-            repository=repo_obj,
-            is_free_namespace=is_free_namespace,
-        )
-        logger.debug("Track and log of %s complete", event_name)
-    except ReadOnlyModeException:
-        pass
+
+    logs_model.log_action(
+        event_name,
+        namespace_name,
+        performer=get_authenticated_user(),
+        ip=get_request_ip(),
+        metadata=metadata,
+        repository=repo_obj,
+        is_free_namespace=is_free_namespace,
+    )
+    logger.debug("Track and log of %s complete", event_name)
