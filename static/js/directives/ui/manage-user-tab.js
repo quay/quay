@@ -88,7 +88,7 @@ angular.module('quay').directive('manageUserTab', function () {
 
       var loadPaginatedUsers = function(nextPageToken = null) {
         $scope.backgroundLoadingUsers = true;
-        var params = nextPageToken != null ? {limit: 100, next_page: nextPageToken} : {limit: 100};
+        var params = nextPageToken != null ? {limit: 50, next_page: nextPageToken} : {limit: 50};
         ApiService.listAllUsers(null, params).then(function(resp) {
           $scope.users = [...$scope.users, ...resp['users']];
           if(resp["next_page"] != null){
