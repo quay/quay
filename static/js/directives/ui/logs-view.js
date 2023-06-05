@@ -285,6 +285,13 @@ angular.module('quay').directive('logsView', function () {
           }
         },
         'delete_tag': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by user {username}]]',
+        'permanently_delete_tag': function(metadata){
+          if (metadata.manifest_digest){
+            return 'Tag {tag} referencing {manifest_digest} permanently deleted[[ in repository {namespace}/{repo} by user {username}]]';
+          } else {
+            return 'Tag {tag} permanently deleted[[ in repository {namespace}/{repo} by user {username}]]'
+          }
+        },
         'create_tag': 'Tag {tag} created[[ in repository {namespace}/{repo} on image {image} by user {username}]]',
         'move_tag': function(metadata) {
           if (metadata.manifest_digest) {
@@ -594,6 +601,7 @@ angular.module('quay').directive('logsView', function () {
         'start_build_trigger': 'Manual build trigger',
         'cancel_build': 'Cancel build',
         'login_success': 'Login success',
+        'permanently_delete_tag': 'Permanently Delete Tag',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',
