@@ -70,7 +70,7 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
             host: ${{ steps.ZVSI.outputs.IP }}
-            username: ${{ secrets.SSH_USER }}
+            username: ${{ secrets.ZVSI_SSH_USER }}
             key: ${{ secrets.ZVSI_PR_KEY }}
             script: |
               #update
@@ -99,7 +99,6 @@ jobs:
           BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
           BUILDER_S390X_SSH_HOST: ${{ steps.ZVSI.outputs.IP }}
           BUILDER_S390X_SSH_KEY: ${{ secrets.ZVSI_PR_KEY }}
-          
         run: |
           mkdir ~/.ssh
           chmod 700 ~/.ssh
@@ -171,10 +170,12 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
       
       - name: Post Build-and-publish-s390x
+        if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
         run: |
           #Delete the created ZVSI
           ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
-          sleep 15
-            
+          sleep 20
+          
           #Release the created FP
           ibmcloud is floating-ip-release $ZVSI_FP_NAME --force
+
