@@ -240,6 +240,7 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
                 timestamp=timestamp,
             )
         except ReadOnlyModeException:
+            logger.debug("Skipping log action '%s' in read-only mode" % kind_name)
             pass
 
     def yield_logs_for_export(
