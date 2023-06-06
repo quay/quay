@@ -25,10 +25,10 @@ angular.module('quay').directive('quotaManagementView', function () {
 
       $scope.defer = null;
       $scope.disk_size_units = {
-        'KB': 1024,
-        'MB': 1024 ** 2,
-        'GB': 1024 ** 3,
-        'TB': 1024 ** 4,
+        'KB': 1000,
+        'MB': 1000 ** 2,
+        'GB': 1000 ** 3,
+        'TB': 1000 ** 4,
       };
       $scope.quotaUnits = Object.keys($scope.disk_size_units);
       $scope.rejectLimitType = 'Reject';
