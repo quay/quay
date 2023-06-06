@@ -26,7 +26,7 @@ jobs:
       ZVSI_ZONE_NAME: eu-gb-2
       ZVSI_PROFILE_NAME: bz2-4x16
       ZVSI_SUBNET: 0797-88f93aad-3acd-4c8e-be10-8dc6d41bc9b9
-      ZVSI_IMAGE: r018-b774babd-711c-415c-8c62-aae0d6c824dc 
+      ZVSI_IMAGE: r018-acadf3d4-f340-4e13-add0-49ce45e8a778
       ZVSI_KEY: r018-ee997015-b88c-4500-874c-71f2175a8284
       ZVSI_RG_ID: 2e818eb391df4774977812b50ff0e8c9
     runs-on: 'ubuntu-latest'
