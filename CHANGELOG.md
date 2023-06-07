@@ -3,9 +3,22 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.8.8"></a>
-## [v3.8.8] - 2023-05-16
+<a name="v3.8.9"></a>
+## [v3.8.9] - 2023-06-01
 ### Chore
+- [3747f70e](https://github.com/quay/quay/commit/3747f70e52259b4b415aaff87b40767c84d4e3a0): update ppc64le builder ([#1911](https://github.com/quay/quay/issues/1911))
+- [b80166b0](https://github.com/quay/quay/commit/b80166b02352e035e3b90c6fd69b586a703d2f94): Use external builders ([#1910](https://github.com/quay/quay/issues/1910))
+### Proxy
+- [47d50900](https://github.com/quay/quay/commit/47d50900bdfd38c76f2f9f2ce5fbfb8e45ae6755): Allow anonymous pulls from registries (PROJQUAY-5273) ([#1908](https://github.com/quay/quay/issues/1908))
+### Superuser
+- [540cf0f8](https://github.com/quay/quay/commit/540cf0f88997e81919b4438c426c0e64fd2c71be): paginate user's list (PROJQUAY-4297) ([#1881](https://github.com/quay/quay/issues/1881)) ([#1909](https://github.com/quay/quay/issues/1909))
+### [Redhat-3.8] Superuser
+- [9c198c69](https://github.com/quay/quay/commit/9c198c6981c3c67a1a9604195ebda363a8b41dd8): paginating superuser organization list (PROJQUAY-4297) ([#1896](https://github.com/quay/quay/issues/1896))
+
+<a name="v3.8.8"></a>
+## [v3.8.8] - 2023-05-17
+### Chore
+- [9c27dadc](https://github.com/quay/quay/commit/9c27dadc754587157a13d45823eb6a8df207ad3c): v3.8.8 changelog bump (PROJQUAY-5514) ([#1889](https://github.com/quay/quay/issues/1889))
 - [517d3b35](https://github.com/quay/quay/commit/517d3b35a1e6dbfcb56b57e5d5c5ea4710216dc3): Remove cachito magic for PyPDF2 ([#1885](https://github.com/quay/quay/issues/1885))
 ### Storagereplication
 - [1cc45a7b](https://github.com/quay/quay/commit/1cc45a7b325d65b5f9738e4e17491b236bb1a0cb): add retry logic without exhausting queue retries (PROJQUAY-4793) ([#1884](https://github.com/quay/quay/issues/1884))
@@ -287,6 +300,13 @@
 - [4a2d7b40](https://github.com/quay/quay/commit/4a2d7b40c1f61005b2ea3055a18675c5677ab753): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1565](https://github.com/quay/quay/issues/1565))
 ### [Redhat-3.8] Repomirror
 - [55cb0ba1](https://github.com/quay/quay/commit/55cb0ba1a3d21f1c5db4e2f05298a494e0411316): Use skopeo list-tags to get repo tags (PROJQUAY-2179) ([#1559](https://github.com/quay/quay/issues/1559))
+
+<a name="v3.7.11"></a>
+## [v3.7.11] - 2022-12-01
+### Chore: V3.7.11 Changelog Bump (Https
+- [5b1d1f67](https://github.com/quay/quay/commit/5b1d1f6706ef860760264d5dc1c5a84dbb467951): //issues.redhat.com/browse/PROJQUAY-4790) ([#1652](https://github.com/quay/quay/issues/1652))
+### Revert "Chore
+- [f61ba511](https://github.com/quay/quay/commit/f61ba51171ef58c8caaffdfbfba4f27efa564c7c): Add server side assembly of chunked metadata for RADOSGW driver (PROJQUAY-4592) ([#1557](https://github.com/quay/quay/issues/1557))" ([#1647](https://github.com/quay/quay/issues/1647))
 
 <a name="v3.7.10"></a>
 ## [v3.7.10] - 2022-10-25
@@ -899,7 +919,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.8...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.9...HEAD
+[v3.8.9]: https://github.com/quay/quay/compare/v3.8.8...v3.8.9
 [v3.8.8]: https://github.com/quay/quay/compare/v3.8.7...v3.8.8
 [v3.8.7]: https://github.com/quay/quay/compare/v3.8.6...v3.8.7
 [v3.8.6]: https://github.com/quay/quay/compare/v3.8.5...v3.8.6
@@ -908,7 +929,8 @@
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
 [v3.8.1]: https://github.com/quay/quay/compare/v3.8.0...v3.8.1
-[v3.8.0]: https://github.com/quay/quay/compare/v3.7.10...v3.8.0
+[v3.8.0]: https://github.com/quay/quay/compare/v3.7.11...v3.8.0
+[v3.7.11]: https://github.com/quay/quay/compare/v3.7.10...v3.7.11
 [v3.7.10]: https://github.com/quay/quay/compare/v3.7.9...v3.7.10
 [v3.7.9]: https://github.com/quay/quay/compare/v3.7.8...v3.7.9
 [v3.7.8]: https://github.com/quay/quay/compare/v3.7.7...v3.7.8
