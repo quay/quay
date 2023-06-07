@@ -47,6 +47,7 @@
 - [ea67af5a](https://github.com/quay/quay/commit/ea67af5a04753df2e06007394d58bbc0667acba4): add SLO metric for time spent in queue for build jobs (PROJQUAY-4487) ([#1575](https://github.com/quay/quay/issues/1575))
 - [9a11e476](https://github.com/quay/quay/commit/9a11e4760e809a4cc4ac893382ec7d2654e26a87): allow fallback on non-exception build failures (PROJQUAY-4609) ([#1605](https://github.com/quay/quay/issues/1605))
 ### Chore
+- [ef31a820](https://github.com/quay/quay/commit/ef31a82021e5a2d3ee64e1aa203636145d93c02e): v3.9.0 changelog bump (PROJQUAY-5065) ([#1944](https://github.com/quay/quay/issues/1944))
 - [6a664d8c](https://github.com/quay/quay/commit/6a664d8cb0a569c78d922eef24e5e02ba6df38a3): update ppc64le builder ([#1904](https://github.com/quay/quay/issues/1904))
 - [8e326f27](https://github.com/quay/quay/commit/8e326f278c02546ee17bfc9b677b232566d86087): Use external builders ([#1898](https://github.com/quay/quay/issues/1898))
 - [42c9ebc4](https://github.com/quay/quay/commit/42c9ebc45cfe5b402c5c5ed831c399d570342fe6): Delete outdated k8 manifests (PROJQUAY-5490) ([#1880](https://github.com/quay/quay/issues/1880))
@@ -81,12 +82,12 @@
 ### Cleanup
 - [304087f9](https://github.com/quay/quay/commit/304087f9c911071b083d87fce798b12d52f9ed0d): Remove old validation code (PROJQUAY-4606) ([#1562](https://github.com/quay/quay/issues/1562))
 ### Config
-- [4ebad4dc](https://github.com/quay/quay/commit/4ebad4dcd8b4d7562171e5c7f56ee133305cb932): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1554](https://github.com/quay/quay/issues/1554))
-### Config
 - [9a7239e8](https://github.com/quay/quay/commit/9a7239e8746c2f0c7ec6af28105c777d9d6b5341): updating quota defaults (PROJQUAY-5546) ([#1901](https://github.com/quay/quay/issues/1901))
 - [34a6e5fe](https://github.com/quay/quay/commit/34a6e5fea85e13bd00da5e4b8729d6adf6e59f70): clean upload folder by default (PROJQUAY-4395) ([#1731](https://github.com/quay/quay/issues/1731))
 - [6bbfdf5e](https://github.com/quay/quay/commit/6bbfdf5e78e37eeafb3f422253785cf0ddc590a7): Remove whitespace from config (PROJQUAY-4666) ([#1596](https://github.com/quay/quay/issues/1596))
 - [ff8043dd](https://github.com/quay/quay/commit/ff8043dd85732aa96ac7d90218a4ef416ef56cea): Add conftest mediatypes to default Quay configuration (PROJQUAY-4614) ([#1567](https://github.com/quay/quay/issues/1567))
+### Config
+- [4ebad4dc](https://github.com/quay/quay/commit/4ebad4dcd8b4d7562171e5c7f56ee133305cb932): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1554](https://github.com/quay/quay/issues/1554))
 ### Cors
 - [98d89a1f](https://github.com/quay/quay/commit/98d89a1fcef2c7ffdec3bfda5ea86f2e9c4261f6): check for request_origin being set (PROJQUAY-5213) ([#1811](https://github.com/quay/quay/issues/1811))
 - [017c4f0b](https://github.com/quay/quay/commit/017c4f0ba1f28acdb22924f3f660f2dbbe4a98ff): Adding missing method type (PROJQUAY-4800) ([#1651](https://github.com/quay/quay/issues/1651))
