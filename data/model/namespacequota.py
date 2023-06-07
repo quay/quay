@@ -300,9 +300,12 @@ def get_quota_for_view(namespace_name):
         backfill_status = "complete"
 
     # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
-    # we still want to report org's storage consumption
+    # we still want to report org's storage consumption.
+    # TODO: Remove running_backfill when changing API fields is permitted,
+    # backfill_status should be used in favor of running_backfill
     return {
         "quota_bytes": namespace_quota_consumed,
         "configured_quota": configured_namespace_quota,
         "running_backfill": backfill_status,
+        "backfill_status": backfill_status,
     }
