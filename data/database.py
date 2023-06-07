@@ -675,7 +675,7 @@ class User(BaseModel):
     invoice_email = BooleanField(default=False)
     invalid_login_attempts = IntegerField(default=0)
     last_invalid_login = DateTimeField(default=datetime.utcnow)
-    removed_tag_expiration_s = BigIntegerField(default=1209600)  # Two weeks
+    removed_tag_expiration_s = IntegerField(default=1209600)  # Two weeks
     enabled = BooleanField(default=True)
     invoice_email_address = CharField(null=True, index=True)
 
