@@ -1341,6 +1341,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ProxyCacheConfig",
     "RepositorySize",
     "RedHatSubscriptions",
+    "OrganizationRhSkus",
     "QuotaRegistrySize",
 ]
 

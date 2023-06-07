@@ -3,55 +3,49 @@ Manage organizations, members and OAuth applications.
 """
 
 import logging
-import recaptcha2
 
+import recaptcha2
 from flask import request
 
 import features
-
-from app import (
-    billing as stripe,
-    avatar,
-    all_queues,
-    authentication,
-    namespace_gc_queue,
-    ip_resolver,
-    app,
-    usermanager,
-)
-from endpoints.api import (
-    allow_if_superuser,
-    resource,
-    nickname,
-    ApiResource,
-    validate_json_request,
-    request_error,
-    related_user_resource,
-    internal_only,
-    require_user_admin,
-    log_action,
-    show_if,
-    path_param,
-    require_scope,
-    require_fresh_login,
-)
-from endpoints.exception import Unauthorized, NotFound
-from endpoints.api.user import User, PrivateRepositories
+from app import all_queues, app, authentication, avatar
+from app import billing as stripe
+from app import ip_resolver, marketplace_subscriptions, namespace_gc_queue, usermanager
+from auth import scopes
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
-    OrganizationMemberPermission,
     CreateRepositoryPermission,
-    ViewTeamPermission,
+    OrganizationMemberPermission,
     SuperUserPermission,
+    ViewTeamPermission,
 )
-from auth.auth_context import get_authenticated_user
-from auth import scopes
 from data import model
+from data.billing import get_plan, get_plan_using_rh_sku
 from data.database import ProxyCacheConfig
-from data.billing import get_plan
+from data.model import organization_skus
+from endpoints.api import (
+    ApiResource,
+    allow_if_superuser,
+    internal_only,
+    log_action,
+    nickname,
+    path_param,
+    related_user_resource,
+    request_error,
+    require_fresh_login,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
+)
+from endpoints.api.user import PrivateRepositories, User
+from endpoints.exception import NotFound, Unauthorized
+from proxy import Proxy, UpstreamRegistryError
+from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
 from util.request import get_request_ip
-from proxy import Proxy, UpstreamRegistryError
 
 logger = logging.getLogger(__name__)
 
@@ -372,16 +366,27 @@ class OrgPrivateRepositories(ApiResource):
             organization = model.organization.get_organization(orgname)
             private_repos = model.user.get_private_repo_count(organization.username)
             data = {"privateAllowed": False}
+            repos_allowed = 0
 
             if organization.stripe_id:
                 cus = stripe.Customer.retrieve(organization.stripe_id)
                 if cus.subscription:
-                    repos_allowed = 0
                     plan = get_plan(cus.subscription.plan.id)
                     if plan:
                         repos_allowed = plan["privateRepos"]
 
-                    data["privateAllowed"] = private_repos < repos_allowed
+            if features.RH_MARKETPLACE:
+                query = organization_skus.get_org_subscriptions(organization.id)
+                rh_subscriptions = list(query.dicts()) if query is not None else []
+                for subscription in rh_subscriptions:
+                    subscription_sku = marketplace_subscriptions.get_subscription_sku(
+                        subscription["subscription_id"]
+                    )
+                    equivalent_stripe_plan = get_plan_using_rh_sku(subscription_sku)
+                    if equivalent_stripe_plan:
+                        repos_allowed += equivalent_stripe_plan["privateRepos"]
+
+            data["privateAllowed"] = private_repos < repos_allowed
 
             if AdministerOrganizationPermission(orgname).can():
                 data["privateCount"] = private_repos

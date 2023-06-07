@@ -112,3 +112,7 @@ web/yarn-error.log*
 web/cypress/videos
 web/cypress/screenshots
 web/cypress/downloads
+
+# marketplace
+local-dev/stack/quay-marketplace-api.crt
+local-dev/stack/quay-marketplace-api.key

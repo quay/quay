@@ -3,67 +3,64 @@ import json
 import logging
 import os
 from functools import partial
+
 from authlib.jose import JsonWebKey
-from flask import Flask, request, Request
+from flask import Flask, Request, request
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal
-from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import features
-
 from _init import (
-    config_provider,
+    IS_BUILDING,
     IS_KUBERNETES,
     IS_TESTING,
     OVERRIDE_CONFIG_DIRECTORY,
-    IS_BUILDING,
+    config_provider,
 )
-
 from avatars.avatars import Avatar
 from buildman.manager.buildcanceller import BuildCanceller
-from data import database
-from data import model
-from data import logs_model
+from data import database, logs_model, model
 from data.archivedlogs import LogArchive
 from data.billing import Billing
 from data.buildlogs import BuildLogs
 from data.cache import get_model_cache
 from data.model.user import LoginWrappedDBUser
 from data.queue import WorkQueue
+from data.registry_model import registry_model
+from data.secscan_model import secscan_model
 from data.userevent import UserEventsBuilderModule
 from data.userfiles import Userfiles
 from data.users import UserAuthentication, UserManager
-from data.registry_model import registry_model
-from data.secscan_model import secscan_model
 from image.oci import register_artifact_type
+from oauth.loginmanager import OAuthLoginManager
+from oauth.services.github import GithubOAuthService
+from oauth.services.gitlab import GitLabOAuthService
 from path_converters import (
+    APIRepositoryPathConverter,
     RegexConverter,
     RepositoryPathConverter,
-    APIRepositoryPathConverter,
     RepositoryPathRedirectConverter,
     V1CreateRepositoryPathConverter,
 )
-from oauth.services.github import GithubOAuthService
-from oauth.services.gitlab import GitLabOAuthService
-from oauth.loginmanager import OAuthLoginManager
 from storage import Storage
-from util.log import filter_logs
 from util import get_app_url
-from util.ipresolver import IPResolver
-from util.saas.analytics import Analytics
-from util.saas.exceptionlog import Sentry
-from util.names import urn_generator
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
-from util.label_validator import LabelValidator
-from util.marketplace import RHMarketplaceAPI, RHUserAPI
-from util.metrics.prometheus import PrometheusPlugin
-from util.repomirror.api import RepoMirrorAPI
-from util.tufmetadata.api import TUFMetadataAPI
-from util.security.instancekeys import InstanceKeys
 from util.greenlet_tracing import enable_tracing
+from util.ipresolver import IPResolver
+from util.label_validator import LabelValidator
+from util.log import filter_logs
+from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
+from util.metrics.prometheus import PrometheusPlugin
+from util.names import urn_generator
+from util.repomirror.api import RepoMirrorAPI
+from util.saas.analytics import Analytics
+from util.saas.exceptionlog import Sentry
+from util.security.instancekeys import InstanceKeys
+from util.tufmetadata.api import TUFMetadataAPI
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
 OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
@@ -239,12 +236,6 @@ Principal(app, use_sessions=False)
 
 tf = app.config["DB_TRANSACTION_FACTORY"]
 
-rh_user_api = None
-rh_marketplace_api = None
-if features.ENTITLEMENT_RECONCILIATION or features.RH_MARKETPLACE:
-    rh_user_api = RHUserAPI(app.config)
-    rh_marketplace_api = RHMarketplaceAPI(app.config)
-
 model_cache = get_model_cache(app.config)
 avatar = Avatar(app)
 login_manager = LoginManager(app)
@@ -312,6 +303,9 @@ repo_mirror_api = RepoMirrorAPI(
 )
 
 tuf_metadata_api = TUFMetadataAPI(app, app.config)
+
+marketplace_users = MarketplaceUserApi(app)
+marketplace_subscriptions = MarketplaceSubscriptionApi(app)
 
 # Check for a key in config. If none found, generate a new signing key for Docker V2 manifests.
 _v2_key_path = os.path.join(OVERRIDE_CONFIG_DIRECTORY, DOCKER_V2_SIGNINGKEY_FILENAME)

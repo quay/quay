@@ -2,23 +2,18 @@ import datetime
 import logging
 import time
 
-
 import features
 from app import app
-from app import (
-    billing as stripe,
-    rh_user_api as internal_user_api,
-    rh_marketplace_api as internal_marketplace_api,
-)
+from app import billing as stripe
+from app import marketplace_subscriptions, marketplace_users
 from data import model
-from data.billing import get_plan, RH_SKUS
+from data.billing import RH_SKUS, get_plan
 from data.model import entitlements
 from util import marketplace
 from util.locking import GlobalLock, LockNotAcquiredException
 from workers.gunicorn_worker import GunicornWorker
 from workers.namespacegcworker import LOCK_TIMEOUT_PADDING
 from workers.worker import Worker
-
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +107,7 @@ class ReconciliationWorker(Worker):
         # try to acquire lock
         if skip_lock_for_testing:
             self._perform_reconciliation(
-                user_api=internal_user_api, marketplace_api=internal_marketplace_api
+                user_api=marketplace_users, marketplace_api=marketplace_subscriptions
             )
         else:
             try:
@@ -121,7 +116,7 @@ class ReconciliationWorker(Worker):
                     lock_ttl=RECONCILIATION_TIMEOUT + LOCK_TIMEOUT_PADDING,
                 ):
                     self._perform_reconciliation(
-                        user_api=internal_user_api, marketplace_api=internal_marketplace_api
+                        user_api=marketplace_users, marketplace_api=marketplace_subscriptions
                     )
             except LockNotAcquiredException:
                 logger.debug("Could not acquire global lock for entitlement reconciliation")

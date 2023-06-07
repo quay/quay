@@ -137,6 +137,10 @@ class UnsupportedQuotaSize(DataModelException):
     pass
 
 
+class OrgSubscriptionBindingAlreadyExists(DataModelException):
+    pass
+
+
 class TooManyLoginAttemptsException(Exception):
     def __init__(self, message, retry_after):
         super(TooManyLoginAttemptsException, self).__init__(message)
@@ -174,20 +178,20 @@ from data.model import (
     log,
     message,
     modelutil,
+    namespacequota,
     notification,
     oauth,
     organization,
+    organization_skus,
     permission,
-    repositoryactioncount,
-    repo_mirror,
+    proxy_cache,
     release,
     repo_mirror,
     repository,
+    repositoryactioncount,
     service_keys,
     storage,
     team,
     token,
     user,
-    proxy_cache,
-    namespacequota,
 )

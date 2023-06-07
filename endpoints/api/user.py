@@ -2,84 +2,78 @@
 Manage the current user.
 """
 
-import logging
 import json
-import recaptcha2
+import logging
 
-from flask import request, abort
+import recaptcha2
+from flask import abort, request
 from flask_login import logout_user
-from flask_principal import identity_changed, AnonymousIdentity
+from flask_principal import AnonymousIdentity, identity_changed
 from peewee import IntegrityError
 
 import features
-
+from app import all_queues, app, authentication, avatar
+from app import billing as stripe
 from app import (
-    app,
-    billing as stripe,
-    authentication,
-    avatar,
-    all_queues,
-    oauth_login,
-    namespace_gc_queue,
     ip_resolver,
+    marketplace_subscriptions,
+    marketplace_users,
+    namespace_gc_queue,
+    oauth_login,
     url_scheme_and_hostname,
-    rh_user_api,
-    rh_marketplace_api,
 )
-
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
+    SuperUserPermission,
     UserAdminPermission,
     UserReadPermission,
-    SuperUserPermission,
 )
 from data import model
+from data.billing import get_plan
 from data.database import Repository as RepositoryTable
 from data.users.shared import can_create_user
-from data.billing import get_plan
 from endpoints.api import (
     ApiResource,
-    nickname,
-    resource,
-    validate_json_request,
-    request_error,
-    log_action,
-    internal_only,
-    require_user_admin,
-    parse_args,
-    query_param,
-    require_scope,
-    format_date,
-    show_if,
-    require_fresh_login,
-    path_param,
-    define_json_response,
     RepositoryParamResource,
+    define_json_response,
+    format_date,
+    internal_only,
+    log_action,
+    nickname,
     page_support,
+    parse_args,
+    path_param,
+    query_param,
+    request_error,
+    require_fresh_login,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
 )
-from endpoints.exception import NotFound, InvalidToken, InvalidRequest, DownstreamIssue
 from endpoints.api.subscribe import change_subscription, get_price
 from endpoints.common import common_login
-from endpoints.csrf import generate_csrf_token, OAUTH_CSRF_TOKEN_NAME
+from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME, generate_csrf_token
 from endpoints.decorators import (
     anon_allowed,
     readonly_call_allowed,
     restricted_user_readonly_call_allowed,
 )
+from endpoints.exception import DownstreamIssue, InvalidRequest, InvalidToken, NotFound
 from oauth.oidc import DiscoveryFailureException
-from util.useremails import (
-    send_confirmation_email,
-    send_recovery_email,
-    send_change_email,
-    send_password_changed,
-    send_org_recovery_email,
-)
 from util.names import parse_single_urn
 from util.request import get_request_ip
-
+from util.useremails import (
+    send_change_email,
+    send_confirmation_email,
+    send_org_recovery_email,
+    send_password_changed,
+    send_recovery_email,
+)
 
 REPOS_PER_PAGE = 100
 
@@ -644,12 +638,12 @@ class PrivateRepositories(ApiResource):
                     repos_allowed = plan["privateRepos"]
         if features.RH_MARKETPLACE:
             # subscriptions in marketplace will get added to private repo count
-            user_account_number = rh_user_api.get_account_number(user)
+            user_account_number = marketplace_users.get_account_number(user)
             if user_account_number:
-                marketplace_subscriptions = rh_marketplace_api.find_stripe_subscription(
-                    user_account_number
+                subscriptions = marketplace_subscriptions.get_list_of_subscriptions(
+                    user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
                 )
-                for user_subscription in marketplace_subscriptions:
+                for user_subscription in subscriptions:
                     repos_allowed += user_subscription["privateRepos"]
 
         return {"privateCount": private_repos, "privateAllowed": (private_repos < repos_allowed)}

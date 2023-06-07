@@ -1,61 +1,63 @@
 # pylint: disable=old-style-class,no-init
 from __future__ import annotations
+
 import inspect
 import logging
+import os
 import string
 import sys
 import time
 import uuid
-import os
-
-from contextlib import contextmanager
 from collections import defaultdict, namedtuple
+from contextlib import contextmanager
 from datetime import datetime
+from enum import Enum, IntEnum, unique
 from random import SystemRandom
 
+import rehash
 import toposort
-
-from enum import IntEnum, Enum, unique
+from cachetools.func import lru_cache
 from peewee import *
-from peewee import __exception_wrapper__, Function  # type: ignore
+from peewee import Function, __exception_wrapper__  # type: ignore
 from playhouse.pool import (
     PooledDatabase,
     PooledMySQLDatabase,
     PooledPostgresqlDatabase,
     PooledSqliteDatabase,
 )
-
 from sqlalchemy.engine.url import make_url
 
-import rehash
-from cachetools.func import lru_cache
-
-from data.fields import (
-    ResumableSHA256Field,
-    ResumableSHA1Field,
-    JSONField,
-    Base64BinaryField,
-    FullIndexedTextField,
-    FullIndexedCharField,
-    EnumField as ClientEnumField,
-    EncryptedTextField,
-    EncryptedCharField,
-    CredentialField,
-)
 from data.decorators import deprecated_model
-from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
-from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
-from util.names import urn_generator
-from util.metrics.prometheus import (
-    db_pooled_connections_in_use,
-    db_pooled_connections_available,
-    db_connect_calls,
-    db_close_calls,
+from data.fields import (
+    Base64BinaryField,
+    CredentialField,
+    EncryptedCharField,
+    EncryptedTextField,
 )
+from data.fields import EnumField as ClientEnumField
+from data.fields import (
+    FullIndexedCharField,
+    FullIndexedTextField,
+    JSONField,
+    ResumableSHA1Field,
+    ResumableSHA256Field,
+)
+from data.readreplica import (
+    ReadOnlyConfig,
+    ReadReplicaSupportedModel,
+    disallow_replica_use,
+)
+from data.text import match_like, match_mysql
+from util.metrics.prometheus import (
+    db_close_calls,
+    db_connect_calls,
+    db_pooled_connections_available,
+    db_pooled_connections_in_use,
+)
+from util.names import urn_generator
 from util.validation import validate_postgres_precondition
-
 
 logger = logging.getLogger(__name__)
 
@@ -749,6 +751,7 @@ class User(BaseModel):
                     UserOrganizationQuota,
                     QuotaLimits,
                     RedHatSubscriptions,
+                    OrganizationRhSkus,
                 }
                 | appr_classes
                 | v22_classes
@@ -2151,11 +2154,27 @@ class ProxyCacheConfig(BaseModel):
 
 class RedHatSubscriptions(BaseModel):
     """
-    Represents internal Red Hat subscriptions for customers
+    Represents store for users' RH account numbers
     """
 
-    user_id = ForeignKeyField(User, backref="subscription")
+    user_id = ForeignKeyField(User, backref="account_number")
     account_number = IntegerField(unique=True)
+
+
+class OrganizationRhSkus(BaseModel):
+    """
+    Represents sku to org binding for
+    RH subscriptions
+    """
+
+    subscription_id = IntegerField(index=True, unique=True)
+    user_id = ForeignKeyField(User, backref="org_bound_subscription")
+    org_id = ForeignKeyField(User, backref="subscription")
+
+    indexes = (
+        (("subscription_id", "org_id"), True),
+        (("subscription_id", "org_id", "user_id"), True),
+    )
 
 
 # Defines a map from full-length index names to the legacy names used in our code

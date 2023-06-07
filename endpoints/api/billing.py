@@ -2,43 +2,43 @@
 Billing information, subscriptions, and plan information.
 """
 import datetime
+import json
+import uuid
+
 import stripe
-
 from flask import request
-from app import app, billing, rh_marketplace_api, rh_user_api
-from endpoints.api import (
-    resource,
-    nickname,
-    ApiResource,
-    validate_json_request,
-    log_action,
-    related_user_resource,
-    internal_only,
-    require_user_admin,
-    show_if,
-    path_param,
-    require_scope,
-    abort,
-)
-
-from endpoints.exception import Unauthorized, NotFound, InvalidRequest
-from endpoints.api.subscribe import (
-    get_price,
-    change_subscription,
-    subscription_view,
-    connection_response,
-    check_repository_usage,
-)
-from auth.permissions import AdministerOrganizationPermission
-from auth.auth_context import get_authenticated_user
-from auth import scopes
-from data import model
-from data.billing import PLANS, get_plan
-from util.request import get_request_ip
 
 import features
-import uuid
-import json
+from app import app, billing, marketplace_subscriptions, marketplace_users
+from auth import scopes
+from auth.auth_context import get_authenticated_user
+from auth.permissions import AdministerOrganizationPermission
+from data import model
+from data.billing import PLANS, get_plan, get_plan_using_rh_sku
+from data.model import organization_skus
+from endpoints.api import (
+    ApiResource,
+    abort,
+    internal_only,
+    log_action,
+    nickname,
+    path_param,
+    related_user_resource,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
+)
+from endpoints.api.subscribe import (
+    change_subscription,
+    check_repository_usage,
+    connection_response,
+    get_price,
+    subscription_view,
+)
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
+from util.request import get_request_ip
 
 MILLISECONDS_IN_SECONDS = 1000
 
@@ -48,11 +48,22 @@ def check_internal_api_for_subscription(namespace_user):
     Returns subscription from RH marketplace.
     None returned if no subscription is found.
     """
-    user_account_number = rh_user_api.get_account_number(namespace_user)
-    if user_account_number:
-        user_subscriptions = rh_marketplace_api.find_stripe_subscription(user_account_number)
-        return user_subscriptions
-    return []
+    plans = []
+    if namespace_user.organization:
+        query = organization_skus.get_org_subscriptions(namespace_user.id)
+        org_subscriptions = list(query.dicts()) if query is not None else []
+        for subscription in org_subscriptions:
+            subscription_id = subscription["subscription_id"]
+            sku = marketplace_subscriptions.get_subscription_sku(subscription_id)
+            plans.append(get_plan_using_rh_sku(sku))
+        pass
+    else:
+        user_account_number = marketplace_users.get_account_number(namespace_user)
+        if user_account_number:
+            plans = marketplace_subscriptions.get_list_of_subscriptions(
+                user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
+            )
+    return plans
 
 
 def get_namespace_plan(namespace):
@@ -88,9 +99,11 @@ def lookup_allowed_private_repos(namespace):
 
     if features.RH_MARKETPLACE:
         namespace_user = model.user.get_namespace_user(namespace)
-        marketplace_subscriptions = check_internal_api_for_subscription(namespace_user)
-        for subscription in marketplace_subscriptions:
-            repos_allowed += subscription["privateRepos"]
+
+        subscriptions = check_internal_api_for_subscription(namespace_user)
+        for subscription in subscriptions:
+            if subscription is not None:
+                repos_allowed += subscription["privateRepos"]
 
     # Find the number of private repositories used by the namespace and compare it to the
     # plan subscribed.
@@ -917,3 +930,124 @@ class OrganizationInvoiceField(ApiResource):
             return "Okay", 201
 
         abort(403)
+
+
+@resource("/v1/organization/<orgname>/marketplace")
+@path_param("orgname", "The name of the organization")
+@show_if(features.BILLING)
+class OrganizationRhSku(ApiResource):
+    """
+    Resource for managing an organization's RH SKU
+    """
+
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("listOrgSkus")
+    def get(self, orgname):
+        """
+        Get sku assigned to org
+        """
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can():
+            organization = model.organization.get_organization(orgname)
+            query = model.organization_skus.get_org_subscriptions(organization.id)
+
+            if query:
+                subscriptions = list(query.dicts())
+                for subscription in subscriptions:
+                    subscription["sku"] = marketplace_subscriptions.get_subscription_sku(
+                        subscription["subscription_id"]
+                    )
+                return subscriptions
+            else:
+                return []
+        abort(401)
+
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("bindSkuToOrg")
+    def post(self, orgname):
+        """
+        Assigns a sku to an org
+        """
+        permission = AdministerOrganizationPermission(orgname)
+        request_data = request.get_json()
+        subscription_id = request_data["subscription_id"]
+        if permission.can():
+            organization = model.organization.get_organization(orgname)
+            user = get_authenticated_user()
+            account_number = marketplace_users.get_account_number(user)
+            subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+
+            if subscriptions is None:
+                abort(401, message="no valid subscriptions present")
+
+            user_subscription_ids = [int(subscription["id"]) for subscription in subscriptions]
+            if int(subscription_id) in user_subscription_ids:
+                try:
+                    model.organization_skus.bind_subscription_to_org(
+                        user_id=user.id, subscription_id=subscription_id, org_id=organization.id
+                    )
+                    return "Okay", 201
+                except model.OrgSubscriptionBindingAlreadyExists:
+                    abort(400, message="subscription is already bound to an org")
+            else:
+                abort(401, message=f"subscription does not belong to {user.username}")
+
+        abort(401)
+
+
+@resource("/v1/organization/<orgname>/marketplace/<subscription_id>")
+@path_param("orgname", "The name of the organization")
+@path_param("subscription_id", "Marketplace subscription id")
+@related_user_resource(UserPlan)
+@show_if(features.BILLING)
+class OrganizationRhSkuSubscriptionField(ApiResource):
+    """
+    Resource for removing RH skus from an organization
+    """
+
+    @require_scope(scopes.ORG_ADMIN)
+    def delete(self, orgname, subscription_id):
+        """
+        Remove sku from an org
+        """
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can():
+            organization = model.organization.get_organization(orgname)
+
+            model.organization_skus.remove_subscription_from_org(organization.id, subscription_id)
+            return ("Deleted", 204)
+        abort(401)
+
+
+@resource("/v1/user/marketplace")
+@show_if(features.RH_MARKETPLACE)
+class UserSkuList(ApiResource):
+    """
+    Resource for listing a user's RH skus
+    bound to an org
+    """
+
+    @require_user_admin()
+    @nickname("getUserMarketplaceSubscriptions")
+    def get(self):
+        """
+        List the invoices for the current user.
+        """
+        user = get_authenticated_user()
+        account_number = marketplace_users.get_account_number(user)
+        if not account_number:
+            raise NotFound()
+
+        user_subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+
+        for subscription in user_subscriptions:
+            bound_to_org, organization = organization_skus.is_subscription_bound_to_org(
+                subscription["id"]
+            )
+            # fill in information for whether a subscription is bound to an org
+            if bound_to_org:
+                subscription["assigned_to_org"] = organization.username
+            else:
+                subscription["assigned_to_org"] = None
+
+        return user_subscriptions

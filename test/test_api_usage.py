@@ -1,145 +1,151 @@
 # coding=utf-8
 
-import unittest
 import datetime
-import logging
-import time
-import re
 import json as py_json
-
-from mock import patch
+import logging
+import re
+import time
+import unittest
 from calendar import timegm
 from contextlib import contextmanager
-from httmock import urlmatch, HTTMock, all_requests
-from urllib.parse import urlencode
-from urllib.parse import urlparse, urlunparse, parse_qs
+from test.helpers import assert_action_logged, check_transitive_modifications
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from playhouse.test_utils import assert_query_count, _QueryLogHandler
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from httmock import HTTMock, all_requests, urlmatch
+from mock import patch
+from playhouse.test_utils import _QueryLogHandler, assert_query_count
 
-from endpoints.api import api_bp, api
-from endpoints.building import PreparedBuild
-from endpoints.webhooks import webhooks
 from app import (
+    all_queues,
     app,
     config_provider,
-    all_queues,
+    docker_v2_signing_key,
     dockerfile_build_queue,
     notification_queue,
     storage,
-    docker_v2_signing_key,
 )
 from buildtrigger.basehandler import BuildTriggerHandler
-from initdb import setup_database_for_testing, finished_database_for_testing
 from data import database, model
-from data.database import RepositoryActionCount, Repository as RepositoryTable
+from data.database import Repository as RepositoryTable
+from data.database import RepositoryActionCount
 from data.logs_model import logs_model
 from data.registry_model import registry_model
-from test.helpers import assert_action_logged, check_transitive_modifications
-from util.secscan.v4.fake import fake_security_scanner
-
-from endpoints.api.team import (
-    TeamMember,
-    TeamMemberList,
-    TeamMemberInvite,
-    OrganizationTeam,
-    TeamPermissions,
-    InviteTeamMember,
+from endpoints.api import api, api_bp
+from endpoints.api.billing import (
+    ListPlans,
+    OrganizationCard,
+    OrganizationPlan,
+    OrganizationRhSku,
+    OrganizationRhSkuSubscriptionField,
+    UserCard,
+    UserPlan,
 )
-from endpoints.api.tag import RepositoryTag, RestoreTag, ListRepositoryTags
-from endpoints.api.search import EntitySearch, ConductSearch
-from endpoints.api.build import RepositoryBuildStatus, RepositoryBuildList, RepositoryBuildResource
-from endpoints.api.robot import (
-    UserRobotList,
-    OrgRobot,
-    OrgRobotList,
-    UserRobot,
-    RegenerateUserRobot,
-    RegenerateOrgRobot,
+from endpoints.api.build import (
+    RepositoryBuildList,
+    RepositoryBuildResource,
+    RepositoryBuildStatus,
 )
-from endpoints.api.trigger import (
-    BuildTriggerActivate,
-    BuildTriggerSources,
-    BuildTriggerSubdirs,
-    TriggerBuildList,
-    ActivateBuildTrigger,
-    BuildTrigger,
-    BuildTriggerList,
-    BuildTriggerAnalyze,
-    BuildTriggerFieldValues,
-    BuildTriggerSourceNamespaces,
+from endpoints.api.discovery import DiscoveryResource
+from endpoints.api.error import Error
+from endpoints.api.globalmessages import GlobalUserMessage, GlobalUserMessages
+from endpoints.api.logs import (
+    OrgAggregateLogs,
+    OrgLogs,
+    RepositoryAggregateLogs,
+    RepositoryLogs,
+    UserAggregateLogs,
+    UserLogs,
 )
+from endpoints.api.manifest import (
+    ManageRepositoryManifestLabel,
+    RepositoryManifestLabels,
+)
+from endpoints.api.organization import (
+    ApplicationInformation,
+    Organization,
+    OrganizationApplicationResetClientSecret,
+    OrganizationApplicationResource,
+    OrganizationApplications,
+    OrganizationList,
+    OrganizationMember,
+    OrganizationMemberList,
+    OrgPrivateRepositories,
+)
+from endpoints.api.permission import (
+    RepositoryTeamPermission,
+    RepositoryTeamPermissionList,
+    RepositoryUserPermission,
+    RepositoryUserPermissionList,
+)
+from endpoints.api.prototype import PermissionPrototype, PermissionPrototypeList
 from endpoints.api.repoemail import RepositoryAuthorizedEmail
+from endpoints.api.repository import Repository, RepositoryList, RepositoryVisibility
+from endpoints.api.repository_models_pre_oci import REPOS_PER_PAGE
 from endpoints.api.repositorynotification import (
     RepositoryNotification,
     RepositoryNotificationList,
     TestRepositoryNotification,
 )
-from endpoints.api.user import (
-    PrivateRepositories,
-    ConvertToOrganization,
-    Signout,
-    Signin,
-    User,
-    UserAuthorizationList,
-    UserAuthorization,
-    UserNotification,
-    UserNotificationList,
-    StarredRepositoryList,
-    StarredRepository,
-)
-
 from endpoints.api.repotoken import RepositoryToken, RepositoryTokenList
-from endpoints.api.prototype import PermissionPrototype, PermissionPrototypeList
-from endpoints.api.logs import (
-    UserLogs,
-    OrgLogs,
-    OrgAggregateLogs,
-    UserAggregateLogs,
-    RepositoryLogs,
-    RepositoryAggregateLogs,
+from endpoints.api.robot import (
+    OrgRobot,
+    OrgRobotList,
+    RegenerateOrgRobot,
+    RegenerateUserRobot,
+    UserRobot,
+    UserRobotList,
 )
-from endpoints.api.billing import UserCard, UserPlan, ListPlans, OrganizationCard, OrganizationPlan
-from endpoints.api.discovery import DiscoveryResource
-from endpoints.api.error import Error
-from endpoints.api.organization import (
-    OrganizationList,
-    OrganizationMember,
-    OrgPrivateRepositories,
-    OrganizationMemberList,
-    Organization,
-    ApplicationInformation,
-    OrganizationApplications,
-    OrganizationApplicationResource,
-    OrganizationApplicationResetClientSecret,
-    Organization,
-)
-from endpoints.api.repository import RepositoryList, RepositoryVisibility, Repository
-
-from endpoints.api.repository_models_pre_oci import REPOS_PER_PAGE
-
-from endpoints.api.permission import (
-    RepositoryUserPermission,
-    RepositoryTeamPermission,
-    RepositoryTeamPermissionList,
-    RepositoryUserPermissionList,
-)
+from endpoints.api.search import ConductSearch, EntitySearch
+from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.superuser import (
     SuperUserLogs,
     SuperUserManagement,
-    SuperUserServiceKeyManagement,
     SuperUserServiceKey,
     SuperUserServiceKeyApproval,
+    SuperUserServiceKeyManagement,
     SuperUserTakeOwnership,
 )
-from endpoints.api.globalmessages import (
-    GlobalUserMessage,
-    GlobalUserMessages,
+from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
+from endpoints.api.team import (
+    InviteTeamMember,
+    OrganizationTeam,
+    TeamMember,
+    TeamMemberInvite,
+    TeamMemberList,
+    TeamPermissions,
 )
-from endpoints.api.secscan import RepositoryManifestSecurity
-from endpoints.api.manifest import RepositoryManifestLabels, ManageRepositoryManifestLabel
+from endpoints.api.trigger import (
+    ActivateBuildTrigger,
+    BuildTrigger,
+    BuildTriggerActivate,
+    BuildTriggerAnalyze,
+    BuildTriggerFieldValues,
+    BuildTriggerList,
+    BuildTriggerSourceNamespaces,
+    BuildTriggerSources,
+    BuildTriggerSubdirs,
+    TriggerBuildList,
+)
+from endpoints.api.user import (
+    ConvertToOrganization,
+    PrivateRepositories,
+    Signin,
+    Signout,
+    StarredRepository,
+    StarredRepositoryList,
+    User,
+    UserAuthorization,
+    UserAuthorizationList,
+    UserNotification,
+    UserNotificationList,
+)
+from endpoints.building import PreparedBuild
+from endpoints.webhooks import webhooks
+from initdb import finished_database_for_testing, setup_database_for_testing
 from util.morecollections import AttrDict
+from util.secscan.v4.fake import fake_security_scanner
 
 try:
     app.register_blueprint(api_bp, url_prefix="/api")
@@ -5059,6 +5065,63 @@ class TestSuperUserManagement(ApiTestCase):
         json = self.getJsonResponse(GlobalUserMessages)
 
         self.assertEqual(len(json["messages"]), 1)
+
+
+class TestOrganizationRhSku(ApiTestCase):
+    def test_bind_sku_to_org(self):
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 12345},
+            expected_code=201,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+        )
+        self.assertEqual(len(json), 1)
+
+    def test_bind_sku_duplicate(self):
+        user = model.user.get_user(ADMIN_ACCESS_USER)
+        org = model.organization.get_organization(ORGANIZATION)
+        model.organization_skus.bind_subscription_to_org(12345, org.id, user.id)
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 12345},
+            expected_code=400,
+        )
+
+    def test_bind_sku_unauthorized(self):
+        # bind a sku that user does not own
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 11111},
+            expected_code=401,
+        )
+
+    def test_remove_sku_from_org(self):
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 12345},
+            expected_code=201,
+        )
+        self.deleteResponse(
+            resource_name=OrganizationRhSkuSubscriptionField,
+            params=dict(orgname=ORGANIZATION, subscription_id=12345),
+            expected_code=204,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+        )
+        self.assertEqual(len(json), 0)
 
 
 if __name__ == "__main__":

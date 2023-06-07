@@ -3,47 +3,44 @@ Create, list and manage an organization's teams.
 """
 
 import json
-
 from functools import wraps
 
 from flask import request
 
 import features
-
-from app import avatar, authentication
+from app import authentication, avatar
+from auth import scopes
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
-    ViewTeamPermission,
     SuperUserPermission,
+    ViewTeamPermission,
 )
-
-from auth.auth_context import get_authenticated_user
-from auth import scopes
 from data import model
 from data.database import Team
 from endpoints.api import (
-    allow_if_superuser,
-    resource,
-    nickname,
     ApiResource,
-    validate_json_request,
-    request_error,
-    log_action,
+    allow_if_superuser,
+    format_date,
     internal_only,
-    require_scope,
+    log_action,
+    nickname,
+    parse_args,
     path_param,
     query_param,
-    parse_args,
-    require_user_admin,
-    show_if,
-    format_date,
-    verify_not_prod,
+    request_error,
     require_fresh_login,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
+    verify_not_prod,
 )
-from endpoints.exception import Unauthorized, NotFound, InvalidRequest
-from util.useremails import send_org_invite_email
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
 from util.parsing import truthy_bool
+from util.useremails import send_org_invite_email
 
 
 def permission_view(permission):
@@ -485,6 +482,9 @@ class TeamMember(ApiResource):
                 return "", 204
 
             model.team.remove_user_from_team(orgname, teamname, membername, invoking_user)
+            if features.RH_MARKETPLACE:
+                org_id = model.organization.get_organization(orgname).id
+                model.organization_skus.remove_all_owner_subscriptions_from_org(member.id, org_id)
             log_action("org_remove_team_member", orgname, {"member": membername, "team": teamname})
             return "", 204
 
