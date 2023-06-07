@@ -400,9 +400,12 @@ class V4SecurityScanner(SecurityScannerInterface):
                 index_status = IndexStatus.COMPLETED
                 # record time to get results if manifest has just been uploaded
                 if not manifest.has_been_scanned:
-                    dur_ms = get_epoch_timestamp_ms() - manifest.created_at
-                    dur_sec = dur_ms / 1000
-                    secscan_result_duration.observe(dur_sec)
+                    created_at = manifest.created_at
+
+                    if created_at is not None:
+                        dur_ms = get_epoch_timestamp_ms() - created_at
+                        dur_sec = dur_ms / 1000
+                        secscan_result_duration.observe(dur_sec)
 
                     if features.SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX:
                         try:
