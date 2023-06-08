@@ -31,6 +31,7 @@ class SplunkLogsProducer(LogProducerInterface):
             "token": bearer_token,
             "scheme": url_scheme,
             "verify": verify_ssl,
+            "autologin": True,
         }
         if ssl_ca_path:
             # Create an SSLContext object for cert validation
