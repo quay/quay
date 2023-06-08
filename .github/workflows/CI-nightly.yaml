@@ -1,0 +1,66 @@
+name: Nightly CI
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+    inputs: {}
+jobs:
+  unit:
+    name: Unit Test
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ['amd64','ppc64le']
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup SSH config for builders
+      env:
+        BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
+        BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
+        BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
+      run: |
+        mkdir ~/.ssh
+        chmod 700 ~/.ssh
+        touch ~/.ssh/id_builder_ppc64le
+        chmod 600 ~/.ssh/id_builder_ppc64le
+        echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
+        touch ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        cat >~/.ssh/known_hosts <<END
+        $BUILDER_PPC64LE_SSH_KNOWN_HOSTS
+        END
+        touch ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        cat >~/.ssh/config <<END
+        Host builder-ppc64le
+          ServerAliveInterval 200
+          ServerAliveCountMax 10
+          IdentityFile "~/.ssh/id_builder_ppc64le"
+        $BUILDER_PPC64LE_SSH_CONFIG
+        END
+    - name: Create docker context
+      if: ${{ matrix.platform  != 'amd64' }}
+      run: |
+        docker context create ${{ matrix.platform }} --description "Node ${{ matrix.platform }}" --docker "host=ssh://builder-${{ matrix.platform }}"
+        docker context use ${{ matrix.platform }}
+    - name: Install dependencies and run tests
+      run: >-
+        docker run
+        --rm
+        -w /
+        -e GH_REPOSITORY
+        -e GH_REF
+        ubuntu:20.04
+        /bin/bash -c '
+        export DEBIAN_FRONTEND=noninteractive;
+        apt-get -y update;
+        apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git;
+        apt-get -y install libffi-dev libssl-dev libjpeg-dev;
+        git clone ${GH_REPOSITORY} build;
+        cd build  && git checkout ${GH_REF};
+        cat requirements-dev.txt | grep tox | xargs pip install;
+        tox -e py39-unit;'
+      env:
+        GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+        GH_REF: ${{ github.ref }}
