@@ -145,6 +145,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
+          provenance: false
       
       - name: Post Build-and-publish-s390x
         if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
