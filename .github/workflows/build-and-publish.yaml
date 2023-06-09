@@ -16,7 +16,7 @@ jobs:
     name: Publish container image
     env:
       BRANCH_PREFIX: redhat- # IMPORTANT! this must match the .on.push.branches prefix!
-      REGISTRY: quay.io/projectquay
+      REGISTRY: ${{ secrets.REGISTRY || 'quay.io/projectquay' }}
       REPO_NAME: ${{ github.event.repository.name }}
       TAG_SUFFIX: -unstable
       ZVSI_FP_NAME: quay-floating
