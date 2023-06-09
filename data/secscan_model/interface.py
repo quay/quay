@@ -55,7 +55,7 @@ class SecurityScannerInterface(object):
         if it has been GCed in the data model.
         """
 
-    @abstractproperty  # type: ignore
+    @abstractproperty
     @deprecated(reason="Only exposed for the legacy notification worker")
     def legacy_api_handler(self):
         """
