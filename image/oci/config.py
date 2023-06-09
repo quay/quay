@@ -107,11 +107,11 @@ class OCIConfig(object):
         "required": [CONFIG_ROOTFS_KEY, CONFIG_ARCHITECTURE_KEY, CONFIG_OS_KEY],
         "properties": {
             CONFIG_CREATED_KEY: {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "An combined date and time at which the image was created, formatted as defined by RFC 3339, section 5.6.",
             },
             CONFIG_AUTHOR_KEY: {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Gives the name and/or email address of the person or entity which created and is responsible for maintaining the image.",
             },
             CONFIG_ARCHITECTURE_KEY: {
@@ -126,15 +126,15 @@ class OCIConfig(object):
                 "type": ["object", "null"],
                 "description": "The execution parameters which SHOULD be used as a base when running a container using the image",
                 "properties": {
-                    "User": {"type": "string"},
-                    "ExposedPorts": {"type": "object"},
-                    "Env": {"type": "array"},
-                    "Entrypoint": {"type": "array"},
-                    "Cmd": {"type": "array"},
-                    "Volumes": {"type": "object"},
-                    "WorkingDir": {"type": "string"},
-                    "Labels": {"type": "object"},
-                    "StopSignal": {"type": "string"},
+                    "User": {"type": ["string", "null"]},
+                    "ExposedPorts": {"type": ["object", "null"]},
+                    "Env": {"type": ["array", "null"]},
+                    "Entrypoint": {"type": ["array", "null"]},
+                    "Cmd": {"type": ["array", "null"]},
+                    "Volumes": {"type": ["object", "null"]},
+                    "WorkingDir": {"type": ["string", "null"]},
+                    "Labels": {"type": ["object", "null"]},
+                    "StopSignal": {"type": ["string", "null"]},
                 },
                 "additionalProperties": True,
             },
