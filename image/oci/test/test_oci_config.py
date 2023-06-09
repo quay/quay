@@ -116,6 +116,7 @@ SAMPLE_CONFIG_2 = """{
     ]
 }"""
 
+
 def test_parse_basic_config():
     config = OCIConfig(Bytes.for_string_or_unicode(SAMPLE_CONFIG))
     assert (
@@ -162,6 +163,7 @@ def test_config_additional_fields():
     valid_config["additional_field"] = "boop"
     OCIConfig(Bytes.for_string_or_unicode(json.dumps(valid_config)))
 
+
 def test_config_missing_required():
     valid_config = json.loads(SAMPLE_CONFIG)
     valid_config.pop("os")
@@ -174,12 +176,14 @@ def test_invalid_config():
     with pytest.raises(MalformedConfig):
         OCIConfig(Bytes.for_string_or_unicode("{}"))
 
+
 def test_config_optional_null():
     valid_config = json.loads(SAMPLE_CONFIG_2)
     valid_config.pop("Cmd")
 
     with pytest.raises(MalformedConfig):
         OCIConfig(Bytes.for_string_or_unicode(json.dumps(valid_config)))
+
 
 def test_artifact_registratioon():
     # Register helm
