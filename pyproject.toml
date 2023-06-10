@@ -2,6 +2,9 @@
 line-length = 100
 target-version = ['py39']
 
+[tool.isort]
+profile = "black"
+
 [tool.pylint.messages_control]
 disable = "missing-docstring,invalid-name,too-many-locals,too-few-public-methods,too-many-lines"
 
