@@ -21,6 +21,8 @@ from app import (
 )
 from endpoints.api import (
     allow_if_superuser,
+    parse_args,
+    query_param,
     resource,
     nickname,
     ApiResource,
@@ -35,7 +37,7 @@ from endpoints.api import (
     require_scope,
     require_fresh_login,
 )
-from endpoints.exception import Unauthorized, NotFound
+from endpoints.exception import InvalidRequest, Unauthorized, NotFound
 from endpoints.api.user import User, PrivateRepositories
 from auth.permissions import (
     AdministerOrganizationPermission,
@@ -50,6 +52,7 @@ from data import model
 from data.database import ProxyCacheConfig
 from data.billing import get_plan
 from util.names import parse_robot_username
+from util.parsing import truthy_bool
 from util.request import get_request_ip
 from proxy import Proxy, UpstreamRegistryError
 
@@ -581,6 +584,59 @@ class OrganizationMember(ApiResource):
             # Remove the user from the organization.
             model.organization.remove_organization_member(org, user)
             return "", 204
+
+        raise Unauthorized()
+
+
+@resource("/v1/organization/<orgname>/reports/permissions")
+@path_param("orgname", "The name of the organization")
+class OrganizationPermissionReport(ApiResource):
+    """
+    Resource for producing a permission report on all members and all repositories in this organization
+    """
+
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("getOrganizationPermissionReport")
+    @parse_args()
+    @query_param("members", "Include users which are team members", type=truthy_bool, default=True)
+    @query_param(
+        "collaborators",
+        "Include users which directly added to a repository",
+        type=truthy_bool,
+        default=True,
+    )
+    @query_param(
+        "robots",
+        "Include robots when reporting on members or collaborators",
+        type=truthy_bool,
+        default=True,
+    )
+    def get(self, orgname):
+        """
+        List all permissions all team-based or direct members this organization has per repository.
+        """
+
+        report_members = parse_args.members
+        report_collaborators = parse_args.collaborators
+        report_robots = parse_args.robots
+
+        if report_members is False and report_collaborators is False:
+            raise InvalidRequest("Must include either members or collaborators")
+
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can() or allow_if_superuser():
+            try:
+                org = model.organization.get_organization(orgname)
+            except model.InvalidOrganizationException:
+                raise NotFound()
+            
+            
+            report = model.repository.organization_permission_report(
+                org, report_members, report_collaborators, report_robots)
+            
+            return {
+                "permissions": report
+            }
 
         raise Unauthorized()
 
