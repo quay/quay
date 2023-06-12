@@ -51,8 +51,6 @@ jobs:
         
     - name: Setup SSH config for builders
       env:
-        BUILDER_S390X_SSH_HOST: ${{ steps.ZVSI.outputs.IP }}
-        BUILDER_S390X_SSH_KEY: ${{ secrets.ZVSI_PR_KEY }}
         BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
         BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
         BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
@@ -63,9 +61,6 @@ jobs:
         touch ~/.ssh/id_builder_ppc64le
         chmod 600 ~/.ssh/id_builder_ppc64le
         echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
-        touch ~/.ssh/id_builder_s390x
-        chmod 600 ~/.ssh/id_builder_s390x
-        echo "$BUILDER_S390X_SSH_KEY" >~/.ssh/id_builder_s390x
         touch ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
         cat >~/.ssh/known_hosts <<END
@@ -80,13 +75,6 @@ jobs:
           ServerAliveCountMax 10
           IdentityFile "~/.ssh/id_builder_ppc64le"
         $BUILDER_PPC64LE_SSH_CONFIG
-        Host builder-s390x
-          StrictHostKeyChecking no
-          HostName $BUILDER_S390X_SSH_HOST
-          User root
-          ServerAliveInterval 200
-          ServerAliveCountMax 10
-          IdentityFile "~/.ssh/id_builder_s390x"
         END
         
     - name: Create docker context
