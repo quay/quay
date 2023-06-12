@@ -111,7 +111,9 @@ jobs:
         git clone ${GH_REPOSITORY} build;
         cd build  && git checkout ${GH_REF};
         cat requirements-dev.txt | grep tox | xargs pip install;
-        tox -e py39-unit;'
+        tox -e py39-unit;
+        tox -e py39-e2e;
+        tox -e py39-registry;'
       env:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
