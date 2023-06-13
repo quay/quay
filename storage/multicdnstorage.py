@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from flask import request
 
 from storage.cloudflarestorage import CloudFlareS3Storage
 from storage.cloud import CloudFrontedS3Storage
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 from storage.storagecontext import StorageContext
 
-VALID_RULE_KEYS = ["namespace", "continent", "target"]
+VALID_RULE_KEYS = ["namespace", "continent", "host", "target"]
 
 MULTICDN_STORAGE_PROVIDER_CLASSES = {
     "CloudFrontedS3Storage": CloudFrontedS3Storage,
@@ -32,6 +32,7 @@ class MultiCDNStorage(BaseStorageV2):
 
     Currently supported rules:
         - namespace (could be an org or a user)
+        - host (based on the host header, return a different CDN)
         - continent (Source IP continent. Possible values based on GeoIP Database continent codes)
 
     Example Config:
@@ -148,22 +149,25 @@ class MultiCDNStorage(BaseStorageV2):
 
         return providers
 
-    def match_rule(self, rule, continent=None, namespace=None):
+    def match_rule(self, rule, continent=None, namespace=None, host=None):
         if rule.get("namespace") and namespace != rule.get("namespace"):
             return False
 
         if rule.get("continent") and continent != rule.get("continent"):
             return False
 
+        if rule.get("host") and host != rule.get("host"):
+            return False
+
         return True
 
-    def find_matching_provider(self, namespace, request_ip):
+    def find_matching_provider(self, namespace, request_ip, host):
         resolved_ip = self.context.ip_resolver.resolve_ip(request_ip)
         continent = resolved_ip.continent if resolved_ip and resolved_ip.continent else None
 
         provider = None
         for rule in self.rules:
-            if self.match_rule(rule, continent, namespace):
+            if self.match_rule(rule, continent, namespace, host):
                 target_name = rule.get("target")
                 provider = self.providers.get(target_name)
                 break
@@ -177,7 +181,9 @@ class MultiCDNStorage(BaseStorageV2):
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         namespace = kwargs.get("namespace", None)
-        provider = self.find_matching_provider(namespace, request_ip)
+        host = request.headers.get("Host", None)
+
+        provider = self.find_matching_provider(namespace, request_ip, host)
         return provider.get_direct_download_url(
             path, request_ip, expires_in, requires_cors, head, **kwargs
         )
