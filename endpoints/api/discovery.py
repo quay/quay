@@ -46,6 +46,7 @@ else:
     TERMS_OF_SERVICE = app.config["TERMS_OF_SERVICE"]
 CONTACT_EMAIL = app.config["MAIL_DEFAULT_SENDER"]
 
+
 def fully_qualified_name(method_view_class):
     return "%s.%s" % (method_view_class.__module__, method_view_class.__name__)
 

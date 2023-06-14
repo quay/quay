@@ -848,4 +848,4 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_RH_MARKETPLACE = False
 
     # Set up custom TOS for on-premise installations
-    TERMS_OF_SERVICE =  ""
+    TERMS_OF_SERVICE = ""
