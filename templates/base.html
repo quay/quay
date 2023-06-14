@@ -138,9 +138,6 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
           {% if config_set['BRANDING']['footer_img'] %}
           <li><a href="{{ config_set['BRANDING']['footer_url'] }}" ng-safenewtab><img src="{{ config_set['BRANDING']['footer_img'] }}"></a></li>
           {% endif %}
-          {% if config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
-          <li><a href="https://quay.io/tos/" ng-safenewtab>Terms of Service</a></li>
-          {% endif %}
           {% if config_set['TERMS_OF_SERVICE'] %}
           <li><a href="{{ config_set['TERMS_OF_SERVICE'] }}" ng-safenewtab>Terms of Service</a></li>
           {% endif %}

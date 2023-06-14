@@ -41,7 +41,7 @@ TYPE_CONVERTER = {
 PREFERRED_URL_SCHEME = app.config["PREFERRED_URL_SCHEME"]
 SERVER_HOSTNAME = app.config["SERVER_HOSTNAME"]
 if SERVER_HOSTNAME == "quay.io" or SERVER_HOSTNAME == "stage.quay.io":
-    TERMS_OF_SERVICE = "https://quay.io/tos"
+    TERMS_OF_SERVICE = "https://www.openshift.com/legal/terms"
 else:
     TERMS_OF_SERVICE = app.config["TERMS_OF_SERVICE"]
 CONTACT_EMAIL = app.config["MAIL_DEFAULT_SENDER"]
