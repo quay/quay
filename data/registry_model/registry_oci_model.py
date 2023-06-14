@@ -545,23 +545,6 @@ class OCIModel(RegistryDataInterface):
         with db_disallow_replica_use():
             return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
 
-    def get_security_status(self, manifest_or_legacy_image):
-        """
-        Returns the security status for the given manifest or legacy image or None if none.
-        """
-        # TODO: change from using the Image row once we've moved all security info into MSS.
-        manifest_id = manifest_or_legacy_image.as_manifest()._db_id
-        image = oci.shared.get_legacy_image_for_manifest(manifest_id)
-        if image is None:
-            return SecurityScanStatus.UNSUPPORTED
-
-        if image.security_indexed_engine is not None and image.security_indexed_engine >= 0:
-            return (
-                SecurityScanStatus.SCANNED if image.security_indexed else SecurityScanStatus.FAILED
-            )
-
-        return SecurityScanStatus.QUEUED
-
     def reset_security_status(self, manifest_or_legacy_image):
         """
         Resets the security status for the given manifest or legacy image, ensuring that it will get
@@ -1028,15 +1011,6 @@ class OCIModel(RegistryDataInterface):
         # TODO: Do we want to also return the tags that *contain* the given manifest via
         # ManifestChild?
         return model.oci.tag.tag_names_for_manifest(manifest._db_id, limit)
-
-    def populate_legacy_images_for_testing(self, manifest, storage):
-        """Populates legacy images for the given manifest, for testing only. This call
-        will fail if called under non-testing code.
-        """
-        manifest_row = database.Manifest.get(id=manifest._db_id)
-        oci.manifest.populate_legacy_images_for_testing(
-            manifest_row, manifest.get_parsed_manifest(), storage
-        )
 
     def remove_tag_from_timemachine(
         self, repo_ref, tag_name, manifest_ref, include_submanifests=False, is_alive=False

@@ -439,3 +439,19 @@ def get_storage_locations(uuid):
     query = ImageStoragePlacement.select().join(ImageStorage).where(ImageStorage.uuid == uuid)
 
     return [get_image_location_for_id(placement.location_id).name for placement in query]
+
+
+def ensure_image_locations(*names):
+    with db_transaction():
+        locations = ImageStorageLocation.select().where(ImageStorageLocation.name << names)
+
+        insert_names = list(names)
+
+        for location in locations:
+            insert_names.remove(location.name)
+
+        if not insert_names:
+            return
+
+        data = [{"name": name} for name in insert_names]
+        ImageStorageLocation.insert_many(data).execute()

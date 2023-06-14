@@ -4,6 +4,5 @@ from data.model.oci import (
     blob,
     label,
     manifest,
-    shared,
     tag,
 )
