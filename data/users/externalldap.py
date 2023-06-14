@@ -17,7 +17,9 @@ _DEFAULT_TIMEOUT = 10.0  # seconds
 _DEFAULT_PAGE_SIZE = 1000
 # setting config LDAP_FOLLOW_REFERRALS: 0 to disable referral lookups
 _DEFAULT_REFERRALS = True
-
+_DEFAULT_KEEPALIVE_IDLE = 10
+_DEFAULT_KEEPALIVE_INTERVAL = 5
+_DEFAULT_KEEPALIVE_PROBES = 3
 
 class LDAPConnectionBuilder(object):
     def __init__(
@@ -79,6 +81,10 @@ class LDAPConnection(object):
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
         )
         self._conn.set_option(ldap.OPT_TIMEOUT, self._timeout or _DEFAULT_TIMEOUT)
+        self._conn.set_option(ldap.OPT_X_KEEPALIVE_IDLE, _DEFAULT_KEEPALIVE_IDLE)
+        self._conn.set_option(ldap.OPT_X_KEEPALIVE_INTERVAL, _DEFAULT_KEEPALIVE_INTERVAL)
+        self._conn.set_option(ldap.OPT_X_KEEPALIVE_PROBES, _DEFAULT_KEEPALIVE_PROBES)
+        self._conn.set_option(ldap.OPT_RESTART, ldap.OPT_ON)
 
         if self._allow_tls_fallback:
             logger.debug("TLS Fallback enabled in LDAP")
