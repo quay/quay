@@ -41,9 +41,9 @@ TYPE_CONVERTER = {
 PREFERRED_URL_SCHEME = app.config["PREFERRED_URL_SCHEME"]
 SERVER_HOSTNAME = app.config["SERVER_HOSTNAME"]
 if SERVER_HOSTNAME == "quay.io" or SERVER_HOSTNAME == "stage.quay.io":
-    TERMS_OF_SERVICE = "https://www.openshift.com/legal/terms"
+    TERMS_OF_SERVICE_URL = "https://www.openshift.com/legal/terms"
 else:
-    TERMS_OF_SERVICE = app.config["TERMS_OF_SERVICE"]
+    TERMS_OF_SERVICE_URL = app.config["TERMS_OF_SERVICE_URL"]
 CONTACT_EMAIL = app.config["MAIL_DEFAULT_SENDER"]
 
 
@@ -326,7 +326,7 @@ def swagger_route_data(include_internal=False, compact=False):
                 "with Quay repositories, users, and organizations. You can find out more "
                 'at <a href="https://quay.io">Quay</a>.'
             ),
-            "termsOfService": TERMS_OF_SERVICE,
+            "termsOfService": TERMS_OF_SERVICE_URL,
             "contact": {"email": CONTACT_EMAIL},
         },
         "securityDefinitions": {

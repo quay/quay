@@ -48,7 +48,7 @@ CLIENT_WHITELIST = [
     "QUOTA_BACKFILL",
     "PERMANENTLY_DELETE_TAGS",
     "UI_V2_FEEDBACK_FORM",
-    "TERMS_OF_SERVICE",
+    "TERMS_OF_SERVICE_URL",
 ]
 
 
@@ -848,4 +848,4 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_RH_MARKETPLACE = False
 
     # Set up custom TOS for on-premise installations
-    TERMS_OF_SERVICE = ""
+    TERMS_OF_SERVICE_URL = ""

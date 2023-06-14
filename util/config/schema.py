@@ -1384,7 +1384,7 @@ CONFIG_SCHEMA = {
             "x-example": "https://internal-rh-marketplace-endpoint",
         },
         # Custom terms of service
-        "TERMS_OF_SERVICE": {
+        "TERMS_OF_SERVICE_URL": {
             "type": "string",
             "description": "Enable customizing of terms of service for on-prem installations",
             "x-example": "https://quay.io/tos",
