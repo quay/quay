@@ -138,6 +138,12 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
           {% if config_set['BRANDING']['footer_img'] %}
           <li><a href="{{ config_set['BRANDING']['footer_url'] }}" ng-safenewtab><img src="{{ config_set['BRANDING']['footer_img'] }}"></a></li>
           {% endif %}
+          {% if config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
+          <li><a href="https://quay.io/tos/" ng-safenewtab>Terms of Service</a></li>
+          {% endif %}
+          {% if config_set['TERMS_OF_SERVICE'] %}
+          <li><a href="{{ config_set['TERMS_OF_SERVICE'] }}" ng-safenewtab>Terms of Service</a></li>
+          {% endif %}
           <li><a href="{{ config_set['DOCUMENTATION_ROOT'] }}" ng-safenewtab>Documentation</a></li>
           <li quay-require="['BILLING']"><a href="https://www.openshift.com/legal/terms" target="_blank">Terms</a></li>
           <li quay-require="['BILLING']"><a href="https://www.redhat.com/en/about/privacy-policy" target="_blank">Privacy</a></li>

@@ -40,7 +40,11 @@ TYPE_CONVERTER = {
 
 PREFERRED_URL_SCHEME = app.config["PREFERRED_URL_SCHEME"]
 SERVER_HOSTNAME = app.config["SERVER_HOSTNAME"]
-
+if SERVER_HOSTNAME == "quay.io" or SERVER_HOSTNAME == "stage.quay.io":
+    TERMS_OF_SERVICE = "https://quay.io/tos"
+else:
+    TERMS_OF_SERVICE = app.config["TERMS_OF_SERVICE"]
+CONTACT_EMAIL = app.config["MAIL_DEFAULT_SENDER"]
 
 def fully_qualified_name(method_view_class):
     return "%s.%s" % (method_view_class.__module__, method_view_class.__name__)
@@ -321,8 +325,8 @@ def swagger_route_data(include_internal=False, compact=False):
                 "with Quay repositories, users, and organizations. You can find out more "
                 'at <a href="https://quay.io">Quay</a>.'
             ),
-            "termsOfService": "https://quay.io/tos",
-            "contact": {"email": "support@quay.io"},
+            "termsOfService": TERMS_OF_SERVICE,
+            "contact": {"email": CONTACT_EMAIL},
         },
         "securityDefinitions": {
             "oauth2_implicit": {
