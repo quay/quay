@@ -323,8 +323,7 @@ def swagger_route_data(include_internal=False, compact=False):
             "title": "Quay Frontend",
             "description": (
                 "This API allows you to perform many of the operations required to work "
-                "with Quay repositories, users, and organizations. You can find out more "
-                'at <a href="https://quay.io">Quay</a>.'
+                "with Quay repositories, users, and organizations."
             ),
             "termsOfService": TERMS_OF_SERVICE_URL,
             "contact": {"email": CONTACT_EMAIL},
