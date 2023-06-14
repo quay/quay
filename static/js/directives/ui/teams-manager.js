@@ -22,7 +22,8 @@ angular.module('quay').directive('teamsManager', function () {
       $scope.views = Object.freeze({
         TEAMS: 0,
         MEMBERS: 1,
-        COLLABORATORS: 2
+        COLLABORATORS: 2,
+        PERMISSION_REPORT: 3,
       });
 
       $scope.options = {
@@ -44,6 +45,7 @@ angular.module('quay').directive('teamsManager', function () {
       $scope.showingMembers = false;
       $scope.fullMemberList = null;
       $scope.collaboratorList = null;
+      $scope.permissionReportList = null;
       $scope.userView = null;
       $scope.feedback = null;
       $scope.createTeamInfo = null;
@@ -89,6 +91,17 @@ angular.module('quay').directive('teamsManager', function () {
         }, ApiService.errorDisplay('Could not load full membership list'));
       };
 
+      var loadPermissionReport = function(callback) {
+        var params = {
+          'orgname': $scope.organization.name
+        };
+
+        ApiService.getOrganizationPermissionReport(null, params).then(function(resp) {
+          $scope.permissionReportList = resp['permissions'];
+          callback();
+        }, ApiService.errorDisplay('Could not load organiztion permission report'));
+      };
+
       var loadCollaborators = function(callback) {
         var params = {
           'orgname': $scope.organization.name
@@ -125,6 +138,16 @@ angular.module('quay').directive('teamsManager', function () {
 
           $scope.usersView = $scope.collaboratorList;
           break;
+
+        case $scope.views.PERMISSION_REPORT:
+            if (!$scope.collaboratorList) {
+              loadPermissionReport(function() {
+                $scope.permissionReportList = $scope.permissionReport;
+              });
+            }
+  
+            $scope.usersView = $scope.collaboratorList;
+            break;
 
         default:
           console.error('Invalid team-manager view: ' + view);

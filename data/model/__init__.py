@@ -180,6 +180,7 @@ from data.model import (
     permission,
     repositoryactioncount,
     repo_mirror,
+    report,
     release,
     repo_mirror,
     repository,

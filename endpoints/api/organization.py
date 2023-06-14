@@ -2,6 +2,7 @@
 Manage organizations, members and OAuth applications.
 """
 
+import datetime
 import logging
 import recaptcha2
 
@@ -611,14 +612,14 @@ class OrganizationPermissionReport(ApiResource):
         type=truthy_bool,
         default=True,
     )
-    def get(self, orgname):
+    def get(self, orgname, parsed_args):
         """
         List all permissions all team-based or direct members this organization has per repository.
         """
 
-        report_members = parse_args.members
-        report_collaborators = parse_args.collaborators
-        report_robots = parse_args.robots
+        report_members = parsed_args["members"]
+        report_collaborators = parsed_args["collaborators"]
+        report_robots = parsed_args["robots"]
 
         if report_members is False and report_collaborators is False:
             raise InvalidRequest("Must include either members or collaborators")
@@ -629,14 +630,22 @@ class OrganizationPermissionReport(ApiResource):
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
                 raise NotFound()
-            
-            
-            report = model.repository.organization_permission_report(
-                org, report_members, report_collaborators, report_robots)
-            
-            return {
-                "permissions": report
-            }
+
+            report = model.report.organization_permission_report(
+                org, report_members, report_collaborators, report_robots
+            )
+
+            report = [
+                {
+                    **permission,
+                    "user_creation_date": permission["user_creation_date"]
+                    .astimezone(datetime.timezone.utc)
+                    .strftime("%a, %d %b %Y %H:%M:%S %z"),
+                }
+                for permission in report
+            ]
+
+            return {"permissions": report}
 
         raise Unauthorized()
 

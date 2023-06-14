@@ -1,7 +1,5 @@
-from math import perm
-from peewee import JOIN, SQL
+from peewee import JOIN
 from data.database import Repository, RepositoryPermission, Role, Team, TeamMember, TeamRole, User
-from endpoints.api.organization import Organization
 
 
 def organization_permission_report(
@@ -27,11 +25,10 @@ def organization_permission_report(
             User.select(
                 User.username,
                 User.creation_date.alias("user_creation_date"),
-                Organization.username.alias("organization"),
-                Organization.creation_date.alias("organization_creation_date"),
                 Team.name.alias("team_name"),
-                TeamRole.name.alias("role"),
+                TeamRole.name.alias("team_role"),
                 Repository.name.alias("repository"),
+                Role.name.alias("role"),
             )
             .join(TeamMember, JOIN.LEFT_OUTER)
             .join(Team, JOIN.LEFT_OUTER)
@@ -42,6 +39,7 @@ def organization_permission_report(
                 JOIN.LEFT_OUTER,
                 on=(RepositoryPermission.repository == Repository.id),
             )
+            .join(Role, JOIN.LEFT_OUTER, on=(Role.id == RepositoryPermission.role))
             .join(Organization, JOIN.LEFT_OUTER, on=(Team.organization == Organization.id))
             .where((User.organization == False) & (Organization.username == org.username))
             .order_by(User.username, Team.name, Repository.name)
@@ -58,10 +56,8 @@ def organization_permission_report(
             User.select(
                 User.username,
                 User.creation_date.alias("user_creation_date"),
-                Organization.username.alias("organization"),
-                Organization.creation_date.alias("organization_creation_date"),
-                Role.name.alias("role"),
                 Repository.name.alias("repository"),
+                Role.name.alias("role"),
             )
             .join(RepositoryPermission, JOIN.LEFT_OUTER, on=(RepositoryPermission.user == User.id))
             .join(
