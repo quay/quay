@@ -245,11 +245,41 @@ class PreOCIModel(SuperuserDataInterface):
         users = model.user.get_active_users(disabled=disabled)
         return [_create_user(user) for user in users]
 
+    def get_active_users_paginated(
+        self,
+        disabled=True,
+        limit=50,
+        page_token=None,
+    ):
+        users, next_page_token = model.modelutil.paginate(
+            model.user.get_active_users(disabled=disabled),
+            database.User,
+            page_token=page_token,
+            limit=limit,
+        )
+        return [_create_user(user) for user in users], next_page_token
+
     def get_organizations(self):
         return [
             Organization(org.username, org.email, _get_namespace_quotas(org))
             for org in model.organization.get_organizations()
         ]
+
+    def get_organizations_paginated(
+        self,
+        limit=50,
+        page_token=None,
+    ):
+        orgs, next_page_token = model.modelutil.paginate(
+            model.organization.get_organizations(),
+            database.User,
+            page_token=page_token,
+            limit=limit,
+        )
+        return (
+            [Organization(org.username, org.email, _get_namespace_quotas(org)) for org in orgs],
+            next_page_token,
+        )
 
 
 pre_oci_model = PreOCIModel()

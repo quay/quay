@@ -675,7 +675,7 @@ class User(BaseModel):
     invoice_email = BooleanField(default=False)
     invalid_login_attempts = IntegerField(default=0)
     last_invalid_login = DateTimeField(default=datetime.utcnow)
-    removed_tag_expiration_s = IntegerField(default=1209600)  # Two weeks
+    removed_tag_expiration_s = BigIntegerField(default=1209600)  # Two weeks
     enabled = BooleanField(default=True)
     invoice_email_address = CharField(null=True, index=True)
 
@@ -1010,6 +1010,13 @@ class QuotaRepositorySize(BaseModel):
     size_bytes = BigIntegerField(null=False, default=0)
     backfill_start_ms = BigIntegerField(null=True)
     backfill_complete = BooleanField(null=False, default=False)
+
+
+class QuotaRegistrySize(BaseModel):
+    size_bytes = BigIntegerField(null=False, default=0)
+    running = BooleanField(null=False, default=False)
+    queued = BooleanField(null=False, default=False)
+    completed_ms = BigIntegerField(null=True)
 
 
 class DeletedRepository(BaseModel):

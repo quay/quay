@@ -47,6 +47,7 @@ CLIENT_WHITELIST = [
     "FEATURE_PROXY_CACHE",
     "QUOTA_BACKFILL",
     "PERMANENTLY_DELETE_TAGS",
+    "UI_V2_FEEDBACK_FORM",
 ]
 
 
@@ -436,6 +437,9 @@ class DefaultConfig(ImmutableConfig):
     LOG_ARCHIVE_LOCATION = "local_us"
     LOG_ARCHIVE_PATH = "logarchive/"
 
+    # Action logs configuration for advanced events
+    ACTION_LOG_AUDIT_LOGINS = True
+
     # Action logs archive
     ACTION_LOG_ARCHIVE_LOCATION: Optional[str] = "local_us"
     ACTION_LOG_ARCHIVE_PATH: Optional[str] = "actionlogarchive/"
@@ -794,11 +798,11 @@ class DefaultConfig(ImmutableConfig):
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
     # totals, so this field should be set to a time longer than it takes for the rolling
-    # deployment to complete
-    QUOTA_TOTAL_DELAY_SECONDS = 60
+    # deployment to complete. Defaults to 30m.
+    QUOTA_TOTAL_DELAY_SECONDS = 60 * 30
 
     # Enables the quota backfill worker
-    QUOTA_BACKFILL = False
+    QUOTA_BACKFILL = True
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
@@ -811,6 +815,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Enables repository settings in the beta UI Environment
     FEATURE_UI_V2_REPO_SETTINGS = False
+
+    # User feedback form for UI-V2
+    UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
 
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
@@ -828,8 +835,8 @@ class DefaultConfig(ImmutableConfig):
     RESTRICTED_USERS_WHITELIST: Optional[List[str]] = None
 
     QUOTA_INVALIDATE_TOTALS = True
-    RESET_CHILD_MANIFEST_EXPIRATION = True
-    PERMANENTLY_DELETE_TAGS = True
+    RESET_CHILD_MANIFEST_EXPIRATION = False
+    PERMANENTLY_DELETE_TAGS = False
 
     # Feature Flag: Enables reconciler for RH marketplace
     FEATURE_ENTITLEMENT_RECONCILIATION = False

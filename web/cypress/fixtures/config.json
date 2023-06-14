@@ -62,7 +62,8 @@
         "STATIC_SITE_BUCKET": null,
         "TAG_EXPIRATION_OPTIONS": [
             "2w"
-        ]
+        ],
+        "PERMANENTLY_DELETE_TAGS": true
     },
     "external_login": [],
     "features": {

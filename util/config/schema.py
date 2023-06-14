@@ -342,6 +342,11 @@ CONFIG_SCHEMA = {
             "description": "Path under storage in which to place user-uploaded files",
             "x-example": "userfiles",
         },
+        "ACTION_LOG_AUDIT_LOGINS": {
+            "type": "string",
+            "description": "Whether to log all registry API and Quay API/UI logins event to the action log. Defaults to True",
+            "x-example": False,
+        },
         "ACTION_LOG_ARCHIVE_LOCATION": {
             "type": "string",
             "description": "If action log archiving is enabled, the storage engine in which to place the "
@@ -1178,6 +1183,12 @@ CONFIG_SCHEMA = {
                             "description": "Splunk's index prefix",
                             "x-example": "splunk_logentry_",
                         },
+                        "ssl_ca_path": {
+                            "type": "string",
+                            "description": "*Relative container path* to a single .pem file containing a CA "
+                            "certificate for SSL verification",
+                            "x-example": "conf/stack/ssl-ca-cert.pem",
+                        },
                     },
                 },
             },
@@ -1274,10 +1285,20 @@ CONFIG_SCHEMA = {
             "description": "Invalidates totals when a write happens to a namespace and repository when FEATURE_QUOTA_MANAGEMENT is not enabled",
             "x-example": True,
         },
+        "QUOTA_REGISTRY_SIZE_POLL_PERIOD": {
+            "type": "int",
+            "description": "The amount of time between runs of the quota registry size worker in seconds",
+            "x-example": 30,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
             "x-example": False,
+        },
+        "UI_V2_FEEDBACK_FORM": {
+            "type": "string",
+            "description": "User feedback form for UI-V2",
+            "x-example": "http://url-for-user-feedback-form.com",
         },
         "FEATURE_UI_V2": {
             "type": "boolean",

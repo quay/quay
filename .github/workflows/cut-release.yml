@@ -17,7 +17,7 @@ jobs:
           echo "PREFIX=quay-${tag}/" >> $GITHUB_ENV
           echo "TAG=${tag}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Create Release Archive
@@ -38,7 +38,7 @@ jobs:
           echo "creating change log for tag: $TAG"
           /tmp/git-chglog --tag-filter-pattern "v3.*" -o changelog v3.6.0-alpha.4..
       - name: Upload Release Archive
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: release
           path: |

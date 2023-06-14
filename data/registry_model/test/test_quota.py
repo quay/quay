@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from app import storage
-from data.database import ImageStorageLocation, Tag
+from data.database import ImageStorageLocation, QuotaRegistrySize, Tag
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.gc import _GarbageCollectorContext, _garbage_collect_manifest
 from data.model.namespacequota import get_namespace_size
@@ -12,7 +12,13 @@ from data.model.organization import create_organization
 from data.model.repository import create_repository, get_repository_size
 from data.model.storage import get_layer_path
 from data.model.user import get_user
-from data.registry_model.quota import run_backfill
+from data.registry_model.quota import (
+    calculate_registry_size,
+    get_registry_size,
+    queue_registry_size_calculation,
+    run_backfill,
+    sum_registry_size,
+)
 from digest.digest_tools import sha256_digest
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
@@ -131,6 +137,43 @@ class TestQuota:
             assert get_repository_size(self.repo2) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
                 BLOB4
             )
+
+    def test_calculate_registry_size(self, initialized_db):
+        QuotaRegistrySize.insert(
+            {"size_bytes": 0, "running": False, "queued": True, "completed_ms": None}
+        ).execute()
+        calculate_registry_size()
+        registry_size = get_registry_size()
+        assert registry_size is not None
+        assert registry_size != 0
+        assert registry_size.size_bytes == sum_registry_size()
+
+    def test_queue_registry_size_calculation(self, initialized_db):
+        # Queue initial registry size calculation, entry should be created
+        queued, already_queued = queue_registry_size_calculation()
+        assert queued
+        assert not already_queued
+
+        registry_size = get_registry_size()
+        assert registry_size is not None
+        assert registry_size.queued
+
+        # Assert already queued
+        queued, already_queued = queue_registry_size_calculation()
+        assert queued
+        assert already_queued
+
+        # Assert queued when entry already exists
+        QuotaRegistrySize.update({"running": False, "queued": False}).execute()
+        queued, already_queued = queue_registry_size_calculation()
+        assert queued
+        assert not already_queued
+
+        # Assert already queued when total is running
+        QuotaRegistrySize.update({"running": True, "queued": False}).execute()
+        queued, already_queued = queue_registry_size_calculation()
+        assert queued
+        assert already_queued
 
 
 def create_manifest_for_testing(repository, blobs):

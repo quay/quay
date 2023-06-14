@@ -529,6 +529,7 @@ ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS pk_
 ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS pk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotatype DROP CONSTRAINT IF EXISTS pk_quotatype;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS pk_quotarepositorysizeid;
+ALTER TABLE IF EXISTS ONLY public.quotaregistrysize DROP CONSTRAINT IF EXISTS pk_quotaregistrysizeid;
 ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS pk_quotanamespacesizeid;
 ALTER TABLE IF EXISTS ONLY public.quotalimits DROP CONSTRAINT IF EXISTS pk_quotalimits;
 ALTER TABLE IF EXISTS ONLY public.queueitem DROP CONSTRAINT IF EXISTS pk_queueitem;
@@ -630,6 +631,7 @@ ALTER TABLE IF EXISTS public.repomirrorconfig ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.redhatsubscriptions ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotatype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotarepositorysize ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quotaregistrysize ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotanamespacesize ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotalimits ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.queueitem ALTER COLUMN id DROP DEFAULT;
@@ -772,6 +774,8 @@ DROP SEQUENCE IF EXISTS public.quotatype_id_seq;
 DROP TABLE IF EXISTS public.quotatype;
 DROP SEQUENCE IF EXISTS public.quotarepositorysize_id_seq;
 DROP TABLE IF EXISTS public.quotarepositorysize;
+DROP SEQUENCE IF EXISTS public.quotaregistrysize_id_seq;
+DROP TABLE IF EXISTS public.quotaregistrysize;
 DROP SEQUENCE IF EXISTS public.quotanamespacesize_id_seq;
 DROP TABLE IF EXISTS public.quotanamespacesize;
 DROP SEQUENCE IF EXISTS public.quotalimits_id_seq;
@@ -3081,6 +3085,43 @@ ALTER SEQUENCE public.quotanamespacesize_id_seq OWNED BY public.quotanamespacesi
 
 
 --
+-- Name: quotaregistrysize; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.quotaregistrysize (
+    id integer NOT NULL,
+    size_bytes bigint DEFAULT '0'::bigint NOT NULL,
+    running boolean DEFAULT false NOT NULL,
+    queued boolean DEFAULT false NOT NULL,
+    completed_ms bigint
+);
+
+
+ALTER TABLE public.quotaregistrysize OWNER TO quay;
+
+--
+-- Name: quotaregistrysize_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.quotaregistrysize_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.quotaregistrysize_id_seq OWNER TO quay;
+
+--
+-- Name: quotaregistrysize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.quotaregistrysize_id_seq OWNED BY public.quotaregistrysize.id;
+
+
+--
 -- Name: quotarepositorysize; Type: TABLE; Schema: public; Owner: quay
 --
 
@@ -4456,7 +4497,7 @@ CREATE TABLE public."user" (
     invoice_email boolean NOT NULL,
     invalid_login_attempts integer DEFAULT 0 NOT NULL,
     last_invalid_login timestamp without time zone NOT NULL,
-    removed_tag_expiration_s integer DEFAULT 1209600 NOT NULL,
+    removed_tag_expiration_s bigint DEFAULT 1209600 NOT NULL,
     enabled boolean DEFAULT true NOT NULL,
     invoice_email_address character varying(255),
     company character varying(255),
@@ -5073,6 +5114,13 @@ ALTER TABLE ONLY public.quotanamespacesize ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: quotaregistrysize id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotaregistrysize ALTER COLUMN id SET DEFAULT nextval('public.quotaregistrysize_id_seq'::regclass);
+
+
+--
 -- Name: quotarepositorysize id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5389,7 +5437,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-43fea47d641f
+46980ea2dde5
 \.
 
 
@@ -6011,6 +6059,9 @@ COPY public.logentrykind (id, name) FROM stdin;
 94	user_change_tag_expiration
 95	user_change_metadata
 96	user_generate_client_key
+97	login_success
+98	logout_success
+99	permanently_delete_tag
 \.
 
 
@@ -6280,6 +6331,14 @@ COPY public.quotalimits (id, quota_id, quota_type_id, percent_of_limit) FROM std
 --
 
 COPY public.quotanamespacesize (id, namespace_user_id, size_bytes, backfill_start_ms, backfill_complete) FROM stdin;
+\.
+
+
+--
+-- Data for Name: quotaregistrysize; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.quotaregistrysize (id, size_bytes, running, queued, completed_ms) FROM stdin;
 \.
 
 
@@ -7771,7 +7830,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 96, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 99, true);
 
 
 --
@@ -7933,6 +7992,13 @@ SELECT pg_catalog.setval('public.quotalimits_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.quotanamespacesize_id_seq', 1, false);
+
+
+--
+-- Name: quotaregistrysize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.quotaregistrysize_id_seq', 1, true);
 
 
 --
@@ -8699,6 +8765,14 @@ ALTER TABLE ONLY public.quotalimits
 
 ALTER TABLE ONLY public.quotanamespacesize
     ADD CONSTRAINT pk_quotanamespacesizeid PRIMARY KEY (id);
+
+
+--
+-- Name: quotaregistrysize pk_quotaregistrysizeid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotaregistrysize
+    ADD CONSTRAINT pk_quotaregistrysizeid PRIMARY KEY (id);
 
 
 --

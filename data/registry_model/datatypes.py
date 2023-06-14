@@ -353,7 +353,10 @@ class Manifest(
         """
         When the manifest was created
         """
-        result = TagTable.get(TagTable.manifest_id == self.id).lifetime_start_ms
+        try:
+            result = TagTable.get(TagTable.manifest_id == self.id).lifetime_start_ms
+        except TagTable.DoesNotExist:
+            return None
         return result
 
     @property

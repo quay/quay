@@ -61,6 +61,7 @@ class RegistryDataInterface(object):
         repository_ref,
         manifest_digest,
         allow_dead=False,
+        allow_hidden=False,
         require_available=False,
         raise_on_error=False,
     ):
@@ -252,12 +253,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_security_status(self, manifest_or_legacy_image):
-        """
-        Returns the security status for the given manifest or legacy image or None if none.
-        """
-
-    @abstractmethod
     def reset_security_status(self, manifest_or_legacy_image):
         """
         Resets the security status for the given manifest or legacy image, ensuring that it will get
@@ -430,13 +425,6 @@ class RegistryDataInterface(object):
         """
         Returns a repository reference to a repository that contains garbage for collection
         or None if none.
-        """
-
-    @abstractmethod
-    def populate_legacy_images_for_testing(self, manifest, storage):
-        """
-        Populates legacy images for the given manifest, for testing only. This call
-        will fail if called under non-testing code.
         """
 
     @abstractmethod

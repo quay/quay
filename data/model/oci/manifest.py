@@ -11,7 +11,6 @@ from data.database import (
     Tag,
     Manifest,
     ManifestBlob,
-    ManifestLegacyImage,
     ManifestChild,
     Repository,
     RepositoryNotification,
@@ -29,7 +28,6 @@ from data.model.oci.tag import (
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
-from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
 from data.registry_model.quota import add_blob_size, reset_backfill
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
@@ -83,6 +81,7 @@ def lookup_manifest(
     repository_id,
     manifest_digest,
     allow_dead=False,
+    allow_hidden=False,
     require_available=False,
     temp_tag_expiration_sec=TEMP_TAG_EXPIRATION_SEC,
 ):
@@ -94,10 +93,14 @@ def lookup_manifest(
     available.
     """
     if not require_available:
-        return _lookup_manifest(repository_id, manifest_digest, allow_dead=allow_dead)
+        return _lookup_manifest(
+            repository_id, manifest_digest, allow_dead=allow_dead, allow_hidden=allow_hidden
+        )
 
     with db_transaction():
-        found = _lookup_manifest(repository_id, manifest_digest, allow_dead=allow_dead)
+        found = _lookup_manifest(
+            repository_id, manifest_digest, allow_dead=allow_dead, allow_hidden=allow_hidden
+        )
         if found is None:
             return None
 
@@ -105,7 +108,7 @@ def lookup_manifest(
         return found
 
 
-def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
+def _lookup_manifest(repository_id, manifest_digest, allow_dead=False, allow_hidden=False):
     query = (
         Manifest.select()
         .where(Manifest.repository == repository_id)
@@ -120,7 +123,7 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
 
     # Try first to filter to those manifests referenced by an alive tag,
     try:
-        return filter_to_alive_tags(query.join(Tag)).get()
+        return filter_to_alive_tags(query.join(Tag), allow_hidden=allow_hidden).get()
     except Manifest.DoesNotExist:
         pass
 
@@ -129,7 +132,7 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
         Tag, on=(Tag.manifest == ManifestChild.manifest)
     )
 
-    query = filter_to_alive_tags(query)
+    query = filter_to_alive_tags(query, allow_hidden=allow_hidden)
 
     try:
         return query.get()
@@ -216,26 +219,6 @@ def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id
         raise _ManifestAlreadyExists(e)
 
 
-def reset_child_manifest_expiration(repository_id, manifest):
-    """
-    Resets the expirations of tags targeting the child manifests.
-    Here we make the assumption tags with hidden==true are the temporary
-    tags created by Quay. We'll revisit if this assumption ever changes.
-    """
-    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION", True):
-        return
-
-    with db_transaction():
-        for child_manifest in get_child_manifests(repository_id, manifest):
-            now_ms = get_epoch_timestamp_ms()
-            Tag.update(lifetime_end_ms=now_ms).where(
-                Tag.repository == repository_id,
-                Tag.manifest == child_manifest.child_manifest,
-                Tag.lifetime_end_ms > now_ms,
-                Tag.hidden == True,
-            ).execute()
-
-
 def get_or_create_manifest(
     repository_id,
     manifest_interface_instance,
@@ -264,10 +247,9 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
-        reset_child_manifest_expiration(repository_id, existing)
         return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
 
-    created_manifest = _create_manifest(
+    return _create_manifest(
         repository_id,
         manifest_interface_instance,
         storage,
@@ -276,9 +258,6 @@ def get_or_create_manifest(
         raise_on_error=raise_on_error,
         retriever=retriever,
     )
-    if created_manifest is not None:
-        reset_child_manifest_expiration(repository_id, created_manifest.manifest)
-    return created_manifest
 
 
 def _create_manifest(
@@ -400,7 +379,10 @@ def _create_manifest(
             # its safe to elide the temp tag operation. If we ever change GC code to collect *all* manifests
             # in a repository for GC, then we will have to reevaluate this optimization at that time.
             if not for_tagging:
-                create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
+                create_temporary_tag_if_necessary(
+                    manifest,
+                    temp_tag_expiration_sec,
+                )
 
         # Define the labels for the manifest (if any).
         # TODO: Once the old data model is gone, turn this into a batch operation and make the label
@@ -534,103 +516,3 @@ def _build_blob_map(
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
     return blob_map
-
-
-def populate_legacy_images_for_testing(manifest, manifest_interface_instance, storage):
-    """Populates the legacy image rows for the given manifest."""
-    # NOTE: This method is only kept around for use by legacy tests that still require
-    # legacy images. As a result, we make sure we're in testing mode before we run.
-    assert os.getenv("TEST") == "true"
-
-    repository_id = manifest.repository_id
-    retriever = RepositoryContentRetriever.for_repository(repository_id, storage)
-
-    blob_map = _build_blob_map(
-        repository_id, manifest_interface_instance, storage, True, require_empty_layer=True
-    )
-    if blob_map is None:
-        return None
-
-    # Determine and populate the legacy image if necessary. Manifest lists will not have a legacy
-    # image.
-    legacy_image = None
-    if manifest_interface_instance.has_legacy_image:
-        try:
-            legacy_image_id = _populate_legacy_image(
-                repository_id, manifest_interface_instance, blob_map, retriever, True
-            )
-        except ManifestException as me:
-            raise CreateManifestException(
-                "Attempt to create an invalid manifest: %s. Please report this issue." % me
-            )
-
-        if legacy_image_id is None:
-            return None
-
-        legacy_image = get_image(repository_id, legacy_image_id)
-        if legacy_image is None:
-            return None
-
-        # Set the legacy image (if applicable).
-        if legacy_image is not None:
-            ManifestLegacyImage.create(
-                repository=repository_id, image=legacy_image, manifest=manifest
-            )
-
-
-def _populate_legacy_image(
-    repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error=False
-):
-    # Lookup all the images and their parent images (if any) inside the manifest.
-    # This will let us know which v1 images we need to synthesize and which ones are invalid.
-    docker_image_ids = list(manifest_interface_instance.get_legacy_image_ids(retriever))
-    images_query = lookup_repository_images(repository_id, docker_image_ids)
-    image_storage_map = {i.docker_image_id: i.storage for i in images_query}
-
-    # Rewrite any v1 image IDs that do not match the checksum in the database.
-    try:
-        rewritten_images = manifest_interface_instance.generate_legacy_layers(
-            image_storage_map, retriever
-        )
-        rewritten_images = list(rewritten_images)
-        parent_image_map = {}
-
-        for rewritten_image in rewritten_images:
-            if not rewritten_image.image_id in image_storage_map:
-                parent_image = None
-                if rewritten_image.parent_image_id:
-                    parent_image = parent_image_map.get(rewritten_image.parent_image_id)
-                    if parent_image is None:
-                        parent_image = get_image(repository_id, rewritten_image.parent_image_id)
-                        if parent_image is None:
-                            if raise_on_error:
-                                raise CreateManifestException(
-                                    "Missing referenced parent image %s"
-                                    % rewritten_image.parent_image_id
-                                )
-
-                            return None
-
-                storage_reference = blob_map[rewritten_image.content_checksum]
-                synthesized = synthesize_v1_image(
-                    repository_id,
-                    storage_reference.id,
-                    storage_reference.image_size,
-                    rewritten_image.image_id,
-                    rewritten_image.created,
-                    rewritten_image.comment,
-                    rewritten_image.command,
-                    rewritten_image.compat_json,
-                    parent_image,
-                )
-
-                parent_image_map[rewritten_image.image_id] = synthesized
-    except ManifestException as me:
-        logger.exception("exception when rewriting v1 metadata")
-        if raise_on_error:
-            raise CreateManifestException(me)
-
-        return None
-
-    assert rewritten_images
-    return rewritten_images[-1].image_id

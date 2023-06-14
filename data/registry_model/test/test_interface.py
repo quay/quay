@@ -17,14 +17,10 @@ from app import docker_v2_signing_key, storage
 from data import model
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
-    TagManifestLabelMap,
     TagManifestToManifest,
     Manifest,
     ManifestBlob,
-    ManifestLegacyImage,
     ManifestLabel,
-    TagManifest,
-    TagManifestLabel,
     Tag,
     TagToRepositoryTag,
     ImageStorageLocation,
@@ -45,7 +41,6 @@ from image.docker.schema1 import (
 )
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
-from image.oci.manifest import OCIManifestBuilder
 from image.oci.index import OCIIndexBuilder
 from util.bytes import Bytes
 
@@ -423,34 +418,15 @@ def test_change_repository_tag_expiration(registry_model):
     assert tag.lifetime_end_ts is not None
 
 
-def test_get_security_status(registry_model):
-    repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tags = registry_model.list_all_active_repository_tags(repository_ref)
-    assert len(tags)
-
-    for tag in tags:
-        legacy_image = registry_model.get_legacy_image(
-            repository_ref, tag.manifest.legacy_image_root_id, storage
-        )
-        assert legacy_image
-        assert registry_model.get_security_status(legacy_image)
-        registry_model.reset_security_status(legacy_image)
-        assert registry_model.get_security_status(legacy_image)
-
-
 @pytest.fixture()
 def clear_rows(initialized_db):
     # Remove all new-style rows so we can backfill.
     TagToRepositoryTag.delete().execute()
     Tag.delete().execute()
-    TagManifestLabelMap.delete().execute()
     ManifestLabel.delete().execute()
     ManifestBlob.delete().execute()
-    ManifestLegacyImage.delete().execute()
     TagManifestToManifest.delete().execute()
     Manifest.delete().execute()
-    TagManifestLabel.delete().execute()
-    TagManifest.delete().execute()
 
 
 @pytest.mark.parametrize(

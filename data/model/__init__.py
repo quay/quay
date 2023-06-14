@@ -170,7 +170,6 @@ from data.model import (
     build,
     entitlements,
     gc,
-    image,
     label,
     log,
     message,

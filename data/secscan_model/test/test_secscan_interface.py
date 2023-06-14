@@ -10,7 +10,6 @@ from data.secscan_model.secscan_v4_model import (
 )
 from data.secscan_model import secscan_model
 from data.registry_model import registry_model
-from data.model.oci import shared
 from data.database import ManifestSecurityStatus, IndexerVersion, IndexStatus, ManifestLegacyImage
 
 from test.fixtures import *
@@ -34,19 +33,6 @@ def test_load_security_information(indexed_v2, indexed_v4, expected_status, init
     tag = registry_model.find_matching_tag(repository_ref, ["latest"])
     manifest = registry_model.get_manifest_for_tag(tag)
     assert manifest
-
-    registry_model.populate_legacy_images_for_testing(manifest, storage)
-
-    image = shared.get_legacy_image_for_manifest(manifest._db_id)
-
-    if indexed_v2:
-        image.security_indexed = False
-        image.security_indexed_engine = 3
-        image.save()
-    else:
-        ManifestLegacyImage.delete().where(
-            ManifestLegacyImage.manifest == manifest._db_id
-        ).execute()
 
     if indexed_v4:
         ManifestSecurityStatus.create(

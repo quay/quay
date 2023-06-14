@@ -13,11 +13,9 @@ from data.database import (
     DeletedRepository,
     ManifestBlob,
     ManifestChild,
-    ManifestLegacyImage,
     ManifestLabel,
     ManifestSecurityStatus,
     Label,
-    TagManifestLabel,
     RepositoryState,
     RepositoryBuild,
     RepositoryBuildTrigger,
@@ -37,7 +35,6 @@ from data.database import (
     Image,
     DerivedStorageForImage,
 )
-from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
 from data.registry_model.quota import reset_backfill, subtract_blob_size
 from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
 
@@ -51,7 +48,6 @@ class _GarbageCollectorContext(object):
         self.manifest_ids = set()
         self.label_ids = set()
         self.blob_ids = set()
-        self.legacy_image_ids = set()
 
     def add_manifest_id(self, manifest_id):
         self.manifest_ids.add(manifest_id)
@@ -62,17 +58,11 @@ class _GarbageCollectorContext(object):
     def add_blob_id(self, blob_id):
         self.blob_ids.add(blob_id)
 
-    def add_legacy_image_id(self, legacy_image_id):
-        self.legacy_image_ids.add(legacy_image_id)
-
     def mark_label_id_removed(self, label_id):
         self.label_ids.remove(label_id)
 
     def mark_manifest_removed(self, manifest):
         self.manifest_ids.remove(manifest.id)
-
-    def mark_legacy_image_removed(self, legacy_image):
-        self.legacy_image_ids.remove(legacy_image.id)
 
     def mark_blob_id_removed(self, blob_id):
         self.blob_ids.remove(blob_id)
@@ -118,7 +108,6 @@ def purge_repository(repo, force=False):
         ManifestSecurityStatus.select().where(ManifestSecurityStatus.repository == repo).count()
         == 0
     )
-    assert Image.select().where(Image.repository == repo).count() == 0
 
     # Delete any repository build triggers, builds, and any other large-ish reference tables for
     # the repository.
@@ -232,26 +221,6 @@ def _purge_repository_contents(repo):
         if not found:
             break
 
-    # TODO: remove this once we've removed the foreign key constraints from RepositoryTag
-    # and Image.
-    while True:
-        found = False
-        repo_tag_query = RepositoryTag.select().where(RepositoryTag.repository == repo)
-        for tags in _chunk_iterate_for_deletion(repo_tag_query):
-            logger.debug("Found %s tags to GC under repository %s", len(tags), repo)
-            found = True
-            context = _GarbageCollectorContext(repo)
-
-            for tag in tags:
-                logger.debug("Deleting tag %s under repository %s", tag, repo)
-                assert tag.repository_id == repo.id
-                _purge_pre_oci_tag(tag, context, allow_non_expired=True)
-
-            _run_garbage_collection(context)
-
-        if not found:
-            break
-
     QuotaRepositorySize.delete().where(QuotaRepositorySize.repository == repo).execute()
 
     assert QuotaRepositorySize.select().where(QuotaRepositorySize.repository == repo).count() == 0
@@ -260,27 +229,6 @@ def _purge_repository_contents(repo):
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert UploadedBlob.select().where(UploadedBlob.repository == repo).count() == 0
-
-    # Add all remaining images to a new context. We do this here to minimize the number of images
-    # we need to load.
-    while True:
-        found_image = False
-        image_context = _GarbageCollectorContext(repo)
-
-        existing_count = Image.select().where(Image.repository == repo).count()
-        if not existing_count:
-            break
-
-        for image in Image.select().where(Image.repository == repo):
-            found_image = True
-            logger.debug("Trying to delete image %s under repository %s", image, repo)
-            assert image.repository_id == repo.id
-            image_context.add_legacy_image_id(image.id)
-
-        _run_garbage_collection(image_context)
-        new_count = Image.select().where(Image.repository == repo).count()
-        if new_count >= existing_count:
-            raise Exception("GC purge bug! Please report this to support!")
 
 
 def garbage_collect_repo(repo):
@@ -298,19 +246,6 @@ def garbage_collect_repo(repo):
             assert tag.repository_id == repo.id
             assert tag.lifetime_end_ms is not None
             _purge_oci_tag(tag, context)
-
-        _run_garbage_collection(context)
-        had_changes = True
-
-    # TODO: Remove once we've removed the foreign key constraints from RepositoryTag and Image.
-    for tags in _chunk_iterate_for_deletion(pre_oci_tag.lookup_unrecoverable_tags(repo)):
-        logger.debug("Found %s tags to GC under repository %s", len(tags), repo)
-        context = _GarbageCollectorContext(repo)
-        for tag in tags:
-            logger.debug("Deleting tag %s under repository %s", tag, repo)
-            assert tag.repository_id == repo.id
-            assert tag.lifetime_end_ts is not None
-            _purge_pre_oci_tag(tag, context)
 
         _run_garbage_collection(context)
         had_changes = True
@@ -343,11 +278,6 @@ def _run_garbage_collection(context):
         # GC all manifests encountered.
         for manifest_id in list(context.manifest_ids):
             if _garbage_collect_manifest(manifest_id, context):
-                has_changes = True
-
-        # GC all images encountered.
-        for image_id in list(context.legacy_image_ids):
-            if _garbage_collect_legacy_image(image_id, context):
                 has_changes = True
 
         # GC all labels encountered.
@@ -385,61 +315,10 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
         if reloaded_tag.lifetime_end_ms != tag.lifetime_end_ms:
             return False
 
-        # Delete mapping rows.
-        deleted_tag_to_repotag = (
-            TagToRepositoryTag.delete().where(TagToRepositoryTag.tag == tag).execute()
-        )
-
         # Delete the tag.
         tag.delete_instance()
 
     gc_table_rows_deleted.labels(table="Tag").inc()
-    gc_table_rows_deleted.labels(table="TagToRepositoryTag").inc(deleted_tag_to_repotag)
-
-
-def _purge_pre_oci_tag(tag, context, allow_non_expired=False):
-    assert tag.repository_id == context.repository.id
-
-    if not allow_non_expired:
-        assert tag.lifetime_end_ts is not None
-        assert tag.lifetime_end_ts <= pre_oci_tag.get_epoch_timestamp()
-
-    # If it exists, GC the tag manifest.
-    try:
-        tag_manifest = TagManifest.select().where(TagManifest.tag == tag).get()
-        _garbage_collect_legacy_manifest(tag_manifest.id, context)
-    except TagManifest.DoesNotExist:
-        pass
-
-    # Add the tag's legacy image to be GCed.
-    context.add_legacy_image_id(tag.image_id)
-
-    with db_transaction():
-        # Reload the tag and verify its lifetime_end_ts has not changed.
-        try:
-            reloaded_tag = db_for_update(
-                RepositoryTag.select().where(RepositoryTag.id == tag.id)
-            ).get()
-        except RepositoryTag.DoesNotExist:
-            return False
-
-        assert reloaded_tag.id == tag.id
-        assert reloaded_tag.repository_id == context.repository.id
-        if reloaded_tag.lifetime_end_ts != tag.lifetime_end_ts:
-            return False
-
-        # Delete mapping rows.
-        deleted_tag_to_repotag = (
-            TagToRepositoryTag.delete()
-            .where(TagToRepositoryTag.repository_tag == reloaded_tag)
-            .execute()
-        )
-
-        # Delete the tag.
-        reloaded_tag.delete_instance()
-
-    gc_table_rows_deleted.labels(table="RepositoryTag").inc()
-    gc_table_rows_deleted.labels(table="TagToRepositoryTag").inc(deleted_tag_to_repotag)
 
 
 def _purge_uploaded_blob(uploaded_blob, context, allow_non_expired=False):
@@ -485,13 +364,6 @@ def _garbage_collect_manifest(manifest_id, context):
     for manifest_blob in ManifestBlob.select().where(ManifestBlob.manifest == manifest_id):
         context.add_blob_id(manifest_blob.blob_id)
 
-    # Retrieve the manifest's associated image, if any.
-    try:
-        legacy_image_id = ManifestLegacyImage.get(manifest=manifest_id).image_id
-        context.add_legacy_image_id(legacy_image_id)
-    except ManifestLegacyImage.DoesNotExist:
-        legacy_image_id = None
-
     # Add child manifests to be GCed.
     for connector in ManifestChild.select().where(ManifestChild.manifest == manifest_id):
         context.add_manifest_id(connector.child_manifest_id)
@@ -511,20 +383,6 @@ def _garbage_collect_manifest(manifest_id, context):
         assert manifest.repository_id == context.repository.id
         if _check_manifest_used(manifest_id):
             return False
-
-        # Delete any label mappings.
-        deleted_tag_manifest_label_map = (
-            TagManifestLabelMap.delete()
-            .where(TagManifestLabelMap.manifest == manifest_id)
-            .execute()
-        )
-
-        # Delete any mapping rows for the manifest.
-        deleted_tag_manifest_to_manifest = (
-            TagManifestToManifest.delete()
-            .where(TagManifestToManifest.manifest == manifest_id)
-            .execute()
-        )
 
         # Delete any label rows.
         deleted_manifest_label = (
@@ -585,175 +443,16 @@ def _garbage_collect_manifest(manifest_id, context):
             .execute()
         )
 
-        # Delete the manifest legacy image row.
-        deleted_manifest_legacy_image = 0
-        if legacy_image_id:
-            deleted_manifest_legacy_image = (
-                ManifestLegacyImage.delete()
-                .where(
-                    ManifestLegacyImage.manifest == manifest_id,
-                    ManifestLegacyImage.repository == context.repository,
-                )
-                .execute()
-            )
-
         # Delete the manifest.
         manifest.delete_instance()
 
     context.mark_manifest_removed(manifest)
 
-    gc_table_rows_deleted.labels(table="TagManifestLabelMap").inc(deleted_tag_manifest_label_map)
-    gc_table_rows_deleted.labels(table="TagManifestToManifest").inc(
-        deleted_tag_manifest_to_manifest
-    )
     gc_table_rows_deleted.labels(table="ManifestLabel").inc(deleted_manifest_label)
     gc_table_rows_deleted.labels(table="ManifestChild").inc(deleted_manifest_child)
     gc_table_rows_deleted.labels(table="ManifestBlob").inc(deleted_manifest_blob)
     gc_table_rows_deleted.labels(table="ManifestSecurityStatus").inc(deleted_manifest_security)
-    if deleted_manifest_legacy_image:
-        gc_table_rows_deleted.labels(table="ManifestLegacyImage").inc(deleted_manifest_legacy_image)
-
     gc_table_rows_deleted.labels(table="Manifest").inc()
-
-    return True
-
-
-def _garbage_collect_legacy_manifest(legacy_manifest_id, context):
-    assert legacy_manifest_id is not None
-
-    # Add the labels to be GCed.
-    query = TagManifestLabel.select().where(TagManifestLabel.annotated == legacy_manifest_id)
-    for manifest_label in query:
-        context.add_label_id(manifest_label.label_id)
-
-    # Delete the tag manifest.
-    with db_transaction():
-        try:
-            tag_manifest = TagManifest.select().where(TagManifest.id == legacy_manifest_id).get()
-        except TagManifest.DoesNotExist:
-            return False
-
-        assert tag_manifest.id == legacy_manifest_id
-        assert tag_manifest.tag.repository_id == context.repository.id
-
-        # Delete any label mapping rows.
-        (
-            TagManifestLabelMap.delete()
-            .where(TagManifestLabelMap.tag_manifest == legacy_manifest_id)
-            .execute()
-        )
-
-        # Delete the label rows.
-        TagManifestLabel.delete().where(TagManifestLabel.annotated == legacy_manifest_id).execute()
-
-        # Delete the mapping row if it exists.
-        try:
-            tmt = (
-                TagManifestToManifest.select()
-                .where(TagManifestToManifest.tag_manifest == tag_manifest)
-                .get()
-            )
-            context.add_manifest_id(tmt.manifest_id)
-            tmt_deleted = tmt.delete_instance()
-            if tmt_deleted:
-                gc_table_rows_deleted.labels(table="TagManifestToManifest").inc()
-        except TagManifestToManifest.DoesNotExist:
-            pass
-
-        # Delete the tag manifest.
-        tag_manifest_deleted = tag_manifest.delete_instance()
-        if tag_manifest_deleted:
-            gc_table_rows_deleted.labels(table="TagManifest").inc()
-    return True
-
-
-def _check_image_used(legacy_image_id):
-    assert legacy_image_id is not None
-
-    with db_transaction():
-        # Check if the image is referenced by a manifest.
-        try:
-            ManifestLegacyImage.select().where(ManifestLegacyImage.image == legacy_image_id).get()
-            return True
-        except ManifestLegacyImage.DoesNotExist:
-            pass
-
-        # Check if the image is referenced by a tag.
-        try:
-            RepositoryTag.select().where(RepositoryTag.image == legacy_image_id).get()
-            return True
-        except RepositoryTag.DoesNotExist:
-            pass
-
-        # Check if the image is referenced by another image.
-        try:
-            Image.select().where(Image.parent == legacy_image_id).get()
-            return True
-        except Image.DoesNotExist:
-            pass
-
-    return False
-
-
-def _garbage_collect_legacy_image(legacy_image_id, context):
-    assert legacy_image_id is not None
-
-    # Check if the image is referenced.
-    if _check_image_used(legacy_image_id):
-        return False
-
-    # We have an unreferenced image. We can now delete it.
-    # Grab any derived storage for the image.
-    for derived in DerivedStorageForImage.select().where(
-        DerivedStorageForImage.source_image == legacy_image_id
-    ):
-        context.add_blob_id(derived.derivative_id)
-
-    try:
-        image = Image.select().where(Image.id == legacy_image_id).get()
-    except Image.DoesNotExist:
-        return False
-
-    assert image.repository_id == context.repository.id
-
-    # Add the image's blob to be GCed.
-    context.add_blob_id(image.storage_id)
-
-    # If the image has a parent ID, add the parent for GC.
-    if image.parent_id is not None:
-        context.add_legacy_image_id(image.parent_id)
-
-    # Delete the image.
-    with db_transaction():
-        if _check_image_used(legacy_image_id):
-            return False
-
-        try:
-            image = Image.select().where(Image.id == legacy_image_id).get()
-        except Image.DoesNotExist:
-            return False
-
-        assert image.id == legacy_image_id
-        assert image.repository_id == context.repository.id
-
-        # Delete any derived storage for the image.
-        deleted_derived_storage = (
-            DerivedStorageForImage.delete()
-            .where(DerivedStorageForImage.source_image == legacy_image_id)
-            .execute()
-        )
-
-        # Delete the image itself.
-        image.delete_instance()
-
-    context.mark_legacy_image_removed(image)
-
-    gc_table_rows_deleted.labels(table="Image").inc()
-    gc_table_rows_deleted.labels(table="DerivedStorageForImage").inc(deleted_derived_storage)
-
-    if config.image_cleanup_callbacks:
-        for callback in config.image_cleanup_callbacks:
-            callback([image])
 
     return True
 
@@ -767,12 +466,6 @@ def _check_label_used(label_id):
             ManifestLabel.select().where(ManifestLabel.label == label_id).get()
             return True
         except ManifestLabel.DoesNotExist:
-            pass
-
-        try:
-            TagManifestLabel.select().where(TagManifestLabel.label == label_id).get()
-            return True
-        except TagManifestLabel.DoesNotExist:
             pass
 
     return False
