@@ -321,7 +321,7 @@ def update_enabled(user, set_enabled):
     user.save()
 
 
-def create_robot(robot_shortname, parent, description="", unstructured_metadata=None):
+def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
     (username_valid, username_issue) = validate_username(robot_shortname)
     if not username_valid:
         raise InvalidRobotException(
@@ -343,7 +343,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
     try:
         with db_transaction():
             created = User.create(username=username, email=str(uuid.uuid4()), robot=True)
-            token = random_string_generator(length=64)()
+            token = token if token else random_string_generator(length=64)()
             RobotAccountToken.create(robot_account=created, token=token, fully_migrated=True)
             FederatedLogin.create(
                 user=created, service=service, service_ident="robot:%s" % created.id
