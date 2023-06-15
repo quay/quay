@@ -44,19 +44,34 @@ def test_organization_permission_report(members, collaborators, robots, initiali
             assert not any(
                 [permission["username"] == "thecollective+robot1" for permission in report]
             )
+        else:
+            assert any(
+                [permission["username"] == "thecollective+robot1" for permission in report]
+            )
 
         if members:
             assert any(
                 [
-                    permission["username"] == "devtable" and permission["team_name"] == "owners"
+                    permission["username"] == "devtable" 
+                    and permission.get("team_name") is not None
+                    and permission["team_name"] == "owners"
                     for permission in report
                 ]
             )
             assert any(
                 [
                     permission["username"] == "freshuser"
+                    and permission.get("team_name") is not None
                     and permission["team_name"] == "writers"
                     and permission["repository"] == "repo2"
+                    for permission in report
+                ]
+            )
+            assert any(
+                [
+                    permission["username"] == "public"
+                    and permission.get("team_name") is not None
+                    and permission["team_name"] == "creators"
                     for permission in report
                 ]
             )

@@ -1,5 +1,5 @@
 from peewee import JOIN
-from data.database import Repository, RepositoryPermission, Role, Team, TeamMember, TeamRole, User
+from data.database import Repository, RepositoryPermission, RepositoryState, Role, Team, TeamMember, TeamRole, User
 
 
 def organization_permission_report(
@@ -25,9 +25,11 @@ def organization_permission_report(
             User.select(
                 User.username,
                 User.creation_date.alias("user_creation_date"),
+                User.enabled.alias("user_enabled"),
                 Team.name.alias("team_name"),
                 TeamRole.name.alias("team_role"),
                 Repository.name.alias("repository"),
+                Repository.state.alias("repository_state"),
                 Role.name.alias("role"),
             )
             .join(TeamMember, JOIN.LEFT_OUTER)
@@ -41,7 +43,11 @@ def organization_permission_report(
             )
             .join(Role, JOIN.LEFT_OUTER, on=(Role.id == RepositoryPermission.role))
             .join(Organization, JOIN.LEFT_OUTER, on=(Team.organization == Organization.id))
-            .where((User.organization == False) & (Organization.username == org.username))
+            .where((User.organization == False) & (Organization.username == org.username)&
+                (
+                    (Repository.id.is_null(True)) |
+                    (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+                ))
             .order_by(User.username, Team.name, Repository.name)
         )
 
@@ -56,7 +62,9 @@ def organization_permission_report(
             User.select(
                 User.username,
                 User.creation_date.alias("user_creation_date"),
+                User.enabled.alias("user_enabled"),
                 Repository.name.alias("repository"),
+                Repository.state.alias("repository_state"),
                 Role.name.alias("role"),
             )
             .join(RepositoryPermission, JOIN.LEFT_OUTER, on=(RepositoryPermission.user == User.id))
@@ -67,7 +75,11 @@ def organization_permission_report(
             )
             .join(Role, JOIN.LEFT_OUTER, on=(Role.id == RepositoryPermission.role))
             .join(Organization, JOIN.LEFT_OUTER, on=(Repository.namespace_user == Organization.id))
-            .where((User.organization == False) & (Organization.username == org.username))
+            .where((User.organization == False) & (Organization.username == org.username)&
+                (
+                    (Repository.id.is_null(True)) |
+                    (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+                ))
             .order_by(User.username, Repository.name)
         )
 
@@ -75,5 +87,7 @@ def organization_permission_report(
             collaborators_query = collaborators_query.where(User.robot == False)
 
         permissions.extend([result_dict for result_dict in collaborators_query.dicts()])
+
+    # permissions = [p for p in permissions if p.get('repository_state') != RepositoryState.MARKED_FOR_DELETION]
 
     return permissions

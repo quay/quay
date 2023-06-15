@@ -13,7 +13,7 @@ angular.module('quay').directive('teamsManager', function () {
       'isEnabled': '=isEnabled'
     },
     controller: function($scope, $element, ApiService, $timeout, UserService, TableService,
-                         UIService, Config, Features, $location, StateService) {
+                         UIService, Config, Features, $location, StateService, RolesService) {
       $scope.TableService = TableService;
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.Config = Config;
@@ -32,11 +32,9 @@ angular.module('quay').directive('teamsManager', function () {
         'filter': ''
       };
 
-      $scope.teamRoles = [
-          { 'id': 'member', 'title': 'Member', 'kind': 'default' },
-          { 'id': 'creator', 'title': 'Creator', 'kind': 'success' },
-          { 'id': 'admin', 'title': 'Admin', 'kind': 'primary' }
-      ];
+      $scope.teamRoles = RolesService.teamRoles;
+
+      $scope.repoRoles = RolesService.repoRoles;
 
       UserService.updateUserIn($scope);
 
@@ -140,13 +138,13 @@ angular.module('quay').directive('teamsManager', function () {
           break;
 
         case $scope.views.PERMISSION_REPORT:
-            if (!$scope.collaboratorList) {
+            if (!$scope.permissionReportList) {
               loadPermissionReport(function() {
-                $scope.permissionReportList = $scope.permissionReport;
+                $scope.usersView = $scope.permissionReportList;
               });
             }
-  
-            $scope.usersView = $scope.collaboratorList;
+
+            $scope.usersView = $scope.permissionReportList;
             break;
 
         default:
