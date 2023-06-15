@@ -41,14 +41,14 @@ export default function Organization() {
   );
 
   const fetchTabVisibility = (tabname) => {
-    if (quayConfig.config.REGISTRY_STATE == 'readonly') {
+    if (quayConfig?.config?.REGISTRY_STATE == 'readonly') {
       return false;
     }
 
-    if (!isUserOrganization && organization && tabname == 'Settings') {
+    if (!isUserOrganization && organization && (tabname == 'Settings' || tabname == 'Robot accounts')) {
       return organization.is_org_admin || organization.is_admin;
     }
-    return true;
+    return false;
   }
 
   const repositoriesSubNav = [

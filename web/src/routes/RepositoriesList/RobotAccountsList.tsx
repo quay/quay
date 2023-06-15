@@ -329,7 +329,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   };
 
   const getLength = (robotAccount, list, teams) => {
-    const len = list.length;
+    const len = list?.length;
     let placeholder = 'teams';
     let single_placeholder = 'team';
 
@@ -458,7 +458,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     );
   }
 
-  if (loading && paginatedRobotAccountList.length == 0) {
+  if (loading && paginatedRobotAccountList?.length == 0) {
     return (
       <TableComposable aria-label="Empty state table" borders={false}>
         <Tbody>
@@ -504,7 +504,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           page={page}
           setPage={setPage}
           setPerPage={setPerPage}
-          total={filteredRobotAccounts.length}
+          total={filteredRobotAccounts?.length}
           expandTable={expandTable}
           collapseTable={collapseTable}
         />
