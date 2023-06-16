@@ -18,12 +18,11 @@ repos:
         name: Checking Config file changes
         entry: .github/hooks/pre-commit.sh
         language: script
-    -   id: lint-staged
-        name: Lint Staged
-        entry: sh -c 'cd ./web && npx lint-staged "$@"' arg0
+    -   id: eslint
+        name: ESLint
+        entry: web/node_modules/.bin/eslint --fix
         language: system
         files: ^web/
-        require_serial: true
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
