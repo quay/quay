@@ -53,8 +53,9 @@ describe('Repositories List Page', () => {
   });
 
   it('create public repository', () => {
+    cy.intercept('/repository').as('getRepositories');
     cy.visit('/repository');
-    cy.wait(2000);
+    cy.wait('@getRepositories');
     cy.contains('Create Repository').click();
     cy.contains('Create repository').should('exist');
     //cy.contains('Select namespace').click();
