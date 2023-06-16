@@ -18,6 +18,7 @@ from data.logs_model.interface import (
 from data.logs_model.datatypes import Log, AggregatedLogCount, LogEntriesPage
 from data.logs_model.shared import SharedModel, InvalidLogsDateRangeError
 from data.model.log import get_stale_logs, get_stale_logs_start_id, delete_stale_logs
+from data.readreplica import ReadOnlyModeException
 
 logger = logging.getLogger(__name__)
 
@@ -228,15 +229,19 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
             assert namespace_name is not None
             repository = model.repository.get_repository(namespace_name, repository_name)
 
-        model.log.log_action(
-            kind_name,
-            namespace_name,
-            performer=performer,
-            repository=repository,
-            ip=ip,
-            metadata=metadata or {},
-            timestamp=timestamp,
-        )
+        try:
+            model.log.log_action(
+                kind_name,
+                namespace_name,
+                performer=performer,
+                repository=repository,
+                ip=ip,
+                metadata=metadata or {},
+                timestamp=timestamp,
+            )
+        except ReadOnlyModeException:
+            logger.debug("Skipping log action '%s' in read-only mode" % kind_name)
+            pass
 
     def yield_logs_for_export(
         self,
