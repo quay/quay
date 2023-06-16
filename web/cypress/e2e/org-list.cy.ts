@@ -37,11 +37,12 @@ describe('Org List Page', () => {
     cy.get('#create-organization-button').click();
     cy.get('#create-org-name-input').type('cypress');
     cy.get('#create-org-email-input').type('cypress@redhat.com');
-    cy.get('#create-org-confirm').click();
-
-    // Query for new org
-    cy.get('input[name="search input"]').type('cypress');
-    cy.contains('1 - 1 of 1');
+    cy.get('#create-org-confirm').click()
+    .then(() => {
+      // Query for new org
+      cy.get('input[name="search input"]').type('cypress');
+      cy.contains('1 - 1 of 1');
+    });
 
     // Validate all required fields are populated
     cy.get('#create-organization-button').click();
