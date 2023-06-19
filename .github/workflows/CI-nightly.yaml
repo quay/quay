@@ -48,7 +48,21 @@ jobs:
         ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}')
         echo $ZVSI_HOST
         echo "IP=${ZVSI_HOST}" >> $GITHUB_OUTPUT
-        
+
+    - name: Status of ZVSI
+      if: ${{ matrix.platform == 's390x' }}
+      run: |
+        check=$(ibmcloud is ins| awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
+        while [[ $check != "running" ]]
+        do
+          check=$(ibmcloud is ins | awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
+          if [[ $check == 'failed' ]]
+          then
+                  echo "Failed to run the ZVSI"
+                  break
+          fi
+        done
+
     - name: Setup SSH config for builders
       env:
         BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
@@ -113,7 +127,7 @@ jobs:
         GH_REF: ${{ github.ref }}
       with: 
         host: ${{ steps.ZVSI.outputs.IP }}
-        username: ${{ secrets.SSH_USER }}
+        username: ${{ secrets.ZVSI_SSH_USER }}
         key: ${{ secrets.ZVSI_PR_KEY }}
         envs: GH_REPOSITORY,GH_REF
         command_timeout: 100m
