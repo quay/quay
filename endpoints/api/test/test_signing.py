@@ -47,10 +47,10 @@ def tags_equal(expected, actual):
         (None, {"delegations": None}),  # API returns None on exceptions
     ],
 )
-def test_get_signatures(targets_map, expected, client):
+def test_get_signatures(targets_map, expected, app):
     with patch("endpoints.api.signing.tuf_metadata_api") as mock_tuf:
         mock_tuf.get_all_tags_with_expiration.return_value = targets_map
-        with client_with_identity("devtable", client) as cl:
+        with client_with_identity("devtable", app) as cl:
             params = {"repository": "devtable/trusted"}
             assert tags_equal(
                 expected, conduct_api_call(cl, RepositorySignatures, "GET", params, None, 200).json

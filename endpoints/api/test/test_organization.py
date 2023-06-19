@@ -17,8 +17,8 @@ from endpoints.test.shared import client_with_identity
         (100000000000000000000, 400),
     ],
 )
-def test_change_tag_expiration(expiration, expected_code, client):
-    with client_with_identity("devtable", client) as cl:
+def test_change_tag_expiration(expiration, expected_code, app):
+    with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl,
             Organization,
@@ -29,10 +29,10 @@ def test_change_tag_expiration(expiration, expected_code, client):
         )
 
 
-def test_get_organization_collaborators(client):
+def test_get_organization_collaborators(app):
     params = {"orgname": "buynlarge"}
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         resp = conduct_api_call(cl, OrganizationCollaboratorList, "GET", params)
 
     collaborator_names = [c["name"] for c in resp.json["collaborators"]]

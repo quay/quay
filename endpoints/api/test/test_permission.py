@@ -18,8 +18,8 @@ from endpoints.test.shared import client_with_identity
         pytest.param("buynlarge/orgrepo", "buynlarge+coolrobot", 200, id="valid robot under org"),
     ],
 )
-def test_robot_permission(repository, username, expected_code, client):
-    with client_with_identity("devtable", client) as cl:
+def test_robot_permission(repository, username, expected_code, app):
+    with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl,
             RepositoryUserPermission,

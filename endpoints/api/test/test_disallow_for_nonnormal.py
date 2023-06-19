@@ -58,7 +58,7 @@ FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
         (BuildTriggerSources, "post", TRIGGER_ARGS),
     ],
 )
-def test_disallowed_for_nonnormal(state, resource, method, params, client):
+def test_disallowed_for_nonnormal(state, resource, method, params, app):
     namespace = "devtable"
     repository = "somenewstaterepo"
 
@@ -70,5 +70,5 @@ def test_disallowed_for_nonnormal(state, resource, method, params, client):
     params = params or {}
     params["repository"] = "%s/%s" % (namespace, repository)
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         conduct_api_call(cl, resource, method, params, {}, 503)

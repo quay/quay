@@ -41,7 +41,7 @@ from endpoints.api.namespacequota import *
 
 from endpoints.api.repository import Repository
 
-from test.fixtures import *
+from test.fixtures import *  # type: ignore[assignment] # isort: skip
 
 ORG_PARAMS = {"orgname": "buynlarge"}
 TEAM_PARAMS = {"orgname": "buynlarge", "teamname": "owners"}
@@ -6062,8 +6062,8 @@ SECURITY_TESTS: List[
 
 
 @pytest.mark.parametrize("resource,method,params,body,identity,expected", SECURITY_TESTS)
-def test_api_security(resource, method, params, body, identity, expected, client):
-    with client_with_identity(identity, client) as cl:
+def test_api_security(resource, method, params, body, identity, expected, app):
+    with client_with_identity(identity, app) as cl:
         conduct_api_call(cl, resource, method, params, body, expected)
 
 
@@ -6122,13 +6122,13 @@ def test_all_apis_tested(app):
         ("DELETE", 200),
     ],
 )
-def test_team_sync_security(is_superuser, allow_nonsuperuser, method, expected, client):
+def test_team_sync_security(is_superuser, allow_nonsuperuser, method, expected, app):
     def is_superuser_method(_):
         return is_superuser
 
     with patch("auth.permissions.usermanager.is_superuser", is_superuser_method):
         with toggle_feature("NONSUPERUSER_TEAM_SYNCING_SETUP", allow_nonsuperuser):
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 expect_success = is_superuser or allow_nonsuperuser
                 expected_status = expected if expect_success else 403
                 conduct_api_call(

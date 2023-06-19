@@ -15,7 +15,11 @@ from endpoints.test.shared import conduct_call
         ("curl/whatever", False, 200),
         ("Mozilla/whatever", True, 200),
         ("Mozilla/5.0", True, 200),
-        ("Mozilla/5.0 (Windows NT 5.1; Win64; x64)", False, 400),
+        (
+            "Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/534.34 (KHTML, like Gecko) Safari/534.34",
+            False,
+            400,
+        ),
     ],
 )
 def test_require_xhr_from_browser(user_agent, include_header, expected_code, app, client):

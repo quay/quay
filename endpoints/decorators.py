@@ -6,7 +6,8 @@ import logging
 import os
 from functools import wraps
 
-from flask import abort, make_response, request
+from flask import request
+from ua_parser import user_agent_parser
 
 import features
 from app import app, ip_resolver, model_cache, usermanager
@@ -235,11 +236,40 @@ def require_xhr_from_browser(func):
     text attacks.
     """
 
+    # https://github.com/pallets/werkzeug/issues/2078
+    browsers = (
+        "aol",
+        "ask",
+        "camino",
+        "chrome",
+        "firefox",
+        "galeon",
+        "google",
+        "kmeleon",
+        "konqueror",
+        "links",
+        "lynx",
+        "msie",
+        "msn",
+        "netscape",
+        "opera",
+        "safari",
+        "seamonkey",
+        "webkit",
+        "yahoo",
+    )
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if app.config.get("BROWSER_API_CALLS_XHR_ONLY", False):
-            if request.method == "GET" and request.user_agent.browser:
+            if (
+                request.method == "GET"
+                and request.user_agent.string
+                and user_agent_parser.ParseUserAgent(request.user_agent.string)["family"].lower()
+                in browsers
+            ):
                 has_xhr_header = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
                 if not has_xhr_header and not app.config.get("DEBUGGING") == True:
                     logger.warning(
                         "Disallowed possible RTA to URL %s with user agent %s",

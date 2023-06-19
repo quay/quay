@@ -15,10 +15,10 @@ SYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "synced"}
 UNSYNCED_TEAM_PARAMS = {"orgname": "sellnsmall", "teamname": "owners"}
 
 
-def test_team_syncing(client):
+def test_team_syncing(app):
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 config = {
                     "group_dn": "cn=AwesomeFolk",
                 }
@@ -42,25 +42,32 @@ def test_team_syncing(client):
                 assert sync_info is None
 
 
-def test_team_member_sync_info(client):
+def test_team_member_sync_info_unsynced_superuser(app):
     with mock_ldap() as ldap:
         with patch("endpoints.api.team.authentication", ldap):
             # Check for an unsynced team, with superuser.
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 resp = conduct_api_call(cl, TeamMemberList, "GET", UNSYNCED_TEAM_PARAMS)
                 assert "can_sync" in resp.json
                 assert resp.json["can_sync"]["service"] == "ldap"
-
                 assert "synced" not in resp.json
 
+
+def test_team_member_sync_info_unsynced_nonsuperuser(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
             # Check for an unsynced team, with non-superuser.
-            with client_with_identity("randomuser", client) as cl:
+            with client_with_identity("randomuser", app) as cl:
                 resp = conduct_api_call(cl, TeamMemberList, "GET", UNSYNCED_TEAM_PARAMS)
                 assert "can_sync" not in resp.json
                 assert "synced" not in resp.json
 
+
+def test_team_member_sync_info_synced_superuser(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
             # Check for a synced team, with superuser.
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 resp = conduct_api_call(cl, TeamMemberList, "GET", SYNCED_TEAM_PARAMS)
                 assert "can_sync" in resp.json
                 assert resp.json["can_sync"]["service"] == "ldap"
@@ -69,8 +76,12 @@ def test_team_member_sync_info(client):
                 assert "last_updated" in resp.json["synced"]
                 assert "group_dn" in resp.json["synced"]["config"]
 
+
+def test_team_member_sync_info_synced_nonsuperuser(app):
+    with mock_ldap() as ldap:
+        with patch("endpoints.api.team.authentication", ldap):
             # Check for a synced team, with non-superuser.
-            with client_with_identity("randomuser", client) as cl:
+            with client_with_identity("randomuser", app) as cl:
                 resp = conduct_api_call(cl, TeamMemberList, "GET", SYNCED_TEAM_PARAMS)
                 assert "can_sync" not in resp.json
 
@@ -79,11 +90,11 @@ def test_team_member_sync_info(client):
                 assert "config" not in resp.json["synced"]
 
 
-def test_organization_teams_sync_bool(client):
+def test_organization_teams_sync_bool(app):
     with mock_ldap() as ldap:
         with patch("endpoints.api.organization.authentication", ldap):
             # Ensure synced teams are marked as such in the organization teams list.
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 resp = conduct_api_call(cl, Organization, "GET", {"orgname": "sellnsmall"})
 
                 assert not resp.json["teams"]["owners"]["is_synced"]

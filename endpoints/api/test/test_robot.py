@@ -28,8 +28,8 @@ from util.names import parse_robot_username
         {"description": "this is a description", "unstructured_metadata": {"foo": "bar"}},
     ],
 )
-def test_create_robot_with_metadata(endpoint, body, client):
-    with client_with_identity("devtable", client) as cl:
+def test_create_robot_with_metadata(endpoint, body, app):
+    with client_with_identity("devtable", app) as cl:
         # Create the robot with the specified body.
         conduct_api_call(
             cl,
@@ -63,8 +63,8 @@ def test_create_robot_with_metadata(endpoint, body, client):
         (OrgRobot, {"orgname": "buynlarge", "robot_shortname": "coolrobot"}),
     ],
 )
-def test_retrieve_robot(endpoint, params, app, client):
-    with client_with_identity("devtable", client) as cl:
+def test_retrieve_robot(endpoint, params, app):
+    with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, endpoint, "GET", params, None)
         assert result.json["token"] is not None
 
@@ -91,13 +91,13 @@ def test_retrieve_robot(endpoint, params, app, client):
         5,
     ],
 )
-def test_retrieve_robots(endpoint, params, bot_endpoint, include_token, limit, app, client):
+def test_retrieve_robots(endpoint, params, bot_endpoint, include_token, limit, app):
     params["token"] = "true" if include_token else "false"
 
     if limit is not None:
         params["limit"] = limit
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, endpoint, "GET", params, None)
 
         if limit is not None:
@@ -126,8 +126,8 @@ def test_retrieve_robots(endpoint, params, bot_endpoint, include_token, limit, a
         False,
     ],
 )
-def test_retrieve_robots_token_permission(username, is_admin, with_permissions, app, client):
-    with client_with_identity(username, client) as cl:
+def test_retrieve_robots_token_permission(username, is_admin, with_permissions, app):
+    with client_with_identity(username, app) as cl:
         params = {"orgname": "buynlarge", "token": "true"}
         if with_permissions:
             params["permissions"] = "true"

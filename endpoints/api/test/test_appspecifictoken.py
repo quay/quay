@@ -7,8 +7,8 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 
 
-def test_app_specific_tokens(app, client):
-    with client_with_identity("devtable", client) as cl:
+def test_app_specific_tokens(app):
+    with client_with_identity("devtable", app) as cl:
         # Add an app specific token.
         token_data = {"title": "Testing 123"}
         resp = conduct_api_call(cl, AppTokens, "POST", None, token_data, 200).json
@@ -41,11 +41,11 @@ def test_app_specific_tokens(app, client):
         conduct_api_call(cl, AppToken, "GET", {"token_uuid": token_uuid}, None, 404)
 
 
-def test_delete_expired_app_token(app, client):
+def test_delete_expired_app_token(app):
     user = model.user.get_user("devtable")
     expiration = datetime.now() - timedelta(seconds=10)
     token = model.appspecifictoken.create_token(user, "some token", expiration)
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         # Delete the token.
         conduct_api_call(cl, AppToken, "DELETE", {"token_uuid": token.uuid}, None, 204)

@@ -231,7 +231,8 @@ class WebhookEndpointTestCase(EndpointTestCase):
             "webhooks.build_trigger_webhook",
             trigger_uuid=trigger.uuid,
             expected_code=400,
-            headers={"Authorization": auth_header},
+            headers={"Authorization": auth_header, "Content-Type": "application/json"},
+            data={},
         )
 
     def test_valid_build_trigger_webhook_invalid_payload(self):
@@ -663,7 +664,14 @@ class KeyServerTestCase(EndpointTestCase):
     def test_put_service_key(self):
         # No Authorization header should yield a 400
         self.putResponse(
-            "key_server.put_service_key", service="sample_service", kid="kid420", expected_code=400
+            "key_server.put_service_key",
+            service="sample_service",
+            kid="kid420",
+            headers={
+                "Content-Type": "application/json",
+            },
+            data={},
+            expected_code=400,
         )
 
         # Mint a JWT with our test payload
