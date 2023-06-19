@@ -32,6 +32,13 @@ angular.module('quay').directive('teamsManager', function () {
         'filter': ''
       };
 
+      $scope.permissionReportOptions = {
+        'predicate': 'username',
+        'reverse': false,
+        'filter': '',
+        'page': 0,
+      };
+
       $scope.teamRoles = RolesService.teamRoles;
 
       $scope.repoRoles = RolesService.repoRoles;
@@ -44,6 +51,8 @@ angular.module('quay').directive('teamsManager', function () {
       $scope.fullMemberList = null;
       $scope.collaboratorList = null;
       $scope.permissionReportList = null;
+      $scope.orderedPermissionReport = [];
+      $scope.permissionsPerPage = 25;
       $scope.userView = null;
       $scope.feedback = null;
       $scope.createTeamInfo = null;
@@ -78,6 +87,17 @@ angular.module('quay').directive('teamsManager', function () {
             ['ordered_team_index', 'member_count', 'repo_count', 'role_index']);
       };
 
+      var buildOrderedPermissionReport = function() {
+        if (!$scope.permissionReportList) {
+          return;
+        }
+
+        $scope.orderedPermissionReport = TableService.buildOrderedItems(
+            $scope.permissionReportList, $scope.permissionReportOptions,
+            ['user_name'],
+            ['user_creation_datetime']);
+      };
+
       var loadMembers = function(callback) {
         var params = {
           'orgname': $scope.organization.name
@@ -90,12 +110,33 @@ angular.module('quay').directive('teamsManager', function () {
       };
 
       var loadPermissionReport = function(callback) {
+        loadPaginatedPermissionReport(1, callback)
+      }
+
+      var loadPaginatedPermissionReport = function(page, callback) {
         var params = {
-          'orgname': $scope.organization.name
+          'orgname': $scope.organization.name,
+          'limit': 100,
+          'page': page,
         };
 
         ApiService.getOrganizationPermissionReport(null, params).then(function(resp) {
-          $scope.permissionReportList = resp['permissions'];
+          var newPermissions = resp['permissions'];
+
+          for(var i = 0; i < newPermissions.length; ++i) {
+            newPermissions[i]['user_creation_datetime'] = TableService.getReversedTimestamp(newPermissions[i]['user_creation_date']);
+          }
+
+          if($scope.permissionReportList === null) {
+            $scope.permissionReportList = newPermissions;
+          } else {
+            $.extend($scope.permissionReportList, newPermissions);
+          }
+
+          if(resp['has_additional']) {
+            loadPaginatedPermissionReport(page + 1);
+          }
+
           callback();
         }, ApiService.errorDisplay('Could not load organiztion permission report'));
       };
@@ -139,12 +180,9 @@ angular.module('quay').directive('teamsManager', function () {
 
         case $scope.views.PERMISSION_REPORT:
             if (!$scope.permissionReportList) {
-              loadPermissionReport(function() {
-                $scope.usersView = $scope.permissionReportList;
-              });
+              loadPermissionReport(buildOrderedPermissionReport);
             }
 
-            $scope.usersView = $scope.permissionReportList;
             break;
 
         default:
@@ -300,6 +338,11 @@ angular.module('quay').directive('teamsManager', function () {
       $scope.$watch('options.predicate', setTeamsState);
       $scope.$watch('options.reverse', setTeamsState);
       $scope.$watch('options.filter', setTeamsState);
+
+      $scope.$watch('permissionReportOptions.predicate', buildOrderedPermissionReport);
+      $scope.$watch('permissionReportOptions.reverse', buildOrderedPermissionReport);
+      $scope.$watch('permissionReportOptions.filter', buildOrderedPermissionReport);
+      
     }
   };
 

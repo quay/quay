@@ -13,7 +13,11 @@
   width: 100%;
   padding-top: 2px;
   padding-bottom: 2px;
-  height: 28px;
+}
+
+.teams-manager .co-filter-box .page-controls {
+  vertical-align: top;
+  padding-right: 10px;
 }
 
 .teams-manager .manager-header {

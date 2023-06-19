@@ -198,43 +198,45 @@
 
   <div ng-show="activeView == views.PERMISSION_REPORT">
 
-    <span class="co-filter-box">
-      <span class="filter-message" ng-if="options.filter">
-        Showing {{ orderedPermissions.entries.length }} of {{ permissions.length }} permissions
+    <div class="co-top-bar">
+      <span class="co-filter-box">
+        <span class="page-controls" total-count="permissionReportList.length" current-page="permissionReportOptions.page" page-size="permissionsPerPage"></span>
+        <span class="filter-message" ng-if="permissionReportOptions.filter">
+          Showing {{ orderedPermissionReport.entries.length }} of {{ permissionReportList.length }} permissions
+        </span>
+        <input class="form-control" type="text" ng-model="permissionReportOptions.filter" placeholder="Filter users...">
       </span>
-      <div class="empty" ng-if="usersView.length && !(usersView | filter:userFilter).length">
-        <div class="empty-primary-msg">No users found matching filter.</div>
-        <div class="empty-secondary-msg">
-          Please change your filter to display users.
-        </div>
-      </div>
-      <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter users...">
-    </span>
+    </div>
 
-    <table class="co-table" style="margin-top: 10px;">
+    <table class="co-table" style="margin-top: 10px;" ng-if="orderedPermissionReport.entries.length">
       <thead>
-        <td ng-class="TableService.tablePredicateClass('username', options.predicate, options.reverse)">
-          <a ng-click="TableService.orderBy('username', options)">User Name</a>
+        <td ng-class="TableService.tablePredicateClass('user_name', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('user_name', permissionReportOptions)">User Name</a>
         </td>
-        <td ng-class="TableService.tablePredicateClass('user_creation_date', options.predicate, options.reverse)">
-          <a ng-click="TableService.orderBy('user_creation_date', options)">User Creation Date</a>
+        <td ng-class="TableService.tablePredicateClass('user_creation_date', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('user_creation_datetime', permissionReportOptions)">User Creation Date</a>
         </td>
-        <td ng-class="TableService.tablePredicateClass('team_name', options.predicate, options.reverse)">
-          <a ng-click="TableService.orderBy('team_name', options)">Team name</a>
-        </td>
-        <td ng-class="TableService.tablePredicateClass('team_role', options.predicate, options.reverse)">
-          <a ng-click="TableService.orderBy('team_role', options)">Team role</a>
+        <td ng-class="TableService.tablePredicateClass('team_name', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('team_name', permissionReportOptions)">Team name</a>
           <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
-             data-content="The team that the users belongs to, determines the permissions that the user has on the repositories<br><br><dl><dt>Member</dt><dd>Permissions are assigned on a per repository basis</dd><dt>Creator</dt><dd>A team can create its own repositories and the performing user becomes admin</dd><dt>Admin</dt><dd>A team can create its own repositories and manage its members as well has full control over the organization</dd></dl>"
+             data-content="The name of team from which the users inherits permissions.<br><br><dl><dt>n/a</dt><dd>The user permission comes from a direct assignment in the repository and not membership in a team</dd></dl>"
              data-html="true"
              data-trigger="hover"
              bs-popover></i>
         </td>
-        <td class="hidden-xs" ng-class="TableService.tablePredicateClass('repository', options.predicate, options.reverse)">
-          <a ng-click="TableService.orderBy('repository', options)">Repository</a>
+        <td ng-class="TableService.tablePredicateClass('team_role', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('team_role', permissionReportOptions)">Team role</a>
+          <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
+             data-content="The team that the users belongs to, determines the permissions that the user has on the repositories<br><br><dl><dt>Member</dt><dd>Permissions are assigned on a per repository basis</dd><dt>Creator</dt><dd>A team can create its own repositories and the performing user becomes admin</dd><dt>Admin</dt><dd>A team can create its own repositories and manage its members as well has full control over the organization</dd><dt>n/a</dt><dd>The user permission comes from a direct assignment in the repository and not a team role</dd></dl>"
+             data-html="true"
+             data-trigger="hover"
+             bs-popover></i>
         </td>
-        <td ng-class="TableService.tablePredicateClass('role_index', options.predicate, options.reverse)">
-          <a ng-click="TableService.orderBy('role_index', options)">Permission</a>
+        <td class="hidden-xs" ng-class="TableService.tablePredicateClass('repository', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('repository', permissionReportOptions)">Repository</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('role', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('role', permissionReportOptions)">Permission</a>
 
           <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
              data-content="The permission level for this user on the repository<br><br><dl><dt>Read</dt><dd>Can view and pull from the repository</dd><dt>Write</dt><dd>Can view, pull and push to the repository</dd><dt>Admin</dt><dd>Full admin access, pull and push to the repository</dd></dl>"
@@ -246,10 +248,10 @@
        </thead>
 
        <tr class="co-checkable-row"
-           ng-repeat="permission in usersView  | filter:userFilter | orderBy:'name'"
+           ng-repeat="permission in orderedPermissionReport.entries | slice:(permissionsPerPage * permissionReportOptions.page):(permissionsPerPage * (permissionReportOptions.page + 1))"
            bindonce>
         <td style="white-space: nowrap;">
-          <a href="/user/{{ permission.username }}/"><span bo-text="permission.username"></span></a>
+          <a href="/user/{{ permission.user_name }}/"><span bo-text="permission.user_name"></span></a>
           <span class="empty" ng-if="!permission.user_enabled">
             (Disabled)
           </span>
@@ -274,40 +276,47 @@
           </span>
 
           <span class="member-perm-summary" ng-if="permission.team_role">
-            <span class="role-group" current-role="permission.team_role" pull-left="false"
-            roles="teamRoles"
-            read-only="true"></span>
+            <span class="role-group-display" current-role="permission.team_role" roles="teamRoles" />
           </span>
         </td>
         <td>
-          <span class="empty" ng-if="!permission.repository">
+          <span class="empty" ng-if="!permission.repository_name && permission.team_role == 'admin'">
+            applies to all repositories
+          </span>
+
+          <span class="empty" ng-if="!permission.repository_name && permission.team_role == 'creator'">
+            applies to new repositories
+          </span>
+
+          <span class="empty" ng-if="!permission.repository_name && permission.team_role == 'member'">
             (n/a)
           </span>
 
-          <span class="member-perm-summary" ng-if="permission.repository">
-            <a href="/repository/{{ organization.name }}/{{ permission.repository }}">
-              <span bo-text="permission.repository"></span>
+          <span class="member-perm-summary" ng-if="permission.repository_name">
+            <a href="/repository/{{ organization.name }}/{{ permission.repository_name }}">
+              <span bo-text="permission.repository_name"></span>
             </a>
           </span>
         </td>
         <td>
-          <span class="empty" ng-if="!permission.role">
-            (n/a)
+          <span class="empty" ng-if="!permission.role && (permission.team_role == 'admin' || permission.team_role == 'creator')">
+            <span class="member-perm-summary">
+              <span class="role-group-display" ng-attr-current-role="'admin'" roles="repoRoles" />
+            </span>
           </span>
 
           <span class="member-perm-summary" ng-if="permission.role">
-            <span class="role-group" current-role="permission.role"
-                  roles="repoRoles"
-                  read-only="true"></span>
+            <span class="role-group-display" current-role="permission.role" roles="repoRoles" />
           </span>
         </td>
       </tr>
     </table>
 
-    <div class="empty" ng-if="!orderedTeams.entries.length"
-         style="margin-top: 20px;">
-      <div class="empty-primary-msg">No matching teams found.</div>
-      <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
+    <div class="empty" ng-if="orderedPermissionReport.entries.length == 0 && permissionReportOptions.filter" style="margin-top: 20px;">
+      <div class="empty-primary-msg">No users found matching filter</div>
+      <div class="empty-secondary-msg">
+        Please change your filter to display user permissions
+      </div>
     </div>
   </div>
 

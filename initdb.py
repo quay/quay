@@ -1086,6 +1086,7 @@ def populate_database(minimal=False):
     fourthwriters = model.team.create_team("writers", fourthorg, "member", "Writers of orgrepo.")
     fourthreaders = model.team.create_team("readers", fourthorg, "member", "Readers of orgrepo.")
     fourthadmins = model.team.create_team("admins", fourthorg, "admin", "Admins of orgrepo.")
+    fourthnobodies = model.team.create_team("nobodies", fourthorg, "member", "No permissions actually.")
 
     collective_robot, _ = model.user.create_robot("robot1", fourthorg)
 
@@ -1095,6 +1096,7 @@ def populate_database(minimal=False):
     model.team.add_user_to_team(new_user_5, fourthreaders)
     model.team.add_user_to_team(collective_robot, fourthreaders)
     model.team.add_user_to_team(new_user_5, fourthadmins)
+    model.team.add_user_to_team(new_user_5, fourthnobodies)
 
     model.permission.set_team_repo_permission(fourthwriters.name, fourthorg.username, "repo1", "write")
     model.permission.set_team_repo_permission(fourthwriters.name, fourthorg.username, "repo2", "write")

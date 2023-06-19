@@ -612,6 +612,13 @@ class OrganizationPermissionReport(ApiResource):
         type=truthy_bool,
         default=True,
     )
+    @query_param(
+        "limit",
+        "Limit to the number of results to return per page. Max 100.",
+        type=int,
+        default=50,
+    )
+    @query_param("page", "Page index for the paginated results. Default 1.", type=int, default=1)
     def get(self, orgname, parsed_args):
         """
         List all permissions all team-based or direct members this organization has per repository.
@@ -620,6 +627,8 @@ class OrganizationPermissionReport(ApiResource):
         report_members = parsed_args["members"]
         report_collaborators = parsed_args["collaborators"]
         report_robots = parsed_args["robots"]
+        page = max(1, parsed_args.get("page", 1))
+        limit = min(100, max(1, parsed_args.get("limit", 100)))
 
         if report_members is False and report_collaborators is False:
             raise InvalidRequest("Must include either members or collaborators")
@@ -631,8 +640,14 @@ class OrganizationPermissionReport(ApiResource):
             except model.InvalidOrganizationException:
                 raise NotFound()
 
-            report = model.report.organization_permission_report(
-                org, report_members, report_collaborators, report_robots
+            report, has_more = model.report.organization_permission_report(
+                org=org,
+                page=page,
+                page_size=limit, 
+                members=report_members, 
+                collaborators=report_collaborators,
+                include_robots=report_robots,
+                raise_on_error=False,
             )
 
             report = [
@@ -645,7 +660,11 @@ class OrganizationPermissionReport(ApiResource):
                 for permission in report
             ]
 
-            return {"permissions": report}
+            return {
+                "permissions": report,
+                "page": page,
+                "has_additional": has_more,
+            }
 
         raise Unauthorized()
 
