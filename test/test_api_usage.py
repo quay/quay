@@ -459,7 +459,7 @@ class TestUserStarredRepositoryList(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         # Queries: Base + the list query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
             self.getJsonResponse(StarredRepositoryList, expected_code=200)
 
     def test_star_repo_guest(self):
@@ -476,7 +476,7 @@ class TestUserStarredRepositoryList(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         # Queries: Base + the list query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
             json = self.getJsonResponse(StarredRepositoryList)
             assert json["repositories"] == []
 
@@ -2188,7 +2188,7 @@ class TestListRepos(ApiTestCase):
         # Queries: Base + the list query + the popularity and last modified queries + full perms load
         # TODO: Add quota queries
         with patch("features.QUOTA_MANAGEMENT", False):
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 5):
+            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
                 json = self.getJsonResponse(
                     RepositoryList,
                     params=dict(
@@ -2553,11 +2553,11 @@ class TestGetRepository(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
@@ -2799,7 +2799,7 @@ class TestRepoBuilds(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # Queries: Permission + the list query + app check
-        with assert_query_count(3):
+        with assert_query_count(2):
             json = self.getJsonResponse(
                 RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
             )
@@ -2810,7 +2810,7 @@ class TestRepoBuilds(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # Queries: Permission + the list query + app check
-        with assert_query_count(3):
+        with assert_query_count(2):
             json = self.getJsonResponse(
                 RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
             )
@@ -3687,11 +3687,11 @@ class TestUserRobots(ApiTestCase):
         self.putJsonResponse(UserRobot, params=dict(robot_shortname="coolbot"), expected_code=201)
 
         # Queries: Base + the lookup query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
             self.getJsonResponse(UserRobotList)
 
         # Queries: Base + the lookup query
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT):
             self.getJsonResponse(UserRobotList, params=dict(permissions=True))
 
     def test_robots(self):
