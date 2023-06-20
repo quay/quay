@@ -1,3 +1,5 @@
+const { call } = require("file-loader");
+
 /**
  * Element for managing the teams of an organization.
  */
@@ -130,14 +132,14 @@ angular.module('quay').directive('teamsManager', function () {
           if($scope.permissionReportList === null) {
             $scope.permissionReportList = newPermissions;
           } else {
-            $.extend($scope.permissionReportList, newPermissions);
+            $scope.permissionReportList.push(...newPermissions);
           }
+          
+          callback();
 
           if(resp['has_additional']) {
-            loadPaginatedPermissionReport(page + 1);
+            loadPaginatedPermissionReport(page + 1, callback);
           }
-
-          callback();
         }, ApiService.errorDisplay('Could not load organiztion permission report'));
       };
 
@@ -218,6 +220,46 @@ angular.module('quay').directive('teamsManager', function () {
             }
           };
         }, errorHandler);
+      };
+
+      $scope.downloadHtml = function() {
+        var params = {
+          'orgname': $scope.organization.name,
+          'format': "html",
+        };
+
+        ApiService.getOrganizationPermissionReport(null, params).then(function(response) {
+          var blob = new Blob([response], {type: 'text/html'});
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'permission-report-' + params.orgname + '.html';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, ApiService.errorDisplay('Could not load organiztion permission report'));
+      };
+
+      $scope.downloadPdf = function() {
+        var params = {
+          'orgname': $scope.organization.name,
+          'format': "pdf",
+        };
+
+        ApiService.getOrganizationPermissionReport(null, params).then(function(response) {
+          var blob = new Blob([response], {type: 'application/pdf'});
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'permission-report-' + params.orgname + '.pdf';
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, ApiService.errorDisplay('Could not load organiztion permission report'));
       };
 
       $scope.askCreateTeam = function(teamname) {

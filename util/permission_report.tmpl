@@ -1,0 +1,260 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quay Registry Permissions Report</title>
+  <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly/patternfly.css" crossorigin="anonymous">
+  <style>
+    {% if output_format == "html" %}
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 200;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin.eot");
+      /* IE9 Compat Modes */
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin.ttf") format("truetype");
+      /* Safari, Android, iOS */
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 200;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-thin-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 300;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 300;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extralight-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 400;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 400;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-light-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 500;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-regular.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-regular.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-regular.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-regular.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-regular.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 500;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 600;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 600;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-semibold-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 700;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 700;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-bold-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 800;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 800;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-extrabold-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: normal;
+      font-weight: 900;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass";
+      font-style: italic;
+      font-weight: 900;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy-italic.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy-italic.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy-italic.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy-italic.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-webfont/overpass-heavy-italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass-mono";
+      font-style: normal;
+      font-weight: 300;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-light.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-light.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-light.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-light.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-light.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass-mono";
+      font-style: normal;
+      font-weight: 400;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-regular.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-regular.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-regular.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-regular.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-regular.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass-mono";
+      font-style: normal;
+      font-weight: 500;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-semibold.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-semibold.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-semibold.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-semibold.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-semibold.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "overpass-mono";
+      font-style: normal;
+      font-weight: 600;
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-bold.eot");
+      src: url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-bold.eot?#iefix") format("embedded-opentype"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-bold.woff2") format("woff2"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-bold.woff") format("woff"), url("https://unpkg.com/@patternfly/patternfly@2.40.13/assets/fonts/overpass-mono-webfont/overpass-mono-bold.ttf") format("truetype");
+    }
+    {% elif output_format == 'pdf' %}
+
+    @page {
+        size: letter landscape;
+        margin: 1cm;
+    }
+
+    @media print {
+      table.pf-c-table td {
+        text-align: center;
+      }
+    }
+    {% endif %}
+  </style>
+</head>
+<body>
+  <div style="margin-top: 25px; margin-bottom: 25px;">
+    <table width="100%">
+      <tr>
+        <td style="padding: 10px;" width="20%">
+          <img src="{{ logo }}" alt="Quay" width="200px">
+        </td>
+        
+        <td align="right" width="80%">
+          <div class="pf-c-content" style="margin-bottom: 10px">
+            <h1 style="color: #ddd;">ORGANIZATION PERMISSION REPORT</h1>
+          </div>
+          <table style="min-width: 500px;">
+            <tr><td>Date:</td><td>{{ report_date }}</td></tr>
+            <tr><td>Quay Registry:</td><td>{{ server_name }}</td></tr>
+            <tr><td>Organization:</td><td>{{ organization_name }}</td></tr>
+            <tr><td>Generated by:</td><td>{{ report_user }}</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+   </div>
+
+  <table class="pf-c-table pf-m-grid-md" repeat="1">
+    <thead>
+      <tr role="row">
+        <th role="columnheader">User Name</th>
+        <th role="columnheader">User Creation Date</th>
+        <th role="columnheader">Team Name</th>
+        <th role="columnheader">Team Role</th>
+        <th role="columnheader">Repository</th>
+        <th role="columnheader">Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if permissions is none or permissions|length == 0 %}
+      <tr role="row">
+        <td role="cell" colspan="6">No permission assignments found in this organization.</td>
+      </tr>
+      {% else %}
+        {% for permission in permissions %}
+        <tr role="row">
+          <td role="cell">{{ permission.user_name }}{% if not permission.user_enabled %} <small>(disabled)</small>{% endif %}</td>
+          <td role="cell">{{ permission.user_creation_date }}</td>
+          <td role="cell">{{ permission.team_name if permission.team_name is not none else '<small>(n/a)</small>' }}</td>
+          <td role="cell">{{ permission.team_role if permission.team_role is not none else '<small>(n/a)</small>' }}</td>
+          <td role="cell">
+            {% if permission.repository_name is none and permission.team_role == 'admin' %}
+            <small>(applies to all repositories)</small>
+            {% elif permission.repository_name is none and permission.team_role == 'creator' %}
+            <small>(applies to new repositories)</small>
+            {% elif permission.repository_name is none and permission.team_role == 'member' %}
+            <small>(n/a)</small>
+            {% else %}
+            {{ permission.repository_name }}
+            {% endif %}
+          </td>
+          <td role="cell">
+            {% if permission.role is none and (permission.team_role == 'admin' or permission.team_role == 'creator') %}
+            Admin
+            {% else %}
+              {% if permission.role == 'admin' %}
+              Admin
+              {% elif permission.role == 'read' %}
+              Read
+              {% elif permission.role == 'write' %}
+              Write
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+       {% endif %}
+    </tbody>
+  </table>
+</body>
+</html>

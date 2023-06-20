@@ -12,7 +12,7 @@ from data.database import (
 
 
 def organization_permission_report(
-    org: User, page, page_size, members=True, collaborators=True, include_robots=True, raise_on_error=True
+    org: User, page=None, page_size=None, members=True, collaborators=True, include_robots=True, raise_on_error=True
 ):
     """
     Creates a report of all permissions for an organization based on team membership or collaborator status. The report can be filtered to include only teams or collaborators, and can optionally exclude/include robots.
@@ -23,6 +23,12 @@ def organization_permission_report(
     if not members and not collaborators:
         if raise_on_error:
             raise ValueError("Must include either team members or collaborators.")
+        else:
+            return None
+        
+    if (page is not None) ^ (page_size is not None):
+        if raise_on_error:
+            raise ValueError("Both page and page_size must be specified.")
         else:
             return None
 
@@ -136,8 +142,12 @@ def organization_permission_report(
 
     report_query = report_query.order_by(SQL("user_name"), SQL("team_name"), SQL("repository_name"))
 
-    report_query.limit(page_size + 1).offset((page - 1) * page_size)
+    if page is not None and page_size is not None:
+        report_query = report_query.limit(page_size + 1).offset((page - 1) * page_size)
 
     permissions = [result_dict for result_dict in report_query.dicts()]
 
-    return permissions[0:page_size], len(permissions) > page_size
+    if page is not None and page_size is not None:
+        return permissions[0:page_size], len(permissions) > page_size
+    else:
+        return permissions, False

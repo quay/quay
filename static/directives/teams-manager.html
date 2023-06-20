@@ -199,6 +199,21 @@
   <div ng-show="activeView == views.PERMISSION_REPORT">
 
     <div class="co-top-bar">
+
+      <button class="btn btn-primary hidden-xs"
+              ng-if="permissionReportList.length"
+              style="margin-bottom: 10px; "
+              ng-click="downloadHtml()">
+        <i class="fa fa-download" style="margin-right: 4px;"></i> Download as HTML
+      </button>
+
+      <button class="btn btn-primary hidden-xs"
+              ng-if="permissionReportList.length"
+              style="margin-bottom: 10px; "
+              ng-click="downloadPdf()">
+        <i class="fa fa-download" style="margin-right: 4px;"></i> Download as PDF
+      </button>
+
       <span class="co-filter-box">
         <span class="page-controls" total-count="permissionReportList.length" current-page="permissionReportOptions.page" page-size="permissionsPerPage"></span>
         <span class="filter-message" ng-if="permissionReportOptions.filter">

@@ -6,7 +6,7 @@ import datetime
 import logging
 import recaptcha2
 
-from flask import request
+from flask import request, Response
 
 import features
 
@@ -54,8 +54,10 @@ from data.database import ProxyCacheConfig
 from data.billing import get_plan
 from util.names import parse_robot_username
 from util.parsing import truthy_bool
+from util.permission_report import renderPermissionReportToHtml, renderPermissionReportToPdf
 from util.request import get_request_ip
 from proxy import Proxy, UpstreamRegistryError
+from util.validation import is_json
 
 logger = logging.getLogger(__name__)
 
@@ -613,6 +615,13 @@ class OrganizationPermissionReport(ApiResource):
         default=True,
     )
     @query_param(
+        "format",
+        "The format in which the report should be generated.",
+        type=str,
+        choices=("json", "html", "pdf"),
+        default="json",
+    )
+    @query_param(
         "limit",
         "Limit to the number of results to return per page. Max 100.",
         type=int,
@@ -640,31 +649,86 @@ class OrganizationPermissionReport(ApiResource):
             except model.InvalidOrganizationException:
                 raise NotFound()
 
-            report, has_more = model.report.organization_permission_report(
-                org=org,
-                page=page,
-                page_size=limit, 
-                members=report_members, 
-                collaborators=report_collaborators,
-                include_robots=report_robots,
-                raise_on_error=False,
-            )
+            accept_header = request.headers.get("Accept", "")
 
-            report = [
-                {
-                    **permission,
-                    "user_creation_date": permission["user_creation_date"]
-                    .astimezone(datetime.timezone.utc)
-                    .strftime("%a, %d %b %Y %H:%M:%S %z"),
+            is_html = "text/html" in accept_header or parsed_args["format"] == "html"
+            is_pdf = "application/pdf" in accept_header or parsed_args["format"] == "pdf"
+
+            if is_html:
+                report, _ = model.report.organization_permission_report(
+                    org=org,
+                    page=None,
+                    page_size=None,
+                    members=report_members,
+                    collaborators=report_collaborators,
+                    include_robots=report_robots,
+                    raise_on_error=False,
+                )
+
+                html_data = renderPermissionReportToHtml(
+                    report=report,
+                    user=get_authenticated_user().username,
+                    org=orgname,
+                )
+
+                report_filename = "permission-report-%s.html" % orgname
+
+                return Response(
+                    html_data,
+                    mimetype="text/html",
+                    headers={"Content-Disposition": "attachment;filename=" + report_filename},
+                )
+
+            elif is_pdf:
+                report, _ = model.report.organization_permission_report(
+                    org=org,
+                    page=None,
+                    page_size=None,
+                    members=report_members,
+                    collaborators=report_collaborators,
+                    include_robots=report_robots,
+                    raise_on_error=False,
+                )
+
+                pdf_data = renderPermissionReportToPdf(
+                    report=report,
+                    user=get_authenticated_user().username,
+                    org=orgname,
+                )
+
+                report_filename = "permission-report-%s.pdf" % orgname
+
+                return Response(
+                    pdf_data,
+                    mimetype="application/pdf",
+                    headers={"Content-Disposition": "attachment;filename=" + report_filename},
+                )
+            else:
+                report, has_more = model.report.organization_permission_report(
+                    org=org,
+                    page=page,
+                    page_size=limit,
+                    members=report_members,
+                    collaborators=report_collaborators,
+                    include_robots=report_robots,
+                    raise_on_error=False,
+                )
+
+                report = [
+                    {
+                        **permission,
+                        "user_creation_date": permission["user_creation_date"]
+                        .astimezone(datetime.timezone.utc)
+                        .strftime("%a, %d %b %Y %H:%M:%S %z"),
+                    }
+                    for permission in report
+                ]
+
+                return {
+                    "permissions": report,
+                    "page": page,
+                    "has_additional": has_more,
                 }
-                for permission in report
-            ]
-
-            return {
-                "permissions": report,
-                "page": page,
-                "has_additional": has_more,
-            }
 
         raise Unauthorized()
 
