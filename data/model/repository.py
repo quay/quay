@@ -52,6 +52,7 @@ from data.database import (
     Tag,
     get_epoch_timestamp_ms,
 )
+from data.readreplica import ReadOnlyModeException
 from data.text import prefix_search
 from util.itertoolrecipes import take
 
@@ -781,6 +782,8 @@ def force_cache_repo_size(repo_id: int):
             # If that's the case, it should be safe to just ignore the IntegrityError,
             # as the RepositorySize should have been created with the correct value.
             logger.warning("RepositorySize for repo id %s already exists", repo_id)
-            return size
+            pass
+        except ReadOnlyModeException:
+            pass
 
     return size
