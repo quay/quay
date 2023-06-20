@@ -110,7 +110,7 @@ def test_should_fail_bad_target_in_rule(context, app):
 
 
 @pytest.mark.parametrize(
-    "rule, namespace, ip, expected",
+    "rule, namespace, ip, host, expected",
     [
         pytest.param(
             {"continent": "NA", "target": "CloudFlare"},
