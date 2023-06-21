@@ -45,7 +45,7 @@ jobs:
         sleep 60
             
         #Saving the Floating IP to login ZVSI
-        ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}'
+        ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}')
         echo $ZVSI_HOST
         echo "IP=${ZVSI_HOST}" >> $GITHUB_OUTPUT
 
