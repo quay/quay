@@ -11,11 +11,12 @@
   }]);
 
   function UserViewCtrl($scope, $routeParams, $timeout, ApiService, UserService, UIService,
-                        AvatarService, Config, ExternalLoginService, CookieService, StateService) {
+                        AvatarService, Config, Features, ExternalLoginService, CookieService, StateService) {
     var username = $routeParams.username;
 
     $scope.inReadOnlyMode = StateService.inReadOnlyMode();
     $scope.Config = Config;
+    $scope.Features = Features;
 
     $scope.showAppsCounter = 0;
     $scope.showRobotsCounter = 0;
@@ -30,6 +31,13 @@
     $scope.context = {};
 
     $scope.oidcLoginProvider = null;
+
+    $scope.disk_size_units = {
+      'KiB': 1024,
+      'MiB': 1024**2,
+      'GiB': 1024**3,
+      'TiB': 1024**4,
+    };
 
     if (Config['INTERNAL_OIDC_SERVICE_ID']) {
       ExternalLoginService.EXTERNAL_LOGINS.forEach(function(provider) {
@@ -68,6 +76,7 @@
       $scope.userResource = ApiService.getUserInformationAsResource({'username': username}).get(function(user) {
         $scope.context.viewuser = user;
         $scope.viewuser = user;
+        $scope.quota_report = user.quota_report
 
         $timeout(function() {
           // Load the repositories.
@@ -83,6 +92,29 @@
 
     // Load the user.
     loadUser();
+
+    $scope.quotaPercentConsumed = function(quota_report) {
+      if (quota_report && quota_report.configured_quota) {
+	      return Math.round(quota_report.quota_bytes / quota_report.configured_quota * 100);
+      }
+      return 0;
+    };
+
+    $scope.bytesToHumanReadableString = function(bytes) {
+      let units = Object.keys($scope.disk_size_units).reverse();
+      let result = null;
+      let byte_unit = null;
+
+      for (const key in units) {
+        byte_unit = units[key];
+        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+        if (bytes >= $scope.disk_size_units[byte_unit]) {
+          return result.toString() + " " + byte_unit;
+        }
+      }
+
+      return result.toString() + " " + byte_unit;
+    };
 
     $scope.showRobots = function() {
       $scope.showRobotsCounter++;
