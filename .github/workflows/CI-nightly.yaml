@@ -151,6 +151,7 @@ jobs:
           tox -e py39-registry    
     
     - name: Cleanup ZVSI
+      if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
       run: |
         #Delete the created ZVSI
         ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
