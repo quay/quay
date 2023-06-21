@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ['s390x']
+        platform: ['amd64','ppc64le','s390x']
     steps:
     - uses: actions/checkout@v3
     
@@ -152,7 +152,6 @@ jobs:
           tox -e py39-registry    
     
     - name: Cleanup ZVSI
-      #if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
       run: |
         #Delete the created ZVSI
         ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
