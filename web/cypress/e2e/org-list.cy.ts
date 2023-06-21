@@ -38,9 +38,7 @@ describe('Org List Page', () => {
     cy.get('#create-org-name-input').type('cypress');
     cy.get('#create-org-email-input').type('cypress@redhat.com');
     cy.get('#create-org-confirm').click({timeout: 10000});
-    // if the modal doesn't close, after timeout period,
-    // click on cancel to continue with next steps
-    cy.get('#create-org-cancel').should('exist').click();
+
     cy.get('input[name="search input"]').type('cypress');
     cy.contains('1 - 1 of 1');
 
