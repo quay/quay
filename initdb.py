@@ -1082,11 +1082,15 @@ def populate_database(minimal=False):
     __generate_repository(fourthorg, "repo5", "Fifth repo.", False, [], (5, [], "latest"))
     __generate_repository(fourthorg, "repo6", "Sixth repo.", False, [], (5, [], "latest"))
 
-    fourthcreators = model.team.create_team("creators", fourthorg, "creator", "Creators of orgrepo.")
+    fourthcreators = model.team.create_team(
+        "creators", fourthorg, "creator", "Creators of orgrepo."
+    )
     fourthwriters = model.team.create_team("writers", fourthorg, "member", "Writers of orgrepo.")
     fourthreaders = model.team.create_team("readers", fourthorg, "member", "Readers of orgrepo.")
     fourthadmins = model.team.create_team("admins", fourthorg, "admin", "Admins of orgrepo.")
-    fourthnobodies = model.team.create_team("nobodies", fourthorg, "member", "No permissions actually.")
+    fourthnobodies = model.team.create_team(
+        "nobodies", fourthorg, "member", "No permissions actually."
+    )
 
     collective_robot, _ = model.user.create_robot("robot1", fourthorg)
 
@@ -1098,15 +1102,31 @@ def populate_database(minimal=False):
     model.team.add_user_to_team(new_user_5, fourthadmins)
     model.team.add_user_to_team(new_user_5, fourthnobodies)
 
-    model.permission.set_team_repo_permission(fourthwriters.name, fourthorg.username, "repo1", "write")
-    model.permission.set_team_repo_permission(fourthwriters.name, fourthorg.username, "repo2", "write")
-    model.permission.set_team_repo_permission(fourthreaders.name, fourthorg.username, "repo3", "read")
-    model.permission.set_team_repo_permission(fourthreaders.name, fourthorg.username, "repo4", "read")
-    model.permission.set_team_repo_permission(fourthadmins.name, fourthorg.username, "repo5", "admin")
-    model.permission.set_team_repo_permission(fourthadmins.name, fourthorg.username, "repo6", "admin")
+    model.permission.set_team_repo_permission(
+        fourthwriters.name, fourthorg.username, "repo1", "write"
+    )
+    model.permission.set_team_repo_permission(
+        fourthwriters.name, fourthorg.username, "repo2", "write"
+    )
+    model.permission.set_team_repo_permission(
+        fourthreaders.name, fourthorg.username, "repo3", "read"
+    )
+    model.permission.set_team_repo_permission(
+        fourthreaders.name, fourthorg.username, "repo4", "read"
+    )
+    model.permission.set_team_repo_permission(
+        fourthadmins.name, fourthorg.username, "repo5", "admin"
+    )
+    model.permission.set_team_repo_permission(
+        fourthadmins.name, fourthorg.username, "repo6", "admin"
+    )
 
-    model.permission.set_user_repo_permission(new_user_2.username, fourthorg.username, "repo6", "write")
-    model.permission.set_user_repo_permission(collective_robot.username, fourthorg.username, "repo6", "write")
+    model.permission.set_user_repo_permission(
+        new_user_2.username, fourthorg.username, "repo6", "write"
+    )
+    model.permission.set_user_repo_permission(
+        collective_robot.username, fourthorg.username, "repo6", "write"
+    )
 
     today = datetime.today()
     week_ago = today - timedelta(6)

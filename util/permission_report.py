@@ -30,7 +30,9 @@ def renderPermissionReportToHtml(report, user, org, format="html"):
     app_server_name = app.config.get("SERVER_HOSTNAME", "")
     url_scheme = app.config.get("PREFERRED_URL_SCHEME", "http") + "://"
 
-    app_logo_path = url_scheme + app_server_name + app_logo if app_logo.startswith("/") else app_logo
+    app_logo_path = (
+        url_scheme + app_server_name + app_logo if app_logo.startswith("/") else app_logo
+    )
 
     report_data = {
         "logo": app_logo_path,

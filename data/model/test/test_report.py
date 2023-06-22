@@ -36,9 +36,13 @@ def test_organization_permission_report(members, collaborators, robots, initiali
 
     if not members and not collaborators:
         with pytest.raises(ValueError):
-            organization_permission_report(org, members, collaborators, robots, page=1, page_size=100)
+            organization_permission_report(
+                org, members, collaborators, robots, page=1, page_size=100
+            )
     else:
-        report = organization_permission_report(org, members, collaborators, robots, page=1, page_size=100)
+        report = organization_permission_report(
+            org, members, collaborators, robots, page=1, page_size=100
+        )
 
         assert len(report) > 0
 
@@ -47,15 +51,13 @@ def test_organization_permission_report(members, collaborators, robots, initiali
                 [permission["user_name"] == "thecollective+robot1" for permission in report]
             )
         else:
-            assert any(
-                [permission["user_name"] == "thecollective+robot1" for permission in report]
-            )
+            assert any([permission["user_name"] == "thecollective+robot1" for permission in report])
 
         if members:
             # new_user1 is in team owners (of type admins) which has no permissions yet, but it should  appear in the report because the admin role can create/delete/modify any repo
             assert any(
                 [
-                    permission["user_name"] == "devtable" 
+                    permission["user_name"] == "devtable"
                     and permission["team_name"] is not None
                     and permission["team_name"] == "owners"
                     for permission in report
@@ -83,7 +85,7 @@ def test_organization_permission_report(members, collaborators, robots, initiali
                 ]
             )
 
-             # new_user5 is in team nobodies (of type member) that has no permissions yet, it should not appear in the report
+            # new_user5 is in team nobodies (of type member) that has no permissions yet, it should not appear in the report
             assert not any(
                 [
                     permission["user_name"] == "unverified"

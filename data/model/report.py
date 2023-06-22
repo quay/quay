@@ -12,7 +12,13 @@ from data.database import (
 
 
 def organization_permission_report(
-    org: User, page=None, page_size=None, members=True, collaborators=True, include_robots=True, raise_on_error=True
+    org: User,
+    page=None,
+    page_size=None,
+    members=True,
+    collaborators=True,
+    include_robots=True,
+    raise_on_error=True,
 ):
     """
     Creates a report of all permissions for an organization based on team membership or collaborator status. The report can be filtered to include only teams or collaborators, and can optionally exclude/include robots.
@@ -25,7 +31,7 @@ def organization_permission_report(
             raise ValueError("Must include either team members or collaborators.")
         else:
             return None
-        
+
     if (page is not None) ^ (page_size is not None):
         if raise_on_error:
             raise ValueError("Both page and page_size must be specified.")
@@ -78,8 +84,8 @@ def organization_permission_report(
         .where(User.organization == False)
         .where(Organization.username == org.username)
         .where(
-                (Repository.id.is_null(True) & (TeamRole.name != "member")) | 
-                (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+            (Repository.id.is_null(True) & (TeamRole.name != "member"))
+            | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
         )
     )
 
@@ -125,8 +131,7 @@ def organization_permission_report(
         .where(User.organization == False)
         .where(Organization.username == org.username)
         .where(
-                Repository.id.is_null(True) | 
-                (Repository.state != RepositoryState.MARKED_FOR_DELETION)
+            Repository.id.is_null(True) | (Repository.state != RepositoryState.MARKED_FOR_DELETION)
         )
     )
 
