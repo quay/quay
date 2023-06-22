@@ -216,6 +216,26 @@
         });
     };
 
+    $scope.downloadPermissionReportPdf = function(org) {
+      var params = {
+        'orgname': org.name,
+        'format': "pdf",
+      };
+
+      ApiService.getOrganizationPermissionReport(null, params).then(function(response) {
+        var blob = new Blob([response], {type: 'application/pdf'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'permission-report-' + org.name + '.pdf';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, ApiService.errorDisplay('Could not load organiztion permission report'));
+    };
+
     $scope.askRenameOrganization = function(org) {
       bootbox.prompt('Enter a new name for the organization:', function(newName) {
         if (!newName) { return; }
