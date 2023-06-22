@@ -638,6 +638,10 @@ def populate_database(minimal=False):
     outside_org.verified = True
     outside_org.save()
 
+    noaccessuser = model.user.create_user("noaccessuser", "password", "noaccess@nothanks.com")
+    noaccessuser.verified = True
+    noaccessuser.save()
+
     model.notification.create_notification(
         "test_notification",
         new_user_1,
