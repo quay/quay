@@ -37,11 +37,21 @@ def test_organization_permission_report(members, collaborators, robots, initiali
     if not members and not collaborators:
         with pytest.raises(ValueError):
             organization_permission_report(
-                org, members, collaborators, robots, page=1, page_size=100
+                org=org,
+                members=members,
+                collaborators=collaborators,
+                include_robots=robots,
+                page=1,
+                page_size=100,
             )
     else:
-        report = organization_permission_report(
-            org, members, collaborators, robots, page=1, page_size=100
+        report, _ = organization_permission_report(
+            org=org,
+            members=members,
+            collaborators=collaborators,
+            include_robots=robots,
+            page=1,
+            page_size=100,
         )
 
         assert len(report) > 0
