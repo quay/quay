@@ -20,6 +20,7 @@ _DEFAULT_KEEPALIVE_IDLE = 10
 _DEFAULT_KEEPALIVE_INTERVAL = 5
 _DEFAULT_KEEPALIVE_PROBES = 3
 
+
 class LDAPConnectionBuilder(object):
     def __init__(
         self,
