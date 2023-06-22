@@ -8,7 +8,6 @@ from ldap.filter import filter_format, escape_filter_chars
 from collections import namedtuple
 from data.users.federated import FederatedUsers, UserInformation
 from util.itertoolrecipes import take
-from data.model.user import get_nonrobot_user, find_user_by_email
 
 logger = logging.getLogger(__name__)
 
@@ -257,14 +256,9 @@ class LDAPUsers(FederatedUsers):
         suffix="",
         filter_superusers=False,
         filter_restricted_users=False,
-        login=False,
     ):
         if not username_or_email:
             return (None, "Empty username/email")
-
-        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
-        if all([dbuser == None, dbmail == None, not login]):
-            return (None, "Robot account")
 
         # Verify the admin connection works first. We do this here to avoid wrapping
         # the entire block in the INVALID CREDENTIALS check.
@@ -302,17 +296,12 @@ class LDAPUsers(FederatedUsers):
             return (with_dns, None)
 
     def _ldap_single_user_search(
-        self, username_or_email, filter_superusers=False, filter_restricted_users=False, login=False
+        self, username_or_email, filter_superusers=False, filter_restricted_users=False
     ):
-        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
-        if all([dbuser == None, dbmail == None, not login]):
-            return (None, "Robot account")
-
         with_dns, err_msg = self._ldap_user_search(
             username_or_email,
             filter_superusers=filter_superusers,
             filter_restricted_users=filter_restricted_users,
-            login=login,
         )
         if err_msg is not None:
             return (None, err_msg)
@@ -451,7 +440,7 @@ class LDAPUsers(FederatedUsers):
         if not password:
             return (None, "Anonymous binding not allowed.")
 
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email, login=True)
+        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
         if found_user is None:
             return (None, err_msg)
 
