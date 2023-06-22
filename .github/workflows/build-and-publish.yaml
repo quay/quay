@@ -19,15 +19,14 @@ jobs:
       REGISTRY: ${{ secrets.REGISTRY || 'quay.io/projectquay' }}
       REPO_NAME: ${{ github.event.repository.name }}
       TAG_SUFFIX: -unstable
-      ZVSI_FP_NAME: quay-floating
-      ZVSI_KEY_NAME: quay-key
-      ZVSI_INSTANCE_NAME: quay-zvsi
-      ZVSI_VPC: r018-b72c601c-c1d9-42cf-af66-c0f6da4ab982
-      ZVSI_ZONE_NAME: eu-gb-2
+      ZVSI_FP_NAME: quay-floating-build-${{ github.run_id }}
+      ZVSI_INSTANCE_NAME: quay-zvsi-build-${{ github.run_id }}
+      ZVSI_VPC: r022-5a8a5bd4-6bbb-4688-a6b4-ef314c17c9f8
+      ZVSI_ZONE_NAME: jp-tok-1
       ZVSI_PROFILE_NAME: bz2-4x16
-      ZVSI_SUBNET: 0797-88f93aad-3acd-4c8e-be10-8dc6d41bc9b9
-      ZVSI_IMAGE: r018-acadf3d4-f340-4e13-add0-49ce45e8a778
-      ZVSI_KEY: r018-ee997015-b88c-4500-874c-71f2175a8284
+      ZVSI_SUBNET: 02e7-56b5d8b2-d425-4cc2-b242-dd4d2955648d
+      ZVSI_IMAGE: r022-93f35a67-8f06-463d-882f-7300519acdf9
+      ZVSI_KEY: r022-45ce88a7-0f27-4ed1-b9b9-9eb0f7becbc8
       ZVSI_RG_ID: 2e818eb391df4774977812b50ff0e8c9
     runs-on: 'ubuntu-latest'
     steps:
@@ -41,17 +40,15 @@ jobs:
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "version=${BRANCH_NAME/${{ env.BRANCH_PREFIX }}/}" >> $GITHUB_OUTPUT
       
-      - name: Install IBMCLI
-        run: curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
-          
-      - name: IBM Cloud Login
-        run: ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r eu-gb 
-          
-      - name: Install VPC CLI plug-in
-        run: ibmcloud plugin install vpc-infrastructure
-          
+      - name: Install IBMCLI, VPC CLI Plug-in && Login IBMCloud
+        run: |
+          curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
+          ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r jp-tok -g $ZVSI_RG_ID 
+          ibmcloud target
+          ibmcloud plugin install vpc-infrastructure
+
       - name: Creation of ZVSI
-        id: ZVSI
+        id: CREATE_ZVSI
         run: |
           #creation of zvsi
           ibmcloud is instance-create $ZVSI_INSTANCE_NAME $ZVSI_VPC $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME $ZVSI_SUBNET --image $ZVSI_IMAGE --keys $ZVSI_KEY --resource-group-id $ZVSI_RG_ID
@@ -59,13 +56,35 @@ jobs:
           ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id $ZVSI_RG_ID --in $ZVSI_INSTANCE_NAME
           #Bouding the Floating ip to the ZVSI
           ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic primary --in $ZVSI_INSTANCE_NAME
-          sleep 20
+          sleep 60
             
           #Saving the Floating IP to login ZVSI
           ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}')
           echo $ZVSI_HOST
           echo "IP=${ZVSI_HOST}" >> $GITHUB_OUTPUT
+
+      - name: Status of ZVSI
+        if: ${{ always() }}
+        id: ZVSI
+        run: |
+          zvsi_check=$(ibmcloud is ins | awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
+          fp_check=$(ibmcloud is ips | awk '/'$ZVSI_FP_NAME'/{print $4}')
+          while [[ $zvsi_check == "starting" || $zvsi_check == "running" ]]
+          do
+            zvsi_check=$(ibmcloud is ins | awk '/'$ZVSI_INSTANCE_NAME'/{print $3}')
+            if [[ $zvsi_check == "failed" ]]; then
+              echo "ZVSI_CHK=failed" >>$GITHUB_OUTPUT; break
+            elif [[ $zvsi_check == "running" ]]; then
+              echo "ZVSI_CHK=success" >>$GITHUB_OUTPUT; break
+            elif [[ -z "$zvsi_check" ]]; then
+             echo "ZVSI is not created"; break
+            fi
+          done
           
+          if [[ -z "$fp_check" ]]; then
+            echo "FP_CHK=NULL" >>$GITHUB_OUTPUT
+          fi
+
       - name: Setup SSH config for builders
         env:
           BUILDER_AARCH64_SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
@@ -74,7 +93,7 @@ jobs:
           BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
           BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
           BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
-          BUILDER_S390X_SSH_HOST: ${{ steps.ZVSI.outputs.IP }}
+          BUILDER_S390X_SSH_HOST: ${{ steps.CREATE_ZVSI.outputs.IP }}
           BUILDER_S390X_SSH_KEY: ${{ secrets.ZVSI_PR_KEY }}
         run: |
           mkdir ~/.ssh
@@ -129,7 +148,7 @@ jobs:
               platforms: linux/ppc64le
             - endpoint: ssh://builder-s390x
               platforms: linux/s390x
-              
+
       - name: Login to Quay.io
         uses: docker/login-action@v1
         with:
@@ -146,14 +165,17 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
-      
-      - name: Post Build-and-publish-s390x
-        if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
+
+      - name: Post Build-and-publish-ZVSI
+        if: ${{ always() && (steps.ZVSI.outputs.ZVSI_CHK == 'success' || steps.ZVSI.outputs.ZVSI_CHK == 'failed') }}
         run: |
           #Delete the created ZVSI
           ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
           sleep 20
-          
+
+      - name: Post Build-and-Publish-FP-ZVSI
+        if: ${{ always() && (steps.ZVSI.outputs.FP_CHK != 'NULL') }}
+        run: |
           #Release the created FP
           ibmcloud is floating-ip-release $ZVSI_FP_NAME --force
 
