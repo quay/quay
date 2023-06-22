@@ -371,6 +371,7 @@ SECURITY_TESTS: List[
     (UserLogs, "GET", None, None, "devtable", 200),
     (UserLogs, "GET", None, None, "freshuser", 200),
     (UserLogs, "GET", None, None, "reader", 200),
+    (OrganizationPermissionReport, "GET", {}, {}, "devtable", 401),
     (OrganizationList, "POST", None, {"name": "KSIS", "email": "DHVZ"}, None, 401),
     (OrganizationList, "POST", None, {"name": "KSIS", "email": "DHVZ"}, "devtable", 400),
     (OrganizationList, "POST", None, {"name": "KSIS", "email": "DHVZ"}, "freshuser", 400),
