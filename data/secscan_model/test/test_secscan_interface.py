@@ -54,9 +54,9 @@ def test_load_security_information(indexed_v2, indexed_v4, expected_status, init
 @pytest.mark.parametrize(
     "next_token, expected_next_token, expected_error",
     [
-        (None, V4ScanToken(62), None),
-        (V4ScanToken(None), V4ScanToken(62), AssertionError),
-        (V4ScanToken(1), V4ScanToken(62), None),
+        (None, V4ScanToken(56), None),
+        (V4ScanToken(None), V4ScanToken(56), AssertionError),
+        (V4ScanToken(1), V4ScanToken(56), None),
     ],
 )
 def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):

@@ -3,7 +3,7 @@ from data import model
 from test.fixtures import *
 
 
-NO_ACCESS_USER = "noaccessuser"
+NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
 ADMIN_ACCESS_USER = "devtable"
 PUBLIC_USER = "public"
