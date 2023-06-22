@@ -222,7 +222,7 @@ angular.module('quay').directive('teamsManager', function () {
         }, errorHandler);
       };
 
-      $scope.downloadHtml = function() {
+      $scope.downloadPermissionReportHtml = function() {
         var params = {
           'orgname': $scope.organization.name,
           'format': "html",
@@ -242,7 +242,7 @@ angular.module('quay').directive('teamsManager', function () {
         }, ApiService.errorDisplay('Could not load organiztion permission report'));
       };
 
-      $scope.downloadPdf = function() {
+      $scope.downloadPermissionReportPdf = function() {
         var params = {
           'orgname': $scope.organization.name,
           'format': "pdf",
