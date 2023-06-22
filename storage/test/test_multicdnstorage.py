@@ -110,23 +110,39 @@ def test_should_fail_bad_target_in_rule(context, app):
 
 
 @pytest.mark.parametrize(
-    "rule, namespace, ip, expected",
+    "rule, namespace, ip, host, expected",
     [
         pytest.param(
-            {"continent": "NA", "target": "CloudFlare"}, "test", "8.8.8.8", CloudFlareS3Storage
+            {"continent": "NA", "target": "CloudFlare"},
+            "test",
+            "8.8.8.8",
+            None,
+            CloudFlareS3Storage,
         ),
         pytest.param(
-            {"namespace": "test", "target": "CloudFlare"}, "test", "8.8.8.8", CloudFlareS3Storage
+            {"namespace": "test", "target": "CloudFlare"},
+            "test",
+            "8.8.8.8",
+            "quay.io",
+            CloudFlareS3Storage,
+        ),
+        pytest.param(
+            {"namespace": "test", "host": "quay.io", "target": "CloudFlare"},
+            "test",
+            "8.8.8.8",
+            "quay.io",
+            CloudFlareS3Storage,
         ),
         pytest.param(
             {"continent": "AF", "namespace": "test", "target": "CloudFlare"},
             "test",
             "8.8.8.8",
+            None,
             CloudFrontedS3Storage,
         ),  # no rule match
     ],
 )
-def test_rule_match(rule, namespace, ip, expected):
+def test_rule_match(rule, namespace, ip, host, expected):
     test_config = json.loads(_TEST_CONFIG_JSON)
     test_config["rules"] = [rule]
 
@@ -134,5 +150,5 @@ def test_rule_match(rule, namespace, ip, expected):
 
     engine = MultiCDNStorage(context, **test_config)
 
-    provider = engine.find_matching_provider(namespace, ip)
+    provider = engine.find_matching_provider(namespace, ip, host)
     assert isinstance(provider, expected)
