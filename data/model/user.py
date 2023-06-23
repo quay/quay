@@ -66,7 +66,7 @@ from util.validation import (
     validate_username,
     validate_email,
     validate_password,
-    INVALID_PASSWORD_MESSAGE,
+    INVALID_PASSWORD_MESSAGE, validate_robot_token,
 )
 
 logger = logging.getLogger(__name__)
@@ -327,6 +327,9 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
         raise InvalidRobotException(
             "The name for the robot '%s' is invalid: %s" % (robot_shortname, username_issue)
         )
+
+    if token and not validate_robot_token(token):
+        raise InvalidRobotException("Invalid token for robot")
 
     username = format_robot_username(parent.username, robot_shortname)
 

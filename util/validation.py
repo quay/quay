@@ -57,6 +57,16 @@ def validate_password(password):
         return False
     return len(password) > 7
 
+def validate_robot_token(token):
+    if len(token) != 64:
+        return False
+
+    for t in token:
+        if t not in string.ascii_uppercase + string.digits:
+            return False
+
+    return True
+
 
 def _gen_filler_chars(num_filler_chars):
     if num_filler_chars == 0:
