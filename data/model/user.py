@@ -67,6 +67,7 @@ from util.validation import (
     validate_email,
     validate_password,
     INVALID_PASSWORD_MESSAGE,
+    validate_robot_token,
 )
 
 logger = logging.getLogger(__name__)
@@ -321,12 +322,15 @@ def update_enabled(user, set_enabled):
     user.save()
 
 
-def create_robot(robot_shortname, parent, description="", unstructured_metadata=None):
+def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
     (username_valid, username_issue) = validate_username(robot_shortname)
     if not username_valid:
         raise InvalidRobotException(
             "The name for the robot '%s' is invalid: %s" % (robot_shortname, username_issue)
         )
+
+    if token and not validate_robot_token(token):
+        raise InvalidRobotException("Invalid token for robot")
 
     username = format_robot_username(parent.username, robot_shortname)
 
@@ -343,7 +347,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
     try:
         with db_transaction():
             created = User.create(username=username, email=str(uuid.uuid4()), robot=True)
-            token = random_string_generator(length=64)()
+            token = token if token else random_string_generator(length=64)()
             RobotAccountToken.create(robot_account=created, token=token, fully_migrated=True)
             FederatedLogin.create(
                 user=created, service=service, service_ident="robot:%s" % created.id
