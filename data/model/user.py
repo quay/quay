@@ -66,7 +66,8 @@ from util.validation import (
     validate_username,
     validate_email,
     validate_password,
-    INVALID_PASSWORD_MESSAGE, validate_robot_token,
+    INVALID_PASSWORD_MESSAGE,
+    validate_robot_token,
 )
 
 logger = logging.getLogger(__name__)

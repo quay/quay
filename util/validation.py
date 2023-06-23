@@ -57,6 +57,7 @@ def validate_password(password):
         return False
     return len(password) > 7
 
+
 def validate_robot_token(token):
     if len(token) != 64:
         return False
