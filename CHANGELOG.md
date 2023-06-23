@@ -3,9 +3,15 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.8.10"></a>
+## [v3.8.10] - 2023-06-20
+### Db
+- [a7cfd6ee](https://github.com/quay/quay/commit/a7cfd6eeeed5f8081beb4251745b9057de8f9a2a): handle readonly mode when updating repo size cache (PROJQUAY-4854) ([#1930](https://github.com/quay/quay/issues/1930))
+
 <a name="v3.8.9"></a>
-## [v3.8.9] - 2023-06-01
+## [v3.8.9] - 2023-06-07
 ### Chore
+- [45487213](https://github.com/quay/quay/commit/45487213a2a55dc29eca624663dc3c1bd3ebf1c7): v3.8.9 changelog bump (PROJQUAY-5607) ([#1946](https://github.com/quay/quay/issues/1946))
 - [3747f70e](https://github.com/quay/quay/commit/3747f70e52259b4b415aaff87b40767c84d4e3a0): update ppc64le builder ([#1911](https://github.com/quay/quay/issues/1911))
 - [b80166b0](https://github.com/quay/quay/commit/b80166b02352e035e3b90c6fd69b586a703d2f94): Use external builders ([#1910](https://github.com/quay/quay/issues/1910))
 ### Proxy
@@ -919,7 +925,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.9...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.10...HEAD
+[v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
 [v3.8.9]: https://github.com/quay/quay/compare/v3.8.8...v3.8.9
 [v3.8.8]: https://github.com/quay/quay/compare/v3.8.7...v3.8.8
 [v3.8.7]: https://github.com/quay/quay/compare/v3.8.6...v3.8.7
