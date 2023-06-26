@@ -1,21 +1,25 @@
-import pytest
-
-from mock import patch, Mock
-
-from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformationLookupResult
-from data.secscan_model.secscan_v4_model import (
-    V4SecurityScanner,
-    IndexReportState,
-    ScanToken as V4ScanToken,
-)
-from data.secscan_model import secscan_model
-from data.registry_model import registry_model
-from data.model.oci import shared
-from data.database import ManifestSecurityStatus, IndexerVersion, IndexStatus, ManifestLegacyImage
-
 from test.fixtures import *
 
+import pytest
+from mock import Mock, patch
+
 from app import app, instance_keys, storage
+from data.database import (
+    IndexerVersion,
+    IndexStatus,
+    ManifestLegacyImage,
+    ManifestSecurityStatus,
+)
+from data.registry_model import registry_model
+from data.model.oci import shared
+from data.secscan_model import secscan_model
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformationLookupResult,
+)
+from data.secscan_model.secscan_v4_model import IndexReportState
+from data.secscan_model.secscan_v4_model import ScanToken as V4ScanToken
+from data.secscan_model.secscan_v4_model import V4SecurityScanner
 
 
 @pytest.mark.parametrize(
@@ -78,6 +82,7 @@ def test_perform_indexing(next_token, expected_next_token, expected_error, initi
 
     def secscan_api(*args, **kwargs):
         api = Mock()
+        api.vulnerability_report.return_value = {"vulnerabilities": []}
         api.state.return_value = {"state": "abc"}
         api.index.return_value = ({"err": None, "state": IndexReportState.Index_Finished}, "abc")
 

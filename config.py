@@ -1,10 +1,10 @@
-from typing import Optional, Dict, Any, List, Union, Tuple
+import os.path
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
-import os.path
 import requests
 
-from _init import ROOT_DIR, CONF_DIR
+from _init import CONF_DIR, ROOT_DIR
 
 
 def build_requests_session():
@@ -826,7 +826,7 @@ class DefaultConfig(ImmutableConfig):
     CORS_ORIGIN = "*"
 
     # Feature Flag: Enables notifications about vulnerabilities to be sent for new pushes
-    FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = False
+    FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = True
 
     FEATURE_SUPERUSERS_FULL_ACCESS = False
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
