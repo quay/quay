@@ -6,6 +6,7 @@ on:
     inputs: {}
 jobs:
   unit:
+    if: github.repository == 'quay/quay'
     name: Run all Test
     runs-on: ubuntu-20.04
     env:
