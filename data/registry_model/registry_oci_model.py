@@ -12,8 +12,6 @@ from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
 from data.database import (
     db_transaction,
-    Image,
-    IMAGE_NOT_SCANNED_ENGINE_VERSION,
     db_disallow_replica_use,
 )
 from data.registry_model.interface import RegistryDataInterface
@@ -551,16 +549,11 @@ class OCIModel(RegistryDataInterface):
         re-indexed.
         """
         with db_disallow_replica_use():
-            # TODO: change from using the Image row once we've moved all security info into MSS.
             manifest_id = manifest_or_legacy_image.as_manifest()._db_id
-            image = oci.shared.get_legacy_image_for_manifest(manifest_id)
-            if image is None:
-                return None
+            manifestsecuritystatus = oci.shared.get_manifestsecuritystatus_for_manifest(manifest_id)
 
-                assert image
-                image.security_indexed = False
-                image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
-                image.save()
+            if manifestsecuritystatus is not None:
+                manifestsecuritystatus.delete_instance()
 
     def list_manifest_layers(self, manifest, storage, include_placements=False):
         try:

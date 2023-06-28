@@ -416,7 +416,6 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
     assert remote_digest not in manifest.local_blob_digests
 
     assert manifest.has_remote_layer
-    assert not manifest.has_legacy_image
     assert manifest.get_schema1_manifest("foo", "bar", "baz", None) is None
 
     # Write the manifest.
