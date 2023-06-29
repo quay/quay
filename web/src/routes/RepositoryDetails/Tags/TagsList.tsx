@@ -143,6 +143,8 @@ export default function TagsList(props: TagsProps) {
             selectAllTags={selectAllTags}
             selectedTags={selectedTags}
             selectTag={selectTag}
+            loadTags={loadTags}
+            repoDetails={props.repoDetails}
           />
         </ErrorBoundary>
         <PanelFooter>

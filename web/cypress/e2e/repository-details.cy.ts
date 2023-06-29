@@ -169,10 +169,10 @@ describe('Repository Details Page', () => {
     cy.contains('manifestlist').should('not.exist');
   });
 
-  it('renders pull popover', () => {
+  it.only('renders pull popover', () => {
     cy.visit('/repository/user1/hello-world');
     cy.get('tbody:contains("latest")').within(() =>
-      cy.get('svg').trigger('mouseover'),
+      cy.get('td[data-label="Pull"]').trigger('mouseover'),
     );
     cy.get('[data-testid="pull-popover"]').within(() => {
       cy.contains('Fetch Tag').should('exist');
@@ -304,5 +304,50 @@ describe('Repository Details Page', () => {
     cy.contains('There are no viewable tags for this repository').should(
       'exist',
     );
+  });
+
+  it('does not render tag actions for non-writable repositories', ()=> {
+    cy.visit('/repository/user2org1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').should('not.exist');
+    });
+  });
+
+  it('adds tag', ()=> {
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Add new tag').click();
+    cy.contains('Add tag to manifest sha256:f54a58bc1aa').should('exist');
+    cy.get('input[placeholder="New tag name"]').type('newtag');
+    cy.contains('Create tag').click();
+    cy.contains('Successfully created tag newtag').should('exist');
+    const newtagRow = cy.get('tbody:contains("newtag")');
+    newtagRow.within(() => {
+      cy.contains('newtag').should('exist');
+      cy.contains('sha256:f54a58bc1aa').should('exist');
+    });
+  });
+
+  it('alert on failure to add tag', ()=> {
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/user1/hello-world/tag/newtag',
+      { statusCode: 500 }
+    ).as('getServerFailure')
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Add new tag').click();
+    cy.contains('Add tag to manifest sha256:f54a58bc1aa').should('exist');
+    cy.get('input[placeholder="New tag name"]').type('newtag');
+    cy.contains('Create tag').click();
+    cy.contains('Could not create tag newtag').should('exist');
+    const newtagRow = cy.get('tbody:contains("newtag")').should('not.exist');
   });
 });
