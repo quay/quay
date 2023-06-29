@@ -1,3 +1,4 @@
+import functools
 import itertools
 import logging
 import urllib
@@ -57,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
+TAG_LIMIT = 100
 
 IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(  # type: ignore[call-arg]
     "IndexFinished", "IndexError"
@@ -454,23 +456,27 @@ class V4SecurityScanner(SecurityScannerInterface):
                             import notifications
 
                             keys = list(found_vulnerabilities)
+                            tag_names = list(registry_model.tag_names_for_manifest(manifest, None))
                             for key in keys:
                                 vuln = found_vulnerabilities[key]
 
-                                event_data = {
-                                    "vulnerable_index_report_created": "true",
-                                    "vulnerability": {
-                                        "id": vuln["id"],
-                                        "description": vuln["description"],
-                                        "link": vuln["links"],
-                                        "priority": vuln["severity"],
-                                        "has_fix": bool(vuln["fixed_in_version"]),
-                                    },
-                                }
+                                for i in range(0, len(tag_names), TAG_LIMIT):
 
-                                notifications.spawn_notification(
-                                    manifest.repository, "vulnerability_found", event_data
-                                )
+                                    event_data = {
+                                        "tags": list(tag_names[i : i + TAG_LIMIT]),
+                                        "vulnerable_index_report_created": "true",
+                                        "vulnerability": {
+                                            "id": vuln["id"],
+                                            "description": vuln["description"],
+                                            "link": vuln["links"],
+                                            "priority": vuln["severity"],
+                                            "has_fix": bool(vuln["fixed_in_version"]),
+                                        },
+                                    }
+
+                                    notifications.spawn_notification(
+                                        manifest.repository, "vulnerability_found", event_data
+                                    )
 
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
