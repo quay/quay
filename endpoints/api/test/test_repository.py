@@ -1,13 +1,14 @@
-from test.fixtures import *
-
 import pytest
 from mock import ANY, MagicMock, patch
 
 from data import database, model
+from data.model import vulnerabilitysuppression
+from data.registry_model import registry_model
 from endpoints.api.repository import Repository, RepositoryList, RepositoryTrust
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -208,3 +209,81 @@ def test_delete_repo(initialized_db, app):
         marker = database.DeletedRepository.get()
         assert marker.original_name == "simple"
         assert marker.queue_id
+
+
+def test_repository_vulnerability_suppression(client):
+    with client_with_identity("devtable", client) as cl:
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        suppressed_vulnerabilities = ["CVE-2019-1234"]
+
+        suppression = vulnerabilitysuppression.create_vulnerability_suppression_for_repo(
+            repo_ref, suppressed_vulnerabilities
+        )
+
+        assert suppression.vulnerability_names == suppressed_vulnerabilities
+
+        params = {"repository": "devtable/simple"}
+
+        # check that we are getting the expected suppressed vulnerabilities
+        result = conduct_api_call(cl, Repository, "GET", params, None, 200)
+
+        assert result.json["suppressed_vulnerabilities"] == suppressed_vulnerabilities
+
+        # check that we can set new suppressed vulnerabilities
+
+        new_vulnerability_suppression = ["CVE-2019-1234", "CVE-2019-5678"]
+
+        params = {"repository": "devtable/simple"}
+
+        body = {"suppressed_vulnerabilities": new_vulnerability_suppression}
+
+        result = conduct_api_call(cl, Repository, "PUT", params, body, 200)
+
+        assert result.status_code == 200
+        assert result.json["success"] == True
+        assert (
+            vulnerabilitysuppression.get_vulnerability_suppression_for_repo(repo_ref)
+            == new_vulnerability_suppression
+        )
+
+
+def test_repository_vulnerability_suppression_nonexistent(client):
+    with client_with_identity("devtable", client) as cl:
+        # try to set suppressed vulnerabilities for a repository that doesn't exist
+
+        params = {"repository": "devtable/doesnotexist"}
+
+        body = {"suppressed_vulnerabilities": ["CVE-2019-1234", "CVE-2019-5678"]}
+
+        result = conduct_api_call(cl, Repository, "PUT", params, body, 404)
+
+        assert result.status_code == 404
+
+        # try to get suppressed vulnerabilities for a repository that doesn't exist
+
+        result = conduct_api_call(cl, Repository, "GET", params, None, 404)
+
+        assert result.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "suppressed_vulns",
+    [
+        (" CVE-2019-1234 ",),
+        (" CVE-2019-1234",),
+        ("CVE-2019-1234 ",),
+        (" ",),
+        ("",),
+    ],
+)
+def test_repository_vulnerability_suppression_invalid(client, suppressed_vulns):
+    with client_with_identity("devtable", client) as cl:
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+
+        params = {"repository": "devtable/simple"}
+
+        body = {"suppressed_vulnerabilities": suppressed_vulns}
+
+        result = conduct_api_call(cl, Repository, "PUT", params, body, 400)
+
+        assert result.status_code == 400

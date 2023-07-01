@@ -103,7 +103,7 @@ class ApplicationRepository(
 class ImageRepositoryRepository(
     namedtuple(
         "NonApplicationRepository",
-        ["repository_base_elements", "tags", "counts", "badge_token", "trust_enabled", "state"],
+        ["repository_base_elements", "tags", "counts", "badge_token", "trust_enabled", "state", "repo_id"],
     )
 ):
     """

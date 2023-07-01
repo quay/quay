@@ -148,6 +148,8 @@ class InvalidNamespaceQuotaType(DataModelException):
 class UnsupportedQuotaSize(DataModelException):
     pass
 
+class InvalidVulnerabilitySuppression(DataModelException):
+    pass
 
 class OrgSubscriptionBindingAlreadyExists(DataModelException):
     pass
@@ -227,4 +229,7 @@ from data.model import (
     team,
     token,
     user,
+    proxy_cache,
+    namespacequota,
+    vulnerabilitysuppression,
 )

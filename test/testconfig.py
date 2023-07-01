@@ -61,6 +61,7 @@ class TestConfig(DefaultConfig):
     FEATURE_SECURITY_SCANNER = True
     FEATURE_SECURITY_NOTIFICATIONS = True
     SECURITY_SCANNER_V4_ENDPOINT = "http://fakesecurityscanner/"
+    SECURITY_VULNERABILITY_SUPPRESSION = True
 
     FEATURE_SIGNING = True
 

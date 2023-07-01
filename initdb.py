@@ -372,6 +372,8 @@ def initialize_database():
     LogEntryKind.create(name="delete_repo_accesstoken")
     LogEntryKind.create(name="set_repo_description")
     LogEntryKind.create(name="change_repo_state")
+    LogEntryKind.create(name="set_repo_suppressed_vulnerabilities")
+    LogEntryKind.create(name="delete_repo_suppressed_vulnerabilities")
 
     LogEntryKind.create(name="build_dockerfile")
 
@@ -391,6 +393,9 @@ def initialize_database():
     LogEntryKind.create(name="org_change_invoicing")
     LogEntryKind.create(name="org_change_tag_expiration")
     LogEntryKind.create(name="org_change_name")
+    LogEntryKind.create(name="org_change_suppressed_vulnerabilities")
+    LogEntryKind.create(name="org_clear_suppressed_vulnerabilities")
+    LogEntryKind.create(name="org_delete_suppressed_vulnerabilities")
 
     LogEntryKind.create(name="create_prototype_permission")
     LogEntryKind.create(name="modify_prototype_permission")
@@ -440,6 +445,8 @@ def initialize_database():
 
     LogEntryKind.create(name="manifest_label_add")
     LogEntryKind.create(name="manifest_label_delete")
+    LogEntryKind.create(name="manifest_vulnerability_suppression_add")
+    LogEntryKind.create(name="manifest_vulnerability_suppression_delete")
 
     LogEntryKind.create(name="change_tag_expiration")
     LogEntryKind.create(name="toggle_repo_trigger")

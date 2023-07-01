@@ -3,7 +3,6 @@ List, create and manage repositories.
 """
 
 import logging
-from collections import defaultdict
 from datetime import datetime, timedelta
 
 from flask import abort, request
@@ -21,13 +20,18 @@ from auth.permissions import (
     AdministerRepositoryPermission,
     CreateRepositoryPermission,
     ModifyRepositoryPermission,
-    ReadRepositoryPermission,
 )
 from data.database import RepositoryState
+from data.model import InvalidVulnerabilitySuppression
+from data.model import repository as repository_model
+from data.model.vulnerabilitysuppression import (
+    create_vulnerability_suppression_for_repo,
+    delete_vulnerability_suppression_for_repo,
+    get_vulnerability_suppression_for_repo,
+)
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
-    format_date,
     log_action,
     nickname,
     page_support,
@@ -45,7 +49,6 @@ from endpoints.api import (
 )
 from endpoints.api.billing import get_namespace_plan, lookup_allowed_private_repos
 from endpoints.api.repository_models_pre_oci import pre_oci_model as model
-from endpoints.api.subscribe import check_repository_usage
 from endpoints.exception import (
     DownstreamIssue,
     ExceedsLicenseException,
@@ -144,7 +147,6 @@ class RepositoryList(ApiResource):
             and usermanager.is_restricted_user(owner.username)
             and owner.username == namespace_name
         ):
-
             repository_name = req["repository"]
             visibility = req["visibility"]
 
@@ -274,13 +276,17 @@ class Repository(RepositoryParamResource):
         "RepoUpdate": {
             "type": "object",
             "description": "Fields which can be updated in a repository.",
-            "required": [
-                "description",
-            ],
             "properties": {
                 "description": {
                     "type": "string",
                     "description": "Markdown encoded description for the repository",
+                },
+                "suppressed_vulnerabilities": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1, "pattern": "^[^\\s].*[^\\s]$"},
+                    "minItems": 0,
+                    "uniqueItems": True,
+                    "description": "A list of vulnerability identifiers to suppress in this organization. Has to be at least item of type string with a non-zero length and no leading or trailing whitespace.",
                 },
             },
         }
@@ -315,6 +321,11 @@ class Repository(RepositoryParamResource):
         repo_data["can_write"] = has_write_permission
         repo_data["can_admin"] = AdministerRepositoryPermission(namespace, repository).can()
 
+        if features.SECURITY_VULNERABILITY_SUPPRESSION:
+            suppressed_vulnerabilities = get_vulnerability_suppression_for_repo(repo.repo_id)
+            if len(suppressed_vulnerabilities) > 0:
+                repo_data["suppressed_vulnerabilities"] = suppressed_vulnerabilities
+
         if parsed_args["includeStats"] and repo.repository_base_elements.kind_name != "application":
             stats = []
             found_dates = {}
@@ -345,18 +356,75 @@ class Repository(RepositoryParamResource):
         """
         Update the description in the specified repository.
         """
-        if not model.repo_exists(namespace, repository):
+
+        repo = repository_model.get_repository(namespace, repository)
+
+        if repo is None:
             raise NotFound()
 
         values = request.get_json()
-        model.set_description(namespace, repository, values["description"])
 
-        log_action(
-            "set_repo_description",
-            namespace,
-            {"repo": repository, "namespace": namespace, "description": values["description"]},
-            repo_name=repository,
-        )
+        if "description" in values:
+            model.set_description(namespace, repository, values["description"])
+            log_action(
+                "set_repo_description",
+                namespace,
+                {"repo": repository, "namespace": namespace, "description": values["description"]},
+                repo_name=repository,
+            )
+
+        if features.SECURITY_VULNERABILITY_SUPPRESSION and "suppressed_vulnerabilities" in values:
+            suppressed_vulns = values["suppressed_vulnerabilities"]
+
+            if len(suppressed_vulns) > 0:
+                logger.debug(
+                    "Setting suppressed vulnerabilities for repo %s to: %s"
+                    % (namespace, repository)
+                )
+
+                try:
+                    create_vulnerability_suppression_for_repo(
+                        repo, values["suppressed_vulnerabilities"], raise_on_error=True
+                    )
+                except InvalidVulnerabilitySuppression as e:
+                    return {"success": False}, 400
+                except Exception as e:
+                    logger.exception(
+                        "Error setting suppressed vulnerabilities for repo %s: %s"
+                        % (repository, str(e))
+                    )
+                    return {"success": False}
+
+                log_action(
+                    "set_repo_suppressed_vulnerabilities",
+                    namespace,
+                    {
+                        "repo": repository,
+                        "namespace": namespace,
+                        "suppressed_vulnerabilities": values["suppressed_vulnerabilities"],
+                    },
+                )
+
+            elif len(suppressed_vulns) == 0:
+                logger.debug("Removing suppressed vulnerabilities for repo %s" % repository)
+
+                try:
+                    delete_vulnerability_suppression_for_repo(repo)
+                except InvalidVulnerabilitySuppression as e:
+                    return {"success": False}, 400
+                except Exception as e:
+                    logger.exception(
+                        "Error removing suppressed vulnerabilities for repo %s: %s"
+                        % (repository, str(e))
+                    )
+                    return {"success": False}
+
+                log_action(
+                    "delete_repo_suppressed_vulnerabilities",
+                    namespace,
+                    {"repo": repository, "namespace": namespace},
+                )
+
         return {"success": True}
 
     @require_repo_admin(allow_for_superuser=True)

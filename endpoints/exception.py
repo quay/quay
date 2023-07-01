@@ -137,6 +137,27 @@ class NotFound(ApiException):
     def __init__(self, payload=None):
         ApiException.__init__(self, ApiErrorType.not_found, 404, "Not Found", payload)
 
+class RepositoryNotFound(NotFound):
+    def __init__(self, repository_name, payload=None):
+        self.repository_name = repository_name
+        NotFound.__init__(self, payload)
+
+    def to_dict(self):
+        rv = NotFound.to_dict(self)
+        rv["detail"] = "Repository %s not found" % self.repository_name
+        return rv
+
+class ManifestNotFound(NotFound):
+    def __init__(self, repository_name, manifest_ref, payload=None):
+        self.repository_name = repository_name
+        self.manifest_ref = manifest_ref
+        NotFound.__init__(self, payload)
+
+    def to_dict(self):
+        rv = NotFound.to_dict(self)
+        rv["detail"] = "Manifest %s not found in repository %s" % (self.manifest_ref, self.repository_name)
+        return rv
+
 
 class DownstreamIssue(ApiException):
     def __init__(self, error_description, payload=None):

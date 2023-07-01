@@ -50,6 +50,7 @@ CLIENT_WHITELIST = [
     "UI_V2_FEEDBACK_FORM",
     "TERMS_OF_SERVICE_URL",
     "UI_DELAY_AFTER_WRITE_SECONDS",
+    "SECURITY_VULNERABILITY_SUPPRESSION",
 ]
 
 
@@ -496,6 +497,7 @@ class DefaultConfig(ImmutableConfig):
     # Security scanner
     FEATURE_SECURITY_SCANNER = False
     FEATURE_SECURITY_NOTIFICATIONS = False
+    FEATURE_SECURITY_VULNERABILITY_SUPPRESSION = True
 
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None

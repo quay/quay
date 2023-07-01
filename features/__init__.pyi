@@ -121,6 +121,7 @@ FIPS: FeatureNameValue
 # Security scanner
 SECURITY_SCANNER: FeatureNameValue
 SECURITY_NOTIFICATIONS: FeatureNameValue
+SECURITY_VULNERABILITY_SUPPRESSION: FeatureNameValue
 
 # Repository mirror
 REPO_MIRROR: FeatureNameValue
