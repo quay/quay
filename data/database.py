@@ -2030,9 +2030,9 @@ class VulnerabilitySuppression(BaseModel):
         database = db
         read_only_config = read_only_config
         indexes = (
-            (("manifest_id",), False),
-            (("repository_id",), False),
-            (("organization_id",), False),
+            (("manifest",), True),
+            (("repository",), True),
+            (("organization",), True),
         )
 
 
