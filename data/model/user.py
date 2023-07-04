@@ -39,6 +39,7 @@ from data.database import (
     UserPromptTypes,
     UserRegion,
     Visibility,
+    VulnerabilitySuppression,
     db_for_update,
     random_string_generator,
 )
@@ -1356,6 +1357,14 @@ def _delete_user_linked_data(user):
         with db_transaction():
             for app in OAuthApplication.select().where(OAuthApplication.organization == user):
                 app.delete_instance(recursive=True)
+
+        # Delete any vulnerability suppressions associated with the organization.
+        with db_transaction():
+            for vuln_suppression in VulnerabilitySuppression.select().where(
+                VulnerabilitySuppression.organization == user
+            ):
+                vuln_suppression.delete_instance(recursive=True)
+
     else:
         # Remove the user from any teams in which they are a member.
         TeamMember.delete().where(TeamMember.user == user).execute()
