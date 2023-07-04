@@ -1,0 +1,28 @@
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  pull-request-quay:
+    name: "Create Pull Request against Quay repo"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Quay repo
+        uses: actions/checkout@v3
+        with:
+          repository: quay/quay
+      - name: Update the version in Quay Dockerfile
+        run: sed -i "s/CONFIGTOOL_VERSION=v.*$/CONFIGTOOL_VERSION=${{ github.ref_name }}/" Dockerfile
+      - name: Create Pull Request Quay
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.DEPLOY_PAT }}
+          title: "build(deps): bump config-tool to ${{ github.ref_name }}"
+          commit-message: "build(deps): bump config-tool to ${{ github.ref_name }}"
+          author: quay-devel <quay-devel@redhat.com>
+          branch: quay/config-tool-pr
+          delete-branch: true
+          signoff: true
+          body: Update config-tool to ${{ github.ref_name }}
+          committer: quay-devel <quay-devel@redhat.com>

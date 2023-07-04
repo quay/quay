@@ -13,27 +13,3 @@ jobs:
         with:
           bump_version_scheme: patch
           use_github_release_notes: true
-
-  pull-request-quay:
-    name: "Create Pull Request against Quay repo"
-    runs-on: ubuntu-latest
-    needs: ["release-on-push"]
-    steps:
-      - name: Check out Quay repo
-        uses: actions/checkout@master
-        with:
-          repository: quay/quay
-      - name: Update the version in Quay Dockerfile
-        run: sed -i "s/CONFIGTOOL_VERSION=v.*$/CONFIGTOOL_VERSION=${{ github.event.inputs.tag }}/" Dockerfile
-      - name: Create Pull Request Quay
-        uses: peter-evans/create-pull-request@v3
-        with:
-          token: ${{ secrets.DEPLOY_PAT }}
-          commit-message: "config: Update config tool to ${{ github.event.inputs.tag }}"
-          author: quay-devel <quay-devel@redhat.com>
-          branch: quay/config-tool-pr
-          delete-branch: true
-          signoff: true
-          body: Update config-tool to ${{ github.event.inputs.tag }}
-          committer: quay-devel <quay-devel@redhat.com>
-
