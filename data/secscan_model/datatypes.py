@@ -32,6 +32,19 @@ Vulnerability = namedtuple(
     "Vulnerability",
     ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
 )
+SuppressedVulnerability = namedtuple(
+    "SuppressedVulnerability",
+    [
+        "Severity",
+        "NamespaceName",
+        "Link",
+        "FixedBy",
+        "Description",
+        "Name",
+        "Metadata",
+        "SuppressedBy",
+    ],
+)
 Metadata = namedtuple(
     "Metadata",
     ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion", "NVD"],
@@ -49,6 +62,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
     Canonical representation of security scan data for an image/manifest which is returned by the Quay API.
     """
 
+    # TODO: this seems unused
     @classmethod
     def from_dict(cls, data_dict):
         return SecurityInformation(
@@ -132,6 +146,11 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                         }
                                     },
                                 },
+                                **(
+                                    {"SuppressedBy": v.SuppressedBy}
+                                    if hasattr(v, "SuppressedBy")
+                                    else {}
+                                ),  # Conditionally add "SuppressedBy" key-value pair
                             }
                             for v in f.Vulnerabilities
                         ],
@@ -174,7 +193,7 @@ class SecurityInformationLookupResult(object):
         for f in data.Layer.Features:
             assert isinstance(f, Feature)
             for v in f.Vulnerabilities:
-                assert isinstance(v, Vulnerability)
+                assert isinstance(v, Vulnerability) or isinstance(v, SuppressedVulnerability)
 
         return SecurityInformationLookupResult(ScanLookupStatus.SUCCESS, data)
 

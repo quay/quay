@@ -13,15 +13,14 @@ from data.secscan_model import secscan_model
 from data.secscan_model.datatypes import ScanLookupStatus
 from endpoints.api import (
     RepositoryParamResource,
-    deprecated,
     disallow_for_app_repositories,
     nickname,
     parse_args,
     path_param,
     query_param,
-    require_repo_read,
     resource,
     show_if,
+    require_repo_read,
 )
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
 from endpoints.decorators import anon_allowed
@@ -55,7 +54,9 @@ MAPPED_STATUSES[
 logger = logging.getLogger(__name__)
 
 
-def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
+def _security_info(
+    manifest_or_legacy_image, include_vulnerabilities=True, include_suppressions=False
+):
     """
     Returns a dict representing the result of a call to the security status API for the given
     manifest or image.
@@ -63,6 +64,7 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     result = secscan_model.load_security_information(
         manifest_or_legacy_image,
         include_vulnerabilities=include_vulnerabilities,
+        include_suppressions=include_suppressions,
         model_cache=model_cache,
     )
     if result.status == ScanLookupStatus.UNKNOWN_MANIFEST_OR_IMAGE:
@@ -98,6 +100,9 @@ class RepositoryManifestSecurity(RepositoryParamResource):
     @query_param(
         "vulnerabilities", "Include vulnerabilities informations", type=truthy_bool, default=False
     )
+    @query_param(
+        "suppressions", "Include suppressed vulnerabilities", type=truthy_bool, default=False
+    )
     def get(self, namespace, repository, manifestref, parsed_args):
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
@@ -107,4 +112,4 @@ class RepositoryManifestSecurity(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        return _security_info(manifest, parsed_args.vulnerabilities)
+        return _security_info(manifest, parsed_args.vulnerabilities, parsed_args.suppressions)
