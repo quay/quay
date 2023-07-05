@@ -688,7 +688,7 @@ class ApplicationInformation(ApiResource):
             "description": application.description,
             "uri": application.application_uri,
             "avatar": app_data,
-            "organization": org_view(application.organization, []),
+            "organization": org_view(application.organization, [], []),
         }
 
 
