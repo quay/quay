@@ -37,7 +37,7 @@ furl==2.1.0
 geoip2==3.0.0
 gevent==21.8.0
 greenlet==1.1.2
-grpcio==1.46.3
+grpcio==1.53.0
 gunicorn==20.1.0
 hashids==1.2.0
 html5lib==1.1
