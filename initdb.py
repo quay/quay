@@ -1381,6 +1381,7 @@ WHITELISTED_EMPTY_MODELS = [
     "QuotaRegistrySize",
     "NamespaceAutoPrunePolicy",
     "AutoPruneTaskStatus",
+    "VulnerabilitySuppression",
 ]
 
 
