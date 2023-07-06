@@ -1002,7 +1002,7 @@ class CloudFrontedS3Storage(S3Storage):
         storage_path,
         s3_bucket,
         s3_region,
-        cloudfront_distribution_org_overrides = None,
+        cloudfront_distribution_org_overrides=None,
         *args,
         **kwargs,
     ):
