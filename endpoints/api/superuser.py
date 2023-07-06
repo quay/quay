@@ -12,7 +12,7 @@ from random import SystemRandom
 from flask import request, make_response, jsonify
 
 from cryptography.hazmat.primitives import serialization
-from data.registry_model.quota import get_registry_size, queue_registry_size_calculation
+from data.model.quota import get_registry_size, queue_registry_size_calculation
 
 import features
 

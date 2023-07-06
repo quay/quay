@@ -1,11 +1,9 @@
 import logging.config
 import time
 
-from data.registry_model.quota import calculate_registry_size
-
 import features
 
-from app import app
+from app import app, registry_model
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 from util.locking import GlobalLock
@@ -21,7 +19,7 @@ class QuotaRegistrySizeWorker(Worker):
         self.add_operation(self._calculate_registry_size, POLL_PERIOD)
 
     def _calculate_registry_size(self):
-        calculate_registry_size()
+        registry_model.quota.calculate_registry_size()
 
 
 def create_gunicorn_worker():

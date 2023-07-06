@@ -723,6 +723,11 @@ CONFIG_SCHEMA = {
             "description": "Maxmum size for a layer to be indexed",
             "x-example": "8G",
         },
+        "SECURITY_SCANNER_V4_MANIFEST_CLEANUP": {
+            "type": "boolean",
+            "description": "If the security scanner is enabled, whether or not to remove deleted manifests from the security scanner service. Defaults to False",
+            "x-example": False,
+        },
         "SECURITY_SCANNER_INDEXING_INTERVAL": {
             "type": "number",
             "description": "The number of seconds between indexing intervals in the security scanner. Defaults to 30.",

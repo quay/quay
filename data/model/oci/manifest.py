@@ -28,7 +28,7 @@ from data.model.oci.tag import (
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
-from data.registry_model.quota import add_blob_size, reset_backfill
+from data.model.quota import add_blob_size, reset_backfill
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException

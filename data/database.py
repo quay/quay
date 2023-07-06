@@ -1828,7 +1828,6 @@ class Manifest(BaseModel):
     """
 
     repository = ForeignKeyField(Repository)
-    repository_id: int
     digest = CharField(index=True)
     media_type = EnumField(MediaType)
     manifest_bytes = TextField()

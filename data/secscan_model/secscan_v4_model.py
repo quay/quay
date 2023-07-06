@@ -101,6 +101,9 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     def mark_notification_handled(self, notification_id):
         raise NotImplementedError("Unsupported for this security scanner version")
 
+    def garbage_collect_manifest_report(self, manifest_digest):
+        raise NotImplementedError("Unsupported for this security scanner version")
+
 
 class V4SecurityScanner(SecurityScannerInterface):
     """
@@ -515,6 +518,27 @@ class V4SecurityScanner(SecurityScannerInterface):
     @property
     def legacy_api_handler(self):
         raise NotImplementedError("Unsupported for this security scanner version")
+
+    def garbage_collect_manifest_report(self, manifest_digest):
+        def manifest_digest_exists():
+            query = Manifest.select().where(Manifest.digest == manifest_digest)
+
+            try:
+                query.get()
+            except Manifest.DoesNotExist:
+                return False
+
+            return True
+
+        with db_transaction():
+            if not manifest_digest_exists():
+                try:
+                    self._secscan_api.delete(manifest_digest)
+                    return True
+                except APIRequestFailure:
+                    logger.exception("Failed to perform indexing, security scanner API error")
+
+        return None
 
 
 def features_for(report):
