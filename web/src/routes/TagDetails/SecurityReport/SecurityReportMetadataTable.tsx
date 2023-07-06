@@ -47,6 +47,14 @@ export function SecurityReportMetadataTable(
 ) {
   return (
     <TextContent style={{paddingRight: '30px'}}>
+      {props.vulnerability.SuppressedBy ? (
+        <>
+        <Text component={TextVariants.p}>Suppression Note</Text>
+        <Text component={TextVariants.small}>
+        This vulnerability is suppressed at the {props.vulnerability.SuppressedBy} level
+        </Text>
+        </>
+      ) : null}
       <Text component={TextVariants.p}>Severity Note</Text>
       <Text component={TextVariants.small}>
         {getSeverityTooltip(props.vulnerability)}

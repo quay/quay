@@ -108,6 +108,7 @@ export interface RepositoryDetails {
   status_token: string | null;
   tag_expiration_s: number | null;
   trust_enabled: boolean;
+  suppressed_vulnerabilities: string[] | null;
 }
 
 export async function fetchRepositoryDetails(org: string, repo: string) {

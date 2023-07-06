@@ -17,8 +17,9 @@ import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
-import {useResetRecoilState, useSetRecoilState} from 'recoil';
+import {useSetRecoilState} from 'recoil';
 import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 enum Variant {
   condensed = 'condensed',
@@ -26,6 +27,7 @@ enum Variant {
 }
 
 export default function SecurityDetails(props: SecurityDetailsProps) {
+  const config = useQuayConfig();
   const [status, setStatus] = useState<string>();
   const [hasFeatures, setHasFeatures] = useState<boolean>(false);
   const [vulnCount, setVulnCount] =
@@ -68,6 +70,13 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
               if (feature.Vulnerabilities) {
                 for (const vuln of feature.Vulnerabilities) {
                   if (vuln.Severity in VulnerabilitySeverity) {
+                    if (
+                      config?.features.SECURITY_VULNERABILITY_SUPPRESSION &&
+                      vuln.SuppressedBy
+                    ) {
+                      continue;
+                    }
+
                     if (vulns.has(vuln.Severity)) {
                       vulns.set(vuln.Severity, vulns.get(vuln.Severity) + 1);
                     } else {

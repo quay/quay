@@ -103,6 +103,7 @@ export interface Vulnerability {
   Description: string;
   Name: string;
   Metadata: VulnerabilityMetadata;
+  SuppressedBy?: string;
 }
 
 export interface VulnerabilityMetadata {
@@ -127,6 +128,7 @@ export enum VulnerabilitySeverity {
   Negligible = 'Negligible',
   None = 'None',
   Unknown = 'Unknown',
+  Suppressed = 'Suppressed',
 }
 
 export const VulnerabilityOrder = {
@@ -340,7 +342,7 @@ export async function getSecurityDetails(
   digest: string,
 ) {
   const response: AxiosResponse<SecurityDetailsResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}/security?vulnerabilities=true`,
+    `/api/v1/repository/${org}/${repo}/manifest/${digest}/security?vulnerabilities=true&suppressions=true`,
   );
   assertHttpCode(response.status, 200);
   return response.data;

@@ -162,10 +162,10 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
 
   useEffect(() => {
     if (features) {
-      const vulnList: VulnerabilityListItem[] = [];
+      const localVulnList: VulnerabilityListItem[] = [];
       features.map((feature: Feature) => {
         feature.Vulnerabilities.map((vulnerability: Vulnerability) => {
-          vulnList.push({
+          localVulnList.push({
             PackageName: feature.Name,
             CurrentVersion: feature.Version,
             Description: vulnerability.Description,
@@ -175,11 +175,17 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
             FixedInVersion: vulnerability.FixedBy,
             Metadata: vulnerability.Metadata,
             Link: vulnerability.Link,
+            SuppressedBy: vulnerability.SuppressedBy ? vulnerability.SuppressedBy : undefined,
           } as VulnerabilityListItem);
         });
       });
-      setVulnList(vulnList);
-      setFilteredVulnList(vulnList);
+      setVulnList(localVulnList);
+
+      if (vulnList.length > 0) {
+        setFilteredVulnList(localVulnList);
+      } else { // align with default filter state
+        setFilteredVulnList(localVulnList.filter((vuln) => !vuln.SuppressedBy));
+      }
       sortVulnerabilities(activeSortIndex, activeSortDirection);
     } else {
       setVulnList([]);
@@ -218,7 +224,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
               const uniqueKey = generateUniqueKey(vulnerability);
               return (
                 <Tbody key={uniqueKey} isExpanded={isRepoExpanded(uniqueKey)}>
-                  <Tr className="security-table-row">
+                  <Tr className={vulnerability.SuppressedBy ? "security-table-row-suppressed" : "security-table-row"}>
                     <Td
                       expand={{
                         rowIndex,

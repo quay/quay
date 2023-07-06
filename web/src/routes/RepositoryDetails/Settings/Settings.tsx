@@ -61,6 +61,17 @@ export default function Settings(props: SettingsProps) {
         />
       ),
     },
+    config?.features.SECURITY_VULNERABILITY_SUPPRESSION && {
+      name: 'Vulnerability reporting',
+      id: 'vulnerabiltyreporting',
+      content: (
+        <Visibility
+          org={props.org}
+          repo={props.repo}
+          repoDetails={props.repoDetails}
+        />
+      ),
+    },
     {
       name: <div style={{color: 'red'}}>Delete Repository</div>,
       id: 'deleterepository',
@@ -78,13 +89,19 @@ export default function Settings(props: SettingsProps) {
           aria-label="Repository Settings Tabs"
           role="region"
         >
-          {tabs.map((tab, tabIndex) => (
-            <Tab
-              key={tab.id}
-              eventKey={tabIndex}
-              title={<TabTitleText>{tab.name}</TabTitleText>}
-            />
-          ))}
+          {tabs.map((tab, tabIndex) => {
+            if (!tab) {
+              return null;
+            }
+
+            return (
+              <Tab
+                key={tab.id}
+                eventKey={tabIndex}
+                title={<TabTitleText>{tab.name}</TabTitleText>}
+              />
+            );
+          })}
         </Tabs>
       </FlexItem>
       <FlexItem
