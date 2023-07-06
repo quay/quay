@@ -78,6 +78,7 @@ def test_direct_download(
             "some/path",
             _TEST_BUCKET,
             _TEST_REGION,
+            None,
             _TEST_USER,
             _TEST_PASSWORD,
         )
@@ -106,9 +107,9 @@ def test_direct_download(
             "some/path",
             _TEST_BUCKET,
             _TEST_REGION,
+            {"testnamespace": "overridedomain"},
             _TEST_USER,
             _TEST_PASSWORD,
-            cloudfront_distribution_org_overrides={"testnamespace": "overridedomain"},
         )
 
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
@@ -158,6 +159,7 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
         "some/path",
         _TEST_BUCKET,
         _TEST_REGION,
+        None,
         _TEST_USER,
         _TEST_PASSWORD,
     )
@@ -182,6 +184,7 @@ def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_
         "some/path",
         _TEST_BUCKET,
         _TEST_REGION,
+        None,
         _TEST_USER,
         _TEST_PASSWORD,
     )
