@@ -997,7 +997,6 @@ class CloudFrontedS3Storage(S3Storage):
         self,
         context,
         cloudfront_distribution_domain,
-        cloudfront_distribution_org_overrides,
         cloudfront_key_id,
         cloudfront_privatekey_filename,
         storage_path,
@@ -1010,11 +1009,11 @@ class CloudFrontedS3Storage(S3Storage):
             context, storage_path, s3_bucket, *args, **kwargs
         )
 
-        self.cloudfront_distribution_org_overrides = cloudfront_distribution_org_overrides
         self.s3_region = s3_region
         self.cloudfront_distribution_domain = cloudfront_distribution_domain
         self.cloudfront_key_id = cloudfront_key_id
         self.cloudfront_privatekey = self._load_private_key(cloudfront_privatekey_filename)
+        self.cloudfront_distribution_org_overrides = kwargs.get('cloudfront_distribution_org_overrides')
 
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
@@ -1047,7 +1046,7 @@ class CloudFrontedS3Storage(S3Storage):
         domain = self.cloudfront_distribution_domain
         if kwargs:
             namespace = kwargs.get("namespace")
-            if namespace in self.cloudfront_distribution_org_overrides:
+            if self.cloudfront_distribution_org_overrides and namespace in self.cloudfront_distribution_org_overrides:
                 domain = self.cloudfront_distribution_org_overrides.get(namespace)
 
         url = "https://%s/%s" % (domain, path)
