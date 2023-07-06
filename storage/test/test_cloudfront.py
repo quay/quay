@@ -73,7 +73,6 @@ def test_direct_download(
         engine = CloudFrontedS3Storage(
             context,
             "cloudfrontdomain",
-            {},
             "keyid",
             "test/data/test.pem",
             "some/path",
@@ -102,7 +101,6 @@ def test_direct_download(
         engine = CloudFrontedS3Storage(
             context,
             "defaultdomain",
-            {"testnamespace": "overridedomain"},
             "keyid",
             "test/data/test.pem",
             "some/path",
@@ -110,6 +108,7 @@ def test_direct_download(
             _TEST_REGION,
             _TEST_USER,
             _TEST_PASSWORD,
+            cloudfront_distribution_org_overrides={"testnamespace": "overridedomain"},
         )
 
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
@@ -178,7 +177,6 @@ def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_
     engine = CloudFrontedS3Storage(
         context,
         "cloudfrontdomain",
-        {},
         "keyid",
         "test/data/test.pem",
         "some/path",
