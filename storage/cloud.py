@@ -1,31 +1,27 @@
-import os
-import logging
 import copy
+import logging
+import os
 import urllib
-
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
-from io import BufferedIOBase, StringIO, BytesIO
+from io import BufferedIOBase, BytesIO, StringIO
 from itertools import chain
 from uuid import uuid4
 
+import boto3.session
 import botocore.config
 import botocore.exceptions
-import boto3.session
 from botocore.client import Config
-
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from prometheus_client import Counter
 
+from storage.basestorage import BaseStorageV2
 from util.ipresolver import ResolvedLocation
 from util.registry import filelike
-from storage.basestorage import BaseStorageV2
-
 
 logger = logging.getLogger(__name__)
 
@@ -627,6 +623,10 @@ class _CloudStorage(BaseStorageV2):
     def complete_chunked_upload(self, uuid, final_path, storage_metadata, force_client_side=False):
         self._initialize_cloud_conn()
         chunk_list = self._chunk_list_from_metadata(storage_metadata)
+
+        if len(chunk_list) == 0:
+            # Skip empty chunk list
+            return
 
         # Here is where things get interesting: we are going to try to assemble this server side
         # In order to be a candidate all parts (after offsets have been computed) must be at least 5MB
