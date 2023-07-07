@@ -26,23 +26,35 @@ def paginate(
     # to order by. The where clause, on the other hand, cannot use the alias because Postgres does
     # not allow aliases in where clauses.
     sort_field_name = sort_field_name or "id"
+    sort_id_field = getattr(model, "id")
     sort_field = getattr(model, sort_field_name)
 
     if sort_field_alias is not None:
         sort_field_name = sort_field_alias
         sort_field = SQL(sort_field_alias)
 
+    order_by_list = []
     if descending:
-        query = query.order_by(sort_field.desc())
+        order_by_list.append(sort_field.desc())
     else:
-        query = query.order_by(sort_field)
+        order_by_list.append(sort_field)
 
+    # Since datetime is not a unique key, multiple entries have the same datetime.
+    # Adding a second sort by id to fetch consistent results
+    if sort_field_name != "datetime":
+        order_by_list.append(sort_id_field)
+
+    query = query.order_by(order_by_list)
     start_index = pagination_start(page_token)
-    if start_index is not None:
+
+    if start_index is not None and page_token and not page_token.get('is_datetime'):
         if descending:
             query = query.where(sort_field <= start_index)
         else:
             query = query.where(sort_field >= start_index)
+
+    if start_index is not None and page_token and page_token.get('is_datetime'):
+        query = query.where(sort_id_field >= start_index)
 
     query = query.limit(limit + 1)
 
@@ -63,8 +75,6 @@ def pagination_start(page_token=None):
     """
     if page_token is not None:
         start_index = page_token.get("start_index")
-        if page_token.get("is_datetime"):
-            start_index = dateutil.parser.parse(start_index)
         return start_index
     return None
 
@@ -80,7 +90,8 @@ def paginate_query(query, limit=50, sort_field_name=None, page_number=None):
         start_index = getattr(results[limit], sort_field_name or "id")
         is_datetime = False
         if isinstance(start_index, datetime):
-            start_index = start_index.isoformat() + "Z"
+            # since multiple entries can have same datetime, returning id which has unique constraint.
+            start_index = getattr(results[limit], "id")
             is_datetime = True
 
         page_token = {
