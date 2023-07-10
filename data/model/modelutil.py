@@ -44,7 +44,7 @@ def paginate(
         else:
             query = query.where(sort_field >= start_index)
 
-    if page_token and page_token.get("use_offset") and page_token.get("offset_val"):
+    if page_token and page_token.get("offset_val", 0) > 0:
         query = query.offset(page_token["offset_val"])
 
     query = query.limit(limit + 1)
@@ -84,7 +84,7 @@ def paginate_query(query, limit=50, sort_field_name=None, page_number=None, offs
     """
     results = list(query)
     page_token = None
-    use_offset = False
+    offset_val = 0
     if len(results) > limit:
         start_index = getattr(results[limit], sort_field_name or "id")
         is_datetime = False
@@ -92,17 +92,16 @@ def paginate_query(query, limit=50, sort_field_name=None, page_number=None, offs
             start_index = start_index.isoformat() + "Z"
             # datetime does not have a unique constraint, so multiple entries can have the same datetime.
             # using offset to fetch next page items with same datetime.
-            use_offset = getattr(results[limit], sort_field_name) == getattr(
+            if getattr(results[limit], sort_field_name) == getattr(
                 results[limit - 1], sort_field_name
-            )
-            offset_val = limit + offset_val if use_offset else 0
+            ):
+                offset_val = limit + offset_val
             is_datetime = True
 
         page_token = {
             "start_index": start_index,
             "page_number": page_number + 1 if page_number else 1,
             "is_datetime": is_datetime,
-            "use_offset": use_offset,
             "offset_val": offset_val,
         }
 
