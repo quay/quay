@@ -53,7 +53,7 @@ def paginate(
     if page_number is not None and max_page is not None and page_number > max_page:
         return [], None
 
-    offset_val = page_token.get("offset_val") if page_token else 0
+    offset_val = page_token.get("offset_val", 0) if page_token else 0
     return paginate_query(
         query, limit=limit, sort_field_name=sort_field_name, page_number=page_number, offset_val=offset_val
     )
@@ -67,6 +67,8 @@ def pagination_start(page_token=None):
     """
     if page_token is not None:
         start_index = page_token.get("start_index")
+        if page_token.get("is_datetime"):
+            start_index = dateutil.parser.parse(start_index)
         return start_index
     return None
 
