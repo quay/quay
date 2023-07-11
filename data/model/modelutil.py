@@ -84,7 +84,6 @@ def paginate_query(query, limit=50, sort_field_name=None, page_number=None, offs
     """
     results = list(query)
     page_token = None
-    offset_val = 0
     if len(results) > limit:
         start_index = getattr(results[limit], sort_field_name or "id")
         is_datetime = False
