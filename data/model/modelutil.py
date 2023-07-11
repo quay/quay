@@ -44,14 +44,22 @@ def paginate(
         else:
             query = query.where(sort_field >= start_index)
 
+    if page_token and page_token.get("offset_val", 0) > 0:
+        query = query.offset(page_token["offset_val"])
+
     query = query.limit(limit + 1)
 
     page_number = (page_token.get("page_number") or None) if page_token else None
     if page_number is not None and max_page is not None and page_number > max_page:
         return [], None
 
+    offset_val = page_token.get("offset_val", 0) if page_token else 0
     return paginate_query(
-        query, limit=limit, sort_field_name=sort_field_name, page_number=page_number
+        query,
+        limit=limit,
+        sort_field_name=sort_field_name,
+        page_number=page_number,
+        offset_val=offset_val,
     )
 
 
@@ -69,7 +77,7 @@ def pagination_start(page_token=None):
     return None
 
 
-def paginate_query(query, limit=50, sort_field_name=None, page_number=None):
+def paginate_query(query, limit=50, sort_field_name=None, page_number=None, offset_val=0):
     """
     Executes the given query and returns a page's worth of results, as well as the page token for
     the next page (if any).
@@ -81,12 +89,19 @@ def paginate_query(query, limit=50, sort_field_name=None, page_number=None):
         is_datetime = False
         if isinstance(start_index, datetime):
             start_index = start_index.isoformat() + "Z"
+            # datetime does not have a unique constraint, so multiple entries can have the same datetime.
+            # using offset to fetch next page items with same datetime.
+            if getattr(results[limit], sort_field_name) == getattr(
+                results[limit - 1], sort_field_name
+            ):
+                offset_val = limit + offset_val
             is_datetime = True
 
         page_token = {
             "start_index": start_index,
             "page_number": page_number + 1 if page_number else 1,
             "is_datetime": is_datetime,
+            "offset_val": offset_val,
         }
 
     return results[0:limit], page_token
