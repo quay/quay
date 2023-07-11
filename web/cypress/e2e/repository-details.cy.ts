@@ -169,7 +169,7 @@ describe('Repository Details Page', () => {
     cy.contains('manifestlist').should('not.exist');
   });
 
-  it.only('renders pull popover', () => {
+  it('renders pull popover', () => {
     cy.visit('/repository/user1/hello-world');
     cy.get('tbody:contains("latest")').within(() =>
       cy.get('td[data-label="Pull"]').trigger('mouseover'),
