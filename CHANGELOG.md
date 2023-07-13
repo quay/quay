@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.7.12"></a>
-## [v3.7.12] - 2023-06-05
+<a name="v3.7.13"></a>
+## [v3.7.13] - 2023-06-05
 ### Auth
 - [b619da30](https://github.com/quay/quay/commit/b619da308de62272eae9d85c9c9d357188c19ff0): Speed up permissions loading (PROJQUAY-4004) ([#1581](https://github.com/quay/quay/issues/1581))
 - [f435b9e6](https://github.com/quay/quay/commit/f435b9e6d4c7a84e7853aeebdbc06d5eda4a3bee): allow rs384 in jwt (PROJQUAY-4148) ([#1450](https://github.com/quay/quay/issues/1450))
@@ -13,6 +13,7 @@
 - [ec8da07c](https://github.com/quay/quay/commit/ec8da07c2eee80a78deef94db23e60e734b2195a): Send notifications on build completion (PROJQUAY-3614) ([#1367](https://github.com/quay/quay/issues/1367))
 - [5cf6d99c](https://github.com/quay/quay/commit/5cf6d99c3b10e6eb848458ef2c865e95631c66d9): Add dnsPolicy option (PROJQUAY-3755) ([#1306](https://github.com/quay/quay/issues/1306))
 ### Chore
+- [578e047a](https://github.com/quay/quay/commit/578e047a05800a12ea7ddbd284ea6d08e11a8ddc): v3.7.12 changelog bump ( PROJQUAY-5599) ([#1937](https://github.com/quay/quay/issues/1937))
 - [b57937a5](https://github.com/quay/quay/commit/b57937a524510f340e7bb62bcea36c8791091bc4): Remove appr dependencies (PROJQUAY-4992) ([#1936](https://github.com/quay/quay/issues/1936))
 - [bb0544db](https://github.com/quay/quay/commit/bb0544db4f62b0bd027dc630ee22cba641f344f2): Pin distribution-spec conformance tests ([#1919](https://github.com/quay/quay/issues/1919))
 - [96bc0dec](https://github.com/quay/quay/commit/96bc0decf7aaad89f3c5661296b14e6e48b0f0ef): remove deprecated appr code (PROJQUAY-4992) ([#1746](https://github.com/quay/quay/issues/1746))
@@ -111,6 +112,26 @@
 - [5de7b6ce](https://github.com/quay/quay/commit/5de7b6ce4cfe703fc7f259dee837dc6ea22341a7): Show settings icon for super user under Superuser Users Panel (PROJQUAY-3905) ([#1361](https://github.com/quay/quay/issues/1361))
 ### [Redhat-3.7] Ui
 - [992bfa1f](https://github.com/quay/quay/commit/992bfa1f3769fe984c8d16dab680f981fc7c2188): basic support for cosign in the UI (PROJQUAY-3965) ([#1414](https://github.com/quay/quay/issues/1414))
+
+<a name="v3.8.10"></a>
+## [v3.8.10] - 2023-06-23
+### Chore
+- [d1e2d0f1](https://github.com/quay/quay/commit/d1e2d0f12925464fcd4b7b249963d2372720f53f): v3.8.10 changelog bump (PROJQUAY-5677) ([#1991](https://github.com/quay/quay/issues/1991))
+### Db
+- [a7cfd6ee](https://github.com/quay/quay/commit/a7cfd6eeeed5f8081beb4251745b9057de8f9a2a): handle readonly mode when updating repo size cache (PROJQUAY-4854) ([#1930](https://github.com/quay/quay/issues/1930))
+
+<a name="v3.8.9"></a>
+## [v3.8.9] - 2023-06-07
+### Chore
+- [45487213](https://github.com/quay/quay/commit/45487213a2a55dc29eca624663dc3c1bd3ebf1c7): v3.8.9 changelog bump (PROJQUAY-5607) ([#1946](https://github.com/quay/quay/issues/1946))
+- [3747f70e](https://github.com/quay/quay/commit/3747f70e52259b4b415aaff87b40767c84d4e3a0): update ppc64le builder ([#1911](https://github.com/quay/quay/issues/1911))
+- [b80166b0](https://github.com/quay/quay/commit/b80166b02352e035e3b90c6fd69b586a703d2f94): Use external builders ([#1910](https://github.com/quay/quay/issues/1910))
+### Proxy
+- [47d50900](https://github.com/quay/quay/commit/47d50900bdfd38c76f2f9f2ce5fbfb8e45ae6755): Allow anonymous pulls from registries (PROJQUAY-5273) ([#1908](https://github.com/quay/quay/issues/1908))
+### Superuser
+- [540cf0f8](https://github.com/quay/quay/commit/540cf0f88997e81919b4438c426c0e64fd2c71be): paginate user's list (PROJQUAY-4297) ([#1881](https://github.com/quay/quay/issues/1881)) ([#1909](https://github.com/quay/quay/issues/1909))
+### [Redhat-3.8] Superuser
+- [9c198c69](https://github.com/quay/quay/commit/9c198c6981c3c67a1a9604195ebda363a8b41dd8): paginating superuser organization list (PROJQUAY-4297) ([#1896](https://github.com/quay/quay/issues/1896))
 
 <a name="v3.8.8"></a>
 ## [v3.8.8] - 2023-05-17
@@ -397,6 +418,23 @@
 - [4a2d7b40](https://github.com/quay/quay/commit/4a2d7b40c1f61005b2ea3055a18675c5677ab753): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1565](https://github.com/quay/quay/issues/1565))
 ### [Redhat-3.8] Repomirror
 - [55cb0ba1](https://github.com/quay/quay/commit/55cb0ba1a3d21f1c5db4e2f05298a494e0411316): Use skopeo list-tags to get repo tags (PROJQUAY-2179) ([#1559](https://github.com/quay/quay/issues/1559))
+
+<a name="v3.7.12"></a>
+## [v3.7.12] - 2023-06-05
+### Chore
+- [578e047a](https://github.com/quay/quay/commit/578e047a05800a12ea7ddbd284ea6d08e11a8ddc): v3.7.12 changelog bump ( PROJQUAY-5599) ([#1937](https://github.com/quay/quay/issues/1937))
+- [b57937a5](https://github.com/quay/quay/commit/b57937a524510f340e7bb62bcea36c8791091bc4): Remove appr dependencies (PROJQUAY-4992) ([#1936](https://github.com/quay/quay/issues/1936))
+- [bb0544db](https://github.com/quay/quay/commit/bb0544db4f62b0bd027dc630ee22cba641f344f2): Pin distribution-spec conformance tests ([#1919](https://github.com/quay/quay/issues/1919))
+- [96bc0dec](https://github.com/quay/quay/commit/96bc0decf7aaad89f3c5661296b14e6e48b0f0ef): remove deprecated appr code (PROJQUAY-4992) ([#1746](https://github.com/quay/quay/issues/1746))
+### Superuser
+- [65de5d3b](https://github.com/quay/quay/commit/65de5d3b85aa4ae46f9bcfe389872a84cfacf693): paginate user's list (PROJQUAY-4297) ([#1881](https://github.com/quay/quay/issues/1881)) ([#1923](https://github.com/quay/quay/issues/1923))
+### Tox
+- [c3e5912c](https://github.com/quay/quay/commit/c3e5912c32b83814966b6ce0dd1abf5203e62317): allow /bin/sh (PROJQUAY-5092) ([#1918](https://github.com/quay/quay/issues/1918))
+### [Redhat-3.7] Oci
+- [7c22f8e3](https://github.com/quay/quay/commit/7c22f8e346a24f947d746d5d5f1b35404f1f9bc1): Create workflow for OCI Conformance (PROJQUAY-2812) ([#1744](https://github.com/quay/quay/issues/1744))
+### [Redhat-3.7] Superuser
+- [f5f0ea90](https://github.com/quay/quay/commit/f5f0ea905b4185a0db9106f7eddf755f707a1819): lowering page limit (PROJQUAY-5178) ([#1912](https://github.com/quay/quay/issues/1912)) ([#1925](https://github.com/quay/quay/issues/1925))
+- [4cbde7e2](https://github.com/quay/quay/commit/4cbde7e25d9120d4b635aaca46fd59c78913ee3b): paginating superuser organization list (PROJQUAY-4297) ([#1895](https://github.com/quay/quay/issues/1895))
 
 <a name="v3.7.11"></a>
 ## [v3.7.11] - 2022-12-01
@@ -1016,8 +1054,10 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.7.12...HEAD
-[v3.7.12]: https://github.com/quay/quay/compare/v3.8.8...v3.7.12
+[Unreleased]: https://github.com/quay/quay/compare/v3.7.13...HEAD
+[v3.7.13]: https://github.com/quay/quay/compare/v3.8.10...v3.7.13
+[v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
+[v3.8.9]: https://github.com/quay/quay/compare/v3.8.8...v3.8.9
 [v3.8.8]: https://github.com/quay/quay/compare/v3.8.7...v3.8.8
 [v3.8.7]: https://github.com/quay/quay/compare/v3.8.6...v3.8.7
 [v3.8.6]: https://github.com/quay/quay/compare/v3.8.5...v3.8.6
@@ -1026,7 +1066,8 @@
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
 [v3.8.1]: https://github.com/quay/quay/compare/v3.8.0...v3.8.1
-[v3.8.0]: https://github.com/quay/quay/compare/v3.7.11...v3.8.0
+[v3.8.0]: https://github.com/quay/quay/compare/v3.7.12...v3.8.0
+[v3.7.12]: https://github.com/quay/quay/compare/v3.7.11...v3.7.12
 [v3.7.11]: https://github.com/quay/quay/compare/v3.7.10...v3.7.11
 [v3.7.10]: https://github.com/quay/quay/compare/v3.7.9...v3.7.10
 [v3.7.9]: https://github.com/quay/quay/compare/v3.7.8...v3.7.9
