@@ -75,6 +75,12 @@ export interface ManifestByDigestResponse {
 export interface SecurityDetailsResponse {
   status: string;
   data: Data;
+  suppressed_vulnerabilities: string[];
+}
+
+export interface ManifestVulnerabilitySuppressionsResponse {
+  status: string;
+  suppressed_vulnerabilities: string[];
 }
 export interface Data {
   Layer: Layer;
@@ -139,6 +145,12 @@ export const VulnerabilityOrder = {
   [VulnerabilitySeverity.Negligible]: 4,
   [VulnerabilitySeverity.Unknown]: 5,
 };
+
+export enum VulnerabilitySuppressionSource {
+  Manifest = 'manifest',
+  Organization = 'organization',
+  Repository = 'repository',
+}
 
 // TODO: Support cancelation signal here
 export async function getTags(
@@ -414,4 +426,78 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
+}
+
+export async function getManifestVulnerabilitySuppressions(
+  org: string,
+  repo: string,
+  digest: string,
+) {
+  const response: AxiosResponse<ManifestVulnerabilitySuppressionsResponse> =
+    await axios.get(
+      `/api/v1/repository/${org}/${repo}/manifest/${digest}/suppressed_vulnerabilities`,
+    );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export class SetVulnerabilitySupressionsError extends Error {
+  error: Error;
+  manifest?: string;
+  repository?: string;
+  organization?: string;
+  constructor(
+    message: string,
+    error: AxiosError,
+    manifest?: string,
+    repository?: string,
+    organization?: string,
+  ) {
+    super(message);
+    this.error = error;
+    this.manifest = manifest ?? undefined;
+    this.repository = repository ?? undefined;
+    this.organization = organization ?? undefined;
+
+    if (
+      this.manifest === undefined &&
+      this.repository === undefined &&
+      this.organization === undefined
+    ) {
+      throw new Error(
+        'At least one of manifest, repository, or organization must be defined',
+      );
+    }
+
+    Object.setPrototypeOf(this, TagDeleteError.prototype);
+  }
+}
+
+export async function setManifestVulnerabilityuSuppressions(
+  org: string,
+  repo: string,
+  digest: string,
+  suppressions: string[],
+) {
+  const data = {
+    suppressed_vulnerabilities: suppressions,
+  };
+  axios
+    .put(
+      `/api/v1/repository/${org}/${repo}/manifest/${digest}/suppressed_vulnerabilities`,
+      data,
+    )
+    .then((response) => {
+      assertHttpCode(response.status, 204);
+      return response;
+    })
+    .catch((error) => {
+      throw new SetVulnerabilitySupressionsError(
+        'failed to set vulnerability suppressions',
+        error,
+        digest,
+        repo,
+        org,
+      );
+    });
 }

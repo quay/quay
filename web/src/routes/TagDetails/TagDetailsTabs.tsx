@@ -51,7 +51,12 @@ export default function TagTabs(props: TagTabsProps) {
         eventKey={TabIndex.SecurityReport}
         title={<TabTitleText>Security Report</TabTitleText>}
       >
-        <SecurityReport />
+        <SecurityReport 
+          org={props.org}
+          repo={props.repo}
+          tag={props.tag}
+          digest={props.digest}
+        />
       </Tab>
       <Tab
         eventKey={TabIndex.Packages}

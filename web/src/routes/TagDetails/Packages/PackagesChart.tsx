@@ -1,4 +1,4 @@
-import {ChartDonut} from '@patternfly/react-charts';
+import { ChartDonut } from '@patternfly/react-charts';
 import {
   PageSection,
   PageSectionVariants,
@@ -8,10 +8,11 @@ import {
   Title,
   TitleSizes,
 } from '@patternfly/react-core';
-import {BundleIcon} from '@patternfly/react-icons';
-import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
-import {getSeverityColor} from 'src/libs/utils';
-import {VulnerabilityStats} from '../SecurityReport/SecurityReportChart';
+import { BundleIcon } from '@patternfly/react-icons';
+import { Feature, VulnerabilitySeverity } from 'src/resources/TagResource';
+import { getSeverityColor } from 'src/libs/utils';
+import { VulnerabilityStats } from '../SecurityReport/SecurityReportChart';
+import { useQuayConfig } from 'src/hooks/UseQuayConfig';
 
 function PackageMessage(props: PackageMessageProps) {
   if (props.vulnLevel === 'None') {
@@ -79,7 +80,7 @@ function PackagesSummary(props: PackageStatsProps) {
 
 function PackagesDonutChart(props: PackageStatsProps) {
   return (
-    <div style={{height: '20em', width: '20em'}}>
+    <div style={{ height: '20em', width: '20em' }}>
       {props.stats.Pending > 0 ? (
         <Skeleton shape="circle" width="100%" />
       ) : (
@@ -88,11 +89,12 @@ function PackagesDonutChart(props: PackageStatsProps) {
           ariaTitle="packages chart"
           constrainToVisibleArea={true}
           data={[
-            {x: VulnerabilitySeverity.Critical, y: props.stats.Critical},
-            {x: VulnerabilitySeverity.High, y: props.stats.High},
-            {x: VulnerabilitySeverity.Medium, y: props.stats.Medium},
-            {x: VulnerabilitySeverity.Unknown, y: props.stats.Unknown},
-            {x: VulnerabilitySeverity.None, y: props.stats.None},
+            { x: VulnerabilitySeverity.Critical, y: props.stats.Critical },
+            { x: VulnerabilitySeverity.High, y: props.stats.High },
+            { x: VulnerabilitySeverity.Medium, y: props.stats.Medium },
+            { x: VulnerabilitySeverity.Unknown, y: props.stats.Unknown },
+            { x: VulnerabilitySeverity.None, y: props.stats.None },
+            { x: VulnerabilitySeverity.Suppressed, y: props.suppressed },
           ]}
           colorScale={[
             getSeverityColor(VulnerabilitySeverity.Critical),
@@ -100,9 +102,13 @@ function PackagesDonutChart(props: PackageStatsProps) {
             getSeverityColor(VulnerabilitySeverity.Medium),
             getSeverityColor(VulnerabilitySeverity.Unknown),
             getSeverityColor(VulnerabilitySeverity.None),
+            getSeverityColor(VulnerabilitySeverity.Suppressed),
           ]}
-          labels={({datum}) => `${datum.x}: ${datum.y}`}
+          labels={({ datum }) => `${datum.x}: ${datum.y}`}
           title={`${props.total}`}
+          style={{
+            data: { stroke: ({ datum }) => datum.x === `${VulnerabilitySeverity.Suppressed}` ? "#ccc" : null },
+          }}
         />
       )}
     </div>
@@ -110,6 +116,7 @@ function PackagesDonutChart(props: PackageStatsProps) {
 }
 
 export function PackagesChart(props: PackageChartProps) {
+  const config = useQuayConfig();
   const stats = {
     Critical: 0,
     High: 0,
@@ -124,6 +131,7 @@ export function PackagesChart(props: PackageChartProps) {
   let patchesAvailable = 0;
   let totalPackages = 0;
   let totalPackagesPerSeverity = 0;
+  let totalSuppressed = 0;
 
   if (props.features) {
     if (props.features.length > 0) {
@@ -136,21 +144,35 @@ export function PackagesChart(props: PackageChartProps) {
           Low: 0,
           Negligible: 0,
           Unknown: 0,
+          Suppressed: 0,
         };
 
         feature.Vulnerabilities.map((vulnerability) => {
-          perPackageVulnStats[vulnerability.Severity] = 1;
+          if (config?.features.SECURITY_VULNERABILITY_SUPPRESSION && 'SuppressedBy' in vulnerability) {
+            if (vulnerability.SuppressedBy.length > 0) {
+              perPackageVulnStats[perPackageVulnStats.Suppressed] = 1;
+            }
+          } else {
+            perPackageVulnStats[vulnerability.Severity] = 1;
+          }
+
           if (vulnerability.FixedBy.length > 0) {
             patchesAvailable += 1;
           }
         });
 
+
         // add perPackageStats to totals
         Object.keys(perPackageVulnStats).map((severity) => {
-          stats[severity] += perPackageVulnStats[severity];
-          if (perPackageVulnStats[severity] > 0) {
-            totalPackagesPerSeverity += 1;
+          if (severity === 'Suppressed') {
+            totalSuppressed += perPackageVulnStats[severity];
+          } else {
+            stats[severity] += perPackageVulnStats[severity];
           }
+
+          if (perPackageVulnStats[severity] > 0) {
+              totalPackagesPerSeverity += 1;
+            }
         });
 
         if (feature.Vulnerabilities.length == 0) {
@@ -175,6 +197,7 @@ export function PackagesChart(props: PackageChartProps) {
             stats={stats}
             total={totalPackagesPerSeverity}
             patchesAvailable={patchesAvailable}
+            suppressed={totalSuppressed}
           />
         </SplitItem>
         <SplitItem>
@@ -182,6 +205,7 @@ export function PackagesChart(props: PackageChartProps) {
             stats={stats}
             total={totalPackages}
             patchesAvailable={patchesAvailable}
+            suppressed={totalSuppressed}
           />
         </SplitItem>
       </Split>
@@ -193,6 +217,7 @@ interface PackageStatsProps {
   stats: VulnerabilityStats;
   total: number;
   patchesAvailable: number;
+  suppressed: number;
 }
 
 interface PackageChartProps {

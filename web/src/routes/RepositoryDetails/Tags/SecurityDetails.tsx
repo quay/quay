@@ -11,6 +11,7 @@ import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  EyeSlashIcon,
 } from '@patternfly/react-icons';
 import {getSeverityColor} from 'src/libs/utils';
 import {
@@ -45,6 +46,7 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
     VulnerabilitySeverity.Low,
     VulnerabilitySeverity.Negligible,
     VulnerabilitySeverity.Unknown,
+    VulnerabilitySeverity.Suppressed,
   ];
 
   const getHighestSeverity = () => {
@@ -185,13 +187,23 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
           key={severity.toString()}
           className={'pf-v5-u-display-flex pf-v5-u-align-items-center'}
         >
-          <ExclamationTriangleIcon
-            color={getSeverityColor(severity)}
-            style={{
-              marginRight: '5px',
-              marginBottom: '3px',
-            }}
-          />
+          {severity === 'Suppressed' ? (
+            <EyeSlashIcon
+              style={{
+                color: 'var(--pf-global--disabled-color--200)',
+                marginRight: '5px',
+                marginBottom: '3px',
+              }}
+            />
+          ) : (
+            <ExclamationTriangleIcon
+              color={getSeverityColor(severity)}
+              style={{
+                marginRight: '5px',
+                marginBottom: '3px',
+              }}
+            />
+          )}
           <span>
             <b>{vulnCount.get(severity)}</b> {severity.toString()}
           </span>

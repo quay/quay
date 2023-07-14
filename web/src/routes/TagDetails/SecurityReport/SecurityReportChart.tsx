@@ -8,10 +8,14 @@ import {
   Title,
   TitleSizes,
 } from '@patternfly/react-core';
-import {ExclamationTriangleIcon} from '@patternfly/react-icons';
+import {ExclamationTriangleIcon, PencilAltIcon} from '@patternfly/react-icons';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {getSeverityColor} from 'src/libs/utils';
-import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
+import {
+  Feature,
+  VulnerabilitySeverity,
+  VulnerabilitySuppressionSource,
+} from 'src/resources/TagResource';
 import './SecurityReportChart.css';
 
 function VulnerabilitySummary(props: VulnerabilityStatsProps) {
@@ -34,12 +38,46 @@ function VulnerabilitySummary(props: VulnerabilityStatsProps) {
   }
 
   let suppressionMessage = <Skeleton width="300px" />;
-  if (props.suppressed == 0) {
+  let suppressionMessageString = '';
+
+  const suppressionSources = [];
+  if (props.suppressed === 0) {
     suppressionMessage = <> </>;
-  } else if (props.suppressed == 1) {
-    suppressionMessage = <> 1 vulnerability is suppressed</>;
   } else {
-    suppressionMessage = <>{props.suppressed} vulnerabilities are suppressed</>;
+    if (props.suppressionStats.Repository > 0) {
+      suppressionSources.push('repository');
+    }
+    if (props.suppressionStats.Organization > 0) {
+      suppressionSources.push('organization');
+    }
+    if (props.suppressionStats.Manifest > 0) {
+      suppressionSources.push('manifest');
+    }
+
+    if (props.suppressed === 1) {
+      suppressionMessageString = `${props.suppressed} vulnerability is suppressed by the `;
+    } else {
+      suppressionMessageString = `${props.suppressed} vulnerabilities are suppressed by the `;
+    }
+
+    const suppressionSourcesString = suppressionSources.join(', ');
+    const suppressionSourcesStringWithAnd = suppressionSourcesString.replace(
+      /,([^,]*)$/,
+      ' and$1',
+    );
+    suppressionMessage = (
+      <>
+        {suppressionMessageString} {suppressionSourcesStringWithAnd} settings{' '}
+        {suppressionSources.includes('manifest') && (
+          <span
+            onClick={() => props.setIsOpen(true)}
+            style={{cursor: 'pointer'}}
+          >
+            <PencilAltIcon />
+          </span>
+        )}
+      </>
+    );
   }
 
   return (
@@ -143,6 +181,12 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
     Pending: 0,
   };
 
+  const suppressionStats: VulnerabilitySuppressionStats = {
+    Manifest: 0,
+    Organization: 0,
+    Repository: 0,
+  };
+
   let suppressed = 0;
   let patchesAvailable = 0;
   let total = 0;
@@ -156,6 +200,18 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
           'SuppressedBy' in vulnerability
         ) {
           suppressed += 1;
+
+          switch (vulnerability.SuppressedBy) {
+            case VulnerabilitySuppressionSource.Manifest:
+              suppressionStats.Manifest += 1;
+              break;
+            case VulnerabilitySuppressionSource.Organization:
+              suppressionStats.Organization += 1;
+              break;
+            case VulnerabilitySuppressionSource.Repository:
+              suppressionStats.Repository += 1;
+              break;
+          }
         } else {
           stats[vulnerability.Severity] += 1;
           total += 1;
@@ -185,6 +241,8 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
             total={total}
             patchesAvailable={patchesAvailable}
             suppressed={suppressed}
+            suppressionStats={suppressionStats}
+            setIsOpen={props.setIsOpen}
           />
         </SplitItem>
         <SplitItem>
@@ -193,6 +251,8 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
             total={total}
             patchesAvailable={patchesAvailable}
             suppressed={suppressed}
+            suppressionStats={suppressionStats}
+            setIsOpen={props.setIsOpen}
           />
         </SplitItem>
       </Split>
@@ -211,13 +271,22 @@ export interface VulnerabilityStats {
   Pending: number;
 }
 
+export interface VulnerabilitySuppressionStats {
+  Manifest: number;
+  Organization: number;
+  Repository: number;
+}
+
 interface VulnerabilityStatsProps {
   stats: VulnerabilityStats;
   total: number;
   patchesAvailable: number;
   suppressed: number;
+  suppressionStats: VulnerabilitySuppressionStats;
+  setIsOpen: (isOpen: boolean) => void;
 }
 
 interface SecurityDetailsChartProps {
+  setIsOpen: (isOpen: boolean) => void;
   features: Feature[];
 }
