@@ -9,7 +9,6 @@ export function useTags(org: string, repo: string){
     } = useMutation(
       async ({tag, manifest}: {tag: string; manifest: string}) =>
         createTag(org, repo, tag, manifest),
-      {},
     );
   
     return {

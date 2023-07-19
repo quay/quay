@@ -1,4 +1,4 @@
-import { Button, Modal, ModalVariant, TextInput } from "@patternfly/react-core";
+import { Button, Modal, ModalVariant, TextInput, Title } from "@patternfly/react-core";
 import { useEffect, useState } from "react";
 import { AlertVariant } from "src/atoms/AlertState";
 import { useAlerts } from "src/hooks/UseAlerts";
@@ -31,7 +31,7 @@ export default function AddTagModal(props: AddTagModalProps){
         <>
             <Modal
                 id="add-tag-modal"
-                title={`Add tag to manifest ${props.manifest}`}
+                header={(<Title headingLevel="h2">Add tag to manifest {props.manifest.substring(0, 19)}</Title>)}
                 isOpen={props.isOpen}
                 onClose={() => props.setIsOpen(false)}
                 variant={ModalVariant.small}
