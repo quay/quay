@@ -582,8 +582,9 @@ def test_remove_tag_from_timemachine(initialized_db):
     manifest_id = results[0].manifest
 
     # Expire the tags
-    results[0].lifetime_end_ms = get_epoch_timestamp_ms() - 100
-    results[1].lifetime_end_ms = get_epoch_timestamp_ms() - 101
+    now_ms = get_epoch_timestamp_ms()
+    results[0].lifetime_end_ms = now_ms - 100
+    results[1].lifetime_end_ms = now_ms - 101
 
     # Recreate scenario of the same tag being deleted twice
     # by setting the tags to the same manifest
