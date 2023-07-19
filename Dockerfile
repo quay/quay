@@ -135,7 +135,7 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi8/go-toolset:1.17.12 as config-tool
+FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 ARG CONFIGTOOL_VERSION=v0.1.19
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
