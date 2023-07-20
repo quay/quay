@@ -19,6 +19,7 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import axios from 'axios';
 import axiosIns from 'src/libs/axios';
+import Alerts from './Alerts';
 
 const NavigationRoutes = [
   {
@@ -88,6 +89,7 @@ export function StandaloneMain() {
             </FlexItem>
           </Flex>
         </Banner>
+        <Alerts/>
         <Routes>
           <Route index element={<Navigate to="/organization" replace />} />
           {NavigationRoutes.map(({path, Component}, key) => (

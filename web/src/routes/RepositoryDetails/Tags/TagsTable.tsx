@@ -21,6 +21,10 @@ import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
 import ColumnNames from './ColumnNames';
 import {DownloadIcon} from '@patternfly/react-icons';
 import ImageSize from 'src/components/Table/ImageSize';
+import TagActions from './TagsActions';
+import { RepositoryDetails } from 'src/resources/RepositoryResource';
+import Conditional from 'src/components/empty/Conditional';
+import { useQuayConfig } from 'src/hooks/UseQuayConfig';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -82,6 +86,7 @@ function SubRow(props: SubRowProps) {
 }
 
 function TagsTableRow(props: RowProps) {
+  const config = useQuayConfig();
   const tag = props.tag;
   const rowIndex = props.rowIndex;
   let size =
@@ -159,7 +164,7 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.manifest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
-        <Td dataLabel={ColumnNames.pull}>
+        <Td dataLabel={ColumnNames.pull} style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
           <TablePopover
             org={props.org}
             repo={props.repo}
@@ -169,6 +174,16 @@ function TagsTableRow(props: RowProps) {
             <DownloadIcon />
           </TablePopover>
         </Td>
+        <Conditional if={props.repoDetails?.can_write && config?.registry_state !== "readonly"}>
+          <Td>
+            <TagActions 
+              org={props.org}
+              repo={props.repo}
+              manifest={tag.manifest_digest}
+              loadTags={props.loadTags}
+            />
+          </Td>
+        </Conditional>
       </Tr>
       {tag.manifest_list
         ? tag.manifest_list.manifests.map((manifest, rowIndex) => (
@@ -215,6 +230,7 @@ export default function TagsTable(props: TableProps) {
             <Th>Expires</Th>
             <Th>Manifest</Th>
             <Th>Pull</Th>
+            <Th />
           </Tr>
         </Thead>
         {props.tags.map((tag: Tag, rowIndex: number) => (
@@ -228,6 +244,8 @@ export default function TagsTable(props: TableProps) {
             isTagExpanded={isTagExpanded}
             setTagExpanded={setTagExpanded}
             selectTag={props.selectTag}
+            loadTags={props.loadTags}
+            repoDetails={props.repoDetails}
           />
         ))}
       </TableComposable>
@@ -248,6 +266,8 @@ interface TableProps {
   selectAllTags: (isSelecting: boolean) => void;
   selectedTags: string[];
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
+  loadTags: () => void;
+  repoDetails: RepositoryDetails;
 }
 
 interface RowProps {
@@ -259,6 +279,8 @@ interface RowProps {
   isTagExpanded: (tag: Tag) => boolean;
   setTagExpanded: (tag: Tag, isExpanding?: boolean) => void;
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
+  loadTags: () => void;
+  repoDetails: RepositoryDetails;
 }
 
 interface SubRowProps {

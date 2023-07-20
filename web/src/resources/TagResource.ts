@@ -264,3 +264,10 @@ export async function getSecurityDetails(
   assertHttpCode(response.status, 200);
   return response.data;
 }
+
+export async function createTag(org: string, repo: string, tag: string, manifest: string) {
+    await axios.put(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}`,
+      {manifest_digest: manifest},
+    );
+}
