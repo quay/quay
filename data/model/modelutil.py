@@ -103,4 +103,5 @@ def paginate_query(query, limit=50, sort_field_name=None, page_number=None, offs
             "is_datetime": is_datetime,
             "offset_val": offset_val,
         }
+
     return results[0:limit], page_token
