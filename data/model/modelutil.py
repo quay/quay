@@ -71,8 +71,6 @@ def pagination_start(page_token=None):
     """
     if page_token is not None:
         start_index = page_token.get("start_index")
-        if page_token.get("is_datetime"):
-            start_index = dateutil.parser.parse(start_index)
         return start_index
     return None
 
