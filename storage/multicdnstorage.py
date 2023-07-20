@@ -1,5 +1,5 @@
 import logging
-from flask import request
+from flask import request, has_request_context
 
 from storage.cloudflarestorage import CloudFlareS3Storage
 from storage.cloud import CloudFrontedS3Storage
@@ -181,7 +181,9 @@ class MultiCDNStorage(BaseStorageV2):
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         namespace = kwargs.get("namespace", None)
-        host = request.headers.get("Host", None)
+        host = None
+        if has_request_context():
+            host = request.headers.get("Host", None)
 
         provider = self.find_matching_provider(namespace, request_ip, host)
         return provider.get_direct_download_url(
