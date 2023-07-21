@@ -67,7 +67,7 @@ export async function bulkDeleteNotifications(
   const responses = await Promise.allSettled(
     uuids.map((uuid) => deleteNotification(org, repo, uuid)),
   );
-  throwIfError(responses);
+  throwIfError(responses, 'Unable to delete notifications');
 }
 
 export async function deleteNotification(
@@ -100,7 +100,7 @@ export async function bulkEnableNotifications(
   const responses = await Promise.allSettled(
     uuids.map((uuid) => enableNotification(org, repo, uuid)),
   );
-  throwIfError(responses);
+  throwIfError(responses, 'Unable to enable notifications');
 }
 
 export async function enableNotification(

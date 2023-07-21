@@ -1,10 +1,12 @@
 import { Dropdown, DropdownItem, KebabToggle } from '@patternfly/react-core';
 import { useState } from 'react';
 import AddTagModal from './TagsActionsAddTagModal';
+import EditLabelsModal from './TagsActionsLabelsModal';
 
 export default function TagActions(props: TagActionsProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isAddTagModalOpen, setIsAddTagModalOpen] = useState(false);
+    const [isEditLabelsModalOpen, setIsEditLabelsModalOpen] = useState(false);
 
     const dropdownItems = [
         <DropdownItem 
@@ -15,6 +17,15 @@ export default function TagActions(props: TagActionsProps) {
             }}
         >
             Add new tag
+        </DropdownItem>,
+        <DropdownItem 
+            key="edit-labels-action"
+            onClick={() => {
+                setIsOpen(false);
+                setIsEditLabelsModalOpen(true);
+            }}
+        >
+            Edit labels
         </DropdownItem>,
     ];
   
@@ -33,6 +44,13 @@ export default function TagActions(props: TagActionsProps) {
             setIsOpen={setIsAddTagModalOpen}
             manifest={props.manifest}
             loadTags={props.loadTags}
+        />
+        <EditLabelsModal
+            org={props.org}
+            repo={props.repo}
+            manifest={props.manifest}
+            isOpen={isEditLabelsModalOpen}
+            setIsOpen={setIsEditLabelsModalOpen}
         />
     </>
     );

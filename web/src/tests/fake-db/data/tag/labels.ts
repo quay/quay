@@ -1,5 +1,5 @@
 import {mock} from 'src/tests/fake-db/MockAxios';
-import {getLabels, LabelsResponse} from 'src/resources/TagResource';
+import {LabelsResponse} from 'src/resources/TagResource';
 
 const labelsResponse: LabelsResponse = {
   labels: [
