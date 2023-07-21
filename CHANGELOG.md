@@ -3,8 +3,17 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.8.11"></a>
+## [v3.8.11] - 2023-07-13
+### Chore
+- [9a562abe](https://github.com/quay/quay/commit/9a562abeca116f5c38a7d343b84bc3eac44779f3): Use buildx v0.11.0-rc2 ([#1960](https://github.com/quay/quay/issues/1960)) ([#2013](https://github.com/quay/quay/issues/2013))
+### [Redhat-3.8] Pagination
+- [7abedb68](https://github.com/quay/quay/commit/7abedb68a4e46d773085d32938e3fac7e340f9e6): Fixing paginate for /api/v1/superuser/logs API (PROJQUAY-5360) ([#2010](https://github.com/quay/quay/issues/2010))
+
 <a name="v3.8.10"></a>
-## [v3.8.10] - 2023-06-20
+## [v3.8.10] - 2023-06-23
+### Chore
+- [d1e2d0f1](https://github.com/quay/quay/commit/d1e2d0f12925464fcd4b7b249963d2372720f53f): v3.8.10 changelog bump (PROJQUAY-5677) ([#1991](https://github.com/quay/quay/issues/1991))
 ### Db
 - [a7cfd6ee](https://github.com/quay/quay/commit/a7cfd6eeeed5f8081beb4251745b9057de8f9a2a): handle readonly mode when updating repo size cache (PROJQUAY-4854) ([#1930](https://github.com/quay/quay/issues/1930))
 
@@ -306,6 +315,28 @@
 - [4a2d7b40](https://github.com/quay/quay/commit/4a2d7b40c1f61005b2ea3055a18675c5677ab753): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1565](https://github.com/quay/quay/issues/1565))
 ### [Redhat-3.8] Repomirror
 - [55cb0ba1](https://github.com/quay/quay/commit/55cb0ba1a3d21f1c5db4e2f05298a494e0411316): Use skopeo list-tags to get repo tags (PROJQUAY-2179) ([#1559](https://github.com/quay/quay/issues/1559))
+
+<a name="v3.7.13"></a>
+## [v3.7.13] - 2023-07-13
+### Chore
+- [2d151a70](https://github.com/quay/quay/commit/2d151a70e00fe96b6717c236e407123629682f66): v3.7.13 changelog bump (PROJQUAY-5815) ([#2014](https://github.com/quay/quay/issues/2014))
+
+<a name="v3.7.12"></a>
+## [v3.7.12] - 2023-06-05
+### Chore
+- [578e047a](https://github.com/quay/quay/commit/578e047a05800a12ea7ddbd284ea6d08e11a8ddc): v3.7.12 changelog bump ( PROJQUAY-5599) ([#1937](https://github.com/quay/quay/issues/1937))
+- [b57937a5](https://github.com/quay/quay/commit/b57937a524510f340e7bb62bcea36c8791091bc4): Remove appr dependencies (PROJQUAY-4992) ([#1936](https://github.com/quay/quay/issues/1936))
+- [bb0544db](https://github.com/quay/quay/commit/bb0544db4f62b0bd027dc630ee22cba641f344f2): Pin distribution-spec conformance tests ([#1919](https://github.com/quay/quay/issues/1919))
+- [96bc0dec](https://github.com/quay/quay/commit/96bc0decf7aaad89f3c5661296b14e6e48b0f0ef): remove deprecated appr code (PROJQUAY-4992) ([#1746](https://github.com/quay/quay/issues/1746))
+### Superuser
+- [65de5d3b](https://github.com/quay/quay/commit/65de5d3b85aa4ae46f9bcfe389872a84cfacf693): paginate user's list (PROJQUAY-4297) ([#1881](https://github.com/quay/quay/issues/1881)) ([#1923](https://github.com/quay/quay/issues/1923))
+### Tox
+- [c3e5912c](https://github.com/quay/quay/commit/c3e5912c32b83814966b6ce0dd1abf5203e62317): allow /bin/sh (PROJQUAY-5092) ([#1918](https://github.com/quay/quay/issues/1918))
+### [Redhat-3.7] Oci
+- [7c22f8e3](https://github.com/quay/quay/commit/7c22f8e346a24f947d746d5d5f1b35404f1f9bc1): Create workflow for OCI Conformance (PROJQUAY-2812) ([#1744](https://github.com/quay/quay/issues/1744))
+### [Redhat-3.7] Superuser
+- [f5f0ea90](https://github.com/quay/quay/commit/f5f0ea905b4185a0db9106f7eddf755f707a1819): lowering page limit (PROJQUAY-5178) ([#1912](https://github.com/quay/quay/issues/1912)) ([#1925](https://github.com/quay/quay/issues/1925))
+- [4cbde7e2](https://github.com/quay/quay/commit/4cbde7e25d9120d4b635aaca46fd59c78913ee3b): paginating superuser organization list (PROJQUAY-4297) ([#1895](https://github.com/quay/quay/issues/1895))
 
 <a name="v3.7.11"></a>
 ## [v3.7.11] - 2022-12-01
@@ -925,7 +956,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.10...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.11...HEAD
+[v3.8.11]: https://github.com/quay/quay/compare/v3.8.10...v3.8.11
 [v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
 [v3.8.9]: https://github.com/quay/quay/compare/v3.8.8...v3.8.9
 [v3.8.8]: https://github.com/quay/quay/compare/v3.8.7...v3.8.8
@@ -936,7 +968,9 @@
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
 [v3.8.1]: https://github.com/quay/quay/compare/v3.8.0...v3.8.1
-[v3.8.0]: https://github.com/quay/quay/compare/v3.7.11...v3.8.0
+[v3.8.0]: https://github.com/quay/quay/compare/v3.7.13...v3.8.0
+[v3.7.13]: https://github.com/quay/quay/compare/v3.7.12...v3.7.13
+[v3.7.12]: https://github.com/quay/quay/compare/v3.7.11...v3.7.12
 [v3.7.11]: https://github.com/quay/quay/compare/v3.7.10...v3.7.11
 [v3.7.10]: https://github.com/quay/quay/compare/v3.7.9...v3.7.10
 [v3.7.9]: https://github.com/quay/quay/compare/v3.7.8...v3.7.9
