@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    assignees:
+      - dmage
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    assignees:
+      - dmage
