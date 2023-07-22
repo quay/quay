@@ -99,7 +99,7 @@
     "svg-url-loader": "^7.1.1",
     "terser-webpack-plugin": "^5.3.3",
     "ts-loader": "^9.4.4",
-    "ts-node": "^10.7.0",
+    "ts-node": "^10.9.1",
     "tsconfig-paths-webpack-plugin": "^3.5.2",
     "url-loader": "^4.1.1",
     "webpack": "^5.76.0",
