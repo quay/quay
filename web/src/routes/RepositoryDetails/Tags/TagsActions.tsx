@@ -1,4 +1,4 @@
-import { Dropdown, DropdownItem, KebabToggle } from '@patternfly/react-core';
+import { Dropdown, DropdownItem, KebabToggle, DropdownPosition } from '@patternfly/react-core';
 import { useState } from 'react';
 import AddTagModal from './TagsActionsAddTagModal';
 import EditLabelsModal from './TagsActionsLabelsModal';
@@ -35,6 +35,7 @@ export default function TagActions(props: TagActionsProps) {
         toggle={<KebabToggle id="tag-actions-kebab" onToggle={(isOpen: boolean)=>setIsOpen(isOpen)} />}
         isOpen={isOpen}
         isPlain
+        position={DropdownPosition.right}
         dropdownItems={dropdownItems}
         />
         <AddTagModal

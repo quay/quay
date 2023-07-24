@@ -14,6 +14,7 @@ export default function EditableLabels(props: EditableLabelsProps) {
     const {
         labels,
         setLabels,
+        initialLabels,
         loading,
         error,
         createLabels,
@@ -29,8 +30,6 @@ export default function EditableLabels(props: EditableLabelsProps) {
     } = useLabels(props.org, props.repo, props.digest);
     const [newLabel, setNewLabel] = useState<string>('');
     const [invalidNewLabel, setInvalidNewLabel] = useState<string>(null);
-    const [deletedLabels, setDeletedLabels] = useState<ImageLabel[]>([]);
-    const [addedLabels, setAddedLabels] = useState<ImageLabel[]>([]);
     const { addAlert } = useAlerts();
     const loadingLabelChanges: boolean = loadingCreateLabels || loadingDeleteLabels;
     const readonlyLabels = labels.filter((label: ImageLabel) => label.source_type !== 'api');
@@ -64,6 +63,11 @@ export default function EditableLabels(props: EditableLabelsProps) {
     }, [successCreatingLabels, errorCreatingLabels, successDeletingLabels, errorDeletingLabels]);
 
     const onEditComplete = (newLabel: string) => {
+        if(newLabel === '') {
+            setNewLabel('');
+            setInvalidNewLabel(null);
+            return;
+        }
         let invalidMessage: string = null;
         let key: string = null;
         let value: string = null;
@@ -89,9 +93,6 @@ export default function EditableLabels(props: EditableLabelsProps) {
             setNewLabel('');
             const newLabelObj: ImageLabel = { id: `${key}=${value}`, key, value, source_type: 'api', media_type: null };
             setLabels(prev => [...prev, newLabelObj])
-            if (!addedLabels.some(l => l.id === `${key}=${value}`)) {
-                setAddedLabels(prev => [...prev, newLabelObj])
-            }
             setInvalidNewLabel(null);
         } else {
             setInvalidNewLabel(invalidMessage);
@@ -101,27 +102,29 @@ export default function EditableLabels(props: EditableLabelsProps) {
 
     const removeLabel = (label: ImageLabel) => {
         setLabels(prev => prev.filter(l => l.id !== label.id))
-        if (!deletedLabels.some(l => l.id === label.id)) {
-            setDeletedLabels(prev => [...prev, label])
-        }
     }
 
     const saveLabels = () => {
-        // If a label was removed and re-added it will exist in both arrays, so we need to filter out duplicates
-        const duplicates: string[] = addedLabels.map(addedLabel => {
-            if (deletedLabels.some(deletedLabel => (deletedLabel.id === addedLabel.id))) {
-                return addedLabel.id;
-            }
-        });
-        const filteredAddedLabels: ImageLabel[] = addedLabels.filter(addedLabel => !duplicates.includes(addedLabel.id));
-        const filteredDeletedLabels: ImageLabel[] = deletedLabels.filter(deletedLabel => !duplicates.includes(deletedLabel.id));
-        if (filteredAddedLabels.length > 0) {
-            createLabels(filteredAddedLabels);
+        const [addedLabels, deletedLabels] = filterLabels(initialLabels, labels);
+        if (addedLabels.length > 0) {
+            createLabels(addedLabels);
         }
-        if (filteredDeletedLabels.length > 0) {
-            deleteLabels(filteredDeletedLabels);
+        if (deletedLabels.length > 0) {
+            deleteLabels(deletedLabels);
         }
     }
+
+    const isSaveButtonDisabled = () => {
+        const [addedLabels, deletedLabels] = filterLabels(initialLabels, labels);
+        return (addedLabels.length === 0 && deletedLabels.length === 0);
+    }
+
+    const filterLabels = (initialLabels: ImageLabel[], updatedLabels: ImageLabel[]) => {
+        const addedLabels: ImageLabel[] = updatedLabels.filter(updatedLabel => !initialLabels.some(intitialLabel => intitialLabel.key===updatedLabel.key && intitialLabel.value===updatedLabel.value));
+        const deletedLabels: ImageLabel[] = initialLabels.filter(intitialLabel => !updatedLabels.some(updatedLabel => intitialLabel.key===updatedLabel.key && intitialLabel.value===updatedLabel.value));
+        return [addedLabels, deletedLabels];
+    }
+
     return (<>
         <DescriptionList>
             <DescriptionListGroup>
@@ -174,6 +177,7 @@ export default function EditableLabels(props: EditableLabelsProps) {
             key="modal-action-button"
             variant="primary"
             onClick={saveLabels}
+            isDisabled={isSaveButtonDisabled()}
         >
             Save Labels
         </Button>

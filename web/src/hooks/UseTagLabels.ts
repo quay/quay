@@ -6,6 +6,7 @@ import { Label, bulkCreateLabels, bulkDeleteLabels, getLabels } from "src/resour
 export function useLabels(org: string, repo: string, digest: string) {
     const [labels, setLabels] = useState<Label[]>([]);
     const {
+        data: initialLabels,
         isLoading: loading,
         isError: error,
     } = useQuery(
@@ -48,6 +49,7 @@ export function useLabels(org: string, repo: string, digest: string) {
     return {
         labels: labels,
         setLabels: setLabels,
+        initialLabels: initialLabels,
         loading: loading,
         error: error,
         createLabels: bulkCreateLabelsMutator,
