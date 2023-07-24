@@ -58,6 +58,8 @@ RUN set -ex\
         libjpeg-turbo-devel \
 		wget \
 		rust-toolset \
+		libxml2-devel \
+		libxslt-devel \
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
