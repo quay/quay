@@ -87,7 +87,7 @@ pymemcache==3.0.0
 PyMySQL==0.9.3
 pyOpenSSL==21.0.0
 pyparsing==2.4.6
-PyPDF2==1.27.6
+PyPDF2==1.27.9
 pyrsistent==0.18.0
 python-dateutil==2.8.1
 python-editor==1.0.4
