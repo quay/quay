@@ -147,7 +147,7 @@ WHgsCLsLspQZqpi5o9pKqo1WH8b+uaqm5LDQvvrk3kkQLB/M5VMI
 		{
 			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "https", "SERVER_HOSTNAME": "fakehost.com"},
 			name:   "invalidCertPair->FIX_THIS_TEST",
-			want:   "valid",
+			want:   "invalid",
 			opts:   invalidCertPairOpts,
 		},
 		{
@@ -158,8 +158,8 @@ WHgsCLsLspQZqpi5o9pKqo1WH8b+uaqm5LDQvvrk3kkQLB/M5VMI
 		},
 		{
 			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "https", "SERVER_HOSTNAME": "fakehost.com"},
-			name:   "validCertPairAndHostname",
-			want:   "valid",
+			name:   "certPairAndHostnameWithLegacyCN",
+			want:   "invalid",
 			opts:   validOpts,
 		},
 	}

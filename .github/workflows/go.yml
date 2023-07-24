@@ -14,7 +14,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.16
+          go-version: ^1.19
         id: go
 
       - name: Check out code into the Go module directory
@@ -34,7 +34,7 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
-    container: docker.io/library/golang:1.16-buster
+    container: docker.io/library/golang:1.19-buster
     services:
       postgres:
         image: postgres:11.5
@@ -57,6 +57,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Workaround for dubious ownership issue
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Build
         run: go build -v ./...
       - name: Tests
