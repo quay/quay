@@ -53,6 +53,7 @@ export function addDisplayError(message: string, error: Error | AxiosError) {
 }
 
 interface ErrorResponse {
+  detail?: string;
   error_message?: string;
 }
 
@@ -78,7 +79,10 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
 
   if (error.response.status) {
     let message = `HTTP${error.response.status}`;
-    if (error.response.data?.error_message) {
+    if (error.response.data?.detail) {
+      message = message + ` - ${error.response.data?.detail}`;
+    }
+    else if (error.response.data?.error_message) {
       message = message + ` - ${error.response.data?.error_message}`;
     }
     return message;

@@ -73,8 +73,6 @@ export interface ManifestByDigestResponse {
 }
 
 export interface SecurityDetailsResponse {
-  status: string;
-  data: Data;
   suppressed_vulnerabilities: string[];
 }
 
