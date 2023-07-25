@@ -18,6 +18,7 @@ import ColumnNames from './ColumnNames';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import { useQuayConfig } from 'src/hooks/UseQuayConfig';
+import EditExpirationModal from './TagsActionsEditExpirationModal';
 
 export function TagsToolbar(props: ToolBarProps) {
   const quayConfig = useQuayConfig();
@@ -27,9 +28,19 @@ export function TagsToolbar(props: ToolBarProps) {
   });
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
-
+  const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const kebabItems: ReactElement[] = [
+    <DropdownItem
+      key="set-expiration"
+      onClick={() => {
+        setKebabOpen(!isKebabOpen);
+        setIsEditExpirationModalOpen(true);
+      }}
+      isDisabled={selectedTags.length <= 0}
+    >
+      Set expiration
+    </DropdownItem>,
     <DropdownItem
       key="delete"
       onClick={() => {
@@ -114,6 +125,15 @@ export function TagsToolbar(props: ToolBarProps) {
         repo={props.repository}
         loadTags={props.loadTags}
         repoDetails={props.repoDetails}
+      />
+      <EditExpirationModal
+        org={props.organization}
+        repo={props.repository}
+        isOpen={isEditExpirationModalOpen}
+        setIsOpen={setIsEditExpirationModalOpen}
+        tags={selectedTags}
+        loadTags={props.loadTags}
+        onComplete={()=>{setSelectedTags([])}}
       />
     </Toolbar>
   );

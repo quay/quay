@@ -110,3 +110,7 @@ export function getSeconds(duration_str: string): number {
   let [number, suffix] = duration_str.split('');
   return moment.duration(parseInt(number), suffix).asSeconds();
 }
+
+export function isNullOrUndefined(obj: any): boolean {
+  return obj === null || obj === undefined;
+}

@@ -308,3 +308,22 @@ export async function createTag(org: string, repo: string, tag: string, manifest
       {manifest_digest: manifest},
     );
 }
+
+export async function bulkSetExpiration(org: string, repo: string, tags: string[], expiration: number){
+  const responses = await Promise.allSettled(
+    tags.map((tag)=>setExpiration(org, repo, tag, expiration))
+  )
+  throwIfError(responses, 'Error setting expiration for tags');
+}
+
+export async function setExpiration(org: string, repo: string, tag: string, expiration: number) {
+  try {
+    await axios.put(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}`,
+      {expiration: expiration},
+    );
+  }
+  catch(error){
+    throw new ResourceError('Unable to set tag expiration', tag, error);
+  }
+}
