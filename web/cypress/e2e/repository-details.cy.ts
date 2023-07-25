@@ -350,4 +350,94 @@ describe('Repository Details Page', () => {
     cy.contains('Could not create tag newtag').should('exist');
     const newtagRow = cy.get('tbody:contains("newtag")').should('not.exist');
   });
+
+  it('view labels', () => {
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Edit labels').click();
+    cy.get('#readonly-labels').within(() => {
+      cy.contains('No labels found').should('exist');
+    })
+    cy.get('#mutable-labels').within(() => {
+      cy.contains('version=1.0.0').should('exist');
+      cy.contains('vendor=Redhat').should('exist');
+    })
+  });
+
+  it('creates labels', ()=>{
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Edit labels').click();
+    cy.contains('Add new label').click();
+    cy.get('input[placeholder="key=value"]').type('foo=bar');
+    cy.contains('Mutable labels').click(); // Simulates clicking outside of input
+    cy.contains('Add new label').click();
+    cy.get('input[placeholder="key=value"]').type('fizz=buzz');
+    cy.contains('Mutable labels').click();
+    cy.contains('Save Labels').click();
+    cy.contains('Created labels successfully').should('exist');
+  })
+
+  it('deletes labels', () => {
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Edit labels').click();
+    cy.get('#mutable-labels').within(() => {
+      cy.get('button').should('exist');
+      cy.get('button').click({multiple: true});
+    })
+    cy.contains('Save Labels').click();
+    cy.contains('Deleted labels successfully').should('exist');
+  });
+
+  it('alert on failure to create label', () => {
+    cy.intercept(
+      'POST',
+      '**/labels',
+      { statusCode: 500 }
+    ).as('getServerFailure')
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Edit labels').click();
+    cy.contains('Add new label').click();
+    cy.get('input[placeholder="key=value"]').type('foo=bar');
+    cy.contains('Mutable labels').click(); // Simulates clicking outside of input
+    cy.contains('Add new label').click();
+    cy.get('input[placeholder="key=value"]').type('fizz=buzz');
+    cy.contains('Mutable labels').click();
+    cy.contains('Save Labels').click();
+    cy.contains('Could not create labels').should('exist');
+  });
+
+  it('alert on failure to delete label', () => {
+    cy.intercept(
+      'DELETE',
+      '**/labels/**',
+      { statusCode: 500 }
+    ).as('getServerFailure')
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Edit labels').click();
+    cy.get('#mutable-labels').within(() => {
+      cy.get('button').should('exist');
+      cy.get('button').click({multiple: true});
+    })
+    cy.contains('Save Labels').click();
+    cy.contains('Could not delete labels').should('exist');
+  });
 });

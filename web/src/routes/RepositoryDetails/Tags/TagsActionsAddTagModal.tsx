@@ -32,6 +32,7 @@ export default function AddTagModal(props: AddTagModalProps){
             <Modal
                 id="add-tag-modal"
                 header={(<Title headingLevel="h2">Add tag to manifest {props.manifest.substring(0, 19)}</Title>)}
+                aria-label="Add tag modal"
                 isOpen={props.isOpen}
                 onClose={() => props.setIsOpen(false)}
                 variant={ModalVariant.small}
