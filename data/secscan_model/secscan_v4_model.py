@@ -1,14 +1,12 @@
 import logging
 import features
-import functools
 import itertools
-import random
+import urllib
 
 from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
 from peewee import fn, JOIN
-from enum import Enum
 
 from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import (
@@ -25,7 +23,6 @@ from data.secscan_model.datatypes import (
     PaginatedNotificationStatus,
     UpdatedVulnerability,
 )
-from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
@@ -38,7 +35,6 @@ from util.secscan.v4.api import (
 )
 from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
 from util.secscan.blob import BlobURLRetriever
-from util.config import URLSchemeAndHostname
 from util.metrics.prometheus import secscan_result_duration
 
 from data.database import (
@@ -46,8 +42,6 @@ from data.database import (
     ManifestSecurityStatus,
     IndexerVersion,
     IndexStatus,
-    Repository,
-    User,
     db_transaction,
     get_epoch_timestamp_ms,
 )
@@ -103,6 +97,20 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
 
     def garbage_collect_manifest_report(self, manifest_digest):
         raise NotImplementedError("Unsupported for this security scanner version")
+
+
+def maybe_urlencoded(fixed_in: str) -> str:
+    """
+    Handles Clair's `fixed_in_version`, which _may_ be URL-encoded.
+    The API guarantee is only that the field is a string, so encoding it's
+    slightly weaselly, but only slightly.
+    """
+    try:
+        d = urllib.parse.parse_qs(fixed_in)
+        # There may be additional known-good keys in the future.
+        return d["fixed"][0]
+    except (ValueError, KeyError):
+        return fixed_in
 
 
 class V4SecurityScanner(SecurityScannerInterface):
@@ -506,7 +514,9 @@ class V4SecurityScanner(SecurityScannerInterface):
                     Description=notification_data["vulnerability"].get("description"),
                     NamespaceName=notification_data["vulnerability"].get("package", {}).get("name"),
                     Name=notification_data["vulnerability"].get("name"),
-                    FixedBy=notification_data["vulnerability"].get("fixed_in_version"),
+                    FixedBy=maybe_urlencoded(
+                        notification_data["vulnerability"].get("fixed_in_version")
+                    ),
                     Link=notification_data["vulnerability"].get("links"),
                     Metadata={},
                 ),
@@ -546,6 +556,7 @@ def features_for(report):
     Transforms a Clair v4 `VulnerabilityReport` dict into the standard shape of a
     Quay Security scanner response.
     """
+
     features = []
     dedupe_vulns = {}
     for pkg_id, pkg in report["packages"].items():
@@ -586,7 +597,9 @@ def features_for(report):
                         fetch_vuln_severity(vuln, enrichments),
                         vuln["updater"],
                         vuln["links"],
-                        vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
+                        maybe_urlencoded(
+                            vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else ""
+                        ),
                         vuln["description"],
                         vuln["name"],
                         Metadata(
