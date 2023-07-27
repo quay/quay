@@ -607,6 +607,34 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		}
 		defer conn.Close(ctx)
 
+		// Get version
+		var version string
+		row := conn.QueryRow(ctx, "SHOW server_version;")
+		err = row.Scan(&version)
+		if err != nil {
+			return err
+		}
+
+		// Extract major version number using regex
+		var re = regexp.MustCompile(`^(\d+)`)
+		match := re.FindStringSubmatch(version)
+
+		if len(match) < 1 {
+			// If no match, return an error
+			return fmt.Errorf("could not parse major version from: %s", version)
+		}
+
+		// Parse the major version as an integer
+		majorVersion, err := strconv.Atoi(match[0])
+		if err != nil {
+			return err
+		}
+
+		// Check version
+		if majorVersion < 13 {
+			log.Warnf("Warning: Your version of PostgreSQL (%s) is EOL (End Of Life). Consider upgrading.", strconv.Itoa(majorVersion))
+		}
+
 		// If database is postgres, make sure that extension pg_trgm is installed
 		rows, err := conn.Query(ctx, `SELECT extname FROM pg_extension`)
 		if err != nil {
