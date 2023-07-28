@@ -3,7 +3,7 @@ package teamsyncing
 import (
 	"testing"
 
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // TestValidateTeamSyncing tests the Validate function

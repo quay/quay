@@ -3,7 +3,7 @@ package accesssettings
 import (
 	"testing"
 
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // TestValidateSchema tests the ValidateSchema function

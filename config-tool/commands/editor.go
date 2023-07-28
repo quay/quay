@@ -22,7 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/quay/config-tool/pkg/lib/editor"
+	"github.com/quay/quay/config-tool/pkg/lib/editor"
 )
 
 var editorPassword string

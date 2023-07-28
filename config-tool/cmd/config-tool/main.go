@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/quay/config-tool/commands"
+import "github.com/quay/quay/config-tool/commands"
 
 func main() {
 	commands.Execute()

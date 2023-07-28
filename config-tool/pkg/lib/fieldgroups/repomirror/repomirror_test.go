@@ -3,7 +3,7 @@ package repomirror
 import (
 	"testing"
 
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // TestValidateRepoMirror tests the Validate function

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // AccessSettingsFieldGroup represents the AccessSettingsFieldGroup config fields

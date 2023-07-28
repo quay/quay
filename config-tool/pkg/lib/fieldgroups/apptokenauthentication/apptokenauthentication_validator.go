@@ -1,6 +1,6 @@
 package apptokenauthentication
 
-import "github.com/quay/config-tool/pkg/lib/shared"
+import "github.com/quay/quay/config-tool/pkg/lib/shared"
 
 // Validate checks the configuration settings for this field group
 func (fg *AppTokenAuthenticationFieldGroup) Validate(opts shared.Options) []shared.ValidationError {

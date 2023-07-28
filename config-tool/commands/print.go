@@ -21,8 +21,8 @@ import (
 	"path"
 
 	"github.com/jojomi/go-spew/spew"
-	"github.com/quay/config-tool/pkg/lib/config"
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/config"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

@@ -97,7 +97,7 @@ func createFieldGroups(configDef ConfigDefinition) error {
 		// Import statements based on presence
 		f.ImportName("github.com/creasty/defaults", "defaults")
 		f.ImportName("github.com/go-playground/validator/v10", "validator")
-		f.ImportName("github.com/quay/config-tool/pkg/lib/shared", "shared")
+		f.ImportName("github.com/quay/quay/config-tool/pkg/lib/shared", "shared")
 
 		// Struct Definitions
 		structsList := reverseList(generateStructs(fgName, fields, true))
@@ -141,9 +141,9 @@ func createFieldGroups(configDef ConfigDefinition) error {
 
 		// Create Validator file
 		v := jen.NewFile(strings.ToLower(fgName))
-		v.ImportName("github.com/quay/config-tool/pkg/lib/shared", "shared")
+		v.ImportName("github.com/quay/quay/config-tool/pkg/lib/shared", "shared")
 		v.Comment("Validate checks the configuration settings for this field group")
-		v.Func().Params(jen.Id("fg *" + fgName + "FieldGroup")).Id("Validate").Params().Params(jen.Index().Qual("github.com/quay/config-tool/pkg/lib/shared", "ValidationError")).Block(
+		v.Func().Params(jen.Id("fg *" + fgName + "FieldGroup")).Id("Validate").Params().Params(jen.Index().Qual("github.com/quay/quay/config-tool/pkg/lib/shared", "ValidationError")).Block(
 			jen.Return(jen.Nil()),
 		)
 
@@ -216,11 +216,11 @@ func createConfigBase(configDef ConfigDefinition) error {
 
 	// Create file for QuayConfig
 	f := jen.NewFile("config")
-	f.ImportName("github.com/quay/config-tool/pkg/lib/shared", "shared")
+	f.ImportName("github.com/quay/quay/config-tool/pkg/lib/shared", "shared")
 
 	// Write Config struct definition
 	f.Comment("Config is a struct that represents a configuration as a mapping of field groups")
-	f.Type().Id("Config").Map(jen.String()).Qual("github.com/quay/config-tool/pkg/lib/shared", "FieldGroup")
+	f.Type().Id("Config").Map(jen.String()).Qual("github.com/quay/quay/config-tool/pkg/lib/shared", "FieldGroup")
 
 	// Generate Config constructor block
 	op := jen.Options{

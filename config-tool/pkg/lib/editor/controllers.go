@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/quay/config-tool/pkg/lib/config"
-	conf "github.com/quay/config-tool/pkg/lib/config"
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/config"
+	conf "github.com/quay/quay/config-tool/pkg/lib/config"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
