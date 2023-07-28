@@ -1,4 +1,4 @@
-module github.com/quay/config-tool
+module github.com/quay/quay/config-tool
 
 go 1.19
 
