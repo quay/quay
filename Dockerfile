@@ -34,11 +34,7 @@ RUN set -ex\
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
 WORKDIR /opt/app-root/src
-# This argument must be repeated, and should have the same default as
-# the other CONFIGTOOL_VERSION argument.
-ARG CONFIGTOOL_VERSION=v0.1.12
-RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
-	| tar xz --strip-components=4 --exclude='*.go'
+COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines \
 	; npm run --quiet build\
@@ -143,9 +139,7 @@ RUN set -ex\
 # Config-tool builds the go binary in the configtool.
 FROM registry.access.redhat.com/ubi8/go-toolset:1.16.12 as config-tool
 WORKDIR /opt/app-root/src
-ARG CONFIGTOOL_VERSION=v0.1.12
-RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
-	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
+COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install ./cmd/config-tool
 
