@@ -21,7 +21,7 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	_ "github.com/quay/config-tool/docs"
+	_ "github.com/quay/quay/config-tool/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/crypto/bcrypt"
 )

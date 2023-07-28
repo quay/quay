@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/quay/config-tool/pkg/lib/config"
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/config"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

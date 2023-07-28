@@ -16,7 +16,7 @@ This tool includes the following features:
 Install using the Go tool:
 
 ```
-go get -u github.com/quay/config-tool/...
+go get -u github.com/quay/quay/config-tool/...
 ```
 
 This will generate files for the Quay validator executable and install the `config-tool` CLI tool.
@@ -26,8 +26,8 @@ This will generate files for the Quay validator executable and install the `conf
 Clone this repo and build an image:
 
 ```
-$ git clone https://github.com/quay/config-tool.git
-$ cd config-tool
+$ git clone https://github.com/quay/quay.git
+$ cd quay/config-tool
 $ sudo podman build -t config-tool .
 ```
 
@@ -39,7 +39,7 @@ $ sudo podman run -it -v ${CONFIG_MOUNT}:/conf config-tool ...
 
 Note that you must mount in your config directory in order for the config-tool to see it.
 
-#### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/tree/master/utils/generate)
+#### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/quay/tree/master/config-tool/utils/generate)
 
 ## Usage
 

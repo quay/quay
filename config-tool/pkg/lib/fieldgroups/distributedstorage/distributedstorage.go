@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // DistributedStorageFieldGroup represents the DistributedStorageFieldGroup config fields

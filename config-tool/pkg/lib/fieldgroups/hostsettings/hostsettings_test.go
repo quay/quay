@@ -3,7 +3,7 @@ package hostsettings
 import (
 	"testing"
 
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // TestValidateHostSettings tests the Validate function

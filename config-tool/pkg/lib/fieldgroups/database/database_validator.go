@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // Validate checks the configuration settings for this field group

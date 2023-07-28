@@ -1,6 +1,6 @@
 package repomirror
 
-import "github.com/quay/config-tool/pkg/lib/shared"
+import "github.com/quay/quay/config-tool/pkg/lib/shared"
 
 // Validate checks the configuration settings for this field group
 func (fg *RepoMirrorFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
