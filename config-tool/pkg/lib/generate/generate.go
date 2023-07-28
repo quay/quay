@@ -3,10 +3,10 @@ package generate
 import (
 	"errors"
 
-	"github.com/quay/config-tool/pkg/lib/config"
-	"github.com/quay/config-tool/pkg/lib/fieldgroups/database"
-	"github.com/quay/config-tool/pkg/lib/fieldgroups/hostsettings"
-	"github.com/quay/config-tool/pkg/lib/fieldgroups/redis"
+	"github.com/quay/quay/config-tool/pkg/lib/config"
+	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/database"
+	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/hostsettings"
+	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/redis"
 )
 
 // AioiInputOptions defines the minimum required fields necessary for building a working config

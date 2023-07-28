@@ -3,7 +3,7 @@ package googlelogin
 import (
 	"testing"
 
-	"github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // TestValidateGoogleLogin tests the Validate function
