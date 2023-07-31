@@ -158,7 +158,7 @@ class MemcachedModelCache(DataModelCache):
         try:
             # Copied from the doc comment for Client.
             def serialize_json(key, value):
-                if type(value) == str:
+                if isinstance(value, str):
                     return value, _STRING_TYPE
 
                 return json.dumps(value), _JSON_TYPE
