@@ -1,35 +1,31 @@
-name: Go
-
+name: Config Tool
 on:
   push:
-    branches: [master]
+    branches:
+    - "!dependabot/*"
+    - "*"
+    paths:
+    - config-tool/**
   pull_request:
-    branches: [master]
-
+    branches:
+    - "*"
+    paths:
+    - config-tool/**
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ^1.19
-        id: go
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Build
-        run: go build -v ./...
+        run: cd ./config-tool && go build -v ./...
 
   tests:
     name: Tests
@@ -56,23 +52,12 @@ jobs:
         image: quay.io/coreos/jwt-auth-example:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Workaround for dubious ownership issue
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Build
-        run: go build -v ./...
+        run: cd ./config-tool && go build -v ./...
       - name: Tests
-        run: go test ./pkg/lib/fieldgroups/...
+        run: cd ./config-tool && go test ./pkg/lib/fieldgroups/...
         env:
           GODEBUG: x509ignoreCN=0
-
-  commit-check:
-    name: Commit Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: commit check
-        uses: gsactions/commit-message-checker@v1
-        with:
-          pattern: |
-            ^(.*):\s*(.*)\s(\(PROJQUAY-[0-9]+\))(\s\(#[0-9]+\))?\n(\n(\n|.)*)?$
-          error: "Commit must begin with <scope>: <subject> (PROJQUAY-####)"
