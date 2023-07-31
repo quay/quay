@@ -1,0 +1,20 @@
+<div class="config-map-field-element">
+  <table class="table" ng-show="hasValues(binding)">
+    <tr class="item" ng-repeat="(key, value) in binding">
+      <td class="item-title">{{ key }}</td>
+      <td class="item-value">{{ value }}</td>
+      <td class="item-delete">
+        <a ng-click="removeKey(key)">Remove</a>
+      </td>
+    </tr>
+  </table>
+  <span class="empty" ng-if="!hasValues(binding)">No entries defined</span>
+  <form class="form-control-container" ng-submit="addEntry()">
+    Add Key-Value:
+    <select ng-model="newKey">
+      <option ng-repeat="key in keys" value="{{ key }}">{{ key }}</option>
+    </select>
+    <input type="text" class="form-control" placeholder="Value" ng-model="newValue">
+    <button class="btn btn-default" style="display: inline-block">Add Entry</button>
+  </form>
+</div>
