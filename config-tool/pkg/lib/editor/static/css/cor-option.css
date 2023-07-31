@@ -1,0 +1,8 @@
+.cor-options-menu .fa-cog {
+    color: #999;
+    cursor: pointer;
+}
+
+.open .fa-cog {
+    color: #428BCA;
+}
