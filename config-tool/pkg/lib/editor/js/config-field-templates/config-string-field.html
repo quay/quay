@@ -1,0 +1,11 @@
+<div class="config-string-field-element">
+  <form name="fieldform" novalidate>
+    <input type="text" class="form-control" placeholder="{{ placeholder || '' }}"
+           ng-model="binding" ng-trim="false" ng-minlength="1"
+           ng-pattern="getRegexp(pattern)" ng-required="!isOptional"
+           ng-readonly="isReadonly">
+    <div class="alert alert-danger" ng-show="errorMessage">
+        {{ errorMessage }}
+    </div>
+  </form>
+</div>
