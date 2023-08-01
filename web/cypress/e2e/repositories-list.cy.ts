@@ -53,8 +53,9 @@ describe('Repositories List Page', () => {
   });
 
   it('create public repository', () => {
+    cy.intercept('/repository').as('getRepositories');
     cy.visit('/repository');
-    cy.wait(2000);
+    cy.wait('@getRepositories');
     cy.contains('Create Repository').click();
     cy.contains('Create repository').should('exist');
     //cy.contains('Select namespace').click();
@@ -114,9 +115,9 @@ describe('Repositories List Page', () => {
   });
 
   it('deletes multiple repositories', () => {
-    cy.visit('/repository');
+    cy.visit('/organization/user1');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select all (153)').click();
+    cy.contains('Select all (2)').click();
     cy.contains('Actions').click();
     cy.contains('Delete').click();
     cy.contains('Permanently delete repositories?');
@@ -127,12 +128,14 @@ describe('Repositories List Page', () => {
     cy.get('input[id="delete-confirmation-input"]').type('confirm');
     cy.get('[id="bulk-delete-modal"]').within(() =>
       cy.get('button:contains("Delete")').click(),
-    );
-    cy.contains('There are no viewable repositories', {timeout: 80000}).should('exist');
-    cy.contains(
-      'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.',
-    ).should('exist');
-    cy.contains('Create Repository');
+    )
+    .then(() => {
+      cy.contains('There are no viewable repositories').should('exist');
+      cy.contains(
+        'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.',
+      ).should('exist');
+      cy.contains('Create Repository');
+    });
   });
 
   // TODO: per page currently does not work

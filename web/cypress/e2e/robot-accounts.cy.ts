@@ -44,11 +44,11 @@ describe('Robot Accounts Page', () => {
     cy.get('#robot-wizard-form-description').type(
       "This is newtestrob's description",
     );
-    cy.get('#create-robot-submit').click();
-
-    cy.wait(3000);
-    cy.get('#robot-account-search').type('newtestrob');
-    cy.contains('1 - 1 of 1');
+    cy.get('#create-robot-submit').click()
+    .then(() => {
+      cy.get('#robot-account-search').type('newtestrob');
+      cy.contains('1 - 1 of 1');
+    });
   });
 
   it('Delete Robot', () => {
@@ -63,11 +63,10 @@ describe('Robot Accounts Page', () => {
     cy.get('#delete-confirmation-input').type('confirm');
     cy.get('[id="bulk-delete-modal"]').within(() =>
       cy.get('button:contains("Delete")').click(),
-    );
-
-    // Validate org was deleted
-    cy.wait(9000);
-    cy.get('#robot-account-search').type('testrobot2');
-    cy.contains('0 - 0 of 0');
+    )
+      .then(() => {
+        cy.get('#robot-account-search').clear().type('testrobot2');
+        cy.contains('0 - 0 of 0');
+    });
   });
 });
