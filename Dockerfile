@@ -56,6 +56,7 @@ RUN set -ex\
 		rust-toolset \
 		libxml2-devel \
 		libxslt-devel \
+		freetype-devel \
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
