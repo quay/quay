@@ -1,0 +1,77 @@
+<div class="config-certificates-field-element">
+  <div class="resource-view" resource="certificatesResource" error-message="'Could not load certificates list'">
+    <!-- File -->
+    <div class="co-alert co-alert-warning" ng-if="certInfo.status == 'file'">
+        <code>extra_ca_certs</code> is a single file and cannot be processed by this tool. If a valid and appended list of certificates, they will be installed on container startup.
+    </div>
+
+    <div ng-if="certInfo.status != 'file'">
+        <div class="description">
+          <p>This section lists any custom or self-signed SSL certificates that are installed in the <span class="registry-name"></span> container on startup after being read from the <code>extra_ca_certs</code> directory in the configuration volume.
+          </p>
+          <p>
+          Custom certificates are typically used in place of publicly signed certificates for corporate-internal services.
+          </p>
+          <p>Please <strong>make sure</strong> that all custom names used for downstream services (such as Clair) are listed in the certificates below.</p>
+        </div>
+
+        <table class="config-table" style="margin-bottom: 20px;">
+          <tr>
+            <td>Upload certificates:</td>
+            <td>
+              <div class="file-upload-box"
+                select-message="Select custom certificate to add to configuration. Must be in PEM format and end extension '.crt'"
+                files-selected="handleCertsSelected()"
+                files-validated="handleCertsValidated()"
+                reset="resetUpload"
+                extensions="['.crt']"
+                certs="certs"></div>
+            </td>
+          </tr>
+        </table>
+
+        <table class="co-table">
+          <thead>
+            <td>Certificate Filename</td>
+            <td>Status</td>
+            <td>Names Handled</td>
+          </thead>
+          <tr ng-repeat="certificate in certMeta" ng-if="!certsUploading">
+            <td>{{ certificate.path }}</td>
+            <td class="cert-status">
+              <div ng-if="certificate.error" class="red">
+                <i class="fa fa-exclamation-circle"></i>
+                {{ certificate.error }}
+              </div>
+              <div ng-if="certificate.expired" class="orange">
+                <i class="fa fa-exclamation-triangle"></i>
+                Certificate is expired
+              </div>
+              <div ng-if="!certificate.error && !certificate.expired" class="green">
+                <i class="fa fa-check-circle"></i>
+                Certificate is valid
+              </div>
+            </td>
+            <td>
+              <div class="empty" ng-if="!certificate.names">(None)</div>
+              <a class="dns-name" ng-href="http://{{ name }}" ng-repeat="name in certificate.names" ng-safenewtab>{{ name }}</a>
+            </td>
+            <td class="options-col">
+              <span class="cor-options-menu">
+                <span class="cor-option" option-click="deleteCert(certificate.path)">
+                  <i class="fa fa-times"></i> Delete Certificate
+                </span>
+              </span>
+            </td>
+          </tr>
+        </table>
+        <div ng-if="certsUploading" style="margin-top: 20px; text-align: center;">
+          <div class="cor-loader-inline"></div>
+          Uploading, validating and updating certificate(s)
+        </div>
+        <div class="empty" ng-if="!certMeta.length && !certsUploading" style="margin-top: 20px;">
+          <div class="empty-primary-msg">No custom certificates found.</div>
+        </div>
+      </div>
+  </div>
+</div>

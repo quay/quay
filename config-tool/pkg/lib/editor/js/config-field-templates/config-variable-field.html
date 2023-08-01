@@ -1,0 +1,10 @@
+<div class="config-variable-field-element">
+  <div class="btn-group">    
+    <button type="button" class="btn btn-default"
+            ng-repeat="section in sections"
+            ng-click="setSection(section)"
+            ng-class="section == currentSection ? 'active' : ''">{{ section.title }}</button>
+  </div>
+
+  <span ng-transclude></span>
+</div>
