@@ -5,7 +5,7 @@ from datetime import datetime
 
 import features
 
-from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
+from data.model import config, db_transaction, storage, _basequery, blob
 from data.model.oci import tag as oci_tag
 from data.model.quota import reset_backfill, subtract_blob_size
 from data.database import ImageStorage, Repository, QuotaRepositorySize, db_for_update
@@ -31,12 +31,6 @@ from data.database import (
     RepositoryPermission,
     RepositoryAuthorizedEmail,
     UploadedBlob,
-)
-from data.database import (
-    RepositoryTag,
-    TagManifest,
-    Image,
-    DerivedStorageForImage,
 )
 from data.secscan_model import secscan_model
 from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
@@ -103,7 +97,6 @@ def purge_repository(repo, force=False):
     # Ensure there are no additional tags, manifests, images or blobs in the repository.
     assert ApprTag.select().where(ApprTag.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
-    assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert UploadedBlob.select().where(UploadedBlob.repository == repo).count() == 0
@@ -228,7 +221,6 @@ def _purge_repository_contents(repo):
 
     assert QuotaRepositorySize.select().where(QuotaRepositorySize.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
-    assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert UploadedBlob.select().where(UploadedBlob.repository == repo).count() == 0

@@ -26,7 +26,6 @@ def set_tag_expiration_policy(namespace, expiration_s=0):
 
 
 def _perform_cleanup():
-    database.RepositoryTag.delete().where(database.RepositoryTag.hidden == True).execute()
     repo_object = model.repository.get_repository(ADMIN_ACCESS_USER, REPO)
     model.gc.garbage_collect_repo(repo_object)
 

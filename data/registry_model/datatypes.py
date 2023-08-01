@@ -222,7 +222,7 @@ class Tag(
     """
 
     @classmethod
-    def for_tag(cls, tag, legacy_id_handler, manifest_row=None, legacy_image_row=None):
+    def for_tag(cls, tag, legacy_id_handler, manifest_row=None):
         if tag is None:
             return None
 
@@ -237,7 +237,6 @@ class Tag(
             manifest_digest=manifest_row.digest if manifest_row else tag.manifest.digest,
             inputs=dict(
                 legacy_id_handler=legacy_id_handler,
-                legacy_image_row=legacy_image_row,
                 manifest_row=manifest_row or tag.manifest,
                 repository=RepositoryReference.for_id(tag.repository_id),
             ),

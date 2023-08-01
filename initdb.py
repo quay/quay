@@ -53,7 +53,6 @@ from data.database import (
     Repository,
     TagKind,
     ManifestChild,
-    TagToRepositoryTag,
     get_epoch_timestamp_ms,
     RepoMirrorConfig,
     RepoMirrorRule,
@@ -61,7 +60,6 @@ from data.database import (
     QuotaType,
     QuotaLimits,
     UserOrganizationQuota,
-    RepositorySize,
     ProxyCacheConfig,
     FederatedLogin,
 )
@@ -1339,7 +1337,6 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestLegacyImage",
     "Image",
     "ProxyCacheConfig",
-    "RepositorySize",
     "RedHatSubscriptions",
     "QuotaRegistrySize",
 ]

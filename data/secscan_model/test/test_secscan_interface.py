@@ -7,7 +7,6 @@ from app import app, instance_keys, storage
 from data.database import (
     IndexerVersion,
     IndexStatus,
-    ManifestLegacyImage,
     ManifestSecurityStatus,
 )
 from data.registry_model import registry_model

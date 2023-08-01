@@ -17,12 +17,10 @@ from app import docker_v2_signing_key, storage
 from data import model
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
-    TagManifestToManifest,
     Manifest,
     ManifestBlob,
     ManifestLabel,
     Tag,
-    TagToRepositoryTag,
     ImageStorageLocation,
     Repository,
 )
@@ -256,12 +254,12 @@ def test_repository_tag_history(
     # Pre-cache media type loads to ensure consistent query count.
     Manifest.media_type.get_name(1)
 
-    # If size fallback is requested, delete the sizes on the manifest rows.
-    if with_size_fallback:
-        Manifest.update(layers_compressed_size=None).execute()
-
     repository_ref = registry_model.lookup_repository(namespace, name)
     with assert_query_count(2 if with_size_fallback else 1):
+        # If size fallback is requested, delete the sizes on the manifest rows.
+        if with_size_fallback:
+            Manifest.update(layers_compressed_size=None).execute()
+
         history, has_more = registry_model.list_repository_tag_history(repository_ref)
         assert not has_more
         assert len(history) == expected_tag_count
@@ -421,11 +419,9 @@ def test_change_repository_tag_expiration(registry_model):
 @pytest.fixture()
 def clear_rows(initialized_db):
     # Remove all new-style rows so we can backfill.
-    TagToRepositoryTag.delete().execute()
     Tag.delete().execute()
     ManifestLabel.delete().execute()
     ManifestBlob.delete().execute()
-    TagManifestToManifest.delete().execute()
     Manifest.delete().execute()
 
 

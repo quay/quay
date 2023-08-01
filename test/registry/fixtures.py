@@ -17,10 +17,7 @@ from data.database import (
     configure,
     QueueItem,
     ImageStorage,
-    TagManifest,
-    TagManifestToManifest,
     Manifest,
-    ManifestLegacyImage,
     ManifestBlob,
     NamespaceGeoRestriction,
     User,
@@ -138,11 +135,8 @@ def registry_server_executor(app):
         return "OK"
 
     def delete_manifests():
-        ManifestLegacyImage.delete().execute()
         ManifestBlob.delete().execute()
         Manifest.delete().execute()
-        TagManifestToManifest.delete().execute()
-        TagManifest.delete().execute()
         return "OK"
 
     def set_geo_block_for_namespace(namespace_name, iso_country_code):

@@ -711,7 +711,6 @@ class User(BaseModel):
             # are cleaned up directly in the model.
             skip_transitive_deletes = (
                 {
-                    Image,
                     Repository,
                     Team,
                     RepositoryBuild,
@@ -723,17 +722,13 @@ class User(BaseModel):
                     Star,
                     RepositoryAuthorizedEmail,
                     TeamMember,
-                    RepositoryTag,
                     PermissionPrototype,
-                    DerivedStorageForImage,
-                    TagManifest,
                     AccessToken,
                     OAuthAccessToken,
                     BlobUpload,
                     RepositoryNotification,
                     OAuthAuthorizationCode,
                     RepositoryActionCount,
-                    TagManifestLabel,
                     TeamSync,
                     RepositorySearchScore,
                     DeletedNamespace,
@@ -743,7 +738,6 @@ class User(BaseModel):
                     ManifestSecurityStatus,
                     RepoMirrorConfig,
                     UploadedBlob,
-                    RepositorySize,
                     QuotaRepositorySize,
                     QuotaNamespaceSize,
                     UserOrganizationQuota,
@@ -752,7 +746,6 @@ class User(BaseModel):
                 }
                 | appr_classes
                 | v22_classes
-                | transition_classes
             )
             delete_instance_filtered(self, User, delete_nullable, skip_transitive_deletes)
 
@@ -958,28 +951,21 @@ class Repository(BaseModel):
         # are cleaned up directly
         skip_transitive_deletes = (
             {
-                RepositoryTag,
                 RepositoryBuild,
                 RepositoryBuildTrigger,
                 BlobUpload,
-                Image,
-                TagManifest,
-                TagManifestLabel,
                 Label,
-                DerivedStorageForImage,
                 RepositorySearchScore,
                 RepoMirrorConfig,
                 RepoMirrorRule,
                 DeletedRepository,
                 ManifestSecurityStatus,
                 UploadedBlob,
-                RepositorySize,
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
             }
             | appr_classes
             | v22_classes
-            | transition_classes
         )
 
         delete_instance_filtered(self, Repository, delete_nullable, skip_transitive_deletes)
@@ -989,13 +975,6 @@ class RepositorySearchScore(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     score = BigIntegerField(index=True, default=0)
     last_updated = DateTimeField(null=True)
-
-
-@deprecated_model
-class RepositorySize(BaseModel):
-    repository = ForeignKeyField(Repository, unique=True)
-    repository_id: int
-    size_bytes = BigIntegerField()
 
 
 class QuotaNamespaceSize(BaseModel):
@@ -1187,84 +1166,6 @@ class UserRegion(BaseModel):
     location = ForeignKeyField(ImageStorageLocation)
 
     indexes = ((("user", "location"), True),)
-
-
-@deprecated_model
-class Image(BaseModel):
-    # This class is intentionally denormalized. Even though images are supposed
-    # to be globally unique we can't treat them as such for permissions and
-    # security reasons. So rather than Repository <-> Image being many to many
-    # each image now belongs to exactly one repository.
-    docker_image_id = CharField(index=True)
-    repository = ForeignKeyField(Repository)
-
-    # '/' separated list of ancestory ids, e.g. /1/2/6/7/10/
-    ancestors = CharField(index=True, default="/", max_length=64535, null=True)
-
-    storage = ForeignKeyField(ImageStorage, null=True)
-
-    created = DateTimeField(null=True)
-    comment = TextField(null=True)
-    command = TextField(null=True)
-    aggregate_size = BigIntegerField(null=True)
-    v1_json_metadata = TextField(null=True)
-    v1_checksum = CharField(null=True)
-
-    security_indexed = BooleanField(default=False, index=True)
-    security_indexed_engine = IntegerField(default=IMAGE_NOT_SCANNED_ENGINE_VERSION, index=True)
-
-    # We use a proxy here instead of 'self' in order to disable the foreign key constraint
-    parent = DeferredForeignKey("Image", null=True, backref="children")
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = (
-            # we don't really want duplicates
-            (("repository", "docker_image_id"), True),
-            (("security_indexed_engine", "security_indexed"), False),
-        )
-
-    def ancestor_id_list(self):
-        """
-        Returns an integer list of ancestor ids, ordered chronologically from root to direct parent.
-        """
-        return list(map(int, self.ancestors.split("/")[1:-1]))
-
-
-@deprecated_model
-class DerivedStorageForImage(BaseModel):
-    source_image = ForeignKeyField(Image)
-    derivative = ForeignKeyField(ImageStorage)
-    transformation = ForeignKeyField(ImageStorageTransformation)
-    uniqueness_hash = CharField(null=True)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("source_image", "transformation", "uniqueness_hash"), True),)
-
-
-@deprecated_model
-class RepositoryTag(BaseModel):
-    name = CharField()
-    image = ForeignKeyField(Image)
-    repository = ForeignKeyField(Repository)
-    lifetime_start_ts = IntegerField(default=get_epoch_timestamp)
-    lifetime_end_ts = IntegerField(null=True, index=True)
-    hidden = BooleanField(default=False)
-    reversion = BooleanField(default=False)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = (
-            (("repository", "name"), False),
-            (("repository", "lifetime_start_ts"), False),
-            (("repository", "lifetime_end_ts"), False),
-            # This unique index prevents deadlocks when concurrently moving and deleting tags
-            (("repository", "name", "lifetime_end_ts"), True),
-        )
 
 
 class BUILD_PHASE(object):
@@ -1596,21 +1497,6 @@ class QuayRelease(BaseModel):
         )
 
 
-@deprecated_model
-class TorrentInfo(BaseModel):
-    storage = ForeignKeyField(ImageStorage)
-    piece_length = IntegerField()
-    pieces = Base64BinaryField()
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = (
-            # we may want to compute the piece hashes multiple times with different piece lengths
-            (("storage", "piece_length"), True),
-        )
-
-
 class ServiceKeyApprovalType(Enum):
     SUPERUSER = "Super User API"
     KEY_ROTATION = "Key Rotation"
@@ -1939,64 +1825,6 @@ class ManifestBlob(BaseModel):
         indexes = ((("manifest", "blob"), True),)
 
 
-@deprecated_model
-class ManifestLegacyImage(BaseModel):
-    """
-    For V1-compatible manifests only, this table maps from the manifest to its associated Docker
-    image.
-    """
-
-    repository = ForeignKeyField(Repository, index=True)
-    manifest = ForeignKeyField(Manifest, unique=True)
-    image = ForeignKeyField(Image)
-
-
-@deprecated_model
-class TagManifest(BaseModel):
-    tag = ForeignKeyField(RepositoryTag, unique=True)
-    digest = CharField(index=True)
-    json_data = TextField()
-
-
-@deprecated_model
-class TagManifestToManifest(BaseModel):
-    tag_manifest = ForeignKeyField(TagManifest, index=True, unique=True)
-    manifest = ForeignKeyField(Manifest, index=True)
-    broken = BooleanField(index=True, default=False)
-
-
-@deprecated_model
-class TagManifestLabel(BaseModel):
-    repository = ForeignKeyField(Repository, index=True)
-    annotated = ForeignKeyField(TagManifest, index=True)
-    label = ForeignKeyField(Label)
-
-    class Meta:
-        database = db
-        read_only_config = read_only_config
-        indexes = ((("annotated", "label"), True),)
-
-
-@deprecated_model
-class TagManifestLabelMap(BaseModel):
-    tag_manifest = ForeignKeyField(TagManifest, index=True)
-    manifest = ForeignKeyField(Manifest, null=True, index=True)
-
-    label = ForeignKeyField(Label, index=True)
-
-    tag_manifest_label = ForeignKeyField(TagManifestLabel, index=True)
-    manifest_label = ForeignKeyField(ManifestLabel, null=True, index=True)
-
-    broken_manifest = BooleanField(index=True, default=False)
-
-
-@deprecated_model
-class TagToRepositoryTag(BaseModel):
-    repository = ForeignKeyField(Repository, index=True)
-    tag = ForeignKeyField(Tag, index=True, unique=True)
-    repository_tag = ForeignKeyField(RepositoryTag, index=True, unique=True)
-
-
 @unique
 class RepoMirrorRuleType(IntEnum):
     """
@@ -2180,10 +2008,7 @@ appr_classes = set(
         ApprBlobPlacement,
     ]
 )
-v22_classes = set(
-    [Manifest, ManifestLabel, ManifestBlob, ManifestLegacyImage, TagKind, ManifestChild, Tag]
-)
-transition_classes = set([TagManifestToManifest, TagManifestLabelMap, TagToRepositoryTag])
+v22_classes = set([Manifest, ManifestLabel, ManifestBlob, TagKind, ManifestChild, Tag])
 
 is_model = lambda x: inspect.isclass(x) and issubclass(x, BaseModel) and x is not BaseModel
 all_models = [model[1] for model in inspect.getmembers(sys.modules[__name__], is_model)]

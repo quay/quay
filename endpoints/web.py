@@ -54,7 +54,7 @@ from buildtrigger.customhandler import CustomBuildTrigger
 from buildtrigger.triggerutil import TriggerProviderException
 from config import frontend_visible_config
 from data import model
-from data.database import db, RepositoryTag, TagToRepositoryTag, random_string_generator, User
+from data.database import db, random_string_generator, User
 from endpoints.api.discovery import swagger_route_data
 from endpoints.common import (
     common_login,

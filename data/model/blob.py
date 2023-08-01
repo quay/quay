@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 from data.model import (
-    tag,
     _basequery,
     BlobDoesNotExist,
     InvalidBlobUpload,
@@ -17,7 +16,6 @@ from data.database import (
     RepositoryState,
     Namespace,
     ImageStorage,
-    Image,
     ImageStoragePlacement,
     BlobUpload,
     UploadedBlob,

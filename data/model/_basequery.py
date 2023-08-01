@@ -18,7 +18,6 @@ from data.database import (
     Namespace,
     Visibility,
     ImageStorage,
-    Image,
     RepositoryKind,
     db_for_update,
     db_count_estimator,

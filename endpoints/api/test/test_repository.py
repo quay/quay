@@ -158,12 +158,6 @@ def test_create_repository(repo_name, extended_repo_names, expected_status, clie
 )
 def test_get_repo(has_tag_manifest, client, initialized_db):
     with client_with_identity("devtable", client) as cl:
-        if not has_tag_manifest:
-            database.TagManifestLabelMap.delete().execute()
-            database.TagManifestToManifest.delete().execute()
-            database.TagManifestLabel.delete().execute()
-            database.TagManifest.delete().execute()
-
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"

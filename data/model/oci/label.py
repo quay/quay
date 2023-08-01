@@ -5,15 +5,11 @@ from data.model import InvalidLabelKeyException, InvalidMediaTypeException, Data
 from data.database import (
     Label,
     Manifest,
-    TagManifestLabel,
     MediaType,
     LabelSourceType,
     db_transaction,
     ManifestLabel,
-    TagManifestLabelMap,
-    TagManifestToManifest,
     Repository,
-    TagManifest,
 )
 from data.text import prefix_search
 from util.validation import validate_label_key
@@ -124,14 +120,7 @@ def delete_manifest_label(label_uuid, manifest):
         raise DataModelException("Cannot delete immutable label")
 
     # Delete the mapping records and label.
-    # TODO: Remove this code once the TagManifest table is gone.
     with db_transaction():
-        (TagManifestLabelMap.delete().where(TagManifestLabelMap.label == label).execute())
-
-        deleted_count = TagManifestLabel.delete().where(TagManifestLabel.label == label).execute()
-        if deleted_count != 1:
-            logger.warning("More than a single label deleted for matching label %s", label_uuid)
-
         deleted_count = ManifestLabel.delete().where(ManifestLabel.label == label).execute()
         if deleted_count != 1:
             logger.warning("More than a single label deleted for matching label %s", label_uuid)

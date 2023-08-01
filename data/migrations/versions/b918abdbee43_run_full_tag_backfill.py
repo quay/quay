@@ -13,7 +13,6 @@ down_revision = "481623ba00ba"
 import logging.config
 
 from app import app
-from data.database import TagManifest
 
 from util.log import logfile_path
 
@@ -22,8 +21,7 @@ logger = logging.getLogger(__name__)
 
 def upgrade(op, tables, tester):
     # Backfill migration removed.
-    if not tester.is_testing:
-        assert TagManifest.select().count() == 0
+    pass
 
 
 def downgrade(op, tables, tester):
