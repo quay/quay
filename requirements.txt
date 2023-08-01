@@ -69,7 +69,7 @@ oslo.i18n==3.25.1
 oslo.serialization==2.29.2
 oslo.utils==4.12.2
 packaging==21.3
-pbr==5.10.0
+pbr==5.11.1
 peewee==3.13.1
 Pillow==9.3.0
 ply==3.11
