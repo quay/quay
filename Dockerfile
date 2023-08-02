@@ -137,7 +137,7 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi8/go-toolset:1.16.12 as config-tool
+FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
