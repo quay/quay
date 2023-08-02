@@ -61,6 +61,7 @@ class RegistryDataInterface(object):
         repository_ref,
         manifest_digest,
         allow_dead=False,
+        allow_hidden=False,
         require_available=False,
         raise_on_error=False,
     ):
@@ -252,12 +253,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_security_status(self, manifest_or_legacy_image):
-        """
-        Returns the security status for the given manifest or legacy image or None if none.
-        """
-
-    @abstractmethod
     def reset_security_status(self, manifest_or_legacy_image):
         """
         Resets the security status for the given manifest or legacy image, ensuring that it will get
@@ -433,13 +428,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def populate_legacy_images_for_testing(self, manifest, storage):
-        """
-        Populates legacy images for the given manifest, for testing only. This call
-        will fail if called under non-testing code.
-        """
-
-    @abstractmethod
     def find_manifests_for_sec_notification(self, manifest_digest):
         """
         Finds all manifests with the given digest that live in repositories that have
@@ -458,4 +446,13 @@ class RegistryDataInterface(object):
         """
         Returns the names of the tags that point to the given manifest, up to the given
         limit.
+        """
+
+    @abstractmethod
+    def remove_tag_from_timemachine(
+        self, repo_ref, tag_name, manifest_ref, include_submanifests=False, is_alive=False
+    ):
+        """
+        Updates any expired tags in the time machine window referencing the given manifest
+        with an expiry outside the time machine window.
         """

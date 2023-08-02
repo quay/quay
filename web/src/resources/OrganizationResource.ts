@@ -17,6 +17,7 @@ export interface IOrganization {
   can_create_repo?: boolean;
   public?: boolean;
   is_org_admin?: boolean;
+  is_admin?: boolean;
   preferred_namespace?: boolean;
   teams?: string[];
   email?: string;
@@ -127,5 +128,25 @@ export async function updateOrg(
   const updateOrgUrl = `/api/v1/organization/${name}`;
   const response = await axios.put(updateOrgUrl, updateOrgRequest);
   assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function updateOrgSettings(
+  namespace: string,
+  tag_expiration_s: number,
+  email: string,
+  isUser: boolean,
+): Promise<Response> {
+  const updateSettingsUrl = isUser
+    ? `/api/v1/user/`
+    : `/api/v1/organization/${namespace}`;
+  let payload = {};
+  if (email) {
+    payload['email'] = email;
+  }
+  if (tag_expiration_s != null) {
+    payload['tag_expiration_s'] = tag_expiration_s;
+  }
+  const response = await axios.put(updateSettingsUrl, payload);
   return response.data;
 }

@@ -211,6 +211,26 @@ local-dev-up: local-dev-clean node_modules | build-image-quay
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
 	@echo "You can now access the frontend at http://localhost:8080"
 
+.PHONY: update-testdata
+update-testdata: local-dev-clean node_modules | build-image-quay
+	$(DOCKER_COMPOSE) rm -fsv quay-db quay
+	$(DOCKER) volume rm -f quay_quay-db-data
+	$(DOCKER_COMPOSE) up -d redis quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	cd ./web/ && npm run quay:seed-db
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	cd ./web/ && npm run quay:seed-storage
+	while ! curl -fso /dev/null http://localhost:8080; do echo "waiting for quay"; sleep 2; done
+	$(DOCKER) exec -it quay-db psql quay -U quay -c " \
+		DELETE FROM servicekey; \
+		DELETE FROM servicekeyapproval; \
+		SELECT pg_catalog.setval('public.notification_id_seq', 1, false); \
+		SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false); \
+		SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false); \
+	"
+	cd ./web/ && npm run quay:dump
+	$(DOCKER_COMPOSE) down
+
 local-docker-rebuild:
 	$(DOCKER_COMPOSE) up -d --build redis
 	$(DOCKER_COMPOSE) up -d --build quay-db

@@ -1,0 +1,1151 @@
+{
+  "type": "object",
+  "description": "Schema for Quay configuration",
+  "properties": {
+    "FEATURE_DIRECT_LOGIN": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Whether users can directly login to the UI. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings", "AppTokenAuthentication"]
+    },
+    "FEATURE_GITHUB_LOGIN": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether GitHub login is supported. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings", "GitHubLogin"]
+    },
+    "FEATURE_GOOGLE_LOGIN": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether Google login is supported. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings", "GoogleLogin"]
+    },
+    "FEATURE_USER_CREATION": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Whether users can be created (by non-super users). Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_INVITE_ONLY_USER_CREATION": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether users being created must be invited by another user. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_PARTIAL_USER_AUTOCOMPLETE": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If set to true, autocompletion will apply to partial usernames. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_USER_LAST_ACCESSED": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Whether to record the last time a user was accessed. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_USER_LOG_ACCESS": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If set to true, users will have access to audit logs for their namespace. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_USER_METADATA": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to collect and support user metadata. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_USERNAME_CONFIRMATION": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "If set to true, users can confirm their generated usernames. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_USER_RENAME": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If set to true, users can rename their own namespace. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_ANONYMOUS_ACCESS": {
+      "x-example": true,
+      "type": "boolean",
+      "description": " Whether to allow anonymous users to browse and pull public repositories. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "USER_RECOVERY_TOKEN_LIFETIME": {
+      "x-example": "10m",
+      "type": "string",
+      "description": "The length of time a token for recovering a user accounts is valid. Defaults to 30m.",
+      "pattern": "^[0-9]+(w|m|d|h|s)$",
+      "ct-default": "30m",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FRESH_LOGIN_TIMEOUT": {
+      "x-example": "5m",
+      "type": "string",
+      "description": "The time after which a fresh login requires users to reenter their password",
+      "ct-default": "10m",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AccessSettings"]
+    },
+    "FEATURE_ACTION_LOG_ROTATION": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether or not to rotate old action logs to storage. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["ActionLogArchiving"]
+    },
+    "ACTION_LOG_ARCHIVE_PATH": {
+      "x-example": "archives/actionlogs",
+      "type": "string",
+      "description": "If action log archiving is enabled, the path in storage in which to place the archived data.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["ActionLogArchiving"]
+    },
+    "ACTION_LOG_ARCHIVE_LOCATION": {
+      "x-example": "s3_us_east",
+      "type": "string",
+      "description": "If action log archiving is enabled, the storage engine in which to place the archived data.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["ActionLogArchiving"]
+    },
+    "FEATURE_PROXY_STORAGE": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to proxy all direct download URLs in storage via the registry nginx. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["DistributedStorage"]
+    },
+    "DISTRIBUTED_STORAGE_CONFIG": {
+      "x-example": {
+        "local_storage": ["LocalStorage", { "storage_path": "some/path/" }]
+      },
+      "type": "object",
+      "description": "Configuration for storage engine(s) to use in Quay. Each key is a unique ID for a storage engine, with the value being a tuple of the type and  configuration for that engine.",
+      "patternProperties": {
+        "^.*$": {
+          "type": "array"
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["ActionLogArchiving"]
+    },
+    "REGISTRY_TITLE": {
+      "x-example": "Corp Container Service",
+      "type": "string",
+      "description": "If specified, the long-form title for the registry. Defaults to `Red Hat Quay`.",
+      "ct-default": "Project Quay",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "REGISTRY_TITLE_SHORT": {
+      "x-example": "CCS",
+      "type": "string",
+      "description": "If specified, the short-form title for the registry. Defaults to `Red Hat Quay`.",
+      "ct-default": "Project Quay",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "SEARCH_RESULTS_PER_PAGE": {
+      "x-example": 10,
+      "type": "number",
+      "description": "Number of results returned per page by search page. Defaults to 10",
+      "ct-default": "10",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "SEARCH_MAX_RESULT_PAGE_COUNT": {
+      "x-example": 10,
+      "type": "number",
+      "description": "Maximum number of pages the user can paginate in search before they are limited. Defaults to 10",
+      "ct-default": "10",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "CONTACT_INFO": {
+      "type": "array",
+      "description": "If specified, contact information to display on the contact page. If only a single piece of contact information is specified, the contact footer will link directly.",
+      "uniqueItems": true,
+      "items": [
+        {
+          "pattern": "^mailto:(.)+$",
+          "type": "string",
+          "description": "Adds a link to send an e-mail",
+          "x-example": "mailto:support@quay.io"
+        },
+        {
+          "pattern": "^irc://(.)+$",
+          "type": "string",
+          "description": "Adds a link to visit an IRC chat room",
+          "x-example": "irc://chat.freenode.net:6665/quay"
+        },
+        {
+          "pattern": "^tel:(.)+$",
+          "type": "string",
+          "description": "Adds a link to call a phone number",
+          "x-example": "tel:+1-888-930-3475"
+        },
+        {
+          "pattern": "^http(s)?://(.)+$",
+          "type": "string",
+          "description": "Adds a link to a defined URL",
+          "x-example": "https://twitter.com/quayio"
+        }
+      ],
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "AVATAR_KIND": {
+      "enum": ["local", "gravatar"],
+      "type": "string",
+      "description": "The types of avatars to display, either generated inline (local) or Gravatar (gravatar)",
+      "ct-default": "local",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "BRANDING": {
+      "required": ["logo"],
+      "type": "object",
+      "description": "Custom branding for logos and URLs in the Quay UI",
+      "properties": {
+        "logo": {
+          "x-example": "/static/img/quay-horizontal-color.svg",
+          "type": "string",
+          "description": "Main logo image URL",
+          "ct-default": "/static/img/quay-horizontal-color.svg",
+          "ct-validate": "url"
+        },
+        "footer_img": {
+          "x-example": "/static/img/RedHat.svg",
+          "type": "string",
+          "description": "Logo for UI footer",
+          "ct-default": "",
+          "ct-validate": "url"
+        },
+        "footer_url": {
+          "x-example": "https://redhat.com",
+          "type": "string",
+          "description": "Link for footer image",
+          "ct-default": "",
+          "ct-validate": "url"
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["UserVisibleSettings"]
+    },
+    "DOCUMENTATION_ROOT": {
+      "type": "string",
+      "description": "Root URL for documentation links",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["QuayDocumentation"]
+    },
+    "FEATURE_TEAM_SYNCING": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Whether to allow for team membership to be synced from a backing group in the authentication engine (LDAP or Keystone)",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TeamSyncing"]
+    },
+    "FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If enabled, non-superusers can setup syncing on teams to backing LDAP or Keystone. Defaults To False.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TeamSyncing"]
+    },
+    "TEAM_RESYNC_STALE_TIME": {
+      "x-example": "2h",
+      "type": "string",
+      "description": "If team syncing is enabled for a team, how often to check its membership and resync if necessary (Default: 30m)",
+      "pattern": "^[0-9]+(w|m|d|h|s)$",
+      "ct-default": "30m",
+      "ct-validate": "customValidateTimePattern",
+      "ct-fieldgroups": ["TeamSyncing"]
+    },
+    "AUTHENTICATION_TYPE": {
+      "x-example": "Database",
+      "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"],
+      "type": "string",
+      "description": "The authentication engine to use for credential authentication.",
+      "ct-default": "Database",
+      "ct-validate": "",
+      "ct-fieldgroups": [
+        "AccessSettings",
+        "AppTokenAuthentication",
+        "JWTAuthentication"
+      ]
+    },
+    "FEATURE_APP_SPECIFIC_TOKENS": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "If enabled, users can create tokens for use by the Docker CLI. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["AppTokenAuthentication"]
+    },
+    "FEATURE_SECURITY_SCANNER": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to turn of/off the security scanner. Defaults to False",
+      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/security-scanning.html",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "SECURITY_SCANNER_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for the V2 security scanner",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "SECURITY_SCANNER_NOTIFICATIONS": {
+      "type": "boolean",
+      "description": "Whether or not to the security scanner notification feature",
+      "x-example": "false",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "SECURITY_SCANNER_INDEXING_INTERVAL": {
+      "x-example": 30,
+      "type": "number",
+      "description": "The number of seconds between indexing intervals in the security scanner. Defaults to 30.",
+      "ct-default": "30",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "SECURITY_SCANNER_V4_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for the V4 security scanner",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": {
+      "type": "array",
+      "description": "The namespaces to which the security scanner should be enabled for",
+      "x-example": ["quay-team", "red hat"],
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "SECURITY_SCANNER_V4_PSK": {
+      "type": "string",
+      "description": "If 'SECURITY_SCANNER_V4_SIGN_JWT', Quay will sign JWTs with either the key provided by `SECURITY_SCANNER_V4_PSK' (if specified here) or the Quay instance's private key otherwise.",
+      "x-example": "secret",
+      "ct-default": false,
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
+    "FEATURE_BUILD_SUPPORT": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Whether to support Dockerfile build. Defaults to True",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": [
+        "BitbucketBuildTrigger",
+        "GitHubBuildTrigger",
+        "GitLabBuildTrigger"
+      ]
+    },
+    "BITBUCKET_TRIGGER_CONFIG": {
+      "properties": {
+        "CONSUMER_SECRET": {
+          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+          "type": "string",
+          "description": "The registered consumer secret (client secret) for this Quay instance",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CONSUMER_KEY": {
+          "x-example": "0e8dbe15c4c7630b6780",
+          "type": "string",
+          "description": "The registered consumer key (client ID) for this Quay instance",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "required": ["CONSUMER_KEY", "CONSUMER_SECRET"],
+      "type": "object",
+      "description": "Configuration for using BitBucket for build triggers",
+      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/bitbucket-build.html",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["BitbucketBuildTrigger"]
+    },
+    "FEATURE_BITBUCKET_BUILD": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to support Bitbucket build triggers. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["BitbucketBuildTrigger"]
+    },
+    "DB_URI": {
+      "x-example": "mysql+pymysql://username:password@dns.of.database/quay",
+      "type": "string",
+      "description": "The URI at which to access the database, including any credentials.",
+      "x-reference": "https://www.postgresql.org/docs/9.3/static/libpq-connect.html#AEN39495",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Database"]
+    },
+    "DB_CONNECTION_ARGS": {
+      "required": ["threadlocals", "autorollback"],
+      "type": "object",
+      "description": "If specified, connection arguments for the database such as timeouts and SSL.",
+      "properties": {
+        "ssl": {
+          "required": ["ca"],
+          "type": "object",
+          "description": "SSL connection configuration",
+          "properties": {
+            "ca": {
+              "x-example": "conf/stack/ssl-ca-cert.pem",
+              "type": "string",
+              "description": "*Absolute container path* to the CA certificate to use for SSL connections",
+              "ct-default": "",
+              "ct-validate": ""
+            }
+          }
+        },
+        "threadlocals": {
+          "type": "boolean",
+          "description": "Whether to use thread-local connections. Should *ALWAYS* be `true`",
+          "ct-default": "true",
+          "ct-validate": ""
+        },
+        "autorollback": {
+          "type": "boolean",
+          "description": "Whether to use auto-rollback connections. Should *ALWAYS* be `true`",
+          "ct-default": "true",
+          "ct-validate": ""
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Database"]
+    },
+    "LOGS_MODEL": {
+      "x-example": "database",
+      "enum": ["database", "transition_reads_both_writes_es", "elasticsearch"],
+      "type": "string",
+      "description": "Logs model for action logs",
+      "ct-default": "database",
+      "ct-validate": "",
+      "ct-fieldgroups": ["ElasticSearch"]
+    },
+    "LOGS_MODEL_CONFIG": {
+      "properties": {
+        "elasticsearch_config": {
+          "type": "object",
+          "description": "Elasticsearch cluster configuration",
+          "properties": {
+            "access_key": {
+              "x-example": "some_string",
+              "type": "string",
+              "description": "Elasticsearch user (or IAM key for AWS ES)",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "host": {
+              "x-example": "host.elasticsearch.example",
+              "type": "string",
+              "description": "Elasticsearch cluster endpoint",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "index_prefix": {
+              "x-example": "logentry_",
+              "type": "string",
+              "description": "Elasticsearch's index prefix",
+              "ct-default": "logentry_",
+              "ct-validate": ""
+            },
+            "index_settings": {
+              "type": "object",
+              "description": "Elasticsearch's index settings",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "use_ssl": {
+              "x-example": true,
+              "type": "boolean",
+              "description": "Use ssl for Elasticsearch. Defaults to True",
+              "ct-default": "true",
+              "ct-validate": ""
+            },
+            "secret_key": {
+              "x-example": "some_secret_string",
+              "type": "string",
+              "description": "Elasticsearch password (or IAM secret for AWS ES)",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "aws_region": {
+              "x-example": "us-east-1",
+              "type": "string",
+              "description": "Amazon web service region",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "port": {
+              "x-example": 1234,
+              "type": "number",
+              "description": "Elasticsearch cluster endpoint port",
+              "ct-default": "",
+              "ct-validate": ""
+            }
+          }
+        },
+        "kinesis_stream_config": {
+          "type": "object",
+          "description": "AWS Kinesis Stream configuration",
+          "properties": {
+            "aws_secret_key": {
+              "x-example": "some_secret_key",
+              "type": "string",
+              "description": "AWS secret key",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "stream_name": {
+              "x-example": "logentry-kinesis-stream",
+              "type": "string",
+              "description": "Kinesis stream to send action logs to",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "aws_access_key": {
+              "x-example": "some_access_key",
+              "type": "string",
+              "description": "AWS access key",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "retries": {
+              "x-example": 5,
+              "type": "number",
+              "description": "Max number of attempts made on a single request",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "read_timeout": {
+              "x-example": 5,
+              "type": "number",
+              "description": "Number of seconds before timeout when reading from a connection",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "max_pool_connections": {
+              "x-example": 10,
+              "type": "number",
+              "description": "The maximum number of connections to keep in a connection pool",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "aws_region": {
+              "x-example": "us-east-1",
+              "type": "string",
+              "description": "AWS region",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "connect_timeout": {
+              "x-example": 5,
+              "type": "number",
+              "description": "Number of seconds before timeout when attempting to make a connection",
+              "ct-default": "",
+              "ct-validate": ""
+            }
+          },
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "producer": {
+          "x-example": "kafka",
+          "enum": ["kafka", "elasticsearch", "kinesis_stream"],
+          "type": "string",
+          "description": "Logs producer if logging to Elasticsearch",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "kafka_config": {
+          "type": "object",
+          "description": "Kafka cluster configuration",
+          "properties": {
+            "topic": {
+              "x-example": "logentry",
+              "type": "string",
+              "description": "Kafka topic to publish log entries to",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "bootstrap_servers": {
+              "uniqueItems": true,
+              "items": [{ "type": "string" }],
+              "type": "array",
+              "description": "List of Kafka brokers to bootstrap the client from",
+              "ct-default": "",
+              "ct-validate": ""
+            },
+            "max_block_seconds": {
+              "x-example": 10,
+              "type": "number",
+              "description": "Max number of seconds to block during a `send()`, either because the buffer is full or metadata unavailable",
+              "ct-default": "",
+              "ct-validate": ""
+            }
+          },
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "type": "object",
+      "description": "Logs model config for action logs",
+      "x-reference": "https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_settings.html",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["ElasticSearch"]
+    },
+    "FEATURE_GITHUB_BUILD": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to support GitHub build triggers. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["GitHubBuildTrigger"]
+    },
+    "GITHUB_TRIGGER_CONFIG": {
+      "properties": {
+        "ALLOWED_ORGANIZATIONS": {
+          "uniqueItems": true,
+          "items": [{ "type": "string" }],
+          "type": "array",
+          "description": "The names of the GitHub (Enterprise) organizations whitelisted to work with the ORG_RESTRICT option",
+          "ct-default": "[]",
+          "ct-validate": ""
+        },
+        "ORG_RESTRICT": {
+          "x-example": true,
+          "type": "boolean",
+          "description": "If true, only users within the organization whitelist can login using this provider",
+          "ct-default": "false",
+          "ct-validate": ""
+        },
+        "API_ENDPOINT": {
+          "x-example": "https://api.github.com/",
+          "type": "string",
+          "description": "The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CLIENT_SECRET": {
+          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+          "type": "string",
+          "description": "The registered client secret for this Quay instance",
+          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "GITHUB_ENDPOINT": {
+          "x-example": "https://github.com/",
+          "type": "string",
+          "description": "The endpoint of the GitHub (Enterprise) being hit",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CLIENT_ID": {
+          "x-example": "0e8dbe15c4c7630b6780",
+          "type": "string",
+          "description": "The registered client ID for this Quay instance; cannot be shared with GITHUB_LOGIN_CONFIG",
+          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "required": ["GITHUB_ENDPOINT", "CLIENT_ID", "CLIENT_SECRET"],
+      "type": "object",
+      "description": "Configuration for using GitHub (Enterprise) for build triggers",
+      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-build.html",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["GitHubBuildTrigger"]
+    },
+    "GITHUB_LOGIN_CONFIG": {
+      "properties": {
+        "ALLOWED_ORGANIZATIONS": {
+          "uniqueItems": true,
+          "items": [{ "type": "string" }],
+          "type": "array",
+          "description": "The names of the GitHub (Enterprise) organizations whitelisted to work with the ORG_RESTRICT option",
+          "ct-default": "[]",
+          "ct-validate": ""
+        },
+        "ORG_RESTRICT": {
+          "x-example": true,
+          "type": "boolean",
+          "description": "If true, only users within the organization whitelist can login using this provider",
+          "ct-default": "false",
+          "ct-validate": ""
+        },
+        "API_ENDPOINT": {
+          "x-example": "https://api.github.com/",
+          "type": "string",
+          "description": "The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "GITHUB_ENDPOINT": {
+          "x-example": "https://github.com/",
+          "type": "string",
+          "description": "The endpoint of the GitHub (Enterprise) being hit",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CLIENT_ID": {
+          "x-example": "0e8dbe15c4c7630b6780",
+          "type": "string",
+          "description": "The registered client ID for this Quay instance; cannot be shared with GITHUB_TRIGGER_CONFIG",
+          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CLIENT_SECRET": {
+          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+          "type": "string",
+          "description": "The registered client secret for this Quay instance",
+          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "required": ["CLIENT_ID", "CLIENT_SECRET"],
+      "type": "object",
+      "description": "Configuration for using GitHub (Enterprise) as an external login provider",
+      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-auth.html",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["GitHubLogin"]
+    },
+    "FEATURE_GITLAB_BUILD": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to support GitLab build triggers. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["GitLabBuildTrigger"]
+    },
+    "GITLAB_TRIGGER_CONFIG": {
+      "required": ["GITLAB_ENDPOINT", "CLIENT_ID", "CLIENT_SECRET"],
+      "type": "object",
+      "description": "Configuration for using Gitlab (Enterprise) for external authentication",
+      "properties": {
+        "CLIENT_SECRET": {
+          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+          "type": "string",
+          "description": "The registered client secret for this Quay instance",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "GITLAB_ENDPOINT": {
+          "x-example": "https://gitlab.com",
+          "type": "string",
+          "description": "The endpoint at which Gitlab(Enterprise) is running",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CLIENT_ID": {
+          "x-example": "0e8dbe15c4c7630b6780",
+          "type": "string",
+          "description": "The registered client ID for this Quay instance",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["GitLabBuildTrigger"]
+    },
+    "GOOGLE_LOGIN_CONFIG": {
+      "required": ["CLIENT_ID", "CLIENT_SECRET"],
+      "type": "object",
+      "description": "Configuration for using Google for external authentication",
+      "properties": {
+        "CLIENT_SECRET": {
+          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+          "type": "string",
+          "description": "The registered client secret for this Quay instance",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "CLIENT_ID": {
+          "x-example": "0e8dbe15c4c7630b6780",
+          "type": "string",
+          "description": "The registered client ID for this Quay instance",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["GoogleLogin"]
+    },
+    "JWT_VERIFY_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for JWT verification",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["JWTAuthentication"]
+    },
+    "JWT_QUERY_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for JWT queries",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["JWTAuthentication"]
+    },
+    "JWT_GETUSER_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for JWT users",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["JWTAuthentication"]
+    },
+    "JWT_AUTH_ISSUER": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for JWT users",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["JWTAuthentication"]
+    },
+    "FEATURE_MAILING": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Whether emails are enabled. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["JWTAuthentication", "Email"]
+    },
+    "BUILDLOGS_REDIS": {
+      "required": ["host"],
+      "type": "object",
+      "description": "Connection information for Redis for build logs caching",
+      "properties": {
+        "host": {
+          "x-example": "my.redis.cluster",
+          "type": "string",
+          "description": "The hostname at which Redis is accessible",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "password": {
+          "x-example": "mypassword",
+          "type": "string",
+          "description": "The password to connect to the Redis instance",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "port": {
+          "x-example": 1234,
+          "type": "number",
+          "description": "The port at which Redis is accessible",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Redis"]
+    },
+    "USER_EVENTS_REDIS": {
+      "required": ["host"],
+      "type": "object",
+      "description": "Connection information for Redis for build logs caching",
+      "properties": {
+        "host": {
+          "x-example": "my.redis.cluster",
+          "type": "string",
+          "description": "The hostname at which Redis is accessible",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "password": {
+          "x-example": "mypassword",
+          "type": "string",
+          "description": "The password to connect to the Redis instance",
+          "ct-default": "",
+          "ct-validate": ""
+        },
+        "port": {
+          "x-example": 1234,
+          "type": "number",
+          "description": "The port at which Redis is accessible",
+          "ct-default": "",
+          "ct-validate": ""
+        }
+      },
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Redis"]
+    },
+    "SERVER_HOSTNAME": {
+      "x-example": "quay.io",
+      "type": "string",
+      "description": "The URL at which Quay is accessible, without the scheme.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["HostSettings"]
+    },
+    "PREFERRED_URL_SCHEME": {
+      "x-example": "https",
+      "enum": ["http", "https"],
+      "type": "string",
+      "description": "The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`",
+      "ct-default": "http",
+      "ct-validate": "",
+      "ct-fieldgroups": ["HostSettings"]
+    },
+    "EXTERNAL_TLS_TERMINATION": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If TLS is supported, but terminated at a layer before Quay, must be true.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["HostSettings"]
+    },
+    "FEATURE_REPO_MIRROR": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to enable support for repository mirroring. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_TLS_VERIFY": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_INTERVAL": {
+      "x-example": 30,
+      "type": "number",
+      "description": "The number of seconds between checking for repository mirror candidates. Defaults to 30.",
+      "ct-default": "30",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_SERVER_HOSTNAME": {
+      "x-example": "openshift-quay-service",
+      "type": "string",
+      "description": "Replaces the SERVER_HOSTNAME as the destination for mirroring. Defaults to unset",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "MAIL_SERVER": {
+      "x-example": "smtp.somedomain.com",
+      "type": "string",
+      "description": "The SMTP server to use for sending e-mails. Only required if FEATURE_MAILING is set to true.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_PORT": {
+      "x-example": 588,
+      "type": "number",
+      "description": "The SMTP port to use. If not specified, defaults to 587.",
+      "ct-default": "587",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "FEATURE_BLACKLISTED_EMAILS": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "If set to true, no new User accounts may be created if their email domain is blacklisted.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "BLACKLISTED_EMAIL_DOMAINS": {
+      "x-example": ["example.com", "example.org"],
+      "type": "array",
+      "description": "The array of email-address domains that is used if FEATURE_BLACKLISTED_EMAILS is set to true.",
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_USE_AUTH": {
+      "x-example": "myuser",
+      "type": "boolean",
+      "description": "Whether or not to use authentication for mail server.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_USERNAME": {
+      "x-example": "myuser",
+      "type": "string",
+      "description": "The SMTP username to use when sending e-mails.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_PASSWORD": {
+      "x-example": "mypassword",
+      "type": "string",
+      "description": "The SMTP password to use when sending e-mails.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_DEFAULT_SENDER": {
+      "x-example": "support@myco.com",
+      "type": "string",
+      "description": "If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `support@quay.io`.",
+      "ct-default": "support@quay.io",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_USE_TLS": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If specified, whether to use TLS for sending e-mails.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "FEATURE_CHANGE_TAG_EXPIRATION": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True.",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TimeMachine"]
+    },
+    "TAG_EXPIRATION_OPTIONS": {
+      "items": { "pattern": "^[0-9]+(w|m|d|h|s)$", "type": "string" },
+      "type": "array",
+      "description": "The options that users can select for expiration of tags in their namespace (if enabled)",
+      "ct-default": "[2w]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TimeMachine"]
+    },
+    "DEFAULT_TAG_EXPIRATION": {
+      "pattern": "^[0-9]+(w|m|d|h|s)$",
+      "type": "string",
+      "description": "The default, configurable tag expiration time for time machine. Defaults to `2w`.",
+      "ct-default": "2w",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TimeMachine"]
+    },
+    "LDAP_ADMIN_DN": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_ADMIN_PASSWD": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_URI": {
+      "type": "string",
+      "ct-default": "ldap://localhost",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_ALLOW_INSECURE_FALLBACK": {
+      "type": "boolean",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_BASE_DN": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_USER_RDN": {
+      "type": "array",
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_UID_ATTR": {
+      "type": "string",
+      "ct-default": "uid",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_EMAIL_ATTR": {
+      "type": "string",
+      "ct-default": "mail",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_USER_FILTER": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    }
+  }
+}

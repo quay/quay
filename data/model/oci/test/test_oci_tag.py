@@ -1,17 +1,25 @@
+import json
+from mock import patch
 import pytest
 from calendar import timegm
 from datetime import timedelta, datetime
 
 from playhouse.test_utils import assert_query_count
 
+from app import storage
 from data import model
 from data.database import (
+    ImageStorageLocation,
+    ManifestChild,
     Tag,
     Repository,
 )
+from data.model.blob import store_blob_record_and_temp_link
+from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.oci.tag import (
     find_matching_tag,
+    get_child_manifests,
     get_most_recent_tag,
     get_most_recent_tag_lifetime_start,
     list_alive_tags,
@@ -25,6 +33,7 @@ from data.model.oci.tag import (
     delete_tag,
     delete_tags_for_manifest,
     change_tag_expiration,
+    remove_tag_from_timemachine,
     set_tag_expiration_for_manifest,
     retarget_tag,
     create_temporary_tag_if_necessary,
@@ -33,8 +42,26 @@ from data.model.oci.tag import (
     get_epoch_timestamp_ms,
 )
 from data.model.repository import get_repository, create_repository
+from data.model.storage import get_layer_path
+from data.model.user import get_user
+from digest.digest_tools import sha256_digest
+from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from util.bytes import Bytes
+
 
 from test.fixtures import *
+
+
+def _populate_blob(content):
+    content = Bytes.for_string_or_unicode(content).as_encoded_str()
+    digest = str(sha256_digest(content))
+    location = ImageStorageLocation.get(name="local_us")
+    blob = store_blob_record_and_temp_link(
+        "devtable", "newrepo", digest, location, len(content), 120
+    )
+    storage.put_content(["local_us"], get_layer_path(blob), content)
+    return blob, digest
 
 
 @pytest.mark.parametrize(
@@ -321,61 +348,89 @@ def test_get_expired_tag(namespace_name, repo_name, tag_name, expected, initiali
 
 def test_delete_tag(initialized_db):
     found = False
-    for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
-        repo = tag.repository
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
+            repo = tag.repository
 
-        assert get_tag(repo, tag.name) == tag
-        assert tag.lifetime_end_ms is None
+            assert get_tag(repo, tag.name) == tag
+            assert tag.lifetime_end_ms is None
 
-        with assert_query_count(3):
-            assert delete_tag(repo, tag.name) == tag
+            with assert_query_count(3):
+                assert delete_tag(repo, tag.name) == tag
 
-        assert get_tag(repo, tag.name) is None
-        found = True
+            assert get_tag(repo, tag.name) is None
+            found = True
 
     assert found
 
 
+def test_delete_tag_manifest_list(initialized_db):
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repository = create_repository("devtable", "newrepo", None)
+        tag = _create_manifest_list(repository)
+
+        # Assert temporary tags were created and are alive
+        child_manifests = list(get_child_manifests(repository.id, tag.manifest))
+        assert len(child_manifests) == 2
+        for child_manifest in child_manifests:
+            child_tag = get_tag_by_manifest_id(repository.id, child_manifest.child_manifest)
+            assert child_tag.name.startswith("$temp-")
+            assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
+
+        with assert_query_count(8):
+            assert delete_tag(repository.id, tag.name) == tag
+
+        # Assert temporary tags pointing to child manifest are now expired
+        child_manifests = list(get_child_manifests(repository.id, tag.manifest))
+        assert len(child_manifests) == 2
+        for child_manifest in child_manifests:
+            child_tag = get_tag_by_manifest_id(repository.id, child_manifest.child_manifest)
+            assert child_tag.name.startswith("$temp-")
+            assert child_tag.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
 def test_delete_tags_for_manifest(initialized_db):
-    for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
-        repo = tag.repository
-        assert get_tag(repo, tag.name) == tag
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
+            repo = tag.repository
+            assert get_tag(repo, tag.name) == tag
 
-        with assert_query_count(4):
-            assert delete_tags_for_manifest(tag.manifest) == [tag]
+            with assert_query_count(5):
+                assert delete_tags_for_manifest(tag.manifest) == [tag]
 
-        assert get_tag(repo, tag.name) is None
+            assert get_tag(repo, tag.name) is None
 
 
 def test_delete_tags_for_manifest_same_manifest(initialized_db):
-    new_repo = model.repository.create_repository("devtable", "newrepo", None)
-    manifest_1, _ = create_manifest_for_testing(new_repo, "1")
-    manifest_2, _ = create_manifest_for_testing(new_repo, "2")
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        new_repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(new_repo, "1")
+        manifest_2, _ = create_manifest_for_testing(new_repo, "2")
 
-    assert manifest_1.digest != manifest_2.digest
+        assert manifest_1.digest != manifest_2.digest
 
-    # Add some tag history, moving a tag back and forth between two manifests.
-    retarget_tag("latest", manifest_1)
-    retarget_tag("latest", manifest_2)
-    retarget_tag("latest", manifest_1)
-    retarget_tag("latest", manifest_2)
+        # Add some tag history, moving a tag back and forth between two manifests.
+        retarget_tag("latest", manifest_1)
+        retarget_tag("latest", manifest_2)
+        retarget_tag("latest", manifest_1)
+        retarget_tag("latest", manifest_2)
 
-    retarget_tag("another1", manifest_1)
-    retarget_tag("another2", manifest_2)
+        retarget_tag("another1", manifest_1)
+        retarget_tag("another2", manifest_2)
 
-    # Delete all tags pointing to the first manifest.
-    delete_tags_for_manifest(manifest_1)
+        # Delete all tags pointing to the first manifest.
+        delete_tags_for_manifest(manifest_1)
 
-    assert get_tag(new_repo, "latest").manifest == manifest_2
-    assert get_tag(new_repo, "another1") is None
-    assert get_tag(new_repo, "another2").manifest == manifest_2
+        assert get_tag(new_repo, "latest").manifest == manifest_2
+        assert get_tag(new_repo, "another1") is None
+        assert get_tag(new_repo, "another2").manifest == manifest_2
 
-    # Delete all tags pointing to the second manifest, which should actually delete the `latest`
-    # tag now.
-    delete_tags_for_manifest(manifest_2)
-    assert get_tag(new_repo, "latest") is None
-    assert get_tag(new_repo, "another1") is None
-    assert get_tag(new_repo, "another2") is None
+        # Delete all tags pointing to the second manifest, which should actually delete the `latest`
+        # tag now.
+        delete_tags_for_manifest(manifest_2)
+        assert get_tag(new_repo, "latest") is None
+        assert get_tag(new_repo, "another1") is None
+        assert get_tag(new_repo, "another2") is None
 
 
 @pytest.mark.parametrize(
@@ -514,3 +569,141 @@ def test_lookup_unrecoverable_tags(initialized_db):
 
     found = list(lookup_unrecoverable_tags(repo))
     assert not found
+
+
+def test_remove_tag_from_timemachine(initialized_db):
+    org = get_user("devtable")
+    repo = get_repository("devtable", "history")
+    results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
+    assert len(results) == 2
+    assert org.removed_tag_expiration_s > 0
+
+    expiration_window = org.removed_tag_expiration_s
+    manifest_id = results[0].manifest
+
+    # Expire the tags
+    now_ms = get_epoch_timestamp_ms()
+    results[0].lifetime_end_ms = now_ms - 100
+    results[1].lifetime_end_ms = now_ms - 101
+
+    # Recreate scenario of the same tag being deleted twice
+    # by setting the tags to the same manifest
+    results[1].manifest = manifest_id
+
+    results[0].save()
+    results[1].save()
+
+    updated = remove_tag_from_timemachine(repo.id, "latest", manifest_id)
+    assert updated
+
+    results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
+    for tag in results:
+        assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+        assert not tag.hidden
+
+
+def test_remove_tag_from_timemachine_alive(initialized_db):
+    org = get_user("devtable")
+    repo = get_repository("devtable", "history")
+    tag = get_tag(repo, "latest")
+    assert tag.lifetime_end_ms is None or tag.lifetime_end_ms > get_epoch_timestamp_ms()
+    assert tag is not None
+    assert org.removed_tag_expiration_s > 0
+
+    expiration_window = org.removed_tag_expiration_s
+
+    updated = remove_tag_from_timemachine(repo.id, "latest", tag.manifest, is_alive=True)
+    assert updated
+
+    tag = Tag.select().where(Tag.id == tag.id).get()
+    assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+    assert not tag.hidden
+
+
+def test_remove_tag_from_timemachine_submanifests(initialized_db):
+    org = get_user("devtable")
+    assert org.removed_tag_expiration_s > 0
+    expiration_window = org.removed_tag_expiration_s
+    repository = create_repository("devtable", "newrepo", None)
+
+    created_tag = _create_manifest_list(repository)
+    created_tag.lifetime_end_ms = get_epoch_timestamp_ms() - 100
+    created_tag.save()
+
+    updated = remove_tag_from_timemachine(
+        created_tag.repository, "manifestlist", created_tag.manifest, include_submanifests=True
+    )
+    assert updated
+
+    updated_tag = Tag.select().where(Tag.id == created_tag.id).get()
+    assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+    assert not updated_tag.hidden
+
+    child_manifests = [
+        cm.child_manifest
+        for cm in ManifestChild.select().where(ManifestChild.manifest == created_tag.manifest)
+    ]
+    tags = list(Tag.select().where(Tag.manifest << child_manifests))
+    for tag in tags:
+        assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+        assert tag.hidden
+        assert tag.name.startswith("$temp-")
+
+
+def _create_manifest_list(repository):
+    layer_json = json.dumps(
+        {
+            "id": "somelegacyid",
+            "config": {
+                "Labels": {},
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    # Add a blob containing the config.
+    _, config_digest = _populate_blob(layer_json)
+
+    # Add a blob of random data.
+    random_data_1 = "foo"
+    _, random_digest_1 = _populate_blob(random_data_1)
+    random_data_2 = "bar"
+    _, random_digest_2 = _populate_blob(random_data_2)
+
+    # Build the manifests.
+    manifest_1_builder = DockerSchema2ManifestBuilder()
+    manifest_1_builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    manifest_1_builder.add_layer(random_digest_1, len(random_data_1.encode("utf-8")))
+    manifest_1 = manifest_1_builder.build()
+
+    manifest_2_builder = DockerSchema2ManifestBuilder()
+    manifest_2_builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    manifest_2_builder.add_layer(random_digest_2, len(random_data_2.encode("utf-8")))
+    manifest_2 = manifest_2_builder.build()
+
+    # Write the manifests.
+    v1_created = get_or_create_manifest(repository, manifest_1, storage)
+    assert v1_created
+    assert v1_created.manifest.digest == manifest_1.digest
+
+    v2_created = get_or_create_manifest(repository, manifest_2, storage)
+    assert v2_created
+    assert v2_created.manifest.digest == manifest_2.digest
+
+    # Build the manifest list.
+    list_builder = DockerSchema2ManifestListBuilder()
+    list_builder.add_manifest(manifest_1, "amd64", "linux")
+    list_builder.add_manifest(manifest_2, "amd32", "linux")
+    manifest_list = list_builder.build()
+
+    # Write the manifest list, which should also write the manifests themselves.
+    created_tuple = get_or_create_manifest(repository, manifest_list, storage)
+    assert created_tuple is not None
+
+    return retarget_tag("manifestlist", created_tuple.manifest)

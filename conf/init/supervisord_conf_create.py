@@ -31,6 +31,7 @@ def registry_services():
         "repositorygcworker": {"autostart": "true"},
         "notificationworker": {"autostart": "true"},
         "queuecleanupworker": {"autostart": "true"},
+        "reconciliationworker": {"autostart": "true"},
         "repositoryactioncounter": {"autostart": "true"},
         "securityworker": {"autostart": "true"},
         "storagereplication": {"autostart": "true"},
@@ -48,6 +49,8 @@ def registry_services():
         "manifestbackfillworker": {"autostart": "true"},
         "securityscanningnotificationworker": {"autostart": "true"},
         "config-editor": {"autostart": "false"},
+        "quotatotalworker": {"autostart": "true"},
+        "quotaregistrysizeworker": {"autostart": "true"},
     }
 
 
@@ -67,6 +70,7 @@ def config_services():
         "notificationworker": {"autostart": "false"},
         "queuecleanupworker": {"autostart": "false"},
         "repositoryactioncounter": {"autostart": "false"},
+        "reconciliationworker": {"autostart": "false"},
         "securityworker": {"autostart": "false"},
         "storagereplication": {"autostart": "false"},
         "teamsyncworker": {"autostart": "false"},
@@ -83,6 +87,8 @@ def config_services():
         "manifestbackfillworker": {"autostart": "false"},
         "securityscanningnotificationworker": {"autostart": "false"},
         "config-editor": {"autostart": "true"},
+        "quotatotalworker": {"autostart": "true"},
+        "quotaregistrysizeworker": {"autostart": "true"},
     }
 
 

@@ -239,14 +239,14 @@ export async function bulkSetRepoPermissions(
   const responses = await Promise.allSettled(
     roles.map((role) => setRepoPermissions(role, newRole)),
   );
-  throwIfError(responses);
+  throwIfError(responses, 'Unable to set permissions');
 }
 
 export async function bulkDeleteRepoPermissions(roles: RepoMember[]) {
   const responses = await Promise.allSettled(
     roles.map((role) => deleteRepoPermissions(role)),
   );
-  throwIfError(responses);
+  throwIfError(responses, 'Unable to delete permissions');
 }
 
 export async function deleteRepoPermissions(role: RepoMember) {

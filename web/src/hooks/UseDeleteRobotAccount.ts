@@ -1,11 +1,11 @@
 import {useMutation, useQueryClient} from '@tanstack/react-query';
-import {bulkDeleteRobotAccounts} from 'src/resources/RobotsResource';
+import {IRobot, bulkDeleteRobotAccounts} from 'src/resources/RobotsResource';
 
 export function useDeleteRobotAccounts({namespace, onSuccess, onError}) {
   const queryClient = useQueryClient();
 
   const deleteRobotAccountsMutator = useMutation(
-    async (robotacounts: string[]) => {
+    async (robotacounts: IRobot[]) => {
       await bulkDeleteRobotAccounts(namespace, robotacounts);
     },
     {
@@ -21,7 +21,7 @@ export function useDeleteRobotAccounts({namespace, onSuccess, onError}) {
 
   return {
     // Mutations
-    deleteRobotAccounts: async (robotacounts: string[]) =>
+    deleteRobotAccounts: async (robotacounts: IRobot[]) =>
       deleteRobotAccountsMutator.mutate(robotacounts),
   };
 }

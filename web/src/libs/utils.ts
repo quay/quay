@@ -1,4 +1,5 @@
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
+import moment from 'moment';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
@@ -18,7 +19,7 @@ export function getSeverityColor(severity: VulnerabilitySeverity) {
 }
 
 export function formatDate(date: string | number) {
-  if (date == -1) {
+  if (!date || date == -1) {
     return 'N/A';
   }
 
@@ -51,15 +52,20 @@ export function isValidEmail(email: string): boolean {
 
 export function parseRepoNameFromUrl(url: string): string {
   //url is in the format of <prefix>/repository/<org>/<repo>
+  //or for nested repo: <prefix>/repository/<org>/<nested>/<repo>
   //or <prefix>/repository/<org>/<repo>/tag/<tag>
-
   const urlParts = url.split('/');
   const repoKeywordIndex = urlParts.indexOf('repository');
+  let endIndex = urlParts.indexOf('tag');
   if (repoKeywordIndex === -1) {
     return '';
   }
 
-  return urlParts[repoKeywordIndex + 2];
+  if (endIndex === -1) {
+    endIndex = urlParts.length;
+  }
+  // Taking nested repos into consideration
+  return urlParts.slice(repoKeywordIndex + 2, endIndex).join('/');
 }
 
 export function parseOrgNameFromUrl(url: string): string {
@@ -90,4 +96,17 @@ export function parseTagNameFromUrl(url: string): string {
   }
 
   return urlParts[tagKeywordIndex + 1];
+}
+
+export function humanizeTimeForExpiry(time_seconds: number): string {
+  return moment.duration(time_seconds || 0, 's').humanize();
+}
+
+export function getSeconds(duration_str: string): number {
+  if (!duration_str) {
+    return 0;
+  }
+
+  let [number, suffix] = duration_str.split('');
+  return moment.duration(parseInt(number), suffix).asSeconds();
 }

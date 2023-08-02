@@ -1,10 +1,10 @@
-from typing import Optional, Dict, Any, List, Union, Tuple
+import os.path
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
-import os.path
 import requests
 
-from _init import ROOT_DIR, CONF_DIR
+from _init import CONF_DIR, ROOT_DIR
 
 
 def build_requests_session():
@@ -45,6 +45,10 @@ CLIENT_WHITELIST = [
     "FEATURE_REPO_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
     "FEATURE_PROXY_CACHE",
+    "QUOTA_BACKFILL",
+    "PERMANENTLY_DELETE_TAGS",
+    "UI_V2_FEEDBACK_FORM",
+    "TERMS_OF_SERVICE_URL",
 ]
 
 
@@ -434,6 +438,9 @@ class DefaultConfig(ImmutableConfig):
     LOG_ARCHIVE_LOCATION = "local_us"
     LOG_ARCHIVE_PATH = "logarchive/"
 
+    # Action logs configuration for advanced events
+    ACTION_LOG_AUDIT_LOGINS = True
+
     # Action logs archive
     ACTION_LOG_ARCHIVE_LOCATION: Optional[str] = "local_us"
     ACTION_LOG_ARCHIVE_PATH: Optional[str] = "actionlogarchive/"
@@ -486,6 +493,9 @@ class DefaultConfig(ImmutableConfig):
 
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None
+
+    # Cleanup deleted manifests from the security scanner service.
+    SECURITY_SCANNER_V4_MANIFEST_CLEANUP: Optional[bool] = False
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
@@ -790,6 +800,13 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_QUOTA_MANAGEMENT = False
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
+    # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
+    # totals, so this field should be set to a time longer than it takes for the rolling
+    # deployment to complete. Defaults to 30m.
+    QUOTA_TOTAL_DELAY_SECONDS = 60 * 30
+
+    # Enables the quota backfill worker
+    QUOTA_BACKFILL = True
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
@@ -803,6 +820,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables repository settings in the beta UI Environment
     FEATURE_UI_V2_REPO_SETTINGS = False
 
+    # User feedback form for UI-V2
+    UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
+
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
 
@@ -810,10 +830,25 @@ class DefaultConfig(ImmutableConfig):
     CORS_ORIGIN = "*"
 
     # Feature Flag: Enables notifications about vulnerabilities to be sent for new pushes
-    FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = False
+    FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = True
 
     FEATURE_SUPERUSERS_FULL_ACCESS = False
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
 
     FEATURE_RESTRICTED_USERS = False
     RESTRICTED_USERS_WHITELIST: Optional[List[str]] = None
+
+    QUOTA_INVALIDATE_TOTALS = True
+    RESET_CHILD_MANIFEST_EXPIRATION = False
+    PERMANENTLY_DELETE_TAGS = False
+
+    # Feature Flag: Enables reconciler for RH marketplace
+    FEATURE_ENTITLEMENT_RECONCILIATION = False
+    # Endpoints for marketplace compatibility
+    ENTITLEMENT_RECONCILIATION_USER_ENDPOINT = ""
+    ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT = ""
+
+    FEATURE_RH_MARKETPLACE = False
+
+    # Set up custom TOS for on-premise installations
+    TERMS_OF_SERVICE_URL = ""

@@ -142,7 +142,10 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
 
     try:
         manifest = registry_model.lookup_manifest_by_digest(
-            repository_ref, manifest_ref, raise_on_error=True
+            repository_ref,
+            manifest_ref,
+            raise_on_error=True,
+            allow_hidden=True,
         )
     except ManifestDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
@@ -284,7 +287,10 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     manifest = registry_model.create_manifest_with_temp_tag(
-        repository_ref, parsed, expiration_sec, storage
+        repository_ref,
+        parsed,
+        expiration_sec,
+        storage,
     )
 
     if manifest is None:
@@ -354,9 +360,6 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         for tag in tags:
             track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
-        if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            repository.force_cache_repo_size(repository_ref.id)
-
         return Response(status=202)
 
 
@@ -417,7 +420,7 @@ def _write_manifest(
         raise ManifestInvalid()
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota_force_cache(repository_ref)
+        quota = namespacequota.verify_namespace_quota(repository_ref)
         if quota["severity_level"] == "Warning":
             namespacequota.notify_organization_admins(repository_ref, "quota_warning")
         elif quota["severity_level"] == "Reject":

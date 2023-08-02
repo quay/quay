@@ -31,23 +31,6 @@ def _perform_cleanup():
     model.gc.garbage_collect_repo(repo_object)
 
 
-def _get_legacy_image_row_id(tag):
-    return (
-        database.ManifestLegacyImage.select(database.ManifestLegacyImage, database.Image)
-        .join(database.Image)
-        .where(database.ManifestLegacyImage.manifest == tag.manifest._db_id)
-        .get()
-        .image.docker_image_id
-    )
-
-
-def _add_legacy_image(namespace, repo_name, tag_name):
-    repo_ref = registry_model.lookup_repository(namespace, repo_name)
-    tag_ref = registry_model.get_repo_tag(repo_ref, tag_name)
-    manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
-    registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
-
-
 def test_missing_link(initialized_db):
     """
     Tests for a corner case that could result in missing a link to a blob referenced by a manifest.
@@ -91,7 +74,6 @@ def test_missing_link(initialized_db):
         )
 
         _write_manifest(ADMIN_ACCESS_USER, REPO, FIRST_TAG, first_manifest)
-        _add_legacy_image(ADMIN_ACCESS_USER, REPO, FIRST_TAG)
 
         # Delete all temp tags and perform GC.
         _perform_cleanup()
@@ -103,7 +85,6 @@ def test_missing_link(initialized_db):
         repository_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, REPO)
         found_tag = registry_model.get_repo_tag(repository_ref, FIRST_TAG)
         assert found_tag is not None
-        assert _get_legacy_image_row_id(found_tag) == "first"
 
         # Create the second and third blobs.
         second_blob_sha = "sha256:" + hashlib.sha256(b"SECOND").hexdigest()
@@ -125,7 +106,6 @@ def test_missing_link(initialized_db):
         )
 
         _write_manifest(ADMIN_ACCESS_USER, REPO, SECOND_TAG, second_manifest)
-        _add_legacy_image(ADMIN_ACCESS_USER, REPO, SECOND_TAG)
 
         # Delete all temp tags and perform GC.
         _perform_cleanup()
@@ -137,12 +117,10 @@ def test_missing_link(initialized_db):
 
         found_tag = registry_model.get_repo_tag(repository_ref, FIRST_TAG)
         assert found_tag is not None
-        assert _get_legacy_image_row_id(found_tag) == "first"
 
         # Ensure the IDs have changed.
         found_tag = registry_model.get_repo_tag(repository_ref, SECOND_TAG)
         assert found_tag is not None
-        assert _get_legacy_image_row_id(found_tag) != "second"
 
         # Create the fourth blob.
         fourth_blob_sha = "sha256:" + hashlib.sha256(b"FOURTH").hexdigest()
@@ -161,7 +139,6 @@ def test_missing_link(initialized_db):
         )
 
         _write_manifest(ADMIN_ACCESS_USER, REPO, THIRD_TAG, third_manifest)
-        _add_legacy_image(ADMIN_ACCESS_USER, REPO, THIRD_TAG)
 
         # Delete all temp tags and perform GC.
         _perform_cleanup()
@@ -175,4 +152,3 @@ def test_missing_link(initialized_db):
         # Ensure new synthesized IDs were created.
         second_tag = registry_model.get_repo_tag(repository_ref, SECOND_TAG)
         third_tag = registry_model.get_repo_tag(repository_ref, THIRD_TAG)
-        assert _get_legacy_image_row_id(second_tag) != _get_legacy_image_row_id(third_tag)

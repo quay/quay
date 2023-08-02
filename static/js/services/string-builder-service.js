@@ -7,8 +7,12 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
   var fieldIcons = {
     'inviter': 'user',
     'username': 'user',
+    'old_username': 'user',
+    'superuser': 'user-secret',
     'user': 'user',
     'email': 'envelope',
+    'old_email': 'envelope',
+    'invoice_email_address': 'envelope',
     'activating_username': 'user',
     'delegate_user': 'user',
     'delegate_team': 'group',
@@ -24,7 +28,15 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
     'image': 'archive',
     'original_image': 'archive',
     'client_id': 'chain',
-    'manifest_digest': 'link'
+    'manifest_digest': 'link',
+    'tag_expiration': 'clock-o',
+    'expiration_date': 'calendar',
+    'old_expiration_date': 'calendar',
+    'namespace': 'sitemap',
+    'old_name': 'sitemap',
+    'new_name': 'sitemap',
+    'app_specific_token_title': 'key',
+    'useragent': 'user-secret',
   };
 
   var allowMarkdown = {
@@ -60,6 +72,32 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
 
     'old_expiration_date': function(value) {
       return moment.unix(value).format('LLL');
+    },
+
+    'tag_expiration': function(value) {
+      const duration = moment.duration(value, 'seconds');
+      const weeks = Math.floor(duration.asWeeks());
+      const days = Math.floor(duration.asDays()) % 7;
+      const hours = duration.hours();
+      const minutes = duration.minutes();
+      const remainingSeconds = duration.seconds();
+      const parts = [];
+      if (weeks) {
+        parts.push(`${weeks}w`);
+      }
+      if (days) {
+        parts.push(`${days}d`);
+      }
+      if (hours) {
+        parts.push(`${hours}h`);
+      }
+      if (minutes) {
+        parts.push(`${minutes}m`);
+      }
+      if (remainingSeconds) {
+        parts.push(`${remainingSeconds}s`);
+      }
+      return parts.length ? parts.join(' ') : '0s';
     }
   };
 

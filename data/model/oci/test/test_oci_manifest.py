@@ -18,11 +18,9 @@ from data.database import (
 )
 from data.model.oci.manifest import lookup_manifest, get_or_create_manifest, CreateManifestException
 from data.model.oci.tag import filter_to_alive_tags, get_tag
-from data.model.oci.shared import get_legacy_image_for_manifest
 from data.model.oci.label import list_manifest_labels
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.repository import get_repository, create_repository
-from data.model.image import find_create_or_link_image
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.storage import get_layer_path
 from image.shared.interfaces import ContentRetriever
@@ -136,9 +134,6 @@ def test_get_or_create_manifest(schema_version, initialized_db):
             ],
         }
     )
-
-    # Create a legacy image.
-    find_create_or_link_image("somelegacyid", repository, "devtable", {}, "local_us")
 
     # Add a blob containing the config.
     _, config_digest = _populate_blob(layer_json)
@@ -254,9 +249,6 @@ def test_get_or_create_manifest_list(initialized_db):
         }
     )
 
-    # Create a legacy image.
-    find_create_or_link_image("somelegacyid", repository, "devtable", {}, "local_us")
-
     # Add a blob containing the config.
     _, config_digest = _populate_blob(layer_json)
 
@@ -336,9 +328,6 @@ def test_get_or_create_manifest_list_duplicate_child_manifest(initialized_db):
             ],
         }
     )
-
-    # Create a legacy image.
-    find_create_or_link_image("somelegacyid", repository, "devtable", {}, "local_us")
 
     # Add a blob containing the config.
     _, config_digest = _populate_blob(layer_json)
@@ -427,7 +416,6 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
     assert remote_digest not in manifest.local_blob_digests
 
     assert manifest.has_remote_layer
-    assert not manifest.has_legacy_image
     assert manifest.get_schema1_manifest("foo", "bar", "baz", None) is None
 
     # Write the manifest.
@@ -440,10 +428,6 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
     assert created_manifest.digest == manifest.digest
     assert created_manifest.config_media_type == manifest.config_media_type
     assert created_manifest.layers_compressed_size == manifest.layers_compressed_size
-
-    # Verify the legacy image.
-    legacy_image = get_legacy_image_for_manifest(created_manifest)
-    assert legacy_image is None
 
     # Verify the linked blobs.
     blob_digests = {
@@ -480,7 +464,7 @@ def create_manifest_for_testing(repository, differentiation_field="1", include_s
 
     manifest = builder.build()
 
-    created = get_or_create_manifest(repository, manifest, storage)
+    created = get_or_create_manifest(repository, manifest, storage, raise_on_error=True)
     assert created
     return created.manifest, manifest
 

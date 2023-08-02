@@ -74,6 +74,7 @@ PLANS = [
         "title": "Yacht",
         "price": 5000,
         "privateRepos": 20,
+        "rh_sku": "FakeSKU",
         "stripeId": "bus-small",
         "audience": "For small businesses",
         "bus_features": True,
@@ -221,6 +222,7 @@ PLANS = [
         "price": 1500,
         "privateRepos": 5,
         "stripeId": "personal-2018",
+        "rh_sku": "MW00584MO",
         "audience": "Individuals",
         "bus_features": False,
         "deprecated": False,
@@ -232,6 +234,7 @@ PLANS = [
         "title": "Micro",
         "price": 3000,
         "privateRepos": 10,
+        "rh_sku": "MW00585MO",
         "stripeId": "bus-micro-2018",
         "audience": "For startups",
         "bus_features": True,
@@ -244,6 +247,7 @@ PLANS = [
         "title": "Small",
         "price": 6000,
         "privateRepos": 20,
+        "rh_sku": "MW00586MO",
         "stripeId": "bus-small-2018",
         "audience": "For small businesses",
         "bus_features": True,
@@ -256,6 +260,7 @@ PLANS = [
         "title": "Medium",
         "price": 12500,
         "privateRepos": 50,
+        "rh_sku": "MW00587MO",
         "stripeId": "bus-medium-2018",
         "audience": "For normal businesses",
         "bus_features": True,
@@ -268,6 +273,7 @@ PLANS = [
         "title": "Large",
         "price": 25000,
         "privateRepos": 125,
+        "rh_sku": "MW00588MO",
         "stripeId": "bus-large-2018",
         "audience": "For large businesses",
         "bus_features": True,
@@ -280,6 +286,7 @@ PLANS = [
         "title": "Extra Large",
         "price": 45000,
         "privateRepos": 250,
+        "rh_sku": "MW00589MO",
         "stripeId": "bus-xlarge-2018",
         "audience": "For extra large businesses",
         "bus_features": True,
@@ -292,6 +299,7 @@ PLANS = [
         "title": "XXL",
         "price": 85000,
         "privateRepos": 500,
+        "rh_sku": "MW00590MO",
         "stripeId": "bus-500-2018",
         "audience": "For huge business",
         "bus_features": True,
@@ -304,6 +312,7 @@ PLANS = [
         "title": "XXXL",
         "price": 160000,
         "privateRepos": 1000,
+        "rh_sku": "MW00591MO",
         "stripeId": "bus-1000-2018",
         "audience": "For the SaaS savvy enterprise",
         "bus_features": True,
@@ -316,6 +325,7 @@ PLANS = [
         "title": "XXXXL",
         "price": 310000,
         "privateRepos": 2000,
+        "rh_sku": "MW00592MO",
         "stripeId": "bus-2000-2018",
         "audience": "For the SaaS savvy big enterprise",
         "bus_features": True,
@@ -338,6 +348,8 @@ PLANS = [
     },
 ]
 
+RH_SKUS = [plan["rh_sku"] for plan in PLANS if plan.get("rh_sku") is not None]
+
 
 def get_plan(plan_id):
     """
@@ -347,6 +359,16 @@ def get_plan(plan_id):
         if plan["stripeId"] == plan_id:
             return plan
 
+    return None
+
+
+def get_plan_using_rh_sku(sku):
+    """
+    Returns the plan with given sku or None if none.
+    """
+    for plan in PLANS:
+        if plan.get("rh_sku") == sku:
+            return plan
     return None
 
 

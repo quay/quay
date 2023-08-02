@@ -332,6 +332,18 @@ def initialize_database():
     AccessTokenKind.create(name="build-worker")
     AccessTokenKind.create(name="pushpull-token")
 
+    LogEntryKind.create(name="user_create")
+    LogEntryKind.create(name="user_delete")
+    LogEntryKind.create(name="user_disable")
+    LogEntryKind.create(name="user_enable")
+    LogEntryKind.create(name="user_change_email")
+    LogEntryKind.create(name="user_change_password")
+    LogEntryKind.create(name="user_change_name")
+    LogEntryKind.create(name="user_change_invoicing")
+    LogEntryKind.create(name="user_change_tag_expiration")
+    LogEntryKind.create(name="user_change_metadata")
+    LogEntryKind.create(name="user_generate_client_key")
+
     LogEntryKind.create(name="account_change_plan")
     LogEntryKind.create(name="account_change_cc")
     LogEntryKind.create(name="account_change_password")
@@ -360,6 +372,8 @@ def initialize_database():
 
     LogEntryKind.create(name="build_dockerfile")
 
+    LogEntryKind.create(name="org_create")
+    LogEntryKind.create(name="org_delete")
     LogEntryKind.create(name="org_create_team")
     LogEntryKind.create(name="org_delete_team")
     LogEntryKind.create(name="org_invite_team_member")
@@ -370,6 +384,10 @@ def initialize_database():
     LogEntryKind.create(name="org_remove_team_member")
     LogEntryKind.create(name="org_set_team_description")
     LogEntryKind.create(name="org_set_team_role")
+    LogEntryKind.create(name="org_change_email")
+    LogEntryKind.create(name="org_change_invoicing")
+    LogEntryKind.create(name="org_change_tag_expiration")
+    LogEntryKind.create(name="org_change_name")
 
     LogEntryKind.create(name="create_prototype_permission")
     LogEntryKind.create(name="modify_prototype_permission")
@@ -431,6 +449,11 @@ def initialize_database():
 
     LogEntryKind.create(name="start_build_trigger")
     LogEntryKind.create(name="cancel_build")
+
+    LogEntryKind.create(name="login_success")
+    LogEntryKind.create(name="logout_success")
+
+    LogEntryKind.create(name="permanently_delete_tag")
 
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
@@ -870,7 +893,6 @@ def populate_database(minimal=False):
 
     quota1 = model.namespacequota.create_namespace_quota(org, 3000)
     model.namespacequota.create_namespace_quota_limit(quota1, "warning", 50)
-    model.repository.force_cache_repo_size(publicrepo.id)
 
     quota2 = model.namespacequota.create_namespace_quota(new_user_4, 6000)
     model.namespacequota.create_namespace_quota_limit(quota2, "reject", 90)
@@ -1317,6 +1339,9 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestLegacyImage",
     "Image",
     "ProxyCacheConfig",
+    "RepositorySize",
+    "RedHatSubscriptions",
+    "QuotaRegistrySize",
 ]
 
 

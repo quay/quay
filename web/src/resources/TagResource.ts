@@ -1,6 +1,6 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
-import {assertHttpCode, BulkOperationError} from './ErrorHandling';
+import {assertHttpCode, BulkOperationError, ResourceError, throwIfError} from './ErrorHandling';
 
 export interface TagsResponse {
   page: number;
@@ -52,11 +52,11 @@ export interface LabelsResponse {
 }
 
 export interface Label {
-  id: string;
+  id?: string;
   key: string;
-  media_type: string;
-  source_type: string;
   value: string;
+  media_type?: string;
+  source_type?: string;
 }
 export interface ManifestByDigestResponse {
   digest: string;
@@ -154,12 +154,49 @@ export async function getTags(
   return response.data;
 }
 
-export async function getLabels(org: string, repo: string, digest: string) {
+export async function getLabels(org: string, repo: string, digest: string, signal: AbortSignal) {
   const response: AxiosResponse<LabelsResponse> = await axios.get(
     `/api/v1/repository/${org}/${repo}/manifest/${digest}/labels`,
+    {signal},
   );
   assertHttpCode(response.status, 200);
-  return response.data;
+  return response.data.labels;
+}
+
+export async function bulkCreateLabels(org: string, repo: string, manifest:string, labels: Label[]){
+  const responses = await Promise.allSettled(
+    labels.map((label)=>createLabel(org, repo, manifest, label))
+  )
+  throwIfError(responses, 'Error creating labels');
+}
+
+export async function bulkDeleteLabels(org: string, repo: string, manifest:string, labels: Label[]){
+  const responses = await Promise.allSettled(
+    labels.map((label)=>deleteLabel(org, repo, manifest, label))
+  )
+  throwIfError(responses, 'Error deleting labels');
+}
+
+export async function createLabel(org: string, repo: string, manifest: string, label: Label){
+  try {
+    await axios.post(`/api/v1/repository/${org}/${repo}/manifest/${manifest}/labels`, {
+      key: label.key,
+      value: label.value,
+      media_type: label.media_type,
+    })
+  }
+  catch(error){
+    throw new ResourceError('Unable to create label', `${label.key}=${label.value}` , error);
+  }
+}
+
+export async function deleteLabel(org: string, repo: string, manifest: string, label: Label){
+  try {
+    await axios.delete(`/api/v1/repository/${org}/${repo}/manifest/${manifest}/labels/${label.id}`)
+  }
+  catch(error){
+    throw new ResourceError('Unable to delete label', label.id, error);
+  }
 }
 
 interface TagLocation {
@@ -168,9 +205,10 @@ interface TagLocation {
   tag: string;
 }
 
-export async function bulkDeleteTags(tags: TagLocation[]) {
+export async function bulkDeleteTags(tags: TagLocation[], force = false) {
+  const deletion_function = force ? expireTag : deleteTag;
   const responses = await Promise.allSettled(
-    tags.map((tag) => deleteTag(tag.org, tag.repo, tag.tag)),
+    tags.map((tag) => deletion_function(tag.org, tag.repo, tag.tag)),
   );
 
   // Filter failed responses
@@ -217,6 +255,29 @@ export async function deleteTag(org: string, repo: string, tag: string) {
   }
 }
 
+export async function expireTag(
+  org: string,
+  repo: string,
+  tag: string,
+) {
+  try {
+    const response: AxiosResponse = await axios.post(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}/expire`,
+      {
+        include_submanifests: true,
+        is_alive: true,
+      }
+    );
+    assertHttpCode(response.status, 200);
+  } catch (err) {
+    throw new TagDeleteError(
+      'failed to expire tag',
+      `${org}/${repo}:${tag}`,
+      err,
+    );
+  }
+}
+
 export async function getManifestByDigest(
   org: string,
   repo: string,
@@ -239,4 +300,11 @@ export async function getSecurityDetails(
   );
   assertHttpCode(response.status, 200);
   return response.data;
+}
+
+export async function createTag(org: string, repo: string, tag: string, manifest: string) {
+    await axios.put(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}`,
+      {manifest_digest: manifest},
+    );
 }

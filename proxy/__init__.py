@@ -17,7 +17,6 @@ WWW_AUTHENTICATE_REGEX = re.compile(r'(\w+)[=] ?"?([^",]+)"?')
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour, in seconds - Quay's default
 TOKEN_RENEWAL_THRESHOLD = 10  # interval (in seconds) when to renew auth token
 
-
 REGISTRY_URLS = {"docker.io": "registry-1.docker.io"}
 
 
@@ -135,6 +134,9 @@ class Proxy:
         if resp.status_code == 401:
             self._authorize(self._credentials(), force_renewal=True)
             resp = self._safe_request(request_func, *args, **kwargs)
+        # allow 401 for anonymous pulls when validating proxy cache config
+        if resp.status_code == 401 and self._validation:
+            return resp
         if not resp.ok:
             raise UpstreamRegistryError(resp.status_code)
         return resp
@@ -199,8 +201,13 @@ class Proxy:
         basic_auth = None
         if auth is not None:
             basic_auth = requests.auth.HTTPBasicAuth(auth[0], auth[1])
-
         resp = self._safe_request(self._session.get, auth_url, auth=basic_auth)
+
+        # ignore fetching a token when validating proxy cache config to allow anonymous pulls from registries,
+        # since the repo name is not known during the initial proxy configuration
+        if resp.status_code == 401 and auth is None and self._repo is None:
+            return
+
         if not resp.ok:
             raise UpstreamRegistryError(
                 f"Failed to get token from: '{realm}', with status code: {resp.status_code}"
@@ -212,6 +219,10 @@ class Proxy:
             # For OAuth2.0 compatability, "access_token" can also used and is equivalent to "token" "
             # https://docs.docker.com/registry/spec/auth/token/#token-response-fields
             token = resp_json.get("access_token")
+            if token is None:
+                raise UpstreamRegistryError(
+                    f"Failed to get authentication token from: '{realm}' response"
+                )
 
         # our cached token will expire a few seconds (TOKEN_RENEWAL_THRESHOLD)
         # before the actual token expiration.

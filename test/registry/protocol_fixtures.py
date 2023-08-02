@@ -229,6 +229,22 @@ def unicode_emoji_images():
 
 
 @pytest.fixture(scope="session")
+def openpolicyagent_policy():
+    """
+    Returns basic OPA policy image for push and pull testing
+    """
+    image_bytes = layer_bytes_for_contents(b"some contents")
+    return [
+        Image(
+            id="someid",
+            bytes=image_bytes,
+            parent_id=None,
+            config={"mediaType": "application/vnd.cncf.openpolicyagent.policy.layer.v1+rego"},
+        ),
+    ]
+
+
+@pytest.fixture(scope="session")
 def jwk():
     return jwklib.JsonWebKey.generate_key("RSA", 2048, is_private=True)
 

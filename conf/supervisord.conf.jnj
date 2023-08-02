@@ -140,6 +140,18 @@ autostart = {{ config['repositorygcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:reconciliationworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/reconciliationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.reconciliationworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.reconciliationworker
+{% endif -%}
+autostart = {{ config['reconciliationworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:namespacegcworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
@@ -329,6 +341,30 @@ command={% if hotreload -%}
   python -m workers.repomirrorworker.repomirrorworker
 {% endif -%}
 autostart = {{ config['repomirrorworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
+[program:quotatotalworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/quotatotalworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.quotatotalworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.quotatotalworker
+{% endif -%}
+autostart = {{ config['quotatotalworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
+[program:quotaregistrysizeworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/quotaregistrysizeworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.quotaregistrysizeworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.quotaregistrysizeworker
+{% endif -%}
+autostart = {{ config['quotaregistrysizeworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 

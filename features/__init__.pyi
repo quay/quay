@@ -198,3 +198,11 @@ HELM_OCI_SUPPORT: FeatureNameValue
 PROXY_CACHE: FeatureNameValue
 
 RESTRICTED_USERS: FeatureNameValue
+
+# Feature Flag: If set to true, enables reconciler for RH marketplace
+ENTITLEMENT_RECONCILIATION: FeatureNameValue
+ENTITLEMENT_RECONCILIATION_USER_ENDPOINT: FeatureNameValue
+ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT: FeatureNameValue
+
+# Feature Flag: Whether to use RH internal marketplace for subscriptions
+RH_MARKETPLACE: FeatureNameValue

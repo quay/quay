@@ -12,6 +12,11 @@ import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {bulkDeleteTags} from 'src/resources/TagResource';
 import './Tags.css';
 
+export interface ModalOptions {
+  isOpen: boolean;
+  force: boolean;
+}
+
 export function DeleteModal(props: ModalProps) {
   const [err, setErr] = useState<string[]>();
   const isReadonly: boolean = props.repoDetails?.state !== 'NORMAL';
@@ -23,7 +28,7 @@ export function DeleteModal(props: ModalProps) {
         repo: props.repo,
         tag: tag,
       }));
-      await bulkDeleteTags(tags);
+      await bulkDeleteTags(tags, props.modalOptions.force);
     } catch (err: any) {
       console.error(err);
       if (err instanceof BulkOperationError) {
@@ -41,23 +46,42 @@ export function DeleteModal(props: ModalProps) {
       }
     } finally {
       props.loadTags();
-      props.setIsOpen(!props.isOpen);
+      props.setModalOptions((prevOptions) => ({
+        force: false,
+        isOpen: !prevOptions.isOpen,
+      }));
       props.setSelectedTags([]);
     }
   };
+  const title = props.modalOptions.force
+    ? `Permanently delete the following tag${
+        props.selectedTags.length > 1 ? 's' : ''
+      }?`
+    : `Delete the following tag${props.selectedTags.length > 1 ? 's' : ''}?`;
   return (
     <>
       <ErrorModal title="Tag deletion failed" error={err} setError={setErr} />
       <Modal
         id="tag-deletion-modal"
-        title={`Delete the following tag${
-          props.selectedTags.length > 1 ? 's' : ''
-        }?`}
-        isOpen={props.isOpen}
+        title={title}
+        description={
+          props.modalOptions.force ? (
+            <span style={{color: 'red'}}>
+              Tags deleted cannot be restored within the time machine window and
+              will be immediately eligible for garbage collection.
+            </span>
+          ) : (
+            ''
+          )
+        }
+        isOpen={props.modalOptions.isOpen}
         disableFocusTrap={true}
         key="modal"
         onClose={() => {
-          props.setIsOpen(!props.isOpen);
+          props.setModalOptions((prevOptions) => ({
+            force: false,
+            isOpen: !prevOptions.isOpen,
+          }));
         }}
         data-testid="delete-tags-modal"
         variant={ModalVariant.small}
@@ -66,7 +90,10 @@ export function DeleteModal(props: ModalProps) {
             key="cancel"
             variant="primary"
             onClick={() => {
-              props.setIsOpen(!props.isOpen);
+              props.setModalOptions((prevOptions) => ({
+                force: false,
+                isOpen: !prevOptions.isOpen,
+              }));
             }}
           >
             Cancel
@@ -98,7 +125,7 @@ export function DeleteModal(props: ModalProps) {
             <Label>{tag}</Label>{' '}
           </span>
         ))}
-        {props.selectedTags.length > 1 ? (
+        {props.selectedTags.length > 10 ? (
           <div>
             <b>Note:</b> This operation can take several minutes.
           </div>
@@ -109,8 +136,8 @@ export function DeleteModal(props: ModalProps) {
 }
 
 type ModalProps = {
-  isOpen: boolean;
-  setIsOpen: (isModalOpen: boolean) => void;
+  modalOptions: ModalOptions;
+  setModalOptions: (modalOptions) => void;
   selectedTags: string[];
   setSelectedTags: (selectedTags: string[]) => void;
   loadTags: () => void;

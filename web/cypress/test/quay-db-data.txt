@@ -16,865 +16,884 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-ALTER TABLE ONLY public.userregion DROP CONSTRAINT fk_userregion_user_id_user;
-ALTER TABLE ONLY public.userregion DROP CONSTRAINT fk_userregion_location_id_imagestoragelocation;
-ALTER TABLE ONLY public.userprompt DROP CONSTRAINT fk_userprompt_user_id_user;
-ALTER TABLE ONLY public.userprompt DROP CONSTRAINT fk_userprompt_kind_id_userpromptkind;
-ALTER TABLE ONLY public.userorganizationquota DROP CONSTRAINT fk_userorganizationquota_organization;
-ALTER TABLE ONLY public.uploadedblob DROP CONSTRAINT fk_uploadedblob_repository_id_repository;
-ALTER TABLE ONLY public.uploadedblob DROP CONSTRAINT fk_uploadedblob_blob_id_imagestorage;
-ALTER TABLE ONLY public.torrentinfo DROP CONSTRAINT fk_torrentinfo_storage_id_imagestorage;
-ALTER TABLE ONLY public.teamsync DROP CONSTRAINT fk_teamsync_team_id_team;
-ALTER TABLE ONLY public.teamsync DROP CONSTRAINT fk_teamsync_service_id_loginservice;
-ALTER TABLE ONLY public.teammemberinvite DROP CONSTRAINT fk_teammemberinvite_user_id_user;
-ALTER TABLE ONLY public.teammemberinvite DROP CONSTRAINT fk_teammemberinvite_team_id_team;
-ALTER TABLE ONLY public.teammemberinvite DROP CONSTRAINT fk_teammemberinvite_inviter_id_user;
-ALTER TABLE ONLY public.teammember DROP CONSTRAINT fk_teammember_user_id_user;
-ALTER TABLE ONLY public.teammember DROP CONSTRAINT fk_teammember_team_id_team;
-ALTER TABLE ONLY public.team DROP CONSTRAINT fk_team_role_id_teamrole;
-ALTER TABLE ONLY public.team DROP CONSTRAINT fk_team_organization_id_user;
-ALTER TABLE ONLY public.tagtorepositorytag DROP CONSTRAINT fk_tagtorepositorytag_tag_id_tag;
-ALTER TABLE ONLY public.tagtorepositorytag DROP CONSTRAINT fk_tagtorepositorytag_repository_tag_id_repositorytag;
-ALTER TABLE ONLY public.tagtorepositorytag DROP CONSTRAINT fk_tagtorepositorytag_repository_id_repository;
-ALTER TABLE ONLY public.tagmanifesttomanifest DROP CONSTRAINT fk_tagmanifesttomanifest_tag_manifest_id_tagmanifest;
-ALTER TABLE ONLY public.tagmanifesttomanifest DROP CONSTRAINT fk_tagmanifesttomanifest_manifest_id_manifest;
-ALTER TABLE ONLY public.tagmanifestlabelmap DROP CONSTRAINT fk_tagmanifestlabelmap_tag_manifest_label_id_tagmanifestlabel;
-ALTER TABLE ONLY public.tagmanifestlabelmap DROP CONSTRAINT fk_tagmanifestlabelmap_tag_manifest_id_tagmanifest;
-ALTER TABLE ONLY public.tagmanifestlabelmap DROP CONSTRAINT fk_tagmanifestlabelmap_manifest_label_id_manifestlabel;
-ALTER TABLE ONLY public.tagmanifestlabelmap DROP CONSTRAINT fk_tagmanifestlabelmap_manifest_id_manifest;
-ALTER TABLE ONLY public.tagmanifestlabelmap DROP CONSTRAINT fk_tagmanifestlabelmap_label_id_label;
-ALTER TABLE ONLY public.tagmanifestlabel DROP CONSTRAINT fk_tagmanifestlabel_repository_id_repository;
-ALTER TABLE ONLY public.tagmanifestlabel DROP CONSTRAINT fk_tagmanifestlabel_label_id_label;
-ALTER TABLE ONLY public.tagmanifestlabel DROP CONSTRAINT fk_tagmanifestlabel_annotated_id_tagmanifest;
-ALTER TABLE ONLY public.tagmanifest DROP CONSTRAINT fk_tagmanifest_tag_id_repositorytag;
-ALTER TABLE ONLY public.tag DROP CONSTRAINT fk_tag_tag_kind_id_tagkind;
-ALTER TABLE ONLY public.tag DROP CONSTRAINT fk_tag_repository_id_repository;
-ALTER TABLE ONLY public.tag DROP CONSTRAINT fk_tag_manifest_id_manifest;
-ALTER TABLE ONLY public.tag DROP CONSTRAINT fk_tag_linked_tag_id_tag;
-ALTER TABLE ONLY public.star DROP CONSTRAINT fk_star_user_id_user;
-ALTER TABLE ONLY public.star DROP CONSTRAINT fk_star_repository_id_repository;
-ALTER TABLE ONLY public.servicekey DROP CONSTRAINT fk_servicekey_approval_id_servicekeyapproval;
-ALTER TABLE ONLY public.robotaccounttoken DROP CONSTRAINT fk_robotaccounttoken_robot_account_id_user;
-ALTER TABLE ONLY public.robotaccountmetadata DROP CONSTRAINT fk_robotaccountmetadata_robot_account_id_user;
-ALTER TABLE ONLY public.repositorytag DROP CONSTRAINT fk_repositorytag_repository_id_repository;
-ALTER TABLE ONLY public.repositorytag DROP CONSTRAINT fk_repositorytag_image_id_image;
-ALTER TABLE ONLY public.repositorysize DROP CONSTRAINT fk_repositorysize_repository_id_repository;
-ALTER TABLE ONLY public.repositorysearchscore DROP CONSTRAINT fk_repositorysearchscore_repository_id_repository;
-ALTER TABLE ONLY public.repositorypermission DROP CONSTRAINT fk_repositorypermission_user_id_user;
-ALTER TABLE ONLY public.repositorypermission DROP CONSTRAINT fk_repositorypermission_team_id_team;
-ALTER TABLE ONLY public.repositorypermission DROP CONSTRAINT fk_repositorypermission_role_id_role;
-ALTER TABLE ONLY public.repositorypermission DROP CONSTRAINT fk_repositorypermission_repository_id_repository;
-ALTER TABLE ONLY public.repositorynotification DROP CONSTRAINT fk_repositorynotification_repository_id_repository;
-ALTER TABLE ONLY public.repositorynotification DROP CONSTRAINT fk_repositorynotification_method_id_externalnotificationmethod;
-ALTER TABLE ONLY public.repositorynotification DROP CONSTRAINT fk_repositorynotification_event_id_externalnotificationevent;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT fk_repositorybuildtrigger_write_token_id_accesstoken;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT fk_repositorybuildtrigger_service_id_buildtriggerservice;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT fk_repositorybuildtrigger_repository_id_repository;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT fk_repositorybuildtrigger_pull_robot_id_user;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT fk_repositorybuildtrigger_disabled_reason_id_disablereason;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT fk_repositorybuildtrigger_connected_user_id_user;
-ALTER TABLE ONLY public.repositorybuild DROP CONSTRAINT fk_repositorybuild_trigger_id_repositorybuildtrigger;
-ALTER TABLE ONLY public.repositorybuild DROP CONSTRAINT fk_repositorybuild_repository_id_repository;
-ALTER TABLE ONLY public.repositorybuild DROP CONSTRAINT fk_repositorybuild_pull_robot_id_user;
-ALTER TABLE ONLY public.repositorybuild DROP CONSTRAINT fk_repositorybuild_access_token_id_accesstoken;
-ALTER TABLE ONLY public.repositoryauthorizedemail DROP CONSTRAINT fk_repositoryauthorizedemail_repository_id_repository;
-ALTER TABLE ONLY public.repositoryactioncount DROP CONSTRAINT fk_repositoryactioncount_repository_id_repository;
-ALTER TABLE ONLY public.repository DROP CONSTRAINT fk_repository_visibility_id_visibility;
-ALTER TABLE ONLY public.repository DROP CONSTRAINT fk_repository_namespace_user_id_user;
-ALTER TABLE ONLY public.repository DROP CONSTRAINT fk_repository_kind_id_repositorykind;
-ALTER TABLE ONLY public.repomirrorrule DROP CONSTRAINT fk_repomirrorrule_right_child_id_repomirrorrule;
-ALTER TABLE ONLY public.repomirrorrule DROP CONSTRAINT fk_repomirrorrule_repository_id_repository;
-ALTER TABLE ONLY public.repomirrorrule DROP CONSTRAINT fk_repomirrorrule_left_child_id_repomirrorrule;
-ALTER TABLE ONLY public.repomirrorconfig DROP CONSTRAINT fk_repomirrorconfig_root_rule_id_repomirrorrule;
-ALTER TABLE ONLY public.repomirrorconfig DROP CONSTRAINT fk_repomirrorconfig_repository_id_repository;
-ALTER TABLE ONLY public.repomirrorconfig DROP CONSTRAINT fk_repomirrorconfig_internal_robot_id_user;
-ALTER TABLE ONLY public.quotalimits DROP CONSTRAINT fk_quotalimit_type;
-ALTER TABLE ONLY public.quotalimits DROP CONSTRAINT fk_quotalimit_id;
-ALTER TABLE ONLY public.quayrelease DROP CONSTRAINT fk_quayrelease_service_id_quayservice;
-ALTER TABLE ONLY public.quayrelease DROP CONSTRAINT fk_quayrelease_region_id_quayregion;
-ALTER TABLE ONLY public.proxycacheconfig DROP CONSTRAINT fk_proxy_cache_config_organization_id;
-ALTER TABLE ONLY public.permissionprototype DROP CONSTRAINT fk_permissionprototype_role_id_role;
-ALTER TABLE ONLY public.permissionprototype DROP CONSTRAINT fk_permissionprototype_org_id_user;
-ALTER TABLE ONLY public.permissionprototype DROP CONSTRAINT fk_permissionprototype_delegate_user_id_user;
-ALTER TABLE ONLY public.permissionprototype DROP CONSTRAINT fk_permissionprototype_delegate_team_id_team;
-ALTER TABLE ONLY public.permissionprototype DROP CONSTRAINT fk_permissionprototype_activating_user_id_user;
-ALTER TABLE ONLY public.oauthauthorizationcode DROP CONSTRAINT fk_oauthauthorizationcode_application_id_oauthapplication;
-ALTER TABLE ONLY public.oauthapplication DROP CONSTRAINT fk_oauthapplication_organization_id_user;
-ALTER TABLE ONLY public.oauthaccesstoken DROP CONSTRAINT fk_oauthaccesstoken_authorized_user_id_user;
-ALTER TABLE ONLY public.oauthaccesstoken DROP CONSTRAINT fk_oauthaccesstoken_application_id_oauthapplication;
-ALTER TABLE ONLY public.notification DROP CONSTRAINT fk_notification_target_id_user;
-ALTER TABLE ONLY public.notification DROP CONSTRAINT fk_notification_kind_id_notificationkind;
-ALTER TABLE ONLY public.namespacegeorestriction DROP CONSTRAINT fk_namespacegeorestriction_namespace_id_user;
-ALTER TABLE ONLY public.messages DROP CONSTRAINT fk_messages_media_type_id_mediatype;
-ALTER TABLE ONLY public.manifestsecuritystatus DROP CONSTRAINT fk_manifestsecuritystatus_repository_id_repository;
-ALTER TABLE ONLY public.manifestsecuritystatus DROP CONSTRAINT fk_manifestsecuritystatus_manifest_id_manifest;
-ALTER TABLE ONLY public.manifestlegacyimage DROP CONSTRAINT fk_manifestlegacyimage_repository_id_repository;
-ALTER TABLE ONLY public.manifestlegacyimage DROP CONSTRAINT fk_manifestlegacyimage_manifest_id_manifest;
-ALTER TABLE ONLY public.manifestlegacyimage DROP CONSTRAINT fk_manifestlegacyimage_image_id_image;
-ALTER TABLE ONLY public.manifestlabel DROP CONSTRAINT fk_manifestlabel_repository_id_repository;
-ALTER TABLE ONLY public.manifestlabel DROP CONSTRAINT fk_manifestlabel_manifest_id_manifest;
-ALTER TABLE ONLY public.manifestlabel DROP CONSTRAINT fk_manifestlabel_label_id_label;
-ALTER TABLE ONLY public.manifestchild DROP CONSTRAINT fk_manifestchild_repository_id_repository;
-ALTER TABLE ONLY public.manifestchild DROP CONSTRAINT fk_manifestchild_manifest_id_manifest;
-ALTER TABLE ONLY public.manifestchild DROP CONSTRAINT fk_manifestchild_child_manifest_id_manifest;
-ALTER TABLE ONLY public.manifestblob DROP CONSTRAINT fk_manifestblob_repository_id_repository;
-ALTER TABLE ONLY public.manifestblob DROP CONSTRAINT fk_manifestblob_manifest_id_manifest;
-ALTER TABLE ONLY public.manifestblob DROP CONSTRAINT fk_manifestblob_blob_id_imagestorage;
-ALTER TABLE ONLY public.manifest DROP CONSTRAINT fk_manifest_repository_id_repository;
-ALTER TABLE ONLY public.manifest DROP CONSTRAINT fk_manifest_media_type_id_mediatype;
-ALTER TABLE ONLY public.logentry DROP CONSTRAINT fk_logentry_kind_id_logentrykind;
-ALTER TABLE ONLY public.logentry2 DROP CONSTRAINT fk_logentry2_kind_id_logentrykind;
-ALTER TABLE ONLY public.label DROP CONSTRAINT fk_label_source_type_id_labelsourcetype;
-ALTER TABLE ONLY public.label DROP CONSTRAINT fk_label_media_type_id_mediatype;
-ALTER TABLE ONLY public.imagestoragesignature DROP CONSTRAINT fk_imagestoragesignature_storage_id_imagestorage;
-ALTER TABLE ONLY public.imagestoragesignature DROP CONSTRAINT fk_imagestoragesignature_kind_id_imagestoragesignaturekind;
-ALTER TABLE ONLY public.imagestorageplacement DROP CONSTRAINT fk_imagestorageplacement_storage_id_imagestorage;
-ALTER TABLE ONLY public.imagestorageplacement DROP CONSTRAINT fk_imagestorageplacement_location_id_imagestoragelocation;
-ALTER TABLE ONLY public.image DROP CONSTRAINT fk_image_storage_id_imagestorage;
-ALTER TABLE ONLY public.image DROP CONSTRAINT fk_image_repository_id_repository;
-ALTER TABLE ONLY public.federatedlogin DROP CONSTRAINT fk_federatedlogin_user_id_user;
-ALTER TABLE ONLY public.federatedlogin DROP CONSTRAINT fk_federatedlogin_service_id_loginservice;
-ALTER TABLE ONLY public.emailconfirmation DROP CONSTRAINT fk_emailconfirmation_user_id_user;
-ALTER TABLE ONLY public.derivedstorageforimage DROP CONSTRAINT fk_derivedstorageforimage_transformation_constraint;
-ALTER TABLE ONLY public.derivedstorageforimage DROP CONSTRAINT fk_derivedstorageforimage_source_image_id_image;
-ALTER TABLE ONLY public.derivedstorageforimage DROP CONSTRAINT fk_derivedstorageforimage_derivative_id_imagestorage;
-ALTER TABLE ONLY public.deletedrepository DROP CONSTRAINT fk_deletedrepository_repository_id_repository;
-ALTER TABLE ONLY public.deletednamespace DROP CONSTRAINT fk_deletednamespace_namespace_id_user;
-ALTER TABLE ONLY public.blobupload DROP CONSTRAINT fk_blobupload_repository_id_repository;
-ALTER TABLE ONLY public.blobupload DROP CONSTRAINT fk_blobupload_location_id_imagestoragelocation;
-ALTER TABLE ONLY public.appspecificauthtoken DROP CONSTRAINT fk_appspecificauthtoken_user_id_user;
-ALTER TABLE ONLY public.apprtag DROP CONSTRAINT fk_apprtag_tag_kind_id_apprtagkind;
-ALTER TABLE ONLY public.apprtag DROP CONSTRAINT fk_apprtag_repository_id_repository;
-ALTER TABLE ONLY public.apprtag DROP CONSTRAINT fk_apprtag_manifest_list_id_apprmanifestlist;
-ALTER TABLE ONLY public.apprtag DROP CONSTRAINT fk_apprtag_linked_tag_id_apprtag;
-ALTER TABLE ONLY public.apprmanifestlistmanifest DROP CONSTRAINT fk_apprmanifestlistmanifest_media_type_id_mediatype;
-ALTER TABLE ONLY public.apprmanifestlistmanifest DROP CONSTRAINT fk_apprmanifestlistmanifest_manifest_list_id_apprmanifestlist;
-ALTER TABLE ONLY public.apprmanifestlistmanifest DROP CONSTRAINT fk_apprmanifestlistmanifest_manifest_id_apprmanifest;
-ALTER TABLE ONLY public.apprmanifestlist DROP CONSTRAINT fk_apprmanifestlist_media_type_id_mediatype;
-ALTER TABLE ONLY public.apprmanifestblob DROP CONSTRAINT fk_apprmanifestblob_manifest_id_apprmanifest;
-ALTER TABLE ONLY public.apprmanifestblob DROP CONSTRAINT fk_apprmanifestblob_blob_id_apprblob;
-ALTER TABLE ONLY public.apprmanifest DROP CONSTRAINT fk_apprmanifest_media_type_id_mediatype;
-ALTER TABLE ONLY public.apprblobplacement DROP CONSTRAINT fk_apprblobplacement_location_id_apprblobplacementlocation;
-ALTER TABLE ONLY public.apprblobplacement DROP CONSTRAINT fk_apprblobplacement_blob_id_apprblob;
-ALTER TABLE ONLY public.apprblob DROP CONSTRAINT fk_apprblob_media_type_id_mediatype;
-ALTER TABLE ONLY public.accesstoken DROP CONSTRAINT fk_accesstoken_role_id_role;
-ALTER TABLE ONLY public.accesstoken DROP CONSTRAINT fk_accesstoken_repository_id_repository;
-ALTER TABLE ONLY public.accesstoken DROP CONSTRAINT fk_accesstoken_kind_id_accesstokenkind;
-DROP INDEX public.visibility_name;
-DROP INDEX public.userregion_user_id;
-DROP INDEX public.userregion_location_id;
-DROP INDEX public.userpromptkind_name;
-DROP INDEX public.userprompt_user_id_kind_id;
-DROP INDEX public.userprompt_user_id;
-DROP INDEX public.userprompt_kind_id;
-DROP INDEX public.userorganizationquota_organization;
-DROP INDEX public.user_uuid;
-DROP INDEX public.user_username;
-DROP INDEX public.user_stripe_id;
-DROP INDEX public.user_robot;
-DROP INDEX public.user_organization;
-DROP INDEX public.user_last_accessed;
-DROP INDEX public.user_invoice_email_address;
-DROP INDEX public.user_email;
-DROP INDEX public.uploadedblob_repository_id;
-DROP INDEX public.uploadedblob_expires_at;
-DROP INDEX public.uploadedblob_blob_id;
-DROP INDEX public.uniqueness_index;
-DROP INDEX public.torrentinfo_storage_id_piece_length;
-DROP INDEX public.torrentinfo_storage_id;
-DROP INDEX public.teamsync_team_id;
-DROP INDEX public.teamsync_service_id;
-DROP INDEX public.teamsync_last_updated;
-DROP INDEX public.teamrole_name;
-DROP INDEX public.teammemberinvite_user_id;
-DROP INDEX public.teammemberinvite_team_id;
-DROP INDEX public.teammemberinvite_inviter_id;
-DROP INDEX public.teammember_user_id_team_id;
-DROP INDEX public.teammember_user_id;
-DROP INDEX public.teammember_team_id;
-DROP INDEX public.team_role_id;
-DROP INDEX public.team_organization_id;
-DROP INDEX public.team_name_organization_id;
-DROP INDEX public.team_name;
-DROP INDEX public.tagtorepositorytag_tag_id;
-DROP INDEX public.tagtorepositorytag_repository_tag_id;
-DROP INDEX public.tagtorepositorytag_repository_id;
-DROP INDEX public.tagmanifesttomanifest_tag_manifest_id;
-DROP INDEX public.tagmanifesttomanifest_manifest_id;
-DROP INDEX public.tagmanifesttomanifest_broken;
-DROP INDEX public.tagmanifestlabelmap_tag_manifest_label_id;
-DROP INDEX public.tagmanifestlabelmap_tag_manifest_id;
-DROP INDEX public.tagmanifestlabelmap_manifest_label_id;
-DROP INDEX public.tagmanifestlabelmap_manifest_id;
-DROP INDEX public.tagmanifestlabelmap_label_id;
-DROP INDEX public.tagmanifestlabelmap_broken_manifest;
-DROP INDEX public.tagmanifestlabel_repository_id;
-DROP INDEX public.tagmanifestlabel_label_id;
-DROP INDEX public.tagmanifestlabel_annotated_id_label_id;
-DROP INDEX public.tagmanifestlabel_annotated_id;
-DROP INDEX public.tagmanifest_tag_id;
-DROP INDEX public.tagmanifest_digest;
-DROP INDEX public.tagkind_name;
-DROP INDEX public.tag_tag_kind_id;
-DROP INDEX public.tag_repository_id_name_tag_kind_id;
-DROP INDEX public.tag_repository_id_name_lifetime_end_ms;
-DROP INDEX public.tag_repository_id_name_hidden;
-DROP INDEX public.tag_repository_id_name;
-DROP INDEX public.tag_repository_id_lifetime_start_ms;
-DROP INDEX public.tag_repository_id_lifetime_end_ms;
-DROP INDEX public.tag_repository_id;
-DROP INDEX public.tag_manifest_id;
-DROP INDEX public.tag_linked_tag_id;
-DROP INDEX public.tag_lifetime_end_ms;
-DROP INDEX public.star_user_id_repository_id;
-DROP INDEX public.star_user_id;
-DROP INDEX public.star_repository_id;
-DROP INDEX public.servicekeyapproval_approver_id;
-DROP INDEX public.servicekeyapproval_approval_type;
-DROP INDEX public.servicekey_service;
-DROP INDEX public.servicekey_kid;
-DROP INDEX public.servicekey_approval_id;
-DROP INDEX public.role_name;
-DROP INDEX public.robotaccounttoken_robot_account_id;
-DROP INDEX public.robotaccountmetadata_robot_account_id;
-DROP INDEX public.repositorytag_repository_id_name_lifetime_end_ts;
-DROP INDEX public.repositorytag_repository_id_name;
-DROP INDEX public.repositorytag_repository_id_lifetime_start_ts;
-DROP INDEX public.repositorytag_repository_id_lifetime_end_ts;
-DROP INDEX public.repositorytag_repository_id;
-DROP INDEX public.repositorytag_lifetime_end_ts;
-DROP INDEX public.repositorytag_image_id;
-DROP INDEX public.repositorysize_repository_id;
-DROP INDEX public.repositorysearchscore_score;
-DROP INDEX public.repositorysearchscore_repository_id;
-DROP INDEX public.repositorypermission_user_id_repository_id;
-DROP INDEX public.repositorypermission_user_id;
-DROP INDEX public.repositorypermission_team_id_repository_id;
-DROP INDEX public.repositorypermission_team_id;
-DROP INDEX public.repositorypermission_role_id;
-DROP INDEX public.repositorypermission_repository_id;
-DROP INDEX public.repositorynotification_uuid;
-DROP INDEX public.repositorynotification_repository_id;
-DROP INDEX public.repositorynotification_method_id;
-DROP INDEX public.repositorynotification_event_id;
-DROP INDEX public.repositorykind_name;
-DROP INDEX public.repositorybuildtrigger_write_token_id;
-DROP INDEX public.repositorybuildtrigger_uuid;
-DROP INDEX public.repositorybuildtrigger_service_id;
-DROP INDEX public.repositorybuildtrigger_repository_id;
-DROP INDEX public.repositorybuildtrigger_pull_robot_id;
-DROP INDEX public.repositorybuildtrigger_disabled_reason_id;
-DROP INDEX public.repositorybuildtrigger_disabled_datetime;
-DROP INDEX public.repositorybuildtrigger_connected_user_id;
-DROP INDEX public.repositorybuild_uuid;
-DROP INDEX public.repositorybuild_trigger_id;
-DROP INDEX public.repositorybuild_started_logs_archived_phase;
-DROP INDEX public.repositorybuild_started;
-DROP INDEX public.repositorybuild_resource_key;
-DROP INDEX public.repositorybuild_repository_id_started_phase;
-DROP INDEX public.repositorybuild_repository_id;
-DROP INDEX public.repositorybuild_queue_id;
-DROP INDEX public.repositorybuild_pull_robot_id;
-DROP INDEX public.repositorybuild_logs_archived;
-DROP INDEX public.repositorybuild_access_token_id;
-DROP INDEX public.repositoryauthorizedemail_repository_id;
-DROP INDEX public.repositoryauthorizedemail_email_repository_id;
-DROP INDEX public.repositoryauthorizedemail_code;
-DROP INDEX public.repositoryactioncount_repository_id_date;
-DROP INDEX public.repositoryactioncount_repository_id;
-DROP INDEX public.repositoryactioncount_date;
-DROP INDEX public.repository_visibility_id;
-DROP INDEX public.repository_state;
-DROP INDEX public.repository_namespace_user_id_name;
-DROP INDEX public.repository_namespace_user_id;
-DROP INDEX public.repository_name__fulltext;
-DROP INDEX public.repository_kind_id;
-DROP INDEX public.repository_description__fulltext;
-DROP INDEX public.repomirrorrule_uuid;
-DROP INDEX public.repomirrorrule_rule_type;
-DROP INDEX public.repomirrorrule_right_child_id;
-DROP INDEX public.repomirrorrule_repository_id;
-DROP INDEX public.repomirrorrule_left_child_id;
-DROP INDEX public.repomirrorconfig_sync_transaction_id;
-DROP INDEX public.repomirrorconfig_sync_status;
-DROP INDEX public.repomirrorconfig_root_rule_id;
-DROP INDEX public.repomirrorconfig_repository_id;
-DROP INDEX public.repomirrorconfig_mirror_type;
-DROP INDEX public.repomirrorconfig_internal_robot_id;
-DROP INDEX public.quotalimits_quota_id;
-DROP INDEX public.queueitem_state_id;
-DROP INDEX public.queueitem_queue_name;
-DROP INDEX public.queueitem_processing_expires_queue_name_available;
-DROP INDEX public.queueitem_processing_expires_available;
-DROP INDEX public.queueitem_pexpires_aafter_rremaining_available;
-DROP INDEX public.queueitem_pe_aafter_qname_rremaining_available;
-DROP INDEX public.quayservice_name;
-DROP INDEX public.quayrelease_service_id_version_region_id;
-DROP INDEX public.quayrelease_service_id_region_id_created;
-DROP INDEX public.quayrelease_service_id;
-DROP INDEX public.quayrelease_region_id;
-DROP INDEX public.quayrelease_created;
-DROP INDEX public.quayregion_name;
-DROP INDEX public.permissionprototype_uuid;
-DROP INDEX public.permissionprototype_role_id;
-DROP INDEX public.permissionprototype_org_id_activating_user_id;
-DROP INDEX public.permissionprototype_org_id;
-DROP INDEX public.permissionprototype_delegate_user_id;
-DROP INDEX public.permissionprototype_delegate_team_id;
-DROP INDEX public.permissionprototype_activating_user_id;
-DROP INDEX public.oauthauthorizationcode_code_name;
-DROP INDEX public.oauthauthorizationcode_application_id;
-DROP INDEX public.oauthapplication_organization_id;
-DROP INDEX public.oauthapplication_client_id;
-DROP INDEX public.oauthaccesstoken_uuid;
-DROP INDEX public.oauthaccesstoken_token_name;
-DROP INDEX public.oauthaccesstoken_authorized_user_id;
-DROP INDEX public.oauthaccesstoken_application_id;
-DROP INDEX public.notificationkind_name;
-DROP INDEX public.notification_uuid;
-DROP INDEX public.notification_target_id;
-DROP INDEX public.notification_lookup_path;
-DROP INDEX public.notification_kind_id;
-DROP INDEX public.notification_created;
-DROP INDEX public.namespacegeorestriction_restricted_region_iso_code;
-DROP INDEX public.namespacegeorestriction_namespace_id_restricted_region_iso_code;
-DROP INDEX public.namespacegeorestriction_namespace_id;
-DROP INDEX public.messages_uuid;
-DROP INDEX public.messages_severity;
-DROP INDEX public.messages_media_type_id;
-DROP INDEX public.mediatype_name;
-DROP INDEX public.manifestsecuritystatus_repository_id;
-DROP INDEX public.manifestsecuritystatus_manifest_id;
-DROP INDEX public.manifestsecuritystatus_last_indexed;
-DROP INDEX public.manifestsecuritystatus_indexer_version;
-DROP INDEX public.manifestsecuritystatus_indexer_hash;
-DROP INDEX public.manifestsecuritystatus_index_status;
-DROP INDEX public.manifestlegacyimage_repository_id;
-DROP INDEX public.manifestlegacyimage_manifest_id;
-DROP INDEX public.manifestlegacyimage_image_id;
-DROP INDEX public.manifestlabel_repository_id;
-DROP INDEX public.manifestlabel_manifest_id_label_id;
-DROP INDEX public.manifestlabel_manifest_id;
-DROP INDEX public.manifestlabel_label_id;
-DROP INDEX public.manifestchild_repository_id_manifest_id_child_manifest_id;
-DROP INDEX public.manifestchild_repository_id_manifest_id;
-DROP INDEX public.manifestchild_repository_id_child_manifest_id;
-DROP INDEX public.manifestchild_repository_id;
-DROP INDEX public.manifestchild_manifest_id_child_manifest_id;
-DROP INDEX public.manifestchild_manifest_id;
-DROP INDEX public.manifestchild_child_manifest_id;
-DROP INDEX public.manifestblob_repository_id_blob_id;
-DROP INDEX public.manifestblob_repository_id;
-DROP INDEX public.manifestblob_manifest_id_blob_id;
-DROP INDEX public.manifestblob_manifest_id;
-DROP INDEX public.manifestblob_blob_id;
-DROP INDEX public.manifest_repository_id_media_type_id;
-DROP INDEX public.manifest_repository_id_digest;
-DROP INDEX public.manifest_repository_id_config_media_type;
-DROP INDEX public.manifest_repository_id;
-DROP INDEX public.manifest_media_type_id;
-DROP INDEX public.manifest_digest;
-DROP INDEX public.loginservice_name;
-DROP INDEX public.logentrykind_name;
-DROP INDEX public.logentry_repository_id_datetime_kind_id;
-DROP INDEX public.logentry_repository_id_datetime;
-DROP INDEX public.logentry_repository_id;
-DROP INDEX public.logentry_performer_id_datetime;
-DROP INDEX public.logentry_performer_id;
-DROP INDEX public.logentry_kind_id;
-DROP INDEX public.logentry_datetime;
-DROP INDEX public.logentry_account_id_datetime;
-DROP INDEX public.logentry_account_id;
-DROP INDEX public.logentry3_repository_id_datetime_kind_id;
-DROP INDEX public.logentry3_performer_id_datetime;
-DROP INDEX public.logentry3_datetime;
-DROP INDEX public.logentry3_account_id_datetime;
-DROP INDEX public.logentry2_repository_id_datetime_kind_id;
-DROP INDEX public.logentry2_repository_id_datetime;
-DROP INDEX public.logentry2_repository_id;
-DROP INDEX public.logentry2_performer_id_datetime;
-DROP INDEX public.logentry2_performer_id;
-DROP INDEX public.logentry2_kind_id;
-DROP INDEX public.logentry2_datetime;
-DROP INDEX public.logentry2_account_id_datetime;
-DROP INDEX public.logentry2_account_id;
-DROP INDEX public.labelsourcetype_name;
-DROP INDEX public.label_uuid;
-DROP INDEX public.label_source_type_id;
-DROP INDEX public.label_media_type_id;
-DROP INDEX public.label_key;
-DROP INDEX public.imagestoragetransformation_name;
-DROP INDEX public.imagestoragesignaturekind_name;
-DROP INDEX public.imagestoragesignature_storage_id;
-DROP INDEX public.imagestoragesignature_kind_id_storage_id;
-DROP INDEX public.imagestoragesignature_kind_id;
-DROP INDEX public.imagestorageplacement_storage_id_location_id;
-DROP INDEX public.imagestorageplacement_storage_id;
-DROP INDEX public.imagestorageplacement_location_id;
-DROP INDEX public.imagestoragelocation_name;
-DROP INDEX public.imagestorage_uuid;
-DROP INDEX public.imagestorage_content_checksum;
-DROP INDEX public.image_storage_id;
-DROP INDEX public.image_security_indexed_engine_security_indexed;
-DROP INDEX public.image_security_indexed_engine;
-DROP INDEX public.image_security_indexed;
-DROP INDEX public.image_repository_id_docker_image_id;
-DROP INDEX public.image_repository_id;
-DROP INDEX public.image_parent_id;
-DROP INDEX public.image_docker_image_id;
-DROP INDEX public.image_ancestors;
-DROP INDEX public.federatedlogin_user_id;
-DROP INDEX public.federatedlogin_service_id_user_id;
-DROP INDEX public.federatedlogin_service_id_service_ident;
-DROP INDEX public.federatedlogin_service_id;
-DROP INDEX public.externalnotificationmethod_name;
-DROP INDEX public.externalnotificationevent_name;
-DROP INDEX public.emailconfirmation_user_id;
-DROP INDEX public.emailconfirmation_code;
-DROP INDEX public.disablereason_name;
-DROP INDEX public.derivedstorageforimage_transformation_id;
-DROP INDEX public.derivedstorageforimage_source_image_id;
-DROP INDEX public.derivedstorageforimage_derivative_id;
-DROP INDEX public.deletedrepository_repository_id;
-DROP INDEX public.deletedrepository_queue_id;
-DROP INDEX public.deletedrepository_original_name;
-DROP INDEX public.deletednamespace_queue_id;
-DROP INDEX public.deletednamespace_original_username;
-DROP INDEX public.deletednamespace_original_email;
-DROP INDEX public.deletednamespace_namespace_id;
-DROP INDEX public.buildtriggerservice_name;
-DROP INDEX public.blobupload_uuid;
-DROP INDEX public.blobupload_repository_id_uuid;
-DROP INDEX public.blobupload_repository_id;
-DROP INDEX public.blobupload_location_id;
-DROP INDEX public.blobupload_created;
-DROP INDEX public.appspecificauthtoken_uuid;
-DROP INDEX public.appspecificauthtoken_user_id_expiration;
-DROP INDEX public.appspecificauthtoken_user_id;
-DROP INDEX public.appspecificauthtoken_token_name;
-DROP INDEX public.apprtagkind_name;
-DROP INDEX public.apprtag_tag_kind_id;
-DROP INDEX public.apprtag_repository_id_name_lifetime_end;
-DROP INDEX public.apprtag_repository_id_name_hidden;
-DROP INDEX public.apprtag_repository_id_name;
-DROP INDEX public.apprtag_repository_id;
-DROP INDEX public.apprtag_manifest_list_id;
-DROP INDEX public.apprtag_linked_tag_id;
-DROP INDEX public.apprtag_lifetime_end;
-DROP INDEX public.apprmanifestlistmanifest_media_type_id;
-DROP INDEX public.apprmanifestlistmanifest_manifest_list_id_operating_system_arch;
-DROP INDEX public.apprmanifestlistmanifest_manifest_list_id_media_type_id;
-DROP INDEX public.apprmanifestlistmanifest_manifest_list_id;
-DROP INDEX public.apprmanifestlistmanifest_manifest_id;
-DROP INDEX public.apprmanifestlist_media_type_id;
-DROP INDEX public.apprmanifestlist_digest;
-DROP INDEX public.apprmanifestblob_manifest_id_blob_id;
-DROP INDEX public.apprmanifestblob_manifest_id;
-DROP INDEX public.apprmanifestblob_blob_id;
-DROP INDEX public.apprmanifest_media_type_id;
-DROP INDEX public.apprmanifest_digest;
-DROP INDEX public.apprblobplacementlocation_name;
-DROP INDEX public.apprblobplacement_location_id;
-DROP INDEX public.apprblobplacement_blob_id_location_id;
-DROP INDEX public.apprblobplacement_blob_id;
-DROP INDEX public.apprblob_media_type_id;
-DROP INDEX public.apprblob_digest;
-DROP INDEX public.accesstokenkind_name;
-DROP INDEX public.accesstoken_token_name;
-DROP INDEX public.accesstoken_role_id;
-DROP INDEX public.accesstoken_repository_id;
-DROP INDEX public.accesstoken_kind_id;
-ALTER TABLE ONLY public.visibility DROP CONSTRAINT pk_visibility;
-ALTER TABLE ONLY public.userregion DROP CONSTRAINT pk_userregion;
-ALTER TABLE ONLY public.userpromptkind DROP CONSTRAINT pk_userpromptkind;
-ALTER TABLE ONLY public.userprompt DROP CONSTRAINT pk_userprompt;
-ALTER TABLE ONLY public.userorganizationquota DROP CONSTRAINT pk_userorganizationquota;
-ALTER TABLE ONLY public."user" DROP CONSTRAINT pk_user;
-ALTER TABLE ONLY public.uploadedblob DROP CONSTRAINT pk_uploadedblob;
-ALTER TABLE ONLY public.torrentinfo DROP CONSTRAINT pk_torrentinfo;
-ALTER TABLE ONLY public.teamsync DROP CONSTRAINT pk_teamsync;
-ALTER TABLE ONLY public.teamrole DROP CONSTRAINT pk_teamrole;
-ALTER TABLE ONLY public.teammemberinvite DROP CONSTRAINT pk_teammemberinvite;
-ALTER TABLE ONLY public.teammember DROP CONSTRAINT pk_teammember;
-ALTER TABLE ONLY public.team DROP CONSTRAINT pk_team;
-ALTER TABLE ONLY public.tagtorepositorytag DROP CONSTRAINT pk_tagtorepositorytag;
-ALTER TABLE ONLY public.tagmanifesttomanifest DROP CONSTRAINT pk_tagmanifesttomanifest;
-ALTER TABLE ONLY public.tagmanifestlabelmap DROP CONSTRAINT pk_tagmanifestlabelmap;
-ALTER TABLE ONLY public.tagmanifestlabel DROP CONSTRAINT pk_tagmanifestlabel;
-ALTER TABLE ONLY public.tagmanifest DROP CONSTRAINT pk_tagmanifest;
-ALTER TABLE ONLY public.tagkind DROP CONSTRAINT pk_tagkind;
-ALTER TABLE ONLY public.tag DROP CONSTRAINT pk_tag;
-ALTER TABLE ONLY public.star DROP CONSTRAINT pk_star;
-ALTER TABLE ONLY public.servicekeyapproval DROP CONSTRAINT pk_servicekeyapproval;
-ALTER TABLE ONLY public.servicekey DROP CONSTRAINT pk_servicekey;
-ALTER TABLE ONLY public.role DROP CONSTRAINT pk_role;
-ALTER TABLE ONLY public.robotaccounttoken DROP CONSTRAINT pk_robotaccounttoken;
-ALTER TABLE ONLY public.robotaccountmetadata DROP CONSTRAINT pk_robotaccountmetadata;
-ALTER TABLE ONLY public.repositorytag DROP CONSTRAINT pk_repositorytag;
-ALTER TABLE ONLY public.repositorysize DROP CONSTRAINT pk_repositorysizeid;
-ALTER TABLE ONLY public.repositorysearchscore DROP CONSTRAINT pk_repositorysearchscore;
-ALTER TABLE ONLY public.repositorypermission DROP CONSTRAINT pk_repositorypermission;
-ALTER TABLE ONLY public.repositorynotification DROP CONSTRAINT pk_repositorynotification;
-ALTER TABLE ONLY public.repositorykind DROP CONSTRAINT pk_repositorykind;
-ALTER TABLE ONLY public.repositorybuildtrigger DROP CONSTRAINT pk_repositorybuildtrigger;
-ALTER TABLE ONLY public.repositorybuild DROP CONSTRAINT pk_repositorybuild;
-ALTER TABLE ONLY public.repositoryauthorizedemail DROP CONSTRAINT pk_repositoryauthorizedemail;
-ALTER TABLE ONLY public.repositoryactioncount DROP CONSTRAINT pk_repositoryactioncount;
-ALTER TABLE ONLY public.repository DROP CONSTRAINT pk_repository;
-ALTER TABLE ONLY public.repomirrorrule DROP CONSTRAINT pk_repomirrorrule;
-ALTER TABLE ONLY public.repomirrorconfig DROP CONSTRAINT pk_repomirrorconfig;
-ALTER TABLE ONLY public.quotatype DROP CONSTRAINT pk_quotatype;
-ALTER TABLE ONLY public.quotalimits DROP CONSTRAINT pk_quotalimits;
-ALTER TABLE ONLY public.queueitem DROP CONSTRAINT pk_queueitem;
-ALTER TABLE ONLY public.quayservice DROP CONSTRAINT pk_quayservice;
-ALTER TABLE ONLY public.quayrelease DROP CONSTRAINT pk_quayrelease;
-ALTER TABLE ONLY public.quayregion DROP CONSTRAINT pk_quayregion;
-ALTER TABLE ONLY public.proxycacheconfig DROP CONSTRAINT pk_proxy_cache_config;
-ALTER TABLE ONLY public.permissionprototype DROP CONSTRAINT pk_permissionprototype;
-ALTER TABLE ONLY public.oauthauthorizationcode DROP CONSTRAINT pk_oauthauthorizationcode;
-ALTER TABLE ONLY public.oauthapplication DROP CONSTRAINT pk_oauthapplication;
-ALTER TABLE ONLY public.oauthaccesstoken DROP CONSTRAINT pk_oauthaccesstoken;
-ALTER TABLE ONLY public.notificationkind DROP CONSTRAINT pk_notificationkind;
-ALTER TABLE ONLY public.notification DROP CONSTRAINT pk_notification;
-ALTER TABLE ONLY public.namespacegeorestriction DROP CONSTRAINT pk_namespacegeorestriction;
-ALTER TABLE ONLY public.messages DROP CONSTRAINT pk_messages;
-ALTER TABLE ONLY public.mediatype DROP CONSTRAINT pk_mediatype;
-ALTER TABLE ONLY public.manifestsecuritystatus DROP CONSTRAINT pk_manifestsecuritystatus;
-ALTER TABLE ONLY public.manifestlegacyimage DROP CONSTRAINT pk_manifestlegacyimage;
-ALTER TABLE ONLY public.manifestlabel DROP CONSTRAINT pk_manifestlabel;
-ALTER TABLE ONLY public.manifestchild DROP CONSTRAINT pk_manifestchild;
-ALTER TABLE ONLY public.manifestblob DROP CONSTRAINT pk_manifestblob;
-ALTER TABLE ONLY public.manifest DROP CONSTRAINT pk_manifest;
-ALTER TABLE ONLY public.loginservice DROP CONSTRAINT pk_loginservice;
-ALTER TABLE ONLY public.logentrykind DROP CONSTRAINT pk_logentrykind;
-ALTER TABLE ONLY public.logentry3 DROP CONSTRAINT pk_logentry3;
-ALTER TABLE ONLY public.logentry2 DROP CONSTRAINT pk_logentry2;
-ALTER TABLE ONLY public.logentry DROP CONSTRAINT pk_logentry;
-ALTER TABLE ONLY public.labelsourcetype DROP CONSTRAINT pk_labelsourcetype;
-ALTER TABLE ONLY public.label DROP CONSTRAINT pk_label;
-ALTER TABLE ONLY public.imagestoragetransformation DROP CONSTRAINT pk_imagestoragetransformation;
-ALTER TABLE ONLY public.imagestoragesignaturekind DROP CONSTRAINT pk_imagestoragesignaturekind;
-ALTER TABLE ONLY public.imagestoragesignature DROP CONSTRAINT pk_imagestoragesignature;
-ALTER TABLE ONLY public.imagestorageplacement DROP CONSTRAINT pk_imagestorageplacement;
-ALTER TABLE ONLY public.imagestoragelocation DROP CONSTRAINT pk_imagestoragelocation;
-ALTER TABLE ONLY public.imagestorage DROP CONSTRAINT pk_imagestorage;
-ALTER TABLE ONLY public.image DROP CONSTRAINT pk_image;
-ALTER TABLE ONLY public.federatedlogin DROP CONSTRAINT pk_federatedlogin;
-ALTER TABLE ONLY public.externalnotificationmethod DROP CONSTRAINT pk_externalnotificationmethod;
-ALTER TABLE ONLY public.externalnotificationevent DROP CONSTRAINT pk_externalnotificationevent;
-ALTER TABLE ONLY public.emailconfirmation DROP CONSTRAINT pk_emailconfirmation;
-ALTER TABLE ONLY public.disablereason DROP CONSTRAINT pk_disablereason;
-ALTER TABLE ONLY public.derivedstorageforimage DROP CONSTRAINT pk_derivedstorageforimage;
-ALTER TABLE ONLY public.deletedrepository DROP CONSTRAINT pk_deletedrepository;
-ALTER TABLE ONLY public.deletednamespace DROP CONSTRAINT pk_deletednamespace;
-ALTER TABLE ONLY public.buildtriggerservice DROP CONSTRAINT pk_buildtriggerservice;
-ALTER TABLE ONLY public.blobupload DROP CONSTRAINT pk_blobupload;
-ALTER TABLE ONLY public.appspecificauthtoken DROP CONSTRAINT pk_appspecificauthtoken;
-ALTER TABLE ONLY public.apprtagkind DROP CONSTRAINT pk_apprtagkind;
-ALTER TABLE ONLY public.apprtag DROP CONSTRAINT pk_apprtag;
-ALTER TABLE ONLY public.apprmanifestlistmanifest DROP CONSTRAINT pk_apprmanifestlistmanifest;
-ALTER TABLE ONLY public.apprmanifestlist DROP CONSTRAINT pk_apprmanifestlist;
-ALTER TABLE ONLY public.apprmanifestblob DROP CONSTRAINT pk_apprmanifestblob;
-ALTER TABLE ONLY public.apprmanifest DROP CONSTRAINT pk_apprmanifest;
-ALTER TABLE ONLY public.apprblobplacementlocation DROP CONSTRAINT pk_apprblobplacementlocation;
-ALTER TABLE ONLY public.apprblobplacement DROP CONSTRAINT pk_apprblobplacement;
-ALTER TABLE ONLY public.apprblob DROP CONSTRAINT pk_apprblob;
-ALTER TABLE ONLY public.accesstokenkind DROP CONSTRAINT pk_accesstokenkind;
-ALTER TABLE ONLY public.accesstoken DROP CONSTRAINT pk_accesstoken;
-ALTER TABLE ONLY public.alembic_version DROP CONSTRAINT alembic_version_pkc;
-ALTER TABLE public.visibility ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.userregion ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.userpromptkind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.userprompt ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.userorganizationquota ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public."user" ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.uploadedblob ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.torrentinfo ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.teamsync ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.teamrole ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.teammemberinvite ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.teammember ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.team ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tagtorepositorytag ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tagmanifesttomanifest ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tagmanifestlabelmap ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tagmanifestlabel ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tagmanifest ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tagkind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.tag ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.star ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.servicekeyapproval ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.servicekey ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.role ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.robotaccounttoken ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.robotaccountmetadata ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorytag ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorysize ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorysearchscore ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorypermission ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorynotification ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorykind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorybuildtrigger ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositorybuild ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositoryauthorizedemail ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repositoryactioncount ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repository ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repomirrorrule ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.repomirrorconfig ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.quotatype ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.quotalimits ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.queueitem ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.quayservice ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.quayrelease ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.quayregion ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.proxycacheconfig ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.permissionprototype ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.oauthauthorizationcode ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.oauthapplication ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.oauthaccesstoken ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.notificationkind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.notification ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.namespacegeorestriction ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.messages ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.mediatype ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.manifestsecuritystatus ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.manifestlegacyimage ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.manifestlabel ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.manifestchild ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.manifestblob ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.manifest ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.loginservice ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.logentrykind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.logentry3 ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.logentry2 ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.logentry ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.labelsourcetype ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.label ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.imagestoragetransformation ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.imagestoragesignaturekind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.imagestoragesignature ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.imagestorageplacement ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.imagestoragelocation ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.imagestorage ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.image ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.federatedlogin ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.externalnotificationmethod ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.externalnotificationevent ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.emailconfirmation ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.disablereason ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.derivedstorageforimage ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.deletedrepository ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.deletednamespace ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.buildtriggerservice ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.blobupload ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.appspecificauthtoken ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprtagkind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprtag ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprmanifestlistmanifest ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprmanifestlist ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprmanifestblob ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprmanifest ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprblobplacementlocation ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprblobplacement ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.apprblob ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.accesstokenkind ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE public.accesstoken ALTER COLUMN id DROP DEFAULT;
-DROP SEQUENCE public.visibility_id_seq;
-DROP TABLE public.visibility;
-DROP SEQUENCE public.userregion_id_seq;
-DROP TABLE public.userregion;
-DROP SEQUENCE public.userpromptkind_id_seq;
-DROP TABLE public.userpromptkind;
-DROP SEQUENCE public.userprompt_id_seq;
-DROP TABLE public.userprompt;
-DROP SEQUENCE public.userorganizationquota_id_seq;
-DROP TABLE public.userorganizationquota;
-DROP SEQUENCE public.user_id_seq;
-DROP TABLE public."user";
-DROP SEQUENCE public.uploadedblob_id_seq;
-DROP TABLE public.uploadedblob;
-DROP SEQUENCE public.torrentinfo_id_seq;
-DROP TABLE public.torrentinfo;
-DROP SEQUENCE public.teamsync_id_seq;
-DROP TABLE public.teamsync;
-DROP SEQUENCE public.teamrole_id_seq;
-DROP TABLE public.teamrole;
-DROP SEQUENCE public.teammemberinvite_id_seq;
-DROP TABLE public.teammemberinvite;
-DROP SEQUENCE public.teammember_id_seq;
-DROP TABLE public.teammember;
-DROP SEQUENCE public.team_id_seq;
-DROP TABLE public.team;
-DROP SEQUENCE public.tagtorepositorytag_id_seq;
-DROP TABLE public.tagtorepositorytag;
-DROP SEQUENCE public.tagmanifesttomanifest_id_seq;
-DROP TABLE public.tagmanifesttomanifest;
-DROP SEQUENCE public.tagmanifestlabelmap_id_seq;
-DROP TABLE public.tagmanifestlabelmap;
-DROP SEQUENCE public.tagmanifestlabel_id_seq;
-DROP TABLE public.tagmanifestlabel;
-DROP SEQUENCE public.tagmanifest_id_seq;
-DROP TABLE public.tagmanifest;
-DROP SEQUENCE public.tagkind_id_seq;
-DROP TABLE public.tagkind;
-DROP SEQUENCE public.tag_id_seq;
-DROP TABLE public.tag;
-DROP SEQUENCE public.star_id_seq;
-DROP TABLE public.star;
-DROP SEQUENCE public.servicekeyapproval_id_seq;
-DROP TABLE public.servicekeyapproval;
-DROP SEQUENCE public.servicekey_id_seq;
-DROP TABLE public.servicekey;
-DROP SEQUENCE public.role_id_seq;
-DROP TABLE public.role;
-DROP SEQUENCE public.robotaccounttoken_id_seq;
-DROP TABLE public.robotaccounttoken;
-DROP SEQUENCE public.robotaccountmetadata_id_seq;
-DROP TABLE public.robotaccountmetadata;
-DROP SEQUENCE public.repositorytag_id_seq;
-DROP TABLE public.repositorytag;
-DROP SEQUENCE public.repositorysize_id_seq;
-DROP TABLE public.repositorysize;
-DROP SEQUENCE public.repositorysearchscore_id_seq;
-DROP TABLE public.repositorysearchscore;
-DROP SEQUENCE public.repositorypermission_id_seq;
-DROP TABLE public.repositorypermission;
-DROP SEQUENCE public.repositorynotification_id_seq;
-DROP TABLE public.repositorynotification;
-DROP SEQUENCE public.repositorykind_id_seq;
-DROP TABLE public.repositorykind;
-DROP SEQUENCE public.repositorybuildtrigger_id_seq;
-DROP TABLE public.repositorybuildtrigger;
-DROP SEQUENCE public.repositorybuild_id_seq;
-DROP TABLE public.repositorybuild;
-DROP SEQUENCE public.repositoryauthorizedemail_id_seq;
-DROP TABLE public.repositoryauthorizedemail;
-DROP SEQUENCE public.repositoryactioncount_id_seq;
-DROP TABLE public.repositoryactioncount;
-DROP SEQUENCE public.repository_id_seq;
-DROP TABLE public.repository;
-DROP SEQUENCE public.repomirrorrule_id_seq;
-DROP TABLE public.repomirrorrule;
-DROP SEQUENCE public.repomirrorconfig_id_seq;
-DROP TABLE public.repomirrorconfig;
-DROP SEQUENCE public.quotatype_id_seq;
-DROP TABLE public.quotatype;
-DROP SEQUENCE public.quotalimits_id_seq;
-DROP TABLE public.quotalimits;
-DROP SEQUENCE public.queueitem_id_seq;
-DROP TABLE public.queueitem;
-DROP SEQUENCE public.quayservice_id_seq;
-DROP TABLE public.quayservice;
-DROP SEQUENCE public.quayrelease_id_seq;
-DROP TABLE public.quayrelease;
-DROP SEQUENCE public.quayregion_id_seq;
-DROP TABLE public.quayregion;
-DROP SEQUENCE public.proxycacheconfig_id_seq;
-DROP TABLE public.proxycacheconfig;
-DROP SEQUENCE public.permissionprototype_id_seq;
-DROP TABLE public.permissionprototype;
-DROP SEQUENCE public.oauthauthorizationcode_id_seq;
-DROP TABLE public.oauthauthorizationcode;
-DROP SEQUENCE public.oauthapplication_id_seq;
-DROP TABLE public.oauthapplication;
-DROP SEQUENCE public.oauthaccesstoken_id_seq;
-DROP TABLE public.oauthaccesstoken;
-DROP SEQUENCE public.notificationkind_id_seq;
-DROP TABLE public.notificationkind;
-DROP SEQUENCE public.notification_id_seq;
-DROP TABLE public.notification;
-DROP SEQUENCE public.namespacegeorestriction_id_seq;
-DROP TABLE public.namespacegeorestriction;
-DROP SEQUENCE public.messages_id_seq;
-DROP TABLE public.messages;
-DROP SEQUENCE public.mediatype_id_seq;
-DROP TABLE public.mediatype;
-DROP SEQUENCE public.manifestsecuritystatus_id_seq;
-DROP TABLE public.manifestsecuritystatus;
-DROP SEQUENCE public.manifestlegacyimage_id_seq;
-DROP TABLE public.manifestlegacyimage;
-DROP SEQUENCE public.manifestlabel_id_seq;
-DROP TABLE public.manifestlabel;
-DROP SEQUENCE public.manifestchild_id_seq;
-DROP TABLE public.manifestchild;
-DROP SEQUENCE public.manifestblob_id_seq;
-DROP TABLE public.manifestblob;
-DROP SEQUENCE public.manifest_id_seq;
-DROP TABLE public.manifest;
-DROP SEQUENCE public.loginservice_id_seq;
-DROP TABLE public.loginservice;
-DROP SEQUENCE public.logentrykind_id_seq;
-DROP TABLE public.logentrykind;
-DROP SEQUENCE public.logentry_id_seq;
-DROP SEQUENCE public.logentry3_id_seq;
-DROP TABLE public.logentry3;
-DROP SEQUENCE public.logentry2_id_seq;
-DROP TABLE public.logentry2;
-DROP TABLE public.logentry;
-DROP SEQUENCE public.labelsourcetype_id_seq;
-DROP TABLE public.labelsourcetype;
-DROP SEQUENCE public.label_id_seq;
-DROP TABLE public.label;
-DROP SEQUENCE public.imagestoragetransformation_id_seq;
-DROP TABLE public.imagestoragetransformation;
-DROP SEQUENCE public.imagestoragesignaturekind_id_seq;
-DROP TABLE public.imagestoragesignaturekind;
-DROP SEQUENCE public.imagestoragesignature_id_seq;
-DROP TABLE public.imagestoragesignature;
-DROP SEQUENCE public.imagestorageplacement_id_seq;
-DROP TABLE public.imagestorageplacement;
-DROP SEQUENCE public.imagestoragelocation_id_seq;
-DROP TABLE public.imagestoragelocation;
-DROP SEQUENCE public.imagestorage_id_seq;
-DROP TABLE public.imagestorage;
-DROP SEQUENCE public.image_id_seq;
-DROP TABLE public.image;
-DROP SEQUENCE public.federatedlogin_id_seq;
-DROP TABLE public.federatedlogin;
-DROP SEQUENCE public.externalnotificationmethod_id_seq;
-DROP TABLE public.externalnotificationmethod;
-DROP SEQUENCE public.externalnotificationevent_id_seq;
-DROP TABLE public.externalnotificationevent;
-DROP SEQUENCE public.emailconfirmation_id_seq;
-DROP TABLE public.emailconfirmation;
-DROP SEQUENCE public.disablereason_id_seq;
-DROP TABLE public.disablereason;
-DROP SEQUENCE public.derivedstorageforimage_id_seq;
-DROP TABLE public.derivedstorageforimage;
-DROP SEQUENCE public.deletedrepository_id_seq;
-DROP TABLE public.deletedrepository;
-DROP SEQUENCE public.deletednamespace_id_seq;
-DROP TABLE public.deletednamespace;
-DROP SEQUENCE public.buildtriggerservice_id_seq;
-DROP TABLE public.buildtriggerservice;
-DROP SEQUENCE public.blobupload_id_seq;
-DROP TABLE public.blobupload;
-DROP SEQUENCE public.appspecificauthtoken_id_seq;
-DROP TABLE public.appspecificauthtoken;
-DROP SEQUENCE public.apprtagkind_id_seq;
-DROP TABLE public.apprtagkind;
-DROP SEQUENCE public.apprtag_id_seq;
-DROP TABLE public.apprtag;
-DROP SEQUENCE public.apprmanifestlistmanifest_id_seq;
-DROP TABLE public.apprmanifestlistmanifest;
-DROP SEQUENCE public.apprmanifestlist_id_seq;
-DROP TABLE public.apprmanifestlist;
-DROP SEQUENCE public.apprmanifestblob_id_seq;
-DROP TABLE public.apprmanifestblob;
-DROP SEQUENCE public.apprmanifest_id_seq;
-DROP TABLE public.apprmanifest;
-DROP SEQUENCE public.apprblobplacementlocation_id_seq;
-DROP TABLE public.apprblobplacementlocation;
-DROP SEQUENCE public.apprblobplacement_id_seq;
-DROP TABLE public.apprblobplacement;
-DROP SEQUENCE public.apprblob_id_seq;
-DROP TABLE public.apprblob;
-DROP TABLE public.alembic_version;
-DROP SEQUENCE public.accesstokenkind_id_seq;
-DROP TABLE public.accesstokenkind;
-DROP SEQUENCE public.accesstoken_id_seq;
-DROP TABLE public.accesstoken;
-DROP EXTENSION pg_trgm;
+ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS fk_userregion_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS fk_userregion_location_id_imagestoragelocation;
+ALTER TABLE IF EXISTS ONLY public.userprompt DROP CONSTRAINT IF EXISTS fk_userprompt_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.userprompt DROP CONSTRAINT IF EXISTS fk_userprompt_kind_id_userpromptkind;
+ALTER TABLE IF EXISTS ONLY public.userorganizationquota DROP CONSTRAINT IF EXISTS fk_userorganizationquota_organization;
+ALTER TABLE IF EXISTS ONLY public.uploadedblob DROP CONSTRAINT IF EXISTS fk_uploadedblob_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.uploadedblob DROP CONSTRAINT IF EXISTS fk_uploadedblob_blob_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.torrentinfo DROP CONSTRAINT IF EXISTS fk_torrentinfo_storage_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.teamsync DROP CONSTRAINT IF EXISTS fk_teamsync_team_id_team;
+ALTER TABLE IF EXISTS ONLY public.teamsync DROP CONSTRAINT IF EXISTS fk_teamsync_service_id_loginservice;
+ALTER TABLE IF EXISTS ONLY public.teammemberinvite DROP CONSTRAINT IF EXISTS fk_teammemberinvite_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.teammemberinvite DROP CONSTRAINT IF EXISTS fk_teammemberinvite_team_id_team;
+ALTER TABLE IF EXISTS ONLY public.teammemberinvite DROP CONSTRAINT IF EXISTS fk_teammemberinvite_inviter_id_user;
+ALTER TABLE IF EXISTS ONLY public.teammember DROP CONSTRAINT IF EXISTS fk_teammember_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.teammember DROP CONSTRAINT IF EXISTS fk_teammember_team_id_team;
+ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_role_id_teamrole;
+ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_organization_id_user;
+ALTER TABLE IF EXISTS ONLY public.tagtorepositorytag DROP CONSTRAINT IF EXISTS fk_tagtorepositorytag_tag_id_tag;
+ALTER TABLE IF EXISTS ONLY public.tagtorepositorytag DROP CONSTRAINT IF EXISTS fk_tagtorepositorytag_repository_tag_id_repositorytag;
+ALTER TABLE IF EXISTS ONLY public.tagtorepositorytag DROP CONSTRAINT IF EXISTS fk_tagtorepositorytag_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.tagmanifesttomanifest DROP CONSTRAINT IF EXISTS fk_tagmanifesttomanifest_tag_manifest_id_tagmanifest;
+ALTER TABLE IF EXISTS ONLY public.tagmanifesttomanifest DROP CONSTRAINT IF EXISTS fk_tagmanifesttomanifest_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS fk_tagmanifestlabelmap_tag_manifest_label_id_tagmanifestlabel;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS fk_tagmanifestlabelmap_tag_manifest_id_tagmanifest;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS fk_tagmanifestlabelmap_manifest_label_id_manifestlabel;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS fk_tagmanifestlabelmap_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS fk_tagmanifestlabelmap_label_id_label;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS fk_tagmanifestlabel_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS fk_tagmanifestlabel_label_id_label;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS fk_tagmanifestlabel_annotated_id_tagmanifest;
+ALTER TABLE IF EXISTS ONLY public.tagmanifest DROP CONSTRAINT IF EXISTS fk_tagmanifest_tag_id_repositorytag;
+ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_tag_kind_id_tagkind;
+ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
+ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.servicekey DROP CONSTRAINT IF EXISTS fk_servicekey_approval_id_servicekeyapproval;
+ALTER TABLE IF EXISTS ONLY public.robotaccounttoken DROP CONSTRAINT IF EXISTS fk_robotaccounttoken_robot_account_id_user;
+ALTER TABLE IF EXISTS ONLY public.robotaccountmetadata DROP CONSTRAINT IF EXISTS fk_robotaccountmetadata_robot_account_id_user;
+ALTER TABLE IF EXISTS ONLY public.repositorytag DROP CONSTRAINT IF EXISTS fk_repositorytag_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorytag DROP CONSTRAINT IF EXISTS fk_repositorytag_image_id_image;
+ALTER TABLE IF EXISTS ONLY public.repositorysize DROP CONSTRAINT IF EXISTS fk_repositorysize_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorysearchscore DROP CONSTRAINT IF EXISTS fk_repositorysearchscore_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS fk_repositorypermission_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS fk_repositorypermission_team_id_team;
+ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS fk_repositorypermission_role_id_role;
+ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS fk_repositorypermission_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS fk_repositorynotification_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS fk_repositorynotification_method_id_externalnotificationmethod;
+ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS fk_repositorynotification_event_id_externalnotificationevent;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_write_token_id_accesstoken;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_service_id_buildtriggerservice;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_pull_robot_id_user;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_disabled_reason_id_disablereason;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS fk_repositorybuildtrigger_connected_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_trigger_id_repositorybuildtrigger;
+ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_pull_robot_id_user;
+ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_access_token_id_accesstoken;
+ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS fk_repositoryauthorizedemail_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS fk_repositoryactioncount_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_visibility_id_visibility;
+ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_namespace_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_kind_id_repositorykind;
+ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS fk_repomirrorrule_right_child_id_repomirrorrule;
+ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS fk_repomirrorrule_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS fk_repomirrorrule_left_child_id_repomirrorrule;
+ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_root_rule_id_repomirrorrule;
+ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_internal_robot_id_user;
+ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS fk_redhatsubscriptions;
+ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS fk_quotarepositorysize_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS fk_quotanamespacesize_namespace_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.quotalimits DROP CONSTRAINT IF EXISTS fk_quotalimit_type;
+ALTER TABLE IF EXISTS ONLY public.quotalimits DROP CONSTRAINT IF EXISTS fk_quotalimit_id;
+ALTER TABLE IF EXISTS ONLY public.quayrelease DROP CONSTRAINT IF EXISTS fk_quayrelease_service_id_quayservice;
+ALTER TABLE IF EXISTS ONLY public.quayrelease DROP CONSTRAINT IF EXISTS fk_quayrelease_region_id_quayregion;
+ALTER TABLE IF EXISTS ONLY public.proxycacheconfig DROP CONSTRAINT IF EXISTS fk_proxy_cache_config_organization_id;
+ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_role_id_role;
+ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_org_id_user;
+ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_delegate_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_delegate_team_id_team;
+ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_activating_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS fk_oauthauthorizationcode_application_id_oauthapplication;
+ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS fk_oauthapplication_organization_id_user;
+ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_authorized_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_application_id_oauthapplication;
+ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS fk_notification_target_id_user;
+ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS fk_notification_kind_id_notificationkind;
+ALTER TABLE IF EXISTS ONLY public.namespacegeorestriction DROP CONSTRAINT IF EXISTS fk_namespacegeorestriction_namespace_id_user;
+ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS fk_messages_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS fk_manifestsecuritystatus_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS fk_manifestsecuritystatus_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestlegacyimage DROP CONSTRAINT IF EXISTS fk_manifestlegacyimage_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifestlegacyimage DROP CONSTRAINT IF EXISTS fk_manifestlegacyimage_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestlegacyimage DROP CONSTRAINT IF EXISTS fk_manifestlegacyimage_image_id_image;
+ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_label_id_label;
+ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS fk_manifestchild_child_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestblob DROP CONSTRAINT IF EXISTS fk_manifestblob_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifestblob DROP CONSTRAINT IF EXISTS fk_manifestblob_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestblob DROP CONSTRAINT IF EXISTS fk_manifestblob_blob_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.manifest DROP CONSTRAINT IF EXISTS fk_manifest_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifest DROP CONSTRAINT IF EXISTS fk_manifest_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.logentry DROP CONSTRAINT IF EXISTS fk_logentry_kind_id_logentrykind;
+ALTER TABLE IF EXISTS ONLY public.logentry2 DROP CONSTRAINT IF EXISTS fk_logentry2_kind_id_logentrykind;
+ALTER TABLE IF EXISTS ONLY public.label DROP CONSTRAINT IF EXISTS fk_label_source_type_id_labelsourcetype;
+ALTER TABLE IF EXISTS ONLY public.label DROP CONSTRAINT IF EXISTS fk_label_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.imagestoragesignature DROP CONSTRAINT IF EXISTS fk_imagestoragesignature_storage_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.imagestoragesignature DROP CONSTRAINT IF EXISTS fk_imagestoragesignature_kind_id_imagestoragesignaturekind;
+ALTER TABLE IF EXISTS ONLY public.imagestorageplacement DROP CONSTRAINT IF EXISTS fk_imagestorageplacement_storage_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.imagestorageplacement DROP CONSTRAINT IF EXISTS fk_imagestorageplacement_location_id_imagestoragelocation;
+ALTER TABLE IF EXISTS ONLY public.image DROP CONSTRAINT IF EXISTS fk_image_storage_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.image DROP CONSTRAINT IF EXISTS fk_image_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.federatedlogin DROP CONSTRAINT IF EXISTS fk_federatedlogin_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.federatedlogin DROP CONSTRAINT IF EXISTS fk_federatedlogin_service_id_loginservice;
+ALTER TABLE IF EXISTS ONLY public.emailconfirmation DROP CONSTRAINT IF EXISTS fk_emailconfirmation_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.derivedstorageforimage DROP CONSTRAINT IF EXISTS fk_derivedstorageforimage_transformation_constraint;
+ALTER TABLE IF EXISTS ONLY public.derivedstorageforimage DROP CONSTRAINT IF EXISTS fk_derivedstorageforimage_source_image_id_image;
+ALTER TABLE IF EXISTS ONLY public.derivedstorageforimage DROP CONSTRAINT IF EXISTS fk_derivedstorageforimage_derivative_id_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.deletedrepository DROP CONSTRAINT IF EXISTS fk_deletedrepository_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.deletednamespace DROP CONSTRAINT IF EXISTS fk_deletednamespace_namespace_id_user;
+ALTER TABLE IF EXISTS ONLY public.blobupload DROP CONSTRAINT IF EXISTS fk_blobupload_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.blobupload DROP CONSTRAINT IF EXISTS fk_blobupload_location_id_imagestoragelocation;
+ALTER TABLE IF EXISTS ONLY public.appspecificauthtoken DROP CONSTRAINT IF EXISTS fk_appspecificauthtoken_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS fk_apprtag_tag_kind_id_apprtagkind;
+ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS fk_apprtag_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS fk_apprtag_manifest_list_id_apprmanifestlist;
+ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS fk_apprtag_linked_tag_id_apprtag;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestlistmanifest DROP CONSTRAINT IF EXISTS fk_apprmanifestlistmanifest_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestlistmanifest DROP CONSTRAINT IF EXISTS fk_apprmanifestlistmanifest_manifest_list_id_apprmanifestlist;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestlistmanifest DROP CONSTRAINT IF EXISTS fk_apprmanifestlistmanifest_manifest_id_apprmanifest;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestlist DROP CONSTRAINT IF EXISTS fk_apprmanifestlist_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestblob DROP CONSTRAINT IF EXISTS fk_apprmanifestblob_manifest_id_apprmanifest;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestblob DROP CONSTRAINT IF EXISTS fk_apprmanifestblob_blob_id_apprblob;
+ALTER TABLE IF EXISTS ONLY public.apprmanifest DROP CONSTRAINT IF EXISTS fk_apprmanifest_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.apprblobplacement DROP CONSTRAINT IF EXISTS fk_apprblobplacement_location_id_apprblobplacementlocation;
+ALTER TABLE IF EXISTS ONLY public.apprblobplacement DROP CONSTRAINT IF EXISTS fk_apprblobplacement_blob_id_apprblob;
+ALTER TABLE IF EXISTS ONLY public.apprblob DROP CONSTRAINT IF EXISTS fk_apprblob_media_type_id_mediatype;
+ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS fk_accesstoken_role_id_role;
+ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS fk_accesstoken_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS fk_accesstoken_kind_id_accesstokenkind;
+DROP INDEX IF EXISTS public.visibility_name;
+DROP INDEX IF EXISTS public.userregion_user_id;
+DROP INDEX IF EXISTS public.userregion_location_id;
+DROP INDEX IF EXISTS public.userpromptkind_name;
+DROP INDEX IF EXISTS public.userprompt_user_id_kind_id;
+DROP INDEX IF EXISTS public.userprompt_user_id;
+DROP INDEX IF EXISTS public.userprompt_kind_id;
+DROP INDEX IF EXISTS public.userorganizationquota_organization;
+DROP INDEX IF EXISTS public.user_uuid;
+DROP INDEX IF EXISTS public.user_username;
+DROP INDEX IF EXISTS public.user_stripe_id;
+DROP INDEX IF EXISTS public.user_robot;
+DROP INDEX IF EXISTS public.user_organization;
+DROP INDEX IF EXISTS public.user_last_accessed;
+DROP INDEX IF EXISTS public.user_invoice_email_address;
+DROP INDEX IF EXISTS public.user_email;
+DROP INDEX IF EXISTS public.uploadedblob_repository_id;
+DROP INDEX IF EXISTS public.uploadedblob_expires_at;
+DROP INDEX IF EXISTS public.uploadedblob_blob_id;
+DROP INDEX IF EXISTS public.uniqueness_index;
+DROP INDEX IF EXISTS public.torrentinfo_storage_id_piece_length;
+DROP INDEX IF EXISTS public.torrentinfo_storage_id;
+DROP INDEX IF EXISTS public.teamsync_team_id;
+DROP INDEX IF EXISTS public.teamsync_service_id;
+DROP INDEX IF EXISTS public.teamsync_last_updated;
+DROP INDEX IF EXISTS public.teamrole_name;
+DROP INDEX IF EXISTS public.teammemberinvite_user_id;
+DROP INDEX IF EXISTS public.teammemberinvite_team_id;
+DROP INDEX IF EXISTS public.teammemberinvite_inviter_id;
+DROP INDEX IF EXISTS public.teammember_user_id_team_id;
+DROP INDEX IF EXISTS public.teammember_user_id;
+DROP INDEX IF EXISTS public.teammember_team_id;
+DROP INDEX IF EXISTS public.team_role_id;
+DROP INDEX IF EXISTS public.team_organization_id;
+DROP INDEX IF EXISTS public.team_name_organization_id;
+DROP INDEX IF EXISTS public.team_name;
+DROP INDEX IF EXISTS public.tagtorepositorytag_tag_id;
+DROP INDEX IF EXISTS public.tagtorepositorytag_repository_tag_id;
+DROP INDEX IF EXISTS public.tagtorepositorytag_repository_id;
+DROP INDEX IF EXISTS public.tagmanifesttomanifest_tag_manifest_id;
+DROP INDEX IF EXISTS public.tagmanifesttomanifest_manifest_id;
+DROP INDEX IF EXISTS public.tagmanifesttomanifest_broken;
+DROP INDEX IF EXISTS public.tagmanifestlabelmap_tag_manifest_label_id;
+DROP INDEX IF EXISTS public.tagmanifestlabelmap_tag_manifest_id;
+DROP INDEX IF EXISTS public.tagmanifestlabelmap_manifest_label_id;
+DROP INDEX IF EXISTS public.tagmanifestlabelmap_manifest_id;
+DROP INDEX IF EXISTS public.tagmanifestlabelmap_label_id;
+DROP INDEX IF EXISTS public.tagmanifestlabelmap_broken_manifest;
+DROP INDEX IF EXISTS public.tagmanifestlabel_repository_id;
+DROP INDEX IF EXISTS public.tagmanifestlabel_label_id;
+DROP INDEX IF EXISTS public.tagmanifestlabel_annotated_id_label_id;
+DROP INDEX IF EXISTS public.tagmanifestlabel_annotated_id;
+DROP INDEX IF EXISTS public.tagmanifest_tag_id;
+DROP INDEX IF EXISTS public.tagmanifest_digest;
+DROP INDEX IF EXISTS public.tagkind_name;
+DROP INDEX IF EXISTS public.tag_tag_kind_id;
+DROP INDEX IF EXISTS public.tag_repository_id_name_tag_kind_id;
+DROP INDEX IF EXISTS public.tag_repository_id_name_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_repository_id_name_hidden;
+DROP INDEX IF EXISTS public.tag_repository_id_name;
+DROP INDEX IF EXISTS public.tag_repository_id_lifetime_start_ms;
+DROP INDEX IF EXISTS public.tag_repository_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_repository_id;
+DROP INDEX IF EXISTS public.tag_manifest_id;
+DROP INDEX IF EXISTS public.tag_linked_tag_id;
+DROP INDEX IF EXISTS public.tag_lifetime_end_ms;
+DROP INDEX IF EXISTS public.star_user_id_repository_id;
+DROP INDEX IF EXISTS public.star_user_id;
+DROP INDEX IF EXISTS public.star_repository_id;
+DROP INDEX IF EXISTS public.servicekeyapproval_approver_id;
+DROP INDEX IF EXISTS public.servicekeyapproval_approval_type;
+DROP INDEX IF EXISTS public.servicekey_service;
+DROP INDEX IF EXISTS public.servicekey_kid;
+DROP INDEX IF EXISTS public.servicekey_approval_id;
+DROP INDEX IF EXISTS public.role_name;
+DROP INDEX IF EXISTS public.robotaccounttoken_robot_account_id;
+DROP INDEX IF EXISTS public.robotaccountmetadata_robot_account_id;
+DROP INDEX IF EXISTS public.repositorytag_repository_id_name_lifetime_end_ts;
+DROP INDEX IF EXISTS public.repositorytag_repository_id_name;
+DROP INDEX IF EXISTS public.repositorytag_repository_id_lifetime_start_ts;
+DROP INDEX IF EXISTS public.repositorytag_repository_id_lifetime_end_ts;
+DROP INDEX IF EXISTS public.repositorytag_repository_id;
+DROP INDEX IF EXISTS public.repositorytag_lifetime_end_ts;
+DROP INDEX IF EXISTS public.repositorytag_image_id;
+DROP INDEX IF EXISTS public.repositorysize_repository_id;
+DROP INDEX IF EXISTS public.repositorysearchscore_score;
+DROP INDEX IF EXISTS public.repositorysearchscore_repository_id;
+DROP INDEX IF EXISTS public.repositorypermission_user_id_repository_id;
+DROP INDEX IF EXISTS public.repositorypermission_user_id;
+DROP INDEX IF EXISTS public.repositorypermission_team_id_repository_id;
+DROP INDEX IF EXISTS public.repositorypermission_team_id;
+DROP INDEX IF EXISTS public.repositorypermission_role_id;
+DROP INDEX IF EXISTS public.repositorypermission_repository_id;
+DROP INDEX IF EXISTS public.repositorynotification_uuid;
+DROP INDEX IF EXISTS public.repositorynotification_repository_id;
+DROP INDEX IF EXISTS public.repositorynotification_method_id;
+DROP INDEX IF EXISTS public.repositorynotification_event_id;
+DROP INDEX IF EXISTS public.repositorykind_name;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_write_token_id;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_uuid;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_service_id;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_repository_id;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_pull_robot_id;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_disabled_reason_id;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_disabled_datetime;
+DROP INDEX IF EXISTS public.repositorybuildtrigger_connected_user_id;
+DROP INDEX IF EXISTS public.repositorybuild_uuid;
+DROP INDEX IF EXISTS public.repositorybuild_trigger_id;
+DROP INDEX IF EXISTS public.repositorybuild_started_logs_archived_phase;
+DROP INDEX IF EXISTS public.repositorybuild_started;
+DROP INDEX IF EXISTS public.repositorybuild_resource_key;
+DROP INDEX IF EXISTS public.repositorybuild_repository_id_started_phase;
+DROP INDEX IF EXISTS public.repositorybuild_repository_id;
+DROP INDEX IF EXISTS public.repositorybuild_queue_id;
+DROP INDEX IF EXISTS public.repositorybuild_pull_robot_id;
+DROP INDEX IF EXISTS public.repositorybuild_logs_archived;
+DROP INDEX IF EXISTS public.repositorybuild_access_token_id;
+DROP INDEX IF EXISTS public.repositoryauthorizedemail_repository_id;
+DROP INDEX IF EXISTS public.repositoryauthorizedemail_email_repository_id;
+DROP INDEX IF EXISTS public.repositoryauthorizedemail_code;
+DROP INDEX IF EXISTS public.repositoryactioncount_repository_id_date;
+DROP INDEX IF EXISTS public.repositoryactioncount_repository_id;
+DROP INDEX IF EXISTS public.repositoryactioncount_date;
+DROP INDEX IF EXISTS public.repository_visibility_id;
+DROP INDEX IF EXISTS public.repository_state;
+DROP INDEX IF EXISTS public.repository_namespace_user_id_name;
+DROP INDEX IF EXISTS public.repository_namespace_user_id;
+DROP INDEX IF EXISTS public.repository_name__fulltext;
+DROP INDEX IF EXISTS public.repository_kind_id;
+DROP INDEX IF EXISTS public.repository_description__fulltext;
+DROP INDEX IF EXISTS public.repomirrorrule_uuid;
+DROP INDEX IF EXISTS public.repomirrorrule_rule_type;
+DROP INDEX IF EXISTS public.repomirrorrule_right_child_id;
+DROP INDEX IF EXISTS public.repomirrorrule_repository_id;
+DROP INDEX IF EXISTS public.repomirrorrule_left_child_id;
+DROP INDEX IF EXISTS public.repomirrorconfig_sync_transaction_id;
+DROP INDEX IF EXISTS public.repomirrorconfig_sync_status;
+DROP INDEX IF EXISTS public.repomirrorconfig_root_rule_id;
+DROP INDEX IF EXISTS public.repomirrorconfig_repository_id;
+DROP INDEX IF EXISTS public.repomirrorconfig_mirror_type;
+DROP INDEX IF EXISTS public.repomirrorconfig_internal_robot_id;
+DROP INDEX IF EXISTS public.quotalimits_quota_id;
+DROP INDEX IF EXISTS public.queueitem_state_id;
+DROP INDEX IF EXISTS public.queueitem_queue_name;
+DROP INDEX IF EXISTS public.queueitem_processing_expires_queue_name_available;
+DROP INDEX IF EXISTS public.queueitem_processing_expires_available;
+DROP INDEX IF EXISTS public.queueitem_pexpires_aafter_rremaining_available;
+DROP INDEX IF EXISTS public.queueitem_pe_aafter_qname_rremaining_available;
+DROP INDEX IF EXISTS public.quayservice_name;
+DROP INDEX IF EXISTS public.quayrelease_service_id_version_region_id;
+DROP INDEX IF EXISTS public.quayrelease_service_id_region_id_created;
+DROP INDEX IF EXISTS public.quayrelease_service_id;
+DROP INDEX IF EXISTS public.quayrelease_region_id;
+DROP INDEX IF EXISTS public.quayrelease_created;
+DROP INDEX IF EXISTS public.quayregion_name;
+DROP INDEX IF EXISTS public.permissionprototype_uuid;
+DROP INDEX IF EXISTS public.permissionprototype_role_id;
+DROP INDEX IF EXISTS public.permissionprototype_org_id_activating_user_id;
+DROP INDEX IF EXISTS public.permissionprototype_org_id;
+DROP INDEX IF EXISTS public.permissionprototype_delegate_user_id;
+DROP INDEX IF EXISTS public.permissionprototype_delegate_team_id;
+DROP INDEX IF EXISTS public.permissionprototype_activating_user_id;
+DROP INDEX IF EXISTS public.oauthauthorizationcode_code_name;
+DROP INDEX IF EXISTS public.oauthauthorizationcode_application_id;
+DROP INDEX IF EXISTS public.oauthapplication_organization_id;
+DROP INDEX IF EXISTS public.oauthapplication_client_id;
+DROP INDEX IF EXISTS public.oauthaccesstoken_uuid;
+DROP INDEX IF EXISTS public.oauthaccesstoken_token_name;
+DROP INDEX IF EXISTS public.oauthaccesstoken_authorized_user_id;
+DROP INDEX IF EXISTS public.oauthaccesstoken_application_id;
+DROP INDEX IF EXISTS public.notificationkind_name;
+DROP INDEX IF EXISTS public.notification_uuid;
+DROP INDEX IF EXISTS public.notification_target_id;
+DROP INDEX IF EXISTS public.notification_lookup_path;
+DROP INDEX IF EXISTS public.notification_kind_id;
+DROP INDEX IF EXISTS public.notification_created;
+DROP INDEX IF EXISTS public.namespacegeorestriction_restricted_region_iso_code;
+DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id_restricted_region_iso_code;
+DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id;
+DROP INDEX IF EXISTS public.messages_uuid;
+DROP INDEX IF EXISTS public.messages_severity;
+DROP INDEX IF EXISTS public.messages_media_type_id;
+DROP INDEX IF EXISTS public.mediatype_name;
+DROP INDEX IF EXISTS public.manifestsecuritystatus_repository_id;
+DROP INDEX IF EXISTS public.manifestsecuritystatus_manifest_id;
+DROP INDEX IF EXISTS public.manifestsecuritystatus_last_indexed;
+DROP INDEX IF EXISTS public.manifestsecuritystatus_indexer_version;
+DROP INDEX IF EXISTS public.manifestsecuritystatus_indexer_hash;
+DROP INDEX IF EXISTS public.manifestsecuritystatus_index_status;
+DROP INDEX IF EXISTS public.manifestlegacyimage_repository_id;
+DROP INDEX IF EXISTS public.manifestlegacyimage_manifest_id;
+DROP INDEX IF EXISTS public.manifestlegacyimage_image_id;
+DROP INDEX IF EXISTS public.manifestlabel_repository_id;
+DROP INDEX IF EXISTS public.manifestlabel_manifest_id_label_id;
+DROP INDEX IF EXISTS public.manifestlabel_manifest_id;
+DROP INDEX IF EXISTS public.manifestlabel_label_id;
+DROP INDEX IF EXISTS public.manifestchild_repository_id_manifest_id_child_manifest_id;
+DROP INDEX IF EXISTS public.manifestchild_repository_id_manifest_id;
+DROP INDEX IF EXISTS public.manifestchild_repository_id_child_manifest_id;
+DROP INDEX IF EXISTS public.manifestchild_repository_id;
+DROP INDEX IF EXISTS public.manifestchild_manifest_id_child_manifest_id;
+DROP INDEX IF EXISTS public.manifestchild_manifest_id;
+DROP INDEX IF EXISTS public.manifestchild_child_manifest_id;
+DROP INDEX IF EXISTS public.manifestblob_repository_id_blob_id;
+DROP INDEX IF EXISTS public.manifestblob_repository_id;
+DROP INDEX IF EXISTS public.manifestblob_manifest_id_blob_id;
+DROP INDEX IF EXISTS public.manifestblob_manifest_id;
+DROP INDEX IF EXISTS public.manifestblob_blob_id;
+DROP INDEX IF EXISTS public.manifest_repository_id_media_type_id;
+DROP INDEX IF EXISTS public.manifest_repository_id_digest;
+DROP INDEX IF EXISTS public.manifest_repository_id_config_media_type;
+DROP INDEX IF EXISTS public.manifest_repository_id;
+DROP INDEX IF EXISTS public.manifest_media_type_id;
+DROP INDEX IF EXISTS public.manifest_digest;
+DROP INDEX IF EXISTS public.loginservice_name;
+DROP INDEX IF EXISTS public.logentrykind_name;
+DROP INDEX IF EXISTS public.logentry_repository_id_datetime_kind_id;
+DROP INDEX IF EXISTS public.logentry_repository_id_datetime;
+DROP INDEX IF EXISTS public.logentry_repository_id;
+DROP INDEX IF EXISTS public.logentry_performer_id_datetime;
+DROP INDEX IF EXISTS public.logentry_performer_id;
+DROP INDEX IF EXISTS public.logentry_kind_id;
+DROP INDEX IF EXISTS public.logentry_datetime;
+DROP INDEX IF EXISTS public.logentry_account_id_datetime;
+DROP INDEX IF EXISTS public.logentry_account_id;
+DROP INDEX IF EXISTS public.logentry3_repository_id_datetime_kind_id;
+DROP INDEX IF EXISTS public.logentry3_performer_id_datetime;
+DROP INDEX IF EXISTS public.logentry3_datetime;
+DROP INDEX IF EXISTS public.logentry3_account_id_datetime;
+DROP INDEX IF EXISTS public.logentry2_repository_id_datetime_kind_id;
+DROP INDEX IF EXISTS public.logentry2_repository_id_datetime;
+DROP INDEX IF EXISTS public.logentry2_repository_id;
+DROP INDEX IF EXISTS public.logentry2_performer_id_datetime;
+DROP INDEX IF EXISTS public.logentry2_performer_id;
+DROP INDEX IF EXISTS public.logentry2_kind_id;
+DROP INDEX IF EXISTS public.logentry2_datetime;
+DROP INDEX IF EXISTS public.logentry2_account_id_datetime;
+DROP INDEX IF EXISTS public.logentry2_account_id;
+DROP INDEX IF EXISTS public.labelsourcetype_name;
+DROP INDEX IF EXISTS public.label_uuid;
+DROP INDEX IF EXISTS public.label_source_type_id;
+DROP INDEX IF EXISTS public.label_media_type_id;
+DROP INDEX IF EXISTS public.label_key;
+DROP INDEX IF EXISTS public.imagestoragetransformation_name;
+DROP INDEX IF EXISTS public.imagestoragesignaturekind_name;
+DROP INDEX IF EXISTS public.imagestoragesignature_storage_id;
+DROP INDEX IF EXISTS public.imagestoragesignature_kind_id_storage_id;
+DROP INDEX IF EXISTS public.imagestoragesignature_kind_id;
+DROP INDEX IF EXISTS public.imagestorageplacement_storage_id_location_id;
+DROP INDEX IF EXISTS public.imagestorageplacement_storage_id;
+DROP INDEX IF EXISTS public.imagestorageplacement_location_id;
+DROP INDEX IF EXISTS public.imagestoragelocation_name;
+DROP INDEX IF EXISTS public.imagestorage_uuid;
+DROP INDEX IF EXISTS public.imagestorage_content_checksum;
+DROP INDEX IF EXISTS public.image_storage_id;
+DROP INDEX IF EXISTS public.image_security_indexed_engine_security_indexed;
+DROP INDEX IF EXISTS public.image_security_indexed_engine;
+DROP INDEX IF EXISTS public.image_security_indexed;
+DROP INDEX IF EXISTS public.image_repository_id_docker_image_id;
+DROP INDEX IF EXISTS public.image_repository_id;
+DROP INDEX IF EXISTS public.image_parent_id;
+DROP INDEX IF EXISTS public.image_docker_image_id;
+DROP INDEX IF EXISTS public.image_ancestors;
+DROP INDEX IF EXISTS public.federatedlogin_user_id;
+DROP INDEX IF EXISTS public.federatedlogin_service_id_user_id;
+DROP INDEX IF EXISTS public.federatedlogin_service_id_service_ident;
+DROP INDEX IF EXISTS public.federatedlogin_service_id;
+DROP INDEX IF EXISTS public.externalnotificationmethod_name;
+DROP INDEX IF EXISTS public.externalnotificationevent_name;
+DROP INDEX IF EXISTS public.emailconfirmation_user_id;
+DROP INDEX IF EXISTS public.emailconfirmation_code;
+DROP INDEX IF EXISTS public.disablereason_name;
+DROP INDEX IF EXISTS public.derivedstorageforimage_transformation_id;
+DROP INDEX IF EXISTS public.derivedstorageforimage_source_image_id;
+DROP INDEX IF EXISTS public.derivedstorageforimage_derivative_id;
+DROP INDEX IF EXISTS public.deletedrepository_repository_id;
+DROP INDEX IF EXISTS public.deletedrepository_queue_id;
+DROP INDEX IF EXISTS public.deletedrepository_original_name;
+DROP INDEX IF EXISTS public.deletednamespace_queue_id;
+DROP INDEX IF EXISTS public.deletednamespace_original_username;
+DROP INDEX IF EXISTS public.deletednamespace_original_email;
+DROP INDEX IF EXISTS public.deletednamespace_namespace_id;
+DROP INDEX IF EXISTS public.buildtriggerservice_name;
+DROP INDEX IF EXISTS public.blobupload_uuid;
+DROP INDEX IF EXISTS public.blobupload_repository_id_uuid;
+DROP INDEX IF EXISTS public.blobupload_repository_id;
+DROP INDEX IF EXISTS public.blobupload_location_id;
+DROP INDEX IF EXISTS public.blobupload_created;
+DROP INDEX IF EXISTS public.appspecificauthtoken_uuid;
+DROP INDEX IF EXISTS public.appspecificauthtoken_user_id_expiration;
+DROP INDEX IF EXISTS public.appspecificauthtoken_user_id;
+DROP INDEX IF EXISTS public.appspecificauthtoken_token_name;
+DROP INDEX IF EXISTS public.apprtagkind_name;
+DROP INDEX IF EXISTS public.apprtag_tag_kind_id;
+DROP INDEX IF EXISTS public.apprtag_repository_id_name_lifetime_end;
+DROP INDEX IF EXISTS public.apprtag_repository_id_name_hidden;
+DROP INDEX IF EXISTS public.apprtag_repository_id_name;
+DROP INDEX IF EXISTS public.apprtag_repository_id;
+DROP INDEX IF EXISTS public.apprtag_manifest_list_id;
+DROP INDEX IF EXISTS public.apprtag_linked_tag_id;
+DROP INDEX IF EXISTS public.apprtag_lifetime_end;
+DROP INDEX IF EXISTS public.apprmanifestlistmanifest_media_type_id;
+DROP INDEX IF EXISTS public.apprmanifestlistmanifest_manifest_list_id_operating_system_arch;
+DROP INDEX IF EXISTS public.apprmanifestlistmanifest_manifest_list_id_media_type_id;
+DROP INDEX IF EXISTS public.apprmanifestlistmanifest_manifest_list_id;
+DROP INDEX IF EXISTS public.apprmanifestlistmanifest_manifest_id;
+DROP INDEX IF EXISTS public.apprmanifestlist_media_type_id;
+DROP INDEX IF EXISTS public.apprmanifestlist_digest;
+DROP INDEX IF EXISTS public.apprmanifestblob_manifest_id_blob_id;
+DROP INDEX IF EXISTS public.apprmanifestblob_manifest_id;
+DROP INDEX IF EXISTS public.apprmanifestblob_blob_id;
+DROP INDEX IF EXISTS public.apprmanifest_media_type_id;
+DROP INDEX IF EXISTS public.apprmanifest_digest;
+DROP INDEX IF EXISTS public.apprblobplacementlocation_name;
+DROP INDEX IF EXISTS public.apprblobplacement_location_id;
+DROP INDEX IF EXISTS public.apprblobplacement_blob_id_location_id;
+DROP INDEX IF EXISTS public.apprblobplacement_blob_id;
+DROP INDEX IF EXISTS public.apprblob_media_type_id;
+DROP INDEX IF EXISTS public.apprblob_digest;
+DROP INDEX IF EXISTS public.accesstokenkind_name;
+DROP INDEX IF EXISTS public.accesstoken_token_name;
+DROP INDEX IF EXISTS public.accesstoken_role_id;
+DROP INDEX IF EXISTS public.accesstoken_repository_id;
+DROP INDEX IF EXISTS public.accesstoken_kind_id;
+ALTER TABLE IF EXISTS ONLY public.visibility DROP CONSTRAINT IF EXISTS pk_visibility;
+ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS pk_userregion;
+ALTER TABLE IF EXISTS ONLY public.userpromptkind DROP CONSTRAINT IF EXISTS pk_userpromptkind;
+ALTER TABLE IF EXISTS ONLY public.userprompt DROP CONSTRAINT IF EXISTS pk_userprompt;
+ALTER TABLE IF EXISTS ONLY public.userorganizationquota DROP CONSTRAINT IF EXISTS pk_userorganizationquota;
+ALTER TABLE IF EXISTS ONLY public."user" DROP CONSTRAINT IF EXISTS pk_user;
+ALTER TABLE IF EXISTS ONLY public.uploadedblob DROP CONSTRAINT IF EXISTS pk_uploadedblob;
+ALTER TABLE IF EXISTS ONLY public.torrentinfo DROP CONSTRAINT IF EXISTS pk_torrentinfo;
+ALTER TABLE IF EXISTS ONLY public.teamsync DROP CONSTRAINT IF EXISTS pk_teamsync;
+ALTER TABLE IF EXISTS ONLY public.teamrole DROP CONSTRAINT IF EXISTS pk_teamrole;
+ALTER TABLE IF EXISTS ONLY public.teammemberinvite DROP CONSTRAINT IF EXISTS pk_teammemberinvite;
+ALTER TABLE IF EXISTS ONLY public.teammember DROP CONSTRAINT IF EXISTS pk_teammember;
+ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS pk_team;
+ALTER TABLE IF EXISTS ONLY public.tagtorepositorytag DROP CONSTRAINT IF EXISTS pk_tagtorepositorytag;
+ALTER TABLE IF EXISTS ONLY public.tagmanifesttomanifest DROP CONSTRAINT IF EXISTS pk_tagmanifesttomanifest;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS pk_tagmanifestlabelmap;
+ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS pk_tagmanifestlabel;
+ALTER TABLE IF EXISTS ONLY public.tagmanifest DROP CONSTRAINT IF EXISTS pk_tagmanifest;
+ALTER TABLE IF EXISTS ONLY public.tagkind DROP CONSTRAINT IF EXISTS pk_tagkind;
+ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS pk_tag;
+ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS pk_star;
+ALTER TABLE IF EXISTS ONLY public.servicekeyapproval DROP CONSTRAINT IF EXISTS pk_servicekeyapproval;
+ALTER TABLE IF EXISTS ONLY public.servicekey DROP CONSTRAINT IF EXISTS pk_servicekey;
+ALTER TABLE IF EXISTS ONLY public.role DROP CONSTRAINT IF EXISTS pk_role;
+ALTER TABLE IF EXISTS ONLY public.robotaccounttoken DROP CONSTRAINT IF EXISTS pk_robotaccounttoken;
+ALTER TABLE IF EXISTS ONLY public.robotaccountmetadata DROP CONSTRAINT IF EXISTS pk_robotaccountmetadata;
+ALTER TABLE IF EXISTS ONLY public.repositorytag DROP CONSTRAINT IF EXISTS pk_repositorytag;
+ALTER TABLE IF EXISTS ONLY public.repositorysize DROP CONSTRAINT IF EXISTS pk_repositorysizeid;
+ALTER TABLE IF EXISTS ONLY public.repositorysearchscore DROP CONSTRAINT IF EXISTS pk_repositorysearchscore;
+ALTER TABLE IF EXISTS ONLY public.repositorypermission DROP CONSTRAINT IF EXISTS pk_repositorypermission;
+ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXISTS pk_repositorynotification;
+ALTER TABLE IF EXISTS ONLY public.repositorykind DROP CONSTRAINT IF EXISTS pk_repositorykind;
+ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS pk_repositorybuildtrigger;
+ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS pk_repositorybuild;
+ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS pk_repositoryauthorizedemail;
+ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS pk_repositoryactioncount;
+ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS pk_repository;
+ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS pk_repomirrorrule;
+ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS pk_repomirrorconfig;
+ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS pk_redhatsubscriptions;
+ALTER TABLE IF EXISTS ONLY public.quotatype DROP CONSTRAINT IF EXISTS pk_quotatype;
+ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS pk_quotarepositorysizeid;
+ALTER TABLE IF EXISTS ONLY public.quotaregistrysize DROP CONSTRAINT IF EXISTS pk_quotaregistrysizeid;
+ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS pk_quotanamespacesizeid;
+ALTER TABLE IF EXISTS ONLY public.quotalimits DROP CONSTRAINT IF EXISTS pk_quotalimits;
+ALTER TABLE IF EXISTS ONLY public.queueitem DROP CONSTRAINT IF EXISTS pk_queueitem;
+ALTER TABLE IF EXISTS ONLY public.quayservice DROP CONSTRAINT IF EXISTS pk_quayservice;
+ALTER TABLE IF EXISTS ONLY public.quayrelease DROP CONSTRAINT IF EXISTS pk_quayrelease;
+ALTER TABLE IF EXISTS ONLY public.quayregion DROP CONSTRAINT IF EXISTS pk_quayregion;
+ALTER TABLE IF EXISTS ONLY public.proxycacheconfig DROP CONSTRAINT IF EXISTS pk_proxy_cache_config;
+ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS pk_permissionprototype;
+ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS pk_oauthauthorizationcode;
+ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS pk_oauthapplication;
+ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS pk_oauthaccesstoken;
+ALTER TABLE IF EXISTS ONLY public.notificationkind DROP CONSTRAINT IF EXISTS pk_notificationkind;
+ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS pk_notification;
+ALTER TABLE IF EXISTS ONLY public.namespacegeorestriction DROP CONSTRAINT IF EXISTS pk_namespacegeorestriction;
+ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS pk_messages;
+ALTER TABLE IF EXISTS ONLY public.mediatype DROP CONSTRAINT IF EXISTS pk_mediatype;
+ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS pk_manifestsecuritystatus;
+ALTER TABLE IF EXISTS ONLY public.manifestlegacyimage DROP CONSTRAINT IF EXISTS pk_manifestlegacyimage;
+ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS pk_manifestlabel;
+ALTER TABLE IF EXISTS ONLY public.manifestchild DROP CONSTRAINT IF EXISTS pk_manifestchild;
+ALTER TABLE IF EXISTS ONLY public.manifestblob DROP CONSTRAINT IF EXISTS pk_manifestblob;
+ALTER TABLE IF EXISTS ONLY public.manifest DROP CONSTRAINT IF EXISTS pk_manifest;
+ALTER TABLE IF EXISTS ONLY public.loginservice DROP CONSTRAINT IF EXISTS pk_loginservice;
+ALTER TABLE IF EXISTS ONLY public.logentrykind DROP CONSTRAINT IF EXISTS pk_logentrykind;
+ALTER TABLE IF EXISTS ONLY public.logentry3 DROP CONSTRAINT IF EXISTS pk_logentry3;
+ALTER TABLE IF EXISTS ONLY public.logentry2 DROP CONSTRAINT IF EXISTS pk_logentry2;
+ALTER TABLE IF EXISTS ONLY public.logentry DROP CONSTRAINT IF EXISTS pk_logentry;
+ALTER TABLE IF EXISTS ONLY public.labelsourcetype DROP CONSTRAINT IF EXISTS pk_labelsourcetype;
+ALTER TABLE IF EXISTS ONLY public.label DROP CONSTRAINT IF EXISTS pk_label;
+ALTER TABLE IF EXISTS ONLY public.imagestoragetransformation DROP CONSTRAINT IF EXISTS pk_imagestoragetransformation;
+ALTER TABLE IF EXISTS ONLY public.imagestoragesignaturekind DROP CONSTRAINT IF EXISTS pk_imagestoragesignaturekind;
+ALTER TABLE IF EXISTS ONLY public.imagestoragesignature DROP CONSTRAINT IF EXISTS pk_imagestoragesignature;
+ALTER TABLE IF EXISTS ONLY public.imagestorageplacement DROP CONSTRAINT IF EXISTS pk_imagestorageplacement;
+ALTER TABLE IF EXISTS ONLY public.imagestoragelocation DROP CONSTRAINT IF EXISTS pk_imagestoragelocation;
+ALTER TABLE IF EXISTS ONLY public.imagestorage DROP CONSTRAINT IF EXISTS pk_imagestorage;
+ALTER TABLE IF EXISTS ONLY public.image DROP CONSTRAINT IF EXISTS pk_image;
+ALTER TABLE IF EXISTS ONLY public.federatedlogin DROP CONSTRAINT IF EXISTS pk_federatedlogin;
+ALTER TABLE IF EXISTS ONLY public.externalnotificationmethod DROP CONSTRAINT IF EXISTS pk_externalnotificationmethod;
+ALTER TABLE IF EXISTS ONLY public.externalnotificationevent DROP CONSTRAINT IF EXISTS pk_externalnotificationevent;
+ALTER TABLE IF EXISTS ONLY public.emailconfirmation DROP CONSTRAINT IF EXISTS pk_emailconfirmation;
+ALTER TABLE IF EXISTS ONLY public.disablereason DROP CONSTRAINT IF EXISTS pk_disablereason;
+ALTER TABLE IF EXISTS ONLY public.derivedstorageforimage DROP CONSTRAINT IF EXISTS pk_derivedstorageforimage;
+ALTER TABLE IF EXISTS ONLY public.deletedrepository DROP CONSTRAINT IF EXISTS pk_deletedrepository;
+ALTER TABLE IF EXISTS ONLY public.deletednamespace DROP CONSTRAINT IF EXISTS pk_deletednamespace;
+ALTER TABLE IF EXISTS ONLY public.buildtriggerservice DROP CONSTRAINT IF EXISTS pk_buildtriggerservice;
+ALTER TABLE IF EXISTS ONLY public.blobupload DROP CONSTRAINT IF EXISTS pk_blobupload;
+ALTER TABLE IF EXISTS ONLY public.appspecificauthtoken DROP CONSTRAINT IF EXISTS pk_appspecificauthtoken;
+ALTER TABLE IF EXISTS ONLY public.apprtagkind DROP CONSTRAINT IF EXISTS pk_apprtagkind;
+ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS pk_apprtag;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestlistmanifest DROP CONSTRAINT IF EXISTS pk_apprmanifestlistmanifest;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestlist DROP CONSTRAINT IF EXISTS pk_apprmanifestlist;
+ALTER TABLE IF EXISTS ONLY public.apprmanifestblob DROP CONSTRAINT IF EXISTS pk_apprmanifestblob;
+ALTER TABLE IF EXISTS ONLY public.apprmanifest DROP CONSTRAINT IF EXISTS pk_apprmanifest;
+ALTER TABLE IF EXISTS ONLY public.apprblobplacementlocation DROP CONSTRAINT IF EXISTS pk_apprblobplacementlocation;
+ALTER TABLE IF EXISTS ONLY public.apprblobplacement DROP CONSTRAINT IF EXISTS pk_apprblobplacement;
+ALTER TABLE IF EXISTS ONLY public.apprblob DROP CONSTRAINT IF EXISTS pk_apprblob;
+ALTER TABLE IF EXISTS ONLY public.accesstokenkind DROP CONSTRAINT IF EXISTS pk_accesstokenkind;
+ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS pk_accesstoken;
+ALTER TABLE IF EXISTS ONLY public.alembic_version DROP CONSTRAINT IF EXISTS alembic_version_pkc;
+ALTER TABLE IF EXISTS public.visibility ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.userregion ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.userpromptkind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.userprompt ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.userorganizationquota ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public."user" ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.uploadedblob ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.torrentinfo ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.teamsync ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.teamrole ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.teammemberinvite ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.teammember ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.team ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagtorepositorytag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagmanifesttomanifest ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagmanifestlabelmap ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagmanifestlabel ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagmanifest ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagkind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.star ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.servicekeyapproval ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.servicekey ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.role ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.robotaccounttoken ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.robotaccountmetadata ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorytag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorysize ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorysearchscore ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorypermission ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorynotification ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorykind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorybuildtrigger ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositorybuild ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositoryauthorizedemail ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositoryactioncount ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repository ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repomirrorrule ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repomirrorconfig ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.redhatsubscriptions ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quotatype ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quotarepositorysize ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quotaregistrysize ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quotanamespacesize ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quotalimits ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.queueitem ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quayservice ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quayrelease ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.quayregion ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.proxycacheconfig ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.permissionprototype ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.oauthauthorizationcode ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.oauthapplication ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.oauthaccesstoken ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.notificationkind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.notification ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.namespacegeorestriction ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.messages ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.mediatype ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestsecuritystatus ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestlegacyimage ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestlabel ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestchild ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestblob ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifest ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.loginservice ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.logentrykind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.logentry3 ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.logentry2 ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.logentry ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.labelsourcetype ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.label ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.imagestoragetransformation ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.imagestoragesignaturekind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.imagestoragesignature ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.imagestorageplacement ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.imagestoragelocation ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.imagestorage ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.image ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.federatedlogin ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.externalnotificationmethod ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.externalnotificationevent ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.emailconfirmation ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.disablereason ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.derivedstorageforimage ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.deletedrepository ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.deletednamespace ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.buildtriggerservice ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.blobupload ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.appspecificauthtoken ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprtagkind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprtag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprmanifestlistmanifest ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprmanifestlist ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprmanifestblob ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprmanifest ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprblobplacementlocation ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprblobplacement ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.apprblob ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.accesstokenkind ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.accesstoken ALTER COLUMN id DROP DEFAULT;
+DROP SEQUENCE IF EXISTS public.visibility_id_seq;
+DROP TABLE IF EXISTS public.visibility;
+DROP SEQUENCE IF EXISTS public.userregion_id_seq;
+DROP TABLE IF EXISTS public.userregion;
+DROP SEQUENCE IF EXISTS public.userpromptkind_id_seq;
+DROP TABLE IF EXISTS public.userpromptkind;
+DROP SEQUENCE IF EXISTS public.userprompt_id_seq;
+DROP TABLE IF EXISTS public.userprompt;
+DROP SEQUENCE IF EXISTS public.userorganizationquota_id_seq;
+DROP TABLE IF EXISTS public.userorganizationquota;
+DROP SEQUENCE IF EXISTS public.user_id_seq;
+DROP TABLE IF EXISTS public."user";
+DROP SEQUENCE IF EXISTS public.uploadedblob_id_seq;
+DROP TABLE IF EXISTS public.uploadedblob;
+DROP SEQUENCE IF EXISTS public.torrentinfo_id_seq;
+DROP TABLE IF EXISTS public.torrentinfo;
+DROP SEQUENCE IF EXISTS public.teamsync_id_seq;
+DROP TABLE IF EXISTS public.teamsync;
+DROP SEQUENCE IF EXISTS public.teamrole_id_seq;
+DROP TABLE IF EXISTS public.teamrole;
+DROP SEQUENCE IF EXISTS public.teammemberinvite_id_seq;
+DROP TABLE IF EXISTS public.teammemberinvite;
+DROP SEQUENCE IF EXISTS public.teammember_id_seq;
+DROP TABLE IF EXISTS public.teammember;
+DROP SEQUENCE IF EXISTS public.team_id_seq;
+DROP TABLE IF EXISTS public.team;
+DROP SEQUENCE IF EXISTS public.tagtorepositorytag_id_seq;
+DROP TABLE IF EXISTS public.tagtorepositorytag;
+DROP SEQUENCE IF EXISTS public.tagmanifesttomanifest_id_seq;
+DROP TABLE IF EXISTS public.tagmanifesttomanifest;
+DROP SEQUENCE IF EXISTS public.tagmanifestlabelmap_id_seq;
+DROP TABLE IF EXISTS public.tagmanifestlabelmap;
+DROP SEQUENCE IF EXISTS public.tagmanifestlabel_id_seq;
+DROP TABLE IF EXISTS public.tagmanifestlabel;
+DROP SEQUENCE IF EXISTS public.tagmanifest_id_seq;
+DROP TABLE IF EXISTS public.tagmanifest;
+DROP SEQUENCE IF EXISTS public.tagkind_id_seq;
+DROP TABLE IF EXISTS public.tagkind;
+DROP SEQUENCE IF EXISTS public.tag_id_seq;
+DROP TABLE IF EXISTS public.tag;
+DROP SEQUENCE IF EXISTS public.star_id_seq;
+DROP TABLE IF EXISTS public.star;
+DROP SEQUENCE IF EXISTS public.servicekeyapproval_id_seq;
+DROP TABLE IF EXISTS public.servicekeyapproval;
+DROP SEQUENCE IF EXISTS public.servicekey_id_seq;
+DROP TABLE IF EXISTS public.servicekey;
+DROP SEQUENCE IF EXISTS public.role_id_seq;
+DROP TABLE IF EXISTS public.role;
+DROP SEQUENCE IF EXISTS public.robotaccounttoken_id_seq;
+DROP TABLE IF EXISTS public.robotaccounttoken;
+DROP SEQUENCE IF EXISTS public.robotaccountmetadata_id_seq;
+DROP TABLE IF EXISTS public.robotaccountmetadata;
+DROP SEQUENCE IF EXISTS public.repositorytag_id_seq;
+DROP TABLE IF EXISTS public.repositorytag;
+DROP SEQUENCE IF EXISTS public.repositorysize_id_seq;
+DROP TABLE IF EXISTS public.repositorysize;
+DROP SEQUENCE IF EXISTS public.repositorysearchscore_id_seq;
+DROP TABLE IF EXISTS public.repositorysearchscore;
+DROP SEQUENCE IF EXISTS public.repositorypermission_id_seq;
+DROP TABLE IF EXISTS public.repositorypermission;
+DROP SEQUENCE IF EXISTS public.repositorynotification_id_seq;
+DROP TABLE IF EXISTS public.repositorynotification;
+DROP SEQUENCE IF EXISTS public.repositorykind_id_seq;
+DROP TABLE IF EXISTS public.repositorykind;
+DROP SEQUENCE IF EXISTS public.repositorybuildtrigger_id_seq;
+DROP TABLE IF EXISTS public.repositorybuildtrigger;
+DROP SEQUENCE IF EXISTS public.repositorybuild_id_seq;
+DROP TABLE IF EXISTS public.repositorybuild;
+DROP SEQUENCE IF EXISTS public.repositoryauthorizedemail_id_seq;
+DROP TABLE IF EXISTS public.repositoryauthorizedemail;
+DROP SEQUENCE IF EXISTS public.repositoryactioncount_id_seq;
+DROP TABLE IF EXISTS public.repositoryactioncount;
+DROP SEQUENCE IF EXISTS public.repository_id_seq;
+DROP TABLE IF EXISTS public.repository;
+DROP SEQUENCE IF EXISTS public.repomirrorrule_id_seq;
+DROP TABLE IF EXISTS public.repomirrorrule;
+DROP SEQUENCE IF EXISTS public.repomirrorconfig_id_seq;
+DROP TABLE IF EXISTS public.repomirrorconfig;
+DROP SEQUENCE IF EXISTS public.redhatsubscriptions_id_seq;
+DROP TABLE IF EXISTS public.redhatsubscriptions;
+DROP SEQUENCE IF EXISTS public.quotatype_id_seq;
+DROP TABLE IF EXISTS public.quotatype;
+DROP SEQUENCE IF EXISTS public.quotarepositorysize_id_seq;
+DROP TABLE IF EXISTS public.quotarepositorysize;
+DROP SEQUENCE IF EXISTS public.quotaregistrysize_id_seq;
+DROP TABLE IF EXISTS public.quotaregistrysize;
+DROP SEQUENCE IF EXISTS public.quotanamespacesize_id_seq;
+DROP TABLE IF EXISTS public.quotanamespacesize;
+DROP SEQUENCE IF EXISTS public.quotalimits_id_seq;
+DROP TABLE IF EXISTS public.quotalimits;
+DROP SEQUENCE IF EXISTS public.queueitem_id_seq;
+DROP TABLE IF EXISTS public.queueitem;
+DROP SEQUENCE IF EXISTS public.quayservice_id_seq;
+DROP TABLE IF EXISTS public.quayservice;
+DROP SEQUENCE IF EXISTS public.quayrelease_id_seq;
+DROP TABLE IF EXISTS public.quayrelease;
+DROP SEQUENCE IF EXISTS public.quayregion_id_seq;
+DROP TABLE IF EXISTS public.quayregion;
+DROP SEQUENCE IF EXISTS public.proxycacheconfig_id_seq;
+DROP TABLE IF EXISTS public.proxycacheconfig;
+DROP SEQUENCE IF EXISTS public.permissionprototype_id_seq;
+DROP TABLE IF EXISTS public.permissionprototype;
+DROP SEQUENCE IF EXISTS public.oauthauthorizationcode_id_seq;
+DROP TABLE IF EXISTS public.oauthauthorizationcode;
+DROP SEQUENCE IF EXISTS public.oauthapplication_id_seq;
+DROP TABLE IF EXISTS public.oauthapplication;
+DROP SEQUENCE IF EXISTS public.oauthaccesstoken_id_seq;
+DROP TABLE IF EXISTS public.oauthaccesstoken;
+DROP SEQUENCE IF EXISTS public.notificationkind_id_seq;
+DROP TABLE IF EXISTS public.notificationkind;
+DROP SEQUENCE IF EXISTS public.notification_id_seq;
+DROP TABLE IF EXISTS public.notification;
+DROP SEQUENCE IF EXISTS public.namespacegeorestriction_id_seq;
+DROP TABLE IF EXISTS public.namespacegeorestriction;
+DROP SEQUENCE IF EXISTS public.messages_id_seq;
+DROP TABLE IF EXISTS public.messages;
+DROP SEQUENCE IF EXISTS public.mediatype_id_seq;
+DROP TABLE IF EXISTS public.mediatype;
+DROP SEQUENCE IF EXISTS public.manifestsecuritystatus_id_seq;
+DROP TABLE IF EXISTS public.manifestsecuritystatus;
+DROP SEQUENCE IF EXISTS public.manifestlegacyimage_id_seq;
+DROP TABLE IF EXISTS public.manifestlegacyimage;
+DROP SEQUENCE IF EXISTS public.manifestlabel_id_seq;
+DROP TABLE IF EXISTS public.manifestlabel;
+DROP SEQUENCE IF EXISTS public.manifestchild_id_seq;
+DROP TABLE IF EXISTS public.manifestchild;
+DROP SEQUENCE IF EXISTS public.manifestblob_id_seq;
+DROP TABLE IF EXISTS public.manifestblob;
+DROP SEQUENCE IF EXISTS public.manifest_id_seq;
+DROP TABLE IF EXISTS public.manifest;
+DROP SEQUENCE IF EXISTS public.loginservice_id_seq;
+DROP TABLE IF EXISTS public.loginservice;
+DROP SEQUENCE IF EXISTS public.logentrykind_id_seq;
+DROP TABLE IF EXISTS public.logentrykind;
+DROP SEQUENCE IF EXISTS public.logentry_id_seq;
+DROP SEQUENCE IF EXISTS public.logentry3_id_seq;
+DROP TABLE IF EXISTS public.logentry3;
+DROP SEQUENCE IF EXISTS public.logentry2_id_seq;
+DROP TABLE IF EXISTS public.logentry2;
+DROP TABLE IF EXISTS public.logentry;
+DROP SEQUENCE IF EXISTS public.labelsourcetype_id_seq;
+DROP TABLE IF EXISTS public.labelsourcetype;
+DROP SEQUENCE IF EXISTS public.label_id_seq;
+DROP TABLE IF EXISTS public.label;
+DROP SEQUENCE IF EXISTS public.imagestoragetransformation_id_seq;
+DROP TABLE IF EXISTS public.imagestoragetransformation;
+DROP SEQUENCE IF EXISTS public.imagestoragesignaturekind_id_seq;
+DROP TABLE IF EXISTS public.imagestoragesignaturekind;
+DROP SEQUENCE IF EXISTS public.imagestoragesignature_id_seq;
+DROP TABLE IF EXISTS public.imagestoragesignature;
+DROP SEQUENCE IF EXISTS public.imagestorageplacement_id_seq;
+DROP TABLE IF EXISTS public.imagestorageplacement;
+DROP SEQUENCE IF EXISTS public.imagestoragelocation_id_seq;
+DROP TABLE IF EXISTS public.imagestoragelocation;
+DROP SEQUENCE IF EXISTS public.imagestorage_id_seq;
+DROP TABLE IF EXISTS public.imagestorage;
+DROP SEQUENCE IF EXISTS public.image_id_seq;
+DROP TABLE IF EXISTS public.image;
+DROP SEQUENCE IF EXISTS public.federatedlogin_id_seq;
+DROP TABLE IF EXISTS public.federatedlogin;
+DROP SEQUENCE IF EXISTS public.externalnotificationmethod_id_seq;
+DROP TABLE IF EXISTS public.externalnotificationmethod;
+DROP SEQUENCE IF EXISTS public.externalnotificationevent_id_seq;
+DROP TABLE IF EXISTS public.externalnotificationevent;
+DROP SEQUENCE IF EXISTS public.emailconfirmation_id_seq;
+DROP TABLE IF EXISTS public.emailconfirmation;
+DROP SEQUENCE IF EXISTS public.disablereason_id_seq;
+DROP TABLE IF EXISTS public.disablereason;
+DROP SEQUENCE IF EXISTS public.derivedstorageforimage_id_seq;
+DROP TABLE IF EXISTS public.derivedstorageforimage;
+DROP SEQUENCE IF EXISTS public.deletedrepository_id_seq;
+DROP TABLE IF EXISTS public.deletedrepository;
+DROP SEQUENCE IF EXISTS public.deletednamespace_id_seq;
+DROP TABLE IF EXISTS public.deletednamespace;
+DROP SEQUENCE IF EXISTS public.buildtriggerservice_id_seq;
+DROP TABLE IF EXISTS public.buildtriggerservice;
+DROP SEQUENCE IF EXISTS public.blobupload_id_seq;
+DROP TABLE IF EXISTS public.blobupload;
+DROP SEQUENCE IF EXISTS public.appspecificauthtoken_id_seq;
+DROP TABLE IF EXISTS public.appspecificauthtoken;
+DROP SEQUENCE IF EXISTS public.apprtagkind_id_seq;
+DROP TABLE IF EXISTS public.apprtagkind;
+DROP SEQUENCE IF EXISTS public.apprtag_id_seq;
+DROP TABLE IF EXISTS public.apprtag;
+DROP SEQUENCE IF EXISTS public.apprmanifestlistmanifest_id_seq;
+DROP TABLE IF EXISTS public.apprmanifestlistmanifest;
+DROP SEQUENCE IF EXISTS public.apprmanifestlist_id_seq;
+DROP TABLE IF EXISTS public.apprmanifestlist;
+DROP SEQUENCE IF EXISTS public.apprmanifestblob_id_seq;
+DROP TABLE IF EXISTS public.apprmanifestblob;
+DROP SEQUENCE IF EXISTS public.apprmanifest_id_seq;
+DROP TABLE IF EXISTS public.apprmanifest;
+DROP SEQUENCE IF EXISTS public.apprblobplacementlocation_id_seq;
+DROP TABLE IF EXISTS public.apprblobplacementlocation;
+DROP SEQUENCE IF EXISTS public.apprblobplacement_id_seq;
+DROP TABLE IF EXISTS public.apprblobplacement;
+DROP SEQUENCE IF EXISTS public.apprblob_id_seq;
+DROP TABLE IF EXISTS public.apprblob;
+DROP TABLE IF EXISTS public.alembic_version;
+DROP SEQUENCE IF EXISTS public.accesstokenkind_id_seq;
+DROP TABLE IF EXISTS public.accesstokenkind;
+DROP SEQUENCE IF EXISTS public.accesstoken_id_seq;
+DROP TABLE IF EXISTS public.accesstoken;
+DROP EXTENSION IF EXISTS pg_trgm;
 --
 -- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
 --
@@ -3029,6 +3048,117 @@ ALTER SEQUENCE public.quotalimits_id_seq OWNED BY public.quotalimits.id;
 
 
 --
+-- Name: quotanamespacesize; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.quotanamespacesize (
+    id integer NOT NULL,
+    namespace_user_id integer NOT NULL,
+    size_bytes bigint DEFAULT '0'::bigint NOT NULL,
+    backfill_start_ms bigint,
+    backfill_complete boolean DEFAULT false NOT NULL
+);
+
+
+ALTER TABLE public.quotanamespacesize OWNER TO quay;
+
+--
+-- Name: quotanamespacesize_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.quotanamespacesize_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.quotanamespacesize_id_seq OWNER TO quay;
+
+--
+-- Name: quotanamespacesize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.quotanamespacesize_id_seq OWNED BY public.quotanamespacesize.id;
+
+
+--
+-- Name: quotaregistrysize; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.quotaregistrysize (
+    id integer NOT NULL,
+    size_bytes bigint DEFAULT '0'::bigint NOT NULL,
+    running boolean DEFAULT false NOT NULL,
+    queued boolean DEFAULT false NOT NULL,
+    completed_ms bigint
+);
+
+
+ALTER TABLE public.quotaregistrysize OWNER TO quay;
+
+--
+-- Name: quotaregistrysize_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.quotaregistrysize_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.quotaregistrysize_id_seq OWNER TO quay;
+
+--
+-- Name: quotaregistrysize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.quotaregistrysize_id_seq OWNED BY public.quotaregistrysize.id;
+
+
+--
+-- Name: quotarepositorysize; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.quotarepositorysize (
+    id integer NOT NULL,
+    repository_id integer NOT NULL,
+    size_bytes bigint DEFAULT '0'::bigint NOT NULL,
+    backfill_start_ms bigint,
+    backfill_complete boolean DEFAULT false NOT NULL
+);
+
+
+ALTER TABLE public.quotarepositorysize OWNER TO quay;
+
+--
+-- Name: quotarepositorysize_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.quotarepositorysize_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.quotarepositorysize_id_seq OWNER TO quay;
+
+--
+-- Name: quotarepositorysize_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.quotarepositorysize_id_seq OWNED BY public.quotarepositorysize.id;
+
+
+--
 -- Name: quotatype; Type: TABLE; Schema: public; Owner: quay
 --
 
@@ -3060,6 +3190,41 @@ ALTER TABLE public.quotatype_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.quotatype_id_seq OWNED BY public.quotatype.id;
+
+
+--
+-- Name: redhatsubscriptions; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.redhatsubscriptions (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    account_number integer NOT NULL
+);
+
+
+ALTER TABLE public.redhatsubscriptions OWNER TO quay;
+
+--
+-- Name: redhatsubscriptions_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.redhatsubscriptions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.redhatsubscriptions_id_seq OWNER TO quay;
+
+--
+-- Name: redhatsubscriptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.redhatsubscriptions_id_seq OWNED BY public.redhatsubscriptions.id;
 
 
 --
@@ -4332,7 +4497,7 @@ CREATE TABLE public."user" (
     invoice_email boolean NOT NULL,
     invalid_login_attempts integer DEFAULT 0 NOT NULL,
     last_invalid_login timestamp without time zone NOT NULL,
-    removed_tag_expiration_s integer DEFAULT 1209600 NOT NULL,
+    removed_tag_expiration_s bigint DEFAULT 1209600 NOT NULL,
     enabled boolean DEFAULT true NOT NULL,
     invoice_email_address character varying(255),
     company character varying(255),
@@ -4942,10 +5107,38 @@ ALTER TABLE ONLY public.quotalimits ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: quotanamespacesize id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotanamespacesize ALTER COLUMN id SET DEFAULT nextval('public.quotanamespacesize_id_seq'::regclass);
+
+
+--
+-- Name: quotaregistrysize id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotaregistrysize ALTER COLUMN id SET DEFAULT nextval('public.quotaregistrysize_id_seq'::regclass);
+
+
+--
+-- Name: quotarepositorysize id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotarepositorysize ALTER COLUMN id SET DEFAULT nextval('public.quotarepositorysize_id_seq'::regclass);
+
+
+--
 -- Name: quotatype id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
 ALTER TABLE ONLY public.quotatype ALTER COLUMN id SET DEFAULT nextval('public.quotatype_id_seq'::regclass);
+
+
+--
+-- Name: redhatsubscriptions id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.redhatsubscriptions ALTER COLUMN id SET DEFAULT nextval('public.redhatsubscriptions_id_seq'::regclass);
 
 
 --
@@ -5244,7 +5437,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-7bca88923f2c
+46980ea2dde5
 \.
 
 
@@ -5847,6 +6040,28 @@ COPY public.logentrykind (id, name) FROM stdin;
 75	change_repo_state
 76	create_proxy_cache_config
 77	delete_proxy_cache_config
+78	start_build_trigger
+79	cancel_build
+80	org_create
+81	org_delete
+82	org_change_email
+83	org_change_invoicing
+84	org_change_tag_expiration
+85	org_change_name
+86	user_create
+87	user_delete
+88	user_disable
+89	user_enable
+90	user_change_email
+91	user_change_password
+92	user_change_name
+93	user_change_invoicing
+94	user_change_tag_expiration
+95	user_change_metadata
+96	user_generate_client_key
+97	login_success
+98	logout_success
+99	permanently_delete_tag
 \.
 
 
@@ -5880,6 +6095,7 @@ COPY public.manifest (id, repository_id, digest, media_type_id, manifest_bytes, 
 8	1	sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:b3593dab05491cdf5ee88c29bee36603c0df0bc34798eed5067f6e1335a9d391"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3000,\n         "digest": "sha256:3caa6dc69d0b73f21d29bfa75356395f2695a7abad34f010656740e90ddce399"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3000
 9	1	sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3276,\n         "digest": "sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3276
 10	1	sha256:7693efac53eb85ff1afb03f7f2560015c57ac2175707f1f141f31161634c9dba	15	{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525}],"mediaType":"application\\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}	\N	0
+11	155	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479
 \.
 
 
@@ -5906,6 +6122,8 @@ COPY public.manifestblob (id, repository_id, manifest_id, blob_id) FROM stdin;
 16	1	8	15
 17	1	9	17
 18	1	9	18
+19	155	11	1
+20	155	11	2
 \.
 
 
@@ -6098,8 +6316,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-01-03 11:27:34.193037	t	2023-01-03 14:22:34.160624	5	d721825a-0a39-41c7-a41e-49b8415026e6
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-01-03 11:27:39.22571	t	2023-01-03 14:22:39.211412	5	7a1a7e72-a63d-4479-a152-a0e0dc418aac
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-06-28 18:17:46.058418	t	2023-06-28 21:12:45.983351	5	f4026e00-acc1-4634-b560-7b9dfe4ea2c0
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-06-28 18:17:51.112431	t	2023-06-28 21:12:51.080949	5	1f7f0b49-2e34-4a00-8414-2559e4bbe63f
 \.
 
 
@@ -6112,12 +6330,44 @@ COPY public.quotalimits (id, quota_id, quota_type_id, percent_of_limit) FROM std
 
 
 --
+-- Data for Name: quotanamespacesize; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.quotanamespacesize (id, namespace_user_id, size_bytes, backfill_start_ms, backfill_complete) FROM stdin;
+\.
+
+
+--
+-- Data for Name: quotaregistrysize; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.quotaregistrysize (id, size_bytes, running, queued, completed_ms) FROM stdin;
+\.
+
+
+--
+-- Data for Name: quotarepositorysize; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.quotarepositorysize (id, repository_id, size_bytes, backfill_start_ms, backfill_complete) FROM stdin;
+\.
+
+
+--
 -- Data for Name: quotatype; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
 COPY public.quotatype (id, name) FROM stdin;
 1	Warning
 2	Reject
+\.
+
+
+--
+-- Data for Name: redhatsubscriptions; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.redhatsubscriptions (id, user_id, account_number) FROM stdin;
 \.
 
 
@@ -6296,6 +6546,7 @@ COPY public.repository (id, namespace_user_id, name, visibility_id, description,
 152	4	repo147	1	This is the description of repo147	3d058d1e-a700-423e-ab91-364afd0c2926	1	f	0
 153	4	repo148	1	This is the description of repo148	0c796577-7825-4c9d-a4fb-2a7866544248	1	f	0
 154	4	repo149	1	This is the description of repo149	8db24323-26f1-4fc1-9a10-1ac9d6f768d5	1	f	0
+155	32	hello-world	1		730ebab8-f2ab-4e55-9c9d-f064d11f68d6	1	f	0
 \.
 
 
@@ -6458,6 +6709,7 @@ COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 152	152	0	2023-01-02
 153	153	0	2023-01-02
 154	154	0	2023-01-02
+155	155	0	2023-06-27
 \.
 
 
@@ -6670,6 +6922,7 @@ COPY public.repositorypermission (id, team_id, user_id, repository_id, role_id) 
 155	\N	1	152	1
 156	\N	1	153	1
 157	\N	1	154	1
+158	\N	29	155	1
 \.
 
 
@@ -6832,6 +7085,7 @@ COPY public.repositorysearchscore (id, repository_id, score, last_updated) FROM 
 152	152	0	\N
 153	153	0	\N
 154	154	0	\N
+155	155	0	\N
 \.
 
 
@@ -7041,7 +7295,6 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
-7	http://localhost:8080	P8HCej8ZzT3H5ZYy7MxTvhg1sHbcala08GAhxKi2bBw	quay	{"n": "kDMkzNJQ-5dIQESnv0C08ngyDkxlS_RmCm_261oE8PTmimZx4yLxTOqreuW9XIspHaWwjlGUno-R0-4jP5eio0O09TKMS4vc9btPbNM6afhnzn7zVs5qvgdgmESTMtxuV03e8axLxEHY_jM-RKgSxgfB-akC3THj0N-7wRBZl3k7l4CWi4UUDsrHl5RUQSwyA75HRGaK5pDQFeJuIiP2ePKuKCMHOKunqXrUVrsIKScn47i4fpJyhICYTHhHJBGp8Q9UTRSZ57aaIhpjOe3gV3_gGw_nFTD1gOA-IWfmhr70z1SPI52DqLxweq4Ye1L1NiT8miRvVYSlFCszXQJVDw", "e": "AQAB", "kty": "RSA", "kid": "P8HCej8ZzT3H5ZYy7MxTvhg1sHbcala08GAhxKi2bBw"}	{"created_by": "CLI tool"}	2022-12-14 18:48:53.987846	2022-12-14 20:48:53.80133	\N	7
 \.
 
 
@@ -7050,12 +7303,6 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 --
 
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
-1	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-04 18:57:09.109963	
-3	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-15 13:34:27.009874	
-4	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:40:02.364779	
-5	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:43:45.399899	
-6	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:47:59.585515	
-7	\N	ServiceKeyApprovalType.AUTOMATIC	2022-12-14 18:48:54.002141	
 \.
 
 
@@ -7082,6 +7329,7 @@ COPY public.tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifeti
 8	$temp-7c67ad17-2b65-49b2-a9ce-e018689ce7f2	1	8	1667589335850	1667592935850	t	f	1	\N
 9	$temp-64f33f3a-8551-49da-b36c-e4ab3a47c247	1	9	1667589337525	1667592937525	t	f	1	\N
 10	manifestlist	1	10	1667589337924	\N	f	f	1	\N
+11	latest	155	11	1687976145896	\N	f	f	1	\N
 \.
 
 
@@ -7166,6 +7414,7 @@ COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
 27	owners	28	1	
 28	testteam	28	3	
 29	testteam2	28	3	
+30	owners	32	1	
 \.
 
 
@@ -7200,6 +7449,7 @@ COPY public.teammember (id, user_id, team_id) FROM stdin;
 26	1	26
 27	1	27
 28	29	28
+29	29	30
 \.
 
 
@@ -7261,6 +7511,8 @@ COPY public.uploadedblob (id, repository_id, blob_id, uploaded_at, expires_at) F
 16	1	16	2022-11-04 19:15:35.594258	2022-11-04 20:15:35.594222
 17	1	17	2022-11-04 19:15:36.623398	2022-11-04 20:15:36.623369
 18	1	18	2022-11-04 19:15:37.292848	2022-11-04 20:15:37.292747
+19	155	1	2023-06-28 18:15:45.607136	2023-06-28 19:15:45.607116
+20	155	2	2023-06-28 18:15:45.812791	2023-06-28 19:15:45.812764
 \.
 
 
@@ -7297,9 +7549,10 @@ COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_i
 27	06580557-80cb-4b69-83cd-09b9c538330b	ceph	\N	3260450e-c0b6-4cf6-90ca-ce31c882fa80	f	\N	t	f	f	0	2022-11-21 18:56:42.081825	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:42.081839	\N
 28	45c1c5df-3c10-4aa3-acba-5a15ea53e420	testorg	\N	c50be933-debc-4ed0-b1a0-df461c2f7456	f	\N	t	f	f	0	2022-11-29 13:46:30.797525	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:46:30.797539	\N
 1	918b26a3-cbf2-434c-a18f-dad69167193e	user1	$2b$12$c4u19A/x6a.6Ihm2pAin7.nXUCIqI0vtf7miS7tZ.oXhHtsKVS.Bq	user1@redhat.com	t	\N	f	f	f	0	2022-10-31 18:50:36.685961	1209600	t	\N	\N	\N	\N	\N	\N	2022-10-31 18:50:36.685976	\N
-29	ee9bb1db-b80e-4707-b8b5-44249236d1da	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
 30	824e31bd-e531-4a2a-838d-cfdc7442978f	testorg+testrobot	\N	b4a78057-79f2-440a-b089-e2779be746b9	f	\N	f	t	f	0	2022-11-29 13:48:38.924504	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:48:38.924541	\N
 31	87860588-5674-4bc4-a297-abda8f99e877	testorg+testrobot2	\N	c117d71c-c3cb-4513-ab37-32f0dcb16007	f	\N	f	t	f	0	2022-11-30 21:23:53.656399	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-30 21:23:53.656402	\N
+29	f96f1124-ae26-4ea6-a73b-f4b0d87e6dc0	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
+32	80d4d7c4-c3f0-442b-94a6-1e151aca9ecd	user2org1	\N	user2org1@redhat.com	f	\N	t	f	f	0	2023-06-28 18:15:16.210544	1209600	t	\N	\N	\N	\N	\N	\N	2023-06-28 18:15:16.210558	\N
 \.
 
 
@@ -7436,7 +7689,7 @@ SELECT pg_catalog.setval('public.appspecificauthtoken_id_seq', 1, false);
 -- Name: blobupload_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.blobupload_id_seq', 18, true);
+SELECT pg_catalog.setval('public.blobupload_id_seq', 20, true);
 
 
 --
@@ -7590,7 +7843,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 77, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 99, true);
 
 
 --
@@ -7604,14 +7857,14 @@ SELECT pg_catalog.setval('public.loginservice_id_seq', 7, true);
 -- Name: manifest_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.manifest_id_seq', 10, true);
+SELECT pg_catalog.setval('public.manifest_id_seq', 11, true);
 
 
 --
 -- Name: manifestblob_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.manifestblob_id_seq', 18, true);
+SELECT pg_catalog.setval('public.manifestblob_id_seq', 20, true);
 
 
 --
@@ -7667,7 +7920,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
 
 
 --
@@ -7748,10 +8001,38 @@ SELECT pg_catalog.setval('public.quotalimits_id_seq', 1, false);
 
 
 --
+-- Name: quotanamespacesize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.quotanamespacesize_id_seq', 1, false);
+
+
+--
+-- Name: quotaregistrysize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.quotaregistrysize_id_seq', 1, true);
+
+
+--
+-- Name: quotarepositorysize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.quotarepositorysize_id_seq', 1, false);
+
+
+--
 -- Name: quotatype_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
 SELECT pg_catalog.setval('public.quotatype_id_seq', 2, true);
+
+
+--
+-- Name: redhatsubscriptions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.redhatsubscriptions_id_seq', 1, false);
 
 
 --
@@ -7772,14 +8053,14 @@ SELECT pg_catalog.setval('public.repomirrorrule_id_seq', 1, false);
 -- Name: repository_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repository_id_seq', 154, true);
+SELECT pg_catalog.setval('public.repository_id_seq', 155, true);
 
 
 --
 -- Name: repositoryactioncount_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 154, true);
+SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 155, true);
 
 
 --
@@ -7821,14 +8102,14 @@ SELECT pg_catalog.setval('public.repositorynotification_id_seq', 5, true);
 -- Name: repositorypermission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorypermission_id_seq', 157, true);
+SELECT pg_catalog.setval('public.repositorypermission_id_seq', 158, true);
 
 
 --
 -- Name: repositorysearchscore_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 154, true);
+SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 155, true);
 
 
 --
@@ -7870,14 +8151,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 7, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 7, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false);
 
 
 --
@@ -7891,7 +8172,7 @@ SELECT pg_catalog.setval('public.star_id_seq', 1, false);
 -- Name: tag_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.tag_id_seq', 10, true);
+SELECT pg_catalog.setval('public.tag_id_seq', 11, true);
 
 
 --
@@ -7940,14 +8221,14 @@ SELECT pg_catalog.setval('public.tagtorepositorytag_id_seq', 1, false);
 -- Name: team_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.team_id_seq', 29, true);
+SELECT pg_catalog.setval('public.team_id_seq', 30, true);
 
 
 --
 -- Name: teammember_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.teammember_id_seq', 28, true);
+SELECT pg_catalog.setval('public.teammember_id_seq', 29, true);
 
 
 --
@@ -7982,14 +8263,14 @@ SELECT pg_catalog.setval('public.torrentinfo_id_seq', 1, false);
 -- Name: uploadedblob_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.uploadedblob_id_seq', 18, true);
+SELECT pg_catalog.setval('public.uploadedblob_id_seq', 20, true);
 
 
 --
 -- Name: user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.user_id_seq', 31, true);
+SELECT pg_catalog.setval('public.user_id_seq', 32, true);
 
 
 --
@@ -8492,11 +8773,43 @@ ALTER TABLE ONLY public.quotalimits
 
 
 --
+-- Name: quotanamespacesize pk_quotanamespacesizeid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotanamespacesize
+    ADD CONSTRAINT pk_quotanamespacesizeid PRIMARY KEY (id);
+
+
+--
+-- Name: quotaregistrysize pk_quotaregistrysizeid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotaregistrysize
+    ADD CONSTRAINT pk_quotaregistrysizeid PRIMARY KEY (id);
+
+
+--
+-- Name: quotarepositorysize pk_quotarepositorysizeid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotarepositorysize
+    ADD CONSTRAINT pk_quotarepositorysizeid PRIMARY KEY (id);
+
+
+--
 -- Name: quotatype pk_quotatype; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
 ALTER TABLE ONLY public.quotatype
     ADD CONSTRAINT pk_quotatype PRIMARY KEY (id);
+
+
+--
+-- Name: redhatsubscriptions pk_redhatsubscriptions; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.redhatsubscriptions
+    ADD CONSTRAINT pk_redhatsubscriptions PRIMARY KEY (id);
 
 
 --
@@ -11653,6 +11966,30 @@ ALTER TABLE ONLY public.quotalimits
 
 ALTER TABLE ONLY public.quotalimits
     ADD CONSTRAINT fk_quotalimit_type FOREIGN KEY (quota_type_id) REFERENCES public.quotatype(id);
+
+
+--
+-- Name: quotanamespacesize fk_quotanamespacesize_namespace_user_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotanamespacesize
+    ADD CONSTRAINT fk_quotanamespacesize_namespace_user_id_user FOREIGN KEY (namespace_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: quotarepositorysize fk_quotarepositorysize_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.quotarepositorysize
+    ADD CONSTRAINT fk_quotarepositorysize_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
+-- Name: redhatsubscriptions fk_redhatsubscriptions; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.redhatsubscriptions
+    ADD CONSTRAINT fk_redhatsubscriptions FOREIGN KEY (user_id) REFERENCES public."user"(id);
 
 
 --

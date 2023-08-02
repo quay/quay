@@ -12,8 +12,6 @@ from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
 from data.database import (
     db_transaction,
-    Image,
-    IMAGE_NOT_SCANNED_ENGINE_VERSION,
     db_disallow_replica_use,
 )
 from data.registry_model.interface import RegistryDataInterface
@@ -147,6 +145,7 @@ class OCIModel(RegistryDataInterface):
         repository_ref,
         manifest_digest,
         allow_dead=False,
+        allow_hidden=False,
         require_available=False,
         raise_on_error=False,
     ):
@@ -158,6 +157,7 @@ class OCIModel(RegistryDataInterface):
             repository_ref._db_id,
             manifest_digest,
             allow_dead=allow_dead,
+            allow_hidden=allow_hidden,
             require_available=require_available,
         )
         if manifest is None:
@@ -284,7 +284,13 @@ class OCIModel(RegistryDataInterface):
         into service.
         """
         tags, has_more = oci.tag.list_repository_tag_history(
-            repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms, filter_tag_name,
+            repository_ref._db_id,
+            page,
+            size,
+            specific_tag_name,
+            active_tags_only,
+            since_time_ms,
+            filter_tag_name,
         )
 
         # TODO: Remove this once the layers compressed sizes have been fully backfilled.
@@ -537,39 +543,17 @@ class OCIModel(RegistryDataInterface):
         with db_disallow_replica_use():
             return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
 
-    def get_security_status(self, manifest_or_legacy_image):
-        """
-        Returns the security status for the given manifest or legacy image or None if none.
-        """
-        # TODO: change from using the Image row once we've moved all security info into MSS.
-        manifest_id = manifest_or_legacy_image.as_manifest()._db_id
-        image = oci.shared.get_legacy_image_for_manifest(manifest_id)
-        if image is None:
-            return SecurityScanStatus.UNSUPPORTED
-
-        if image.security_indexed_engine is not None and image.security_indexed_engine >= 0:
-            return (
-                SecurityScanStatus.SCANNED if image.security_indexed else SecurityScanStatus.FAILED
-            )
-
-        return SecurityScanStatus.QUEUED
-
     def reset_security_status(self, manifest_or_legacy_image):
         """
         Resets the security status for the given manifest or legacy image, ensuring that it will get
         re-indexed.
         """
         with db_disallow_replica_use():
-            # TODO: change from using the Image row once we've moved all security info into MSS.
             manifest_id = manifest_or_legacy_image.as_manifest()._db_id
-            image = oci.shared.get_legacy_image_for_manifest(manifest_id)
-            if image is None:
-                return None
+            manifestsecuritystatus = oci.shared.get_manifestsecuritystatus_for_manifest(manifest_id)
 
-                assert image
-                image.security_indexed = False
-                image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
-                image.save()
+            if manifestsecuritystatus is not None:
+                manifestsecuritystatus.delete_instance()
 
     def list_manifest_layers(self, manifest, storage, include_placements=False):
         try:
@@ -652,7 +636,11 @@ class OCIModel(RegistryDataInterface):
         )
 
     def create_manifest_with_temp_tag(
-        self, repository_ref, manifest_interface_instance, expiration_sec, storage
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        expiration_sec,
+        storage,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
@@ -1017,13 +1005,11 @@ class OCIModel(RegistryDataInterface):
         # ManifestChild?
         return model.oci.tag.tag_names_for_manifest(manifest._db_id, limit)
 
-    def populate_legacy_images_for_testing(self, manifest, storage):
-        """Populates legacy images for the given manifest, for testing only. This call
-        will fail if called under non-testing code.
-        """
-        manifest_row = database.Manifest.get(id=manifest._db_id)
-        oci.manifest.populate_legacy_images_for_testing(
-            manifest_row, manifest.get_parsed_manifest(), storage
+    def remove_tag_from_timemachine(
+        self, repo_ref, tag_name, manifest_ref, include_submanifests=False, is_alive=False
+    ):
+        return oci.tag.remove_tag_from_timemachine(
+            repo_ref.id, tag_name, manifest_ref.id, include_submanifests, is_alive
         )
 
     def _get_manifest_local_blobs(self, manifest, repo_id, storage, include_placements=False):

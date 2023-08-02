@@ -1,0 +1,80 @@
+name: Config Tool
+on:
+  push:
+    branches:
+    - "!dependabot/*"
+    - "*"
+    paths:
+    - config-tool/**
+  pull_request:
+    branches:
+    - "*"
+    paths:
+    - config-tool/**
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1.19
+          cache-dependency-path: config-tool/go.sum
+
+      - name: Verify go.mod
+        run: cd ./config-tool && go mod tidy && git diff --exit-code
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version: ^1.19
+          cache-dependency-path: config-tool/go.sum
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: cd ./config-tool && go build -v ./...
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    container: docker.io/library/golang:1.19-buster
+    services:
+      postgres:
+        image: postgres:11.5
+        env:
+          POSTGRES_USER: "user"
+          POSTGRES_PASSWORD: "password"
+          POSTGRES_DB: "quay"
+      redis:
+        image: redis:latest
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: quay
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+      jwt:
+        image: quay.io/coreos/jwt-auth-example:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Workaround for dubious ownership issue
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build
+        run: cd ./config-tool && go build -v ./...
+      - name: Tests
+        run: cd ./config-tool && go test ./pkg/lib/fieldgroups/...
+        env:
+          GODEBUG: x509ignoreCN=0

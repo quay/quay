@@ -46,7 +46,7 @@ from data.database import (
     ManifestChild,
     ExternalNotificationEvent,
     RepositoryNotification,
-    RepositorySize,
+    QuotaRepositorySize,
     ManifestBlob,
     BlobUpload,
     Tag,
@@ -694,93 +694,24 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
 
 def get_repository_size(repo_id: int):
     try:
-        query = (
-            RepositorySize.select(Repository.name, Repository.id, RepositorySize.size_bytes)
-            .join(Repository)
-            .where(RepositorySize.repository_id == repo_id)
+        size = (
+            QuotaRepositorySize.select(QuotaRepositorySize.size_bytes)
+            .where(QuotaRepositorySize.repository == repo_id)
+            .scalar()
         )
-        return query.get()
-    except RepositorySize.DoesNotExist:
-        return None
-
-
-def get_repository_size_and_cache(repo_id: int):
-    repo_size_ref = get_repository_size(repo_id)
-
-    if repo_size_ref is None or repo_size_ref.size_bytes == 0:
-        force_cache_repo_size(repo_id)
-        repo_size_ref = get_repository_size(repo_id)
-
-    return {
-        "repository_name": repo_size_ref.repository.name,
-        "repository_id": repo_size_ref.repository.id,
-        "repository_size": repo_size_ref.size_bytes,
-    }
+        return size if size is not None else 0
+    except QuotaRepositorySize.DoesNotExist:
+        return 0
 
 
 def get_size_during_upload(repo_id: int):
-    # TODO: Make this one trip to the db instead of 2?
-    size = get_repository_size_and_cache(repo_id)
-
     query = (
         BlobUpload.select(fn.Sum(BlobUpload.byte_count).alias("size_bytes")).where(
             BlobUpload.repository_id == repo_id
         )
     ).get()
 
-    repo_size = 0
-    size_bytes = 0
-    if size["repository_size"] is not None:
-        repo_size = size["repository_size"]
+    repo_size = get_repository_size(repo_id)
+    size_bytes = query.size_bytes if query.size_bytes is not None else 0
 
-    if query.size_bytes is not None:
-        size_bytes = query.size_bytes
-
-    size_bytes = repo_size + size_bytes
-
-    return size_bytes
-
-
-def force_cache_repo_size(repo_id: int):
-    try:
-        now_ms = get_epoch_timestamp_ms()
-        subquery = (
-            Tag.select(Tag.manifest)
-            .where(Tag.hidden == False)
-            .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
-            .where(Tag.repository_id == repo_id)
-            .group_by(Tag.manifest)
-            .having(fn.Count(Tag.name) > 0)
-        )
-
-        cache = (
-            Manifest.select(fn.Sum(Manifest.layers_compressed_size).alias("size_bytes"))
-            .join(subquery, on=(subquery.c.manifest_id == Manifest.id))
-            .where(Manifest.repository == repo_id)
-        ).scalar()
-
-        size = cache
-    except Manifest.DoesNotExist:
-        size = 0
-
-    if size is None:
-        size = 0
-
-    with db_transaction():
-        repo_size_ref = get_repository_size(repo_id)
-        try:
-            if repo_size_ref is not None:
-                update = RepositorySize.update(size_bytes=size).where(
-                    RepositorySize.repository_id == repo_id
-                )
-                update.execute()
-            else:
-                RepositorySize.create(repository_id=repo_id, size_bytes=size)
-        except IntegrityError:
-            # It it possible that this gets preempted by another worker.
-            # If that's the case, it should be safe to just ignore the IntegrityError,
-            # as the RepositorySize should have been created with the correct value.
-            logger.warning("RepositorySize for repo id %s already exists", repo_id)
-            return size
-
-    return size
+    return repo_size + size_bytes

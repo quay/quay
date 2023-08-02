@@ -12,6 +12,7 @@ from random import SystemRandom
 from flask import request, make_response, jsonify
 
 from cryptography.hazmat.primitives import serialization
+from data.model.quota import get_registry_size, queue_registry_size_calculation
 
 import features
 
@@ -204,13 +205,83 @@ class SuperUserOrganizationList(ApiResource):
     @require_fresh_login
     @verify_not_prod
     @nickname("listAllOrganizations")
+    @parse_args()
+    @query_param(
+        "limit",
+        "Limit to the number of results to return per page. Max 100.",
+        type=int,
+        default=None,
+    )
     @require_scope(scopes.SUPERUSER)
-    def get(self):
+    @page_support()
+    def get(self, parsed_args, page_token):
         """
         Returns a list of all organizations in the system.
         """
         if SuperUserPermission().can():
-            return {"organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]}
+            if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
+                raise InvalidRequest("Page limit cannot be above 100")
+
+            if parsed_args["limit"] is None:
+                return {
+                    "organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]
+                }, None
+            else:
+                orgs, next_page_token = pre_oci_model.get_organizations_paginated(
+                    limit=parsed_args["limit"],
+                    page_token=page_token,
+                )
+                return {"organizations": [org.to_dict() for org in orgs]}, next_page_token
+
+        raise Unauthorized()
+
+
+@resource("/v1/superuser/registrysize/")
+@internal_only
+@show_if(features.SUPER_USERS)
+class SuperUserRegistrySize(ApiResource):
+    """
+    Resource for the current registry size.
+    """
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("getRegistrySize")
+    @require_scope(scopes.SUPERUSER)
+    def get(self):
+        """
+        Returns size of the registry
+        """
+        if SuperUserPermission().can():
+            registry_size = get_registry_size()
+            if registry_size is not None:
+                return {
+                    "size_bytes": registry_size.size_bytes,
+                    "last_ran": registry_size.completed_ms,
+                    "queued": registry_size.queued,
+                    "running": registry_size.running,
+                }
+            else:
+                return {"size_bytes": 0, "last_ran": None, "running": False, "queued": False}
+
+        raise Unauthorized()
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("queueRegistrySizeCalculation")
+    @require_scope(scopes.SUPERUSER)
+    def post(self):
+        """
+        Queues registry size calculation
+        """
+        if SuperUserPermission().can():
+            queued, already_queued = queue_registry_size_calculation()
+            if already_queued:
+                return "", 202
+            elif queued:
+                return "", 201
+            else:
+                raise InvalidRequest("Could not queue registry size calculation")
 
         raise Unauthorized()
 
@@ -371,14 +442,32 @@ class SuperUserList(ApiResource):
     @query_param(
         "disabled", "If false, only enabled users will be returned.", type=truthy_bool, default=True
     )
+    @query_param(
+        "limit",
+        "Limit to the number of results to return per page. Max 100.",
+        type=int,
+        default=None,
+    )
     @require_scope(scopes.SUPERUSER)
-    def get(self, parsed_args):
+    @page_support()
+    def get(self, parsed_args, page_token):
         """
         Returns a list of all users in the system.
         """
         if SuperUserPermission().can():
-            users = pre_oci_model.get_active_users(disabled=parsed_args["disabled"])
-            return {"users": [user.to_dict() for user in users]}
+            if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
+                raise InvalidRequest("Page limit cannot be above 100")
+
+            if parsed_args["limit"] is None:
+                users = pre_oci_model.get_active_users(disabled=parsed_args["disabled"])
+                return {"users": [user.to_dict() for user in users]}, None
+            else:
+                users, next_page_token = pre_oci_model.get_active_users_paginated(
+                    disabled=parsed_args["disabled"],
+                    limit=parsed_args["limit"],
+                    page_token=page_token,
+                )
+                return {"users": [user.to_dict() for user in users]}, next_page_token
 
         raise Unauthorized()
 
@@ -409,6 +498,15 @@ class SuperUserList(ApiResource):
             install_user, confirmation_code = pre_oci_model.create_install_user(
                 username, password, email
             )
+
+            authed_user = get_authenticated_user()
+
+            log_action(
+                "user_create",
+                username,
+                {"email": email, "username": username, "superuser": authed_user.username},
+            )
+
             if features.MAILING:
                 send_confirmation_email(
                     install_user.username, install_user.email, confirmation_code
@@ -520,6 +618,8 @@ class SuperUserManagement(ApiResource):
             if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot delete a superuser")
 
+            log_action("user_delete", username, {"username": username})
+
             pre_oci_model.mark_user_for_deletion(username)
             return "", 204
 
@@ -542,11 +642,19 @@ class SuperUserManagement(ApiResource):
             if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot update a superuser")
 
+            authed_user = get_authenticated_user()
+
             user_data = request.get_json()
             if "password" in user_data:
                 # Ensure that we are using database auth.
                 if app.config["AUTHENTICATION_TYPE"] != "Database":
                     raise InvalidRequest("Cannot change password in non-database auth")
+
+                log_action(
+                    "user_change_password",
+                    username,
+                    {"username": username, "superuser": authed_user.username},
+                )
 
                 pre_oci_model.change_password(username, user_data["password"])
 
@@ -555,11 +663,37 @@ class SuperUserManagement(ApiResource):
                 if app.config["AUTHENTICATION_TYPE"] not in ["Database", "AppToken"]:
                     raise InvalidRequest("Cannot change e-mail in non-database auth")
 
+                old_email = user.email
+                new_email = user_data["email"]
+
                 pre_oci_model.update_email(username, user_data["email"], auto_verify=True)
+
+                log_action(
+                    "user_change_email",
+                    username,
+                    {"old_email": old_email, "email": new_email, "superuser": authed_user.username},
+                )
 
             if "enabled" in user_data:
                 # Disable/enable the user.
-                pre_oci_model.update_enabled(username, bool(user_data["enabled"]))
+                enabled = bool(user_data["enabled"])
+
+                authed_user = get_authenticated_user()
+
+                if enabled:
+                    log_action(
+                        "user_enable",
+                        username,
+                        {"username": username, "superuser": authed_user.username},
+                    )
+                else:
+                    log_action(
+                        "user_disable",
+                        username,
+                        {"username": username, "superuser": authed_user.username},
+                    )
+
+                pre_oci_model.update_enabled(username, enabled)
 
             if "superuser" in user_data:
                 config_object = config_provider.get_config()
@@ -676,8 +810,17 @@ class SuperUserOrganizationManagement(ApiResource):
         """
         if SuperUserPermission().can():
             org_data = request.get_json()
-            old_name = org_data["name"] if "name" in org_data else None
-            org = pre_oci_model.change_organization_name(name, old_name)
+            new_name = org_data["name"] if "name" in org_data else None
+
+            authed_user = get_authenticated_user()
+
+            log_action(
+                "org_change_name",
+                name,
+                {"old_name": name, "new_name": new_name, "superuser": authed_user.username},
+            )
+
+            org = pre_oci_model.change_organization_name(name, new_name)
             return org.to_dict()
 
         raise Unauthorized()

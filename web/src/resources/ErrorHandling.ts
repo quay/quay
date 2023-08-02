@@ -28,7 +28,7 @@ export class ResourceError extends Error {
   }
 }
 
-export function throwIfError(responses: PromiseSettledResult<void>[]) {
+export function throwIfError(responses: PromiseSettledResult<void>[], message?: string) {
   // Aggregate failed responses
   const errResponses = responses.filter(
     (r) => r.status == 'rejected',
@@ -36,9 +36,7 @@ export function throwIfError(responses: PromiseSettledResult<void>[]) {
 
   // If errors, collect and throw
   if (errResponses.length > 0) {
-    const bulkDeleteError = new BulkOperationError<ResourceError>(
-      'error setting permissions',
-    );
+    const bulkDeleteError = new BulkOperationError<ResourceError>(message);
     for (const response of errResponses) {
       const reason = response.reason as ResourceError;
       bulkDeleteError.addError(reason.resource, reason);

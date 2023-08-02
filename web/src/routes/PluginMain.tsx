@@ -9,9 +9,8 @@ import useChrome from '@redhat-cloud-services/frontend-components/useChrome';
 import {NavigationPath} from './NavigationPath';
 import OrganizationsList from './OrganizationsList/OrganizationsList';
 import Organization from './OrganizationsList/Organization/Organization';
-import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
+import RepositoryTagRouter from './RepositoryTagRouter';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
-import TagDetails from 'src/routes/TagDetails/TagDetails';
 import {useEffect, useState, useMemo} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import NotFound from 'src/components/errors/404';
@@ -40,11 +39,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoryDetail,
-    Component: <RepositoryDetails />,
-  },
-  {
-    path: NavigationPath.tagDetail,
-    Component: <TagDetails />,
+    Component: <RepositoryTagRouter />,
   },
 ];
 
@@ -107,7 +102,7 @@ function PluginMain() {
           <FlexItem>
             Please use{' '}
             <a
-              href="https://forms.gle/M2CtyneF3iaMT5UVA"
+              href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
               target="_blank"
               rel="noreferrer"
             >

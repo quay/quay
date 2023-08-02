@@ -23,6 +23,8 @@ from app import (
     namespace_gc_queue,
     ip_resolver,
     url_scheme_and_hostname,
+    rh_user_api,
+    rh_marketplace_api,
 )
 
 from auth import scopes
@@ -35,9 +37,9 @@ from auth.permissions import (
     SuperUserPermission,
 )
 from data import model
-from data.billing import get_plan
 from data.database import Repository as RepositoryTable
 from data.users.shared import can_create_user
+from data.billing import get_plan
 from endpoints.api import (
     ApiResource,
     nickname,
@@ -405,10 +407,11 @@ class User(ApiResource):
         try:
             if "password" in user_data:
                 logger.debug("Changing password for user: %s", user.username)
-                log_action("account_change_password", user.username)
 
                 # Change the user's password.
                 model.user.change_password(user, user_data["password"])
+
+                log_action("account_change_password", user.username)
 
                 # Login again to reset their session cookie.
                 success, headers = common_login(user.uuid)
@@ -421,19 +424,35 @@ class User(ApiResource):
             if "invoice_email" in user_data:
                 logger.debug("Changing invoice_email for user: %s", user.username)
                 model.user.change_send_invoice_email(user, user_data["invoice_email"])
+                log_action(
+                    "user_change_invoicing",
+                    user.username,
+                    {"invoice_email": user_data["invoice_email"]},
+                )
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in user_data:
                 logger.debug("Changing user tag expiration to: %ss", user_data["tag_expiration_s"])
                 model.user.change_user_tag_expiration(user, user_data["tag_expiration_s"])
+                log_action(
+                    "user_change_tag_expiration",
+                    user.username,
+                    {"tag_expiration": user_data["tag_expiration_s"]},
+                )
 
             if (
                 "invoice_email_address" in user_data
                 and user_data["invoice_email_address"] != user.invoice_email_address
             ):
                 model.user.change_invoice_email_address(user, user_data["invoice_email_address"])
+                log_action(
+                    "user_change_invoicing",
+                    user.username,
+                    {"invoice_email_address": user_data["invoice_email_address"]},
+                )
 
             if "email" in user_data and user_data["email"] != user.email:
                 new_email = user_data["email"]
+                old_email = user.email
                 if model.user.find_user_by_email(new_email):
                     # Email already used.
                     raise request_error(message="E-mail address already used")
@@ -448,6 +467,11 @@ class User(ApiResource):
                     send_change_email(user.username, user_data["email"], confirmation_code)
                 else:
                     model.user.update_email(user, new_email, auto_verify=not features.MAILING)
+                    log_action(
+                        "user_change_email",
+                        user.username,
+                        {"email": new_email, "old_email": old_email},
+                    )
 
             if features.USER_METADATA:
                 metadata = {}
@@ -458,12 +482,14 @@ class User(ApiResource):
 
                 if len(metadata) > 0:
                     model.user.update_user_metadata(user, metadata)
+                    log_action("user_change_metadata", user.username, metadata)
 
             # Check for username rename. A username can be renamed if the feature is enabled OR the user
             # currently has a confirm_username prompt.
             if "username" in user_data:
                 confirm_username = model.user.has_user_prompt(user, "confirm_username")
                 new_username = user_data.get("username")
+                old_username = user.username
                 previous_username = user.username
 
                 rename_allowed = features.USER_RENAME or (
@@ -477,6 +503,7 @@ class User(ApiResource):
                         raise request_error(message="Username is already in use")
 
                     user = model.user.change_username(user.id, new_username)
+                    log_action("user_change_name", new_username, {"old_username": old_username})
                 elif confirm_username:
                     model.user.remove_user_prompt(user, "confirm_username")
 
@@ -547,6 +574,12 @@ class User(ApiResource):
                 prompts=prompts,
             )
 
+            log_action(
+                "user_create",
+                user_data["username"],
+                {"email": user_data.get("email"), "username": user_data["username"]},
+            )
+
             email_address_confirmed = handle_invite_code(invite_code, new_user)
             if features.MAILING and not email_address_confirmed:
                 confirmation_code = model.user.create_confirm_email_code(new_user)
@@ -572,9 +605,16 @@ class User(ApiResource):
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             abort(404)
 
+        authed_user = get_authenticated_user()
+
         model.user.mark_namespace_for_deletion(
             get_authenticated_user(), all_queues, namespace_gc_queue
         )
+
+        deleted_user = model.user.get_user_by_id(authed_user.id)
+
+        log_action("user_delete", deleted_user.username, {"username": authed_user.username})
+
         return "", 204
 
 
@@ -602,6 +642,15 @@ class PrivateRepositories(ApiResource):
                 plan = get_plan(cus.subscription.plan.id)
                 if plan:
                     repos_allowed = plan["privateRepos"]
+        if features.RH_MARKETPLACE:
+            # subscriptions in marketplace will get added to private repo count
+            user_account_number = rh_user_api.get_account_number(user)
+            if user_account_number:
+                marketplace_subscriptions = rh_marketplace_api.find_stripe_subscription(
+                    user_account_number
+                )
+                for user_subscription in marketplace_subscriptions:
+                    repos_allowed += user_subscription["privateRepos"]
 
         return {"privateCount": private_repos, "privateAllowed": (private_repos < repos_allowed)}
 
@@ -645,6 +694,8 @@ class ClientKey(ApiResource):
         if not result:
             raise request_error(message=error_message)
 
+        log_action("user_generate_client_key", username)
+
         return {"key": authentication.encrypt_user_password(password).decode("ascii")}
 
 
@@ -661,6 +712,15 @@ def conduct_signin(username_or_email, password, invite_code=None):
 
         success, headers = common_login(found_user.uuid)
         if success:
+            if app.config.get("ACTION_LOG_AUDIT_LOGINS"):
+                log_action(
+                    "login_success",
+                    found_user.username,
+                    {
+                        "type": "quayauth",
+                        "useragent": request.user_agent.string,
+                    },
+                )
             return {"success": True}, 200, headers
         else:
             needs_email_verification = True
@@ -862,8 +922,9 @@ class Signout(ApiResource):
         """
         Request that the current user be signed out.
         """
+        user = get_authenticated_user()
         # Invalidate all sessions for the user.
-        model.user.invalidate_all_sessions(get_authenticated_user())
+        model.user.invalidate_all_sessions(user)
 
         # Clear out the user's identity.
         identity_changed.send(app, identity=AnonymousIdentity())
@@ -871,6 +932,8 @@ class Signout(ApiResource):
         # Remove the user's session cookie.
         logout_user()
 
+        if user:
+            log_action("logout_success", user.username)
         return {"success": True}
 
 

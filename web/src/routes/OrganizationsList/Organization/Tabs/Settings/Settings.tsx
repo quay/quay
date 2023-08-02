@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useState, ReactNode} from 'react';
 import {
   Tabs,
   Tab,
@@ -7,47 +7,153 @@ import {
   FlexItem,
   FormGroup,
   Form,
+  FormAlert,
   TextInput,
   FormSelect,
   FormSelectOption,
   ActionGroup,
   Button,
+  Alert,
+  AlertGroup,
 } from '@patternfly/react-core';
 import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
+import {IOrganization} from 'src/resources/OrganizationResource';
+import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
+import {addDisplayError} from 'src/resources/ErrorHandling';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+
+type validate = 'success' | 'warning' | 'error' | 'default';
+const timeMachineOptions = {
+  '0s': 'a few seconds',
+  '1d': 'a day',
+  '1w': '7 days',
+  '2w': '14 days',
+  '4w': 'a month',
+};
 
 const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
+  const quayConfig = useQuayConfig();
   const organizationName = props.organizationName;
-
-  const {user} = useCurrentUser();
+  const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
     useOrganization(organizationName);
+  const [error, setError] = useState<string>('');
+
+  const {updateOrgSettings} = useOrganizationSettings({
+    name: props.organizationName,
+    onSuccess: (result) => {
+      setAlerts(prevAlerts => {
+        return [...prevAlerts,
+          <Alert key="alert" variant="success" title="Successfully updated settings" isInline={true} timeout={5000} />
+        ]
+      });
+    },
+    onError: (err) => {
+      setAlerts(prevAlerts => {
+        return [...prevAlerts,
+          <Alert key="alert" variant="danger" title={err.response.data.error_message} isInline={true} timeout={5000} />
+        ]
+      });
+    },
+  });
+
+  const [alerts, setAlerts] = useState<ReactNode[]>([]);
 
   // Time Machine
-  const timeMachineOptions = ['1 week', '1 month', '1 year', 'Never'];
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions[0],
+    timeMachineOptions[quayConfig.config.TAG_EXPIRATION_OPTIONS[0]],
   );
+  const namespaceTimeMachineExpiry = isUserOrganization ? user?.tag_expiration_s : (organization as IOrganization)?.tag_expiration_s;
 
   // Email
-  const [emailFormValue, setEmailFormValue] = useState('');
+  const namespaceEmail = isUserOrganization ? user?.email || '' : (organization as any)?.email || '';
+  const [emailFormValue, setEmailFormValue] = useState<string>('');
+  const [validated, setValidated] = useState<validate>('default');
+
   useEffect(() => {
-    if (!loading && organization) {
-      setEmailFormValue((organization as any).email);
-    } else if (isUserOrganization) {
-      setEmailFormValue(user.email);
+    setEmailFormValue(namespaceEmail);
+    const humanized_expiry = humanizeTimeForExpiry(namespaceTimeMachineExpiry);
+    for (let key of Object.keys(timeMachineOptions)) {
+      if (humanized_expiry == timeMachineOptions[key]){
+        setTimeMachineFormValue(key);
+        break;
+      }
     }
-  }, [loading, isUserOrganization]);
+  }, [loading, isUserLoading, isUserOrganization]);
+
+
+  const handleEmailChange = (emailFormValue: string) => {
+    setEmailFormValue(emailFormValue);
+    if (namespaceEmail == emailFormValue) {
+      setValidated('default');
+      setError('');
+      return;
+    }
+
+    if (!emailFormValue) {
+      setValidated('error');
+      setError('Please enter email associate with namespace');
+      return;
+    }
+
+    if (namespaceEmail != emailFormValue) {
+      if (isValidEmail(emailFormValue)) {
+        setValidated('success');
+        setError('');
+      }
+      else {
+        setValidated('error');
+        setError('Please enter a valid email address');
+      }
+    }
+  }
+
+  const checkForChanges = () => {
+    if (namespaceEmail != emailFormValue) {
+      return validated == 'success';
+    }
+
+    return getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry;
+  }
+
+  const updateSettings = async () => {
+    try {
+      const response = await updateOrgSettings({
+        namespace: props.organizationName,
+        tag_expiration_s:
+          getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry
+            ? getSeconds(timeMachineFormValue)
+            : null,
+        email: namespaceEmail != emailFormValue ? emailFormValue : null,
+        isUser: isUserOrganization,
+      });
+      return response;
+    } catch (error) {
+      addDisplayError('Unable to update namespace settings', error);
+    }
+  }
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    updateSettings();
+  };
 
   return (
     <Form id="form-form" maxWidth="70%">
+      {validated === 'error' && (
+        <FormAlert>
+          <Alert variant="danger" title={error} aria-live="polite" isInline />
+        </FormAlert>
+      )}
       <FormGroup
         isInline
         label="Organization"
         fieldId="form-organization"
-        helperText={'Orgnization names cannot be changed once set.'}
+        helperText={'Namespace names cannot be changed once set.'}
       >
         <TextInput
           isDisabled
@@ -67,7 +173,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           type="email"
           id="modal-with-form-form-name"
           value={emailFormValue}
-          onChange={(val) => setEmailFormValue(val)}
+          onChange={handleEmailChange}
         />
       </FormGroup>
 
@@ -84,8 +190,12 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           value={timeMachineFormValue}
           onChange={(val) => setTimeMachineFormValue(val)}
         >
-          {timeMachineOptions.map((option, index) => (
-            <FormSelectOption key={index} value={option} label={option} />
+          {quayConfig.config.TAG_EXPIRATION_OPTIONS.map((option, index) => (
+            <FormSelectOption
+              key={index}
+              value={option}
+              label={timeMachineOptions[option]}
+            />
           ))}
         </FormSelect>
       </FormGroup>
@@ -95,10 +205,19 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           justifyContent={{default: 'justifyContentFlexEnd'}}
           width={'100%'}
         >
-          <Button variant="primary">Save</Button>
-          <Button variant="link">Cancel</Button>
+          <Button
+            variant="primary"
+            type="submit"
+            onClick={(event) => onSubmit(event)}
+            isDisabled={!checkForChanges()}
+          >
+            Save
+          </Button>
         </Flex>
       </ActionGroup>
+      <AlertGroup isLiveRegion>
+        {alerts}
+      </AlertGroup>
     </Form>
   );
 };

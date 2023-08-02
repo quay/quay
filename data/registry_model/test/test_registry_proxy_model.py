@@ -1291,7 +1291,7 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         self, create_repo, proxy_manifest_response, initialized_db
     ):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-        limit_bytes = 83370727
+        limit_bytes = 83375093
         namespace = user.get_user_or_org(self.orgname)
         namespacequota.create_namespace_quota(namespace, limit_bytes)
 
@@ -1310,7 +1310,7 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         assert first_manifest is not None
         first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
         assert first_tag is not None
-        assert namespacequota.get_namespace_size(self.orgname) == 83370727
+        assert namespacequota.get_namespace_size(self.orgname) == 83375093
 
         # pull a different tag when the quota limit is reached and verify
         # that the previous tag was removed

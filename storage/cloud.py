@@ -1,31 +1,27 @@
-import os
-import logging
 import copy
+import logging
+import os
 import urllib
-
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
-from io import BufferedIOBase, StringIO, BytesIO
+from io import BufferedIOBase, BytesIO, StringIO
 from itertools import chain
 from uuid import uuid4
 
+import boto3.session
 import botocore.config
 import botocore.exceptions
-import boto3.session
 from botocore.client import Config
-
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from prometheus_client import Counter
 
+from storage.basestorage import BaseStorageV2
 from util.ipresolver import ResolvedLocation
 from util.registry import filelike
-from storage.basestorage import BaseStorageV2
-
 
 logger = logging.getLogger(__name__)
 
@@ -628,6 +624,10 @@ class _CloudStorage(BaseStorageV2):
         self._initialize_cloud_conn()
         chunk_list = self._chunk_list_from_metadata(storage_metadata)
 
+        if len(chunk_list) == 0:
+            # Skip empty chunk list
+            return
+
         # Here is where things get interesting: we are going to try to assemble this server side
         # In order to be a candidate all parts (after offsets have been computed) must be at least 5MB
         server_side_assembly = False
@@ -997,12 +997,12 @@ class CloudFrontedS3Storage(S3Storage):
         self,
         context,
         cloudfront_distribution_domain,
-        cloudfront_distribution_org_overrides,
         cloudfront_key_id,
         cloudfront_privatekey_filename,
         storage_path,
         s3_bucket,
         s3_region,
+        cloudfront_distribution_org_overrides=None,
         *args,
         **kwargs,
     ):
@@ -1010,11 +1010,11 @@ class CloudFrontedS3Storage(S3Storage):
             context, storage_path, s3_bucket, *args, **kwargs
         )
 
-        self.cloudfront_distribution_org_overrides = cloudfront_distribution_org_overrides
         self.s3_region = s3_region
         self.cloudfront_distribution_domain = cloudfront_distribution_domain
         self.cloudfront_key_id = cloudfront_key_id
         self.cloudfront_privatekey = self._load_private_key(cloudfront_privatekey_filename)
+        self.cloudfront_distribution_org_overrides = cloudfront_distribution_org_overrides
 
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
@@ -1047,7 +1047,10 @@ class CloudFrontedS3Storage(S3Storage):
         domain = self.cloudfront_distribution_domain
         if kwargs:
             namespace = kwargs.get("namespace")
-            if namespace in self.cloudfront_distribution_org_overrides:
+            if (
+                self.cloudfront_distribution_org_overrides
+                and namespace in self.cloudfront_distribution_org_overrides
+            ):
                 domain = self.cloudfront_distribution_org_overrides.get(namespace)
 
         url = "https://%s/%s" % (domain, path)

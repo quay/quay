@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Flex, FlexItem, SearchInput} from '@patternfly/react-core';
+import {Flex, FlexItem, TextInput} from '@patternfly/react-core';
 import {PackagesListItem} from './Types';
 
 export function PackagesFilter(props: PackagesFilterProps) {
@@ -21,11 +21,15 @@ export function PackagesFilter(props: PackagesFilterProps) {
   return (
     <Flex className="pf-u-mt-md">
       <FlexItem>
-        <SearchInput
+        <TextInput
+          isRequired
+          type="search"
+          id="packages-search"
+          key="packages-search"
+          name="packages-search"
           placeholder="Filter Packages..."
           value={searchTerm}
           onChange={onSearchTermChanged}
-          onClear={() => onSearchTermChanged('')}
         />
       </FlexItem>
     </Flex>

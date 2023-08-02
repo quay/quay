@@ -232,10 +232,10 @@ export async function deleteRobotAccount(orgname: string, robotname: string) {
 
 export async function bulkDeleteRobotAccounts(
   orgname: string,
-  robotaccounts: string[],
+  robotaccounts: IRobot[],
 ) {
   const responses = await Promise.allSettled(
-    robotaccounts.map((robot) => deleteRobotAccount(orgname, robot)),
+    robotaccounts.map((robot) => deleteRobotAccount(orgname, robot.name)),
   );
 
   // Aggregate failed responses
@@ -292,7 +292,8 @@ export async function regenerateRobotToken(
   isUser = false,
 ): Promise<IRobot[]> {
   const robot = robotName.replace(orgName + '+', '');
-  const updatePermsUrl = `/api/v1/organization/${orgName}/robots/${robot}/regenerate`;
+  const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
+  const updatePermsUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/regenerate`;
   const response: AxiosResponse = await axios.post(updatePermsUrl, {});
   assertHttpCode(response.status, 200);
   return response.data;

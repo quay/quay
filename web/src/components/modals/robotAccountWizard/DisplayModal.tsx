@@ -40,7 +40,7 @@ export default function DisplayModal(props: DisplayModalProps) {
       title={props.title}
       isOpen={props.isModalOpen}
       onClose={handleModalToggle}
-      footer={props.showSave ? footerWithSave : footerWithoutSave}
+      footer={props.showFooter ? (props.showSave ? footerWithSave : footerWithoutSave) : null}
     >
       {props.Component}
     </Modal>
@@ -55,4 +55,5 @@ interface DisplayModalProps {
   onClose?: () => void;
   onSave?: () => void;
   showSave: boolean;
+  showFooter?: boolean
 }

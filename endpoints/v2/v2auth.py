@@ -21,6 +21,7 @@ from data.database import RepositoryState
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from data.model.repo_mirror import get_mirroring_robot
+from endpoints.api import log_action
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (
@@ -36,7 +37,9 @@ from util.names import (
     parse_namespace_repository,
     REPOSITORY_NAME_REGEX,
     REPOSITORY_NAME_EXTENDED_REGEX,
+    parse_robot_username,
 )
+from util.request import get_request_ip
 from util.security.registry_jwt import (
     generate_bearer_token,
     build_context_and_subject,
@@ -125,9 +128,37 @@ def generate_registry_jwt(auth_result):
             "repository": scope_results[0].repository,
         }
 
+    # determine if this is solely a login event
+    # need to use scope_params here since scope_results could be empty in case of lack of permissions
+    is_login_event = user_event_data["action"] == "login" and len(scope_params) == 0
+
     # Send the user event.
-    if get_authenticated_user() is not None:
-        event = userevents.get_event(get_authenticated_user().username)
+    user = get_authenticated_user()
+    if user is not None:
+        if is_login_event and app.config.get("ACTION_LOG_AUDIT_LOGINS"):
+            metadata = {}
+            context = get_authenticated_context()
+
+            if context.appspecifictoken is not None:
+                metadata["kind"] = "app_specific_token"
+                metadata["app_specific_token_title"] = context.appspecifictoken.title
+
+            if context.robot is not None:
+                metadata["kind"] = "robot"
+                metadata["robot"] = context.robot.username
+
+            if context.user is not None:
+                metadata["kind"] = "user"
+
+            metadata["type"] = "v2auth"
+            metadata["useragent"] = request.user_agent.string
+
+            log_action(
+                "login_success",
+                user.username if not user.robot else parse_robot_username(user.username)[0],
+                metadata=metadata,
+            )
+        event = userevents.get_event(user.username)
         event.publish_event_data("docker-cli", user_event_data)
 
     # Build the signed JWT.

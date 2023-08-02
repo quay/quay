@@ -4,6 +4,14 @@ import logging
 
 from typing import Callable
 from peewee import Select, fn
+from data.model.oci.manifest import is_child_manifest
+from data.model.quota import (
+    add_blob_size,
+    blob_exists_in_namespace,
+    get_namespace_id_from_repository,
+    is_blob_alive,
+    reset_backfill,
+)
 
 import features
 from app import app, storage
@@ -162,14 +170,59 @@ class ProxyModel(OCIModel):
         if (curr_ns_size + image_size) <= ns_quota_limit:
             return
 
+        reclaimable_size = 0
+        namespace_id = get_namespace_id_from_repository(repo_ref.id)
         tags = oci.tag.get_tag_with_least_lifetime_end_for_ns(repo_ref.namespace_name)
         if tags is not None:
             for tag in tags:
-                oci.tag.delete_tag(tag.repository_id, tag.name)
-                repository.force_cache_repo_size(tag.repository_id)
-                curr_ns_size = namespacequota.get_namespace_size(repo_ref.namespace_name)
-                if (curr_ns_size + image_size) <= ns_quota_limit:
+                is_manifest_list = (
+                    ManifestChild.select(1).where(ManifestChild.manifest == tag.manifest).exists()
+                )
+
+                # Get all the blobs under this manifest. If a manifest list get all the blobs
+                # under the child manifests as well
+                blobs = None
+                if is_manifest_list:
+                    blobs = (
+                        ImageStorage.select(ImageStorage.id, ImageStorage.image_size)
+                        .join(ManifestBlob, on=(ManifestBlob.blob == ImageStorage.id))
+                        .join(
+                            ManifestChild,
+                            on=(ManifestChild.child_manifest == ManifestBlob.manifest),
+                        )
+                        .where(ManifestChild.manifest == tag.manifest)
+                    )
+                else:
+                    blobs = (
+                        ImageStorage.select(ImageStorage.id, ImageStorage.image_size)
+                        .join(ManifestBlob, on=(ManifestBlob.blob == ImageStorage.id))
+                        .where(ManifestBlob.manifest == tag.manifest)
+                    )
+
+                # We remove duplicates within the loop to prevent using "distinct" in the above query.
+                # If the blob is not being referenced by an alive tag we'll get that size back
+                # when it's GC'd, so add it to the reclaimable total.
+                seen_blobs = []
+                for blob in blobs:
+                    if blob.id not in seen_blobs and not is_blob_alive(
+                        namespace_id, tag.id, blob.id
+                    ):
+                        size = blob.image_size if blob.image_size is not None else 0
+                        reclaimable_size = reclaimable_size + size
+                    seen_blobs.append(blob.id)
+
+                updated = oci.tag.remove_tag_from_timemachine(
+                    tag.repository_id,
+                    tag.name,
+                    tag.manifest,
+                    include_submanifests=is_manifest_list,
+                    is_alive=True,
+                )
+
+                # If we get enough size back from deleting this tag, exit
+                if updated and reclaimable_size > image_size:
                     return
+
         # if we got here, then there aren't enough tags in the namespace to expire, so we raise an exception
         raise QuotaExceededException
 
@@ -178,6 +231,7 @@ class ProxyModel(OCIModel):
         repository_ref,
         manifest_digest,
         allow_dead=False,
+        allow_hidden=False,
         require_available=False,
         raise_on_error=True,
     ):
@@ -318,10 +372,6 @@ class ProxyModel(OCIModel):
 
         return tag
 
-    def _recalculate_repository_size(self, repo_ref: RepositoryReference) -> None:
-        if features.QUOTA_MANAGEMENT:
-            repository.force_cache_repo_size(repo_ref.id)
-
     def _create_and_tag_manifest(
         self,
         repo_ref: RepositoryReference,
@@ -405,7 +455,6 @@ class ProxyModel(OCIModel):
                     q.execute()
                     self._create_placeholder_blobs(upstream_manifest, manifest.id, repo_ref.id)
                     db_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
-                    self._recalculate_repository_size(repo_ref)
                     return Tag.for_tag(db_tag, self._legacy_image_id_handler), False
 
         # if we got here, the manifest is stale, so we both create a new manifest
@@ -444,7 +493,6 @@ class ProxyModel(OCIModel):
                     db_manifest = oci.manifest.create_manifest(
                         repository_ref.id, manifest, raise_on_error=True
                     )
-                    self._recalculate_repository_size(repository_ref)
                     if db_manifest is None:
                         return None, None
 
@@ -508,7 +556,6 @@ class ProxyModel(OCIModel):
         with db_disallow_replica_use():
             with db_transaction():
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
-                self._recalculate_repository_size(repository_ref)
                 expiration = self._config.expiration_s or None
                 tag = Tag.for_tag(
                     oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration),
@@ -596,7 +643,6 @@ class ProxyModel(OCIModel):
             with complete_when_uploaded(uploader):
                 uploader.upload_chunk(app.config, resp.raw, start_offset, length)
                 uploader.commit_to_blob(app.config, digest)
-        self._recalculate_repository_size(repo_ref)
 
     def convert_manifest(
         self,
@@ -628,6 +674,14 @@ class ProxyModel(OCIModel):
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:
             ManifestBlob.create(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
+
+            # Add blobs to namespace/repo total. If feature is not enabled the total
+            # should be marked stale
+            if features.QUOTA_MANAGEMENT:
+                add_blob_size(repo_id, manifest_id, {blob.id: blob.image_size})
+            else:
+                reset_backfill(repo_id)
+
         return blob
 
     def _create_placeholder_blobs(

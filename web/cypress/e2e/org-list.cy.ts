@@ -25,7 +25,9 @@ describe('Org List Page', () => {
   });
 
   it('Create Org', () => {
+    cy.intercept('/organization').as('getOrganization');
     cy.visit('/organization');
+    cy.wait('@getOrganization');
 
     // Open and cancel modal
     cy.get('#create-organization-button').click();
@@ -35,12 +37,8 @@ describe('Org List Page', () => {
     cy.get('#create-organization-button').click();
     cy.get('#create-org-name-input').type('cypress');
     cy.get('#create-org-email-input').type('cypress@redhat.com');
-    cy.get('#create-org-confirm').click();
+    cy.get('#create-org-confirm').click({timeout: 10000});
 
-    // We fire too many requests with API v1, need to wait for server to respond
-    cy.wait(9000);
-
-    // Query for new org
     cy.get('input[name="search input"]').type('cypress');
     cy.contains('1 - 1 of 1');
 
@@ -90,12 +88,10 @@ describe('Org List Page', () => {
     cy.get('input[id="delete-confirmation-input"]').type('confirm');
     cy.get('[id="bulk-delete-modal"]').within(() =>
       cy.get('button:contains("Delete")').click(),
-    );
-
-    // Validate org was deleted
-    cy.wait(9000);
-    cy.get('#toolbar-text-input').type('projectquay');
-    cy.contains('0 - 0 of 0');
+    ).then(() => {
+      cy.get('#toolbar-text-input').clear().type('projectquay');
+      cy.contains('0 - 0 of 0');
+    });
   });
 
   it('Pagination', () => {

@@ -12,12 +12,21 @@ import {useCallback, useState} from 'react';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import { useOrganization } from 'src/hooks/UseOrganization';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export default function Organization() {
   const location = useLocation();
+  const quayConfig = useQuayConfig();
   const {organizationName} = useParams();
+  const {usernames} = useOrganizations();
+  const isUserOrganization = usernames.includes(organizationName);
+
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const {organization} = useOrganization(organizationName);
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
     searchParams.get('tab') || 'Repositories',
@@ -31,18 +40,33 @@ export default function Organization() {
     [],
   );
 
+  const fetchTabVisibility = (tabname) => {
+    if (quayConfig?.config?.REGISTRY_STATE == 'readonly') {
+      return false;
+    }
+
+    if (!isUserOrganization && organization && (tabname == 'Settings' || tabname == 'Robot accounts')) {
+      return organization.is_org_admin || organization.is_admin;
+    }
+    return false;
+  }
+
   const repositoriesSubNav = [
     {
       name: 'Repositories',
       component: <RepositoriesList organizationName={organizationName} />,
+      visible: true,
     },
     {
       name: 'Robot accounts',
       component: <RobotAccountsList organizationName={organizationName} />,
+      visible: fetchTabVisibility('Robot accounts'),
+
     },
     {
       name: 'Settings',
       component: <Settings organizationName={organizationName} />,
+      visible: fetchTabVisibility('Settings'),
     },
   ];
 
@@ -62,7 +86,7 @@ export default function Organization() {
         padding={{default: 'noPadding'}}
       >
         <Tabs activeKey={activeTabKey} onSelect={onTabSelect}>
-          {repositoriesSubNav.map((nav) => (
+          {repositoriesSubNav.filter((nav) => nav.visible).map((nav)=> (
             <Tab
               key={nav.name}
               eventKey={nav.name}

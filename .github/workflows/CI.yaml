@@ -15,10 +15,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 
@@ -50,9 +51,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 
@@ -70,7 +73,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -89,21 +93,9 @@ jobs:
     - name: Check requirements.txt
       run: |
         pip install wheel  # allow pip to use wheel instead of legacy 'setup.py install'
-        pip install -r ./requirements.txt
+        ./hack/verify-requirements.sh
 
-        TMP_REQUIREMENTS=$(mktemp "${TMPDIR:-/tmp/}requirements-txt.XXXXXXXX")
-        TMP_PIP_FREEZE=$(mktemp "${TMPDIR:-/tmp/}pip-freeze.XXXXXXXX")
-        trap 'rc=$?; rm -f "$TMP_REQUIREMENTS" "$TMP_PIP_FREEZE"; exit $rc' EXIT
-
-        sed -n 's/ *#.*//; s/\[[^]]*\]//g; s/^pip==.*/pip/; /./p' ./requirements.txt | sort >"$TMP_REQUIREMENTS"
-        pip freeze --all | sed 's/^pip==.*/pip/' | sort >"$TMP_PIP_FREEZE"
-
-        if ! diff -u "$TMP_REQUIREMENTS" "$TMP_PIP_FREEZE"; then
-          echo >&2 "requirements.txt doesn't have all dependencies pinned. Please check output above to see what should be added."
-          exit 1
-        fi
-
-    - name: Install dev dependencies
+    - name: Install dependencies
       run: |
         pip install -r ./requirements-dev.txt
 
@@ -115,9 +107,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 
@@ -136,9 +130,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 
@@ -152,37 +148,28 @@ jobs:
     - name: tox
       run: tox -e py39-registry
 
-  docker-amd64:
-    name: Docker Build amd64
+  cypress:
+    name: Cypress Tests
     runs-on: ubuntu-22.04
     steps:
 
-    - uses: actions/checkout@v3
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Install yq
-      env:
-        VERSION: v4.14.2
-        BINARY: yq_linux_amd64
-      run: |
-        wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY} -O /usr/local/bin/yq
-        chmod +x /usr/local/bin/yq
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Docker Build (linux/amd64)
+    - name: Docker Build
       env:
        DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/amd64 -t localhost/quay-local:latest .
+      run: docker build -t localhost/quay-local:latest .
 
     - name: Start Quay
       run: |
         docker-compose up -d redis quay-db
         docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
         DOCKER_USER="1001:0" docker-compose up -d --no-build quay
+
     - name: Checkout
       uses: actions/checkout@v3
     
@@ -190,7 +177,7 @@ jobs:
       run: cd web && npm run quay:seed
 
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 
@@ -206,7 +193,7 @@ jobs:
         make integration-test
     
     - name: Cypress run
-      uses: cypress-io/github-action@v4.2.0
+      uses: cypress-io/github-action@v5
       with:
         browser: chrome
         build: npm run build
@@ -216,79 +203,29 @@ jobs:
         working-directory: web
       env:
         REACT_QUAY_APP_API_URL: http://localhost:8080
-    - uses: actions/upload-artifact@v2
+
+    - uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-screenshots
-        path: cypress/screenshots
-    - uses: actions/upload-artifact@v2
+        path: web/cypress/screenshots
+
+    - uses: actions/upload-artifact@v3
       if: always()
       with:
         name: cypress-videos
-        path: cypress/videos
-
-  docker-arm64:
-    name: Docker Build arm64
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Build image (linux/arm64)
-      uses: docker/build-push-action@v3
-      with:
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/arm64
-
-  docker-ppc64le:
-    name: Docker Build ppc64le
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Build image (linux/ppc64le)
-      uses: docker/build-push-action@v3
-      with:
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/ppc64le
-
-  docker-s390x:
-    name: Docker Build s390x
-    runs-on: ubuntu-20.04
-    steps:
-
-    - uses: actions/checkout@v3
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Docker Build (linux/s390x)
-      env:
-       DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/s390x .
+        path: web/cypress/videos
 
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 
@@ -310,9 +247,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.6
-      uses: actions/setup-python@v1
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
 

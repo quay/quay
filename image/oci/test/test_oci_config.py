@@ -32,11 +32,7 @@ SAMPLE_CONFIG = """{
         "Entrypoint": [
             "/bin/my-app-binary"
         ],
-        "Cmd": [
-            "--foreground",
-            "--config",
-            "/etc/my-app.d/default.cfg"
-        ],
+        "Cmd": null,
         "Volumes": {
             "/var/job-result-data": {},
             "/var/log/my-app-logs": {}
@@ -71,9 +67,9 @@ SAMPLE_CONFIG = """{
 def test_parse_basic_config():
     config = OCIConfig(Bytes.for_string_or_unicode(SAMPLE_CONFIG))
     assert (
-        config.digest == "sha256:b8410e43166c4e6b11cc0db4ede89539f206d5c9bb43d31d5b37f509b78d3f01"
+        config.digest == "sha256:c692ed232a0d8a30ba61f3f90e6e3113af36932e0e0ee9d88626f84fe1e348c2"
     )
-    assert config.size == 1582
+    assert config.size == 1483
 
     history = list(config.history)
     assert config.has_empty_layer

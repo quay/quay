@@ -46,7 +46,7 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
             return
 
         if repository_name is not None:
-            if repository is None or namespace_name is not None:
+            if repository is not None or namespace_name is None:
                 raise ValueError(
                     "Incorrect argument provided when logging action logs, namespace name should not be "
                     "empty"
@@ -56,30 +56,28 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         if timestamp is None:
             timestamp = datetime.today()
 
-        account_id = None
-        performer_id = None
-        repository_id = None
+        username = None
+        performer_name = None
+        repo_name = None
 
         if namespace_name is not None:
             ns_user = model.user.get_namespace_user(namespace_name)
             if ns_user is not None:
-                account_id = ns_user.id
+                username = ns_user.username
 
-        if performer is not None:
-            performer_id = performer.id
+        if performer is not None and performer.username:
+            performer_name = performer.username
 
-        if repository is not None:
-            repository_id = repository.id
-
-        kind_id = model.log._get_log_entry_kind(kind_name)
+        if repository is not None and repository.name:
+            repo_name = repository.name
 
         metadata_json = metadata or {}
 
         log_data = {
-            "kind": kind_id,
-            "account": account_id,
-            "performer": performer_id,
-            "repository": repository_id,
+            "kind": kind_name,
+            "account": username,
+            "performer": performer_name,
+            "repository": repo_name,
             "ip": ip,
             "metadata_json": metadata_json or {},
             "datetime": timestamp,

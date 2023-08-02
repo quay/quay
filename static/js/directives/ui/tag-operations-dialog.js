@@ -217,6 +217,25 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         }, errorHandler);
       };
 
+      $scope.permanentlyDeleteTag = function(tag, manifest_digest, callback){
+        if ($scope.repository.can_write) {
+          var params = {
+            'repository': $scope.repository.namespace + '/' + $scope.repository.name,
+            'tag': tag.name
+          };
+          var data = {
+            'manifest_digest': manifest_digest,
+            'include_submanifests': true,
+            'is_alive': false,
+          };
+          var errorHandler = ApiService.errorDisplay('Cannot permanently delete tag', callback);
+          ApiService.removeTagFromTimemachine(data, params).then(function(res){
+            callback(true)
+            markChanged([], [tag]);
+          }, errorHandler)
+        }
+      }
+
       $scope.getFormattedTimespan = function(seconds) {
         if (!seconds) {
           return null;
@@ -384,6 +403,18 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
 
           $element.find('#restoreTagModal').modal('show');
+        },
+
+        'askPermanentlyDeleteTag': function(tag, manifest_digest) {
+          if ($scope.alertOnTagOpsDisabled()) {
+            console.log("alertOnTagOpsDisabled")
+            return;
+          }
+
+          $scope.permanentlyDeleteTagInfo = {
+            'tag': tag,
+            'manifest_digest': manifest_digest,
+          };
         }
       };
     }

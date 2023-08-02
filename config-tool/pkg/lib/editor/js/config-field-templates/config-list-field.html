@@ -1,0 +1,17 @@
+<div class="config-list-field-element">
+  <ul ng-show="binding && binding.length">
+    <li class="item" ng-repeat="item in binding">
+      <span class="item-title">{{ item }}</span>
+      <span class="item-delete">
+        <a ng-click="removeItem(item)">Remove</a>
+      </span>
+    </li>
+  </ul>
+  <span class="empty" ng-if="!binding || binding.length == 0">No {{ itemTitle }}s defined</span>
+  <form class="form-control-container" ng-submit="addItem()">
+    <input type="text" class="form-control" placeholder="{{ placeholder }}"
+           ng-pattern="getRegexp(itemPattern)"
+           ng-model="newItemName" style="display: inline-block">
+    <button class="btn btn-default" style="display: inline-block">Add</button>
+  </form>
+</div>

@@ -29,11 +29,7 @@ RUN set -ex\
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
 WORKDIR /opt/app-root/src
-# This argument must be repeated, and should have the same default as
-# the other CONFIGTOOL_VERSION argument.
-ARG CONFIGTOOL_VERSION=v0.1.15
-RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
-	| tar xz --strip-components=4 --exclude='*.go'
+COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines \
 	; npm run --quiet build\
@@ -58,6 +54,9 @@ RUN set -ex\
         libjpeg-turbo-devel \
 		wget \
 		rust-toolset \
+		libxml2-devel \
+		libxslt-devel \
+		freetype-devel \
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
@@ -125,7 +124,7 @@ RUN npm run --quiet build
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
 ENV OS=linux
-ARG PUSHGATEWAY_VERSION=1.0.0
+ARG PUSHGATEWAY_VERSION=1.6.0
 RUN set -ex\
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
@@ -135,11 +134,9 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi8/go-toolset:1.17.12 as config-tool
+FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
-ARG CONFIGTOOL_VERSION=v0.1.15
-RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
-	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
+COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
 

@@ -161,6 +161,20 @@ jobs:
         docker logs quay >.logs/quay.log 2>&1 || true
       if: always()
 
+    - name: Check logs
+      run: |
+        # Tracebacks should not appear in the logs under normal circumstances.
+        # Unfortunately, 3 trackbacks are logged immediately after the Quay
+        # container is started, and extra one is generated during OCI tests.
+        # To accommodate the current state and avoid further regressions until
+        # these issues are fixed, we allow a maximum of 4 trackbacks.
+        TRACEBACKS=$(grep Traceback .logs/quay.log | wc -l)
+        if [ "$TRACEBACKS" -gt 4 ]; then
+          echo >&2 ERROR: Traceback detected, check Quay logs.
+          exit 1
+        fi
+      if: always()
+
     - name: Stop Quay
       run: |
         docker rm --force --volumes quay

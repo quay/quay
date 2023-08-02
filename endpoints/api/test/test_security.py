@@ -16,7 +16,7 @@ from endpoints.api.discovery import *
 from endpoints.api.globalmessages import *  # type: ignore[no-redef]
 from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *  # type: ignore[no-redef]
-from endpoints.api.organization import *
+from endpoints.api.organization import *  # type: ignore[no-redef]
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.prototype import *
 from endpoints.api.repoemail import *  # type: ignore[no-redef]
@@ -33,7 +33,7 @@ from endpoints.api.superuser import *  # type: ignore
 from endpoints.api.tag import *  # type: ignore[no-redef]
 from endpoints.api.team import *
 from endpoints.api.trigger import *
-from endpoints.api.user import *
+from endpoints.api.user import *  # type: ignore[no-redef]
 from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.namespacequota import *
 
@@ -3764,6 +3764,102 @@ SECURITY_TESTS: List[
         "reader",
         403,
     ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "public/publicrepo"},
+        {"manifest_digest": "WXNG"},
+        None,
+        401,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "public/publicrepo"},
+        {"manifest_digest": "WXNG"},
+        "devtable",
+        403,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "public/publicrepo"},
+        {"manifest_digest": "WXNG"},
+        "freshuser",
+        403,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "public/publicrepo"},
+        {"manifest_digest": "WXNG"},
+        "reader",
+        403,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "devtable/shared"},
+        {"manifest_digest": "WXNG"},
+        None,
+        401,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "devtable/shared"},
+        {"manifest_digest": "WXNG"},
+        "devtable",
+        404,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "devtable/shared"},
+        {"manifest_digest": "WXNG"},
+        "freshuser",
+        403,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "devtable/shared"},
+        {"manifest_digest": "WXNG"},
+        "reader",
+        403,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "buynlarge/orgrepo"},
+        {"manifest_digest": "WXNG"},
+        None,
+        401,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "buynlarge/orgrepo"},
+        {"manifest_digest": "WXNG"},
+        "devtable",
+        404,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "buynlarge/orgrepo"},
+        {"manifest_digest": "WXNG"},
+        "freshuser",
+        403,
+    ),
+    (
+        TagTimeMachineDelete,
+        "POST",
+        {"tag": "HP8R", "repository": "buynlarge/orgrepo"},
+        {"manifest_digest": "WXNG"},
+        "reader",
+        403,
+    ),
     (RepositoryTag, "DELETE", {"tag": "HP8R", "repository": "public/publicrepo"}, None, None, 401),
     (
         RepositoryTag,
@@ -5129,6 +5225,14 @@ SECURITY_TESTS: List[
     (SuperUserManagement, "PUT", {"username": "freshuser"}, {}, "devtable", 200),
     (SuperUserManagement, "PUT", {"username": "freshuser"}, {}, "freshuser", 403),
     (SuperUserManagement, "PUT", {"username": "freshuser"}, {}, "reader", 403),
+    (SuperUserRegistrySize, "GET", None, None, None, 401),
+    (SuperUserRegistrySize, "GET", None, None, "devtable", 200),
+    (SuperUserRegistrySize, "GET", None, None, "freshuser", 403),
+    (SuperUserRegistrySize, "GET", None, None, "reader", 403),
+    (SuperUserRegistrySize, "POST", None, None, None, 401),
+    (SuperUserRegistrySize, "POST", None, None, "devtable", 201),
+    (SuperUserRegistrySize, "POST", None, None, "freshuser", 403),
+    (SuperUserRegistrySize, "POST", None, None, "reader", 403),
     (GlobalUserMessages, "GET", None, None, None, 200),
     (GlobalUserMessages, "POST", None, None, None, 401),
     (

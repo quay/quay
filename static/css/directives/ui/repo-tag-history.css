@@ -31,11 +31,11 @@
 }
 
 .repo-tag-history-element .co-table td.history-col {
-  width: 520px;
+  width: 500px;
 }
 
 .repo-tag-history-element .co-table td.datetime-col {
-  width: 250px;
+  width: 200px;
 }
 
 .repo-tag-history-element .co-table td.icon-col:after {

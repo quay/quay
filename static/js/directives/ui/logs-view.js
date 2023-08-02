@@ -63,6 +63,67 @@ angular.module('quay').directive('logsView', function () {
       };
 
       var logDescriptions = {
+        'user_create': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} created user {username}';
+          } else {
+            return 'User {username} created';
+          }
+        },
+        'user_delete': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} deleted user {username}';
+          } else {
+            return 'User {username} deleted';
+          }
+        },
+        'user_enable': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} enabled user {username}';
+          } else {
+            return 'User {username} enabled';
+          }
+        },
+        'user_disable': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} disabled user {username}';
+          } else {
+            return 'User {username} disabled';
+          }
+        },
+        'user_change_password': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} changed password of user {username}';
+          } else {
+            return 'User {username} changed password';
+          }
+        },
+        'user_change_email': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} changed email from {old_email} to {email}';
+          } else {
+            return 'Changed email from {old_email} to {email}';
+          }
+        },
+        'user_change_name': function(metadata) {
+          if(metadata.superuser) {
+            return 'Superuser {superuser} renamed user {old_username} to {username}';
+          } else {
+            return 'User {old_username} changed name to {username}';
+          }
+        },
+        'user_change_invoicing': function(metadata) {
+          if (metadata.invoice_email) {
+            return 'Enabled email invoicing';
+          } else if(metadata.invoice_email_address) {
+            return 'Set email invoicing address to {invoice_email_address}';
+          } else {
+            return 'Disabled email invoicing';
+          }
+        },
+        'user_generate_client_key': "Generated Docker CLI password",
+        'user_change_metadata': "User changed metadata",
+        'user_change_tag_expiration': "Change time machine window to {tag_expiration}",
         'account_change_plan': 'Change plan',
         'account_change_cc': 'Update credit card',
         'account_change_password': 'Change password',
@@ -224,6 +285,13 @@ angular.module('quay').directive('logsView', function () {
           }
         },
         'delete_tag': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by user {username}]]',
+        'permanently_delete_tag': function(metadata){
+          if (metadata.manifest_digest){
+            return 'Tag {tag} referencing {manifest_digest} permanently deleted[[ in repository {namespace}/{repo} by user {username}]]';
+          } else {
+            return 'Tag {tag} permanently deleted[[ in repository {namespace}/{repo} by user {username}]]'
+          }
+        },
         'create_tag': 'Tag {tag} created[[ in repository {namespace}/{repo} on image {image} by user {username}]]',
         'move_tag': function(metadata) {
           if (metadata.manifest_digest) {
@@ -250,6 +318,26 @@ angular.module('quay').directive('logsView', function () {
             return 'Build from Dockerfile[[ for repository {namespace}/{repo} triggered by ' + triggerDescription + ']]';
           }
           return 'Build from Dockerfile[[ for repository {namespace}/{repo}]]';
+        },
+        'org_create': 'Organization {namespace} created',
+        'org_delete': 'Organization {namespace} deleted',
+        'org_change_email': 'Change organization email from {old_email} to {email}',
+        'org_change_invoicing': function(metadata) {
+          if (metadata.invoice_email) {
+            return 'Enabled email invoicing';
+          } else if(metadata.invoice_email_address) {
+            return 'Set email invoicing address to {invoice_email_address}';
+          } else {
+            return 'Disabled email invoicing';
+          }
+        },
+        'org_change_tag_expiration': 'Change time machine window to {tag_expiration}',
+        'org_change_name': function(metadata) {
+          if (metadata.superuser) {
+            return 'Superuser {superuser} renamed organization from {old_name} to {new_name}';
+          } else {
+            return 'Organization renamed from {old_name} to {new_name}';
+          }
         },
         'org_create_team': 'Create team {team}',
         'org_delete_team': 'Delete team {team}',
@@ -354,9 +442,9 @@ angular.module('quay').directive('logsView', function () {
 
         'take_ownership': function(metadata) {
           if (metadata.was_user) {
-            return '[Superuser ]{superuser} took ownership of user namespace {namespace}';
+            return 'Superuser {superuser} took ownership of user namespace {namespace}';
           } else {
-            return '[Superuser ]{superuser} took ownership of organization {namespace}';
+            return 'Superuser {superuser} took ownership of organization {namespace}';
           }
         },
 
@@ -397,10 +485,40 @@ angular.module('quay').directive('logsView', function () {
             metadata['service'], metadata['config']);
           return 'Manually start build from trigger[[ - ' + triggerDescription + ']]';
         },
-        'cancel_build': 'Cancel build {build_uuid}'
+        'cancel_build': 'Cancel build {build_uuid}',
+        'login_success': function(metadata) {
+          metadata["useragent"] = metadata.useragent.substring(0, 64)+ '...';
+
+          if (metadata.type == 'v2auth') {
+            var message = 'Login to registry[[ with';
+            
+            if (metadata.kind == 'app_specific_token') {
+              message += ' app-specific token {app_specific_token_title} and';
+            } 
+            else if (metadata.kind == 'robot') {
+              message += ' robot {robot} and';
+            }
+
+            return message + ' user-agent {useragent}]]'
+          } else {
+            return 'Login to Quay[[ with user-agent {useragent}]]';
+          }
+        },
+        'logout_success': 'Logout from Quay',
 };
 
       var logKinds = {
+        'user_create': 'Create user',
+        'user_delete': 'Delete user',
+        'user_disable': 'Disable user',
+        'user_enable': 'Enable user',
+        'user_change_password': 'Change user password',
+        'user_change_email': 'Change user email',
+        'user_change_name': 'Change user name',
+        'user_change_invoicing': 'Change user invoicing',
+        'user_change_tag_expiration': 'Change time machine window',
+        'user_change_metadata': 'Change user metadata',
+        'user_generate_client_key': 'Generate Docker CLI password',
         'account_change_plan': 'Change plan',
         'account_change_cc': 'Update credit card',
         'account_change_password': 'Change password',
@@ -424,6 +542,12 @@ angular.module('quay').directive('logsView', function () {
         'create_tag': 'Create Tag',
         'move_tag': 'Move Tag',
         'revert_tag':'Restore Tag',
+        'org_create': 'Create organization',
+        'org_delete': 'Delete organization',
+        'org_change_email': 'Change organization email',
+        'org_change_invoicing': 'Change organization invoicing',
+        'org_change_tag_expiration': 'Change time machine window',
+        'org_change_name': 'Change organization name',
         'org_create_team': 'Create team',
         'org_delete_team': 'Delete team',
         'org_add_team_member': 'Add team member',
@@ -476,6 +600,8 @@ angular.module('quay').directive('logsView', function () {
         'delete_proxy_cache_config': 'Delete Proxy Cache Config',
         'start_build_trigger': 'Manual build trigger',
         'cancel_build': 'Cancel build',
+        'login_success': 'Login success',
+        'permanently_delete_tag': 'Permanently Delete Tag',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',

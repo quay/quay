@@ -290,9 +290,21 @@ class SuperuserDataInterface(object):
         """
 
     @abstractmethod
+    def get_organizations_paginated(self):
+        """
+        Returns a paginated list of Organization.
+        """
+
+    @abstractmethod
     def get_active_users(self):
         """
         Returns a list of User.
+        """
+
+    @abstractmethod
+    def get_active_users_paginated(self):
+        """
+        Returns a paginated list of User.
         """
 
     @abstractmethod

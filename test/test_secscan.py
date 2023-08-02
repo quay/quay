@@ -77,7 +77,6 @@ class TestSecurityScanner(unittest.TestCase):
         repo_tag = registry_model.get_repo_tag(repo_ref, "latest")
         manifest = registry_model.get_manifest_for_tag(repo_tag)
         layers = registry_model.list_manifest_layers(manifest, storage, True)
-        registry_model.populate_legacy_images_for_testing(manifest, storage)
 
         with fake_security_scanner() as security_scanner:
             # Ensure the layer doesn't exist yet.

@@ -4,6 +4,7 @@
       {{ getPageStart(currentPage, pageSize, totalCount) }} - {{ getPageEnd(currentPage, pageSize, totalCount) }}
       of {{ totalCount }}
     </span>
+    <span class="small-spinner" ng-show="loading"></span>
     <ul class="dropdown-menu">
       <li><a ng-click="setPage(0)"><i class="fa fa-caret-square-o-left"></i>First Page</a></li>
       <li><a ng-click="setPage(getPageCount(pageSize, totalCount) - 1)"><i class="fa fa-caret-square-o-right"></i>Last Page</a></li>

@@ -221,8 +221,7 @@ def test_basic_push_by_manifest_digest(
         options=options,
     )
 
-    # If this is not schema 1, then verify we cannot pull.
-    expected_failure = None if manifest_protocol.schema == "schema1" else Failures.UNKNOWN_TAG
+    expected_failure = None
 
     # Pull the repository by digests to verify.
     digests = [str(manifest.digest) for manifest in list(result.manifests.values())]
@@ -3068,4 +3067,34 @@ def test_malformed_schema2_config(v22_protocol, basic_images, liveserver_session
         credentials=credentials,
         options=options,
         expected_failure=Failures.INVALID_MANIFEST,
+    )
+
+
+def test_conftest_policy_push(manifest_protocol, openpolicyagent_policy, liveserver_session):
+    credentials = ("devtable", "password")
+
+    options = ProtocolOptions()
+    options.push_by_manifest_digest = True
+
+    # Push policy by digest
+    result = manifest_protocol.push(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        openpolicyagent_policy,
+        credentials=credentials,
+        options=options,
+    )
+
+    # Pull the policy by digests to verify.
+    digests = [str(manifest.digest) for manifest in list(result.manifests.values())]
+    manifest_protocol.pull(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        digests,
+        openpolicyagent_policy,
+        credentials=credentials,
+        expected_failure=None,
     )

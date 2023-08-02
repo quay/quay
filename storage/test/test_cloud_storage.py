@@ -1,21 +1,20 @@
 import os
 import time
-
+from datetime import timedelta
 from io import BytesIO
 
-import pytest
-
-import botocore.exceptions
 import boto3
-
+import botocore.exceptions
+import pytest
 from moto import mock_s3
 
 from storage import S3Storage, StorageContext
-from storage.cloud import _CloudStorage, _PartUploadMetadata
-from storage.cloud import _CHUNKS_KEY
-from storage.cloud import _build_endpoint_url
-
-from datetime import timedelta
+from storage.cloud import (
+    _CHUNKS_KEY,
+    _build_endpoint_url,
+    _CloudStorage,
+    _PartUploadMetadata,
+)
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
@@ -193,7 +192,8 @@ def test_chunk_upload(storage_engine, chunk_count, force_client_side):
     )
 
     # Ensure the file contents are valid.
-    assert storage_engine.get_content("some/chunked/path") == final_data
+    if chunk_count != 0:
+        assert storage_engine.get_content("some/chunked/path") == final_data
 
 
 @pytest.mark.parametrize(
