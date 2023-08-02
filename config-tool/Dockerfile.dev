@@ -1,0 +1,28 @@
+FROM registry.access.redhat.com/ubi8/ubi:latest as jsbuild
+
+ENV GOROOT /usr/local/go
+ENV GOPATH /go
+ENV PATH $PATH:$GOPATH/bin:$GOROOT/bin
+
+WORKDIR /jssrc
+COPY pkg/lib/editor/package.json .
+COPY pkg/lib/editor/tsconfig.json .
+COPY pkg/lib/editor/webpack.config.js .
+COPY pkg/lib/editor/package-lock.json .
+COPY pkg/lib/editor/static .
+
+RUN yum install -y nodejs && \
+    yum install -y git && \
+    npm install --ignore-engines
+
+RUN yum install -y wget && \
+    wget https://golang.org/dl/go1.19.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.19.linux-amd64.tar.gz
+
+WORKDIR /go/src/config-tool
+RUN go get github.com/cosmtrek/air
+COPY . .
+RUN go get -d -v ./...
+RUN go install -v ./...
+
+ENTRYPOINT ["air", "-c", ".air.toml"]

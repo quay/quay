@@ -1,0 +1,30 @@
+<div class="config-service-key-field-element">
+    <!-- Loading -->
+    <div class="cor-loader" ng-if="loading"></div>
+
+    <!-- Loading error -->
+    <div class="co-alert co-alert-warning" ng-if="loadError">
+        Could not load service keys
+    </div>
+
+    <!-- Key config -->
+    <div ng-show="!loading && !loadError">
+      <div ng-show="hasValidKey">
+        <i class="fa fa-check"></i>
+        Valid key for service <code>{{ serviceName }}</code> exists
+        <a class="co-modify-link" ng-click="showRequestServiceKey(true)">Assign New Key</a>
+      </div>
+      <div ng-show="!hasValidKey">
+        No valid key found for service <code>{{ serviceName }}</code>
+        <a class="co-modify-link" ng-click="showRequestServiceKey()">Create Key</a>
+      </div>
+    </div>
+
+    <!-- Note: This field is a hidden text field that binds to a model that is set to non-empty
+         when there is a valid key. This allows us to use the existing Angular form validation
+         code.
+     -->
+    <input type="text" ng-model="hasValidKeyStr" ng-required="true" style="position: absolute; top: 0px; left: 0px; visibility: hidden; width: 0px; height: 0px;">
+
+    <div class="request-service-key-dialog" request-key-info="requestKeyInfo" key-created="handleKeyCreated(key)"></div>
+</div>
