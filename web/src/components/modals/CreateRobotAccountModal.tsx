@@ -81,7 +81,7 @@ export default function CreateRobotAccountModal(
         robotDefaultPerm: robotDefaultPerm,
       });
       if (!loading) {
-        props.handleModalToggle();
+        handleModalToggle();
       }
     } catch (error) {
       console.error(error);
@@ -93,6 +93,16 @@ export default function CreateRobotAccountModal(
   const validateRobotName = () => {
     return /^[a-z][a-z0-9_]{1,254}$/.test(robotName);
   };
+
+  const handleModalToggle = () => {
+    // clear selected states
+    setSelectedRepoPerms([]);
+    setSelectedTeams([]);
+    setSelectedRepoPerms([]);
+    setRobotdefaultPerm('');
+
+    props.handleModalToggle();
+  }
 
   const filteredRepos = () => {
     return selectedRepoPerms.filter((repo) =>
@@ -187,7 +197,7 @@ export default function CreateRobotAccountModal(
       aria-label="CreateRobotAccount"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
-      onClose={props.handleModalToggle}
+      onClose={handleModalToggle}
       showClose={false}
       hasNoBodyWrapper
     >
@@ -197,7 +207,7 @@ export default function CreateRobotAccountModal(
         title="Create robot account (organization/namespace)"
         description="Robot Accounts are named tokens that can be granted permissions on multiple repositories under this organization."
         steps={steps}
-        onClose={props.handleModalToggle}
+        onClose={handleModalToggle}
         height={600}
         width={1170}
         footer={

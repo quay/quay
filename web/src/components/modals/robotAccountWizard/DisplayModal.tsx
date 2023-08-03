@@ -17,9 +17,6 @@ export default function DisplayModal(props: DisplayModalProps) {
       <Button key="close" variant="primary" onClick={handleModalToggle}>
         Close
       </Button>
-      <Button key="cancel" variant="link" onClick={handleModalToggle}>
-        Cancel
-      </Button>
     </>
   );
 

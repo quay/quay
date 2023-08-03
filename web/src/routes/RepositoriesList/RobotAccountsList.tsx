@@ -512,6 +512,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           isModalOpen={isTeamsModalOpen}
           setIsModalOpen={setTeamsModalOpen}
           title="Teams"
+          showFooter={true}
           showSave={false}
           Component={
             <TeamView
@@ -528,6 +529,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           setIsModalOpen={setReposModalOpen}
           onClose={onReposModalClose}
           title="Set repository permissions"
+          showFooter={true}
           showSave={showRepoModalSave}
           onSave={onRepoModalSave}
           Component={
@@ -559,7 +561,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
               robotAccount={robotForModalView}
             />
           }
-          showFooter={false}
+          showFooter={true}
         />
         <TableComposable aria-label="Expandable table" variant={undefined}>
           <Thead>
