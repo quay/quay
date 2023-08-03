@@ -5,12 +5,11 @@ Originally from https://github.com/DevTable/container-cloud-config
 """
 
 import json
-import os
 import logging
-
+import os
 from urllib.parse import quote as urlquote
 
-from jinja2 import FileSystemLoader, Environment, StrictUndefined
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ class CloudConfigContext(object):
         password="",
         tag="latest",
         extra_args="",
-        command="",
         after_units=[],
         exec_start_post=[],
         exec_stop_post=[],
@@ -65,7 +63,9 @@ class CloudConfigContext(object):
             raise
 
         path = os.path.join(os.path.dirname(__file__), "templates")
-        env = Environment(loader=FileSystemLoader(path), undefined=StrictUndefined)
+        env = Environment(
+            loader=FileSystemLoader(path), undefined=StrictUndefined, trim_blocks=True
+        )
         self.populate_jinja_environment(env)
         template = env.get_template("dockersystemd.json")
         return template.render(
@@ -76,7 +76,6 @@ class CloudConfigContext(object):
             password=password,
             tag=tag,
             extra_args=extra_args,
-            command=command,
             after_units=after_units,
             requires_units=requires_units,
             wants_units=wants_units,
