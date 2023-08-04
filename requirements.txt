@@ -20,7 +20,7 @@ cffi==1.14.3
 chardet==3.0.4
 charset-normalizer==2.0.12
 click==8.0.0
-cryptography==3.3.2
+cryptography==41.0.2
 DateTime==4.3
 debtcollector==1.22.0
 decorator==4.4.1
@@ -85,7 +85,7 @@ PyGithub==1.45
 PyJWT==2.4.0
 pymemcache==3.0.0
 PyMySQL==0.9.3
-pyOpenSSL==21.0.0
+pyOpenSSL==23.2.0
 pyparsing==2.4.6
 pyrsistent==0.18.0
 python-dateutil==2.8.1
