@@ -6,7 +6,7 @@ import logging
 import os
 from functools import wraps
 
-from flask import abort, make_response, request
+from flask import request
 
 import features
 from app import app, ip_resolver, model_cache, usermanager

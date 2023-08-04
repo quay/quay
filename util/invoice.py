@@ -6,11 +6,7 @@ from xhtml2pdf import pisa
 
 from app import app
 
-jinja_options = {
-    "loader": FileSystemLoader("util"),
-}
-
-env = Environment(**jinja_options)
+env = Environment(loader=FileSystemLoader("util"))
 
 
 def renderInvoiceToPdf(invoice, user):

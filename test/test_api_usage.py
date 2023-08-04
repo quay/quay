@@ -8,7 +8,6 @@ import time
 import unittest
 from calendar import timegm
 from contextlib import contextmanager
-from test.helpers import assert_action_logged, check_transitive_modifications
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from cryptography.hazmat.backends import default_backend
@@ -37,8 +36,6 @@ from endpoints.api.billing import (
     ListPlans,
     OrganizationCard,
     OrganizationPlan,
-    OrganizationRhSku,
-    OrganizationRhSkuSubscriptionField,
     UserCard,
     UserPlan,
 )
@@ -144,6 +141,7 @@ from endpoints.api.user import (
 from endpoints.building import PreparedBuild
 from endpoints.webhooks import webhooks
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import assert_action_logged, check_transitive_modifications
 from util.morecollections import AttrDict
 from util.secscan.v4.fake import fake_security_scanner
 

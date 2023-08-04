@@ -99,7 +99,7 @@ app.config.update(environ_config)
 
 # Fix remote address handling for Flask.
 if app.config.get("PROXY_COUNT", 1):
-    app.wsgi_app = ProxyFix(app.wsgi_app)
+    app.wsgi_app = ProxyFix(app.wsgi_app)  # type: ignore[method-assign]
 
 # Allow user to define a custom storage preference for the local instance.
 _distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
@@ -124,7 +124,7 @@ features.import_features(app.config)
 # Register additional experimental artifact types.
 # TODO: extract this into a real, dynamic registration system.
 if features.GENERAL_OCI_SUPPORT:
-    for media_type, layer_types in app.config.get("ALLOWED_OCI_ARTIFACT_TYPES").items():
+    for media_type, layer_types in app.config["ALLOWED_OCI_ARTIFACT_TYPES"].items():
         register_artifact_type(media_type, layer_types)
 
 if features.HELM_OCI_SUPPORT:

@@ -1,10 +1,8 @@
 import pytest
 
-from app import app
+from test.fixtures import *
 from util.config import URLSchemeAndHostname
 from util.secscan.secscan_util import get_blob_download_uri_getter
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

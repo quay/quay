@@ -1,17 +1,17 @@
 import datetime
 import logging
-import pytz
-
 from calendar import timegm
 from email.utils import formatdate
 from functools import partial, wraps
 
+import pytz
 from flask import Blueprint, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
 
 import features
+from .__init__models_pre_oci import pre_oci_model as model
 from app import app, authentication, usermanager
 from auth import scopes
 from auth.auth_context import (
@@ -50,8 +50,6 @@ from util.names import parse_namespace_repository
 from util.pagination import decrypt_page_token, encrypt_page_token
 from util.request import crossorigin, get_request_ip
 from util.timedeltastring import convert_to_timedelta
-
-from .__init__models_pre_oci import pre_oci_model as model
 
 logger = logging.getLogger(__name__)
 api_bp = timed_blueprint(Blueprint("api", __name__))

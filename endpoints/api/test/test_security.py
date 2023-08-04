@@ -1,16 +1,11 @@
-# isort reordering imports breaks these tests, so tell it to skip
-# isort: skip_file
-from typing import List, Optional, Dict, Tuple, Any, Type
-from mock import patch
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
 from flask_principal import AnonymousIdentity
+from mock import patch
 
 import features
 from endpoints.api import api
-from endpoints.api.test.shared import conduct_api_call
-from endpoints.test.shared import client_with_identity, toggle_feature
-
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
 from endpoints.api.build import *
@@ -18,7 +13,9 @@ from endpoints.api.discovery import *
 from endpoints.api.globalmessages import *  # type: ignore[no-redef]
 from endpoints.api.logs import *  # type: ignore[no-redef]
 from endpoints.api.manifest import *  # type: ignore[no-redef]
-from endpoints.api.organization import *  # type: ignore[no-redef]
+from endpoints.api.mirror import *  # type: ignore[no-redef]
+from endpoints.api.namespacequota import *
+from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
 from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.prototype import *
 from endpoints.api.repoemail import *  # type: ignore[no-redef]
@@ -34,14 +31,17 @@ from endpoints.api.suconfig import *  # type: ignore[no-redef]
 from endpoints.api.superuser import *  # type: ignore
 from endpoints.api.tag import *  # type: ignore[no-redef]
 from endpoints.api.team import *
+from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.trigger import *
-from endpoints.api.user import *  # type: ignore[no-redef]
-from endpoints.api.mirror import *  # type: ignore[no-redef]
-from endpoints.api.namespacequota import *
+from endpoints.api.user import *  # type: ignore[assignment,no-redef]
+from endpoints.test.shared import client_with_identity, toggle_feature
 
-from endpoints.api.repository import Repository
+# Next imports should be after all the endpoints.api imports.
+# Repository should be the API resource, not the data model.
+from endpoints.api.repository import Repository  # isort: skip
 
-from test.fixtures import *
+# app should be the pytest fixture, not the Flask app.
+from test.fixtures import *  # type: ignore[assignment]  # isort: skip
 
 ORG_PARAMS = {"orgname": "buynlarge"}
 TEAM_PARAMS = {"orgname": "buynlarge", "teamname": "owners"}
