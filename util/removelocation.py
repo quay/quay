@@ -39,21 +39,25 @@ def remove_location():
         print("Canceling operation...")
         return
 
-    # Get all image placements for the location
-    query = (
-        ImageStoragePlacement.select()
-        .join(ImageStorageLocation)
-        .where(ImageStorageLocation.name == location_name)
-    )
+    try:
+        # Get all image placements for the location
+        query = (
+            ImageStoragePlacement.select()
+            .join(ImageStorageLocation)
+            .where(ImageStorageLocation.name == location_name)
+        )
 
-    # Delete all image placements for the location
-    for image_placement in query:
-        image_placement.delete().where(ImageStoragePlacement.id == image_placement.id).execute()
-        print(f"Deleted placement {image_placement.id}")
+        # Delete all image placements for the location
+        for image_placement in query:
+            image_placement.delete().where(ImageStoragePlacement.id == image_placement.id).execute()
+            print(f"Deleted placement {image_placement.id}")
 
-    # Delete storage location from database
-    ImageStorageLocation.delete().where(ImageStorageLocation.name == location_name).execute()
-    print(f"Deleted location {location_name}")
+        # Delete storage location from database
+        ImageStorageLocation.delete().where(ImageStorageLocation.name == location_name).execute()
+        print(f"Deleted location {location_name}")
+    except Exception as e:
+        print(f"Error removing storage location: {e}")
+        return
 
 
 if __name__ == "__main__":
