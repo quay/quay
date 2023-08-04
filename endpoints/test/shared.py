@@ -27,6 +27,7 @@ def client_with_identity(auth_username, client):
         sess["_user_id"] = None
         sess["login_time"] = None
         sess[CSRF_TOKEN_KEY] = None
+        del g._login_user
 
 
 @contextmanager
