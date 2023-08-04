@@ -3,7 +3,6 @@ import time
 from test.fixtures import *
 
 import pytest
-from mock import patch
 
 from app import export_action_logs_queue
 from endpoints.api.logs import ExportOrgLogs, OrgLogs, _validate_logs_arguments
@@ -19,24 +18,18 @@ def test_export_logs(client):
     with client_with_identity("devtable", client) as cl:
         assert export_action_logs_queue.get() is None
 
-        timecode = time.time()
+        # Call to export logs.
+        body = {
+            "callback_url": "http://some/url",
+            "callback_email": "a@b.com",
+        }
 
-        def get_time():
-            return timecode - 2
+        conduct_api_call(
+            cl, ExportOrgLogs, "POST", {"orgname": "buynlarge"}, body, expected_code=200
+        )
 
-        with patch("time.time", get_time):
-            # Call to export logs.
-            body = {
-                "callback_url": "http://some/url",
-                "callback_email": "a@b.com",
-            }
-
-            conduct_api_call(
-                cl, ExportOrgLogs, "POST", {"orgname": "buynlarge"}, body, expected_code=200
-            )
-
-            # Ensure the request was queued.
-            assert export_action_logs_queue.get() is not None
+        # Ensure the request was queued.
+        assert export_action_logs_queue.get() is not None
 
 
 def test_invalid_date_range(client):
