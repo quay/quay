@@ -46,6 +46,36 @@ jobs:
         # Read each line of requirement.txt and flag if any line doesn't contain ==, @, newline, or #
         sed '/^$/d' < requirements.txt | while read i; do if [[ ! $i =~ [==|@|^#] ]]; then echo $i is not pinned; fi; done
 
+  pre-commit-checks:
+    name: Pre-commit checks
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # fetch all commits and branches for pre-commit
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Set up Node 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        cache: npm
+        cache-dependency-path: web/package-lock.json
+
+    - name: Install npm dependencies
+      run: cd ./web && npm ci
+
+    - name: Run pre-commit checks
+      uses: pre-commit/action@v3.0.0
+      with:
+        extra_args: --from-ref origin/${{ github.base_ref }} --to-ref HEAD --verbose
+
   unit:
     name: Unit Test
     runs-on: ubuntu-20.04
@@ -172,7 +202,7 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v3
-    
+
     - name: Seed Database
       run: cd web && npm run quay:seed
 
@@ -191,7 +221,7 @@ jobs:
         docker restart quay-quay
         sleep 30
         make integration-test
-    
+
     - name: Cypress run
       uses: cypress-io/github-action@v5
       with:

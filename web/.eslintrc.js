@@ -19,7 +19,7 @@ module.exports = {
   },
   plugins: ['import', 'react', '@typescript-eslint', 'prettier'],
   rules: {
-    "react/react-in-jsx-scope": "off",
+    'react/react-in-jsx-scope': 'off',
     'prettier/prettier': ['error'],
     '@typescript-eslint/no-var-requires': 'off',
     'import/no-unresolved': 'error',
@@ -38,7 +38,7 @@ module.exports = {
     'import/resolver': {
       typescript: {
         alwaysTryTypes: true,
-        project: 'tsconfig.json',
+        project: `${__dirname}/tsconfig.json`,
       },
     },
   },
