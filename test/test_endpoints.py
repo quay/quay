@@ -7,7 +7,6 @@ import unittest
 import zlib
 from datetime import datetime, timedelta
 from io import BytesIO
-from test.helpers import assert_action_logged
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import jwt
@@ -29,6 +28,7 @@ from endpoints.test.shared import gen_basic_auth
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import assert_action_logged
 from util.registry.gzipinputstream import WINDOW_BUFFER_SIZE
 from util.security.token import encode_public_private_token
 
@@ -230,7 +230,7 @@ class WebhookEndpointTestCase(EndpointTestCase):
         self.postResponse(
             "webhooks.build_trigger_webhook",
             trigger_uuid=trigger.uuid,
-            expected_code=400,
+            expected_code=415,
             headers={"Authorization": auth_header},
         )
 
