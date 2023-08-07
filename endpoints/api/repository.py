@@ -289,6 +289,10 @@ class Repository(RepositoryParamResource):
                     "description": "A list of vulnerability identifiers to suppress in this organization. Has to be at least item of type string with a non-zero length and no leading or trailing whitespace.",
                 },
             },
+            "anyOf": [
+            {"required": ["description"]},
+            {"required": ["suppressed_vulnerabilities"]}
+            ],
         }
     }
 
