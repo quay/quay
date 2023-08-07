@@ -8,7 +8,7 @@ import {
   Title,
   TitleSizes,
 } from '@patternfly/react-core';
-import {ExclamationTriangleIcon, PencilAltIcon} from '@patternfly/react-icons';
+import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {getSeverityColor} from 'src/libs/utils';
 import {
@@ -68,14 +68,6 @@ function VulnerabilitySummary(props: VulnerabilityStatsProps) {
     suppressionMessage = (
       <>
         {suppressionMessageString} {suppressionSourcesStringWithAnd} settings{' '}
-        {suppressionSources.includes('manifest') && (
-          <span
-            onClick={() => props.setIsOpen(true)}
-            style={{cursor: 'pointer'}}
-          >
-            <PencilAltIcon />
-          </span>
-        )}
       </>
     );
   }

@@ -73,6 +73,8 @@ export interface ManifestByDigestResponse {
 }
 
 export interface SecurityDetailsResponse {
+  status: string;
+  data: Data;
   suppressed_vulnerabilities: string[];
 }
 
@@ -470,8 +472,7 @@ export class SetVulnerabilitySupressionsError extends Error {
     Object.setPrototypeOf(this, TagDeleteError.prototype);
   }
 }
-
-export async function setManifestVulnerabilityuSuppressions(
+export async function setManifestVulnerabilitySuppressions(
   org: string,
   repo: string,
   digest: string,

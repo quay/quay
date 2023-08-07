@@ -1,26 +1,27 @@
-import {useEffect, useState} from 'react';
-import {
-  SecurityDetailsResponse,
-  getSecurityDetails,
-} from 'src/resources/TagResource';
-import {Link, useLocation} from 'react-router-dom';
 import {Skeleton} from '@patternfly/react-core';
-import {getTagDetailPath} from 'src/routes/NavigationPath';
-import {TabIndex} from 'src/routes/TagDetails/Types';
-import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import {
-  ExclamationTriangleIcon,
   CheckCircleIcon,
+  ExclamationTriangleIcon,
   EyeSlashIcon,
 } from '@patternfly/react-icons';
-import {getSeverityColor} from 'src/libs/utils';
+import {useEffect, useState} from 'react';
+import {Link, useLocation} from 'react-router-dom';
+import {useRecoilState, useSetRecoilState} from 'recoil';
 import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
+  securityDetailsCallStateSelector,
 } from 'src/atoms/SecurityDetailsState';
-import {useSetRecoilState} from 'recoil';
-import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {getSeverityColor} from 'src/libs/utils';
+import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
+import {
+  SecurityDetailsResponse,
+  VulnerabilitySeverity,
+  getSecurityDetails,
+} from 'src/resources/TagResource';
+import {getTagDetailPath} from 'src/routes/NavigationPath';
+import {TabIndex} from 'src/routes/TagDetails/Types';
 
 enum Variant {
   condensed = 'condensed',
@@ -37,6 +38,9 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
   const [err, setErr] = useState<string>();
   const setGlobalErr = useSetRecoilState(SecurityDetailsErrorState);
   const setGlobalData = useSetRecoilState(SecurityDetailsState);
+  const [reloadGlobalData, setReloadGlobalData] = useRecoilState(
+    securityDetailsCallStateSelector(props.digest),
+  );
   const location = useLocation();
 
   const severityOrder = [
@@ -57,54 +61,78 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
     }
   };
 
-  useEffect(() => {
-    if (props.digest !== '') {
-      (async () => {
-        try {
-          setLoading(true);
-          const securityDetails: SecurityDetailsResponse =
-            await getSecurityDetails(props.org, props.repo, props.digest);
-          const vulns = new Map<VulnerabilitySeverity, number>();
-          if (securityDetails.data) {
-            if (props.cacheResults) setGlobalData(securityDetails);
-            setHasFeatures(securityDetails.data.Layer.Features.length > 0);
-            for (const feature of securityDetails.data.Layer.Features) {
-              if (feature.Vulnerabilities) {
-                for (const vuln of feature.Vulnerabilities) {
-                  if (vuln.Severity in VulnerabilitySeverity) {
-                    if (
-                      config?.features.SECURITY_VULNERABILITY_SUPPRESSION &&
-                      vuln.SuppressedBy
-                    ) {
-                      continue;
-                    }
+  const loadSecurityDetails = async () => {
+    try {
+      setLoading(true);
+      setGlobalData(undefined);
 
-                    if (vulns.has(vuln.Severity)) {
-                      vulns.set(vuln.Severity, vulns.get(vuln.Severity) + 1);
-                    } else {
-                      vulns.set(vuln.Severity, 1);
-                    }
-                  }
+      const securityDetails: SecurityDetailsResponse = await getSecurityDetails(
+        props.org,
+        props.repo,
+        props.digest,
+      );
+
+      const vulns = new Map<VulnerabilitySeverity, number>();
+      if (securityDetails.data) {
+        if (props.cacheResults) setGlobalData(securityDetails);
+        setHasFeatures(securityDetails.data.Layer.Features.length > 0);
+        for (const feature of securityDetails.data.Layer.Features) {
+          if (feature.Vulnerabilities) {
+            for (const vuln of feature.Vulnerabilities) {
+              if (vuln.Severity in VulnerabilitySeverity) {
+                if (
+                  config?.features.SECURITY_VULNERABILITY_SUPPRESSION &&
+                  vuln.SuppressedBy
+                ) {
+                  vulns.set(
+                    VulnerabilitySeverity.Suppressed,
+                    (vulns.get(VulnerabilitySeverity.Suppressed) || 0) + 1,
+                  );
+                  continue;
+                }
+
+                if (vulns.has(vuln.Severity)) {
+                  vulns.set(vuln.Severity, vulns.get(vuln.Severity) + 1);
+                } else {
+                  vulns.set(vuln.Severity, 1);
                 }
               }
             }
           }
-          setStatus(securityDetails.status);
-          setVulnCount(vulns);
-          setLoading(false);
-        } catch (error: any) {
-          console.error(error);
-          const message = addDisplayError(
-            'Unable to get security details',
-            error,
-          );
-          if (props.cacheResults) setGlobalErr(message);
-          setErr(message);
-          setLoading(false);
         }
+      }
+      setStatus(securityDetails.status);
+      setVulnCount(vulns);
+      setLoading(false);
+    } catch (error: any) {
+      console.error(error);
+      const message = addDisplayError('Unable to get security details', error);
+      if (props.cacheResults) setGlobalErr(message);
+      setErr(message);
+      setLoading(false);
+    }
+  };
+
+  // load the security details on initial load of the component
+  useEffect(() => {
+    if (props.digest !== '') {
+      (async () => {
+        await loadSecurityDetails();
+        setReloadGlobalData(false);
       })();
     }
   }, [props.digest]);
+
+  // reload the security details when other components change vulnerability reporting
+  useEffect(() => {
+    if (props.digest !== '' && reloadGlobalData) {
+      (async () => {
+        await loadSecurityDetails();
+        setReloadGlobalData(false);
+      })();
+    }
+  }, [reloadGlobalData]);
+
   const queryParams = new Map<string, string>([
     ['tab', TabIndex.SecurityReport],
     ['digest', props.digest],

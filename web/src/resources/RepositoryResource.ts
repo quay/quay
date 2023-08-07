@@ -1,9 +1,9 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {
-  assertHttpCode,
   BulkOperationError,
   ResourceError,
+  assertHttpCode,
   throwIfError,
 } from './ErrorHandling';
 import {IAvatar} from './OrganizationResource';
@@ -165,6 +165,22 @@ export async function setRepositoryState(
   const response: AxiosResponse = await axios.put(api, {
     state,
   });
+}
+
+export interface RepositoryVulnerabilitySuppressionsResponse {
+  success: boolean;
+}
+
+export async function setRepositoryVulnerabilitySuppressions(
+  namespace: string,
+  repositoryName: string,
+  suppressions: string[],
+): Promise<RepositoryVulnerabilitySuppressionsResponse> {
+  const api = `/api/v1/repository/${namespace}/${repositoryName}`;
+  const response: AxiosResponse<RepositoryVulnerabilitySuppressionsResponse> =
+    await axios.put(api, {
+      suppressed_vulnerabilities: suppressions,
+    });
   assertHttpCode(response.status, 200);
   return response.data;
 }

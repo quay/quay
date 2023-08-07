@@ -8,6 +8,7 @@ import Visibility from './Visibility';
 import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import VulnerabilitySuppression from './VulnerabilitySuppression';
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -65,7 +66,7 @@ export default function Settings(props: SettingsProps) {
       name: 'Vulnerability reporting',
       id: 'vulnerabiltyreporting',
       content: (
-        <Visibility
+        <VulnerabilitySuppression
           org={props.org}
           repo={props.repo}
           repoDetails={props.repoDetails}
