@@ -2,13 +2,13 @@ import {Flex, FlexItem, Tab, Tabs, TabTitleText} from '@patternfly/react-core';
 import {useState} from 'react';
 import {DrawerContentType} from 'src/routes/RepositoryDetails/Types';
 import DeleteRepository from './DeleteRepository';
-import Permissions from './Permissions';
 import Notifications from './Notifications';
+import Permissions from './Permissions';
+import RepositoryVulnerabilitySuppression from './RepositoryVulnerabilitySuppression';
 import Visibility from './Visibility';
 import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import VulnerabilitySuppression from './VulnerabilitySuppression';
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -66,7 +66,7 @@ export default function Settings(props: SettingsProps) {
       name: 'Vulnerability reporting',
       id: 'vulnerabiltyreporting',
       content: (
-        <VulnerabilitySuppression
+        <RepositoryVulnerabilitySuppression
           org={props.org}
           repo={props.repo}
           repoDetails={props.repoDetails}
