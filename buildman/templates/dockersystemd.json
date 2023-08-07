@@ -10,28 +10,28 @@ Wants=docker.service network-online.target
 After=docker.service network-online.target
 Requires=docker.service
 {% endif %}
-{% if onfailure_units -%}
-OnFailure={% for failure in onfailure_units -%}{{ failure }} {% endfor %}
-{%- endif %}
-{% for after in after_units -%}
+{% if onfailure_units %}
+OnFailure={% for failure in onfailure_units %}{{ failure }} {% endfor %}
+{% endif %}
+{% for after in after_units %}
 After={{ after }}
 {% endfor %}
-{% for requires in requires_units -%}
+{% for requires in requires_units %}
 Requires={{ requires }}
 {% endfor %}
-{% for wants in wants_units -%}
+{% for wants in wants_units %}
 Wants={{ wants }}
 {% endfor %}
 
 [Service]
-{% if env_file -%}
+{% if env_file %}
 EnvironmentFile={{ env_file }}
-{%- endif %}
-{% if oneshot -%}
+{% endif %}
+{% if oneshot %}
 Type=oneshot
-{% else -%}
+{% else %}
 Restart={{ restart_policy }}
-{%- endif %}
+{% endif %}
 TimeoutStartSec={{ timeout_start_sec if timeout_start_sec else 600 }}
 TimeoutStopSec={{ timeout_stop_sec if timeout_stop_sec else 2000 }}
 
@@ -39,26 +39,26 @@ TimeoutStopSec={{ timeout_stop_sec if timeout_stop_sec else 2000 }}
 {% if username and password %}
 ExecStartPre=/usr/bin/podman login -u {{ username }} -p {{ password }} {{ container|registry }}
 {% endif %}
-ExecStart=/usr/bin/podman run --user 0 --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
-{% for start_post in exec_start_post -%}
+ExecStart=/usr/bin/podman run --user 0 --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }}
+{% for start_post in exec_start_post %}
 ExecStartPost={{ start_post }}
 {% endfor %}
-{% if not oneshot -%}
+{% if not oneshot %}
 ExecStop=/usr/bin/podman stop {{ name }}
-{%- endif %}
+{% endif %}
 {% else %}
 {% if username and password %}
 ExecStartPre=/usr/bin/docker login -u {{ username }} -p {{ password }} {{ container|registry }}
 {% endif %}
-ExecStart=/usr/bin/docker run --user 0 --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
-{% for start_post in exec_start_post -%}
+ExecStart=/usr/bin/docker run --user 0 --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }}
+{% for start_post in exec_start_post %}
 ExecStartPost={{ start_post }}
 {% endfor %}
-{% if not oneshot -%}
+{% if not oneshot %}
 ExecStop=/usr/bin/docker stop {{ name }}
-{%- endif %}
 {% endif %}
-{% for stop_post in exec_stop_post -%}
+{% endif %}
+{% for stop_post in exec_stop_post %}
 ExecStopPost={{ stop_post }}
 {% endfor %}
 
