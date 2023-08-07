@@ -49,10 +49,11 @@ export function throwIfError(responses: PromiseSettledResult<void>[], message?: 
 export function addDisplayError(message: string, error: Error | AxiosError) {
   const errorDetails =
     error instanceof AxiosError ? getErrorMessage(error) : error.message;
-  return message + ', ' + errorDetails + '.';
+  return message + ': ' + errorDetails + '.';
 }
 
 interface ErrorResponse {
+  error?: string;
   detail?: string;
   error_message?: string;
 }
@@ -78,12 +79,18 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
   }
 
   if (error.response.status) {
-    let message = `HTTP${error.response.status}`;
+    let message = "";
     if (error.response.data?.detail) {
-      message = message + ` - ${error.response.data?.detail}`;
+      message = `${error.response.data?.detail} (HTTP ${error.response.status})`;
     }
     else if (error.response.data?.error_message) {
-      message = message + ` - ${error.response.data?.error_message}`;
+      message = `${error.response.data?.error_message} (HTTP ${error.response.status})`;
+    }
+    else if (error.response.data?.error) {
+      message = `${error.response.data?.error} (HTTP ${error.response.status})`;
+    }
+    else {
+      message = `HTTP${error.response.status}`;
     }
     return message;
   }
