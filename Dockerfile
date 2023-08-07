@@ -18,7 +18,6 @@ RUN set -ex\
 		nginx \
 		libpq-devel \
 		libjpeg-turbo \
-		libjpeg-turbo-devel \
 		openldap \
 		openssl \
 		python39 \
