@@ -58,10 +58,11 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                 setDate(dateValue);
             } else {
                 setDate(prevDate => {
-                    prevDate.setFullYear(dateValue.getFullYear())
-                    prevDate.setMonth(dateValue.getMonth())
-                    prevDate.setDate(dateValue.getDate())
-                    return prevDate;
+                    const newDate = new Date(prevDate);
+                    newDate.setFullYear(dateValue.getFullYear());
+                    newDate.setMonth(dateValue.getMonth());
+                    newDate.setDate(dateValue.getDate());
+                    return newDate;
                 })
             }
         } else {
@@ -78,9 +79,10 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                 setDate(newDate);
             } else { 
                 setDate(prevDate => {
-                    prevDate.setHours(hour)
-                    prevDate.setMinutes(minute)
-                    return prevDate;
+                    const newDate = new Date(prevDate);
+                    newDate.setHours(hour);
+                    newDate.setMinutes(minute);
+                    return newDate;
                 })
             }
         } else {
