@@ -19,11 +19,9 @@ export async function updateTeamForRobot(
   teamName: string,
   robotName: string,
 ) {
-  console.log("calling updateTeamForRobot");
   const robotNameWithOrg = `${namespace}+${robotName}`;
   const createTeamUrl = `/api/v1/organization/${namespace}/team/${teamName}/members/${robotNameWithOrg}`;
   const response: AxiosResponse = await axios.put(createTeamUrl, {});
   assertHttpCode(response.status, 200);
-  console.log("got response from updateTeamForRobot");
   return response.data?.name;
 }

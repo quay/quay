@@ -96,7 +96,7 @@ export default function CreateRobotAccountModal(
 
   const handleModalToggle = () => {
     // clear selected states
-    setSelectedRepoPerms([]);
+    setSelectedRepos([]);
     setSelectedTeams([]);
     setSelectedRepoPerms([]);
     setRobotdefaultPerm('');
