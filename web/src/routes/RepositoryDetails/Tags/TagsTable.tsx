@@ -25,6 +25,7 @@ import TagActions from './TagsActions';
 import { RepositoryDetails } from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
 import { useQuayConfig } from 'src/hooks/UseQuayConfig';
+import TagExpiration from './TagsTableExpiration';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -160,7 +161,15 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
         </Td>
-        <Td dataLabel={ColumnNames.expires}>{tag.expiration ?? 'Never'}</Td>
+        <Td dataLabel={ColumnNames.expires}>
+          <TagExpiration 
+              org={props.org}
+              repo={props.repo}
+              tag={tag.name}
+              expiration={tag.expiration}
+              loadTags={props.loadTags}
+          />
+        </Td>
         <Td dataLabel={ColumnNames.manifest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
@@ -180,6 +189,8 @@ function TagsTableRow(props: RowProps) {
               org={props.org}
               repo={props.repo}
               manifest={tag.manifest_digest}
+              tags={[tag.name]}
+              expiration={tag.expiration}
               loadTags={props.loadTags}
             />
           </Td>

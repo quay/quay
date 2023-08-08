@@ -1,6 +1,7 @@
 /// <reference types="cypress" />
 
 import {formatDate} from '../../src/libs/utils';
+import moment from 'moment';
 
 describe('Repository Details Page', () => {
   beforeEach(() => {
@@ -440,4 +441,144 @@ describe('Repository Details Page', () => {
     cy.contains('Save Labels').click();
     cy.contains('Could not delete labels').should('exist');
   });
+  
+  it('renders tag with no expiration', ()=>{
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
+      {fixture: 'single-tag.json'},
+    ).as('getTag');
+    cy.visit('/repository/testorg/testrepo');
+    cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
+  });
+  
+  it('renders tag with expiration within a month', ()=>{
+    cy.fixture('single-tag.json').then(fixture => {
+      fixture.tags[0].expiration = moment(new Date().toString()).add(1, 'month').format('ddd, DD MMM YYYY HH:mm:ss ZZ');
+      cy.intercept(
+        'GET',
+        '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
+        fixture,
+      ).as('getTag');
+    });
+    cy.visit('/repository/testorg/testrepo');
+    cy.get(`[data-label="Expires"]`).within(()=>{
+      cy.contains('a month');
+    });
+  });
+  
+  it('changes expiration through kebab', ()=>{
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Change expiration').click();
+    cy.get('#edit-expiration-tags').within(()=>{
+      cy.contains('latest').should('exist');
+    });
+    cy.get('[aria-label="Toggle date picker"]').click();
+    cy.get('button[aria-label="Next month"]').click();
+    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
+    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get('#expiration-time-picker').click();
+    cy.contains('1:00 AM').click();
+    cy.contains('Change Expiration').click();
+    const latestRowUpdated = cy.get('tbody:contains("latest")');
+    latestRowUpdated.within(() => {
+      cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
+    });
+    const oneMonthFormat = moment().add(1, 'month').format('MMM D, YYYY');
+    cy.contains(`Successfully set expiration for tag latest to ${oneMonthFormat}, 1:00 AM`).should('exist');
+
+    // Reset back to Never
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Change expiration').click();
+    cy.get('input[aria-label="Date picker"]').clear();
+    cy.contains('Change Expiration').click();
+
+    const latestRowUpdatedNever = cy.get('tbody:contains("latest")');
+    latestRowUpdatedNever.within(() => {
+      cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
+    });
+    cy.contains(`Successfully set expiration for tag latest to never`).should('exist');
+  });
+  
+  it('changes expiration through tag row', ()=>{
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.contains('Never').click();
+    });
+    cy.get('#edit-expiration-tags').within(()=>{
+      cy.contains('latest').should('exist');
+    });
+    cy.get('[aria-label="Toggle date picker"]').click();
+    cy.get('button[aria-label="Next month"]').click();
+    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
+    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get('#expiration-time-picker').click();
+    cy.contains('1:00 AM').click();
+    cy.contains('Change Expiration').click();
+    const latestRowUpdated = cy.get('tbody:contains("latest")');
+    latestRowUpdated.within(() => {
+      cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
+    });
+    const oneMonthLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
+    cy.contains(`Successfully set expiration for tag latest to ${oneMonthLongFormat}, 1:00 AM`).should('exist');
+  });
+
+  it('changes multiple tag expirations', ()=>{
+    cy.visit('/repository/user1/hello-world');
+    cy.get('#toolbar-dropdown-checkbox').click();
+    cy.get('button').contains('Select page (2)').click();
+    cy.contains('Actions').click();
+    cy.contains('Set expiration').click();
+    cy.get('#edit-expiration-tags').within(()=>{
+      cy.contains('latest').should('exist');
+      cy.contains('manifestlist').should('exist');
+    });
+    cy.get('[aria-label="Toggle date picker"]').click();
+    cy.get('button[aria-label="Next month"]').click();
+    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
+    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get('#expiration-time-picker').click();
+    cy.contains('1:00 AM').click();
+    cy.contains('Change Expiration').click();
+    const latestRowUpdated = cy.get('tbody:contains("latest")');
+    latestRowUpdated.within(() => {
+      cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
+    });
+    const tomorrowLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
+    cy.contains(`Successfully updated tag expirations to ${tomorrowLongFormat}, 1:00 AM`).should('exist');
+  });
+
+  it('alerts on failure to change expiration', ()=>{
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/user1/hello-world/tag/latest',
+      { statusCode: 500 }
+    ).as('getServerFailure')
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.contains('Never').click();
+    });
+    cy.get('[aria-label="Toggle date picker"]').click();
+    cy.get('button[aria-label="Next month"]').click();
+    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
+    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get('#expiration-time-picker').click();
+    cy.contains('1:00 AM').click();
+    cy.contains('Change Expiration').click();
+    const latestRowUpdated = cy.get('tbody:contains("latest")');
+    latestRowUpdated.within(() => {
+      cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
+    });
+    const oneMonthLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
+    cy.contains(`Could not set expiration for tag latest`).should('exist');
+  })
 });
+
