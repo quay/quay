@@ -140,21 +140,18 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   const updateRepoPerms = (permission, repo) => {
     const repoName = repo.name ? repo.name : repo;
     if (props.wizardStep) {
-      props.setSelectedRepoPerms(
-        props.selectedRepoPerms.filter((item) => item.name !== repoName),
-      );
       if (permission == 'None') {
         return;
       }
 
       props.setSelectedRepoPerms((prevSelected) => {
+        const filteredPrevSelected = prevSelected.filter((item) => item.name !== repoName)
         const newPerms = {
           name: repoName,
           permission: permission,
           last_modified: repo?.last_modified,
         };
-
-        return [...prevSelected, newPerms];
+        return [...filteredPrevSelected, newPerms];
       });
     } else {
       const tempItem = updatedRepoPerms;
