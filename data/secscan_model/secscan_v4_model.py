@@ -546,7 +546,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     self._secscan_api.delete(manifest_digest)
                     return True
                 except APIRequestFailure:
-                    logger.exception("Failed to perform indexing, security scanner API error")
+                    logger.exception("Failed to delete manifest, security scanner API error")
 
         return None
 
