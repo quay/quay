@@ -1,3 +1,9 @@
+import logging
+from typing import List, Tuple, Union
+
+import urllib
+from data.model import vulnerabilitysuppression
+import features
 import itertools
 import logging
 from collections import namedtuple
@@ -5,7 +11,6 @@ from datetime import datetime, timedelta
 from math import log10
 from typing import List, Tuple, Union
 
-import urllib3
 from peewee import JOIN, fn
 
 import features
@@ -122,7 +127,7 @@ def maybe_urlencoded(fixed_in: str) -> str:
     slightly weaselly, but only slightly.
     """
     try:
-        d = urllib3.parse.parse_qs(fixed_in)
+        d = urllib.parse.parse_qs(fixed_in)
         # There may be additional known-good keys in the future.
         return d["fixed"][0]
     except (ValueError, KeyError):
