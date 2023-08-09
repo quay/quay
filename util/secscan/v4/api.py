@@ -1,48 +1,29 @@
+import base64
 import functools
-import logging
-import requests
 import json
+import logging
 import os
 import re
-import jwt
-import base64
 import time
-from typing import Dict, Callable
-
+from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from datetime import datetime, timedelta
 from enum import Enum
-
-from abc import ABCMeta, abstractmethod
-from six import add_metaclass
+from typing import Callable, Dict
 from urllib.parse import urljoin
-from jsonschema import validate, RefResolver
+
+import jwt
+import requests
+from jsonschema import RefResolver, validate
+from six import add_metaclass
 
 from data.registry_model.datatypes import Manifest as ManifestDataType
-from data.model.storage import get_storage_locations
-from util.metrics.prometheus import secscan_index_request_duration, secscan_index_layer_size
-
+from util.metrics.prometheus import secscan_index_layer_size, secscan_request_duration
 
 logger = logging.getLogger(__name__)
 
 DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
 INDEX_REQUEST_TIMEOUT = 600
-
-
-def observe(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-
-        retval = f(*args, **kwargs)
-
-        dur = time.time() - start_time
-
-        secscan_index_request_duration.observe(dur)
-
-        return retval
-
-    return wrapper
 
 
 class Non200ResponseException(Exception):
@@ -213,7 +194,6 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             self.jwt_psk = base64.b64decode(jwt_psk)
 
         self.secscan_api_endpoint = endpoint
-        self.index_start_time = None
 
     def state(self):
         try:
@@ -224,7 +204,6 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         return resp.json()
 
     def index(self, manifest, layers):
-        self.index_start_time = time.time()
         # TODO: Better method of determining if a manifest can be indexed (new field or content-type whitelist)
         assert isinstance(manifest, ManifestDataType) and not manifest.is_manifest_list
 
@@ -282,10 +261,9 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         return (resp.json(), resp.headers["etag"].strip('"'))
 
-    @observe
     def delete(self, manifest_digest):
         try:
-            resp = self.perform(actions["DeleteIndexReport"](manifest_digest))
+            resp = self._perform(actions["DeleteIndexReport"](manifest_digest))
         except BadRequestResponseException as ex:
             raise InvalidContentSent(ex)
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
@@ -341,6 +319,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         return resp.json()
 
     def _perform(self, action):
+        request_start_time = time.time()
         (method, path, body) = action.payload
         url = urljoin(self.secscan_api_endpoint, path)
 
@@ -362,9 +341,8 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             )
             raise APIRequestFailure(msg)
 
-        if action.name == "Index":
-            dur = time.time() - self.index_start_time
-            secscan_index_request_duration.labels(resp.status_code).observe(dur)
+        dur = time.time() - request_start_time
+        secscan_request_duration.labels(method, action.name, resp.status_code).observe(dur)
 
         if resp.status_code == 400:
             msg = (
