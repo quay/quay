@@ -66,12 +66,12 @@ class RobotWithPermissions(
     """
 
     def to_dict(self, include_token=False):
+        created = getattr(self, "created", None)
+        last_accessed = getattr(self, "last_accessed", None)
         data = {
             "name": self.name,
-            "created": format_date(self.created) if self.created is not None else None,
-            "last_accessed": format_date(self.last_accessed)
-            if self.last_accessed is not None
-            else None,
+            "created": format_date(self.created) if created and not isinstance(created, str) else created,
+            "last_accessed": format_date(self.last_accessed) if last_accessed and not isinstance(last_accessed, str) else last_accessed,
             "teams": [team.to_dict() for team in self.teams],
             "repositories": self.repository_names,
             "description": self.description,
