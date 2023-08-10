@@ -3,7 +3,6 @@ import features
 
 from app import storage, image_replication_queue
 from data.database import (
-    Image,
     ImageStorage,
     Repository,
     User,
