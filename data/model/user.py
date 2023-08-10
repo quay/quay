@@ -568,7 +568,7 @@ def list_entity_robot_permission_teams(entity_name, limit=None, include_permissi
         fields.append(Repository.name)
         fields.append(Team.name)
 
-    query = query.limit(limit).order_by(User.last_accessed.desc())
+    query = query.limit(limit).order_by(User.last_accessed.desc()).distinct()
     return TupleSelector(query, fields)
 
 

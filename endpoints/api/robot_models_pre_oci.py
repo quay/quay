@@ -67,16 +67,14 @@ class RobotPreOCIModel(RobotInterface):
                             "repositories": [],
                         }
                     )
-            else:
-                robot_dict = robots[robot_name].to_dict(include_token=include_token)
 
             robots[robot_name] = Robot(
                 robot_dict["name"],
-                robot_dict.get("token", None),
+                robot_dict["token"],
                 robot_dict["created"],
                 robot_dict["last_accessed"],
                 robot_dict["description"],
-                robot_dict.get("unstructured_metadata", {}),
+                robot_dict["unstructured_metadata"],
             )
             if include_permissions:
                 team_name = robot_tuple.get(TeamTable.name)
@@ -96,7 +94,7 @@ class RobotPreOCIModel(RobotInterface):
                         robot_dict["repositories"].append(repository_name)
                 robots[robot_name] = RobotWithPermissions(
                     robot_dict["name"],
-                    robot_dict.get("token", None),
+                    robot_dict["token"],
                     robot_dict["created"],
                     (robot_dict["last_accessed"] if features.USER_LAST_ACCESSED else None),
                     robot_dict["teams"],
