@@ -88,7 +88,9 @@ RUN ARCH=$(uname -m) ; echo $ARCH; \
 	fi
 
 RUN set -ex\
-    ; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user Cython==3.0.0a9 \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user --no-build-isolation PyYAML==5.4.1 \
 	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
 	;
 RUN set -ex\
