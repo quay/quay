@@ -83,8 +83,9 @@ RUN ARCH=$(uname -m) ; echo $ARCH; \
 	tar xvf manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
 	python3 -m pip install --no-cache-dir --user wheelhouse/gevent-${GE_LATEST}-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
     GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
-	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
+	GRPC_URL=$(curl -s https://api.github.com/repos/IBM/oss-ecosystem-grpc/releases/tags/${GRPC_LATEST} | grep browser_download_url | cut -d'"' -f4); \
+	wget ${GRPC_URL}; \
+	python3 -m pip install --no-cache-dir --user $(basename $GRPC_URL); \
 	fi
 
 RUN set -ex\
