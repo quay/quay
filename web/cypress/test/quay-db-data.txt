@@ -16,6 +16,9 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS k_vulnerabilitysuppression_user_id_user;
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS k_vulnerabilitysuppression_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS fk_vulnerabilitysuppression_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS fk_userregion_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS fk_userregion_location_id_imagestoragelocation;
 ALTER TABLE IF EXISTS ONLY public.userprompt DROP CONSTRAINT IF EXISTS fk_userprompt_user_id_user;
@@ -142,6 +145,9 @@ ALTER TABLE IF EXISTS ONLY public.apprblob DROP CONSTRAINT IF EXISTS fk_apprblob
 ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS fk_accesstoken_role_id_role;
 ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS fk_accesstoken_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS fk_accesstoken_kind_id_accesstokenkind;
+DROP INDEX IF EXISTS public.vulnerabilitysuppression_repository_id;
+DROP INDEX IF EXISTS public.vulnerabilitysuppression_organization_id;
+DROP INDEX IF EXISTS public.vulnerabilitysuppression_manifest_id;
 DROP INDEX IF EXISTS public.visibility_name;
 DROP INDEX IF EXISTS public.userregion_user_id;
 DROP INDEX IF EXISTS public.userregion_location_id;
@@ -478,6 +484,10 @@ DROP INDEX IF EXISTS public.accesstoken_token_name;
 DROP INDEX IF EXISTS public.accesstoken_role_id;
 DROP INDEX IF EXISTS public.accesstoken_repository_id;
 DROP INDEX IF EXISTS public.accesstoken_kind_id;
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS uq_vulnerabilitysuppression_repository_id;
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS uq_vulnerabilitysuppression_organization_id;
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS uq_vulnerabilitysuppression_manifest_id;
+ALTER TABLE IF EXISTS ONLY public.vulnerabilitysuppression DROP CONSTRAINT IF EXISTS pk_vulnerabilitysuppression;
 ALTER TABLE IF EXISTS ONLY public.visibility DROP CONSTRAINT IF EXISTS pk_visibility;
 ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS pk_userregion;
 ALTER TABLE IF EXISTS ONLY public.userpromptkind DROP CONSTRAINT IF EXISTS pk_userpromptkind;
@@ -583,6 +593,7 @@ ALTER TABLE IF EXISTS ONLY public.apprblob DROP CONSTRAINT IF EXISTS pk_apprblob
 ALTER TABLE IF EXISTS ONLY public.accesstokenkind DROP CONSTRAINT IF EXISTS pk_accesstokenkind;
 ALTER TABLE IF EXISTS ONLY public.accesstoken DROP CONSTRAINT IF EXISTS pk_accesstoken;
 ALTER TABLE IF EXISTS ONLY public.alembic_version DROP CONSTRAINT IF EXISTS alembic_version_pkc;
+ALTER TABLE IF EXISTS public.vulnerabilitysuppression ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.visibility ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.userregion ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.userpromptkind ALTER COLUMN id DROP DEFAULT;
@@ -687,6 +698,8 @@ ALTER TABLE IF EXISTS public.apprblobplacement ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.apprblob ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.accesstokenkind ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.accesstoken ALTER COLUMN id DROP DEFAULT;
+DROP SEQUENCE IF EXISTS public.vulnerabilitysuppression_id_seq;
+DROP TABLE IF EXISTS public.vulnerabilitysuppression;
 DROP SEQUENCE IF EXISTS public.visibility_id_seq;
 DROP TABLE IF EXISTS public.visibility;
 DROP SEQUENCE IF EXISTS public.userregion_id_seq;
@@ -4820,6 +4833,44 @@ ALTER SEQUENCE public.visibility_id_seq OWNED BY public.visibility.id;
 
 
 --
+-- Name: vulnerabilitysuppression; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.vulnerabilitysuppression (
+    id integer NOT NULL,
+    manifest_id integer,
+    repository_id integer,
+    organization_id integer,
+    vulnerability_names json NOT NULL,
+    CONSTRAINT check_constraints CHECK ((((manifest_id IS NULL) AND (repository_id IS NULL) AND (organization_id IS NOT NULL)) OR ((manifest_id IS NULL) AND (repository_id IS NOT NULL) AND (organization_id IS NULL)) OR ((manifest_id IS NOT NULL) AND (repository_id IS NULL) AND (organization_id IS NULL))))
+);
+
+
+ALTER TABLE public.vulnerabilitysuppression OWNER TO quay;
+
+--
+-- Name: vulnerabilitysuppression_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.vulnerabilitysuppression_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.vulnerabilitysuppression_id_seq OWNER TO quay;
+
+--
+-- Name: vulnerabilitysuppression_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.vulnerabilitysuppression_id_seq OWNED BY public.vulnerabilitysuppression.id;
+
+
+--
 -- Name: accesstoken id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5548,6 +5599,13 @@ ALTER TABLE ONLY public.visibility ALTER COLUMN id SET DEFAULT nextval('public.v
 
 
 --
+-- Name: vulnerabilitysuppression id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression ALTER COLUMN id SET DEFAULT nextval('public.vulnerabilitysuppression_id_seq'::regclass);
+
+
+--
 -- Data for Name: accesstoken; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -6242,6 +6300,12 @@ COPY public.logentrykind (id, name) FROM stdin;
 105	push_repo_failed
 106	pull_repo_failed
 107	delete_tag_failed
+108	org_change_suppressed_vulnerabilities
+109	org_delete_suppressed_vulnerabilities
+110	set_repo_suppressed_vulnerabilities
+111	delete_repo_suppressed_vulnerabilities
+112	manifest_vulnerability_suppression_add
+113	manifest_vulnerability_suppression_delete
 \.
 
 
@@ -7836,6 +7900,14 @@ COPY public.visibility (id, name) FROM stdin;
 
 
 --
+-- Data for Name: vulnerabilitysuppression; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.vulnerabilitysuppression (id, manifest_id, repository_id, organization_id, vulnerability_names) FROM stdin;
+\.
+
+
+--
 -- Name: accesstoken_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -8084,7 +8156,8 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 107, true);
+
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 113, true);
 
 
 --
@@ -8561,6 +8634,13 @@ SELECT pg_catalog.setval('public.userregion_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.visibility_id_seq', 2, true);
+
+
+--
+-- Name: vulnerabilitysuppression_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.vulnerabilitysuppression_id_seq', 1, false);
 
 
 --
@@ -9401,6 +9481,38 @@ ALTER TABLE ONLY public.userregion
 
 ALTER TABLE ONLY public.visibility
     ADD CONSTRAINT pk_visibility PRIMARY KEY (id);
+
+
+--
+-- Name: vulnerabilitysuppression pk_vulnerabilitysuppression; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT pk_vulnerabilitysuppression PRIMARY KEY (id);
+
+
+--
+-- Name: vulnerabilitysuppression uq_vulnerabilitysuppression_manifest_id; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT uq_vulnerabilitysuppression_manifest_id UNIQUE (manifest_id);
+
+
+--
+-- Name: vulnerabilitysuppression uq_vulnerabilitysuppression_organization_id; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT uq_vulnerabilitysuppression_organization_id UNIQUE (organization_id);
+
+
+--
+-- Name: vulnerabilitysuppression uq_vulnerabilitysuppression_repository_id; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT uq_vulnerabilitysuppression_repository_id UNIQUE (repository_id);
 
 
 --
@@ -11756,6 +11868,27 @@ CREATE UNIQUE INDEX visibility_name ON public.visibility USING btree (name);
 
 
 --
+-- Name: vulnerabilitysuppression_manifest_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX vulnerabilitysuppression_manifest_id ON public.vulnerabilitysuppression USING btree (manifest_id);
+
+
+--
+-- Name: vulnerabilitysuppression_organization_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX vulnerabilitysuppression_organization_id ON public.vulnerabilitysuppression USING btree (organization_id);
+
+
+--
+-- Name: vulnerabilitysuppression_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX vulnerabilitysuppression_repository_id ON public.vulnerabilitysuppression USING btree (repository_id);
+
+
+--
 -- Name: accesstoken fk_accesstoken_kind_id_accesstokenkind; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -12761,6 +12894,30 @@ ALTER TABLE ONLY public.userregion
 
 ALTER TABLE ONLY public.userregion
     ADD CONSTRAINT fk_userregion_user_id_user FOREIGN KEY (user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: vulnerabilitysuppression fk_vulnerabilitysuppression_manifest_id_manifest; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT fk_vulnerabilitysuppression_manifest_id_manifest FOREIGN KEY (manifest_id) REFERENCES public.manifest(id);
+
+
+--
+-- Name: vulnerabilitysuppression k_vulnerabilitysuppression_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT k_vulnerabilitysuppression_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
+-- Name: vulnerabilitysuppression k_vulnerabilitysuppression_user_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.vulnerabilitysuppression
+    ADD CONSTRAINT k_vulnerabilitysuppression_user_id_user FOREIGN KEY (organization_id) REFERENCES public."user"(id);
 
 
 --
