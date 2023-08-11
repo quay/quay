@@ -628,30 +628,30 @@ describe('Tag History Tab', () => {
   const tagHistoryRows = [
     {
       change: "latest was reverted to sha256f54a58bc1aac5e from sha2567e9b6e7ba2842c",
-      date: "Jul 27, 2023, 1:31 PM",
+      date: "Thu, 27 Jul 2023 17:31:10 -0000",
       revert: "Restore to sha2567e9b6e7ba2842c",
     },
     {
       change: "latest was moved to sha2567e9b6e7ba2842c from sha256f54a58bc1aac5e",
-      date: "Jul 27, 2023, 1:30 PM",
+      date: "Thu, 27 Jul 2023 17:30:10 -0000",
       revert: "Revert to sha256f54a58bc1aac5e",
     },
     {
       change: "latest was recreated pointing to sha256f54a58bc1aac5e",
-      date: "Jul 27, 2023, 1:30 PM",
+      date: "Thu, 27 Jul 2023 17:30:10 -0000",
     },
     {
       change: "latest was deleted",
-      date: "Jul 27, 2023, 1:30 PM",
+      date: "Thu, 27 Jul 2023 17:30:10 -0000",
       revert: "Restore to sha256f54a58bc1aac5e",
     },
     {
       change: "manifestlist was created pointing to sha2567693efac53eb85",
-      date: "Nov 4, 2022, 3:15 PM",
+      date: "Fri, 4 Nov 2022 19:15:10 -0000",
     },
     {
       change: "latest was created pointing to sha256f54a58bc1aac5e",
-      date: "Nov 4, 2022, 3:13 PM",
+      date: "Fri, 4 Nov 2022 19:13:10 -0000",
     },
   ]
 
@@ -673,7 +673,7 @@ describe('Tag History Tab', () => {
       cy.wrap($e).within(()=>{
         const expectedValues = tagHistoryRows[index];
         cy.get(`[data-label="tag-change"]`).should('have.text', expectedValues.change);
-        cy.get(`[data-label="date-modified"]`).should('have.text', expectedValues.date);
+        cy.get(`[data-label="date-modified"]`).should('have.text', formatDate(expectedValues.date));
         if(expectedValues.revert){
           cy.get(`[data-label="restore-tag"]`).should('have.text', expectedValues.revert);
         }
