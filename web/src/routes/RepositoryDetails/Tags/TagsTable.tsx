@@ -242,7 +242,7 @@ export default function TagsTable(props: TableProps) {
 
   return (
     <>
-      <TableComposable aria-label="Expandable table">
+      <TableComposable id="tag-list-table" aria-label="Expandable table">
         <Thead>
           <Tr>
             <Th />

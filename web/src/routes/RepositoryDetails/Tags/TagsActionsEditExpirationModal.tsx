@@ -1,7 +1,7 @@
 import { Button, ButtonVariant, DatePicker, DescriptionList, DescriptionListDescription, DescriptionListGroup, DescriptionListTerm, Label, Modal, ModalVariant, TimePicker } from "@patternfly/react-core"
 import { useEffect, useState } from "react";
 import { useAlerts } from "src/hooks/UseAlerts";
-import { useTags } from "src/hooks/UseTags";
+import { useSetExpiration } from "src/hooks/UseTags";
 import { AlertVariant } from "src/atoms/AlertState";
 import { formatDate, isNullOrUndefined } from "src/libs/utils";
 
@@ -13,7 +13,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
         successSetExpiration,
         errorSetExpiration,
         errorSetExpirationDetails,
-    } = useTags(props.org, props.repo);
+    } = useSetExpiration(props.org, props.repo);
     const initialDate: Date = isNullOrUndefined(props.expiration) ? null : new Date(props.expiration);
 
     useEffect(()=>{

@@ -24,13 +24,13 @@ describe('Tag Details Page', () => {
     cy.visit('/repository/user1/hello-world/tag/latest');
     cy.get('[data-testid="name"]').contains('latest').should('exist');
     cy.get('[data-testid="creation"]')
-      .contains(formatDate(1667589234))
+      .contains(formatDate('Thu, 27 Jul 2023 17:31:10 -0000'))
       .should('exist');
     cy.get('[data-testid="repository"]')
       .contains('hello-world')
       .should('exist');
     cy.get('[data-testid="modified"]')
-      .contains(formatDate('Fri, 04 Nov 2022 19:13:54 -0000'))
+      .contains(formatDate('Thu, 27 Jul 2023 17:31:10 -0000'))
       .should('exist');
     cy.get('[data-testid="digest-clipboardcopy"]')
       .contains(

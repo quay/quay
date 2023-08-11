@@ -1,4 +1,4 @@
-describe('Repository Details Page', () => {
+describe('Repository Details Page - Delete', () => {
   beforeEach(() => {
     cy.exec('npm run quay:seed');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)

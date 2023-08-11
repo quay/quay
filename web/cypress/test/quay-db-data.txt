@@ -5464,7 +5464,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-b82361fba1cd
+a0fc06d604a4
 \.
 
 
@@ -5693,6 +5693,8 @@ COPY public.imagestorage (id, uuid, image_size, uncompressed_size, uploading, ca
 17	f2598b38-45b0-4aae-9ce5-cf5943b9acde	3276	10752	t	t	sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd
 18	44f9efe0-cc70-4dfb-afe5-a5db0115ceda	1469	\N	t	t	sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8
 19	930c4fa2-ab31-4365-8db5-8a06396cecf7	32	\N	t	t	sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4
+20	a0517e8d-06a1-474a-87e0-10d362679cf9	2457	14848	t	t	sha256:719385e32844401d57ecfd3eacab360bf551a1491c05b85806ed8f1b08d792f6
+21	1b3962c1-6d5b-4ecd-8961-9b88e03f9abe	1470	\N	t	t	sha256:9c7a54a9a43cca047013b82af109fe963fde787f63f9e016fdc3384500c2823d
 \.
 
 
@@ -5737,6 +5739,8 @@ COPY public.imagestorageplacement (id, storage_id, location_id) FROM stdin;
 17	17	9
 18	18	9
 19	19	9
+20	20	9
+21	21	9
 \.
 
 
@@ -5982,6 +5986,9 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 171	14	4	1	152	2023-01-03 11:24:21.83626	172.18.0.1	{"repo": "repo147", "namespace": "projectquay"}
 172	14	4	1	153	2023-01-03 11:24:21.922767	172.18.0.1	{"repo": "repo148", "namespace": "projectquay"}
 173	14	4	1	154	2023-01-03 11:24:22.021513	172.18.0.1	{"repo": "repo149", "namespace": "projectquay"}
+176	26	1	1	1	2023-07-27 17:30:44.484509	172.18.0.1	{"username": "user1", "repo": "hello-world", "namespace": "user1", "tag": "latest"}
+177	46	1	1	1	2023-07-27 17:30:48.828245	172.18.0.1	{"username": "user1", "repo": "hello-world", "tag": "latest", "manifest_digest": "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"}
+180	46	1	1	1	2023-07-27 17:31:10.684526	172.18.0.1	{"username": "user1", "repo": "hello-world", "tag": "latest", "manifest_digest": "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"}
 \.
 
 
@@ -6123,6 +6130,7 @@ COPY public.manifest (id, repository_id, digest, media_type_id, manifest_bytes, 
 9	1	sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3276,\n         "digest": "sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3276
 10	1	sha256:7693efac53eb85ff1afb03f7f2560015c57ac2175707f1f141f31161634c9dba	15	{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525}],"mediaType":"application\\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}	\N	0
 11	155	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479
+12	1	sha256:7e9b6e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1470,\n      "digest": "sha256:9c7a54a9a43cca047013b82af109fe963fde787f63f9e016fdc3384500c2823d"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2457,\n         "digest": "sha256:719385e32844401d57ecfd3eacab360bf551a1491c05b85806ed8f1b08d792f6"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2457
 \.
 
 
@@ -6151,6 +6159,8 @@ COPY public.manifestblob (id, repository_id, manifest_id, blob_id) FROM stdin;
 18	1	9	18
 19	155	11	1
 20	155	11	2
+21	1	12	20
+22	1	12	21
 \.
 
 
@@ -7354,7 +7364,6 @@ COPY public.star (id, user_id, repository_id, created) FROM stdin;
 --
 
 COPY public.tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, hidden, reversion, tag_kind_id, linked_tag_id) FROM stdin;
-1	latest	1	1	1667589234345	\N	f	f	1	\N
 2	$temp-14b356fd-6475-4036-8a51-6222469ec319	1	2	1667589325995	1667592925995	t	f	1	\N
 3	$temp-4a1787d7-7f4c-4bb8-84d7-23e518be2e07	1	3	1667589327671	1667592927671	t	f	1	\N
 4	$temp-9f0521e7-4e36-4934-b467-0358b158faad	1	4	1667589329223	1667592929223	t	f	1	\N
@@ -7365,6 +7374,12 @@ COPY public.tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifeti
 9	$temp-64f33f3a-8551-49da-b36c-e4ab3a47c247	1	9	1667589337525	1667592937525	t	f	1	\N
 10	manifestlist	1	10	1667589337924	\N	f	f	1	\N
 11	latest	155	11	1687976145896	\N	f	f	1	\N
+1	latest	1	1	1667589234345	1690479044462	f	f	1	\N
+12	$temp-224d812a-ca19-4ccb-92c2-9a04a21924a7	1	1	1690479048789	1690479348789	t	f	1	\N
+13	latest	1	1	1690479048814	1690479058287	f	t	1	\N
+15	$temp-cfb6beff-645a-479d-be37-73ce2631b3c7	1	1	1690479070649	1690479370649	t	f	1	\N
+14	latest	1	12	1690479058287	1690479070667	f	f	1	\N
+16	latest	1	1	1690479070667	\N	f	t	1	\N
 \.
 
 
@@ -7548,6 +7563,8 @@ COPY public.uploadedblob (id, repository_id, blob_id, uploaded_at, expires_at) F
 18	1	18	2022-11-04 19:15:37.292848	2022-11-04 20:15:37.292747
 19	155	1	2023-06-28 18:15:45.607136	2023-06-28 19:15:45.607116
 20	155	2	2023-06-28 18:15:45.812791	2023-06-28 19:15:45.812764
+21	1	20	2023-07-27 17:30:57.985684	2023-07-27 18:30:57.98565
+22	1	21	2023-07-27 17:30:58.184317	2023-07-27 18:30:58.184126
 \.
 
 
@@ -7724,7 +7741,7 @@ SELECT pg_catalog.setval('public.appspecificauthtoken_id_seq', 1, false);
 -- Name: blobupload_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.blobupload_id_seq', 20, true);
+SELECT pg_catalog.setval('public.blobupload_id_seq', 22, true);
 
 
 --
@@ -7801,7 +7818,7 @@ SELECT pg_catalog.setval('public.image_id_seq', 1, false);
 -- Name: imagestorage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.imagestorage_id_seq', 19, true);
+SELECT pg_catalog.setval('public.imagestorage_id_seq', 21, true);
 
 
 --
@@ -7815,7 +7832,7 @@ SELECT pg_catalog.setval('public.imagestoragelocation_id_seq', 9, true);
 -- Name: imagestorageplacement_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.imagestorageplacement_id_seq', 19, true);
+SELECT pg_catalog.setval('public.imagestorageplacement_id_seq', 21, true);
 
 
 --
@@ -7864,7 +7881,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 173, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 180, true);
 
 
 --
@@ -7892,14 +7909,14 @@ SELECT pg_catalog.setval('public.loginservice_id_seq', 7, true);
 -- Name: manifest_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.manifest_id_seq', 11, true);
+SELECT pg_catalog.setval('public.manifest_id_seq', 12, true);
 
 
 --
 -- Name: manifestblob_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.manifestblob_id_seq', 20, true);
+SELECT pg_catalog.setval('public.manifestblob_id_seq', 22, true);
 
 
 --
@@ -7955,7 +7972,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
 
 
 --
@@ -8193,14 +8210,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 1, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, true);
 
 
 --
@@ -8214,7 +8231,7 @@ SELECT pg_catalog.setval('public.star_id_seq', 1, false);
 -- Name: tag_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.tag_id_seq', 11, true);
+SELECT pg_catalog.setval('public.tag_id_seq', 16, true);
 
 
 --
@@ -8305,7 +8322,7 @@ SELECT pg_catalog.setval('public.torrentinfo_id_seq', 1, false);
 -- Name: uploadedblob_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.uploadedblob_id_seq', 20, true);
+SELECT pg_catalog.setval('public.uploadedblob_id_seq', 22, true);
 
 
 --
