@@ -4,16 +4,14 @@ import socket
 import sys
 import threading
 import time
-from collections import namedtuple
-import urllib.request
 import urllib.error
 import urllib.parse
+import urllib.request
+from collections import namedtuple
 
 from cachetools.func import lru_cache
-
 from flask import g, request
-from prometheus_client import push_to_gateway, REGISTRY, Histogram, Gauge, Counter
-
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, push_to_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +58,10 @@ gc_namespaces_purged = Counter(
 )
 gc_iterations = Counter("quay_gc_iterations", "number of iterations by the GCWorker")
 
-secscan_index_request_duration = Histogram(
-    "quay_secscan_index_duration_seconds",
+secscan_request_duration = Histogram(
+    "quay_secscan_request_duration_seconds",
     "seconds taken to make an index request to the secscan service",
-    labelnames=["status"],
+    labelnames=["method", "action", "status"],
 )
 
 secscan_index_layer_size = Histogram(
