@@ -119,8 +119,8 @@ export function TagsToolbar(props: ToolBarProps) {
       <DeleteModal
         modalOptions={modalOptions}
         setModalOptions={setModalOptions}
-        selectedTags={selectedTags}
-        setSelectedTags={setSelectedTags}
+        tags={selectedTags}
+        onComplete={()=>{setSelectedTags([])}}
         org={props.organization}
         repo={props.repository}
         loadTags={props.loadTags}

@@ -192,6 +192,7 @@ function TagsTableRow(props: RowProps) {
               tags={[tag.name]}
               expiration={tag.expiration}
               loadTags={props.loadTags}
+              repoDetails={props.repoDetails}
             />
           </Td>
         </Conditional>

@@ -3,12 +3,20 @@ import { useState } from 'react';
 import AddTagModal from './TagsActionsAddTagModal';
 import EditLabelsModal from './TagsActionsLabelsModal';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
+import { DeleteModal, ModalOptions } from './DeleteModal';
+import { RepositoryDetails } from 'src/resources/RepositoryResource';
+import { useQuayConfig } from 'src/hooks/UseQuayConfig';
 
 export default function TagActions(props: TagActionsProps) {
+    const quayConfig = useQuayConfig();
     const [isOpen, setIsOpen] = useState(false);
     const [isAddTagModalOpen, setIsAddTagModalOpen] = useState(false);
     const [isEditLabelsModalOpen, setIsEditLabelsModalOpen] = useState(false);
     const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] = useState(false);
+    const [deleteModalOptions, setDeleteModalOptions] = useState<ModalOptions>({
+        isOpen: false,
+        force: false,
+      });
 
     const dropdownItems = [
         <DropdownItem 
@@ -38,7 +46,38 @@ export default function TagActions(props: TagActionsProps) {
         >
             Change expiration
         </DropdownItem>,
+        <DropdownItem 
+            key="delete-tag-action"
+            onClick={() => {
+                setIsOpen(false);
+                setDeleteModalOptions({
+                    force: false,
+                    isOpen: true,
+                });
+            }}
+            style={{color: 'red'}}
+        >
+            Remove
+        </DropdownItem>,
     ];
+
+    if (quayConfig?.config?.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
+        dropdownItems.push(
+          <DropdownItem
+            key="forcedelete"
+            onClick={() => {
+                setIsOpen(false);
+                setDeleteModalOptions({
+                    force: true,
+                    isOpen: true,
+                });
+            }}
+            style={{color: 'red'}}
+          >
+            Permanently Delete
+          </DropdownItem>,
+        );
+      }
   
     return (
     <>
@@ -73,6 +112,15 @@ export default function TagActions(props: TagActionsProps) {
             expiration={props.expiration}
             loadTags={props.loadTags}
         />
+        <DeleteModal
+            modalOptions={deleteModalOptions}
+            setModalOptions={setDeleteModalOptions}
+            tags={props.tags}
+            org={props.org}
+            repo={props.repo}
+            loadTags={props.loadTags}
+            repoDetails={props.repoDetails}
+        />
     </>
     );
 }
@@ -84,4 +132,5 @@ interface TagActionsProps {
     expiration: string;
     manifest: string;
     loadTags: () => void;
+    repoDetails: RepositoryDetails;
 }

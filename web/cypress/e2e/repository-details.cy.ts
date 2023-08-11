@@ -112,7 +112,7 @@ describe('Repository Details Page', () => {
     cy.get('tbody:contains("latest")').within(() => cy.get('input').click());
     cy.contains('Actions').click();
     cy.contains('Remove').click();
-    cy.contains('Delete the following tag?').should('exist');
+    cy.contains('Delete the following tag(s)?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
     cy.get('[id="tag-deletion-modal"]').within(() =>
@@ -135,7 +135,51 @@ describe('Repository Details Page', () => {
     cy.get('tbody:contains("latest")').within(() => cy.get('input').click());
     cy.contains('Actions').click();
     cy.contains('Permanently Delete').click();
-    cy.contains('Permanently delete the following tag?').should('exist');
+    cy.contains('Permanently delete the following tag(s)?').should('exist');
+    cy.contains(
+      'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
+    ).should('exist');
+    cy.contains('Cancel').should('exist');
+    cy.get('button').contains('Delete').should('exist');
+    cy.get('[id="tag-deletion-modal"]').within(() =>
+      cy.get('button:contains("Delete")').click(),
+    );
+    cy.wait('@deleteTag', {timeout: 20000})
+      .its('request.url')
+      .should(
+        'contain',
+        '/api/v1/repository/user1/hello-world/tag/latest/expire',
+      );
+  });
+
+  it('deletes tag through row', () => {
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Remove').click();
+    cy.contains('Delete the following tag(s)?').should('exist');
+    cy.contains('Cancel').should('exist');
+    cy.get('button').contains('Delete').should('exist');
+    cy.get('[id="tag-deletion-modal"]').within(() =>
+      cy.get('button:contains("Delete")').click(),
+    );
+    cy.contains('Deleted tag latest successfully').should('exist');
+  });
+
+  it('force deletes tag through row', () => {
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/user1/hello-world/tag/latest/expire',
+    ).as('deleteTag');
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Permanently Delete').click();
+    cy.contains('Permanently delete the following tag(s)?').should('exist');
     cy.contains(
       'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
     ).should('exist');
@@ -158,7 +202,7 @@ describe('Repository Details Page', () => {
     cy.get('button').contains('Select page (2)').click();
     cy.contains('Actions').click();
     cy.contains('Remove').click();
-    cy.contains('Delete the following tags?').should('exist');
+    cy.contains('Delete the following tag(s)?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
     cy.get('[id="tag-deletion-modal"]').within(() => {

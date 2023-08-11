@@ -205,10 +205,10 @@ interface TagLocation {
   tag: string;
 }
 
-export async function bulkDeleteTags(tags: TagLocation[], force = false) {
+export async function bulkDeleteTags(org: string, repo: string, tags: string[], force = false) {
   const deletion_function = force ? expireTag : deleteTag;
   const responses = await Promise.allSettled(
-    tags.map((tag) => deletion_function(tag.org, tag.repo, tag.tag)),
+    tags.map((tag) => deletion_function(org, repo, tag)),
   );
 
   // Filter failed responses
