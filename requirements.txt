@@ -150,9 +150,10 @@ tqdm==4.65.0
 Cython==3.0.0a9
 flit_core==3.7.1
 toml==0.10.2
+tomli==1.2.3
 pip==22.2.1
 setuptools==65.5.1
 setuptools-rust==1.5.2
-setuptools-scm[toml]==4.1.2
+setuptools-scm[toml]==7.1.0
 typing_extensions==4.7.1
 wheel==0.38.4
