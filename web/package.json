@@ -43,7 +43,6 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "format": "prettier --config .prettierrc \"src/**/*.{ts,tsx}\" --write",
-    "prepare": "cd .. && husky install web/.husky",
     "test:integration": "cypress run",
     "start:integration": "serve -s dist -l 9000",
     "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
@@ -87,7 +86,6 @@
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.0",
     "jws": "^4.0.0",
-    "lint-staged": ">=10",
     "moment": "^2.29.4",
     "prettier": "^2.1.2",
     "raw-loader": "^4.0.2",
@@ -108,15 +106,6 @@
     "webpack-merge": "^5.8.0"
   },
   "optionalDependencies": {
-    "cypress": "^10.10.0",
-    "husky": ">=6"
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": "eslint --cache --fix"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
+    "cypress": "^10.10.0"
   }
 }
