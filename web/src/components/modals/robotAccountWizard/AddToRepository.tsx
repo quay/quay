@@ -1,8 +1,5 @@
 import {useRecoilState} from 'recoil';
-import {
-  searchRepoState,
-
-} from 'src/atoms/RepositoryState';
+import {searchRepoState} from 'src/atoms/RepositoryState';
 import React, {useEffect, useState} from 'react';
 import {
   PageSection,
@@ -140,7 +137,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   const updateRepoPerms = (permission, repo) => {
     const repoName = repo.name ? repo.name : repo;
     if (props.wizardStep) {
-      props.setSelectedRepoPerms( (prevSelected) =>
+      props.setSelectedRepoPerms((prevSelected) =>
         prevSelected.filter((item) => item.name !== repoName),
       );
 
@@ -190,7 +187,6 @@ export default function AddToRepository(props: AddToRepositoryProps) {
     });
   };
 
-
   const onKebabToggle = (isKebabOpen: boolean) => {
     setKebabOpen(isKebabOpen);
   };
@@ -209,8 +205,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
     >
       {item.name}
     </DropdownItem>
-  ))
-
+  ));
 
   const updateRobotAccountsList = () => {
     if (
@@ -247,7 +242,11 @@ export default function AddToRepository(props: AddToRepositoryProps) {
               itemsPerPageList={paginatedItems}
               onItemSelect={onSelectItem}
             />
-            <SearchInput searchState={search} onChange={setSearch} id="robot-wizard-repo-search" />
+            <SearchInput
+              searchState={search}
+              onChange={setSearch}
+              id="robot-wizard-repo-search"
+            />
             <ToolbarItem>
               <ToggleGroup aria-label="Default with single selectable">
                 <ToggleGroupItem
@@ -267,7 +266,12 @@ export default function AddToRepository(props: AddToRepositoryProps) {
             <ToolbarItem>
               <Dropdown
                 onSelect={onKebabSelect}
-                toggle={<KebabToggle id="toggle-bulk-perms-kebab" onToggle={onKebabToggle} />}
+                toggle={
+                  <KebabToggle
+                    id="toggle-bulk-perms-kebab"
+                    onToggle={onKebabToggle}
+                  />
+                }
                 isOpen={isKebabOpen}
                 isPlain
                 dropdownItems={kebabItems}
