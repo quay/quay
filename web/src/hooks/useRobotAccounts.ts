@@ -35,7 +35,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
 
   const queryClient = useQueryClient();
 
-  const updateRobotData = async(result) => {
+  const updateRobotData = async (result) => {
     if (result.reposToUpdate) {
       await Promise.allSettled(
         result.reposToUpdate.map((repo) =>
@@ -65,7 +65,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
         result.robotDefaultPerm,
       );
     }
-  }
+  };
 
   const createRobotAccountMutator = useMutation(
     async ({

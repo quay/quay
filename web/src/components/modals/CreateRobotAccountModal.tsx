@@ -53,7 +53,9 @@ export default function CreateRobotAccountModal(
   );
   const [isDrawerExpanded, setDrawerExpanded] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeStep, setActiveStep] = useState<string>('Robot name and description');
+  const [activeStep, setActiveStep] = useState<string>(
+    'Robot name and description',
+  );
 
   const {createNewRobot} = useRobotAccounts({
     name: props.namespace,
@@ -102,7 +104,7 @@ export default function CreateRobotAccountModal(
     setRobotdefaultPerm('');
 
     props.handleModalToggle();
-  }
+  };
 
   const filteredRepos = () => {
     return selectedRepoPerms.filter((repo) =>
@@ -112,7 +114,7 @@ export default function CreateRobotAccountModal(
 
   const handleStepChange = (step) => {
     setActiveStep(step.name);
-  }
+  };
 
   const steps = [
     {
@@ -217,8 +219,12 @@ export default function CreateRobotAccountModal(
             isDataValid={validateRobotName}
           />
         }
-        hasNoBodyPadding={isDrawerExpanded && activeStep == 'Add to team (optional)'  ? true : false}
-        onCurrentStepChanged={(step)=>handleStepChange(step)}
+        hasNoBodyPadding={
+          isDrawerExpanded && activeStep == 'Add to team (optional)'
+            ? true
+            : false
+        }
+        onCurrentStepChanged={(step) => handleStepChange(step)}
       />
     </Modal>
   );
