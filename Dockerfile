@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS base
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -9,8 +9,6 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.20 \
-	; microdnf -y module enable python39:3.9 \
 	; microdnf update -y \
 	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
@@ -23,12 +21,11 @@ RUN set -ex\
 		python39 \
 		python3-gpg \
 		skopeo \
-        findutils \
-    ; microdnf remove platform-python-pip python39-pip \
+		findutils \
 	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
+FROM registry.access.redhat.com/ubi9/nodejs-16 AS config-editor
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
@@ -45,14 +42,14 @@ RUN set -ex\
 		gcc-c++ \
 		git \
 		openldap-devel \
-		python39-devel \
+		python-devel \
 		libffi-devel \
-        openssl-devel \
-        diffutils \
-        file \
-        make \
-        libjpeg-turbo \
-        libjpeg-turbo-devel \
+		openssl-devel \
+		diffutils \
+		file \
+		make \
+		libjpeg-turbo \
+		libjpeg-turbo-devel \
 		wget \
 		rust-toolset \
 		libxml2-devel \
@@ -101,7 +98,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
+FROM registry.access.redhat.com/ubi9/nodejs-16 AS build-static
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
@@ -110,7 +107,7 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN npm run --quiet build
 
 # Build React UI
-FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
+FROM registry.access.redhat.com/ubi9/nodejs-16 as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
 RUN npm clean-install
@@ -118,7 +115,7 @@ COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
+FROM registry.access.redhat.com/ubi9/ubi AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.6.0
 RUN set -ex\
@@ -130,13 +127,13 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
+FROM registry.access.redhat.com/ubi9/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
 COPY --from=config-editor /opt/app-root/src /quaydir/config_app
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
@@ -167,7 +164,6 @@ ENV PYTHONPATH $QUAYPATH
 # Openshift runs a container as a random UID and GID 0, so anything
 # that's in the base image and needs to be modified at runtime needs
 # to make sure it's group-writable.
-RUN alternatives --set python /usr/bin/python3
 RUN set -ex\
 	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
 	; newdir() { for d in "$@"; do mkdir -m 775 "$d" && ls -ld "$d"; done; }\

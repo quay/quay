@@ -13,6 +13,10 @@ let config = {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    fallback: {
+      buffer: require.resolve("buffer/"),
+      path: require.resolve("path-browserify"),
+    },
   },
   // Use global variables to maintain compatibility with non-Webpack components
   externals: {
@@ -44,16 +48,7 @@ let config = {
       },
       {
         test: /\.(woff(2)?|ttf|eot|svg)(\?v=\d+\.\d+\.\d+)?$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-	      // TODO: Workaround for incompatible file-loader + html-loader versions
-	      // https://github.com/webpack-contrib/html-loader/issues/203
-              esModule: false
-            }
-          }
-        ]
+	type: 'asset/resource',
       }
     ]
   },
@@ -65,6 +60,7 @@ let config = {
       angular: "angular",
       $: "jquery",
       moment: "moment",
+      process: 'process/browser',
     }),
     // Restrict the extra locales that moment.js can load; en is always included
     new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /en/),
