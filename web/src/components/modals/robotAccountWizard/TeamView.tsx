@@ -101,6 +101,7 @@ export default function TeamView(props: TeamViewProps) {
               allItemsList={props.items}
               itemsPerPageList={paginatedItems}
               onItemSelect={onSelectItem}
+              id={'add-team-bulk-select'}
             />
           ) : null}
           {props.filterWithDropdown ? (
