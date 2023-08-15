@@ -310,7 +310,7 @@ describe('Repository Details Page', () => {
     const manifestListRow = cy.get('tbody:contains("manifestlist")');
     manifestListRow.within(() => {
       cy.get('button').first().click();
-      cy.get('a').contains('3 Critical').click();
+      cy.contains('3 Critical').click();
     });
     cy.url().should(
       'include',
