@@ -112,7 +112,11 @@ export default function TeamView(props: TeamViewProps) {
               searchInputText={searchInputText}
             />
           ) : (
-            <SearchInput searchState={search} onChange={setSearch} id="robot-wizard-team-search" />
+            <SearchInput
+              searchState={search}
+              onChange={setSearch}
+              id="robot-wizard-team-search"
+            />
           )}
           {props.showCheckbox ? (
             <ToolbarItem>

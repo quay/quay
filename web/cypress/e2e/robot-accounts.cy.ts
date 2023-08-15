@@ -44,11 +44,12 @@ describe('Robot Accounts Page', () => {
     cy.get('#robot-wizard-form-description').type(
       "This is newtestrob's description",
     );
-    cy.get('#create-robot-submit').click()
-    .then(() => {
-      cy.get('#robot-account-search').type('newtestrob');
-      cy.contains('1 - 1 of 1');
-    });
+    cy.get('#create-robot-submit')
+      .click()
+      .then(() => {
+        cy.get('#robot-account-search').type('newtestrob');
+        cy.contains('1 - 1 of 1');
+      });
 
     //  check that states are cleared after creating robot account
     cy.get('#create-robot-account-btn').click();
@@ -72,13 +73,12 @@ describe('Robot Accounts Page', () => {
     cy.get('li[id="testorg+testrobot2-del-btn"]').contains('Delete').click();
 
     cy.get('#delete-confirmation-input').type('confirm');
-    cy.get('[id="bulk-delete-modal"]').within(() =>
-      cy.get('button:contains("Delete")').click(),
-    )
+    cy.get('[id="bulk-delete-modal"]')
+      .within(() => cy.get('button:contains("Delete")').click())
       .then(() => {
         cy.get('#robot-account-search').clear().type('testrobot2');
         cy.contains('0 - 0 of 0');
-    });
+      });
   });
 
   it('Update Repo Permissions', () => {
@@ -87,10 +87,13 @@ describe('Robot Accounts Page', () => {
     cy.get('#add-repository-bulk-select-text').contains('1 selected');
     cy.get('#toggle-descriptions').click();
     cy.get('[role="menuitem"]').contains('Admin').click();
-    cy.get('footer').find('button:contains("Save")').click().then(() => {
-      cy.get('footer').find('button:contains("Save")').should('not.exist');
-      cy.get('#toggle-descriptions').contains('Admin');
-    })
+    cy.get('footer')
+      .find('button:contains("Save")')
+      .click()
+      .then(() => {
+        cy.get('footer').find('button:contains("Save")').should('not.exist');
+        cy.get('#toggle-descriptions').contains('Admin');
+      });
   });
 
   it('Bulk Update Repo Permissions', () => {
@@ -106,11 +109,13 @@ describe('Robot Accounts Page', () => {
     cy.get('#add-repository-bulk-select').click();
     cy.get('#toggle-bulk-perms-kebab').click();
     cy.get('[role="menuitem"]').contains('Write').click();
-    cy.get('footer').find('button:contains("Save")').click().then(() => {
-      cy.get('[data-label="Permissions"]').each(($item) => {
-        cy.wrap($item).contains('Write');
+    cy.get('footer')
+      .find('button:contains("Save")')
+      .click()
+      .then(() => {
+        cy.get('[data-label="Permissions"]').each(($item) => {
+          cy.wrap($item).contains('Write');
+        });
       });
-    })
   });
-
 });
