@@ -93,6 +93,9 @@ export function useRobotAccounts({name, onSuccess, onError}) {
         queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
         queryClient.invalidateQueries(['organization', namespace, 'teams']);
       },
+      onError: (err) => {
+        onError(err);
+      },
     },
   );
 
