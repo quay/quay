@@ -241,7 +241,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
               allItemsList={props.repos}
               itemsPerPageList={paginatedItems}
               onItemSelect={onSelectItem}
-              id={'add-repository-bulk-select'}
+              id="add-repository-bulk-select"
             />
             <SearchInput
               searchState={search}

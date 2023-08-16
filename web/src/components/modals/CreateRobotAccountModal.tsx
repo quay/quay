@@ -221,8 +221,6 @@ export default function CreateRobotAccountModal(
         }
         hasNoBodyPadding={
           isDrawerExpanded && activeStep == 'Add to team (optional)'
-            ? true
-            : false
         }
         onCurrentStepChanged={(step) => handleStepChange(step)}
       />
