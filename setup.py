@@ -1,5 +1,6 @@
-from setuptools import setup
 import os
+
+from setuptools import setup
 
 # File used to export Quay modules to be used in other projects.
 # Current modules exported to support reuse of database models.

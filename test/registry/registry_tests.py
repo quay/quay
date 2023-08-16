@@ -1,23 +1,25 @@
 # pylint: disable=W0401, W0621, W0613, W0614, R0913
+import binascii
 import hashlib
 import tarfile
-
 from io import BytesIO
+from test.fixtures import *
+from test.registry.fixtures import *
+from test.registry.liveserverfixture import *
+from test.registry.protocol_fixtures import *
+from test.registry.protocols import (
+    Failures,
+    Image,
+    ProtocolOptions,
+    layer_bytes_for_contents,
+)
 
-import binascii
 import bencode
 import rehash
-
 from werkzeug.datastructures import Accept
 
-from test.fixtures import *
-from test.registry.liveserverfixture import *
-from test.registry.fixtures import *
-from test.registry.protocol_fixtures import *
-
-from test.registry.protocols import Failures, Image, layer_bytes_for_contents, ProtocolOptions
-
-from app import instance_keys, app as original_app
+from app import app as original_app
+from app import instance_keys
 from data.registry_model import registry_model
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE

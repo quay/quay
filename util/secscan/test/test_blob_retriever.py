@@ -1,10 +1,11 @@
+from test.fixtures import *
+
+from app import app as application
+from app import instance_keys, storage
 from auth.registry_jwt_auth import identity_from_bearer_token
-from app import app as application, storage, instance_keys
 from data.registry_model import registry_model
 from endpoints.v2 import v2_bp
 from util.secscan.blob import BlobURLRetriever
-
-from test.fixtures import *
 
 
 def test_generate_url(initialized_db):

@@ -1,12 +1,10 @@
-from app import app
-
-from util.useremails import send_confirmation_email
-
-from data import model
-
 import argparse
 
 from flask import Flask, current_app
+
+from app import app
+from data import model
+from util.useremails import send_confirmation_email
 
 
 def sendConfirmation(username):

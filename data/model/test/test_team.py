@@ -1,21 +1,21 @@
+from test.fixtures import *
+
 import pytest
 
+from data.model import DataModelException
+from data.model.organization import create_organization
 from data.model.team import (
+    __get_user_admin_teams,
     add_or_invite_to_team,
     add_user_to_team,
-    create_team,
     confirm_team_invite,
+    create_team,
     list_team_users,
     remove_team,
     remove_user_from_team,
     validate_team_name,
-    __get_user_admin_teams,
 )
-from data.model import DataModelException
-from data.model.organization import create_organization
-from data.model.user import get_user, create_user_noverify
-
-from test.fixtures import *
+from data.model.user import create_user_noverify, get_user
 
 
 @pytest.mark.parametrize(

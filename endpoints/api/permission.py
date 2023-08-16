@@ -7,18 +7,19 @@ import logging
 from flask import request
 
 from endpoints.api import (
-    resource,
-    nickname,
-    require_repo_admin,
     RepositoryParamResource,
     log_action,
-    request_error,
-    validate_json_request,
+    nickname,
     path_param,
+    request_error,
+    require_repo_admin,
+    resource,
+    validate_json_request,
 )
 from endpoints.exception import NotFound
-from .permission_models_pre_oci import pre_oci_model as model
+
 from .permission_models_interface import DeleteException, SaveException
+from .permission_models_pre_oci import pre_oci_model as model
 
 logger = logging.getLogger(__name__)
 

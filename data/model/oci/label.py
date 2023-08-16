@@ -1,19 +1,21 @@
 import logging
 
-
-from data.model import InvalidLabelKeyException, InvalidMediaTypeException, DataModelException
 from data.database import (
     Label,
-    Manifest,
-    MediaType,
     LabelSourceType,
-    db_transaction,
+    Manifest,
     ManifestLabel,
+    MediaType,
     Repository,
+    db_transaction,
+)
+from data.model import (
+    DataModelException,
+    InvalidLabelKeyException,
+    InvalidMediaTypeException,
 )
 from data.text import prefix_search
-from util.validation import validate_label_key
-from util.validation import is_json
+from util.validation import is_json, validate_label_key
 
 logger = logging.getLogger(__name__)
 

@@ -1,46 +1,38 @@
 import hashlib
-import pytest
 import json
 import random
-
-from datetime import datetime, timedelta
-
-from mock import patch
-
-from app import storage, docker_v2_signing_key
-
 from contextlib import contextmanager
+from datetime import datetime, timedelta
+from test.fixtures import *
+from test.helpers import check_transitive_modifications
+
+import pytest
+from freezegun import freeze_time
+from mock import patch
 from playhouse.test_utils import assert_query_count
 
-from freezegun import freeze_time
-
-from data import model, database
-from data.registry_model import registry_model
-from data.registry_model.datatypes import RepositoryReference
+from app import docker_v2_signing_key, storage
+from data import database, model
 from data.database import (
-    ImageStorage,
-    Label,
-    ManifestLabel,
     ApprBlob,
+    ImageStorage,
+    ImageStorageLocation,
+    Label,
     Manifest,
     ManifestBlob,
+    ManifestLabel,
     Tag,
-    ImageStorageLocation,
     UploadedBlob,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
+from data.registry_model import registry_model
+from data.registry_model.datatypes import RepositoryReference
 from digest.digest_tools import sha256_digest
 from image.docker.schema1 import DockerSchema1ManifestBuilder
-
-from image.oci.manifest import OCIManifestBuilder
 from image.oci.config import OCIConfig
-
+from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
-
-from test.helpers import check_transitive_modifications
-from test.fixtures import *
-
 
 ADMIN_ACCESS_USER = "devtable"
 PUBLIC_USER = "public"

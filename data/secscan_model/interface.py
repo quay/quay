@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
-from six import add_metaclass
 
 from deprecated import deprecated
+from six import add_metaclass
 
 
 class InvalidConfigurationException(Exception):

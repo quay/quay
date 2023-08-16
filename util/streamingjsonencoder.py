@@ -31,9 +31,12 @@
 import collections
 import collections.abc
 import json
-from json.encoder import encode_basestring, encode_basestring_ascii, INFINITY  # type: ignore
+from json.encoder import (  # type: ignore
+    INFINITY,
+    encode_basestring,
+    encode_basestring_ascii,
+)
 from types import GeneratorType
-
 
 FLOAT_REPR = str
 

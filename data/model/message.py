@@ -1,4 +1,4 @@
-from data.database import Messages, MediaType
+from data.database import MediaType, Messages
 
 
 def get_messages():

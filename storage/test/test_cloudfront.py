@@ -1,16 +1,20 @@
 import os
-import pytest
-
 from contextlib import contextmanager
+from test.fixtures import *
+
+import boto3
+import pytest
 from mock import patch
 from moto import mock_s3
-import boto3
 
 from app import config_provider
 from storage import CloudFrontedS3Storage, StorageContext
 from util.ipresolver import IPResolver
-from util.ipresolver.test.test_ipresolver import test_aws_ip, aws_ip_range_data, test_ip_range_cache
-from test.fixtures import *
+from util.ipresolver.test.test_ipresolver import (
+    aws_ip_range_data,
+    test_aws_ip,
+    test_ip_range_cache,
+)
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"

@@ -1,27 +1,16 @@
-import logging
 import datetime
-
+import logging
 from calendar import timegm
 from email.utils import formatdate
 from functools import partial, wraps
 
 from flask import Blueprint, request, session
-from flask_restful import Resource, abort, Api, reqparse
+from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError, validate
 
 import features
-
 from app import app, authentication, usermanager
-from auth.permissions import (
-    ReadRepositoryPermission,
-    ModifyRepositoryPermission,
-    AdministerRepositoryPermission,
-    UserReadPermission,
-    UserAdminPermission,
-    SuperUserPermission,
-    GlobalReadOnlySuperUserPermission,
-)
 from auth import scopes
 from auth.auth_context import (
     get_authenticated_context,
@@ -29,30 +18,38 @@ from auth.auth_context import (
     get_validated_oauth_token,
 )
 from auth.decorators import process_oauth
-from data import model as data_model
-from data.logs_model import logs_model
-from data.database import RepositoryState
-from endpoints.csrf import csrf_protect
-from endpoints.exception import (
-    Unauthorized,
-    InvalidRequest,
-    InvalidResponse,
-    FreshLoginRequired,
-    NotFound,
+from auth.permissions import (
+    AdministerRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
+    ModifyRepositoryPermission,
+    ReadRepositoryPermission,
+    SuperUserPermission,
+    UserAdminPermission,
+    UserReadPermission,
 )
+from data import model as data_model
+from data.database import RepositoryState
+from data.logs_model import logs_model
+from endpoints.csrf import csrf_protect
 from endpoints.decorators import (
     check_anon_protection,
-    require_xhr_from_browser,
     check_readonly,
+    require_xhr_from_browser,
+)
+from endpoints.exception import (
+    FreshLoginRequired,
+    InvalidRequest,
+    InvalidResponse,
+    NotFound,
+    Unauthorized,
 )
 from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
-from util.pagination import encrypt_page_token, decrypt_page_token
-from util.request import get_request_ip, crossorigin
+from util.pagination import decrypt_page_token, encrypt_page_token
+from util.request import crossorigin, get_request_ip
 from util.timedeltastring import convert_to_timedelta
 
 from .__init__models_pre_oci import pre_oci_model as model
-
 
 logger = logging.getLogger(__name__)
 api_bp = timed_blueprint(Blueprint("api", __name__))
@@ -583,22 +580,22 @@ import endpoints.api.error
 import endpoints.api.globalmessages
 import endpoints.api.logs
 import endpoints.api.manifest
+import endpoints.api.mirror
+import endpoints.api.namespacequota
 import endpoints.api.organization
 import endpoints.api.permission
 import endpoints.api.prototype
+import endpoints.api.repoemail
 import endpoints.api.repository
 import endpoints.api.repositorynotification
-import endpoints.api.repoemail
 import endpoints.api.repotoken
 import endpoints.api.robot
 import endpoints.api.search
+import endpoints.api.secscan
+import endpoints.api.signing
 import endpoints.api.suconfig
 import endpoints.api.superuser
 import endpoints.api.tag
 import endpoints.api.team
 import endpoints.api.trigger
 import endpoints.api.user
-import endpoints.api.secscan
-import endpoints.api.signing
-import endpoints.api.mirror
-import endpoints.api.namespacequota

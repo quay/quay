@@ -1,6 +1,6 @@
 from multiprocessing.sharedctypes import Array
-from util.validation import MAX_USERNAME_LENGTH
 
+from util.validation import MAX_USERNAME_LENGTH
 
 SUPER_USERS_CONFIG = "SUPER_USERS"
 RESTRICTED_USERS_WHITELIST_CONFIG = "RESTRICTED_USERS_WHITELIST"

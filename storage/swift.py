@@ -3,30 +3,27 @@ Swift storage driver.
 
 Uses: http://docs.openstack.org/developer/swift/overview_large_objects.html
 """
-import os.path
 import copy
 import hmac
-import string
-import logging
 import json
+import logging
+import os.path
+import string
 import sys
-
-from io import IOBase, BytesIO
-
 from collections import namedtuple
 from hashlib import sha1
+from io import BytesIO, IOBase
 from random import SystemRandom
 from time import time
 from urllib.parse import urlparse
 from uuid import uuid4
 
 from cachetools.func import lru_cache
-from swiftclient.client import Connection, ClientException, ReadableToIterable
+from swiftclient.client import ClientException, Connection, ReadableToIterable
 
 from storage.basestorage import BaseStorage
 from util.registry import filelike
 from util.registry.generatorfile import GeneratorFile
-
 
 logger = logging.getLogger(__name__)
 

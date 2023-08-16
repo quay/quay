@@ -2,14 +2,13 @@ import logging
 import time
 
 import features
-
-from app import app, namespace_gc_queue, all_queues
+from app import all_queues, app, namespace_gc_queue
 from data import model
-from workers.queueworker import QueueWorker, WorkerSleepException
-from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
+from util.log import logfile_path
 from util.metrics.prometheus import gc_namespaces_purged
 from workers.gunicorn_worker import GunicornWorker
+from workers.queueworker import QueueWorker, WorkerSleepException
 
 logger = logging.getLogger(__name__)
 

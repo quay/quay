@@ -1,17 +1,16 @@
-import pytest
+from test.fixtures import *
 
+import pytest
 from playhouse.test_utils import assert_query_count
 
 from data.database import Manifest, ManifestLabel
 from data.model.oci.label import (
-    create_manifest_label,
-    list_manifest_labels,
-    get_manifest_label,
-    delete_manifest_label,
     DataModelException,
+    create_manifest_label,
+    delete_manifest_label,
+    get_manifest_label,
+    list_manifest_labels,
 )
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

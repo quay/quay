@@ -2,11 +2,17 @@ import logging
 import time
 
 from app import app, notification_queue
-from notifications.notificationmethod import NotificationMethod, InvalidNotificationMethodException
-from notifications.notificationevent import NotificationEvent, InvalidNotificationEventException
-from workers.notificationworker.models_pre_oci import pre_oci_model as model
-from workers.queueworker import QueueWorker, JobException
+from notifications.notificationevent import (
+    InvalidNotificationEventException,
+    NotificationEvent,
+)
+from notifications.notificationmethod import (
+    InvalidNotificationMethodException,
+    NotificationMethod,
+)
 from workers.gunicorn_worker import GunicornWorker
+from workers.notificationworker.models_pre_oci import pre_oci_model as model
+from workers.queueworker import JobException, QueueWorker
 
 logger = logging.getLogger(__name__)
 

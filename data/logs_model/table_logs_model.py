@@ -1,23 +1,22 @@
 # pylint: disable=protected-access
 
 import logging
-
 from datetime import datetime, timedelta
 
-from tzlocal import get_localzone
 from dateutil.relativedelta import relativedelta
+from tzlocal import get_localzone
 
 from data import model
-from data.model import config
-from data.database import LogEntry, LogEntry2, LogEntry3, BaseModel, UseThenDisconnect
+from data.database import BaseModel, LogEntry, LogEntry2, LogEntry3, UseThenDisconnect
+from data.logs_model.datatypes import AggregatedLogCount, Log, LogEntriesPage
 from data.logs_model.interface import (
     ActionLogsDataInterface,
-    LogsIterationTimeout,
     LogRotationContextInterface,
+    LogsIterationTimeout,
 )
-from data.logs_model.datatypes import Log, AggregatedLogCount, LogEntriesPage
-from data.logs_model.shared import SharedModel, InvalidLogsDateRangeError
-from data.model.log import get_stale_logs, get_stale_logs_start_id, delete_stale_logs
+from data.logs_model.shared import InvalidLogsDateRangeError, SharedModel
+from data.model import config
+from data.model.log import delete_stale_logs, get_stale_logs, get_stale_logs_start_id
 from data.readreplica import ReadOnlyModeException
 
 logger = logging.getLogger(__name__)

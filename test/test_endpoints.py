@@ -1,25 +1,21 @@
 # coding=utf-8
 
+import base64
 import json as py_json
 import time
 import unittest
-import base64
 import zlib
-
-from parameterized import parameterized, parameterized_class
-
-from mock import patch
-from io import BytesIO
-from urllib.parse import urlencode
-from urllib.parse import urlparse, urlunparse, parse_qs
 from datetime import datetime, timedelta
+from io import BytesIO
+from test.helpers import assert_action_logged
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import jwt
-
-from flask import url_for
-
-from cryptography.hazmat.primitives import serialization
 from authlib.jose import JsonWebKey
+from cryptography.hazmat.primitives import serialization
+from flask import url_for
+from mock import patch
+from parameterized import parameterized, parameterized_class
 
 from app import app
 from data import model
@@ -27,15 +23,14 @@ from data.database import ServiceKeyApprovalType
 from endpoints import keyserver
 from endpoints.api import api, api_bp
 from endpoints.api.user import Signin
-from endpoints.keyserver import jwk_with_kid
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
+from endpoints.keyserver import jwk_with_kid
+from endpoints.test.shared import gen_basic_auth
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
-from endpoints.test.shared import gen_basic_auth
-from initdb import setup_database_for_testing, finished_database_for_testing
-from test.helpers import assert_action_logged
-from util.security.token import encode_public_private_token
+from initdb import finished_database_for_testing, setup_database_for_testing
 from util.registry.gzipinputstream import WINDOW_BUFFER_SIZE
+from util.security.token import encode_public_private_token
 
 try:
     app.register_blueprint(web_bp, url_prefix="")

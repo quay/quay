@@ -1,10 +1,10 @@
+from test.fixtures import *
+
 import pytest
 
 from endpoints.common import common_login
-from endpoints.csrf import QUAY_CSRF_UPDATED_HEADER_NAME
-
-from test.fixtures import *
 from endpoints.common_models_pre_oci import pre_oci_model as model
+from endpoints.csrf import QUAY_CSRF_UPDATED_HEADER_NAME
 
 
 @pytest.mark.parametrize(

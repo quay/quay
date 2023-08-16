@@ -1,17 +1,16 @@
 import datetime
 import json
 
+import pytest
 from dateutil.tz import tzutc
 
-import pytest
-
 from image.oci import (
-    register_artifact_type,
-    ALLOWED_ARTIFACT_TYPES,
     ADDITIONAL_LAYER_CONTENT_TYPES,
+    ALLOWED_ARTIFACT_TYPES,
     OCI_IMAGE_CONFIG_CONTENT_TYPE,
+    register_artifact_type,
 )
-from image.oci.config import OCIConfig, MalformedConfig, LayerHistory
+from image.oci.config import LayerHistory, MalformedConfig, OCIConfig
 from util.bytes import Bytes
 
 SAMPLE_CONFIG = """{

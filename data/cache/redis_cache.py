@@ -1,4 +1,4 @@
-from redis import StrictRedis, RedisError
+from redis import RedisError, StrictRedis
 from rediscluster import RedisCluster
 
 

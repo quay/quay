@@ -1,25 +1,23 @@
 import hashlib
 import os
 import tarfile
-
-from io import BytesIO
 from contextlib import closing
+from io import BytesIO
+from test.fixtures import *
 
 import pytest
 
 from data.registry_model.blobuploader import (
-    retrieve_blob_upload_manager,
-    upload_blob,
-    BlobUploadException,
     BlobDigestMismatchException,
     BlobTooLargeException,
+    BlobUploadException,
     BlobUploadSettings,
+    retrieve_blob_upload_manager,
+    upload_blob,
 )
 from data.registry_model.registry_oci_model import OCIModel
-
 from storage.distributedstorage import DistributedStorage
 from storage.fakestorage import FakeStorage
-from test.fixtures import *
 
 
 @pytest.fixture()

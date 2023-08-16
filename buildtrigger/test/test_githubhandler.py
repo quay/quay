@@ -1,11 +1,12 @@
 import json
+
 import pytest
 
 from buildtrigger.test.githubmock import get_github_trigger
 from buildtrigger.triggerutil import (
+    InvalidPayloadException,
     SkipRequestException,
     ValidationRequestException,
-    InvalidPayloadException,
 )
 from endpoints.building import PreparedBuild
 from util.morecollections import AttrDict

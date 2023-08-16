@@ -2,8 +2,11 @@ import json
 
 import pytest
 
-from image.oci.test.testdata import OCI_IMAGE_INDEX_MANIFEST, OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD
-from image.oci.index import OCIIndex, MalformedIndex
+from image.oci.index import MalformedIndex, OCIIndex
+from image.oci.test.testdata import (
+    OCI_IMAGE_INDEX_MANIFEST,
+    OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD,
+)
 from util.bytes import Bytes
 
 

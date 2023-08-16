@@ -1,8 +1,8 @@
-from app import namespace_gc_queue
-from data import model, database
-from workers.namespacegcworker import NamespaceGCWorker
-
 from test.fixtures import *
+
+from app import namespace_gc_queue
+from data import database, model
+from workers.namespacegcworker import NamespaceGCWorker
 
 
 def test_gc_namespace(initialized_db):

@@ -1,33 +1,30 @@
+import inspect
 import os
-
+import shutil
 from collections import namedtuple
+from test.testconfig import FakeTransaction
 
 import pytest
-import shutil
-import inspect
-
 from flask import Flask, jsonify
 from flask_login import LoginManager
-from flask_principal import identity_loaded, Principal
 from flask_mail import Mail
-from peewee import SqliteDatabase, InternalError
+from flask_principal import Principal, identity_loaded
 from mock import patch
+from peewee import InternalError, SqliteDatabase
 
 import features
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model
-from data.database import close_db_filter, db, configure
+from data.database import close_db_filter, configure, db
 from data.model.user import LoginWrappedDBUser
 from data.userfiles import Userfiles
 from endpoints.api import api_bp
-from endpoints.web import web
 from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
+from endpoints.web import web
 from endpoints.webhooks import webhooks
-
 from initdb import initialize_database, populate_database
-
 from path_converters import (
     APIRepositoryPathConverter,
     RegexConverter,
@@ -35,7 +32,6 @@ from path_converters import (
     RepositoryPathRedirectConverter,
     V1CreateRepositoryPathConverter,
 )
-from test.testconfig import FakeTransaction
 
 INIT_DB_PATH = 0
 

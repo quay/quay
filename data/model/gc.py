@@ -1,40 +1,41 @@
 import logging
-
-from peewee import fn, IntegrityError
 from datetime import datetime
 
-import features
+from peewee import IntegrityError, fn
 
-from data.model import config, db_transaction, storage, _basequery, blob
-from data.model.oci import tag as oci_tag
-from data.model.quota import reset_backfill, subtract_blob_size
-from data.database import ImageStorage, Repository, QuotaRepositorySize, db_for_update
-from data.database import ApprTag
+import features
 from data.database import (
-    Tag,
-    Manifest,
+    AccessToken,
+    ApprTag,
+    BlobUpload,
     DeletedRepository,
+    ImageStorage,
+    Label,
+    Manifest,
     ManifestBlob,
     ManifestChild,
     ManifestLabel,
     ManifestSecurityStatus,
-    Label,
-    RepositoryState,
+    QuotaRepositorySize,
+    RepoMirrorConfig,
+    Repository,
+    RepositoryActionCount,
+    RepositoryAuthorizedEmail,
     RepositoryBuild,
     RepositoryBuildTrigger,
-    RepositoryActionCount,
-    Star,
-    AccessToken,
     RepositoryNotification,
-    BlobUpload,
-    RepoMirrorConfig,
     RepositoryPermission,
-    RepositoryAuthorizedEmail,
+    RepositoryState,
+    Star,
+    Tag,
     UploadedBlob,
+    db_for_update,
 )
+from data.model import _basequery, blob, config, db_transaction, storage
+from data.model.oci import tag as oci_tag
+from data.model.quota import reset_backfill, subtract_blob_size
 from data.secscan_model import secscan_model
-from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
-
+from util.metrics.prometheus import gc_repos_purged, gc_table_rows_deleted
 
 logger = logging.getLogger(__name__)
 

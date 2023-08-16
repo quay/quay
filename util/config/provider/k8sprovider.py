@@ -1,15 +1,14 @@
-import os
-import logging
-import json
 import base64
+import json
+import logging
+import os
 import time
-
 from io import StringIO
+
 from requests import Request, Session
 
-from util.config.provider.baseprovider import CannotWriteConfigException, get_yaml
 from util.config.provider.basefileprovider import BaseFileProvider
-
+from util.config.provider.baseprovider import CannotWriteConfigException, get_yaml
 
 logger = logging.getLogger(__name__)
 

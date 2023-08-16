@@ -11,6 +11,7 @@ revision = "5d463ea1e8a8"
 down_revision = "610320e9dacf"
 
 import sqlalchemy as sa
+
 from util.migrate.table_ops import copy_table_contents
 
 

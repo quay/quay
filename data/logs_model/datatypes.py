@@ -1,5 +1,4 @@
 import json
-
 from calendar import timegm
 from collections import namedtuple
 from email.utils import formatdate

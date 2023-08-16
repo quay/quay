@@ -4,15 +4,14 @@ import time
 
 import jwt
 import pytest
-
 from cryptography.hazmat.primitives import serialization
 
 from app import app, instance_keys
 from auth.auth_context_type import ValidatedAuthContext
-from auth.registry_jwt_auth import identity_from_bearer_token, InvalidJWTException
+from auth.registry_jwt_auth import InvalidJWTException, identity_from_bearer_token
 from data import model  # TODO: remove this after service keys are decoupled
 from data.database import ServiceKeyApprovalType
-from initdb import setup_database_for_testing, finished_database_for_testing
+from initdb import finished_database_for_testing, setup_database_for_testing
 from util.morecollections import AttrDict
 from util.security.registry_jwt import ANONYMOUS_SUB, build_context_and_subject
 

@@ -1,6 +1,6 @@
 import json
-import threading
 import logging
+import threading
 
 import redis
 

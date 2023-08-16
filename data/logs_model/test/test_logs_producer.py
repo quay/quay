@@ -1,21 +1,20 @@
 import logging
-import pytest
-from dateutil.parser import parse
-from mock import patch, Mock
 
 import botocore
+import pytest
+from dateutil.parser import parse
+from mock import Mock, patch
 
 from data.logs_model import configure
 
+from .mock_elasticsearch import *
 from .test_elasticsearch import (
     app_config,
-    logs_model_config,
     logs_model,
-    mock_elasticsearch,
+    logs_model_config,
     mock_db_model,
+    mock_elasticsearch,
 )
-from .mock_elasticsearch import *
-
 
 logger = logging.getLogger(__name__)
 

@@ -10,41 +10,41 @@ from flask import request, url_for
 from app import app
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
-    UserAdminPermission,
     AdministerOrganizationPermission,
     AdministerRepositoryPermission,
+    UserAdminPermission,
 )
 from buildtrigger.basehandler import BuildTriggerHandler
-from buildtrigger.triggerutil import TriggerException, EmptyRepositoryException
+from buildtrigger.triggerutil import EmptyRepositoryException, TriggerException
 from data import model
 from data.fields import DecryptedValue
 from data.model.build import update_build_trigger
 from endpoints.api import (
     RepositoryParamResource,
-    nickname,
-    resource,
-    require_repo_admin,
-    log_action,
-    request_error,
-    query_param,
-    parse_args,
-    internal_only,
-    validate_json_request,
-    api,
-    path_param,
     abort,
+    api,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
+    internal_only,
+    log_action,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
+    request_error,
+    require_repo_admin,
+    resource,
+    validate_json_request,
 )
-from endpoints.api.build import build_status_view, trigger_view, RepositoryBuildStatus
+from endpoints.api.build import RepositoryBuildStatus, build_status_view, trigger_view
 from endpoints.api.trigger_analyzer import TriggerAnalyzer
 from endpoints.building import (
-    start_build,
-    MaximumBuildsQueuedException,
     BuildTriggerDisabledException,
+    MaximumBuildsQueuedException,
+    start_build,
 )
-from endpoints.exception import NotFound, Unauthorized, InvalidRequest
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
 
 logger = logging.getLogger(__name__)

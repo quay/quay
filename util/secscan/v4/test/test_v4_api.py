@@ -1,7 +1,6 @@
 import pytest
 
-from util.secscan.v4.api import is_valid_response, Action, actions
-
+from util.secscan.v4.api import Action, actions, is_valid_response
 
 good_index_report = {
     "manifest_hash": "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",

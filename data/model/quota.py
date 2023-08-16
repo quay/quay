@@ -1,23 +1,23 @@
-from collections import namedtuple
-import time
 import logging
+import time
+from collections import namedtuple
 from typing import Dict, List
 
-from data.model import db_transaction, config
-
 from peewee import JOIN, fn
+
 from data.database import (
     ImageStorage,
     ManifestBlob,
     ManifestChild,
     QuotaNamespaceSize,
     QuotaRegistrySize,
-    Repository,
     QuotaRepositorySize,
+    Repository,
     RepositoryState,
     Tag,
     User,
 )
+from data.model import config, db_transaction
 from data.model.repository import lookup_repository
 
 logger = logging.getLogger(__name__)

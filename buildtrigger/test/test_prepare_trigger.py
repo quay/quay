@@ -1,13 +1,12 @@
 import json
 
 import pytest
-
 from jsonschema import validate
 
-from buildtrigger.customhandler import custom_trigger_payload
 from buildtrigger.basehandler import METADATA_SCHEMA
-from buildtrigger.bitbuckethandler import get_transformed_webhook_payload as bb_webhook
 from buildtrigger.bitbuckethandler import get_transformed_commit_info as bb_commit
+from buildtrigger.bitbuckethandler import get_transformed_webhook_payload as bb_webhook
+from buildtrigger.customhandler import custom_trigger_payload
 from buildtrigger.githubhandler import get_transformed_webhook_payload as gh_webhook
 from buildtrigger.gitlabhandler import get_transformed_webhook_payload as gl_webhook
 from buildtrigger.triggerutil import SkipRequestException

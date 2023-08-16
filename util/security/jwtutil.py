@@ -1,25 +1,23 @@
 import re
-
 from calendar import timegm
 from datetime import datetime, timedelta
-from jwt import PyJWT
-from jwt.exceptions import (
-    InvalidTokenError,
-    DecodeError,
-    InvalidAudienceError,
-    ExpiredSignatureError,
-    ImmatureSignatureError,
-    InvalidIssuedAtError,
-    InvalidIssuerError,
-    MissingRequiredClaimError,
-    InvalidAlgorithmError,
-)
 
-from authlib.jose import JsonWebKey, RSAKey, ECKey
+from authlib.jose import ECKey, JsonWebKey, RSAKey
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
-
+from jwt import PyJWT
+from jwt.exceptions import (
+    DecodeError,
+    ExpiredSignatureError,
+    ImmatureSignatureError,
+    InvalidAlgorithmError,
+    InvalidAudienceError,
+    InvalidIssuedAtError,
+    InvalidIssuerError,
+    InvalidTokenError,
+    MissingRequiredClaimError,
+)
 
 # TOKEN_REGEX defines a regular expression for matching JWT bearer tokens.
 TOKEN_REGEX = re.compile(r"\ABearer (([a-zA-Z0-9+\-_/]+\.)+[a-zA-Z0-9+\-_/]+)\Z")

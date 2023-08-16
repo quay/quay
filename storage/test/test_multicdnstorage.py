@@ -1,10 +1,17 @@
-from storage import CloudFrontedS3Storage, CloudFlareS3Storage, StorageContext, MultiCDNStorage
+import json
+from test.fixtures import *
+
+import pytest
+
+from app import config_provider
+from storage import (
+    CloudFlareS3Storage,
+    CloudFrontedS3Storage,
+    MultiCDNStorage,
+    StorageContext,
+)
 from storage.basestorage import InvalidStorageConfigurationException
 from util.ipresolver import IPResolver
-from app import config_provider
-import json
-import pytest
-from test.fixtures import *
 
 _TEST_CONFIG_JSON = """{
   "storage_config": {

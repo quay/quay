@@ -1,7 +1,7 @@
 import os
 
-from app import app
 from active_migration import ActiveDataMigration
+from app import app
 
 
 def current_migration():

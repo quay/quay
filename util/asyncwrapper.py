@@ -1,8 +1,6 @@
 import queue
-
+from concurrent.futures import CancelledError, Executor, Future
 from functools import wraps
-
-from concurrent.futures import Executor, Future, CancelledError
 
 
 class AsyncExecutorWrapper(object):

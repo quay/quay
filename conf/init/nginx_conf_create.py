@@ -1,8 +1,8 @@
 import os
 import os.path
 
-import yaml
 import jinja2
+import yaml
 
 QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")

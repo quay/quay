@@ -1,10 +1,9 @@
 import logging
-import yaml
-
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
 
-from jsonschema import validate, ValidationError
+import yaml
+from jsonschema import ValidationError, validate
+from six import add_metaclass
 
 from util.config.schema import CONFIG_SCHEMA
 

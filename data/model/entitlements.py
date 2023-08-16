@@ -1,10 +1,7 @@
 import logging
 
-from data.database import (
-    RedHatSubscriptions,
-)
-
 from data import model
+from data.database import RedHatSubscriptions
 
 logger = logging.getLogger(__name__)
 

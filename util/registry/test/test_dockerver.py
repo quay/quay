@@ -1,7 +1,7 @@
 import pytest
+from semantic_version import Spec, Version
 
 from util.registry.dockerver import docker_version
-from semantic_version import Version, Spec
 
 
 @pytest.mark.parametrize(

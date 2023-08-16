@@ -1,22 +1,28 @@
 import logging
-import time
-import recaptcha2
 import os
-
+import time
 from collections import namedtuple
-from flask import request, redirect, url_for, Blueprint, abort, session
+
+import recaptcha2
+from flask import Blueprint, abort, redirect, request, session, url_for
 
 import features
-
-from app import app, get_app_url, oauth_login, authentication, url_scheme_and_hostname, analytics
+from app import (
+    analytics,
+    app,
+    authentication,
+    get_app_url,
+    oauth_login,
+    url_scheme_and_hostname,
+)
 from auth.auth_context import get_authenticated_user
 from auth.decorators import require_session_login
 from data import model
 from endpoints.common import common_login
+from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME, csrf_protect, generate_csrf_token
 from endpoints.web import index, render_page_template_with_routedata
-from endpoints.csrf import csrf_protect, OAUTH_CSRF_TOKEN_NAME, generate_csrf_token
-from oauth.login import OAuthLoginException, ExportComplianceException
-from oauth.login_utils import _conduct_oauth_login, _attach_service
+from oauth.login import ExportComplianceException, OAuthLoginException
+from oauth.login_utils import _attach_service, _conduct_oauth_login
 from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)

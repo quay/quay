@@ -1,24 +1,24 @@
 from collections import defaultdict
-
 from datetime import datetime, timedelta
-from endpoints.api import allow_if_superuser
 
 import features
 from auth.permissions import ReadRepositoryPermission
-from data.database import Repository as RepositoryTable, RepositoryState
 from data import model
+from data.database import Repository as RepositoryTable
+from data.database import RepositoryState
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
+from endpoints.api import allow_if_superuser
 from endpoints.api.repository_models_interface import (
-    RepositoryDataInterface,
-    RepositoryBaseElement,
-    Repository,
     ApplicationRepository,
-    ImageRepositoryRepository,
-    Tag,
     Channel,
-    Release,
     Count,
+    ImageRepositoryRepository,
+    Release,
+    Repository,
+    RepositoryBaseElement,
+    RepositoryDataInterface,
+    Tag,
 )
 
 MAX_DAYS_IN_3_MONTHS = 92

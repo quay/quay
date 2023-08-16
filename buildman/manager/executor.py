@@ -9,24 +9,20 @@ import subprocess
 import threading
 import time
 import uuid
-
-from functools import partial, wraps, lru_cache
+from functools import lru_cache, partial, wraps
 
 import boto3
 import botocore
 import cachetools.func
 import requests
-
-from jinja2 import FileSystemLoader, Environment
+from jinja2 import Environment, FileSystemLoader
 from prometheus_client import Histogram
 
 import release
-
-from _init import ROOT_DIR, OVERRIDE_CONFIG_DIRECTORY
+from _init import OVERRIDE_CONFIG_DIRECTORY, ROOT_DIR
 from app import app
 from buildman.container_cloud_config import CloudConfigContext
 from buildman.server import SECURE_GRPC_SERVER_PORT
-
 
 logger = logging.getLogger(__name__)
 

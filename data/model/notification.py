@@ -3,17 +3,17 @@ import json
 from peewee import SQL
 
 from data.database import (
+    ExternalNotificationEvent,
+    ExternalNotificationMethod,
+    Namespace,
     Notification,
     NotificationKind,
-    User,
+    Repository,
+    RepositoryNotification,
     Team,
     TeamMember,
     TeamRole,
-    RepositoryNotification,
-    ExternalNotificationEvent,
-    Repository,
-    ExternalNotificationMethod,
-    Namespace,
+    User,
     db_for_update,
 )
 from data.model import InvalidNotificationException, db_transaction

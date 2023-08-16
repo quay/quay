@@ -9,7 +9,7 @@ from endpoints.decorators import (
     parse_repository_name,
     route_show_if,
 )
-from endpoints.v2 import v2_bp, require_repo_read, paginate
+from endpoints.v2 import paginate, require_repo_read, v2_bp
 from endpoints.v2.errors import NameUnknown
 
 

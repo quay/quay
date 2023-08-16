@@ -1,11 +1,11 @@
-from data.cache.redis_cache import redis_cache_from_config
 from data.cache.impl import (
-    NoopDataModelCache,
+    DisconnectWrapper,
     InMemoryDataModelCache,
     MemcachedModelCache,
+    NoopDataModelCache,
     RedisDataModelCache,
-    DisconnectWrapper,
 )
+from data.cache.redis_cache import redis_cache_from_config
 
 
 def get_model_cache(config):

@@ -1,11 +1,9 @@
+import argparse
 import logging
 import sys
-import argparse
-from data.database import (
-    ImageStoragePlacement,
-    ImageStorageLocation,
-)
+
 from app import features
+from data.database import ImageStorageLocation, ImageStoragePlacement
 
 # This is a util function used to clean up a removed location from the database
 # This must be ran AFTER the location is removed from the config.yaml file, so that

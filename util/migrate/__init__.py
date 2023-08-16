@@ -1,8 +1,9 @@
 import logging
 
-from sqlalchemy.types import TypeDecorator, Text, String
-from sqlalchemy.dialects.mysql import TEXT as MySQLText, LONGTEXT, VARCHAR as MySQLString
-
+from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.dialects.mysql import TEXT as MySQLText
+from sqlalchemy.dialects.mysql import VARCHAR as MySQLString
+from sqlalchemy.types import String, Text, TypeDecorator
 
 logger = logging.getLogger(__name__)
 

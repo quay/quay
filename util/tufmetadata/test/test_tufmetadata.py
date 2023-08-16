@@ -1,14 +1,13 @@
-import pytest
-import requests
-from typing import Dict, Any
-from mock import mock, patch
-
-from flask import Flask
-
 from test import testconfig
 from test.fixtures import init_db_path
-from util.tufmetadata import api
+from typing import Any, Dict
 
+import pytest
+import requests
+from flask import Flask
+from mock import mock, patch
+
+from util.tufmetadata import api
 
 valid_response: Dict[str, Any] = {
     "signed": {

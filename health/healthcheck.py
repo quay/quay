@@ -2,9 +2,9 @@ import logging
 import socket
 
 import boto3.session
+from flask import session
 
 from auth.permissions import SuperUserPermission
-from flask import session
 from health.services import check_all_services, check_warning_services
 
 logger = logging.getLogger(__name__)

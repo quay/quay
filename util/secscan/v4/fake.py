@@ -1,8 +1,8 @@
 import json
-
 from collections import defaultdict
 from contextlib import contextmanager
-from httmock import urlmatch, HTTMock, all_requests
+
+from httmock import HTTMock, all_requests, urlmatch
 
 
 @contextmanager

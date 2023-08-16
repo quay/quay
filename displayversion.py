@@ -1,4 +1,4 @@
-from _init import __version__, __gitrev__
+from _init import __gitrev__, __version__
 
 
 def displayversion():

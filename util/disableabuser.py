@@ -1,17 +1,16 @@
 import argparse
-
 from datetime import datetime
 
 from app import tf
 from data import model
-from data.model import db_transaction
 from data.database import (
     QueueItem,
+    RepoMirrorConfig,
     Repository,
     RepositoryBuild,
     RepositoryBuildTrigger,
-    RepoMirrorConfig,
 )
+from data.model import db_transaction
 from data.queue import WorkQueue
 
 

@@ -3,8 +3,14 @@ Error details API.
 """
 from flask import url_for
 
-from endpoints.api import resource, nickname, ApiResource, path_param, define_json_response
-from endpoints.exception import NotFound, ApiErrorType, ERROR_DESCRIPTION
+from endpoints.api import (
+    ApiResource,
+    define_json_response,
+    nickname,
+    path_param,
+    resource,
+)
+from endpoints.exception import ERROR_DESCRIPTION, ApiErrorType, NotFound
 
 
 def error_view(error_type):

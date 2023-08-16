@@ -1,51 +1,51 @@
 import logging
 import re
-
 from collections import namedtuple
+
 from cachetools.func import lru_cache
-from flask import request, jsonify
+from flask import jsonify, request
 
 import features
-from app import app, userevents, instance_keys, usermanager
+from app import app, instance_keys, userevents, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.decorators import process_basic_auth
 from auth.permissions import (
-    ModifyRepositoryPermission,
-    ReadRepositoryPermission,
-    CreateRepositoryPermission,
     AdministerRepositoryPermission,
+    CreateRepositoryPermission,
+    ModifyRepositoryPermission,
     OrganizationMemberPermission,
+    ReadRepositoryPermission,
 )
 from data import model
 from data.database import RepositoryState
+from data.model.repo_mirror import get_mirroring_robot
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from data.model.repo_mirror import get_mirroring_robot
 from endpoints.api import log_action
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (
     InvalidLogin,
-    NameInvalid,
     InvalidRequest,
-    Unsupported,
-    Unauthorized,
+    NameInvalid,
     NamespaceDisabled,
+    Unauthorized,
+    Unsupported,
 )
 from util.cache import no_cache
 from util.names import (
-    parse_namespace_repository,
-    REPOSITORY_NAME_REGEX,
     REPOSITORY_NAME_EXTENDED_REGEX,
+    REPOSITORY_NAME_REGEX,
+    parse_namespace_repository,
     parse_robot_username,
 )
 from util.request import get_request_ip
 from util.security.registry_jwt import (
-    generate_bearer_token,
-    build_context_and_subject,
+    DISABLED_TUF_ROOT,
     QUAY_TUF_ROOT,
     SIGNER_TUF_ROOT,
-    DISABLED_TUF_ROOT,
+    build_context_and_subject,
+    generate_bearer_token,
 )
 
 logger = logging.getLogger(__name__)

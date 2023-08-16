@@ -3,7 +3,6 @@ from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
 
-
 # docker.io/library/nginx:1.23.1
 NGINX_1_23_1 = {
     "content-type": DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,

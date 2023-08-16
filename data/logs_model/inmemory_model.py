@@ -1,13 +1,13 @@
-import logging
 import json
-
+import logging
 from collections import namedtuple
 from datetime import datetime
-from tzlocal import get_localzone
+
 from dateutil.relativedelta import relativedelta
+from tzlocal import get_localzone
 
 from data import model
-from data.logs_model.datatypes import AggregatedLogCount, LogEntriesPage, Log
+from data.logs_model.datatypes import AggregatedLogCount, Log, LogEntriesPage
 from data.logs_model.interface import (
     ActionLogsDataInterface,
     LogRotationContextInterface,

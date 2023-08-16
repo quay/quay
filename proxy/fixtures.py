@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from image.shared.schemas import parse_manifest_from_bytes
-from util.bytes import Bytes
 from proxy import UpstreamRegistryError
+from util.bytes import Bytes
 
 
 @pytest.fixture()

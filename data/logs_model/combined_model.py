@@ -1,5 +1,5 @@
-import logging
 import itertools
+import logging
 
 from data.logs_model.datatypes import AggregatedLogCount, LogEntriesPage
 from data.logs_model.interface import ActionLogsDataInterface

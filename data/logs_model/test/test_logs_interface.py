@@ -1,20 +1,25 @@
 import os
-import pytest
-from datetime import datetime, timedelta, date
-from unittest.mock import patch
-from data.logs_model.datatypes import AggregatedLogCount
-from data.logs_model.table_logs_model import TableLogsModel
-from data.logs_model.combined_model import CombinedLogsModel
-from data.logs_model.inmemory_model import InMemoryModel
-from data.logs_model.combined_model import _merge_aggregated_log_counts
-from data.logs_model.document_logs_model import _date_range_in_single_index, DocumentLogsModel
-from data.logs_model.interface import LogsIterationTimeout
-from data.logs_model.test.fake_elasticsearch import FAKE_ES_HOST, fake_elasticsearch
-
-from data.database import LogEntry, LogEntry2, LogEntry3, LogEntryKind
-from data import model
-
+from datetime import date, datetime, timedelta
 from test.fixtures import *
+from unittest.mock import patch
+
+import pytest
+
+from data import model
+from data.database import LogEntry, LogEntry2, LogEntry3, LogEntryKind
+from data.logs_model.combined_model import (
+    CombinedLogsModel,
+    _merge_aggregated_log_counts,
+)
+from data.logs_model.datatypes import AggregatedLogCount
+from data.logs_model.document_logs_model import (
+    DocumentLogsModel,
+    _date_range_in_single_index,
+)
+from data.logs_model.inmemory_model import InMemoryModel
+from data.logs_model.interface import LogsIterationTimeout
+from data.logs_model.table_logs_model import TableLogsModel
+from data.logs_model.test.fake_elasticsearch import FAKE_ES_HOST, fake_elasticsearch
 
 
 @pytest.fixture()

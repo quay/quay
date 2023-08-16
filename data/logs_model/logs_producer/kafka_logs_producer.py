@@ -1,13 +1,12 @@
 import logging
 
-from kafka.errors import KafkaError, KafkaTimeoutError
 from kafka import KafkaProducer
+from kafka.errors import KafkaError, KafkaTimeoutError
 
-from data.logs_model.shared import epoch_ms
+from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface
 from data.logs_model.logs_producer.util import logs_json_serializer
-from data.logs_model.logs_producer import LogSendException
-
+from data.logs_model.shared import epoch_ms
 
 logger = logging.getLogger(__name__)
 

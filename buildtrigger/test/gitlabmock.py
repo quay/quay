@@ -1,11 +1,9 @@
 import base64
 import json
-
 from contextlib import contextmanager
 
 import gitlab
-
-from httmock import urlmatch, HTTMock
+from httmock import HTTMock, urlmatch
 
 from buildtrigger.gitlabhandler import GitLabBuildTrigger
 from util.morecollections import AttrDict

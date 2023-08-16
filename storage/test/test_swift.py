@@ -1,18 +1,17 @@
-import io
-import pytest
-import hashlib
 import copy
-
+import hashlib
+import io
 from collections import defaultdict
-from mock import MagicMock, patch
 
-from werkzeug.wsgi import LimitedStream
+import pytest
+from mock import MagicMock, patch
 from swiftclient.client import ClientException, ReadableToIterable
+from werkzeug.wsgi import LimitedStream
 
 from storage import StorageContext
-from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY, _DEFAULT_RETRY_COUNT
-from util.registry.generatorfile import GeneratorFile
+from storage.swift import _DEFAULT_RETRY_COUNT, _EMPTY_SEGMENTS_KEY, SwiftStorage
 from util.registry import filelike
+from util.registry.generatorfile import GeneratorFile
 
 base_args = {
     "context": StorageContext("nyc", None, None, None),

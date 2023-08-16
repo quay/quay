@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
 from functools import partial, wraps
 
-from prometheus_client import CollectorRegistry, Gauge, Counter, push_to_gateway
+from prometheus_client import CollectorRegistry, Counter, Gauge, push_to_gateway
+from six import add_metaclass
 
 from util.abchelpers import nooper
 

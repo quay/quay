@@ -1,7 +1,7 @@
 from datetime import datetime
-from mock import Mock
 
 from github import GithubException
+from mock import Mock
 
 from buildtrigger.githubhandler import GithubBuildTrigger
 from util.morecollections import AttrDict

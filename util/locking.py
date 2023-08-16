@@ -1,8 +1,8 @@
 import functools
 import logging
 
-from redis import Redis, RedisError
 import redis_lock
+from redis import Redis, RedisError
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
-import zlib
 import string
+import zlib
 
 BLOCK_SIZE = 16384
 """Read block size"""

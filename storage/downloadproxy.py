@@ -1,15 +1,14 @@
-import logging
 import base64
-
-from flask import Flask
+import logging
 from urllib.parse import urlparse
-from flask import abort, request
-from jsonschema import validate, ValidationError
+
+from flask import Flask, abort, request
+from jsonschema import ValidationError, validate
 
 from util.security.registry_jwt import (
-    generate_bearer_token,
-    decode_bearer_token,
     InvalidBearerTokenException,
+    decode_bearer_token,
+    generate_bearer_token,
 )
 
 logger = logging.getLogger(__name__)

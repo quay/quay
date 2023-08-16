@@ -2,20 +2,18 @@ import json as py_json
 import time
 import unittest
 import urllib.parse
+from test.test_endpoints import EndpointTestCase
+from test.test_ldap import mock_ldap
 
 import jwt
-
-from httmock import urlmatch, HTTMock
-
 from authlib.jose import JsonWebKey
 from cryptography.hazmat.primitives import serialization
+from httmock import HTTMock, urlmatch
 
 from app import app, authentication
 from auth.oauth import validate_bearer_auth
 from data import model
 from endpoints.oauth.login import oauthlogin as oauthlogin_bp
-from test.test_endpoints import EndpointTestCase
-from test.test_ldap import mock_ldap
 
 
 class AuthForTesting(object):

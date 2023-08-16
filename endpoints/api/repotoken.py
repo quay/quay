@@ -5,12 +5,12 @@ Manage repository access tokens (DEPRECATED).
 import logging
 
 from endpoints.api import (
-    resource,
-    nickname,
-    require_repo_admin,
     RepositoryParamResource,
-    validate_json_request,
+    nickname,
     path_param,
+    require_repo_admin,
+    resource,
+    validate_json_request,
 )
 
 logger = logging.getLogger(__name__)

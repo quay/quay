@@ -1,34 +1,39 @@
-import logging
 import json
-
-from functools import wraps
+import logging
 from datetime import datetime
+from functools import wraps
 from time import time
 
-from flask import make_response, request, session, Response, redirect, abort as flask_abort
+from flask import Response
+from flask import abort as flask_abort
+from flask import make_response, redirect, request, session
 
-from app import storage as store, app, docker_v2_signing_key
+from app import app, docker_v2_signing_key
+from app import storage as store
 from auth.auth_context import get_authenticated_user
 from auth.decorators import extract_namespace_repo_from_session, process_auth
-from auth.permissions import ReadRepositoryPermission, ModifyRepositoryPermission
+from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from data import database
 from data.registry_model import registry_model
-from data.registry_model.blobuploader import upload_blob, BlobUploadSettings, BlobUploadException
+from data.registry_model.blobuploader import (
+    BlobUploadException,
+    BlobUploadSettings,
+    upload_blob,
+)
 from data.registry_model.manifestbuilder import lookup_manifest_builder
 from digest import checksums
-from endpoints.metrics import image_pulled_bytes
-from endpoints.v1 import v1_bp, check_v1_push_enabled
-from endpoints.v1.index import ensure_namespace_enabled
 from endpoints.decorators import (
     anon_protect,
+    check_readonly,
     check_region_blacklisted,
     check_repository_state,
-    check_readonly,
 )
+from endpoints.metrics import image_pulled_bytes
+from endpoints.v1 import check_v1_push_enabled, v1_bp
+from endpoints.v1.index import ensure_namespace_enabled
 from util.http import abort
 from util.registry.replication import queue_storage_replication
 from util.request import get_request_ip
-
 
 logger = logging.getLogger(__name__)
 

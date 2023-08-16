@@ -1,10 +1,13 @@
 from tempfile import NamedTemporaryFile
 
 import pytest
-
 from OpenSSL import crypto
 
-from util.security.ssl import load_certificate, CertInvalidException, KeyInvalidException
+from util.security.ssl import (
+    CertInvalidException,
+    KeyInvalidException,
+    load_certificate,
+)
 
 
 def generate_test_cert(hostname="somehostname", san_list=None, expires=1000000):

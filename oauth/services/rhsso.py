@@ -1,11 +1,13 @@
-from oauth.base import OAuthEndpoint
-from oauth.login import OAuthLoginException, ExportComplianceException
-from oauth.oidc import OIDCLoginService
-import features
 import logging
 import os
-from _init import CONF_DIR
+
 import requests
+
+import features
+from _init import CONF_DIR
+from oauth.base import OAuthEndpoint
+from oauth.login import ExportComplianceException, OAuthLoginException
+from oauth.oidc import OIDCLoginService
 
 logger = logging.getLogger(__name__)
 

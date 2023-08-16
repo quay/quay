@@ -1,8 +1,7 @@
 import logging
-import features
-
 from collections import namedtuple
 
+import features
 from data import model
 from data.users.shared import can_create_user
 from util.validation import generate_valid_usernames

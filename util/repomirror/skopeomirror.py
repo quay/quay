@@ -1,12 +1,11 @@
-import os
 import json
 import logging
+import os
 import subprocess
-from typing import Optional
-
-from pipes import quote
 from collections import namedtuple
+from pipes import quote
 from tempfile import SpooledTemporaryFile
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 

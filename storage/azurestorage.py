@@ -4,29 +4,28 @@ Azure storage driver.
 Based on: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-python-how-to-use-blob-storage
 """
 
+import concurrent.futures
+import copy
+import io
 import logging
 import os
-import io
-import uuid
-import copy
 import time
-
-import concurrent.futures
+import uuid
 from datetime import datetime, timedelta
 
 from azure.core.exceptions import AzureError, ResourceNotFoundError
 from azure.storage.blob import (
+    BlobBlock,
     BlobServiceClient,
     BlobType,
     ContainerSasPermissions,
     ContentSettings,
-    BlobBlock,
     CorsRule,
     generate_blob_sas,
 )
 
 from storage.basestorage import BaseStorage
-from util.registry.filelike import LimitingStream, READ_UNTIL_END
+from util.registry.filelike import READ_UNTIL_END, LimitingStream
 
 logger = logging.getLogger(__name__)
 

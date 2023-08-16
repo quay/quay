@@ -8,8 +8,8 @@ from data import model
 from data.database import UseThenDisconnect
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
-from workers.worker import Worker
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

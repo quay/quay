@@ -1,31 +1,31 @@
 import logging
-
-from peewee import SQL, IntegrityError
-from cachetools.func import lru_cache
 from collections import namedtuple
 
-from data.model import (
-    config,
-    db_transaction,
-    InvalidImageException,
-    DataModelException,
-    _basequery,
-)
+from cachetools.func import lru_cache
+from peewee import SQL, IntegrityError
+
 from data.database import (
+    ApprBlob,
     ImageStorage,
-    ImageStoragePlacement,
     ImageStorageLocation,
-    ImageStorageTransformation,
+    ImageStoragePlacement,
     ImageStorageSignature,
     ImageStorageSignatureKind,
-    Repository,
-    Namespace,
-    ApprBlob,
-    ensure_under_transaction,
+    ImageStorageTransformation,
     ManifestBlob,
+    Namespace,
+    Repository,
     UploadedBlob,
+    ensure_under_transaction,
 )
-from util.metrics.prometheus import gc_table_rows_deleted, gc_storage_blobs_deleted
+from data.model import (
+    DataModelException,
+    InvalidImageException,
+    _basequery,
+    config,
+    db_transaction,
+)
+from util.metrics.prometheus import gc_storage_blobs_deleted, gc_table_rows_deleted
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,4 @@
-from smtplib import SMTPException
-from smtplib import SMTPAuthenticationError
-from smtplib import SMTPNotSupportedError
+from smtplib import SMTPAuthenticationError, SMTPException, SMTPNotSupportedError
 
 
 # This method is the same as smtplib.SMTP.login except that CRAM_MD5 has been removed from preferred auths since MD5 is not FIPS compliant.

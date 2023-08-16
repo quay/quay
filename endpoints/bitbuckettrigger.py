@@ -1,8 +1,9 @@
 import logging
 
-from flask import request, redirect, url_for, Blueprint
+from flask import Blueprint, redirect, request, url_for
 from flask_login import current_user
 
+import features
 from app import app
 from auth.decorators import require_session_login
 from buildtrigger.basehandler import BuildTriggerHandler
@@ -10,8 +11,6 @@ from buildtrigger.bitbuckethandler import BitbucketBuildTrigger
 from data import model
 from endpoints.decorators import route_show_if
 from util.http import abort
-
-import features
 
 logger = logging.getLogger(__name__)
 client = app.config["HTTPCLIENT"]

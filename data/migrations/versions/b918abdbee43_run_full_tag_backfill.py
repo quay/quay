@@ -13,7 +13,6 @@ down_revision = "481623ba00ba"
 import logging.config
 
 from app import app
-
 from util.log import logfile_path
 
 logger = logging.getLogger(__name__)

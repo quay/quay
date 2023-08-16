@@ -1,10 +1,10 @@
 import random
 import string
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from test.fixtures import *
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+from dateutil.relativedelta import relativedelta
 
 from data import model
 from workers.reconciliationworker import ReconciliationWorker

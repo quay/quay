@@ -1,10 +1,11 @@
+from test.fixtures import *
+
 import pytest
 
-from data import model, database
-from image.shared.schemas import parse_manifest_from_bytes, ManifestException
-from workers.manifestbackfillworker import ManifestBackfillWorker
+from data import database, model
+from image.shared.schemas import ManifestException, parse_manifest_from_bytes
 from util.bytes import Bytes
-from test.fixtures import *
+from workers.manifestbackfillworker import ManifestBackfillWorker
 
 
 def test_basic(initialized_db):

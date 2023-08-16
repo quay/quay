@@ -1,18 +1,16 @@
-import grpc
 import json
 import logging
 
+import grpc
 from google.protobuf.json_format import MessageToDict
 
-from buildman.buildman_pb import buildman_pb2
-from buildman.buildman_pb import buildman_pb2_grpc
 from buildman.build_token import (
     BUILD_JOB_REGISTRATION_TYPE,
     BUILD_JOB_TOKEN_TYPE,
     InvalidBuildTokenException,
 )
+from buildman.buildman_pb import buildman_pb2, buildman_pb2_grpc
 from data.database import BUILD_PHASE
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,13 @@
-import os
 import logging
+import os
 import re
 from datetime import datetime, timedelta
 
-from requests_aws4auth import AWS4Auth
-
 from elasticsearch import RequestsHttpConnection
-from elasticsearch.exceptions import NotFoundError, AuthorizationException
-from elasticsearch_dsl import Index, Document, Integer, Date, Text, Ip, Keyword, Object
+from elasticsearch.exceptions import AuthorizationException, NotFoundError
+from elasticsearch_dsl import Date, Document, Index, Integer, Ip, Keyword, Object, Text
 from elasticsearch_dsl.connections import connections
-
+from requests_aws4auth import AWS4Auth
 
 logger = logging.getLogger(__name__)
 

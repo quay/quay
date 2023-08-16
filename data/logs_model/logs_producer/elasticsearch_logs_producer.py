@@ -2,9 +2,8 @@ import logging
 
 from elasticsearch.exceptions import ElasticsearchException
 
-from data.logs_model.logs_producer.interface import LogProducerInterface
 from data.logs_model.logs_producer import LogSendException
-
+from data.logs_model.logs_producer.interface import LogProducerInterface
 
 logger = logging.getLogger(__name__)
 

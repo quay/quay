@@ -3,29 +3,28 @@ import logging
 from flask import request
 
 import features
+from auth import scopes
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
-    SuperUserPermission,
     OrganizationMemberPermission,
+    SuperUserPermission,
     UserReadPermission,
 )
-from auth.auth_context import get_authenticated_user
 from data import model
 from data.model import config
 from endpoints.api import (
-    resource,
-    nickname,
     ApiResource,
-    validate_json_request,
-    request_error,
-    require_user_admin,
-    require_scope,
-    show_if,
     log_action,
+    nickname,
+    request_error,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
 )
-from endpoints.exception import InvalidToken, Unauthorized, NotFound
-from auth import scopes
-
+from endpoints.exception import InvalidToken, NotFound, Unauthorized
 
 logger = logging.getLogger(__name__)
 

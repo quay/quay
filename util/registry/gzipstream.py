@@ -2,8 +2,8 @@
 Defines utility methods for working with gzip streams.
 """
 
-import zlib
 import time
+import zlib
 
 # Window size for decompressing GZIP streams.
 # This results in ZLIB automatically detecting the GZIP headers.

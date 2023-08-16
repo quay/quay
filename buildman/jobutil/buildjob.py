@@ -2,13 +2,14 @@ import json
 import logging
 import os
 
-from app import app
 from cachetools.func import lru_cache
-from notifications import spawn_notification
+
+from app import app
 from data import model
+from data.database import UseThenDisconnect
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from data.database import UseThenDisconnect
+from notifications import spawn_notification
 from util import slash_join
 from util.morecollections import AttrDict
 

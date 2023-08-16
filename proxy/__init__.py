@@ -3,6 +3,7 @@ The proxy module provides the means to proxy images from other registry instance
 Registries following the distribution spec are supported.
 """
 from __future__ import annotations
+
 import re
 from urllib.parse import urlencode
 

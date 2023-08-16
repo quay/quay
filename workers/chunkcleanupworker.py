@@ -1,10 +1,10 @@
 import logging
 import time
 
-from workers.gunicorn_worker import GunicornWorker
-from app import app, storage, chunk_cleanup_queue
-from workers.queueworker import QueueWorker, JobException
+from app import app, chunk_cleanup_queue, storage
 from util.log import logfile_path
+from workers.gunicorn_worker import GunicornWorker
+from workers.queueworker import JobException, QueueWorker
 
 logger = logging.getLogger(__name__)
 

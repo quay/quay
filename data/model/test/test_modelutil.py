@@ -1,8 +1,9 @@
+from test.fixtures import *
+
 import pytest
 
 from data.database import Role
 from data.model.modelutil import paginate
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

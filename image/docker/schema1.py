@@ -4,31 +4,28 @@ schema1 implements pure data transformations according to the Docker Manifest v2
 https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-1.md
 """
 
+import base64
 import hashlib
 import json
 import logging
-
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict, namedtuple
 from datetime import datetime
+from hashlib import sha256
 
 import dateutil.parser
-
-from jsonschema import validate as validate_schema, ValidationError
-
-from jwt.utils import base64url_encode, base64url_decode
-
 from authlib.jose import JsonWebKey, JsonWebSignature
 from authlib.jose.errors import BadSignatureError, UnsupportedAlgorithmError
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from hashlib import sha256
-import base64
+from jsonschema import ValidationError
+from jsonschema import validate as validate_schema
+from jwt.utils import base64url_decode, base64url_encode
 
 from digest import digest_tools
+from image.docker.v1 import DockerV1Metadata
 from image.shared import ManifestException
-from image.shared.types import ManifestImageLayer
 from image.shared.interfaces import ManifestInterface
 from image.shared.schemautil import to_canonical_json
-from image.docker.v1 import DockerV1Metadata
+from image.shared.types import ManifestImageLayer
 from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)

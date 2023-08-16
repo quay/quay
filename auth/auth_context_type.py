@@ -1,18 +1,16 @@
 import logging
-
 from abc import ABCMeta, abstractmethod
+
 from cachetools.func import lru_cache
+from flask_principal import Identity, identity_changed
 from six import add_metaclass
 
 from app import app
-from data import model
-
-from flask_principal import Identity, identity_changed
-
 from auth.auth_context import set_authenticated_context
-from auth.context_entity import ContextEntityKind, CONTEXT_ENTITY_HANDLERS
+from auth.context_entity import CONTEXT_ENTITY_HANDLERS, ContextEntityKind
 from auth.permissions import QuayDeferredPermissionUser
 from auth.scopes import scopes_from_scope_string
+from data import model
 
 logger = logging.getLogger(__name__)
 

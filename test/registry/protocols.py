@@ -1,11 +1,11 @@
 import json
 import tarfile
-from typing import Dict
-
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from io import BytesIO
 from enum import Enum, unique
+from io import BytesIO
+from typing import Dict
+
 from six import add_metaclass
 
 from image.docker.schema2 import EMPTY_LAYER_BYTES

@@ -1,8 +1,11 @@
 from contextlib import contextmanager
-from mock import patch, Mock
-
 from test.fixtures import *
-from workers.blobuploadcleanupworker.blobuploadcleanupworker import BlobUploadCleanupWorker
+
+from mock import Mock, patch
+
+from workers.blobuploadcleanupworker.blobuploadcleanupworker import (
+    BlobUploadCleanupWorker,
+)
 from workers.blobuploadcleanupworker.models_pre_oci import pre_oci_model as model
 
 

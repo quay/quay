@@ -1,19 +1,17 @@
 import base64
-from hashlib import md5
-
-import os.path
-import pytest
 import io
-
+import os.path
 from contextlib import contextmanager
+from hashlib import md5
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
-from httmock import urlmatch, HTTMock
 from xml.dom import minidom
 
+import pytest
 from azure.storage.blob import BlobServiceClient
+from httmock import HTTMock, urlmatch
 
-from storage.azurestorage import AzureStorage, AZURE_STORAGE_URL_STRING
+from storage.azurestorage import AZURE_STORAGE_URL_STRING, AzureStorage
 
 
 @contextmanager

@@ -1,11 +1,11 @@
 import json
 import logging
-import requests
 import time
-
-from data.billing import RH_SKUS, get_plan, get_plan_using_rh_sku
 from datetime import datetime
 
+import requests
+
+from data.billing import RH_SKUS, get_plan, get_plan_using_rh_sku
 from data.model import entitlements
 
 logger = logging.getLogger(__name__)

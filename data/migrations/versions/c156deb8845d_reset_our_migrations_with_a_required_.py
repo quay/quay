@@ -10,9 +10,11 @@ Create Date: 2016-11-08 11:58:11.110762
 revision = "c156deb8845d"
 down_revision = None
 
-import sqlalchemy as sa
-from util.migrate import UTF8LongText, UTF8CharField
 from datetime import datetime
+
+import sqlalchemy as sa
+
+from util.migrate import UTF8CharField, UTF8LongText
 
 
 def upgrade(op, tables, tester):

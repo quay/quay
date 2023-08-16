@@ -1,17 +1,15 @@
 import logging
-
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, abort, request, make_response
+from flask import Blueprint, abort, jsonify, make_response, request
 from jwt import get_unverified_header
 
 from app import app
 from data.logs_model import logs_model
 from endpoints.keyserver.models_interface import ServiceKeyDoesNotExist
 from endpoints.keyserver.models_pre_oci import pre_oci_model as model
-from util.security import jwtutil
 from util.request import get_request_ip
-
+from util.security import jwtutil
 
 logger = logging.getLogger(__name__)
 key_server = Blueprint("key_server", __name__)

@@ -7,14 +7,12 @@ which defines the parameters for synthesizing a Kubernetes job to connect to and
 migrate a relational database.
 """
 
-import yaml
 import logging
-
 from functools import partial, wraps
-from alembic.operations import ops
 
 import sqlalchemy as sa
-
+import yaml
+from alembic.operations import ops
 
 logger = logging.getLogger(__name__)
 

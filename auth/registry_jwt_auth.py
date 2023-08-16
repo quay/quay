@@ -1,27 +1,25 @@
 import logging
-
 from functools import wraps
 
-from jsonschema import validate, ValidationError
 from flask import request, url_for
-from flask_principal import identity_changed, Identity
+from flask_principal import Identity, identity_changed
+from jsonschema import ValidationError, validate
 
 from app import app, get_app_url, instance_keys
 from auth.auth_context import set_authenticated_context
 from auth.auth_context_type import SignedAuthContext
 from auth.permissions import (
+    repository_admin_grant,
     repository_read_grant,
     repository_write_grant,
-    repository_admin_grant,
 )
 from util.http import abort
 from util.names import parse_namespace_repository
 from util.security.registry_jwt import (
     ANONYMOUS_SUB,
-    decode_bearer_header,
     InvalidBearerTokenException,
+    decode_bearer_header,
 )
-
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from data.encryption import FieldEncrypter, _VERSIONS, DecryptionFailureException
+from data.encryption import _VERSIONS, DecryptionFailureException, FieldEncrypter
 
 
 @pytest.mark.parametrize(

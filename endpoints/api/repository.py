@@ -3,54 +3,57 @@ List, create and manage repositories.
 """
 
 import logging
-import features
-
 from collections import defaultdict
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
-from flask import request, abort
+from flask import abort, request
 
-from app import dockerfile_build_queue, tuf_metadata_api, repository_gc_queue, usermanager
-from data.database import RepositoryState
-from endpoints.api import (
-    format_date,
-    nickname,
-    log_action,
-    validate_json_request,
-    require_repo_read,
-    require_repo_write,
-    require_repo_admin,
-    RepositoryParamResource,
-    resource,
-    parse_args,
-    ApiResource,
-    request_error,
-    require_scope,
-    path_param,
-    page_support,
-    query_param,
-    show_if,
+import features
+from app import (
+    dockerfile_build_queue,
+    repository_gc_queue,
+    tuf_metadata_api,
+    usermanager,
 )
-from endpoints.api.repository_models_pre_oci import pre_oci_model as model
-from endpoints.exception import (
-    Unauthorized,
-    NotFound,
-    InvalidRequest,
-    ExceedsLicenseException,
-    DownstreamIssue,
-)
-from endpoints.api.billing import lookup_allowed_private_repos, get_namespace_plan
-from endpoints.api.subscribe import check_repository_usage
-
+from auth import scopes
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
-    ModifyRepositoryPermission,
     AdministerRepositoryPermission,
     CreateRepositoryPermission,
+    ModifyRepositoryPermission,
     ReadRepositoryPermission,
 )
-from auth.auth_context import get_authenticated_user
-from auth import scopes
-from util.names import REPOSITORY_NAME_REGEX, REPOSITORY_NAME_EXTENDED_REGEX
+from data.database import RepositoryState
+from endpoints.api import (
+    ApiResource,
+    RepositoryParamResource,
+    format_date,
+    log_action,
+    nickname,
+    page_support,
+    parse_args,
+    path_param,
+    query_param,
+    request_error,
+    require_repo_admin,
+    require_repo_read,
+    require_repo_write,
+    require_scope,
+    resource,
+    show_if,
+    validate_json_request,
+)
+from endpoints.api.billing import get_namespace_plan, lookup_allowed_private_repos
+from endpoints.api.repository_models_pre_oci import pre_oci_model as model
+from endpoints.api.subscribe import check_repository_usage
+from endpoints.exception import (
+    DownstreamIssue,
+    ExceedsLicenseException,
+    InvalidRequest,
+    NotFound,
+    Unauthorized,
+)
+from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)

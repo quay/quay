@@ -1,10 +1,10 @@
+from test.fixtures import *
+
 import pytest
 
 from auth import scopes
-from auth.permissions import SuperUserPermission, QuayDeferredPermissionUser
+from auth.permissions import QuayDeferredPermissionUser, SuperUserPermission
 from data import model
-
-from test.fixtures import *
 
 SUPER_USERNAME = "devtable"
 UNSUPER_USERNAME = "freshuser"

@@ -1,16 +1,15 @@
-import pytest
 import json
+from test.fixtures import *
+from test.test_ldap import mock_ldap
+
+import pytest
 
 from data import model
 from endpoints.api import api
+from endpoints.api.robot import OrgRobot, OrgRobotList, UserRobot, UserRobotList
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.api.robot import UserRobot, OrgRobot, UserRobotList, OrgRobotList
 from endpoints.test.shared import client_with_identity
 from util.names import parse_robot_username
-
-from test.test_ldap import mock_ldap
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

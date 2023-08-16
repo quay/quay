@@ -3,30 +3,29 @@ List and manage repository vulnerabilities and other security information.
 """
 
 import logging
-import features
-
 from enum import Enum, unique
 
+import features
 from app import storage
 from auth.decorators import process_basic_auth_no_pass
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
 from data.secscan_model.datatypes import ScanLookupStatus
 from endpoints.api import (
-    require_repo_read,
-    path_param,
     RepositoryParamResource,
-    resource,
-    nickname,
-    show_if,
-    parse_args,
-    query_param,
-    disallow_for_app_repositories,
     deprecated,
+    disallow_for_app_repositories,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
+    require_repo_read,
+    resource,
+    show_if,
 )
-from endpoints.decorators import anon_allowed
-from endpoints.exception import NotFound, DownstreamIssue
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
+from endpoints.decorators import anon_allowed
+from endpoints.exception import DownstreamIssue, NotFound
 from util.parsing import truthy_bool
 
 

@@ -1,13 +1,11 @@
 import uuid
-
-from datetime import datetime, timedelta
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 
 from prometheus_client import Counter, Gauge
 
 from data.database import QueueItem, db, db_for_update, db_random_func
 from util.morecollections import AttrDict
-
 
 queue_item_puts = Counter(
     "quay_queue_item_puts_total",

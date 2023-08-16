@@ -1,22 +1,18 @@
 import json
 import os
-import pytest
-
 from datetime import datetime, timedelta
+from test.fixtures import *
 
 import boto3
-
-from httmock import urlmatch, HTTMock
+import pytest
+from httmock import HTTMock, urlmatch
 from moto import mock_s3
 
 from app import storage as test_storage
-from data import model, database
+from data import database, model
 from data.logs_model import logs_model
-from storage import S3Storage, StorageContext, DistributedStorage
-from workers.exportactionlogsworker import ExportActionLogsWorker, POLL_PERIOD_SECONDS
-
-from test.fixtures import *
-
+from storage import DistributedStorage, S3Storage, StorageContext
+from workers.exportactionlogsworker import POLL_PERIOD_SECONDS, ExportActionLogsWorker
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"

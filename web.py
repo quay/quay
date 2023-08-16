@@ -10,7 +10,6 @@ from endpoints.web import web
 from endpoints.webhooks import webhooks
 from endpoints.wellknown import wellknown
 
-
 application.register_blueprint(web)
 application.register_blueprint(githubtrigger, url_prefix="/oauth2")
 application.register_blueprint(gitlabtrigger, url_prefix="/oauth2")

@@ -2,43 +2,42 @@
 Billing information, subscriptions, and plan information.
 """
 import datetime
+import json
+import uuid
+
 import stripe
-
 from flask import request
-from app import app, billing, rh_marketplace_api, rh_user_api
-from endpoints.api import (
-    resource,
-    nickname,
-    ApiResource,
-    validate_json_request,
-    log_action,
-    related_user_resource,
-    internal_only,
-    require_user_admin,
-    show_if,
-    path_param,
-    require_scope,
-    abort,
-)
-
-from endpoints.exception import Unauthorized, NotFound, InvalidRequest
-from endpoints.api.subscribe import (
-    get_price,
-    change_subscription,
-    subscription_view,
-    connection_response,
-    check_repository_usage,
-)
-from auth.permissions import AdministerOrganizationPermission
-from auth.auth_context import get_authenticated_user
-from auth import scopes
-from data import model
-from data.billing import PLANS, get_plan
-from util.request import get_request_ip
 
 import features
-import uuid
-import json
+from app import app, billing, rh_marketplace_api, rh_user_api
+from auth import scopes
+from auth.auth_context import get_authenticated_user
+from auth.permissions import AdministerOrganizationPermission
+from data import model
+from data.billing import PLANS, get_plan
+from endpoints.api import (
+    ApiResource,
+    abort,
+    internal_only,
+    log_action,
+    nickname,
+    path_param,
+    related_user_resource,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
+)
+from endpoints.api.subscribe import (
+    change_subscription,
+    check_repository_usage,
+    connection_response,
+    get_price,
+    subscription_view,
+)
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
+from util.request import get_request_ip
 
 MILLISECONDS_IN_SECONDS = 1000
 

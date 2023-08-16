@@ -1,40 +1,40 @@
 from __future__ import annotations
+
 import logging
 import os
-from typing import overload, Optional, Literal
-import features
 from collections import namedtuple
+from typing import Literal, Optional, overload
 
 from peewee import IntegrityError
 
+import features
 from data.database import (
-    Tag,
+    ExternalNotificationEvent,
     Manifest,
     ManifestBlob,
     ManifestChild,
     Repository,
     RepositoryNotification,
-    ExternalNotificationEvent,
+    Tag,
     db_transaction,
     get_epoch_timestamp_ms,
 )
 from data.model import BlobDoesNotExist, config
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
-from data.model.oci.tag import (
-    filter_to_alive_tags,
-    create_temporary_tag_if_necessary,
-    get_child_manifests,
-)
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.storage import lookup_repo_storages_by_content_checksum
+from data.model.oci.tag import (
+    create_temporary_tag_if_necessary,
+    filter_to_alive_tags,
+    get_child_manifests,
+)
 from data.model.quota import add_blob_size, reset_backfill
-from image.shared.interfaces import ManifestInterface, ManifestListInterface
-from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
+from data.model.storage import lookup_repo_storages_by_content_checksum
 from image.docker.schema1 import ManifestException
+from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema2.list import MalformedSchema2ManifestList
+from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from util.validation import is_json
-
 
 TEMP_TAG_EXPIRATION_SEC = 300  # 5 minutes
 

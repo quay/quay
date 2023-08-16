@@ -8,7 +8,6 @@ import logging
 import re
 import traceback
 
-
 LOG_FORMAT_REGEXP = re.compile(r"\((.+?)\)", re.IGNORECASE)
 
 

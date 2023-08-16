@@ -1,28 +1,26 @@
 import logging
-
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from data.model import (
-    _basequery,
-    BlobDoesNotExist,
-    InvalidBlobUpload,
-    db_transaction,
-    storage as storage_model,
-    InvalidImageException,
-)
 from data.database import (
+    BlobUpload,
+    ImageStorage,
+    ImageStorageLocation,
+    ImageStoragePlacement,
+    Namespace,
     Repository,
     RepositoryState,
-    Namespace,
-    ImageStorage,
-    ImageStoragePlacement,
-    BlobUpload,
     UploadedBlob,
-    ImageStorageLocation,
     db_random_func,
 )
-
+from data.model import (
+    BlobDoesNotExist,
+    InvalidBlobUpload,
+    InvalidImageException,
+    _basequery,
+    db_transaction,
+)
+from data.model import storage as storage_model
 
 logger = logging.getLogger(__name__)
 

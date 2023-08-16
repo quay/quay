@@ -1,17 +1,15 @@
 import logging
 import logging.config
 import time
-
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from app import app, storage
 from data.database import UseThenDisconnect
-from workers.blobuploadcleanupworker.models_pre_oci import pre_oci_model as model
-from workers.worker import Worker
-from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
+from util.log import logfile_path
+from workers.blobuploadcleanupworker.models_pre_oci import pre_oci_model as model
 from workers.gunicorn_worker import GunicornWorker
-
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

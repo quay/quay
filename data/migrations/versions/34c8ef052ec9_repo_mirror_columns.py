@@ -10,25 +10,27 @@ Create Date: 2019-10-07 13:11:20.424715
 revision = "34c8ef052ec9"
 down_revision = "cc6778199cdb"
 
+import logging
 from datetime import datetime
+
 import sqlalchemy as sa
+from peewee import BooleanField, DateTimeField, ForeignKeyField
 from sqlalchemy.dialects import mysql
-from peewee import ForeignKeyField, DateTimeField, BooleanField
+
 from data.database import (
     BaseModel,
-    RepoMirrorType,
-    RepoMirrorStatus,
-    RepoMirrorRule,
-    uuid_generator,
-    QuayUserField,
-    Repository,
     IntegerField,
     JSONField,
+    QuayUserField,
+    RepoMirrorRule,
+    RepoMirrorStatus,
+    RepoMirrorType,
+    Repository,
+    uuid_generator,
 )
-from data.fields import EnumField as ClientEnumField, CharField, EncryptedCharField, DecryptedValue
-from data.encryption import FieldEncrypter, DecryptionFailureException
-
-import logging
+from data.encryption import DecryptionFailureException, FieldEncrypter
+from data.fields import CharField, DecryptedValue, EncryptedCharField
+from data.fields import EnumField as ClientEnumField
 
 logger = logging.getLogger(__name__)
 

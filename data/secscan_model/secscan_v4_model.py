@@ -1,50 +1,56 @@
-import logging
-import features
 import itertools
+import logging
 import urllib
-
 from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
-from peewee import fn, JOIN
 
-from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
-from data.secscan_model.datatypes import (
-    ScanLookupStatus,
-    SecurityInformationLookupResult,
-    SecurityInformation,
-    Feature,
-    Layer,
-    Metadata,
-    NVD,
-    CVSSv3,
-    Vulnerability,
-    PaginatedNotificationResult,
-    PaginatedNotificationStatus,
-    UpdatedVulnerability,
-)
-from data.registry_model.datatypes import Manifest as ManifestDataType
-from data.registry_model import registry_model
-from util.migrate.allocator import yield_random_entries
-from util.secscan.validator import V4SecurityConfigValidator
-from util.secscan.v4.api import (
-    ClairSecurityScannerAPI,
-    APIRequestFailure,
-    InvalidContentSent,
-    LayerTooLargeException,
-)
-from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
-from util.secscan.blob import BlobURLRetriever
-from util.metrics.prometheus import secscan_result_duration
+from peewee import JOIN, fn
 
+import features
 from data.database import (
-    Manifest,
-    ManifestSecurityStatus,
     IndexerVersion,
     IndexStatus,
+    Manifest,
+    ManifestSecurityStatus,
     db_transaction,
     get_epoch_timestamp_ms,
 )
+from data.registry_model import registry_model
+from data.registry_model.datatypes import Manifest as ManifestDataType
+from data.secscan_model.datatypes import (
+    NVD,
+    CVSSv3,
+    Feature,
+    Layer,
+    Metadata,
+    PaginatedNotificationResult,
+    PaginatedNotificationStatus,
+    ScanLookupStatus,
+    SecurityInformation,
+    SecurityInformationLookupResult,
+    UpdatedVulnerability,
+    Vulnerability,
+)
+from data.secscan_model.interface import (
+    InvalidConfigurationException,
+    SecurityScannerInterface,
+)
+from util.metrics.prometheus import secscan_result_duration
+from util.migrate.allocator import yield_random_entries
+from util.secscan import (
+    PRIORITY_LEVELS,
+    fetch_vuln_severity,
+    get_priority_from_cvssscore,
+)
+from util.secscan.blob import BlobURLRetriever
+from util.secscan.v4.api import (
+    APIRequestFailure,
+    ClairSecurityScannerAPI,
+    InvalidContentSent,
+    LayerTooLargeException,
+)
+from util.secscan.validator import V4SecurityConfigValidator
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
-from .__init__models_interface import InitDataInterface
-
 from data import model
 from data.logs_model import logs_model
+
+from .__init__models_interface import InitDataInterface
 
 
 class PreOCIModel(InitDataInterface):

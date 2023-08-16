@@ -1,14 +1,14 @@
-import pytest
+from test.fixtures import *
 
+import pytest
 from flask import url_for
 
-from app import instance_keys, app as original_app
+from app import app as original_app
+from app import instance_keys
 from data import model
 from data.model.user import get_robot_and_metadata, get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
-from util.security.registry_jwt import decode_bearer_token, CLAIM_TUF_ROOTS
-
-from test.fixtures import *
+from util.security.registry_jwt import CLAIM_TUF_ROOTS, decode_bearer_token
 
 
 def get_robot_password(username):

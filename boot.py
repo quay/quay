@@ -1,25 +1,22 @@
 #!/usr/bin/env python
 
+import logging
+import os.path
 from datetime import datetime, timedelta
 from urllib.parse import urlunparse
 
-from jinja2 import Template
 from cachetools.func import lru_cache
-
-import logging
-import release
-import os.path
-
 from cryptography.hazmat.primitives import serialization
+from jinja2 import Template
 
+import release
+from _init import CONF_DIR
 from app import app
 from data.model import ServiceKeyDoesNotExist
 from data.model.release import set_region_release
 from data.model.service_keys import get_service_key
 from util.config.database import sync_database_with_config
 from util.generatepresharedkey import generate_key
-from _init import CONF_DIR
-
 
 logger = logging.getLogger(__name__)
 

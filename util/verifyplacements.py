@@ -6,14 +6,14 @@ actually exists there. If the file is not found in that storage location, the pl
 database is removed.
 """
 
-from typing import Dict
 import logging
+from typing import Dict
 
 from peewee import fn
 
 from app import storage
 from data import model
-from data.database import ImageStorage, ImageStoragePlacement, ImageStorageLocation
+from data.database import ImageStorage, ImageStorageLocation, ImageStoragePlacement
 from util.migrate.allocator import yield_random_entries
 
 logger = logging.getLogger(__name__)

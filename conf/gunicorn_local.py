@@ -1,13 +1,12 @@
-import sys
 import os
+import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import logging
 
 from util.log import logfile_path
-from util.workers import get_worker_count, get_worker_connections_count
-
+from util.workers import get_worker_connections_count, get_worker_count
 
 logconfig = logfile_path(debug=True)
 bind = "0.0.0.0:5000"

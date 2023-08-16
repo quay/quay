@@ -1,17 +1,15 @@
-import logging
-import os
 import base64
 import hmac
-
+import logging
+import os
 from functools import wraps
-from flask import session, request, Response
+
+from flask import Response, request, session
 
 import features
-
 from app import app
-from auth.auth_context import get_validated_oauth_token, get_sso_token
+from auth.auth_context import get_sso_token, get_validated_oauth_token
 from util.http import abort
-
 
 logger = logging.getLogger(__name__)
 

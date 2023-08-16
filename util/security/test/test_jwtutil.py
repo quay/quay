@@ -1,18 +1,17 @@
 import time
 
-import pytest
 import jwt
-
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
+import pytest
 from authlib.jose import jwk
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from util.security.jwtutil import (
+    InvalidAlgorithmError,
+    InvalidTokenError,
     decode,
     exp_max_s_option,
     jwk_dict_to_public_key,
-    InvalidTokenError,
-    InvalidAlgorithmError,
 )
 
 

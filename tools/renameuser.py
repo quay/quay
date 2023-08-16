@@ -1,7 +1,7 @@
+import argparse
+
 from app import app
 from data import model
-
-import argparse
 
 
 def renameUser(username, new_name):

@@ -1,34 +1,33 @@
 import json
 import re
 import uuid
-
 from datetime import datetime
+
 from peewee import fn
 
 from data.database import (
+    FederatedLogin,
+    LoginService,
+    RepositoryPermission,
     Team,
     TeamMember,
-    TeamRole,
-    User,
     TeamMemberInvite,
-    RepositoryPermission,
+    TeamRole,
     TeamSync,
-    LoginService,
-    FederatedLogin,
+    User,
     db_random_func,
     db_transaction,
 )
 from data.model import (
     DataModelException,
     InvalidTeamException,
-    UserAlreadyInTeam,
     InvalidTeamMemberException,
+    UserAlreadyInTeam,
     _basequery,
 )
 from data.text import prefix_search
-from util.validation import validate_username
 from util.morecollections import AttrDict
-
+from util.validation import validate_username
 
 MIN_TEAMNAME_LENGTH = 2
 MAX_TEAMNAME_LENGTH = 255

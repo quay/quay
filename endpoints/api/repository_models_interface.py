@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple, defaultdict
-
+from collections import defaultdict, namedtuple
 from datetime import datetime
+
 from six import add_metaclass
 
 import features
-from data.database import RepositoryState
 from data import model
+from data.database import RepositoryState
 from endpoints.api import format_date
 
 

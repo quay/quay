@@ -1,9 +1,8 @@
-import json
 import hashlib
-
-from flask import url_for
+import json
 from base64 import b64encode
 
+from flask import url_for
 
 NO_REPO = None
 PUBLIC = "public"

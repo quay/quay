@@ -2,7 +2,6 @@
 import tldextract
 
 import features
-
 from data import model
 
 

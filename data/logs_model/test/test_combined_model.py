@@ -1,13 +1,12 @@
-import pytest
 from datetime import date, datetime, timedelta
+from test.fixtures import *
 
+import pytest
 from freezegun import freeze_time
 
 from data import model
-from data.logs_model.inmemory_model import InMemoryModel
 from data.logs_model.combined_model import CombinedLogsModel
-
-from test.fixtures import *
+from data.logs_model.inmemory_model import InMemoryModel
 
 
 @pytest.fixture()

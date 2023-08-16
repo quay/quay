@@ -7,15 +7,13 @@ import urllib.parse
 import jwt
 import pytest
 import requests
-
-from httmock import urlmatch, HTTMock
-
+from authlib.jose import JsonWebKey, jwk
 from cryptography.hazmat.primitives import serialization
-from authlib.jose import jwk, JsonWebKey
-
-from oauth.oidc import OIDCLoginService, OAuthLoginException
-from util.config import URLSchemeAndHostname
+from httmock import HTTMock, urlmatch
 from six.moves.urllib.parse import quote
+
+from oauth.oidc import OAuthLoginException, OIDCLoginService
+from util.config import URLSchemeAndHostname
 
 
 @pytest.fixture(scope="module")  # Slow to generate, only do it once.

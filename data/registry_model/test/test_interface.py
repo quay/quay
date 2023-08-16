@@ -4,45 +4,41 @@ import hashlib
 import json
 import os
 import uuid
-
 from datetime import datetime, timedelta
 from io import BytesIO
+from test.fixtures import *
 
 import pytest
-
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
 from data import model
+from data.cache.impl import InMemoryDataModelCache
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
+    ImageStorageLocation,
     Manifest,
     ManifestBlob,
     ManifestLabel,
-    Tag,
-    ImageStorageLocation,
     Repository,
+    Tag,
 )
-from data.cache.impl import InMemoryDataModelCache
-from data.registry_model.registry_oci_model import OCIModel
-from data.registry_model.datatypes import RepositoryReference
-from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
-from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.blob import store_blob_record_and_temp_link
-from data import model
-from image.shared.types import ManifestImageLayer
+from data.model.oci.retriever import RepositoryContentRetriever
+from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
+from data.registry_model.datatypes import RepositoryReference
+from data.registry_model.registry_oci_model import OCIModel
 from image.docker.schema1 import (
-    DockerSchema1ManifestBuilder,
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
+    DockerSchema1ManifestBuilder,
 )
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from image.shared.types import ManifestImageLayer
 from util.bytes import Bytes
-
-from test.fixtures import *
 
 
 @pytest.fixture(

@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
+from test.fixtures import *
 
 from data import model
-from endpoints.api.appspecifictokens import AppTokens, AppToken
+from endpoints.api.appspecifictokens import AppToken, AppTokens
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 
 def test_app_specific_tokens(app, client):

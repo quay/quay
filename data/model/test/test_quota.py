@@ -1,17 +1,16 @@
 import json
+from test.fixtures import *
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from app import storage
 from data.database import ImageStorageLocation, QuotaRegistrySize, Tag
 from data.model.blob import store_blob_record_and_temp_link
-from data.model.gc import _GarbageCollectorContext, _garbage_collect_manifest
+from data.model.gc import _garbage_collect_manifest, _GarbageCollectorContext
 from data.model.namespacequota import get_namespace_size
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.organization import create_organization
-from data.model.repository import create_repository, get_repository_size
-from data.model.storage import get_layer_path
-from data.model.user import get_user
 from data.model.quota import (
     calculate_registry_size,
     get_registry_size,
@@ -19,9 +18,11 @@ from data.model.quota import (
     run_backfill,
     sum_registry_size,
 )
+from data.model.repository import create_repository, get_repository_size
+from data.model.storage import get_layer_path
+from data.model.user import get_user
 from digest.digest_tools import sha256_digest
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from test.fixtures import *
 from util.bytes import Bytes
 
 ORG_NAME = "org1"

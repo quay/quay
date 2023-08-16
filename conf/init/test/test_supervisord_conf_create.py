@@ -1,20 +1,18 @@
-from contextlib import contextmanager
-
 import os
 import tempfile
-
-from six import iteritems
-from supervisor.options import ServerOptions
+from contextlib import contextmanager
 
 import jinja2
 import pytest
+from six import iteritems
+from supervisor.options import ServerOptions
 
 from ..supervisord_conf_create import (
-    registry_services,
+    QUAY_OVERRIDE_SERVICES,
+    QUAY_SERVICES,
     limit_services,
     override_services,
-    QUAY_SERVICES,
-    QUAY_OVERRIDE_SERVICES,
+    registry_services,
 )
 
 

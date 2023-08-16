@@ -1,21 +1,21 @@
-import uuid
 import logging
-
+import uuid
 from calendar import timegm
+
 from peewee import fn
 
 from data.database import (
-    ManifestChild,
-    Tag,
     Manifest,
+    ManifestChild,
     MediaType,
-    RepositoryState,
-    User,
-    get_epoch_timestamp_ms,
-    db_transaction,
-    Repository,
     Namespace,
+    Repository,
+    RepositoryState,
+    Tag,
+    User,
     db_random_func,
+    db_transaction,
+    get_epoch_timestamp_ms,
 )
 from data.model import config, user
 from image.docker.schema1 import (

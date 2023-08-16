@@ -1,37 +1,26 @@
-import logging
 import json
+import logging
 
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError, validate
+
+from buildtrigger.basehandler import BuildTriggerHandler
+from buildtrigger.bitbuckethandler import BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA as bb_schema
+from buildtrigger.bitbuckethandler import get_transformed_webhook_payload as bb_payload
+from buildtrigger.githubhandler import GITHUB_WEBHOOK_PAYLOAD_SCHEMA as gh_schema
+from buildtrigger.githubhandler import get_transformed_webhook_payload as gh_payload
+from buildtrigger.gitlabhandler import GITLAB_WEBHOOK_PAYLOAD_SCHEMA as gl_schema
+from buildtrigger.gitlabhandler import get_transformed_webhook_payload as gl_payload
 from buildtrigger.triggerutil import (
+    InvalidPayloadException,
     RepositoryReadException,
+    SkipRequestException,
     TriggerActivationException,
     TriggerStartException,
     ValidationRequestException,
-    InvalidPayloadException,
-    SkipRequestException,
-    raise_if_skipped_build,
     find_matching_branches,
+    raise_if_skipped_build,
 )
-
-from buildtrigger.basehandler import BuildTriggerHandler
-
-from buildtrigger.bitbuckethandler import (
-    BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA as bb_schema,
-    get_transformed_webhook_payload as bb_payload,
-)
-
-from buildtrigger.githubhandler import (
-    GITHUB_WEBHOOK_PAYLOAD_SCHEMA as gh_schema,
-    get_transformed_webhook_payload as gh_payload,
-)
-
-from buildtrigger.gitlabhandler import (
-    GITLAB_WEBHOOK_PAYLOAD_SCHEMA as gl_schema,
-    get_transformed_webhook_payload as gl_payload,
-)
-
 from util.security.ssh import generate_ssh_keypair
-
 
 logger = logging.getLogger(__name__)
 

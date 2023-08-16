@@ -1,21 +1,21 @@
+from typing import Any, Dict
+from unittest.mock import MagicMock, patch
+
 import pytest
-from typing import Dict, Any
-from unittest.mock import patch, MagicMock
 from rediscluster.nodemanager import NodeManager
 
 from data.cache import (
     InMemoryDataModelCache,
-    NoopDataModelCache,
     MemcachedModelCache,
+    NoopDataModelCache,
     RedisDataModelCache,
 )
 from data.cache.cache_key import CacheKey
 from data.cache.redis_cache import (
-    redis_cache_from_config,
     REDIS_DRIVERS,
     ReadEndpointSupportedRedis,
+    redis_cache_from_config,
 )
-
 
 DATA: Dict[str, Any] = {}
 

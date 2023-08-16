@@ -1,4 +1,4 @@
-from data.database import ProxyCacheConfig, User, DEFAULT_PROXY_CACHE_EXPIRATION
+from data.database import DEFAULT_PROXY_CACHE_EXPIRATION, ProxyCacheConfig, User
 from data.model import InvalidProxyCacheConfigException
 from data.model.organization import get_organization
 

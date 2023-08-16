@@ -1,6 +1,6 @@
 import logging
 
-from flask.sessions import SecureCookieSessionInterface, BadSignature
+from flask.sessions import BadSignature, SecureCookieSessionInterface
 
 from app import app
 from auth.validateresult import AuthKind, ValidateResult

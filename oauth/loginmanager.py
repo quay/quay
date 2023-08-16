@@ -1,7 +1,7 @@
+from oauth.oidc import OIDCLoginService
 from oauth.services.github import GithubOAuthService
 from oauth.services.google import GoogleOAuthService
 from oauth.services.rhsso import RHSSOOAuthService
-from oauth.oidc import OIDCLoginService
 
 CUSTOM_LOGIN_SERVICES = {
     "GITHUB_LOGIN_CONFIG": GithubOAuthService,

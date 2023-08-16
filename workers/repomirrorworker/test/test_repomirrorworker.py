@@ -1,24 +1,23 @@
-import pytest
-import mock
 import json
 from functools import wraps
+from io import BytesIO
+from test.fixtures import *
 from unittest.mock import patch
 
+import mock
+import pytest
+
 from app import storage
-from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from data.registry_model import registry_model
-from data.registry_model.datatypes import RepositoryReference
+from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
-from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
-
+from data.registry_model import registry_model
+from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
+from data.registry_model.datatypes import RepositoryReference
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker import delete_obsolete_tags
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
-from io import BytesIO
-from util.repomirror.skopeomirror import SkopeoResults, SkopeoMirror
-
-from test.fixtures import *
 
 
 def disable_existing_mirrors(func):

@@ -1,23 +1,28 @@
 # -*- coding: utf-8 -*-
 
 import json
-import pytest
 import os
+
+import pytest
 
 from app import docker_v2_signing_key
 from image.docker.schema1 import (
-    DockerSchema1ManifestBuilder,
-    DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
-)
-from image.docker.schema2.manifest import (
-    MalformedSchema2Manifest,
-    DockerSchema2Manifest,
-    DockerSchema2ManifestBuilder,
-    EMPTY_LAYER_BLOB_DIGEST,
+    DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,
+    DockerSchema1ManifestBuilder,
 )
 from image.docker.schema2.config import DockerSchema2Config
-from image.docker.schema2.test.test_config import CONFIG_BYTES, CONFIG_SIZE, CONFIG_DIGEST
+from image.docker.schema2.manifest import (
+    EMPTY_LAYER_BLOB_DIGEST,
+    DockerSchema2Manifest,
+    DockerSchema2ManifestBuilder,
+    MalformedSchema2Manifest,
+)
+from image.docker.schema2.test.test_config import (
+    CONFIG_BYTES,
+    CONFIG_DIGEST,
+    CONFIG_SIZE,
+)
 from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 

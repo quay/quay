@@ -1,10 +1,9 @@
-import subprocess
-import os
 import logging
-
+import os
+import subprocess
 from test.fixtures import *
-from test.registry.liveserverfixture import *
 from test.registry.fixtures import *
+from test.registry.liveserverfixture import *
 from test.registry.protocol_fixtures import *
 
 CONFORMANCE_TEST_PATH = "dist-spec/conformance/conformance.test"

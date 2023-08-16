@@ -10,16 +10,16 @@ from jsonschema import validate
 from app import app, get_app_url
 from buildtrigger.basehandler import BuildTriggerHandler
 from buildtrigger.triggerutil import (
+    InvalidPayloadException,
     RepositoryReadException,
+    SkipRequestException,
     TriggerActivationException,
     TriggerDeactivationException,
-    TriggerStartException,
-    InvalidPayloadException,
     TriggerProviderException,
-    SkipRequestException,
+    TriggerStartException,
     determine_build_ref,
-    raise_if_skipped_build,
     find_matching_branches,
+    raise_if_skipped_build,
 )
 from util.dict_wrappers import JSONPathDict, SafeDictSetter
 from util.security.ssh import generate_ssh_keypair

@@ -1,16 +1,14 @@
-import pytest
+from test.fixtures import *
+from test.test_external_jwt_authn import fake_jwt
+from test.test_keystone_auth import fake_keystone
+from test.test_ldap import mock_ldap
 
+import pytest
 from mock import patch
 
 from endpoints.api.search import EntitySearch, LinkExternalEntity
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-
-from test.test_ldap import mock_ldap
-from test.test_external_jwt_authn import fake_jwt
-from test.test_keystone_auth import fake_keystone
-
-from test.fixtures import *
 
 
 @pytest.fixture(

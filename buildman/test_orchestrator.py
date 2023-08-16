@@ -1,22 +1,21 @@
 import time
-import pytest
 from random import randrange
-from unittest.mock import patch, Mock
+from test.fixtures import *
+from unittest.mock import Mock, patch
 
 import fakeredis
+import pytest
 from freezegun import freeze_time
 
 from buildman.orchestrator import (
-    MemoryOrchestrator,
-    RedisOrchestrator,
     REDIS_EXPIRED_SUFFIX,
     REDIS_EXPIRING_SUFFIX,
-    KeyEvent,
     KeyChange,
+    KeyEvent,
+    MemoryOrchestrator,
+    RedisOrchestrator,
 )
 from util import slash_join
-
-from test.fixtures import *
 
 
 @pytest.fixture()

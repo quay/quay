@@ -1,10 +1,10 @@
 import hashlib
-import math
 import logging
-import features
+import math
 
 from requests.exceptions import RequestException
 
+import features
 from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)

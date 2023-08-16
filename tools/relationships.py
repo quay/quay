@@ -1,4 +1,4 @@
-from data.database import User, Repository, TeamMember
+from data.database import Repository, TeamMember, User
 
 
 def fix_ident(ident):

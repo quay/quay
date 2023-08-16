@@ -1,13 +1,14 @@
+from test.fixtures import *
 from typing import Dict
+
 import pytest
 from mock import Mock
 
+from app import app as real_app
 from auth import permissions
 from data import model
 from endpoints.api.trigger_analyzer import TriggerAnalyzer
 from util import dockerfileparse
-from test.fixtures import *
-from app import app as real_app
 
 BAD_PATH = '"server_hostname/" is not a valid Quay repository path'
 

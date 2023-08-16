@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import pytest
 import re
 
-from util.names import escape_tag, REPOSITORY_NAME_REGEX, REPOSITORY_NAME_EXTENDED_REGEX
+import pytest
+
+from util.names import REPOSITORY_NAME_EXTENDED_REGEX, REPOSITORY_NAME_REGEX, escape_tag
 
 
 @pytest.mark.parametrize(

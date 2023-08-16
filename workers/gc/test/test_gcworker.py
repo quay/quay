@@ -1,6 +1,6 @@
-from workers.gc.gcworker import GarbageCollectionWorker
-
 from test.fixtures import *
+
+from workers.gc.gcworker import GarbageCollectionWorker
 
 
 def test_gc(initialized_db):
