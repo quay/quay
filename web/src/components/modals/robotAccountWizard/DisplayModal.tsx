@@ -17,9 +17,6 @@ export default function DisplayModal(props: DisplayModalProps) {
       <Button key="close" variant="primary" onClick={handleModalToggle}>
         Close
       </Button>
-      <Button key="cancel" variant="link" onClick={handleModalToggle}>
-        Cancel
-      </Button>
     </>
   );
 
@@ -40,7 +37,13 @@ export default function DisplayModal(props: DisplayModalProps) {
       title={props.title}
       isOpen={props.isModalOpen}
       onClose={handleModalToggle}
-      footer={props.showFooter ? (props.showSave ? footerWithSave : footerWithoutSave) : null}
+      footer={
+        props.showFooter
+          ? props.showSave
+            ? footerWithSave
+            : footerWithoutSave
+          : null
+      }
     >
       {props.Component}
     </Modal>
@@ -55,5 +58,5 @@ interface DisplayModalProps {
   onClose?: () => void;
   onSave?: () => void;
   showSave: boolean;
-  showFooter?: boolean
+  showFooter?: boolean;
 }

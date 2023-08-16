@@ -42,6 +42,14 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
         isOpen={isOpen}
         dropdownItems={[
           <DropdownItem
+            key="set-repo-perms"
+            onClick={() => onSetRepoPerms()}
+            id={`${props.robotAccount.name}-set-repo-perms-btn`}
+          >
+            {props.deleteKebabIsOpen ? props.deleteModal() : null}
+            Set repository permissions
+          </DropdownItem>,
+          <DropdownItem
             key="delete"
             onClick={() => onDelete()}
             className="red-color"
@@ -49,14 +57,6 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
           >
             {props.deleteKebabIsOpen ? props.deleteModal() : null}
             Delete
-          </DropdownItem>,
-          <DropdownItem
-            key="set-repo-perms"
-            onClick={() => onSetRepoPerms()}
-            id={`${props.robotAccount.name}-set-repo-perms-btn`}
-          >
-            {props.deleteKebabIsOpen ? props.deleteModal() : null}
-            Set repository permissions
           </DropdownItem>,
         ]}
         isPlain
