@@ -53,7 +53,9 @@ export default function CreateRobotAccountModal(
   );
   const [isDrawerExpanded, setDrawerExpanded] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeStep, setActiveStep] = useState<string>('Robot name and description');
+  const [activeStep, setActiveStep] = useState<string>(
+    'Robot name and description',
+  );
 
   const {createNewRobot} = useRobotAccounts({
     name: props.namespace,
@@ -81,7 +83,7 @@ export default function CreateRobotAccountModal(
         robotDefaultPerm: robotDefaultPerm,
       });
       if (!loading) {
-        props.handleModalToggle();
+        handleModalToggle();
       }
     } catch (error) {
       console.error(error);
@@ -94,6 +96,16 @@ export default function CreateRobotAccountModal(
     return /^[a-z][a-z0-9_]{1,254}$/.test(robotName);
   };
 
+  const handleModalToggle = () => {
+    // clear selected states
+    setSelectedRepos([]);
+    setSelectedTeams([]);
+    setSelectedRepoPerms([]);
+    setRobotdefaultPerm('');
+
+    props.handleModalToggle();
+  };
+
   const filteredRepos = () => {
     return selectedRepoPerms.filter((repo) =>
       selectedRepos.includes(repo.name),
@@ -102,7 +114,7 @@ export default function CreateRobotAccountModal(
 
   const handleStepChange = (step) => {
     setActiveStep(step.name);
-  }
+  };
 
   const steps = [
     {
@@ -187,7 +199,7 @@ export default function CreateRobotAccountModal(
       aria-label="CreateRobotAccount"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
-      onClose={props.handleModalToggle}
+      onClose={handleModalToggle}
       showClose={false}
       hasNoBodyWrapper
     >
@@ -197,7 +209,7 @@ export default function CreateRobotAccountModal(
         title="Create robot account (organization/namespace)"
         description="Robot Accounts are named tokens that can be granted permissions on multiple repositories under this organization."
         steps={steps}
-        onClose={props.handleModalToggle}
+        onClose={handleModalToggle}
         height={600}
         width={1170}
         footer={
@@ -207,8 +219,10 @@ export default function CreateRobotAccountModal(
             isDataValid={validateRobotName}
           />
         }
-        hasNoBodyPadding={isDrawerExpanded && activeStep == 'Add to team (optional)'  ? true : false}
-        onCurrentStepChanged={(step)=>handleStepChange(step)}
+        hasNoBodyPadding={
+          isDrawerExpanded && activeStep == 'Add to team (optional)'
+        }
+        onCurrentStepChanged={(step) => handleStepChange(step)}
       />
     </Modal>
   );

@@ -101,6 +101,7 @@ export default function TeamView(props: TeamViewProps) {
               allItemsList={props.items}
               itemsPerPageList={paginatedItems}
               onItemSelect={onSelectItem}
+              id="add-team-bulk-select"
             />
           ) : null}
           {props.filterWithDropdown ? (
@@ -111,7 +112,11 @@ export default function TeamView(props: TeamViewProps) {
               searchInputText={searchInputText}
             />
           ) : (
-            <SearchInput searchState={search} onChange={setSearch} id="robot-wizard-team-search" />
+            <SearchInput
+              searchState={search}
+              onChange={setSearch}
+              id="robot-wizard-team-search"
+            />
           )}
           {props.showCheckbox ? (
             <ToolbarItem>
