@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AlertVariant } from "src/atoms/AlertState";
 import { useAlerts } from "src/hooks/UseAlerts";
 import { useTags } from "src/hooks/UseTags";
+import { isNullOrUndefined } from "src/libs/utils";
 
 
 export default function AddTagModal(props: AddTagModalProps){
@@ -16,6 +17,9 @@ export default function AddTagModal(props: AddTagModalProps){
             setValue('');
             props.loadTags();
             props.setIsOpen(false);
+            if(!isNullOrUndefined(props.onComplete)){
+                props.onComplete();
+            }
         }
     }, [successCreateTag]);
 
@@ -24,6 +28,9 @@ export default function AddTagModal(props: AddTagModalProps){
             addAlert({variant: AlertVariant.Failure, title: `Could not create tag ${value}`});
             setValue('')
             props.setIsOpen(false)
+            if(!isNullOrUndefined(props.onComplete)){
+                props.onComplete();
+            }
         }
     }, [errorCreateTag]);
 
@@ -72,4 +79,5 @@ interface AddTagModalProps {
     manifest: string;
     setIsOpen: (open: boolean) => void;
     loadTags: () => void;
+    onComplete?: () => void;
 }

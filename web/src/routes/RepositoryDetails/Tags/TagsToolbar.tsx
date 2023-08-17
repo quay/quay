@@ -60,7 +60,7 @@ export function TagsToolbar(props: ToolBarProps) {
   if (quayConfig?.config?.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
     kebabItems.push(
       <DropdownItem
-        key="delete"
+        key="permanentlydelete"
         onClick={() => {
           setKebabOpen(!isKebabOpen);
           setModalOptions((prevOptions) => ({

@@ -1,4 +1,4 @@
-import { Dropdown, DropdownItem, KebabToggle, DropdownPosition } from '@patternfly/react-core';
+import { Dropdown, DropdownItem, KebabToggle, DropdownPosition, DropdownDirection } from '@patternfly/react-core';
 import { useState } from 'react';
 import AddTagModal from './TagsActionsAddTagModal';
 import EditLabelsModal from './TagsActionsLabelsModal';
@@ -6,6 +6,8 @@ import EditExpirationModal from './TagsActionsEditExpirationModal';
 import { DeleteModal, ModalOptions } from './DeleteModal';
 import { RepositoryDetails } from 'src/resources/RepositoryResource';
 import { useQuayConfig } from 'src/hooks/UseQuayConfig';
+import { useSetRecoilState } from 'recoil';
+import { selectedTagsState } from 'src/atoms/TagListState';
 
 export default function TagActions(props: TagActionsProps) {
     const quayConfig = useQuayConfig();
@@ -17,6 +19,7 @@ export default function TagActions(props: TagActionsProps) {
         isOpen: false,
         force: false,
       });
+    const setSelectedTags = useSetRecoilState(selectedTagsState);
 
     const dropdownItems = [
         <DropdownItem 
@@ -64,7 +67,7 @@ export default function TagActions(props: TagActionsProps) {
     if (quayConfig?.config?.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
         dropdownItems.push(
           <DropdownItem
-            key="forcedelete"
+            key="permanentlydelete"
             onClick={() => {
                 setIsOpen(false);
                 setDeleteModalOptions({
@@ -95,6 +98,7 @@ export default function TagActions(props: TagActionsProps) {
             setIsOpen={setIsAddTagModalOpen}
             manifest={props.manifest}
             loadTags={props.loadTags}
+            onComplete={()=>setSelectedTags([])}
         />
         <EditLabelsModal
             org={props.org}
@@ -102,6 +106,7 @@ export default function TagActions(props: TagActionsProps) {
             manifest={props.manifest}
             isOpen={isEditLabelsModalOpen}
             setIsOpen={setIsEditLabelsModalOpen}
+            onComplete={()=>setSelectedTags([])}
         />
         <EditExpirationModal
             org={props.org}
@@ -111,6 +116,7 @@ export default function TagActions(props: TagActionsProps) {
             tags={props.tags}
             expiration={props.expiration}
             loadTags={props.loadTags}
+            onComplete={()=>setSelectedTags([])}
         />
         <DeleteModal
             modalOptions={deleteModalOptions}
@@ -120,6 +126,7 @@ export default function TagActions(props: TagActionsProps) {
             repo={props.repo}
             loadTags={props.loadTags}
             repoDetails={props.repoDetails}
+            onComplete={()=>setSelectedTags([])}
         />
     </>
     );
