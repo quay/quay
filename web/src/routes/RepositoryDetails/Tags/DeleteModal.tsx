@@ -8,11 +8,11 @@ import {
 import {useEffect} from 'react';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import './Tags.css';
-import { isNullOrUndefined } from 'src/libs/utils';
+import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
-import { useDeleteTag } from 'src/hooks/UseTags';
-import { useAlerts } from 'src/hooks/UseAlerts';
-import { AlertDetails, AlertVariant } from 'src/atoms/AlertState';
+import {useDeleteTag} from 'src/hooks/UseTags';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
 
 export interface ModalOptions {
   isOpen: boolean;
@@ -29,21 +29,21 @@ export function DeleteModal(props: ModalProps) {
   const {addAlert} = useAlerts();
   const isReadonly: boolean = props.repoDetails?.state !== 'NORMAL';
 
-  useEffect(()=>{
-    if(successDeleteTags){
+  useEffect(() => {
+    if (successDeleteTags) {
       props.loadTags();
       props.setModalOptions({
         force: false,
         isOpen: false,
       });
-      if(!isNullOrUndefined(props.onComplete)){
+      if (!isNullOrUndefined(props.onComplete)) {
         props.onComplete();
       }
       const alert: AlertDetails = {
         variant: AlertVariant.Success,
         title: '',
-      }
-      switch(true){
+      };
+      switch (true) {
         case props.tags.length === 1 && props.modalOptions.force:
           alert.title = `Permanently deleted tag ${props.tags[0]} successfully`;
           break;
@@ -57,20 +57,20 @@ export function DeleteModal(props: ModalProps) {
           alert.title = `Deleted tags successfully`;
           break;
       }
-      if(props.tags.length > 1) {
+      if (props.tags.length > 1) {
         alert.message = `Tags deleted: ${props.tags.join(', ')}`;
       }
       addAlert(alert);
     }
-  }, [successDeleteTags])
+  }, [successDeleteTags]);
 
-  useEffect(()=>{
-    if(errorDeleteTags){
+  useEffect(() => {
+    if (errorDeleteTags) {
       const alert: AlertDetails = {
         variant: AlertVariant.Failure,
         title: '',
-      }
-      switch(true){
+      };
+      switch (true) {
         case props.tags.length === 1 && props.modalOptions.force:
           alert.title = `Could not permanently delete tag ${props.tags[0]}`;
           break;
@@ -84,10 +84,18 @@ export function DeleteModal(props: ModalProps) {
           alert.title = `Could not delete tags`;
           break;
       }
-      alert.message = (<>{Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (<p key={tag}>Could not delete tag {tag}: {error.error.message}</p>))}</>)
+      alert.message = (
+        <>
+          {Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (
+            <p key={tag}>
+              Could not delete tag {tag}: {error.error.message}
+            </p>
+          ))}
+        </>
+      );
       addAlert(alert);
     }
-  }, [errorDeleteTags])
+  }, [errorDeleteTags]);
 
   const title = props.modalOptions.force
     ? `Permanently delete the following tag(s)?`
@@ -97,14 +105,14 @@ export function DeleteModal(props: ModalProps) {
       <Modal
         id="tag-deletion-modal"
         title={title}
-        description={(
-            <Conditional if={props.modalOptions.force}>
-              <span style={{color: 'red'}}>
-                Tags deleted cannot be restored within the time machine window and
-                will be immediately eligible for garbage collection.
-              </span>
-            </Conditional>
-        )}
+        description={
+          <Conditional if={props.modalOptions.force}>
+            <span style={{color: 'red'}}>
+              Tags deleted cannot be restored within the time machine window and
+              will be immediately eligible for garbage collection.
+            </span>
+          </Conditional>
+        }
         isOpen={props.modalOptions.isOpen}
         disableFocusTrap={true}
         key="modal"
@@ -132,7 +140,9 @@ export function DeleteModal(props: ModalProps) {
           <Button
             key="modal-action-button"
             variant="primary"
-            onClick={()=>deleteTags({tags: props.tags, force: props.modalOptions.force})}
+            onClick={() =>
+              deleteTags({tags: props.tags, force: props.modalOptions.force})
+            }
             isDisabled={isReadonly}
           >
             Delete

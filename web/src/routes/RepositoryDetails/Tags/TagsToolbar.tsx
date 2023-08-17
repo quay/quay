@@ -17,7 +17,7 @@ import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import ColumnNames from './ColumnNames';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
-import { useQuayConfig } from 'src/hooks/UseQuayConfig';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
 
 export function TagsToolbar(props: ToolBarProps) {
@@ -28,7 +28,8 @@ export function TagsToolbar(props: ToolBarProps) {
   });
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
-  const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] = useState(false);
+  const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
+    useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const kebabItems: ReactElement[] = [
     <DropdownItem
@@ -57,7 +58,10 @@ export function TagsToolbar(props: ToolBarProps) {
     </DropdownItem>,
   ];
 
-  if (quayConfig?.config?.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
+  if (
+    quayConfig?.config?.PERMANENTLY_DELETE_TAGS &&
+    props.repoDetails?.tag_expiration_s > 0
+  ) {
     kebabItems.push(
       <DropdownItem
         key="permanentlydelete"
@@ -120,7 +124,9 @@ export function TagsToolbar(props: ToolBarProps) {
         modalOptions={modalOptions}
         setModalOptions={setModalOptions}
         tags={selectedTags}
-        onComplete={()=>{setSelectedTags([])}}
+        onComplete={() => {
+          setSelectedTags([]);
+        }}
         org={props.organization}
         repo={props.repository}
         loadTags={props.loadTags}
@@ -133,7 +139,9 @@ export function TagsToolbar(props: ToolBarProps) {
         setIsOpen={setIsEditExpirationModalOpen}
         tags={selectedTags}
         loadTags={props.loadTags}
-        onComplete={()=>{setSelectedTags([])}}
+        onComplete={() => {
+          setSelectedTags([]);
+        }}
       />
     </Toolbar>
   );
