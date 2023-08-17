@@ -112,7 +112,7 @@ describe('Repository Details Page', () => {
     cy.get('tbody:contains("latest")').within(() => cy.get('input').click());
     cy.contains('Actions').click();
     cy.contains('Remove').click();
-    cy.contains('Delete the following tag?').should('exist');
+    cy.contains('Delete the following tag(s)?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
     cy.get('[id="tag-deletion-modal"]').within(() =>
@@ -120,10 +120,7 @@ describe('Repository Details Page', () => {
     );
     cy.wait('@deleteTag', {timeout: 20000})
       .its('request.url')
-      .should(
-        'contain',
-        '/api/v1/repository/user1/hello-world/tag/latest',
-      );
+      .should('contain', '/api/v1/repository/user1/hello-world/tag/latest');
   });
 
   it('force deletes tag', () => {
@@ -135,7 +132,51 @@ describe('Repository Details Page', () => {
     cy.get('tbody:contains("latest")').within(() => cy.get('input').click());
     cy.contains('Actions').click();
     cy.contains('Permanently Delete').click();
-    cy.contains('Permanently delete the following tag?').should('exist');
+    cy.contains('Permanently delete the following tag(s)?').should('exist');
+    cy.contains(
+      'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
+    ).should('exist');
+    cy.contains('Cancel').should('exist');
+    cy.get('button').contains('Delete').should('exist');
+    cy.get('[id="tag-deletion-modal"]').within(() =>
+      cy.get('button:contains("Delete")').click(),
+    );
+    cy.wait('@deleteTag', {timeout: 20000})
+      .its('request.url')
+      .should(
+        'contain',
+        '/api/v1/repository/user1/hello-world/tag/latest/expire',
+      );
+  });
+
+  it('deletes tag through row', () => {
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Remove').click();
+    cy.contains('Delete the following tag(s)?').should('exist');
+    cy.contains('Cancel').should('exist');
+    cy.get('button').contains('Delete').should('exist');
+    cy.get('[id="tag-deletion-modal"]').within(() =>
+      cy.get('button:contains("Delete")').click(),
+    );
+    cy.contains('Deleted tag latest successfully').should('exist');
+  });
+
+  it('force deletes tag through row', () => {
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/user1/hello-world/tag/latest/expire',
+    ).as('deleteTag');
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.within(() => {
+      cy.get('#tag-actions-kebab').click();
+    });
+    cy.contains('Permanently Delete').click();
+    cy.contains('Permanently delete the following tag(s)?').should('exist');
     cy.contains(
       'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
     ).should('exist');
@@ -158,7 +199,7 @@ describe('Repository Details Page', () => {
     cy.get('button').contains('Select page (2)').click();
     cy.contains('Actions').click();
     cy.contains('Remove').click();
-    cy.contains('Delete the following tags?').should('exist');
+    cy.contains('Delete the following tag(s)?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
     cy.get('[id="tag-deletion-modal"]').within(() => {
@@ -307,7 +348,7 @@ describe('Repository Details Page', () => {
     );
   });
 
-  it('does not render tag actions for non-writable repositories', ()=> {
+  it('does not render tag actions for non-writable repositories', () => {
     cy.visit('/repository/user2org1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -315,7 +356,7 @@ describe('Repository Details Page', () => {
     });
   });
 
-  it('adds tag', ()=> {
+  it('adds tag', () => {
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -333,12 +374,10 @@ describe('Repository Details Page', () => {
     });
   });
 
-  it('alert on failure to add tag', ()=> {
-    cy.intercept(
-      'PUT',
-      '/api/v1/repository/user1/hello-world/tag/newtag',
-      { statusCode: 500 }
-    ).as('getServerFailure')
+  it('alert on failure to add tag', () => {
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/newtag', {
+      statusCode: 500,
+    }).as('getServerFailure');
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -361,14 +400,14 @@ describe('Repository Details Page', () => {
     cy.contains('Edit labels').click();
     cy.get('#readonly-labels').within(() => {
       cy.contains('No labels found').should('exist');
-    })
+    });
     cy.get('#mutable-labels').within(() => {
       cy.contains('version=1.0.0').should('exist');
       cy.contains('vendor=Redhat').should('exist');
-    })
+    });
   });
 
-  it('creates labels', ()=>{
+  it('creates labels', () => {
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -383,7 +422,7 @@ describe('Repository Details Page', () => {
     cy.contains('Mutable labels').click();
     cy.contains('Save Labels').click();
     cy.contains('Created labels successfully').should('exist');
-  })
+  });
 
   it('deletes labels', () => {
     cy.visit('/repository/user1/hello-world');
@@ -395,17 +434,13 @@ describe('Repository Details Page', () => {
     cy.get('#mutable-labels').within(() => {
       cy.get('button').should('exist');
       cy.get('button').click({multiple: true});
-    })
+    });
     cy.contains('Save Labels').click();
     cy.contains('Deleted labels successfully').should('exist');
   });
 
   it('alert on failure to create label', () => {
-    cy.intercept(
-      'POST',
-      '**/labels',
-      { statusCode: 500 }
-    ).as('getServerFailure')
+    cy.intercept('POST', '**/labels', {statusCode: 500}).as('getServerFailure');
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -423,11 +458,9 @@ describe('Repository Details Page', () => {
   });
 
   it('alert on failure to delete label', () => {
-    cy.intercept(
-      'DELETE',
-      '**/labels/**',
-      { statusCode: 500 }
-    ).as('getServerFailure')
+    cy.intercept('DELETE', '**/labels/**', {statusCode: 500}).as(
+      'getServerFailure',
+    );
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -437,12 +470,12 @@ describe('Repository Details Page', () => {
     cy.get('#mutable-labels').within(() => {
       cy.get('button').should('exist');
       cy.get('button').click({multiple: true});
-    })
+    });
     cy.contains('Save Labels').click();
     cy.contains('Could not delete labels').should('exist');
   });
-  
-  it('renders tag with no expiration', ()=>{
+
+  it('renders tag with no expiration', () => {
     cy.intercept(
       'GET',
       '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
@@ -451,10 +484,12 @@ describe('Repository Details Page', () => {
     cy.visit('/repository/testorg/testrepo');
     cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
   });
-  
-  it('renders tag with expiration within a month', ()=>{
-    cy.fixture('single-tag.json').then(fixture => {
-      fixture.tags[0].expiration = moment(new Date().toString()).add(1, 'month').format('ddd, DD MMM YYYY HH:mm:ss ZZ');
+
+  it('renders tag with expiration within a month', () => {
+    cy.fixture('single-tag.json').then((fixture) => {
+      fixture.tags[0].expiration = moment(new Date().toString())
+        .add(1, 'month')
+        .format('ddd, DD MMM YYYY HH:mm:ss ZZ');
       cy.intercept(
         'GET',
         '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
@@ -462,19 +497,19 @@ describe('Repository Details Page', () => {
       ).as('getTag');
     });
     cy.visit('/repository/testorg/testrepo');
-    cy.get(`[data-label="Expires"]`).within(()=>{
+    cy.get(`[data-label="Expires"]`).within(() => {
       cy.contains('a month');
     });
   });
-  
-  it('changes expiration through kebab', ()=>{
+
+  it('changes expiration through kebab', () => {
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
       cy.get('#tag-actions-kebab').click();
     });
     cy.contains('Change expiration').click();
-    cy.get('#edit-expiration-tags').within(()=>{
+    cy.get('#edit-expiration-tags').within(() => {
       cy.contains('latest').should('exist');
     });
     cy.get('[aria-label="Toggle date picker"]').click();
@@ -489,7 +524,9 @@ describe('Repository Details Page', () => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
     const oneMonthFormat = moment().add(1, 'month').format('MMM D, YYYY');
-    cy.contains(`Successfully set expiration for tag latest to ${oneMonthFormat}, 1:00 AM`).should('exist');
+    cy.contains(
+      `Successfully set expiration for tag latest to ${oneMonthFormat}, 1:00 AM`,
+    ).should('exist');
 
     // Reset back to Never
     latestRow.within(() => {
@@ -503,16 +540,18 @@ describe('Repository Details Page', () => {
     latestRowUpdatedNever.within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
     });
-    cy.contains(`Successfully set expiration for tag latest to never`).should('exist');
+    cy.contains(`Successfully set expiration for tag latest to never`).should(
+      'exist',
+    );
   });
-  
-  it('changes expiration through tag row', ()=>{
+
+  it('changes expiration through tag row', () => {
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
       cy.contains('Never').click();
     });
-    cy.get('#edit-expiration-tags').within(()=>{
+    cy.get('#edit-expiration-tags').within(() => {
       cy.contains('latest').should('exist');
     });
     cy.get('[aria-label="Toggle date picker"]').click();
@@ -527,16 +566,18 @@ describe('Repository Details Page', () => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
     const oneMonthLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
-    cy.contains(`Successfully set expiration for tag latest to ${oneMonthLongFormat}, 1:00 AM`).should('exist');
+    cy.contains(
+      `Successfully set expiration for tag latest to ${oneMonthLongFormat}, 1:00 AM`,
+    ).should('exist');
   });
 
-  it('changes multiple tag expirations', ()=>{
+  it('changes multiple tag expirations', () => {
     cy.visit('/repository/user1/hello-world');
     cy.get('#toolbar-dropdown-checkbox').click();
     cy.get('button').contains('Select page (2)').click();
     cy.contains('Actions').click();
     cy.contains('Set expiration').click();
-    cy.get('#edit-expiration-tags').within(()=>{
+    cy.get('#edit-expiration-tags').within(() => {
       cy.contains('latest').should('exist');
       cy.contains('manifestlist').should('exist');
     });
@@ -552,15 +593,15 @@ describe('Repository Details Page', () => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
     const tomorrowLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
-    cy.contains(`Successfully updated tag expirations to ${tomorrowLongFormat}, 1:00 AM`).should('exist');
+    cy.contains(
+      `Successfully updated tag expirations to ${tomorrowLongFormat}, 1:00 AM`,
+    ).should('exist');
   });
 
-  it('alerts on failure to change expiration', ()=>{
-    cy.intercept(
-      'PUT',
-      '/api/v1/repository/user1/hello-world/tag/latest',
-      { statusCode: 500 }
-    ).as('getServerFailure')
+  it('alerts on failure to change expiration', () => {
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest', {
+      statusCode: 500,
+    }).as('getServerFailure');
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.within(() => {
@@ -579,6 +620,5 @@ describe('Repository Details Page', () => {
     });
     const oneMonthLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
     cy.contains(`Could not set expiration for tag latest`).should('exist');
-  })
+  });
 });
-

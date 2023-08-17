@@ -5,12 +5,14 @@ import {
   Label,
   Alert,
 } from '@patternfly/react-core';
-import {useState} from 'react';
-import ErrorModal from 'src/components/errors/ErrorModal';
-import {addDisplayError, BulkOperationError} from 'src/resources/ErrorHandling';
+import {useEffect} from 'react';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
-import {bulkDeleteTags} from 'src/resources/TagResource';
 import './Tags.css';
+import {isNullOrUndefined} from 'src/libs/utils';
+import Conditional from 'src/components/empty/Conditional';
+import {useDeleteTag} from 'src/hooks/UseTags';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
 
 export interface ModalOptions {
   isOpen: boolean;
@@ -18,61 +20,98 @@ export interface ModalOptions {
 }
 
 export function DeleteModal(props: ModalProps) {
-  const [err, setErr] = useState<string[]>();
+  const {
+    deleteTags,
+    successDeleteTags,
+    errorDeleteTags,
+    errorDeleteTagDetails,
+  } = useDeleteTag(props.org, props.repo);
+  const {addAlert} = useAlerts();
   const isReadonly: boolean = props.repoDetails?.state !== 'NORMAL';
 
-  const deleteTags = async () => {
-    try {
-      const tags = props.selectedTags.map((tag) => ({
-        org: props.org,
-        repo: props.repo,
-        tag: tag,
-      }));
-      await bulkDeleteTags(tags, props.modalOptions.force);
-    } catch (err: any) {
-      console.error(err);
-      if (err instanceof BulkOperationError) {
-        const errMessages = [];
-        // TODO: Would like to use for .. of instead of foreach
-        // typescript complains saying we're using version prior to es6?
-        err.getErrors().forEach((error, tag) => {
-          errMessages.push(
-            addDisplayError(`Failed to delete tag ${tag}`, error.error),
-          );
-        });
-        setErr(errMessages);
-      } else {
-        setErr([addDisplayError('Failed to delete tags', err)]);
-      }
-    } finally {
+  useEffect(() => {
+    if (successDeleteTags) {
       props.loadTags();
-      props.setModalOptions((prevOptions) => ({
+      props.setModalOptions({
         force: false,
-        isOpen: !prevOptions.isOpen,
-      }));
-      props.setSelectedTags([]);
+        isOpen: false,
+      });
+      if (!isNullOrUndefined(props.onComplete)) {
+        props.onComplete();
+      }
+      const alert: AlertDetails = {
+        variant: AlertVariant.Success,
+        title: '',
+      };
+      switch (true) {
+        case props.tags.length === 1 && props.modalOptions.force:
+          alert.title = `Permanently deleted tag ${props.tags[0]} successfully`;
+          break;
+        case props.tags.length === 1 && !props.modalOptions.force:
+          alert.title = `Deleted tag ${props.tags[0]} successfully`;
+          break;
+        case props.tags.length > 1 && props.modalOptions.force:
+          alert.title = 'Permanently deleted tags successfully';
+          break;
+        case props.tags.length > 1 && !props.modalOptions.force:
+          alert.title = `Deleted tags successfully`;
+          break;
+      }
+      if (props.tags.length > 1) {
+        alert.message = `Tags deleted: ${props.tags.join(', ')}`;
+      }
+      addAlert(alert);
     }
-  };
+  }, [successDeleteTags]);
+
+  useEffect(() => {
+    if (errorDeleteTags) {
+      const alert: AlertDetails = {
+        variant: AlertVariant.Failure,
+        title: '',
+      };
+      switch (true) {
+        case props.tags.length === 1 && props.modalOptions.force:
+          alert.title = `Could not permanently delete tag ${props.tags[0]}`;
+          break;
+        case props.tags.length === 1 && !props.modalOptions.force:
+          alert.title = `Could not delete tag ${props.tags[0]}`;
+          break;
+        case props.tags.length > 1 && props.modalOptions.force:
+          alert.title = 'Could not permanently delete tags';
+          break;
+        case props.tags.length > 1 && !props.modalOptions.force:
+          alert.title = `Could not delete tags`;
+          break;
+      }
+      alert.message = (
+        <>
+          {Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (
+            <p key={tag}>
+              Could not delete tag {tag}: {error.error.message}
+            </p>
+          ))}
+        </>
+      );
+      addAlert(alert);
+    }
+  }, [errorDeleteTags]);
+
   const title = props.modalOptions.force
-    ? `Permanently delete the following tag${
-        props.selectedTags.length > 1 ? 's' : ''
-      }?`
-    : `Delete the following tag${props.selectedTags.length > 1 ? 's' : ''}?`;
+    ? `Permanently delete the following tag(s)?`
+    : `Delete the following tag(s)?`;
   return (
     <>
-      <ErrorModal title="Tag deletion failed" error={err} setError={setErr} />
       <Modal
         id="tag-deletion-modal"
         title={title}
         description={
-          props.modalOptions.force ? (
+          <Conditional if={props.modalOptions.force}>
             <span style={{color: 'red'}}>
               Tags deleted cannot be restored within the time machine window and
               will be immediately eligible for garbage collection.
             </span>
-          ) : (
-            ''
-          )
+          </Conditional>
         }
         isOpen={props.modalOptions.isOpen}
         disableFocusTrap={true}
@@ -101,35 +140,34 @@ export function DeleteModal(props: ModalProps) {
           <Button
             key="modal-action-button"
             variant="primary"
-            onClick={deleteTags}
+            onClick={() =>
+              deleteTags({tags: props.tags, force: props.modalOptions.force})
+            }
             isDisabled={isReadonly}
           >
             Delete
           </Button>,
         ]}
       >
-        {isReadonly ? (
-          <>
-            <Alert
-              id="form-error-alert"
-              isInline
-              variant="danger"
-              title={`Repository is currently in ${props.repoDetails?.state} state. Deletion is disabled.`}
-            />
-            <div className="delete-modal-readonly-alert" />
-          </>
-        ) : null}
-
-        {props.selectedTags.map((tag) => (
+        <Conditional if={isReadonly}>
+          <Alert
+            id="form-error-alert"
+            isInline
+            variant="danger"
+            title={`Repository is currently in ${props.repoDetails?.state} state. Deletion is disabled.`}
+          />
+          <div className="delete-modal-readonly-alert" />
+        </Conditional>
+        {props.tags?.map((tag) => (
           <span key={tag}>
             <Label>{tag}</Label>{' '}
           </span>
         ))}
-        {props.selectedTags.length > 10 ? (
+        <Conditional if={props.tags?.length > 10}>
           <div>
             <b>Note:</b> This operation can take several minutes.
           </div>
-        ) : null}
+        </Conditional>
       </Modal>
     </>
   );
@@ -138,8 +176,8 @@ export function DeleteModal(props: ModalProps) {
 type ModalProps = {
   modalOptions: ModalOptions;
   setModalOptions: (modalOptions) => void;
-  selectedTags: string[];
-  setSelectedTags: (selectedTags: string[]) => void;
+  tags: string[];
+  onComplete?: () => void;
   loadTags: () => void;
   org: string;
   repo: string;

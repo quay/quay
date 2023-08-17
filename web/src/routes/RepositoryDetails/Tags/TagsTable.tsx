@@ -22,9 +22,9 @@ import ColumnNames from './ColumnNames';
 import {DownloadIcon} from '@patternfly/react-icons';
 import ImageSize from 'src/components/Table/ImageSize';
 import TagActions from './TagsActions';
-import { RepositoryDetails } from 'src/resources/RepositoryResource';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
-import { useQuayConfig } from 'src/hooks/UseQuayConfig';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import TagExpiration from './TagsTableExpiration';
 
 function SubRow(props: SubRowProps) {
@@ -162,18 +162,25 @@ function TagsTableRow(props: RowProps) {
           {formatDate(tag.last_modified)}
         </Td>
         <Td dataLabel={ColumnNames.expires}>
-          <TagExpiration 
-              org={props.org}
-              repo={props.repo}
-              tag={tag.name}
-              expiration={tag.expiration}
-              loadTags={props.loadTags}
+          <TagExpiration
+            org={props.org}
+            repo={props.repo}
+            tag={tag.name}
+            expiration={tag.expiration}
+            loadTags={props.loadTags}
           />
         </Td>
         <Td dataLabel={ColumnNames.manifest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
-        <Td dataLabel={ColumnNames.pull} style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+        <Td
+          dataLabel={ColumnNames.pull}
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
           <TablePopover
             org={props.org}
             repo={props.repo}
@@ -183,15 +190,21 @@ function TagsTableRow(props: RowProps) {
             <DownloadIcon />
           </TablePopover>
         </Td>
-        <Conditional if={props.repoDetails?.can_write && config?.registry_state !== "readonly"}>
+        <Conditional
+          if={
+            props.repoDetails?.can_write &&
+            config?.registry_state !== 'readonly'
+          }
+        >
           <Td>
-            <TagActions 
+            <TagActions
               org={props.org}
               repo={props.repo}
               manifest={tag.manifest_digest}
               tags={[tag.name]}
               expiration={tag.expiration}
               loadTags={props.loadTags}
+              repoDetails={props.repoDetails}
             />
           </Td>
         </Conditional>

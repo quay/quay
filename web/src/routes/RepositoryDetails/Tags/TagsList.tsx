@@ -116,7 +116,10 @@ export default function TagsList(props: TagsProps) {
 
   return (
     <Page>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection
+        variant={PageSectionVariants.light}
+        style={{paddingBottom: '8em'}}
+      >
         <ErrorBoundary
           hasError={isErrorString(err)}
           fallback={<RequestError message={err} />}
