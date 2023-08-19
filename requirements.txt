@@ -4,7 +4,7 @@ APScheduler==3.6.3
 attrs==19.3.0
 Authlib==1.2.0
 aws-sam-translator==1.20.1
-azure-core==1.23.1
+azure-core==1.24.0
 azure-storage-blob==12.4.0
 Babel==2.9.1
 bcrypt==3.1.7
@@ -58,7 +58,7 @@ MarkupSafe==1.1.1
 maxminddb==1.5.2
 mixpanel==4.5.0
 msgpack==0.6.2
-msrest==0.6.21
+msrest==0.7.1
 netaddr==0.7.19
 netifaces==0.10.9
 oauthlib==3.2.2
