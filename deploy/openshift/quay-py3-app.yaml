@@ -246,6 +246,7 @@ objects:
               - -k
               - https://localhost:8443/health/instance
             failureThreshold: ${{QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD}}
+            timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
             periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
           livenessProbe:
             exec:
@@ -388,10 +389,13 @@ parameters:
     displayName: quay app deployment max unavailable
   - name: QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD
     value: "20"
-    displayName: quay app liveness probe initial delay seconds
+    displayName: quay app startup probe initial delay seconds
+  - name: QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS
+    value: "60"
+    displayName: quay app startup probe timeout seconds
   - name: QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS
     value: "60"
-    displayName: quay app liveness probe initial delay seconds
+    displayName: quay app startup probe initial delay seconds
   - name: QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS
     value: "15"
     displayName: quay app liveness probe initial delay seconds
