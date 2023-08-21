@@ -14,17 +14,17 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
-    op.drop_table("repositorysize")
-    op.drop_table("image")
-    op.drop_table("derivedstorageforimage")
-    op.drop_table("repositorytag")
-    op.drop_table("torrentinfo")
-    op.drop_table("manifestlegacyimage")
-    op.drop_table("tagmanifest")
-    op.drop_table("tagmanifesttomanifest")
-    op.drop_table("tagmanifestlabel")
-    op.drop_table("tagmanifestlabelmap")
-    op.drop_table("tagtorepositorytag")
+    op.execute("DROP TABLE IF EXISTS repositorysize")
+    op.execute("DROP TABLE IF EXISTS image")
+    op.execute("DROP TABLE IF EXISTS derivedstorageforimage")
+    op.execute("DROP TABLE IF EXISTS repositorytag")
+    op.execute("DROP TABLE IF EXISTS torrentinfo")
+    op.execute("DROP TABLE IF EXISTS manifestlegacyimage")
+    op.execute("DROP TABLE IF EXISTS tagmanifest")
+    op.execute("DROP TABLE IF EXISTS tagmanifesttomanifest")
+    op.execute("DROP TABLE IF EXISTS tagmanifestlabel")
+    op.execute("DROP TABLE IF EXISTS tagmanifestlabelmap")
+    op.execute("DROP TABLE IF EXISTS tagtorepositorytag")
 
 
 def downgrade(op, tables, tester):
