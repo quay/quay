@@ -2,10 +2,11 @@
 Manage organizations, members and OAuth applications.
 """
 
+import datetime
 import logging
 import recaptcha2
 
-from flask import request
+from flask import request, Response
 
 import features
 
@@ -21,6 +22,8 @@ from app import (
 )
 from endpoints.api import (
     allow_if_superuser,
+    parse_args,
+    query_param,
     resource,
     nickname,
     ApiResource,
@@ -35,7 +38,7 @@ from endpoints.api import (
     require_scope,
     require_fresh_login,
 )
-from endpoints.exception import Unauthorized, NotFound
+from endpoints.exception import InvalidRequest, Unauthorized, NotFound
 from endpoints.api.user import User, PrivateRepositories
 from auth.permissions import (
     AdministerOrganizationPermission,
@@ -50,8 +53,11 @@ from data import model
 from data.database import ProxyCacheConfig
 from data.billing import get_plan
 from util.names import parse_robot_username
+from util.parsing import truthy_bool
+from util.permission_report import renderPermissionReportToHtml, renderPermissionReportToPdf
 from util.request import get_request_ip
 from proxy import Proxy, UpstreamRegistryError
+from util.validation import is_json
 
 logger = logging.getLogger(__name__)
 
@@ -581,6 +587,148 @@ class OrganizationMember(ApiResource):
             # Remove the user from the organization.
             model.organization.remove_organization_member(org, user)
             return "", 204
+
+        raise Unauthorized()
+
+
+@resource("/v1/organization/<orgname>/reports/permissions")
+@path_param("orgname", "The name of the organization")
+class OrganizationPermissionReport(ApiResource):
+    """
+    Resource for producing a permission report on all members and all repositories in this organization
+    """
+
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("getOrganizationPermissionReport")
+    @parse_args()
+    @query_param("members", "Include users which are team members", type=truthy_bool, default=True)
+    @query_param(
+        "collaborators",
+        "Include users which directly added to a repository",
+        type=truthy_bool,
+        default=True,
+    )
+    @query_param(
+        "robots",
+        "Include robots when reporting on members or collaborators",
+        type=truthy_bool,
+        default=True,
+    )
+    @query_param(
+        "format",
+        "The format in which the report should be generated.",
+        type=str,
+        choices=("json", "html", "pdf"),
+        default="json",
+    )
+    @query_param(
+        "limit",
+        "Limit to the number of results to return per page. Max 100.",
+        type=int,
+        default=50,
+    )
+    @query_param("page", "Page index for the paginated results. Default 1.", type=int, default=1)
+    def get(self, orgname, parsed_args):
+        """
+        List all permissions all team-based or direct members this organization has per repository.
+        """
+
+        report_members = parsed_args["members"]
+        report_collaborators = parsed_args["collaborators"]
+        report_robots = parsed_args["robots"]
+        page = max(1, parsed_args.get("page", 1))
+        limit = min(100, max(1, parsed_args.get("limit", 100)))
+
+        if report_members is False and report_collaborators is False:
+            raise InvalidRequest("Must include either members or collaborators")
+
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can() or allow_if_superuser():
+            try:
+                org = model.organization.get_organization(orgname)
+            except model.InvalidOrganizationException:
+                raise NotFound()
+
+            accept_header = request.headers.get("Accept", "")
+
+            is_html = "text/html" in accept_header or parsed_args["format"] == "html"
+            is_pdf = "application/pdf" in accept_header or parsed_args["format"] == "pdf"
+
+            if is_html:
+                report, _ = model.report.organization_permission_report(
+                    org=org,
+                    page=None,
+                    page_size=None,
+                    members=report_members,
+                    collaborators=report_collaborators,
+                    include_robots=report_robots,
+                    raise_on_error=False,
+                )
+
+                html_data = renderPermissionReportToHtml(
+                    report=report,
+                    user=get_authenticated_user().username,
+                    org=orgname,
+                )
+
+                report_filename = "permission-report-%s.html" % orgname
+
+                return Response(
+                    html_data,
+                    mimetype="text/html",
+                    headers={"Content-Disposition": "attachment;filename=" + report_filename},
+                )
+
+            elif is_pdf:
+                report, _ = model.report.organization_permission_report(
+                    org=org,
+                    page=None,
+                    page_size=None,
+                    members=report_members,
+                    collaborators=report_collaborators,
+                    include_robots=report_robots,
+                    raise_on_error=False,
+                )
+
+                pdf_data = renderPermissionReportToPdf(
+                    report=report,
+                    user=get_authenticated_user().username,
+                    org=orgname,
+                )
+
+                report_filename = "permission-report-%s.pdf" % orgname
+
+                return Response(
+                    pdf_data,
+                    mimetype="application/pdf",
+                    headers={"Content-Disposition": "attachment;filename=" + report_filename},
+                )
+            else:
+                report, has_more = model.report.organization_permission_report(
+                    org=org,
+                    page=page,
+                    page_size=limit,
+                    members=report_members,
+                    collaborators=report_collaborators,
+                    include_robots=report_robots,
+                    raise_on_error=False,
+                )
+
+                report = [
+                    {
+                        **permission,
+                        "user_creation_date": permission["user_creation_date"]
+                        .astimezone(datetime.timezone.utc)
+                        .strftime("%a, %d %b %Y %H:%M:%S %z"),
+                    }
+                    for permission in report
+                ]
+
+                return {
+                    "permissions": report,
+                    "page": page,
+                    "has_additional": has_more,
+                }
 
         raise Unauthorized()
 

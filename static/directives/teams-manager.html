@@ -23,6 +23,10 @@
                 ng-class="activeView == views.COLLABORATORS ? 'btn-info active' : 'btn-default'" ng-click="setActiveView(views.COLLABORATORS)">
           <i class="fa fa-user-circle"></i>Collaborators View
         </button>
+        <button class="btn"
+                ng-class="activeView == views.PERMISSION_REPORT ? 'btn-info active' : 'btn-default'" ng-click="setActiveView(views.PERMISSION_REPORT)">
+          <i class="fa fa-book"></i>Permission Report
+        </button>
       </div>
     </div>
   </div>
@@ -188,6 +192,147 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- Permission Report -->
+
+  <div ng-show="activeView == views.PERMISSION_REPORT">
+
+    <div class="co-top-bar">
+
+      <button class="btn btn-primary hidden-xs"
+              ng-if="permissionReportList.length"
+              style="margin-bottom: 10px; "
+              ng-click="downloadPermissionReportHtml()">
+        <i class="fa fa-download" style="margin-right: 4px;"></i> Download as HTML
+      </button>
+
+      <button class="btn btn-primary hidden-xs"
+              ng-if="permissionReportList.length"
+              style="margin-bottom: 10px; "
+              ng-click="downloadPermissionReportPdf()">
+        <i class="fa fa-download" style="margin-right: 4px;"></i> Download as PDF
+      </button>
+
+      <span class="co-filter-box">
+        <span class="page-controls" total-count="orderedPermissionReport.entries.length" current-page="permissionReportOptions.page" page-size="permissionsPerPage"></span>
+        <span class="filter-message" ng-if="permissionReportOptions.filter">
+          Showing {{ orderedPermissionReport.entries.length }} of {{ permissionReportList.length }} permissions
+        </span>
+        <input class="form-control" type="text" ng-model="permissionReportOptions.filter" placeholder="Filter users...">
+      </span>
+    </div>
+
+    <table class="co-table" style="margin-top: 10px;" ng-if="orderedPermissionReport.entries.length">
+      <thead>
+        <td ng-class="TableService.tablePredicateClass('user_name', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('user_name', permissionReportOptions)">User Name</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('user_creation_date', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('user_creation_datetime', permissionReportOptions)">User Creation Date</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('team_name', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('team_name', permissionReportOptions)">Team name</a>
+          <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
+             data-content="The name of team from which the users inherits permissions.<br><br><dl><dt>n/a</dt><dd>The user permission comes from a direct assignment in the repository and not membership in a team</dd></dl>"
+             data-html="true"
+             data-trigger="hover"
+             bs-popover></i>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('team_role', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('team_role', permissionReportOptions)">Team role</a>
+          <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
+             data-content="The team that the users belongs to, determines the permissions that the user has on the repositories<br><br><dl><dt>Member</dt><dd>Permissions are assigned on a per repository basis</dd><dt>Creator</dt><dd>A team can create its own repositories and the performing user becomes admin</dd><dt>Admin</dt><dd>A team can create its own repositories and manage its members as well has full control over the organization</dd><dt>n/a</dt><dd>The user permission comes from a direct assignment in the repository and not a team role</dd></dl>"
+             data-html="true"
+             data-trigger="hover"
+             bs-popover></i>
+        </td>
+        <td class="hidden-xs" ng-class="TableService.tablePredicateClass('repository', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('repository', permissionReportOptions)">Repository</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('role', permissionReportOptions.predicate, permissionReportOptions.reverse)">
+          <a ng-click="TableService.orderBy('role', permissionReportOptions)">Permission</a>
+
+          <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
+             data-content="The permission level for this user on the repository<br><br><dl><dt>Read</dt><dd>Can view and pull from the repository</dd><dt>Write</dt><dd>Can view, pull and push to the repository</dd><dt>Admin</dt><dd>Full admin access, pull and push to the repository</dd></dl>"
+             data-html="true"
+             data-trigger="hover"
+             bs-popover></i>
+        </td>
+        <td class="options-col"></td>
+       </thead>
+
+       <tr class="co-checkable-row"
+           ng-repeat="permission in orderedPermissionReport.entries | slice:(permissionsPerPage * permissionReportOptions.page):(permissionsPerPage * (permissionReportOptions.page + 1))"
+           bindonce>
+        <td style="white-space: nowrap;">
+          <a href="/user/{{ permission.user_name }}/"><span bo-text="permission.user_name"></span></a>
+          <span class="empty" ng-if="!permission.user_enabled">
+            (Disabled)
+          </span>
+        </td>
+        <td>
+          <time-display datetime="permission.user_creation_date"></time-display>
+        </td>
+        <td class="hidden-xs">
+          <span class="empty" ng-if="!permission.team_name">
+            (n/a)
+          </span>
+
+          <span class="member-perm-summary" ng-if="permission.team_name">
+            <a href="/organization/{{ organization.name }}/teams/{{ permission.team_name }}">
+              <span bo-text="permission.team_name"></span>
+            </a>
+          </span>
+        </td>
+        <td>
+          <span class="empty" ng-if="!permission.team_role">
+            (n/a)
+          </span>
+
+          <span class="member-perm-summary" ng-if="permission.team_role">
+            <span class="role-group-display" current-role="permission.team_role" roles="teamRoles" />
+          </span>
+        </td>
+        <td>
+          <span class="empty" ng-if="!permission.repository_name && permission.team_role == 'admin'">
+            applies to all repositories
+          </span>
+
+          <span class="empty" ng-if="!permission.repository_name && permission.team_role == 'creator'">
+            applies to new repositories
+          </span>
+
+          <span class="empty" ng-if="!permission.repository_name && permission.team_role == 'member'">
+            (n/a)
+          </span>
+
+          <span class="member-perm-summary" ng-if="permission.repository_name">
+            <a href="/repository/{{ organization.name }}/{{ permission.repository_name }}">
+              <span bo-text="permission.repository_name"></span>
+            </a>
+          </span>
+        </td>
+        <td>
+          <span class="empty" ng-if="!permission.role && (permission.team_role == 'admin' || permission.team_role == 'creator')">
+            <span class="member-perm-summary">
+              <span class="role-group-display" ng-attr-current-role="'admin'" roles="repoRoles" />
+            </span>
+          </span>
+
+          <span class="member-perm-summary" ng-if="permission.role">
+            <span class="role-group-display" current-role="permission.role" roles="repoRoles" />
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <div class="empty" ng-if="orderedPermissionReport.entries.length == 0 && permissionReportOptions.filter" style="margin-top: 20px;">
+      <div class="empty-primary-msg">No users found matching filter</div>
+      <div class="empty-secondary-msg">
+        Please change your filter to display user permissions
+      </div>
+    </div>
   </div>
 
   <!-- Create team dialog -->

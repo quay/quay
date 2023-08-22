@@ -1,0 +1,8 @@
+<div class="new-role-group-display btn-group btn-group-sm">
+  <div class="dropdown" style="text-align: left;">
+  <button class="btn btn-default" ng-class="getRoleInfo(currentRole).kind" data-toggle="dropdown"
+          ng-disabled="true">
+    <span ng-if="currentRole" class="role-title">{{ getRoleInfo(currentRole).title }}</span>
+  </button>
+  </div>
+</div>
