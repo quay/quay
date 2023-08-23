@@ -1,6 +1,6 @@
 import { BulkOperationError, ResourceError } from "src/resources/ErrorHandling";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { bulkSetExpiration, createTag, permanentlyDeleteTag } from "src/resources/TagResource";
+import { bulkSetExpiration, createTag, permanentlyDeleteTag, bulkDeleteTags } from "src/resources/TagResource";
 import { getTags, restoreTag } from 'src/resources/TagResource';
 
 

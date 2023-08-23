@@ -17,7 +17,7 @@ export default function EditLabelsModal(props: EditLabelsModalProps){
                     repo={props.repo}
                     digest={props.manifest}
                     variant={LabelsVariant.Editable}
-                    onComplete={() => props.setIsOpen(false)}
+                    onComplete={props.onComplete}
                 />
             </Modal>
         </>
@@ -30,4 +30,5 @@ interface EditLabelsModalProps {
     manifest: string;
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
+    onComplete?: () => void;
 }

@@ -120,7 +120,10 @@ export default function TagActions(props: TagActionsProps) {
         manifest={props.manifest}
         isOpen={isEditLabelsModalOpen}
         setIsOpen={setIsEditLabelsModalOpen}
-        onComplete={() => setSelectedTags([])}
+        onComplete={() => {
+          setSelectedTags([]);
+          setIsEditLabelsModalOpen(false);
+        }}
       />
       <EditExpirationModal
         org={props.org}
