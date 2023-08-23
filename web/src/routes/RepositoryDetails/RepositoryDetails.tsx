@@ -151,7 +151,11 @@ export default function RepositoryDetails() {
                 hasError={isErrorString(err)}
                 fallback={<RequestError message={err} />}
               >
-                <Tabs mountOnEnter activeKey={activeTabKey} onSelect={tabsOnSelect}>
+                <Tabs
+                  mountOnEnter
+                  activeKey={activeTabKey}
+                  onSelect={tabsOnSelect}
+                >
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}

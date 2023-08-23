@@ -627,34 +627,35 @@ describe('Repository Details Page', () => {
 describe('Tag History Tab', () => {
   const tagHistoryRows = [
     {
-      change: "latest was reverted to sha256f54a58bc1aac5e from sha2567e9b6e7ba2842c",
-      date: "Thu, 27 Jul 2023 17:31:10 -0000",
-      revert: "Restore to sha2567e9b6e7ba2842c",
+      change:
+        'latest was reverted to sha256f54a58bc1aac5e from sha2567e9b6e7ba2842c',
+      date: 'Thu, 27 Jul 2023 17:31:10 -0000',
+      revert: 'Restore to sha2567e9b6e7ba2842c',
     },
     {
-      change: "latest was moved to sha2567e9b6e7ba2842c from sha256f54a58bc1aac5e",
-      date: "Thu, 27 Jul 2023 17:30:10 -0000",
-      revert: "Revert to sha256f54a58bc1aac5e",
+      change:
+        'latest was moved to sha2567e9b6e7ba2842c from sha256f54a58bc1aac5e',
+      date: 'Thu, 27 Jul 2023 17:30:10 -0000',
+      revert: 'Revert to sha256f54a58bc1aac5e',
     },
     {
-      change: "latest was recreated pointing to sha256f54a58bc1aac5e",
-      date: "Thu, 27 Jul 2023 17:30:10 -0000",
+      change: 'latest was recreated pointing to sha256f54a58bc1aac5e',
+      date: 'Thu, 27 Jul 2023 17:30:10 -0000',
     },
     {
-      change: "latest was deleted",
-      date: "Thu, 27 Jul 2023 17:30:10 -0000",
-      revert: "Restore to sha256f54a58bc1aac5e",
+      change: 'latest was deleted',
+      date: 'Thu, 27 Jul 2023 17:30:10 -0000',
+      revert: 'Restore to sha256f54a58bc1aac5e',
     },
     {
-      change: "manifestlist was created pointing to sha2567693efac53eb85",
-      date: "Fri, 4 Nov 2022 19:15:10 -0000",
+      change: 'manifestlist was created pointing to sha2567693efac53eb85',
+      date: 'Fri, 4 Nov 2022 19:15:10 -0000',
     },
     {
-      change: "latest was created pointing to sha256f54a58bc1aac5e",
-      date: "Fri, 4 Nov 2022 19:13:10 -0000",
+      change: 'latest was created pointing to sha256f54a58bc1aac5e',
+      date: 'Fri, 4 Nov 2022 19:13:10 -0000',
     },
-  ]
-
+  ];
 
   beforeEach(() => {
     cy.exec('npm run quay:seed');
@@ -669,13 +670,22 @@ describe('Tag History Tab', () => {
   it('renders history list', () => {
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag History').click();
-    cy.get('#tag-history-table > tr').each(($e, index, $list)=>{
-      cy.wrap($e).within(()=>{
+    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+      cy.wrap($e).within(() => {
         const expectedValues = tagHistoryRows[index];
-        cy.get(`[data-label="tag-change"]`).should('have.text', expectedValues.change);
-        cy.get(`[data-label="date-modified"]`).should('have.text', formatDate(expectedValues.date));
-        if(expectedValues.revert){
-          cy.get(`[data-label="restore-tag"]`).should('have.text', expectedValues.revert);
+        cy.get(`[data-label="tag-change"]`).should(
+          'have.text',
+          expectedValues.change,
+        );
+        cy.get(`[data-label="date-modified"]`).should(
+          'have.text',
+          formatDate(expectedValues.date),
+        );
+        if (expectedValues.revert) {
+          cy.get(`[data-label="restore-tag"]`).should(
+            'have.text',
+            expectedValues.revert,
+          );
         }
       });
     });
@@ -685,22 +695,29 @@ describe('Tag History Tab', () => {
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag History').click();
     cy.get('input[placeholder="Search by name..."').type('manifestlist');
-    cy.get('#tag-history-table > tr').each(($e, index, $list)=>{
-      cy.wrap($e).within(()=>{
-        cy.get(`[data-label="tag-change"]`).should('contain.text', 'manifestlist');
+    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+      cy.wrap($e).within(() => {
+        cy.get(`[data-label="tag-change"]`).should(
+          'contain.text',
+          'manifestlist',
+        );
       });
-    })
+    });
   });
 
   it('show future entries', () => {
-    cy.intercept('GET', '/api/v1/repository/user1/hello-world/tag/**', (req) => {
-      // Add expiration to show up as future entry
-      req.continue((res) => {
-        const expiration = moment().add(2, 'weeks');
-        res.body.tags[0].end_ts = expiration.unix();
-        res.body.tags[0].expiration = expiration.toISOString();
-      })
-    });
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/user1/hello-world/tag/**',
+      (req) => {
+        // Add expiration to show up as future entry
+        req.continue((res) => {
+          const expiration = moment().add(2, 'weeks');
+          res.body.tags[0].end_ts = expiration.unix();
+          res.body.tags[0].expiration = expiration.toISOString();
+        });
+      },
+    );
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag History').click();
     cy.contains('latest will expire').should('not.exist');
@@ -709,34 +726,38 @@ describe('Tag History Tab', () => {
   });
 
   it('filter by date range', () => {
-    cy.intercept('GET', '/api/v1/repository/user1/hello-world/tag/**', (req) => {
-      req.continue((res) => {
-        // Add expiration to show up as future entry
-        const expiration = moment().add(2, 'weeks');
-        res.body.tags[0].end_ts = expiration.unix();
-        res.body.tags[0].expiration = expiration.toISOString();
-      })
-    });
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/user1/hello-world/tag/**',
+      (req) => {
+        req.continue((res) => {
+          // Add expiration to show up as future entry
+          const expiration = moment().add(2, 'weeks');
+          res.body.tags[0].end_ts = expiration.unix();
+          res.body.tags[0].expiration = expiration.toISOString();
+        });
+      },
+    );
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag History').click();
     cy.get('#show-future-checkbox').click();
-    cy.get('#start-time-picker').within(()=>{
+    cy.get('#start-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-26');
-    })
-    cy.get('#tag-history-table > tr').each(($e, index, $list)=>{
-      cy.wrap($e).within(()=>{
-        cy.get(`[data-label="date-modified"]`).then(($el)=>{
+    });
+    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+      cy.wrap($e).within(() => {
+        cy.get(`[data-label="date-modified"]`).then(($el) => {
           const dateMoment = moment($el.text());
           expect(dateMoment.isAfter('July 26, 2023'));
         });
       });
     });
-    cy.get('#end-time-picker').within(()=>{
+    cy.get('#end-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-28');
     });
-    cy.get('#tag-history-table > tr').each(($e, index, $list)=>{
-      cy.wrap($e).within(()=>{
-        cy.get(`[data-label="date-modified"]`).then(($el)=>{
+    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+      cy.wrap($e).within(() => {
+        cy.get(`[data-label="date-modified"]`).then(($el) => {
           const dateMoment = moment($el.text());
           expect(dateMoment.isBefore('July 26, 2023'));
         });
@@ -749,52 +770,71 @@ describe('Tag History Tab', () => {
     cy.contains('Tag History').click();
     cy.contains('Restore to sha2567e9b6e7ba2842c').click();
     cy.contains('Restore Tag').should('exist');
-    cy.contains('This will change the image to which the tag points.').should('exist');
-    cy.contains('Are you sure you want to restore tag latest to image sha2567e9b6e7ba2842c?').should('exist');
+    cy.contains('This will change the image to which the tag points.').should(
+      'exist',
+    );
+    cy.contains(
+      'Are you sure you want to restore tag latest to image sha2567e9b6e7ba2842c?',
+    ).should('exist');
     cy.contains('Restore tag').click();
-    cy.contains('Restored tag latest to digest sha256:7e9b6e7 successfully').should('exist');
+    cy.contains(
+      'Restored tag latest to digest sha256:7e9b6e7 successfully',
+    ).should('exist');
   });
 
-  it('permanently delete tag', ()=>{
+  it('permanently delete tag', () => {
     cy.intercept(
       'POST',
       '/api/v1/repository/user1/hello-world/tag/testdelete/expire',
     ).as('deleteTag');
-    cy.intercept('GET', '/api/v1/repository/user1/hello-world/tag/**', (req) => {
-      req.continue((res) => {
-        const start = moment().subtract(5, 'days');
-        const end = moment().subtract(3, 'days');
-        res.body.tags.unshift({
-          "name": "testdelete",
-          "reversion": false,
-          "start_ts": start.unix(),
-          "end_ts": end.unix(),
-          "manifest_digest": "sha256:12345e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3",
-          "is_manifest_list": false,
-          "size": 2457,
-          "last_modified": end.toISOString(),
-          "expiration": end.toISOString(),
-      });
-      })
-    });
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/user1/hello-world/tag/**',
+      (req) => {
+        req.continue((res) => {
+          const start = moment().subtract(5, 'days');
+          const end = moment().subtract(3, 'days');
+          res.body.tags.unshift({
+            name: 'testdelete',
+            reversion: false,
+            start_ts: start.unix(),
+            end_ts: end.unix(),
+            manifest_digest:
+              'sha256:12345e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3',
+            is_manifest_list: false,
+            size: 2457,
+            last_modified: end.toISOString(),
+            expiration: end.toISOString(),
+          });
+        });
+      },
+    );
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag History').click();
     cy.contains('Delete testdelete sha25612345e7ba2842c ').click(10, 10);
     cy.contains('Permanently Delete Tag').should('exist');
-    cy.contains('The tag deleted cannot be restored within the time machine window and references to the tag will be removed from tag history. Any alive tags with the same name and digest will not be effected.').should('exist');
-    cy.contains('Are you sure you want to permanently delete tag testdelete @ sha25612345e7ba2842c?').should('exist');
+    cy.contains(
+      'The tag deleted cannot be restored within the time machine window and references to the tag will be removed from tag history. Any alive tags with the same name and digest will not be effected.',
+    ).should('exist');
+    cy.contains(
+      'Are you sure you want to permanently delete tag testdelete @ sha25612345e7ba2842c?',
+    ).should('exist');
     cy.contains('Permanently delete tag').click();
-    cy.wait('@deleteTag', {timeout: 20000}).should((xhr)=>{
-      expect(xhr.request.body.include_submanifests).eq(true)
-      expect(xhr.request.body.is_alive).eq(false)
-      expect(xhr.request.body.manifest_digest).eq('sha256:12345e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3')
-    })
-  })
+    cy.wait('@deleteTag', {timeout: 20000}).should((xhr) => {
+      expect(xhr.request.body.include_submanifests).eq(true);
+      expect(xhr.request.body.is_alive).eq(false);
+      expect(xhr.request.body.manifest_digest).eq(
+        'sha256:12345e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3',
+      );
+    });
+  });
 
-  it('cannot revert or delete if user has no write permissions', ()=>{
+  it('cannot revert or delete if user has no write permissions', () => {
     cy.visit('/repository/user2org1/hello-world?tab=history');
-    cy.contains('latest was created pointing to sha256f54a58bc1aac5e').should('exist');
+    cy.contains('latest was created pointing to sha256f54a58bc1aac5e').should(
+      'exist',
+    );
     cy.contains('Revert').should('not.exist');
     cy.contains('Permanently Delete').should('not.exist');
-  })
+  });
 });
