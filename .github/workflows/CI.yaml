@@ -77,6 +77,15 @@ jobs:
       with:
         extra_args: --from-ref origin/${{ github.base_ref }} --to-ref HEAD --verbose
 
+    - name: Run code linter for web/
+      run: cd ./web && npm run lint:report
+      continue-on-error: true
+
+    - name: Annotate code linting results
+      uses: ataylorme/eslint-annotate-action@v2
+      with:
+        report-json: web/eslint_report.json
+
   unit:
     name: Unit Test
     runs-on: ubuntu-20.04

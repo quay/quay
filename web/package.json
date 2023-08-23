@@ -48,7 +48,8 @@
     "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
     "quay:seed": "npm run quay:seed-db && npm run quay:seed-storage",
     "quay:seed-db": "${CLIENT:=docker} exec -i quay-db psql quay -U quay -v ON_ERROR_STOP=1 < ./cypress/test/quay-db-data.txt",
-    "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry"
+    "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry",
+    "lint:report": "eslint --ext .ts --output-file eslint_report.json --format json src"
   },
   "browserslist": {
     "production": [
