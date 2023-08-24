@@ -93,7 +93,10 @@ describe('Tag Details Page', () => {
   it('switch to packages tab', () => {
     cy.visit('/repository/user1/hello-world/tag/latest');
     cy.get('button').contains('Packages').click();
-    cy.url().should('include', '/repository/user1/hello-world/tag/latest?tab=packages');
+    cy.url().should(
+      'include',
+      '/repository/user1/hello-world/tag/latest?tab=packages',
+    );
     cy.contains('Quay Security Reporting has recognized 49 packages');
   });
 
