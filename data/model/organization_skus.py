@@ -27,7 +27,7 @@ def bind_subscription_to_org(subscription_id, org_id, user_id):
         raise model.OrgSubscriptionBindingAlreadyExists()
 
 
-def is_subscription_bound_to_org(subscription_id):
+def subscription_bound_to_org(subscription_id):
     # lookup row in table matching subscription_id, if there is no row return false, otherwise return true
     # this function is used to check if a subscription is bound to an org or
     try:

@@ -200,9 +200,7 @@ class RedHatSubscriptionApi(object):
         for sku in RH_SKUS:
             user_subscription = self.lookup_subscription(account_number, sku)
             if user_subscription is not None:
-                bound_to_org = organization_skus.is_subscription_bound_to_org(
-                    user_subscription["id"]
-                )
+                bound_to_org = organization_skus.subscription_bound_to_org(user_subscription["id"])
 
                 if filter_out_org_bindings and bound_to_org[0]:
                     continue
@@ -274,12 +272,15 @@ class FakeSubscriptionApi(object):
         else:
             return None
 
-    def get_list_of_subscriptions(self, account_number):
+    def get_list_of_subscriptions(
+        self, account_number, filter_out_org_bindings=False, convert_to_stripe_plans=False
+    ):
         if account_number == DEV_ACCOUNT_NUMBER:
             return [
                 {
                     "id": 12345,
                     "sku": "FakeSku",
+                    "privateRepos": 0,
                 }
             ]
         return []
@@ -298,7 +299,7 @@ class MarketplaceUserApi(object):
 
         marketplace_user_api = FakeUserApi()
 
-        if marketplace_enabled:
+        if marketplace_enabled and not app.config.get("TESTING"):
             marketplace_user_api = RedHatUserApi(app.config)
 
         app.extensions = getattr(app, "extensions", {})
@@ -322,7 +323,7 @@ class MarketplaceSubscriptionApi(object):
 
         marketplace_subscription_api = FakeSubscriptionApi()
 
-        if marketplace_enabled:
+        if marketplace_enabled and not app.config.get("TESTING"):
             marketplace_subscription_api = RedHatSubscriptionApi(app.config)
 
         app.extensions = getattr(app, "extensions", {})

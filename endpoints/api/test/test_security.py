@@ -6050,6 +6050,14 @@ SECURITY_TESTS: List[
         None,
         401,
     ),
+    (
+        UserSkuList,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        None,
+        401,
+    ),
 ]
 
 

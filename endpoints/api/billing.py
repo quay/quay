@@ -15,7 +15,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data import model
 from data.billing import PLANS, get_plan, get_plan_using_rh_sku
-from data.model import organization_skus
+from data.model import InvalidOrganizationException, organization_skus
 from endpoints.api import (
     ApiResource,
     abort,
@@ -1012,7 +1012,10 @@ class OrganizationRhSkuSubscriptionField(ApiResource):
         """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
-            organization = model.organization.get_organization(orgname)
+            try:
+                organization = model.organization.get_organization(orgname)
+            except InvalidOrganizationException:
+                return ("Organization not valid", 400)
 
             model.organization_skus.remove_subscription_from_org(organization.id, subscription_id)
             return ("Deleted", 204)
@@ -1041,7 +1044,7 @@ class UserSkuList(ApiResource):
         user_subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
 
         for subscription in user_subscriptions:
-            bound_to_org, organization = organization_skus.is_subscription_bound_to_org(
+            bound_to_org, organization = organization_skus.subscription_bound_to_org(
                 subscription["id"]
             )
             # fill in information for whether a subscription is bound to an org

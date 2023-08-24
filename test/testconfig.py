@@ -1,8 +1,7 @@
 import os
-
-from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
+from typing import Any, Dict, List, Optional
 
 from config import DefaultConfig
 
@@ -113,3 +112,5 @@ class TestConfig(DefaultConfig):
     FEATURE_PROXY_CACHE = True
     PERMANENTLY_DELETE_TAGS = True
     RESET_CHILD_MANIFEST_EXPIRATION = True
+
+    FEATURE_RH_MARKETPLACE = True
