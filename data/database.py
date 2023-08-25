@@ -745,6 +745,7 @@ class User(BaseModel):
                     UserOrganizationQuota,
                     QuotaLimits,
                     RedHatSubscriptions,
+                    OrganizationRhSkus,
                 }
                 | appr_classes
                 | v22_classes
@@ -1981,11 +1982,27 @@ class ProxyCacheConfig(BaseModel):
 
 class RedHatSubscriptions(BaseModel):
     """
-    Represents internal Red Hat subscriptions for customers
+    Represents store for users' RH account numbers
     """
 
-    user_id = ForeignKeyField(User, backref="subscription")
+    user_id = ForeignKeyField(User, backref="account_number")
     account_number = IntegerField(unique=True)
+
+
+class OrganizationRhSkus(BaseModel):
+    """
+    Represents sku to org binding for
+    RH subscriptions
+    """
+
+    subscription_id = IntegerField(index=True, unique=True)
+    user_id = ForeignKeyField(User, backref="org_bound_subscription")
+    org_id = ForeignKeyField(User, backref="subscription")
+
+    indexes = (
+        (("subscription_id", "org_id"), True),
+        (("subscription_id", "org_id", "user_id"), True),
+    )
 
 
 # Defines a map from full-length index names to the legacy names used in our code

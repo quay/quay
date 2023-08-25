@@ -482,6 +482,9 @@ class TeamMember(ApiResource):
                 return "", 204
 
             model.team.remove_user_from_team(orgname, teamname, membername, invoking_user)
+            if features.RH_MARKETPLACE:
+                org_id = model.organization.get_organization(orgname).id
+                model.organization_skus.remove_all_owner_subscriptions_from_org(member.id, org_id)
             log_action("org_remove_team_member", orgname, {"member": membername, "team": teamname})
             return "", 204
 

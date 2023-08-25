@@ -1,3 +1,9 @@
+# isort: skip_file
+from typing import Dict, Any
+import logging
+import json
+import hashlib
+import random
 import argparse
 import calendar
 import hashlib
@@ -1339,6 +1345,7 @@ WHITELISTED_EMPTY_MODELS = [
     "Image",
     "ProxyCacheConfig",
     "RedHatSubscriptions",
+    "OrganizationRhSkus",
     "QuotaRegistrySize",
 ]
 

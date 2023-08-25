@@ -53,7 +53,7 @@ from util.greenlet_tracing import enable_tracing
 from util.ipresolver import IPResolver
 from util.label_validator import LabelValidator
 from util.log import filter_logs
-from util.marketplace import RHMarketplaceAPI, RHUserAPI
+from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
 from util.metrics.prometheus import PrometheusPlugin
 from util.names import urn_generator
 from util.repomirror.api import RepoMirrorAPI
@@ -236,12 +236,6 @@ Principal(app, use_sessions=False)
 
 tf = app.config["DB_TRANSACTION_FACTORY"]
 
-rh_user_api = None
-rh_marketplace_api = None
-if features.ENTITLEMENT_RECONCILIATION or features.RH_MARKETPLACE:
-    rh_user_api = RHUserAPI(app.config)
-    rh_marketplace_api = RHMarketplaceAPI(app.config)
-
 model_cache = get_model_cache(app.config)
 avatar = Avatar(app)
 login_manager = LoginManager(app)
@@ -309,6 +303,9 @@ repo_mirror_api = RepoMirrorAPI(
 )
 
 tuf_metadata_api = TUFMetadataAPI(app, app.config)
+
+marketplace_users = MarketplaceUserApi(app)
+marketplace_subscriptions = MarketplaceSubscriptionApi(app)
 
 # Check for a key in config. If none found, generate a new signing key for Docker V2 manifests.
 _v2_key_path = os.path.join(OVERRIDE_CONFIG_DIRECTORY, DOCKER_V2_SIGNINGKEY_FILENAME)

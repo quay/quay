@@ -16,10 +16,10 @@ from app import all_queues, app, authentication, avatar
 from app import billing as stripe
 from app import (
     ip_resolver,
+    marketplace_subscriptions,
+    marketplace_users,
     namespace_gc_queue,
     oauth_login,
-    rh_marketplace_api,
-    rh_user_api,
     url_scheme_and_hostname,
 )
 from auth import scopes
@@ -638,12 +638,12 @@ class PrivateRepositories(ApiResource):
                     repos_allowed = plan["privateRepos"]
         if features.RH_MARKETPLACE:
             # subscriptions in marketplace will get added to private repo count
-            user_account_number = rh_user_api.get_account_number(user)
+            user_account_number = marketplace_users.get_account_number(user)
             if user_account_number:
-                marketplace_subscriptions = rh_marketplace_api.find_stripe_subscription(
-                    user_account_number
+                subscriptions = marketplace_subscriptions.get_list_of_subscriptions(
+                    user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
                 )
-                for user_subscription in marketplace_subscriptions:
+                for user_subscription in subscriptions:
                     repos_allowed += user_subscription["privateRepos"]
 
         return {"privateCount": private_repos, "privateAllowed": (private_repos < repos_allowed)}

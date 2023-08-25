@@ -23,8 +23,11 @@ repos:
         entry: web/node_modules/.bin/eslint --fix
         language: system
         files: ^web/
+        exclude: ^web/cypress/test/
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
     -   id: trailing-whitespace
+        exclude: ^web/cypress/test/quay-db-data.txt
     -   id: end-of-file-fixer
+        exclude: ^web/cypress/test/quay-db-data.txt

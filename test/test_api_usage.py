@@ -37,6 +37,8 @@ from endpoints.api.billing import (
     ListPlans,
     OrganizationCard,
     OrganizationPlan,
+    OrganizationRhSku,
+    OrganizationRhSkuSubscriptionField,
     UserCard,
     UserPlan,
 )
@@ -5063,6 +5065,63 @@ class TestSuperUserManagement(ApiTestCase):
         json = self.getJsonResponse(GlobalUserMessages)
 
         self.assertEqual(len(json["messages"]), 1)
+
+
+class TestOrganizationRhSku(ApiTestCase):
+    def test_bind_sku_to_org(self):
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 12345},
+            expected_code=201,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+        )
+        self.assertEqual(len(json), 1)
+
+    def test_bind_sku_duplicate(self):
+        user = model.user.get_user(ADMIN_ACCESS_USER)
+        org = model.organization.get_organization(ORGANIZATION)
+        model.organization_skus.bind_subscription_to_org(12345, org.id, user.id)
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 12345},
+            expected_code=400,
+        )
+
+    def test_bind_sku_unauthorized(self):
+        # bind a sku that user does not own
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 11111},
+            expected_code=401,
+        )
+
+    def test_remove_sku_from_org(self):
+        self.login(ADMIN_ACCESS_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+            data={"subscription_id": 12345},
+            expected_code=201,
+        )
+        self.deleteResponse(
+            resource_name=OrganizationRhSkuSubscriptionField,
+            params=dict(orgname=ORGANIZATION, subscription_id=12345),
+            expected_code=204,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=ORGANIZATION),
+        )
+        self.assertEqual(len(json), 0)
 
 
 if __name__ == "__main__":

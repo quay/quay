@@ -1,3 +1,5 @@
+# isort reordering imports breaks these tests, so tell it to skip
+# isort: skip_file
 from typing import List, Optional, Dict, Tuple, Any, Type
 from mock import patch
 
@@ -6023,6 +6025,38 @@ SECURITY_TESTS: List[
         None,
         "devtable",
         404,
+    ),
+    (
+        OrganizationRhSkuSubscriptionField,
+        "DELETE",
+        {"orgname": "buynlarge", "subscription_id": 12345},
+        None,
+        None,
+        401,
+    ),
+    (
+        OrganizationRhSku,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        None,
+        401,
+    ),
+    (
+        OrganizationRhSku,
+        "POST",
+        {"orgname": "buynlarge"},
+        {"subscription_id": 12345},
+        None,
+        401,
+    ),
+    (
+        UserSkuList,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        None,
+        401,
     ),
 ]
 
