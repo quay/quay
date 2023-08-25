@@ -1,12 +1,11 @@
-import redis
 import json
 import time
-
 from contextlib import closing
-
-from util.dynamic import import_class
 from datetime import timedelta
 
+import redis
+
+from util.dynamic import import_class
 
 ONE_DAY = timedelta(days=1)
 SEVEN_DAYS = timedelta(days=7)

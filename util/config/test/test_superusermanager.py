@@ -1,8 +1,9 @@
-import pytest
 from dataclasses import dataclass
+from test.fixtures import *
+
+import pytest
 
 from util.config.superusermanager import ConfigUserManager
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

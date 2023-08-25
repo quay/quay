@@ -1,22 +1,19 @@
 import hashlib
 import json
-
 from collections import namedtuple
 from enum import Enum, unique
 
 from cachetools.func import lru_cache
 
 from data import model
-from data.database import (
-    Manifest as ManifestTable,
-    Tag as TagTable,
-    ManifestSecurityStatus,
-    get_epoch_timestamp_ms,
-)
-from data.registry_model.datatype import datatype, requiresinput, optionalinput
-from image.shared import ManifestException
-from image.shared.schemas import parse_manifest_from_bytes, is_manifest_list_type
+from data.database import Manifest as ManifestTable
+from data.database import ManifestSecurityStatus
+from data.database import Tag as TagTable
+from data.database import get_epoch_timestamp_ms
+from data.registry_model.datatype import datatype, optionalinput, requiresinput
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
+from image.shared import ManifestException
+from image.shared.schemas import is_manifest_list_type, parse_manifest_from_bytes
 from util.bytes import Bytes
 
 
@@ -222,7 +219,7 @@ class Tag(
     """
 
     @classmethod
-    def for_tag(cls, tag, legacy_id_handler, manifest_row=None, legacy_image_row=None):
+    def for_tag(cls, tag, legacy_id_handler, manifest_row=None):
         if tag is None:
             return None
 
@@ -237,7 +234,6 @@ class Tag(
             manifest_digest=manifest_row.digest if manifest_row else tag.manifest.digest,
             inputs=dict(
                 legacy_id_handler=legacy_id_handler,
-                legacy_image_row=legacy_image_row,
                 manifest_row=manifest_row or tag.manifest,
                 repository=RepositoryReference.for_id(tag.repository_id),
             ),

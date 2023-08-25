@@ -1,12 +1,11 @@
 import json
 import logging
 import uuid
-
 from abc import ABCMeta, abstractmethod, abstractproperty
 from datetime import datetime
-from six import add_metaclass
 
 from alembic import op
+from six import add_metaclass
 from sqlalchemy import text
 
 from util.abchelpers import nooper

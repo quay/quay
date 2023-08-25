@@ -1,14 +1,19 @@
+from test.fixtures import *
+
 import pytest
 
 from data import model
-from endpoints.api.repository import Repository
 from endpoints.api.build import (
     RepositoryBuildList,
+    RepositoryBuildLogs,
     RepositoryBuildResource,
     RepositoryBuildStatus,
-    RepositoryBuildLogs,
 )
-from endpoints.api.manifest import RepositoryManifestLabels, ManageRepositoryManifestLabel
+from endpoints.api.manifest import (
+    ManageRepositoryManifestLabel,
+    RepositoryManifestLabels,
+)
+from endpoints.api.repository import Repository
 from endpoints.api.repositorynotification import (
     RepositoryNotification,
     RepositoryNotificationList,
@@ -17,21 +22,20 @@ from endpoints.api.repositorynotification import (
 from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.signing import RepositorySignatures
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
+from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.trigger import (
-    BuildTriggerList,
+    ActivateBuildTrigger,
     BuildTrigger,
-    BuildTriggerSubdirs,
     BuildTriggerActivate,
     BuildTriggerAnalyze,
-    ActivateBuildTrigger,
-    TriggerBuildList,
     BuildTriggerFieldValues,
-    BuildTriggerSources,
+    BuildTriggerList,
     BuildTriggerSourceNamespaces,
+    BuildTriggerSources,
+    BuildTriggerSubdirs,
+    TriggerBuildList,
 )
-from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 BUILD_ARGS = {"build_uuid": "1234"}
 IMAGE_ARGS = {"imageid": "1234", "image_id": 1234}

@@ -2,13 +2,12 @@ import logging
 import time
 
 import features
-
-from app import repository_gc_queue, all_queues, app
-from data import model, database
-from workers.queueworker import QueueWorker, WorkerSleepException
-from util.log import logfile_path
+from app import all_queues, app, repository_gc_queue
+from data import database, model
 from util.locking import GlobalLock, LockNotAcquiredException
+from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
+from workers.queueworker import QueueWorker, WorkerSleepException
 
 logger = logging.getLogger(__name__)
 

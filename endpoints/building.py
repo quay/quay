@@ -1,20 +1,18 @@
-import logging
 import json
-
+import logging
 from datetime import datetime, timedelta
 
 from flask import request
 
 from app import app, dockerfile_build_queue
-from data import model
-from data.logs_model import logs_model
-from data.database import db, RepositoryState
 from auth.auth_context import get_authenticated_user
+from data import model
+from data.database import RepositoryState, db
+from data.logs_model import logs_model
 from notifications import spawn_notification
-from util.names import escape_tag
 from util.morecollections import AttrDict
+from util.names import escape_tag
 from util.request import get_request_ip
-
 
 logger = logging.getLogger(__name__)
 

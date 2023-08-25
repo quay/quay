@@ -3,16 +3,16 @@ from datetime import datetime
 
 from jwt import ExpiredSignatureError, InvalidTokenError
 
-from app import oauth_login, authentication, app, analytics
+from app import analytics, app, authentication, oauth_login
 from auth.scopes import scopes_from_scope_string
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from oauth.login import OAuthLoginException
 from oauth.login_utils import (
-    is_jwt,
-    get_sub_username_email_from_token,
     _conduct_oauth_login,
     get_jwt_issuer,
+    get_sub_username_email_from_token,
+    is_jwt,
 )
 from oauth.oidc import PublicKeyLoadException
 

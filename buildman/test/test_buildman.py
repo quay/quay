@@ -1,19 +1,18 @@
 import asyncio
-import unittest
 import json
+import unittest
 import uuid
 
-from mock import Mock, ANY
+from mock import ANY, Mock
 from six import iteritems
 
 from buildman.asyncutil import AsyncWrapper
 from buildman.component.buildcomponent import BuildComponent
-from buildman.manager.ephemeral import EphemeralBuilderManager, REALM_PREFIX, JOB_PREFIX
+from buildman.manager.ephemeral import JOB_PREFIX, REALM_PREFIX, EphemeralBuilderManager
 from buildman.manager.executor import BuilderExecutor, ExecutorException
-from buildman.orchestrator import KeyEvent, KeyChange
+from buildman.orchestrator import KeyChange, KeyEvent
 from buildman.server import BuildJobResult
 from util import slash_join
-
 
 BUILD_UUID = "deadbeef-dead-beef-dead-deadbeefdead"
 REALM_ID = "1234-realm"

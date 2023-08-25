@@ -1,28 +1,32 @@
 import logging
 
-from flask import request, make_response, Blueprint
+from flask import Blueprint, make_response, request
 
-from app import billing as stripe, app
-from data import model
-from data.logs_model import logs_model
-from data.database import RepositoryState
+from app import app
+from app import billing as stripe
 from auth.decorators import process_auth
 from auth.permissions import ModifyRepositoryPermission
-from util.invoice import renderInvoiceToHtml
-from util.useremails import send_invoice_email, send_subscription_change, send_payment_failed
-from util.http import abort
 from buildtrigger.basehandler import BuildTriggerHandler
 from buildtrigger.triggerutil import (
-    ValidationRequestException,
-    SkipRequestException,
     InvalidPayloadException,
+    SkipRequestException,
+    ValidationRequestException,
 )
+from data import model
+from data.database import RepositoryState
+from data.logs_model import logs_model
 from endpoints.building import (
-    start_build,
-    MaximumBuildsQueuedException,
     BuildTriggerDisabledException,
+    MaximumBuildsQueuedException,
+    start_build,
 )
-
+from util.http import abort
+from util.invoice import renderInvoiceToHtml
+from util.useremails import (
+    send_invoice_email,
+    send_payment_failed,
+    send_subscription_change,
+)
 
 logger = logging.getLogger(__name__)
 

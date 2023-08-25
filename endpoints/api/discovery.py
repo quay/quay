@@ -3,10 +3,9 @@
 API discovery information.
 """
 
-import re
 import logging
+import re
 import sys
-
 from collections import OrderedDict
 
 from flask_restful import reqparse
@@ -15,15 +14,14 @@ from app import app
 from auth import scopes
 from endpoints.api import (
     ApiResource,
-    resource,
     method_metadata,
     nickname,
     parse_args,
     query_param,
+    resource,
 )
 from endpoints.decorators import anon_allowed
 from util.parsing import truthy_bool
-
 
 logger = logging.getLogger(__name__)
 

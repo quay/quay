@@ -1,21 +1,22 @@
 import re
-
 from calendar import timegm
 from datetime import datetime, timedelta
-from peewee import JOIN
 
 from authlib.jose import JsonWebKey
+from peewee import JOIN
 
-from data.database import db_for_update, User, ServiceKey, ServiceKeyApproval
+from data.database import ServiceKey, ServiceKeyApproval, User, db_for_update
 from data.model import (
-    ServiceKeyDoesNotExist,
     ServiceKeyAlreadyApproved,
+    ServiceKeyDoesNotExist,
     ServiceNameInvalid,
-    db_transaction,
     config,
+    db_transaction,
 )
-from data.model.notification import create_notification, delete_all_notifications_by_path_prefix
-
+from data.model.notification import (
+    create_notification,
+    delete_all_notifications_by_path_prefix,
+)
 
 _SERVICE_NAME_REGEX = re.compile(r"^[a-z0-9_]+$")
 

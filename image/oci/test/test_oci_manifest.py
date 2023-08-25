@@ -3,8 +3,8 @@ import json
 import pytest
 
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
-from image.oci.manifest import OCIManifest, MalformedOCIManifest
 from image.oci import register_artifact_type
+from image.oci.manifest import MalformedOCIManifest, OCIManifest
 from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 

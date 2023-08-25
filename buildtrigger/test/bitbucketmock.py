@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from mock import Mock
 
 from buildtrigger.bitbuckethandler import BitbucketBuildTrigger

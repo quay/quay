@@ -1,5 +1,8 @@
 from data import model
-from workers.buildlogsarchiver.models_interface import Build, BuildLogsArchiverWorkerDataInterface
+from workers.buildlogsarchiver.models_interface import (
+    Build,
+    BuildLogsArchiverWorkerDataInterface,
+)
 
 
 class PreOCIModel(BuildLogsArchiverWorkerDataInterface):

@@ -3,8 +3,8 @@ import json
 from data import model
 from data.database import RepositoryNotification
 from workers.notificationworker.models_interface import (
-    NotificationWorkerDataInterface,
     Notification,
+    NotificationWorkerDataInterface,
     Repository,
 )
 

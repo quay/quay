@@ -1,7 +1,7 @@
-import logging
 import json
+import logging
 
-from flask import request, make_response, current_app
+from flask import current_app, make_response, request
 from werkzeug.exceptions import HTTPException
 
 from app import analytics

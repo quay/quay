@@ -2,13 +2,12 @@ import logging
 import time
 
 import features
-
 from app import app  # This is required to initialize the database.
 from data import model
-from workers.worker import Worker
 from util.log import logfile_path
 from util.timedeltastring import convert_to_timedelta
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

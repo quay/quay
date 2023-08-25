@@ -1,51 +1,52 @@
 import logging
 import re
 
-from flask import url_for, request, redirect, Response, abort as flask_abort
+from flask import Response
+from flask import abort as flask_abort
+from flask import redirect, request, url_for
 
-from app import storage, app, get_app_url, model_cache
+from app import app, get_app_url, model_cache, storage
 from auth.auth_context import get_authenticated_user
-from auth.registry_jwt_auth import process_registry_jwt_auth
 from auth.permissions import ReadRepositoryPermission
+from auth.registry_jwt_auth import process_registry_jwt_auth
 from data import database
 from data.model import namespacequota
 from data.registry_model import registry_model
 from data.registry_model.blobuploader import (
+    BlobRangeMismatchException,
+    BlobTooLargeException,
+    BlobUploadException,
+    BlobUploadSettings,
+    complete_when_uploaded,
     create_blob_upload,
     retrieve_blob_upload_manager,
-    complete_when_uploaded,
-    BlobUploadSettings,
-    BlobUploadException,
-    BlobTooLargeException,
-    BlobRangeMismatchException,
 )
 from digest import digest_tools
 from endpoints.decorators import (
-    anon_protect,
     anon_allowed,
-    disallow_for_account_recovery_mode,
-    parse_repository_name,
-    check_region_blacklisted,
+    anon_protect,
     check_readonly,
+    check_region_blacklisted,
+    disallow_for_account_recovery_mode,
     inject_registry_model,
+    parse_repository_name,
 )
 from endpoints.metrics import image_pulled_bytes
-from endpoints.v2 import v2_bp, require_repo_read, require_repo_write, get_input_stream
+from endpoints.v2 import get_input_stream, require_repo_read, require_repo_write, v2_bp
 from endpoints.v2.errors import (
+    BlobDownloadGeoBlocked,
     BlobUnknown,
     BlobUploadInvalid,
     BlobUploadUnknown,
-    Unsupported,
-    NameUnknown,
-    LayerTooLarge,
     InvalidRequest,
-    BlobDownloadGeoBlocked,
+    LayerTooLarge,
+    NameUnknown,
     QuotaExceeded,
+    Unsupported,
 )
 from util.cache import cache_control
 from util.names import parse_namespace_repository
 from util.request import get_request_ip
-
 
 logger = logging.getLogger(__name__)
 

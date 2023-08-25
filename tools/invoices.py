@@ -2,15 +2,14 @@ import stripe as _stripe
 
 _stripe.api_version = "2016-06-15"
 
-import logging
-import time
-import sys
-import csv
 import codecs
-
-from itertools import groupby
-from datetime import datetime, timedelta, date
+import csv
+import logging
+import sys
+import time
+from datetime import date, datetime, timedelta
 from io import StringIO
+from itertools import groupby
 
 from app import billing as stripe
 

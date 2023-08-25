@@ -1,25 +1,23 @@
 import re
-
 from datetime import datetime, timedelta
 
-from peewee import IntegrityError, fn, JOIN
 from jsonschema import ValidationError
+from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
     RepoMirrorConfig,
     RepoMirrorRule,
     RepoMirrorRuleType,
     RepoMirrorStatus,
-    RepositoryState,
     Repository,
-    uuid_generator,
-    db_transaction,
+    RepositoryState,
     User,
+    db_transaction,
+    uuid_generator,
 )
 from data.fields import DecryptedValue
 from data.model import DataModelException
 from util.names import parse_robot_username
-
 
 # TODO: Move these to the configuration
 MAX_SYNC_RETRIES = 3

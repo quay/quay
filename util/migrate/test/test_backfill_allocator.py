@@ -1,9 +1,13 @@
 import random
+from datetime import datetime, timedelta
 
 import pytest
 
-from datetime import datetime, timedelta
-from util.migrate.allocator import CompletedKeys, NoAvailableKeysError, yield_random_entries
+from util.migrate.allocator import (
+    CompletedKeys,
+    NoAvailableKeysError,
+    yield_random_entries,
+)
 
 
 def test_merge_blocks_operations():

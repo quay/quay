@@ -1,6 +1,6 @@
 import logging
-
 from uuid import UUID
+
 from flask_login import current_user
 
 from auth.validateresult import AuthKind, ValidateResult

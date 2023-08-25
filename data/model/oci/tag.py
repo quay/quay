@@ -1,25 +1,21 @@
-import uuid
 import logging
-
+import uuid
 from calendar import timegm
+
 from peewee import fn
 
 from data.database import (
-    ManifestChild,
-    Tag,
     Manifest,
-    ManifestLegacyImage,
-    Image,
+    ManifestChild,
     MediaType,
-    RepositoryTag,
-    RepositoryState,
-    User,
-    get_epoch_timestamp_ms,
-    db_transaction,
-    Repository,
-    TagToRepositoryTag,
     Namespace,
+    Repository,
+    RepositoryState,
+    Tag,
+    User,
     db_random_func,
+    db_transaction,
+    get_epoch_timestamp_ms,
 )
 from data.model import config, user
 from image.docker.schema1 import (
@@ -606,41 +602,7 @@ def set_tag_end_ms(tag, end_ms):
         if updated != 1:
             return (None, False)
 
-        # TODO: Remove the linkage code once RepositoryTag is gone.
-        try:
-            old_style_tag = (
-                TagToRepositoryTag.select(TagToRepositoryTag, RepositoryTag)
-                .join(RepositoryTag)
-                .where(TagToRepositoryTag.tag == tag)
-                .get()
-            ).repository_tag
-
-            old_style_tag.lifetime_end_ts = end_ms // 1000 if end_ms is not None else None
-            old_style_tag.save()
-        except TagToRepositoryTag.DoesNotExist:
-            pass
-
         return (tag.lifetime_end_ms, True)
-
-
-def tags_containing_legacy_image(image):
-    """
-    Yields all alive Tags containing the given image as a legacy image, somewhere in its legacy
-    image hierarchy.
-    """
-    ancestors_str = "%s%s/%%" % (image.ancestors, image.id)
-    tags = (
-        Tag.select()
-        .join(Repository)
-        .switch(Tag)
-        .join(Manifest)
-        .join(ManifestLegacyImage)
-        .join(Image)
-        .where(Tag.repository == image.repository_id)
-        .where(Image.repository == image.repository_id)
-        .where((Image.id == image.id) | (Image.ancestors**ancestors_str))
-    )
-    return filter_to_alive_tags(tags)
 
 
 def find_repository_with_garbage(limit_to_gc_policy_s):
@@ -681,23 +643,6 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
         return None
     except Repository.DoesNotExist:
         return None
-
-
-def get_legacy_images_for_tags(tags):
-    """
-    Returns a map from tag ID to the legacy image for the tag.
-    """
-    if not tags:
-        return {}
-
-    query = (
-        ManifestLegacyImage.select(ManifestLegacyImage, Image)
-        .join(Image)
-        .where(ManifestLegacyImage.manifest << [tag.manifest_id for tag in tags])
-    )
-
-    by_manifest = {mli.manifest_id: mli.image for mli in query}
-    return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
 
 
 def get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, timemaching_window_ms):

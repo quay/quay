@@ -1,19 +1,17 @@
 import logging
 import time
-
 from contextlib import contextmanager
 
 import features
-
 from app import app
-from data.database import UseThenDisconnect, Repository, RepositoryState
-from data.registry_model import registry_model
-from data.model.repository import get_random_gc_policy
+from data.database import Repository, RepositoryState, UseThenDisconnect
 from data.model.gc import garbage_collect_repo
-from workers.worker import Worker
+from data.model.repository import get_random_gc_policy
+from data.registry_model import registry_model
 from util.locking import GlobalLock, LockNotAcquiredException
-from workers.gunicorn_worker import GunicornWorker
 from util.metrics.prometheus import gc_iterations
+from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

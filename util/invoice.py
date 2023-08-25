@@ -1,8 +1,8 @@
+import io
 from datetime import datetime
+
 from jinja2 import Environment, FileSystemLoader
 from xhtml2pdf import pisa
-
-import io
 
 from app import app
 

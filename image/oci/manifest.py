@@ -37,31 +37,32 @@ Example:
 
 """
 
+import hashlib
 import json
 import logging
-import hashlib
-
 from collections import namedtuple
-from jsonschema import validate as validate_schema, ValidationError
+
+from jsonschema import ValidationError
+from jsonschema import validate as validate_schema
 
 from digest import digest_tools
-from image.shared import ManifestException
-from image.shared.interfaces import ManifestInterface
-from image.shared.types import ManifestImageLayer
+from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_SIZE
 from image.oci import (
-    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+    ADDITIONAL_LAYER_CONTENT_TYPES,
+    ALLOWED_ARTIFACT_TYPES,
     OCI_IMAGE_CONFIG_CONTENT_TYPE,
     OCI_IMAGE_LAYER_CONTENT_TYPES,
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
     OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES,
     OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
     OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
-    ADDITIONAL_LAYER_CONTENT_TYPES,
-    ALLOWED_ARTIFACT_TYPES,
 )
 from image.oci.config import OCIConfig
 from image.oci.descriptor import get_descriptor_schema
-from image.docker.schema1 import DockerSchema1ManifestBuilder
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
+from image.shared.types import ManifestImageLayer
 from util.bytes import Bytes
 
 # Keys.

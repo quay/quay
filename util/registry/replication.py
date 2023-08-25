@@ -1,10 +1,9 @@
-import features
 import json
-
 from contextlib import contextmanager
-from data import model
 
+import features
 from app import image_replication_queue
+from data import model
 
 DEFAULT_BATCH_SIZE = 1000
 

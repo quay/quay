@@ -1,7 +1,7 @@
-from data import model, database
-from workers.repositoryactioncounter import RepositoryActionCountWorker
-
 from test.fixtures import *
+
+from data import database, model
+from workers.repositoryactioncounter import RepositoryActionCountWorker
 
 
 def test_repositoryactioncount(app):

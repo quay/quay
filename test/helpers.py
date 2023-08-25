@@ -1,14 +1,13 @@
-import multiprocessing
-import time
-import socket
 import logging
+import multiprocessing
 import re
-
+import socket
+import time
 from contextlib import contextmanager
 
 from playhouse.test_utils import _QueryLogHandler
 
-from data.database import LogEntryKind, LogEntry3
+from data.database import LogEntry3, LogEntryKind
 
 
 class assert_action_logged(object):

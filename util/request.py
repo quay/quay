@@ -3,6 +3,7 @@ from functools import wraps
 
 from flask import request
 from flask_restful.utils.cors import crossdomain
+
 from app import app
 
 # Base headers that are allowed for cross origin requests

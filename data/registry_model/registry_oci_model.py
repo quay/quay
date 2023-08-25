@@ -1,44 +1,39 @@
 import logging
-
-from contextlib import contextmanager
 from collections import defaultdict
+from contextlib import contextmanager
+
 from peewee import fn
 
-from data import database
-from data import model
+from data import database, model
 from data.cache import cache_key
-from data.model import oci, DataModelException
+from data.database import db_disallow_replica_use, db_transaction
+from data.model import DataModelException, oci
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
-from data.database import (
-    db_transaction,
-    db_disallow_replica_use,
-)
-from data.registry_model.interface import RegistryDataInterface
 from data.registry_model.datatype import FromDictionaryException
 from data.registry_model.datatypes import (
-    Tag,
-    Manifest,
-    LegacyImage,
-    Label,
-    SecurityScanStatus,
     Blob,
     BlobUpload,
-    ShallowTag,
+    Label,
+    LegacyImage,
     LikelyVulnerableTag,
-    RepositoryReference,
+    Manifest,
     ManifestLayer,
+    RepositoryReference,
+    SecurityScanStatus,
+    ShallowTag,
+    Tag,
 )
-from data.registry_model.label_handlers import apply_label_to_manifest, LABEL_EXPIRY_KEY
+from data.registry_model.interface import RegistryDataInterface
+from data.registry_model.label_handlers import LABEL_EXPIRY_KEY, apply_label_to_manifest
 from data.registry_model.shared import SyntheticIDHandler
-from image.shared import ManifestException
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1ManifestBuilder,
 )
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
+from image.shared import ManifestException
 from util.timedeltastring import convert_to_timedelta
-
 
 logger = logging.getLogger(__name__)
 
@@ -293,18 +288,11 @@ class OCIModel(RegistryDataInterface):
             filter_tag_name,
         )
 
-        # TODO: Remove this once the layers compressed sizes have been fully backfilled.
-        tags_missing_sizes = [tag for tag in tags if tag.manifest.layers_compressed_size is None]
-        legacy_images_map = {}
-        if tags_missing_sizes:
-            legacy_images_map = oci.tag.get_legacy_images_for_tags(tags_missing_sizes)
-
         return (
             [
                 Tag.for_tag(
                     tag,
                     self._legacy_image_id_handler,
-                    legacy_image_row=legacy_images_map.get(tag.id),
                 )
                 for tag in tags
             ],

@@ -1,14 +1,13 @@
 import logging
-
 from datetime import datetime
 
 from data.database import AppSpecificAuthToken, User, random_string_generator
+from data.fields import DecryptedValue
 from data.model import config
 from data.model._basequery import update_last_accessed
-from data.fields import DecryptedValue
+from util.bytes import Bytes
 from util.timedeltastring import convert_to_timedelta
 from util.unicode import remove_unicode
-from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)
 

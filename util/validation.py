@@ -1,10 +1,9 @@
-import string
-import re
 import json
-
-from text_unidecode import unidecode
+import re
+import string
 
 from peewee import OperationalError
+from text_unidecode import unidecode
 
 INVALID_PASSWORD_MESSAGE = (
     "Invalid password, password must be at least " + "8 characters and contain no whitespace."

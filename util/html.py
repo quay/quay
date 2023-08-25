@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup, Tag, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 _NEWLINE_INDICATOR = "<<<newline>>>"
 

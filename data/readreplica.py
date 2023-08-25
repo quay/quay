@@ -1,11 +1,11 @@
 from __future__ import annotations
-import random
-from typing import Type, TypeVar
 
+import random
 from collections import namedtuple
 from contextlib import contextmanager
+from typing import Type, TypeVar
 
-from peewee import Model, SENTINEL, OperationalError, Proxy, ModelSelect
+from peewee import SENTINEL, Model, ModelSelect, OperationalError, Proxy
 
 from data.decorators import is_deprecated_model
 

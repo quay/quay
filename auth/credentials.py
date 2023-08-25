@@ -1,17 +1,15 @@
 import logging
-
 from enum import Enum
 
 import features
-
 from app import authentication
-from auth.oauth import validate_oauth_token
-from auth.validateresult import ValidateResult, AuthKind
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
-    OAUTH_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
+    OAUTH_TOKEN_USERNAME,
 )
+from auth.oauth import validate_oauth_token
+from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from util.names import parse_robot_username
 

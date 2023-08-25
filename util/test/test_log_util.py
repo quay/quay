@@ -1,8 +1,10 @@
-import pytest
 import os
-from util.log import logfile_path, filter_logs
-from app import FILTERED_VALUES
+
+import pytest
+
 from _init import CONF_DIR
+from app import FILTERED_VALUES
+from util.log import filter_logs, logfile_path
 
 
 def test_filter_logs():

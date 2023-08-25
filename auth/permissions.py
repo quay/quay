@@ -1,16 +1,13 @@
 import logging
+from collections import defaultdict, namedtuple
+from functools import partial
 from typing import DefaultDict, Optional
 
-from collections import namedtuple, defaultdict
-from functools import partial
-
-from flask_principal import identity_loaded, Permission, Identity, identity_changed
-
+from flask_principal import Identity, Permission, identity_changed, identity_loaded
 
 from app import app, usermanager
 from auth import scopes
 from data import model
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,23 +1,20 @@
 import logging
-
-from urllib.parse import urljoin
-from posixpath import join
-
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
+from posixpath import join
+from urllib.parse import urljoin
 
 import requests
+from six import add_metaclass
 
 from data.database import CloseForLongOperation
 from util.abchelpers import nooper
-from util.failover import failover, FailoverException
+from util.failover import FailoverException, failover
 from util.security.instancekeys import InstanceKeys
 from util.security.registry_jwt import (
+    SIGNER_TUF_ROOT,
     build_context_and_subject,
     generate_bearer_token,
-    SIGNER_TUF_ROOT,
 )
-
 
 DEFAULT_HTTP_HEADERS = {"Connection": "close"}
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour

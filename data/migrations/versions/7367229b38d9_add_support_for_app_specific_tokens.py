@@ -12,6 +12,7 @@ down_revision = "d8989249f8f6"
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
+
 from util.migrate import UTF8CharField
 
 

@@ -1,14 +1,14 @@
 import logging
 import os
-
 from abc import ABCMeta, abstractmethod
+
 from jsonschema import validate
 from six import add_metaclass
 
-from endpoints.building import PreparedBuild
+from buildtrigger.triggerutil import InvalidServiceException, get_trigger_config
 from data import model
-from buildtrigger.triggerutil import get_trigger_config, InvalidServiceException
-from util.jsontemplate import apply_data_to_obj, JSONTemplateParseException
+from endpoints.building import PreparedBuild
+from util.jsontemplate import JSONTemplateParseException, apply_data_to_obj
 
 logger = logging.getLogger(__name__)
 

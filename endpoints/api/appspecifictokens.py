@@ -4,33 +4,31 @@ Manages app specific tokens for the current user.
 
 import logging
 import math
-
 from datetime import timedelta
+
 from flask import request
 
 import features
-
 from app import app
 from auth.auth_context import get_authenticated_user
 from data import model
 from endpoints.api import (
     ApiResource,
-    nickname,
-    resource,
-    validate_json_request,
-    log_action,
-    require_user_admin,
-    require_fresh_login,
-    path_param,
     NotFound,
     format_date,
-    show_if,
-    query_param,
+    log_action,
+    nickname,
     parse_args,
+    path_param,
+    query_param,
+    require_fresh_login,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
 )
 from util.parsing import truthy_bool
 from util.timedeltastring import convert_to_timedelta
-
 
 logger = logging.getLogger(__name__)
 

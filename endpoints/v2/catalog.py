@@ -3,14 +3,17 @@ from collections import namedtuple
 from flask import jsonify
 
 import features
-
 from app import model_cache
-from auth.auth_context import get_authenticated_user, get_authenticated_context
+from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data import model
 from data.cache import cache_key
-from endpoints.decorators import anon_protect, disallow_for_account_recovery_mode, route_show_if
-from endpoints.v2 import v2_bp, paginate
+from endpoints.decorators import (
+    anon_protect,
+    disallow_for_account_recovery_mode,
+    route_show_if,
+)
+from endpoints.v2 import paginate, v2_bp
 
 
 class Repository(namedtuple("Repository", ["id", "namespace_name", "name"])):

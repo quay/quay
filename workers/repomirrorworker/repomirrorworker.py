@@ -1,17 +1,16 @@
-import os
-import logging.config
-import time
 import argparse
+import logging.config
+import os
+import time
 
 import features
-
 from app import app, repo_mirror_api
-from workers.worker import Worker
-from workers.repomirrorworker import process_mirrors
-from util.repomirror.validator import RepoMirrorConfigValidator
-from util.repomirror.skopeomirror import SkopeoMirror
 from util.log import logfile_path
+from util.repomirror.skopeomirror import SkopeoMirror
+from util.repomirror.validator import RepoMirrorConfigValidator
 from workers.gunicorn_worker import GunicornWorker
+from workers.repomirrorworker import process_mirrors
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

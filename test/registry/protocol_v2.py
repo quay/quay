@@ -1,31 +1,30 @@
 import hashlib
 import json
-from typing import Dict
-
 from enum import Enum, unique
-
-from image.docker.schema1 import (
-    DockerSchema1ManifestBuilder,
-    DockerSchema1Manifest,
-    DOCKER_SCHEMA1_CONTENT_TYPES,
-)
-from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from image.docker.schema2.config import DockerSchema2Config
-from image.oci import OCI_CONTENT_TYPES
-from image.oci.manifest import OCIManifestBuilder
-from image.oci.config import OCIConfig
-from image.shared.schemas import (
-    parse_manifest_from_bytes,
-    is_manifest_list_type,
-    MANIFEST_LIST_TYPES,
-)
 from test.registry.protocols import (
-    RegistryProtocol,
     Failures,
     ProtocolOptions,
-    PushResult,
     PullResult,
+    PushResult,
+    RegistryProtocol,
+)
+from typing import Dict
+
+from image.docker.schema1 import (
+    DOCKER_SCHEMA1_CONTENT_TYPES,
+    DockerSchema1Manifest,
+    DockerSchema1ManifestBuilder,
+)
+from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
+from image.docker.schema2.config import DockerSchema2Config
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from image.oci import OCI_CONTENT_TYPES
+from image.oci.config import OCIConfig
+from image.oci.manifest import OCIManifestBuilder
+from image.shared.schemas import (
+    MANIFEST_LIST_TYPES,
+    is_manifest_list_type,
+    parse_manifest_from_bytes,
 )
 from util.bytes import Bytes
 

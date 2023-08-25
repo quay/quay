@@ -1,6 +1,6 @@
 import logging
 
-from flask import make_response, jsonify
+from flask import jsonify, make_response
 
 from app import app
 from data import model
@@ -8,7 +8,6 @@ from data.readreplica import ReadOnlyModeException
 from util.config.provider.baseprovider import CannotWriteConfigException
 from util.request import crossorigin
 from util.useremails import CannotSendEmailException
-
 
 logger = logging.getLogger(__name__)
 

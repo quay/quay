@@ -1,13 +1,12 @@
-import logging
 import json
+import logging
 
-from flask import request, Blueprint, abort, Response
+from flask import Blueprint, Response, abort, request
 from flask_login import current_user
 
 from app import userevents
 from auth.decorators import require_session_login
 from data.userevent import CannotReadUserEventsException
-
 
 logger = logging.getLogger(__name__)
 

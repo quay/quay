@@ -1,7 +1,8 @@
+from test.fixtures import *
+
 from data.model import namespacequota
 from data.model.organization import create_organization
 from data.model.user import create_user_noverify
-from test.fixtures import *
 
 
 def create_org(user_name, user_email, org_name, org_email):

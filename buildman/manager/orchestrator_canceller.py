@@ -1,8 +1,7 @@
 import logging
 
-from buildman.orchestrator import orchestrator_from_config, OrchestratorError
+from buildman.orchestrator import OrchestratorError, orchestrator_from_config
 from util import slash_join
-
 
 logger = logging.getLogger(__name__)
 

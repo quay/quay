@@ -2,18 +2,18 @@ import logging
 import time
 
 import features
-
-from app import app, storage as app_storage, image_replication_queue
-from data.database import CloseForLongOperation
+from app import app, image_replication_queue
+from app import storage as app_storage
 from data import model
-from workers.queueworker import (
-    QueueWorker,
-    WorkerUnhealthyException,
-    JobException,
-    WorkerSleepException,
-)
+from data.database import CloseForLongOperation
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
+from workers.queueworker import (
+    JobException,
+    QueueWorker,
+    WorkerSleepException,
+    WorkerUnhealthyException,
+)
 from workers.worker import with_exponential_backoff
 
 logger = logging.getLogger(__name__)

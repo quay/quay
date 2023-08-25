@@ -1,13 +1,14 @@
+from tqdm import tqdm
+
+from app import storage as storage_system
+from data import model
 from data.database import (
-    ImageStorage,
     Image,
-    ImageStoragePlacement,
+    ImageStorage,
     ImageStorageLocation,
+    ImageStoragePlacement,
     RepositoryTag,
 )
-from data import model
-from app import storage as storage_system
-from tqdm import tqdm
 
 
 def find_broken_storages():

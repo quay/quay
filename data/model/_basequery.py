@@ -1,30 +1,28 @@
 import logging
-
-from peewee import fn, PeeweeException
-from cachetools.func import lru_cache
-
 from datetime import datetime, timedelta
+from functools import reduce
 
-from data.model import DataModelException, config
-from data.readreplica import ReadOnlyModeException
+from cachetools.func import lru_cache
+from peewee import PeeweeException, fn
+
 from data.database import (
+    ImageStorage,
+    Namespace,
     Repository,
+    RepositoryKind,
+    RepositoryPermission,
     RepositoryState,
-    User,
     Team,
     TeamMember,
-    RepositoryPermission,
     TeamRole,
-    Namespace,
+    User,
     Visibility,
-    ImageStorage,
-    Image,
-    RepositoryKind,
-    db_for_update,
-    db_count_estimator,
     db,
+    db_count_estimator,
+    db_for_update,
 )
-from functools import reduce
+from data.model import DataModelException, config
+from data.readreplica import ReadOnlyModeException
 
 logger = logging.getLogger(__name__)
 

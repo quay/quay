@@ -1,24 +1,25 @@
+import hashlib
 import json
 import logging
-import hashlib
-
 from collections import namedtuple
-from jsonschema import validate as validate_schema, ValidationError
+
+from jsonschema import ValidationError
+from jsonschema import validate as validate_schema
 
 from digest import digest_tools
-from image.shared import ManifestException
-from image.shared.interfaces import ManifestInterface
-from image.shared.types import ManifestImageLayer
+from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2 import (
-    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
     DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_REMOTE_LAYER_CONTENT_TYPE,
     EMPTY_LAYER_BLOB_DIGEST,
     EMPTY_LAYER_SIZE,
 )
-from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2.config import DockerSchema2Config
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
+from image.shared.types import ManifestImageLayer
 from util.bytes import Bytes
 
 # Keys.

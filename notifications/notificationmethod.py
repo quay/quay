@@ -1,20 +1,20 @@
-from html.parser import HTMLParser
+import json
 import logging
 import os.path
 import re
-import json
+from html.parser import HTMLParser
 from unittest import mock
+from urllib.parse import urlparse
 
 import requests
 from flask_mail import Message
-from urllib.parse import urlparse
 
-from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
-from data import model
-from util.jsontemplate import JSONTemplate, JSONTemplateParseException
-from util.fips import login_fips_safe
-from workers.queueworker import JobException
 import features
+from app import OVERRIDE_CONFIG_DIRECTORY, app, mail
+from data import model
+from util.fips import login_fips_safe
+from util.jsontemplate import JSONTemplate, JSONTemplateParseException
+from workers.queueworker import JobException
 
 logger = logging.getLogger(__name__)
 

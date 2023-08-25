@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import os
 import json
+import os
+import re
 
 import pytest
 
 from app import docker_v2_signing_key
 from image.docker.schema1 import (
-    MalformedSchema1Manifest,
     DockerSchema1Manifest,
     DockerSchema1ManifestBuilder,
+    MalformedSchema1Manifest,
 )
 from util.bytes import Bytes
-import re
 
 
 @pytest.mark.parametrize(

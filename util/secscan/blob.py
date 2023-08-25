@@ -2,7 +2,7 @@ from urllib.parse import urljoin
 
 from flask import url_for
 
-from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
+from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 
 def _repository_and_namespace(repository_ref):

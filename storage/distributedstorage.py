@@ -1,9 +1,8 @@
-import random
 import logging
-
+import random
 from functools import wraps
 
-from storage.basestorage import StoragePaths, BaseStorage, BaseStorageV2
+from storage.basestorage import BaseStorage, BaseStorageV2, StoragePaths
 
 logger = logging.getLogger(__name__)
 

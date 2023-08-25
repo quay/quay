@@ -1,31 +1,34 @@
 """
 Manage user and organization robot accounts.
 """
+from flask import abort, request
+
+from auth import scopes
+from auth.auth_context import get_authenticated_user
+from auth.permissions import (
+    AdministerOrganizationPermission,
+    OrganizationMemberPermission,
+)
 from endpoints.api import (
-    allow_if_superuser,
-    resource,
-    nickname,
     ApiResource,
+    allow_if_superuser,
     log_action,
+    max_json_size,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
     related_user_resource,
     request_error,
-    require_user_admin,
     require_scope,
-    path_param,
-    parse_args,
-    query_param,
+    require_user_admin,
+    resource,
     validate_json_request,
-    max_json_size,
 )
 from endpoints.api.robot_models_pre_oci import pre_oci_model as model
 from endpoints.exception import Unauthorized
-from auth.permissions import AdministerOrganizationPermission, OrganizationMemberPermission
-from auth.auth_context import get_authenticated_user
-from auth import scopes
 from util.names import format_robot_username
 from util.parsing import truthy_bool
-from flask import abort, request
-
 
 CREATE_ROBOT_SCHEMA = {
     "type": "object",

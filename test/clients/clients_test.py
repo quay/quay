@@ -2,14 +2,11 @@ import os
 import subprocess
 import sys
 import time
-
 import unicodedata
-
+from test.clients.client import Command, DockerClient, FileCopy, PodmanClient
 from threading import Thread
 
 from termcolor import colored
-
-from test.clients.client import DockerClient, PodmanClient, Command, FileCopy
 
 
 def remove_control_characters(s):

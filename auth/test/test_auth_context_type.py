@@ -1,9 +1,13 @@
+from test.fixtures import *
+
 import pytest
 
-from auth.auth_context_type import SignedAuthContext, ValidatedAuthContext, ContextEntityKind
-from data import model, database
-
-from test.fixtures import *
+from auth.auth_context_type import (
+    ContextEntityKind,
+    SignedAuthContext,
+    ValidatedAuthContext,
+)
+from data import database, model
 
 
 def get_oauth_token(_):

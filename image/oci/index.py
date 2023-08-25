@@ -33,16 +33,14 @@ Example:
 }
 """
 
-import logging
 import json
+import logging
 
 from cachetools.func import lru_cache
-from jsonschema import validate as validate_schema, ValidationError
+from jsonschema import ValidationError
+from jsonschema import validate as validate_schema
 
 from digest import digest_tools
-from image.shared import ManifestException
-from image.shared.interfaces import ManifestListInterface
-from image.shared.schemautil import LazyManifestLoader
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
@@ -50,8 +48,10 @@ from image.docker.schema2 import (
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.descriptor import get_descriptor_schema
 from image.oci.manifest import OCIManifest
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestListInterface
+from image.shared.schemautil import LazyManifestLoader
 from util.bytes import Bytes
-
 
 logger = logging.getLogger(__name__)
 

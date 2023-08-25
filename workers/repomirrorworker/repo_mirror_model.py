@@ -1,14 +1,16 @@
 from math import log10
 
+from data.database import RepoMirrorConfig
 from data.model.repo_mirror import (
     get_eligible_mirrors,
     get_max_id_for_repo_mirror_config,
     get_min_id_for_repo_mirror_config,
 )
-from data.database import RepoMirrorConfig
 from util.migrate.allocator import yield_random_entries
-
-from workers.repomirrorworker.models_interface import RepoMirrorToken, RepoMirrorWorkerDataInterface
+from workers.repomirrorworker.models_interface import (
+    RepoMirrorToken,
+    RepoMirrorWorkerDataInterface,
+)
 
 
 class RepoMirrorModel(RepoMirrorWorkerDataInterface):

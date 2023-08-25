@@ -10,8 +10,9 @@ Create Date: 2017-03-17 10:00:19.739858
 import json
 import os
 
-from app import app
 from peewee import *
+
+from app import app
 from data.database import BaseModel
 
 revision = "a6c463dfb9fe"

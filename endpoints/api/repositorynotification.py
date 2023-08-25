@@ -3,28 +3,29 @@ List, create and manage repository events/notifications.
 """
 
 import logging
+
 from flask import request
 
 from endpoints.api import (
-    RepositoryParamResource,
-    nickname,
-    resource,
-    require_repo_admin,
-    log_action,
-    validate_json_request,
-    request_error,
-    path_param,
-    disallow_for_app_repositories,
     InvalidRequest,
+    RepositoryParamResource,
+    disallow_for_app_repositories,
+    log_action,
+    nickname,
+    path_param,
+    request_error,
+    require_repo_admin,
+    resource,
+    validate_json_request,
 )
+from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model as model
 from endpoints.exception import NotFound
 from notifications.models_interface import Repository
 from notifications.notificationevent import NotificationEvent
 from notifications.notificationmethod import (
-    NotificationMethod,
     CannotValidateNotificationMethodException,
+    NotificationMethod,
 )
-from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model as model
 
 logger = logging.getLogger(__name__)
 

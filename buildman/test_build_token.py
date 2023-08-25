@@ -1,19 +1,18 @@
-import pytest
 import time
 import uuid
+from test.fixtures import *
 
+import pytest
+
+from app import app, instance_keys
 from buildman.build_token import (
-    build_token,
-    verify_build_token,
     ANONYMOUS_SUB,
     BUILD_JOB_REGISTRATION_TYPE,
     BUILD_JOB_TOKEN_TYPE,
     InvalidBuildTokenException,
+    build_token,
+    verify_build_token,
 )
-
-from test.fixtures import *
-
-from app import app, instance_keys
 
 
 @pytest.mark.parametrize(

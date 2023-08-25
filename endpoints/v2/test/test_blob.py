@@ -1,30 +1,30 @@
+import hashlib
 import json
 import unittest
-import hashlib
-import pytest
+from test.fixtures import *
 from unittest.mock import MagicMock, patch
 
+import pytest
 from flask import url_for
 from playhouse.test_utils import assert_query_count
 
-from app import instance_keys, app as realapp, storage
+from app import app as realapp
+from app import instance_keys, storage
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
 from data.cache import InMemoryDataModelCache, NoopDataModelCache
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
-from data.database import ImageStorageLocation, ImageStorage, ImageStoragePlacement
+from data.database import ImageStorage, ImageStorageLocation, ImageStoragePlacement
+from data.model.storage import get_layer_path
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
-from data.model.storage import get_layer_path
 from digest.digest_tools import sha256_digest
 from endpoints.test.shared import conduct_call
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from util.bytes import Bytes
-from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
-from test.fixtures import *
 from proxy.fixtures import *  # noqa: F401, F403
-
+from util.bytes import Bytes
+from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 HELLO_WORLD_DIGEST = "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"
 HELLO_WORLD_SCHEMA2_MANIFEST_JSON = r"""{

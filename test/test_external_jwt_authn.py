@@ -1,23 +1,20 @@
 import base64
 import unittest
-from typing import Optional
-
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
-from contextlib import contextmanager
+from test.helpers import liveserver_app
+from typing import Optional
 
 import jwt
 import requests
-
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, make_response, request
 
 from app import app
 from data.users import ExternalJWTAuthN
-from initdb import setup_database_for_testing, finished_database_for_testing
-from test.helpers import liveserver_app
-
+from initdb import finished_database_for_testing, setup_database_for_testing
 
 _PORT_NUMBER = 5001
 

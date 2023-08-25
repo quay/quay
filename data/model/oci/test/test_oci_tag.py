@@ -1,56 +1,49 @@
 import json
-from mock import patch
-import pytest
 from calendar import timegm
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
+from test.fixtures import *
 
+import pytest
+from mock import patch
 from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
-from data.database import (
-    ImageStorageLocation,
-    ManifestChild,
-    Tag,
-    Repository,
-)
+from data.database import ImageStorageLocation, ManifestChild, Repository, Tag
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
-from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.oci.tag import (
-    find_matching_tag,
-    get_child_manifests,
-    get_most_recent_tag,
-    get_most_recent_tag_lifetime_start,
-    list_alive_tags,
-    filter_to_alive_tags,
-    filter_to_visible_tags,
-    list_repository_tag_history,
-    get_expired_tag,
-    get_tag,
-    get_tag_by_manifest_id,
-    get_current_tag,
+    change_tag_expiration,
+    create_temporary_tag_if_necessary,
     delete_tag,
     delete_tags_for_manifest,
-    change_tag_expiration,
-    remove_tag_from_timemachine,
-    set_tag_expiration_for_manifest,
-    retarget_tag,
-    create_temporary_tag_if_necessary,
+    filter_to_alive_tags,
+    filter_to_visible_tags,
+    find_matching_tag,
+    get_child_manifests,
+    get_current_tag,
+    get_epoch_timestamp_ms,
+    get_expired_tag,
+    get_most_recent_tag,
+    get_most_recent_tag_lifetime_start,
+    get_tag,
+    get_tag_by_manifest_id,
+    list_alive_tags,
+    list_repository_tag_history,
     lookup_alive_tags_shallow,
     lookup_unrecoverable_tags,
-    get_epoch_timestamp_ms,
+    remove_tag_from_timemachine,
+    retarget_tag,
+    set_tag_expiration_for_manifest,
 )
-from data.model.repository import get_repository, create_repository
+from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
+from data.model.repository import create_repository, get_repository
 from data.model.storage import get_layer_path
 from data.model.user import get_user
 from digest.digest_tools import sha256_digest
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from util.bytes import Bytes
-
-
-from test.fixtures import *
 
 
 def _populate_blob(content):

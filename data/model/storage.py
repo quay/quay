@@ -1,33 +1,31 @@
 import logging
-
-from peewee import SQL, IntegrityError
-from cachetools.func import lru_cache
 from collections import namedtuple
 
-from data.model import (
-    config,
-    db_transaction,
-    InvalidImageException,
-    DataModelException,
-    _basequery,
-)
+from cachetools.func import lru_cache
+from peewee import SQL, IntegrityError
+
 from data.database import (
+    ApprBlob,
     ImageStorage,
-    Image,
-    ImageStoragePlacement,
     ImageStorageLocation,
-    ImageStorageTransformation,
+    ImageStoragePlacement,
     ImageStorageSignature,
     ImageStorageSignatureKind,
-    Repository,
-    Namespace,
-    TorrentInfo,
-    ApprBlob,
-    ensure_under_transaction,
+    ImageStorageTransformation,
     ManifestBlob,
+    Namespace,
+    Repository,
     UploadedBlob,
+    ensure_under_transaction,
 )
-from util.metrics.prometheus import gc_table_rows_deleted, gc_storage_blobs_deleted
+from data.model import (
+    DataModelException,
+    InvalidImageException,
+    _basequery,
+    config,
+    db_transaction,
+)
+from util.metrics.prometheus import gc_storage_blobs_deleted, gc_table_rows_deleted
 
 logger = logging.getLogger(__name__)
 
@@ -80,12 +78,6 @@ def _is_storage_orphaned(candidate_id):
             ManifestBlob.get(blob=candidate_id)
             return False
         except ManifestBlob.DoesNotExist:
-            pass
-
-        try:
-            Image.get(storage=candidate_id)
-            return False
-        except Image.DoesNotExist:
             pass
 
         try:
@@ -200,11 +192,6 @@ def garbage_collect_storage(storage_id_whitelist):
                     .execute()
                 )
 
-            # Remove all orphaned storages
-            deleted_torrent_info = (
-                TorrentInfo.delete().where(TorrentInfo.storage == storage_id_to_check).execute()
-            )
-
             deleted_image_storage_signature = (
                 ImageStorageSignature.delete()
                 .where(ImageStorageSignature.storage == storage_id_to_check)
@@ -220,7 +207,6 @@ def garbage_collect_storage(storage_id_whitelist):
             # the database with the same content checksum.
             paths_to_remove.extend(placements_to_filtered_paths_set(placements_to_remove))
 
-        gc_table_rows_deleted.labels(table="TorrentInfo").inc(deleted_torrent_info)
         gc_table_rows_deleted.labels(table="ImageStorageSignature").inc(
             deleted_image_storage_signature
         )
@@ -393,46 +379,6 @@ def _lookup_repo_storages_by_content_checksum(repo, checksums, model_class):
 
     assert queries
     return _basequery.reduce_as_tree(queries)
-
-
-def set_image_storage_metadata(
-    docker_image_id, namespace_name, repository_name, image_size, uncompressed_size
-):
-    """
-    Sets metadata that is specific to the binary storage of the data, irrespective of how it is used
-    in the layer tree.
-    """
-    if image_size is None:
-        raise DataModelException("Empty image size field")
-
-    try:
-        image = (
-            Image.select(Image, ImageStorage)
-            .join(Repository)
-            .join(Namespace, on=(Repository.namespace_user == Namespace.id))
-            .switch(Image)
-            .join(ImageStorage)
-            .where(
-                Repository.name == repository_name,
-                Namespace.username == namespace_name,
-                Image.docker_image_id == docker_image_id,
-            )
-            .get()
-        )
-    except ImageStorage.DoesNotExist:
-        raise InvalidImageException("No image with specified id and repository")
-
-    # We MUST do this here, it can't be done in the corresponding image call because the storage
-    # has not yet been pushed
-    image.aggregate_size = _basequery.calculate_image_aggregate_size(
-        image.ancestors, image_size, image.parent
-    )
-    image.save()
-
-    image.storage.image_size = image_size
-    image.storage.uncompressed_size = uncompressed_size
-    image.storage.save()
-    return image.storage
 
 
 def get_storage_locations(uuid):

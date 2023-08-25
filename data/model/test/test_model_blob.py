@@ -1,7 +1,7 @@
-from app import storage
-from data import model, database
-
 from test.fixtures import *
+
+from app import storage
+from data import database, model
 
 ADMIN_ACCESS_USER = "devtable"
 REPO = "simple"
@@ -48,9 +48,14 @@ def test_get_or_create_shared_blob(initialized_db):
 
 
 def test_lookup_repo_storages_by_content_checksum(initialized_db):
-    for image in database.Image.select():
+    query = database.ImageStorage.select(database.ImageStorage, database.ManifestBlob).join(
+        database.ManifestBlob
+    )
+
+    for imagestorage in query:
+        manifestblob = imagestorage.manifestblob
         found = model.storage.lookup_repo_storages_by_content_checksum(
-            image.repository, [image.storage.content_checksum]
+            manifestblob.repository, [imagestorage.content_checksum]
         )
         assert len(found) == 1
-        assert found[0].content_checksum == image.storage.content_checksum
+        assert found[0].content_checksum == imagestorage.content_checksum

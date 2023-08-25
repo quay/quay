@@ -1,7 +1,7 @@
 import logging
 
 from oauth.base import OAuthEndpoint
-from oauth.login import OAuthLoginService, OAuthLoginException
+from oauth.login import OAuthLoginException, OAuthLoginService
 from util import slash_join
 
 logger = logging.getLogger(__name__)

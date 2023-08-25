@@ -1,46 +1,45 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from test.fixtures import *  # noqa: F401, F403
+from unittest.mock import MagicMock, patch
 
-from flask import url_for
 import pytest
+from flask import url_for
 
-from app import instance_keys, app as realapp
+from app import app as realapp
+from app import instance_keys
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
 from data.database import (
-    Repository,
-    Tag,
-    Manifest,
-    ManifestChild,
-    ManifestBlob,
     ImageStorage,
     ImageStoragePlacement,
+    Manifest,
+    ManifestBlob,
+    ManifestChild,
+    Repository,
+    Tag,
 )
 from data.model import oci
-from data.registry_model import datatypes
-from data.registry_model import registry_model
+from data.registry_model import datatypes, registry_model
 from data.registry_model.shared import SyntheticIDHandler
 from endpoints.test.shared import conduct_call
 from image.docker.schema1 import (
-    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA1_CONTENT_TYPES,
+    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
 )
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_CONTENT_TYPES,
-    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
 from image.oci import (
-    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
-    OCI_IMAGE_INDEX_CONTENT_TYPE,
     OCI_CONTENT_TYPES,
+    OCI_IMAGE_INDEX_CONTENT_TYPE,
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
 )
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import *  # noqa: F401, F403
-from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
-from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
-
+from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 BUSYBOX_MANIFEST_JSON = r"""{
    "schemaVersion": 1,

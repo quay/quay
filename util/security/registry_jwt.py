@@ -1,14 +1,11 @@
 import logging
 import time
-
 from functools import wraps
 
 import jwt
-
 from prometheus_client import Counter
 
 from util.security import jwtutil
-
 
 logger = logging.getLogger(__name__)
 

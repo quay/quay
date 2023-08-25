@@ -1,22 +1,21 @@
-import pytest
+from test.fixtures import *
 
-from mock import patch, Mock
-from httmock import urlmatch, HTTMock
+import pytest
+from httmock import HTTMock, urlmatch
+from mock import Mock, patch
 
 from data import model
+from notifications.models_interface import Notification, Repository
+from notifications.notificationevent import NotificationEvent
 from notifications.notificationmethod import (
-    QuayNotificationMethod,
+    CannotValidateNotificationMethodException,
     EmailMethod,
-    WebhookMethod,
     FlowdockMethod,
     HipchatMethod,
+    QuayNotificationMethod,
     SlackMethod,
-    CannotValidateNotificationMethodException,
+    WebhookMethod,
 )
-from notifications.notificationevent import NotificationEvent
-from notifications.models_interface import Repository, Notification
-
-from test.fixtures import *
 
 
 def assert_validated(method, method_config, error_message, namespace_name, repo_name):

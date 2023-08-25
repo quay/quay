@@ -1,4 +1,4 @@
-from oauth.base import OAuthService, OAuthEndpoint
+from oauth.base import OAuthEndpoint, OAuthService
 from util import slash_join
 
 

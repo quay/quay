@@ -1,10 +1,33 @@
 from __future__ import annotations
 
 import logging
-
 from typing import Callable
+
 from peewee import Select, fn
+
+import features
+from app import app, storage
+from data.database import ImageStorage, ImageStoragePlacement
+from data.database import Manifest as ManifestTable
+from data.database import ManifestBlob, ManifestChild
+from data.database import Tag as TagTable
+from data.database import (
+    db,
+    db_disallow_replica_use,
+    db_transaction,
+    get_epoch_timestamp_ms,
+)
+from data.model import (
+    ManifestDoesNotExist,
+    QuotaExceededException,
+    RepositoryDoesNotExist,
+    TagDoesNotExist,
+    namespacequota,
+    oci,
+    repository,
+)
 from data.model.oci.manifest import is_child_manifest
+from data.model.proxy_cache import get_proxy_cache_config_for_org
 from data.model.quota import (
     add_blob_size,
     blob_exists_in_namespace,
@@ -12,56 +35,31 @@ from data.model.quota import (
     is_blob_alive,
     reset_backfill,
 )
-
-import features
-from app import app, storage
-from data.database import (
-    db,
-    get_epoch_timestamp_ms,
-    db_disallow_replica_use,
-    db_transaction,
-    Manifest as ManifestTable,
-    ImageStorage,
-    ImageStoragePlacement,
-    ManifestBlob,
-    ManifestChild,
-    Tag as TagTable,
-)
-from data.model import (
-    oci,
-    namespacequota,
-    repository,
-    RepositoryDoesNotExist,
-    ManifestDoesNotExist,
-    TagDoesNotExist,
-    QuotaExceededException,
-)
-from data.model.repository import get_repository, create_repository
-from data.model.proxy_cache import get_proxy_cache_config_for_org
+from data.model.repository import create_repository, get_repository
 from data.registry_model.blobuploader import (
-    create_blob_upload,
-    complete_when_uploaded,
-    BlobTooLargeException,
-    BlobRangeMismatchException,
-    BlobUploadException,
     BlobDigestMismatchException,
+    BlobRangeMismatchException,
+    BlobTooLargeException,
+    BlobUploadException,
     BlobUploadSettings,
+    complete_when_uploaded,
+    create_blob_upload,
 )
+from data.registry_model.datatypes import Manifest, RepositoryReference, Tag
 from data.registry_model.registry_oci_model import OCIModel
-from data.registry_model.datatypes import Manifest, Tag, RepositoryReference
-from image.oci import OCI_IMAGE_MANIFEST_CONTENT_TYPE, OCI_IMAGE_INDEX_CONTENT_TYPE
-from image.shared import ManifestException
-from image.shared.interfaces import ManifestInterface
-from image.shared.schemas import parse_manifest_from_bytes
+from image.docker.schema1 import (
+    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
+    DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,
+    DockerSchema1Manifest,
+)
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
-from image.docker.schema1 import (
-    DockerSchema1Manifest,
-    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
-    DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,
-)
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
+from image.shared.schemas import parse_manifest_from_bytes
 from proxy import Proxy, UpstreamRegistryError
 from util.bytes import Bytes
 

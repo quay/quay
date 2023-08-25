@@ -4,12 +4,7 @@ import pytest
 from mock import Mock, patch
 
 from app import app, instance_keys, storage
-from data.database import (
-    IndexerVersion,
-    IndexStatus,
-    ManifestLegacyImage,
-    ManifestSecurityStatus,
-)
+from data.database import IndexerVersion, IndexStatus, ManifestSecurityStatus
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
 from data.secscan_model.datatypes import (

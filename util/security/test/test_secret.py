@@ -1,5 +1,6 @@
 import json
 import uuid
+
 import pytest
 
 from util.security.aes import AESCipher

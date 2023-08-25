@@ -1,6 +1,7 @@
-from collections import namedtuple
-import features
 import re
+from collections import namedtuple
+
+import features
 
 Scope = namedtuple("Scope", ["scope", "icon", "dangerous", "title", "description"])
 

@@ -3,16 +3,17 @@ import ssl
 import tempfile
 from ssl import SSLError
 from tempfile import NamedTemporaryFile
+from test.fixtures import *
 from unittest.mock import MagicMock, call
 
 import pytest
 from dateutil.parser import parse
-from mock import patch, Mock
+from mock import Mock, patch
 
-from .test_elasticsearch import logs_model, mock_db_model
 from data.logs_model import configure
-from test.fixtures import *
+
 from ..logs_producer.splunk_logs_producer import SplunkLogsProducer
+from .test_elasticsearch import logs_model, mock_db_model
 
 FAKE_SPLUNK_HOST = "fakesplunk"
 FAKE_SPLUNK_PORT = 443

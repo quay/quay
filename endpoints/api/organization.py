@@ -3,55 +3,47 @@ Manage organizations, members and OAuth applications.
 """
 
 import logging
-import recaptcha2
 
+import recaptcha2
 from flask import request
 
 import features
-
-from app import (
-    billing as stripe,
-    avatar,
-    all_queues,
-    authentication,
-    namespace_gc_queue,
-    ip_resolver,
-    app,
-    usermanager,
-)
-from endpoints.api import (
-    allow_if_superuser,
-    resource,
-    nickname,
-    ApiResource,
-    validate_json_request,
-    request_error,
-    related_user_resource,
-    internal_only,
-    require_user_admin,
-    log_action,
-    show_if,
-    path_param,
-    require_scope,
-    require_fresh_login,
-)
-from endpoints.exception import Unauthorized, NotFound
-from endpoints.api.user import User, PrivateRepositories
+from app import all_queues, app, authentication, avatar
+from app import billing as stripe
+from app import ip_resolver, namespace_gc_queue, usermanager
+from auth import scopes
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
-    OrganizationMemberPermission,
     CreateRepositoryPermission,
-    ViewTeamPermission,
+    OrganizationMemberPermission,
     SuperUserPermission,
+    ViewTeamPermission,
 )
-from auth.auth_context import get_authenticated_user
-from auth import scopes
 from data import model
-from data.database import ProxyCacheConfig
 from data.billing import get_plan
+from data.database import ProxyCacheConfig
+from endpoints.api import (
+    ApiResource,
+    allow_if_superuser,
+    internal_only,
+    log_action,
+    nickname,
+    path_param,
+    related_user_resource,
+    request_error,
+    require_fresh_login,
+    require_scope,
+    require_user_admin,
+    resource,
+    show_if,
+    validate_json_request,
+)
+from endpoints.api.user import PrivateRepositories, User
+from endpoints.exception import NotFound, Unauthorized
+from proxy import Proxy, UpstreamRegistryError
 from util.names import parse_robot_username
 from util.request import get_request_ip
-from proxy import Proxy, UpstreamRegistryError
 
 logger = logging.getLogger(__name__)
 

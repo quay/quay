@@ -1,10 +1,9 @@
 import json
-
 from contextlib import contextmanager
 
 from app import app, notification_queue
-from data import model
 from auth.auth_context import get_authenticated_user, get_validated_oauth_token
+from data import model
 
 DEFAULT_BATCH_SIZE = 1000
 

@@ -1,14 +1,14 @@
 import json
-import pytest
 
+import pytest
 from mock import Mock
 
 from buildtrigger.test.gitlabmock import get_gitlab_trigger
 from buildtrigger.triggerutil import (
-    SkipRequestException,
-    ValidationRequestException,
     InvalidPayloadException,
+    SkipRequestException,
     TriggerStartException,
+    ValidationRequestException,
 )
 from endpoints.building import PreparedBuild
 from util.morecollections import AttrDict

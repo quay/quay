@@ -6,52 +6,51 @@ import hashlib
 import json
 import logging
 import os
-
-from flask import request
 from urllib.parse import urlparse
 
-import features
+from flask import request
 
-from app import userfiles as user_files, build_logs, log_archive, dockerfile_build_queue
+import features
+from app import build_logs, dockerfile_build_queue, log_archive
+from app import userfiles as user_files
 from auth.permissions import (
-    ReadRepositoryPermission,
-    ModifyRepositoryPermission,
-    AdministerRepositoryPermission,
     AdministerOrganizationPermission,
+    AdministerRepositoryPermission,
+    ModifyRepositoryPermission,
+    ReadRepositoryPermission,
     SuperUserPermission,
 )
 from buildtrigger.basehandler import BuildTriggerHandler
-from data import database
-from data import model
+from data import database, model
 from data.buildlogs import BuildStatusRetrievalError
 from endpoints.api import (
-    RepositoryParamResource,
-    log_action,
-    parse_args,
-    query_param,
-    nickname,
-    resource,
-    require_repo_read,
-    require_repo_write,
-    validate_json_request,
     ApiResource,
-    internal_only,
-    format_date,
-    api,
-    path_param,
-    require_repo_admin,
+    RepositoryParamResource,
     abort,
+    api,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
+    format_date,
+    internal_only,
+    log_action,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
+    require_repo_admin,
+    require_repo_read,
+    require_repo_write,
+    resource,
+    validate_json_request,
 )
 from endpoints.building import (
-    start_build,
-    PreparedBuild,
-    MaximumBuildsQueuedException,
     BuildTriggerDisabledException,
+    MaximumBuildsQueuedException,
+    PreparedBuild,
+    start_build,
 )
-from endpoints.exception import Unauthorized, NotFound, InvalidRequest
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from util.names import parse_robot_username
 from util.request import get_request_ip
 

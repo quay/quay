@@ -1,5 +1,6 @@
-import pytest
+from test.fixtures import *
 
+import pytest
 from flask import session
 from flask_login import login_user
 from werkzeug.exceptions import HTTPException
@@ -8,11 +9,10 @@ from app import LoginWrappedDBUser
 from auth.auth_context import get_authenticated_user
 from auth.decorators import (
     extract_namespace_repo_from_session,
-    require_session_login,
     process_auth_or_cookie,
+    require_session_login,
 )
 from data import model
-from test.fixtures import *
 
 
 def test_extract_namespace_repo_from_session_missing(app):

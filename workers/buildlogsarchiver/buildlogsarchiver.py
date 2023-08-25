@@ -1,17 +1,15 @@
 import logging
 import time
-
 from gzip import GzipFile
 from tempfile import SpooledTemporaryFile
 
-from app import build_logs, log_archive, app
+from app import app, build_logs, log_archive
 from data.archivedlogs import JSON_MIMETYPE
 from data.database import CloseForLongOperation
 from util.streamingjsonencoder import StreamingJSONEncoder
 from workers.buildlogsarchiver.models_pre_oci import pre_oci_model as model
-from workers.worker import Worker
 from workers.gunicorn_worker import GunicornWorker
-
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

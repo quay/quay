@@ -1,20 +1,18 @@
-import logging
 import json
-import time
+import logging
 import os
-
-from collections import namedtuple
-
-from threading import Thread, Lock
+import time
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
-from cachetools.func import ttl_cache, lru_cache
-from netaddr import IPNetwork, IPAddress, IPSet, AddrFormatError
+from collections import namedtuple
+from threading import Lock, Thread
+from typing import Dict
 
 import geoip2.database
 import geoip2.errors
 import requests
-from typing import Dict
+from cachetools.func import lru_cache, ttl_cache
+from netaddr import AddrFormatError, IPAddress, IPNetwork, IPSet
+from six import add_metaclass
 
 from util.abchelpers import nooper
 

@@ -1,11 +1,11 @@
 import uuid
+from test.fixtures import *
 
 from flask_login import login_user
 
 from app import LoginWrappedDBUser
-from data import model
 from auth.cookie import validate_session_cookie
-from test.fixtures import *
+from data import model
 
 
 def test_anonymous_cookie(app):

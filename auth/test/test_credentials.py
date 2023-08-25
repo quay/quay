@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from auth.credentials import validate_credentials, CredentialKind
+from test.fixtures import *
+
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
-    OAUTH_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
+    OAUTH_TOKEN_USERNAME,
 )
+from auth.credentials import CredentialKind, validate_credentials
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
-
-from test.fixtures import *
 
 
 def test_valid_user(app):

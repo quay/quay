@@ -1,14 +1,14 @@
 import logging
-
 from collections import namedtuple
-from peewee import IntegrityError, JOIN
+from datetime import date, datetime, timedelta
 
-from datetime import date, timedelta, datetime
+from peewee import JOIN, IntegrityError
+
 from data.database import (
-    Repository,
     LogEntry,
     LogEntry2,
     LogEntry3,
+    Repository,
     RepositoryActionCount,
     RepositorySearchScore,
     db_random_func,

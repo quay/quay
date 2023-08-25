@@ -1,19 +1,19 @@
-from storage.multicdnstorage import MultiCDNStorage
-from storage.cloudflarestorage import CloudFlareS3Storage
-from storage.local import LocalStorage
+from storage.azurestorage import AzureStorage
 from storage.cloud import (
-    S3Storage,
+    CloudFrontedS3Storage,
     GoogleCloudStorage,
     RadosGWStorage,
-    CloudFrontedS3Storage,
     RHOCSStorage,
+    S3Storage,
 )
-from storage.fakestorage import FakeStorage
+from storage.cloudflarestorage import CloudFlareS3Storage
 from storage.distributedstorage import DistributedStorage
+from storage.downloadproxy import DownloadProxy
+from storage.fakestorage import FakeStorage
+from storage.local import LocalStorage
+from storage.multicdnstorage import MultiCDNStorage
 from storage.storagecontext import StorageContext
 from storage.swift import SwiftStorage
-from storage.azurestorage import AzureStorage
-from storage.downloadproxy import DownloadProxy
 
 TYPE_LOCAL_STORAGE = "LocalStorage"
 

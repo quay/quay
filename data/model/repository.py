@@ -1,56 +1,53 @@
+import json
 import logging
 import random
-import json
 import uuid
-
+from datetime import datetime, timedelta
 from enum import Enum
-from datetime import timedelta, datetime
-from peewee import Case, JOIN, fn, SQL, IntegrityError
+
 from cachetools.func import ttl_cache
+from peewee import JOIN, SQL, Case, IntegrityError, fn
 
 import data
-from data.model import (
-    config,
-    DataModelException,
-    db_transaction,
-    storage,
-    permission,
-    oci,
-    _basequery,
-)
 from data.database import (
-    Repository,
-    RepositoryState,
+    ApprTag,
+    BlobUpload,
     DeletedRepository,
-    Namespace,
-    RepositoryTag,
-    Star,
-    Image,
+    ExternalNotificationEvent,
     ImageStorage,
+    Label,
+    Manifest,
+    ManifestBlob,
+    ManifestChild,
+    Namespace,
+    QuotaRepositorySize,
+    Repository,
+    RepositoryActionCount,
+    RepositoryAuthorizedEmail,
+    RepositoryKind,
+    RepositoryNotification,
+    RepositoryPermission,
+    RepositorySearchScore,
+    RepositoryState,
+    Role,
+    Star,
+    Tag,
     User,
     Visibility,
-    RepositoryPermission,
-    RepositoryActionCount,
-    Role,
-    RepositoryAuthorizedEmail,
-    Label,
-    db_for_update,
-    get_epoch_timestamp,
-    db_random_func,
     db_concat_func,
-    RepositorySearchScore,
-    RepositoryKind,
-    ApprTag,
-    ManifestLegacyImage,
-    Manifest,
-    ManifestChild,
-    ExternalNotificationEvent,
-    RepositoryNotification,
-    QuotaRepositorySize,
-    ManifestBlob,
-    BlobUpload,
-    Tag,
+    db_for_update,
+    db_random_func,
+    get_epoch_timestamp,
     get_epoch_timestamp_ms,
+)
+from data.model import (
+    DataModelException,
+    _basequery,
+    config,
+    db_transaction,
+    oci,
+    permission,
+    storage,
 )
 from data.text import prefix_search
 from util.itertoolrecipes import take

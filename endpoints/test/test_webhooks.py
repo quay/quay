@@ -1,11 +1,11 @@
 import base64
-import pytest
+from test.fixtures import *
 
+import pytest
 from flask import url_for
 
 from data import model
 from endpoints.test.shared import conduct_call, gen_basic_auth
-from test.fixtures import *
 
 
 def test_start_build_disabled_trigger(app, client):

@@ -1,13 +1,12 @@
 import base64
-import os
 import json
+import os
 import uuid
+from collections import namedtuple
+from contextlib import contextmanager
 
 import pytest
-
-from contextlib import contextmanager
-from collections import namedtuple
-from httmock import urlmatch, HTTMock
+from httmock import HTTMock, urlmatch
 
 from util.config.provider import KubernetesConfigProvider
 

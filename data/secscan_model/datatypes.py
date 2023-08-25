@@ -1,5 +1,5 @@
-from enum import IntEnum, unique
 from collections import namedtuple
+from enum import IntEnum, unique
 
 
 @unique

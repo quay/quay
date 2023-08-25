@@ -2,7 +2,6 @@ import hashlib
 import logging
 import tarfile
 
-
 TarError = tarfile.TarError
 logger = logging.getLogger(__name__)
 

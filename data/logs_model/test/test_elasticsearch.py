@@ -6,14 +6,18 @@ import json
 from datetime import datetime, timedelta
 
 import pytest
-from mock import patch, Mock
 from dateutil.parser import parse
+from httmock import HTTMock, urlmatch
+from mock import Mock, patch
 
-from httmock import urlmatch, HTTMock
-
+from data.logs_model import LogsModelProxy, configure
+from data.logs_model.elastic_logs import (
+    INDEX_DATE_FORMAT,
+    INDEX_NAME_PREFIX,
+    ElasticsearchLogs,
+)
 from data.model.log import _json_serialize
-from data.logs_model.elastic_logs import ElasticsearchLogs, INDEX_NAME_PREFIX, INDEX_DATE_FORMAT
-from data.logs_model import configure, LogsModelProxy
+
 from .mock_elasticsearch import *
 
 FAKE_ES_HOST = "fakees"

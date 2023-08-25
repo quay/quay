@@ -3,18 +3,18 @@ List and manage repository signing information.
 """
 
 import logging
-import features
 
+import features
 from app import tuf_metadata_api
 from endpoints.api import (
-    require_repo_read,
-    path_param,
-    RepositoryParamResource,
-    resource,
-    nickname,
-    show_if,
-    disallow_for_app_repositories,
     NotFound,
+    RepositoryParamResource,
+    disallow_for_app_repositories,
+    nickname,
+    path_param,
+    require_repo_read,
+    resource,
+    show_if,
 )
 from endpoints.api.signing_models_pre_oci import pre_oci_model as model
 

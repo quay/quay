@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 
-import pytest
-
 from base64 import b64encode
+from test.fixtures import *
+
+import pytest
 
 from auth.basic import validate_basic_auth
 from auth.credentials import (
     ACCESS_TOKEN_USERNAME,
-    OAUTH_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
+    OAUTH_TOKEN_USERNAME,
 )
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
-
-from test.fixtures import *
 
 
 def _token(username, password):

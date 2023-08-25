@@ -1,15 +1,14 @@
-import pytest
-
-from mock import patch
-
-from data import model, database
-from data.users import get_users_handler, DatabaseUsers
-from endpoints.oauth.login import _conduct_oauth_login
-from oauth.services.github import GithubOAuthService
 from test.analytics import analytics
+from test.fixtures import *
 from test.test_ldap import mock_ldap
 
-from test.fixtures import *
+import pytest
+from mock import patch
+
+from data import database, model
+from data.users import DatabaseUsers, get_users_handler
+from endpoints.oauth.login import _conduct_oauth_login
+from oauth.services.github import GithubOAuthService
 
 
 @pytest.fixture(params=[None, "username", "email"])

@@ -1,20 +1,17 @@
-from abc import ABCMeta, abstractmethod
-from collections import namedtuple
-from contextlib import ContextDecorator
-
 import datetime
 import json
 import logging
 import re
 import time
-
+from abc import ABCMeta, abstractmethod
+from collections import namedtuple
+from contextlib import ContextDecorator
 from enum import IntEnum, unique
 
 import redis
 
 from util import slash_join
 from util.expiresdict import ExpiresDict
-
 
 logger = logging.getLogger(__name__)
 

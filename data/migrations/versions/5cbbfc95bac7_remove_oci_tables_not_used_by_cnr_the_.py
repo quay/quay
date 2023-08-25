@@ -12,7 +12,8 @@ down_revision = "1783530bee68"
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
-from util.migrate import UTF8LongText, UTF8CharField
+
+from util.migrate import UTF8CharField, UTF8LongText
 
 
 def upgrade(op, tables, tester):

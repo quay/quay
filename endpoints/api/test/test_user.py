@@ -1,14 +1,13 @@
-import pytest
+from test.fixtures import *
 
+import pytest
+from flask import url_for
 from mock import patch
 
-from flask import url_for
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.user import User
 from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
-
-from test.fixtures import *
 
 
 def test_user_metadata_update(client):

@@ -4,15 +4,14 @@ import time
 from peewee import fn
 
 import features
-
 from app import app
 from data.database import Manifest
-from image.shared.schemas import parse_manifest_from_bytes, ManifestException
-from workers.worker import Worker
-from util.migrate.allocator import yield_random_entries
+from image.shared.schemas import ManifestException, parse_manifest_from_bytes
 from util.bytes import Bytes
 from util.log import logfile_path
+from util.migrate.allocator import yield_random_entries
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

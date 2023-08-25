@@ -1,4 +1,4 @@
-from data.database import QuayRelease, QuayRegion, QuayService
+from data.database import QuayRegion, QuayRelease, QuayService
 
 
 def set_region_release(service_name, region_name, version):

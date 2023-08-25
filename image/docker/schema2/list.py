@@ -1,22 +1,24 @@
-import logging
 import json
+import logging
 
 from cachetools.func import lru_cache
-from jsonschema import validate as validate_schema, ValidationError
+from jsonschema import ValidationError
+from jsonschema import validate as validate_schema
 
 from digest import digest_tools
+from image.docker.schema1 import (
+    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
+    DockerSchema1Manifest,
+)
+from image.docker.schema2 import (
+    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+)
+from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestListInterface
 from image.shared.schemautil import LazyManifestLoader
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
-from image.docker.schema1 import DockerSchema1Manifest
-from image.docker.schema2 import (
-    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
-    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-)
-from image.docker.schema2.manifest import DockerSchema2Manifest
 from util.bytes import Bytes
-
 
 logger = logging.getLogger(__name__)
 

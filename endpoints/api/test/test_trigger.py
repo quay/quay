@@ -1,12 +1,13 @@
-import pytest
 import json
+from test.fixtures import *
+
+import pytest
 
 from data import model
-from endpoints.api.trigger_analyzer import is_parent
-from endpoints.api.trigger import BuildTrigger
 from endpoints.api.test.shared import conduct_api_call
+from endpoints.api.trigger import BuildTrigger
+from endpoints.api.trigger_analyzer import is_parent
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

@@ -1,16 +1,16 @@
+import logging
+
 import jsonschema
 import jwt
-import logging
 
 from app import instance_keys
 from util.security import jwtutil
 from util.security.registry_jwt import (
-    generate_bearer_token,
-    InvalidBearerTokenException,
     ALGORITHM,
     JWT_CLOCK_SKEW_SECONDS,
+    InvalidBearerTokenException,
+    generate_bearer_token,
 )
-
 
 logger = logging.getLogger(__name__)
 

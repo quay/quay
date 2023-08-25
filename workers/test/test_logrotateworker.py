@@ -1,26 +1,23 @@
 import os.path
-import pytest
-from unittest.mock import patch
 from datetime import datetime, timedelta
+from test.fixtures import *
+from unittest.mock import patch
+
+import pytest
 
 from app import storage
-
 from data import model
 from data.database import LogEntry, LogEntry2, LogEntry3
-from data.logs_model.elastic_logs import INDEX_NAME_PREFIX, INDEX_DATE_FORMAT
-from data.logs_model.datatypes import AggregatedLogCount, LogEntriesPage, Log
-from data.logs_model.document_logs_model import DocumentLogsModel
-from data.logs_model.test.fake_elasticsearch import FAKE_ES_HOST, fake_elasticsearch
-from data.logs_model.table_logs_model import TableLogsModel
-from data.logs_model.combined_model import CombinedLogsModel
-from data.logs_model.inmemory_model import InMemoryModel
-
 from data.logs_model import LogsModelProxy
-
+from data.logs_model.combined_model import CombinedLogsModel
+from data.logs_model.datatypes import AggregatedLogCount, Log, LogEntriesPage
+from data.logs_model.document_logs_model import DocumentLogsModel
+from data.logs_model.elastic_logs import INDEX_DATE_FORMAT, INDEX_NAME_PREFIX
+from data.logs_model.inmemory_model import InMemoryModel
+from data.logs_model.table_logs_model import TableLogsModel
+from data.logs_model.test.fake_elasticsearch import FAKE_ES_HOST, fake_elasticsearch
 from util.timedeltastring import convert_to_timedelta
-from workers.logrotateworker import LogRotateWorker, SAVE_PATH, SAVE_LOCATION
-
-from test.fixtures import *
+from workers.logrotateworker import SAVE_LOCATION, SAVE_PATH, LogRotateWorker
 
 
 @pytest.fixture()

@@ -18,12 +18,9 @@ from typing import (
     Optional,
     Sequence,
     Text,
-    Tuple as TupleT,
-    Type,
-    TypeVar,
-    Union,
-    overload,
 )
+from typing import Tuple as TupleT
+from typing import Type, TypeVar, Union, overload
 
 _T = TypeVar("_T")
 _TModel = TypeVar("_TModel", bound="Model")

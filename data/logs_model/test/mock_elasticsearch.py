@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import json
-
 from datetime import datetime
+
 from dateutil.parser import parse
 
-from data.logs_model.datatypes import LogEntriesPage, Log, AggregatedLogCount
+from data.logs_model.datatypes import AggregatedLogCount, Log, LogEntriesPage
 
 
 def _status(d, code=200):

@@ -2,14 +2,15 @@
 Subscribe to plans.
 """
 import logging
+
 import stripe
+
 import features
 from app import billing
-from endpoints.api import request_error, log_action
 from data.billing import PLANS
+from endpoints.api import log_action, request_error
 from endpoints.api.subscribe_models_pre_oci import data_model as model
 from endpoints.exception import NotFound
-
 
 logger = logging.getLogger(__name__)
 

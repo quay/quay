@@ -2,9 +2,9 @@ import copy
 
 import pytest
 
-from buildtrigger.triggerutil import TriggerStartException
 from buildtrigger.test.bitbucketmock import get_bitbucket_trigger
-from buildtrigger.test.githubmock import get_github_trigger, GithubBuildTrigger
+from buildtrigger.test.githubmock import GithubBuildTrigger, get_github_trigger
+from buildtrigger.triggerutil import TriggerStartException
 from endpoints.building import PreparedBuild
 
 

@@ -1,7 +1,7 @@
 import logging
 
-from buildman.manager.orchestrator_canceller import OrchestratorCanceller
 from buildman.manager.noop_canceller import NoopCanceller
+from buildman.manager.orchestrator_canceller import OrchestratorCanceller
 
 logger = logging.getLogger(__name__)
 

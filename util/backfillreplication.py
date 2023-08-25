@@ -1,17 +1,17 @@
 import logging
-import features
 
-from app import storage, image_replication_queue
+import features
+from app import image_replication_queue, storage
+from data import model
 from data.database import (
     ImageStorage,
-    Repository,
-    User,
-    ImageStoragePlacement,
     ImageStorageLocation,
+    ImageStoragePlacement,
     Manifest,
     ManifestBlob,
+    Repository,
+    User,
 )
-from data import model
 from util.registry.replication import queue_storage_replication
 
 

@@ -1,21 +1,20 @@
 import features
-
 from app import avatar
 from data import model
 from data.database import (
-    User,
     FederatedLogin,
-    RobotAccountToken,
-    Team as TeamTable,
     Repository,
     RobotAccountMetadata,
+    RobotAccountToken,
 )
+from data.database import Team as TeamTable
+from data.database import User
 from endpoints.api.robot_models_interface import (
-    RobotInterface,
+    Permission,
     Robot,
+    RobotInterface,
     RobotWithPermissions,
     Team,
-    Permission,
 )
 
 

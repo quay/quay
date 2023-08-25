@@ -1,6 +1,6 @@
 import pytest
 
-from util.failover import failover, FailoverException
+from util.failover import FailoverException, failover
 
 
 class FinishedException(Exception):

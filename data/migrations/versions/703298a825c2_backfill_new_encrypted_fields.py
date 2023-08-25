@@ -11,46 +11,48 @@ down_revision = "c13c8052f7a6"
 
 import logging
 import uuid
-
 from datetime import datetime
 
+import sqlalchemy as sa
 from peewee import (
     JOIN,
-    IntegrityError,
-    DateTimeField,
-    CharField,
-    ForeignKeyField,
     BooleanField,
-    TextField,
+    CharField,
+    DateTimeField,
+    ForeignKeyField,
     IntegerField,
+    IntegrityError,
+    TextField,
 )
 
-import sqlalchemy as sa
-
 from data.database import (
-    BaseModel,
-    User,
-    Repository,
     AccessTokenKind,
-    Role,
-    random_string_generator,
-    QuayUserField,
+    BaseModel,
     BuildTriggerService,
-    uuid_generator,
     DisableReason,
+    QuayUserField,
+    Repository,
+    Role,
+    User,
+    random_string_generator,
+    uuid_generator,
 )
 from data.fields import (
     Credential,
+    CredentialField,
     DecryptedValue,
     EncryptedCharField,
     EncryptedTextField,
     EnumField,
-    CredentialField,
 )
-from data.model.token import ACCESS_TOKEN_NAME_PREFIX_LENGTH
-from data.model.appspecifictoken import TOKEN_NAME_PREFIX_LENGTH as AST_TOKEN_NAME_PREFIX_LENGTH
-from data.model.oauth import ACCESS_TOKEN_PREFIX_LENGTH as OAUTH_ACCESS_TOKEN_PREFIX_LENGTH
+from data.model.appspecifictoken import (
+    TOKEN_NAME_PREFIX_LENGTH as AST_TOKEN_NAME_PREFIX_LENGTH,
+)
+from data.model.oauth import (
+    ACCESS_TOKEN_PREFIX_LENGTH as OAUTH_ACCESS_TOKEN_PREFIX_LENGTH,
+)
 from data.model.oauth import AUTHORIZATION_CODE_PREFIX_LENGTH
+from data.model.token import ACCESS_TOKEN_NAME_PREFIX_LENGTH
 
 BATCH_SIZE = 10
 

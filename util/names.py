@@ -1,11 +1,10 @@
-import urllib.request
-import urllib.parse
-import urllib.error
 import re
+import urllib.error
+import urllib.parse
+import urllib.request
+from uuid import uuid4
 
 from text_unidecode import unidecode
-
-from uuid import uuid4
 
 REPOSITORY_NAME_REGEX = re.compile(r"^[a-z0-9][\.a-z0-9_-]{0,254}$")
 # Extended repostitory name regex: allows "/" in repo names

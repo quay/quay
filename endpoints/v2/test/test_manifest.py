@@ -1,16 +1,17 @@
 import time
+from test.fixtures import *  # noqa: F401, F403
 from unittest.mock import patch
 
 from flask import url_for
 from playhouse.test_utils import count_queries
 
-from app import instance_keys, app as realapp
+from app import app as realapp
+from app import instance_keys
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
 from data.registry_model import registry_model
 from endpoints.test.shared import conduct_call
-from test.fixtures import *  # noqa: F401, F403
-from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
+from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 
 def test_e2e_query_count_manifest_norewrite(client, app):

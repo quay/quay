@@ -1,42 +1,48 @@
-from datetime import timedelta
-from unittest.mock import MagicMock, patch
 import json
+from datetime import timedelta
+from test.fixtures import *  # noqa: F401,F403
+from unittest.mock import MagicMock, patch
 
 import pytest
 from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data.database import (
-    Manifest,
-    ManifestChild,
-    ManifestBlob,
     ImageStorage,
     ImageStorageLocation,
+    Manifest,
+    ManifestBlob,
+    ManifestChild,
     Tag,
     get_epoch_timestamp_ms,
 )
-from data.model import oci, TagDoesNotExist, QuotaExceededException, namespacequota, user
+from data.model import (
+    QuotaExceededException,
+    TagDoesNotExist,
+    namespacequota,
+    oci,
+    user,
+)
 from data.model.blob import store_blob_record_and_temp_link
+from data.model.oci.manifest import get_or_create_manifest
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
-from data.model.user import get_user
 from data.model.repository import create_repository
 from data.model.storage import get_layer_path
-from data.model.oci.manifest import get_or_create_manifest
+from data.model.user import get_user
 from data.registry_model import registry_model
-from data.registry_model.registry_proxy_model import ProxyModel
 from data.registry_model.datatypes import Manifest as ManifestType
+from data.registry_model.registry_proxy_model import ProxyModel
 from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
+from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from test.fixtures import *  # noqa: F401,F403
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
 from util.bytes import Bytes
 

@@ -3,62 +3,59 @@ Superuser API.
 """
 import logging
 import os
-import string
 import socket
-
+import string
 from datetime import datetime
 from random import SystemRandom
 
-from flask import request, make_response, jsonify
-
 from cryptography.hazmat.primitives import serialization
-from data.model.quota import get_registry_size, queue_registry_size_calculation
+from flask import jsonify, make_response, request
 
 import features
-
-from app import app, avatar, usermanager, authentication, config_provider
+from _init import ROOT_DIR
+from app import app, authentication, avatar, config_provider, usermanager
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
-from data.model import user, namespacequota, InvalidNamespaceQuota, DataModelException
+from data.model import DataModelException, InvalidNamespaceQuota, namespacequota, user
+from data.model.quota import get_registry_size, queue_registry_size_calculation
 from endpoints.api import (
     ApiResource,
-    nickname,
-    resource,
-    validate_json_request,
-    internal_only,
-    require_scope,
-    show_if,
-    parse_args,
-    query_param,
-    require_fresh_login,
-    path_param,
-    verify_not_prod,
-    page_support,
-    log_action,
-    format_date,
     InvalidRequest,
+    InvalidResponse,
     NotFound,
     Unauthorized,
-    InvalidResponse,
+    format_date,
+    internal_only,
+    log_action,
+    nickname,
+    page_support,
+    parse_args,
+    path_param,
+    query_param,
+    request_error,
+    require_fresh_login,
+    require_scope,
+    resource,
+    show_if,
+    validate_json_request,
+    verify_not_prod,
 )
-from endpoints.api import request_error
 from endpoints.api.build import get_logs_or_log_url
-from endpoints.api.namespacequota import quota_view, limit_view, get_quota
-from endpoints.api.superuser_models_pre_oci import (
-    pre_oci_model,
-    ServiceKeyDoesNotExist,
-    ServiceKeyAlreadyApproved,
-    InvalidRepositoryBuildException,
-)
 from endpoints.api.logs import _validate_logs_arguments
+from endpoints.api.namespacequota import get_quota, limit_view, quota_view
+from endpoints.api.superuser_models_pre_oci import (
+    InvalidRepositoryBuildException,
+    ServiceKeyAlreadyApproved,
+    ServiceKeyDoesNotExist,
+    pre_oci_model,
+)
 from util.parsing import truthy_bool
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name
-from _init import ROOT_DIR
 
 logger = logging.getLogger(__name__)
 

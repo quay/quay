@@ -1,17 +1,17 @@
-import logging
 import json
+import logging
 import os
-
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
 from datetime import datetime
-from pymemcache.client.base import PooledClient
+
 from prometheus_client import Counter
-from redis import StrictRedis, RedisError
+from pymemcache.client.base import PooledClient
+from redis import RedisError, StrictRedis
 from six import add_metaclass
 
-from data.database import CloseForLongOperation
 from data.cache.redis_cache import redis_cache_from_config
+from data.database import CloseForLongOperation
 from util.expiresdict import ExpiresDict
 from util.timedeltastring import convert_to_timedelta
 from util.workers import get_worker_connections_count

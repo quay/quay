@@ -1,37 +1,31 @@
 import copy
-import logging.config
 import json
+import logging.config
 import os
 import shutil
-
 from tempfile import NamedTemporaryFile
+from test.registry.liveserverfixture import LiveServerExecutor
 
 import pytest
-
-from flask import jsonify, g
+from flask import g, jsonify
 from flask_principal import Identity
 
 from app import storage
+from data import model
 from data.database import (
-    close_db_filter,
-    configure,
-    QueueItem,
     ImageStorage,
-    TagManifest,
-    TagManifestToManifest,
     Manifest,
-    ManifestLegacyImage,
     ManifestBlob,
     NamespaceGeoRestriction,
+    QueueItem,
     User,
+    close_db_filter,
+    configure,
 )
-from data import model
 from data.registry_model import registry_model
 from endpoints.csrf import generate_csrf_token
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
 from util.log import logfile_path
-
-from test.registry.liveserverfixture import LiveServerExecutor
 
 
 @pytest.fixture()
@@ -138,11 +132,8 @@ def registry_server_executor(app):
         return "OK"
 
     def delete_manifests():
-        ManifestLegacyImage.delete().execute()
         ManifestBlob.delete().execute()
         Manifest.delete().execute()
-        TagManifestToManifest.delete().execute()
-        TagManifest.delete().execute()
         return "OK"
 
     def set_geo_block_for_namespace(namespace_name, iso_country_code):

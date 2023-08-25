@@ -1,5 +1,5 @@
-from endpoints.test.shared import conduct_call
 from endpoints.api import api
+from endpoints.test.shared import conduct_call
 
 
 def conduct_api_call(client, resource, method, params, body=None, expected_code=200, headers=None):

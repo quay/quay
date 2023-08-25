@@ -1,10 +1,15 @@
-import pytest
-from data.database import DeletedNamespace, User
+from test.fixtures import *
 
-from endpoints.api.superuser import SuperUserList, SuperUserManagement, SuperUserOrganizationList
+import pytest
+
+from data.database import DeletedNamespace, User
+from endpoints.api.superuser import (
+    SuperUserList,
+    SuperUserManagement,
+    SuperUserOrganizationList,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

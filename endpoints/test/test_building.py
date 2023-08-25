@@ -1,15 +1,15 @@
+from test.fixtures import *
+
 import pytest
 
+from buildtrigger.triggerutil import SkipRequestException, raise_if_skipped_build
 from data import model
-from buildtrigger.triggerutil import raise_if_skipped_build, SkipRequestException
 from endpoints.building import (
-    start_build,
-    PreparedBuild,
-    MaximumBuildsQueuedException,
     BuildTriggerDisabledException,
+    MaximumBuildsQueuedException,
+    PreparedBuild,
+    start_build,
 )
-
-from test.fixtures import *
 
 
 def test_maximum_builds(app):

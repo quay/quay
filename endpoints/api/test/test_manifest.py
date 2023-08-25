@@ -1,9 +1,9 @@
+from test.fixtures import *
+
 from data.registry_model import registry_model
 from endpoints.api.manifest import RepositoryManifest
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-
-from test.fixtures import *
 
 
 def test_repository_manifest(client):

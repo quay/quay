@@ -1,13 +1,12 @@
 import base64
+import json
 import pickle
 import string
-import json
-
 from random import SystemRandom
 
 import bcrypt
+from peewee import CharField, SmallIntegerField, TextField
 
-from peewee import TextField, CharField, SmallIntegerField
 from data.text import prefix_search
 from util.bytes import Bytes
 

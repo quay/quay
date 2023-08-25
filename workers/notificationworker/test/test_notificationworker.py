@@ -1,24 +1,22 @@
-import pytest
-
-from mock import patch, Mock
-from httmock import urlmatch, HTTMock
-
-from notifications.notificationmethod import (
-    QuayNotificationMethod,
-    EmailMethod,
-    WebhookMethod,
-    FlowdockMethod,
-    HipchatMethod,
-    SlackMethod,
-    CannotValidateNotificationMethodException,
-)
-from notifications.notificationevent import RepoPushEvent
-from notifications.models_interface import Repository
-from workers.notificationworker.notificationworker import NotificationWorker
-
 from test.fixtures import *
 
+import pytest
+from httmock import HTTMock, urlmatch
+from mock import Mock, patch
+
+from notifications.models_interface import Repository
+from notifications.notificationevent import RepoPushEvent
+from notifications.notificationmethod import (
+    CannotValidateNotificationMethodException,
+    EmailMethod,
+    FlowdockMethod,
+    HipchatMethod,
+    QuayNotificationMethod,
+    SlackMethod,
+    WebhookMethod,
+)
 from workers.notificationworker.models_pre_oci import pre_oci_model as model
+from workers.notificationworker.notificationworker import NotificationWorker
 
 
 def test_basic_notification_endtoend(initialized_db):

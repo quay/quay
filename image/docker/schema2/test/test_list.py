@@ -1,22 +1,23 @@
 import json
+
 import pytest
 
 from image.docker.schema1 import (
-    DockerSchema1Manifest,
     DOCKER_SCHEMA1_CONTENT_TYPES,
+    DockerSchema1Manifest,
     DockerSchema1ManifestBuilder,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
-from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.docker.schema2.list import (
-    MalformedSchema2ManifestList,
     DockerSchema2ManifestList,
     DockerSchema2ManifestListBuilder,
+    MalformedSchema2ManifestList,
     MismatchManifestException,
 )
+from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.docker.schema2.test.test_manifest import MANIFEST_BYTES as v22_bytes
-from image.shared.schemautil import ContentRetrieverForTesting
 from image.docker.test.test_schema1 import MANIFEST_BYTES as v21_bytes
+from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 
 

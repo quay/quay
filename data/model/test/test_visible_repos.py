@@ -1,7 +1,6 @@
-from data import model
-
 from test.fixtures import *
 
+from data import model
 
 NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"

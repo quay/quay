@@ -4,23 +4,23 @@ Manage default permissions added to repositories.
 
 from flask import request
 
-from endpoints.api import (
-    allow_if_superuser,
-    resource,
-    nickname,
-    ApiResource,
-    validate_json_request,
-    request_error,
-    log_action,
-    path_param,
-    require_scope,
-)
-from endpoints.exception import Unauthorized, NotFound
-from auth.permissions import AdministerOrganizationPermission
-from auth.auth_context import get_authenticated_user
-from auth import scopes
-from data import model
 from app import avatar
+from auth import scopes
+from auth.auth_context import get_authenticated_user
+from auth.permissions import AdministerOrganizationPermission
+from data import model
+from endpoints.api import (
+    ApiResource,
+    allow_if_superuser,
+    log_action,
+    nickname,
+    path_param,
+    request_error,
+    require_scope,
+    resource,
+    validate_json_request,
+)
+from endpoints.exception import NotFound, Unauthorized
 
 
 def prototype_view(proto, org_members):

@@ -1,10 +1,11 @@
 import json
 import logging
 
-from app import get_app_url
-from auth.decorators import require_session_login
-from auth.auth_context import get_authenticated_user
 from flask import Blueprint, make_response, redirect
+
+from app import get_app_url
+from auth.auth_context import get_authenticated_user
+from auth.decorators import require_session_login
 
 logger = logging.getLogger(__name__)
 wellknown = Blueprint("wellknown", __name__)

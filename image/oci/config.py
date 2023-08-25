@@ -59,17 +59,17 @@ Example:
 """
 
 import copy
-import json
 import hashlib
-
+import json
 from collections import namedtuple
-from jsonschema import validate as validate_schema, ValidationError
+
 from dateutil.parser import parse as parse_date
+from jsonschema import ValidationError
+from jsonschema import validate as validate_schema
 
 from digest import digest_tools
 from image.shared import ManifestException
 from util.bytes import Bytes
-
 
 CONFIG_HISTORY_KEY = "history"
 CONFIG_ROOTFS_KEY = "rootfs"

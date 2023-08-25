@@ -8,11 +8,11 @@ Create Date: 2017-03-28 15:01:31.073382
 
 # revision identifiers, used by Alembic.
 import json
-
 import logging
+
+import sqlalchemy as sa
 from alembic.script.revision import RevisionError
 from alembic.util import CommandError
-import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 revision = "53e2ac668296"
