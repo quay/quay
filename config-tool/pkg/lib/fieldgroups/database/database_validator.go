@@ -32,7 +32,7 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 	}
 
 	sslrootcertTmpPath := fg.DbConnectionArgs.SslRootCert
-        if fg.DbConnectionArgs.SslRootCert == "" {
+	if fg.DbConnectionArgs.SslRootCert == "" {
 		if fg.DbConnectionArgs.SslMode == "verify-full" || fg.DbConnectionArgs.SslMode == "verify-ca" {
 			// Write database.pem needed for db validation, if any, to a temp file
 			tmpCert, err := ioutil.TempFile("/tmp", "database.*.pem")
@@ -45,12 +45,12 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 				errors = append(errors, newError)
 				return errors
 			}
-	
+
 			defer func() {
 				tmpCert.Close()
 				os.Remove(tmpCert.Name())
 			}()
-	
+
 			if _, err := tmpCert.Write(opts.Certificates["database.pem"]); err != nil {
 				newError := shared.ValidationError{
 					Tags:       []string{"DB_URI"},
@@ -60,10 +60,10 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 				errors = append(errors, newError)
 				return errors
 			}
-	
+
 			sslrootcertTmpPath = tmpCert.Name()
 		}
-	} else { 
+	} else {
 		sslrootcertTmpPath = fg.DbConnectionArgs.SslRootCert
 	}
 
