@@ -2,7 +2,6 @@ import logging
 
 from data.userfiles import DelegateUserfiles
 
-
 JSON_MIMETYPE = "application/json"
 
 

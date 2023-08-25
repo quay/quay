@@ -1,6 +1,6 @@
 # pylint: disable=protected-access
 
-from functools import wraps, total_ordering
+from functools import total_ordering, wraps
 
 
 class FromDictionaryException(Exception):

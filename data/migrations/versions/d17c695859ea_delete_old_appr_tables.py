@@ -11,8 +11,9 @@ revision = "d17c695859ea"
 down_revision = "5d463ea1e8a8"
 
 import sqlalchemy as sa
-from sqlalchemy.sql import table, column
-from util.migrate import UTF8LongText, UTF8CharField
+from sqlalchemy.sql import column, table
+
+from util.migrate import UTF8CharField, UTF8LongText
 
 
 def upgrade(op, tables, tester):

@@ -1,18 +1,16 @@
 import logging.config
 import os
+import threading
 import time
 
 import features
-import threading
-
 from app import app
 from data.secscan_model import secscan_model
-from workers.gunicorn_worker import GunicornWorker
-from workers.worker import Worker
+from endpoints.v2 import v2_bp
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
-from endpoints.v2 import v2_bp
-
+from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

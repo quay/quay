@@ -1,10 +1,9 @@
 import logging
 import time
-
 from datetime import datetime, timedelta
 
-from data.database import RepositoryBuild, AccessToken
 from app import app
+from data.database import AccessToken, RepositoryBuild
 
 logger = logging.getLogger(__name__)
 

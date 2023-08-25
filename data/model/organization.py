@@ -1,22 +1,22 @@
 from data.database import (
-    User,
-    FederatedLogin,
-    TeamMember,
-    Team,
-    TeamRole,
-    RepositoryPermission,
-    Repository,
-    Namespace,
     DeletedNamespace,
+    FederatedLogin,
+    Namespace,
+    Repository,
+    RepositoryPermission,
+    Team,
+    TeamMember,
+    TeamRole,
+    User,
 )
 from data.model import (
-    user,
-    team,
     DataModelException,
     InvalidOrganizationException,
     InvalidUsernameException,
-    db_transaction,
     _basequery,
+    db_transaction,
+    team,
+    user,
 )
 
 

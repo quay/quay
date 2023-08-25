@@ -1,52 +1,48 @@
 import calendar
-import logging
 import json
+import logging
 import re
 import time
 import uuid
-import dateutil.parser
 from datetime import datetime, timedelta
 
+import dateutil.parser
 from prometheus_client import Counter, Histogram
 
-from app import app
+from app import app, instance_keys
 from buildman.build_token import (
-    build_token,
-    verify_build_token,
-    InvalidBearerTokenException,
     BUILD_JOB_REGISTRATION_TYPE,
     BUILD_JOB_TOKEN_TYPE,
+    InvalidBearerTokenException,
+    build_token,
+    verify_build_token,
 )
 from buildman.interface import (
-    BuildStateInterface,
+    RESULT_PHASES,
     BuildJobAlreadyExistsError,
     BuildJobDoesNotExistsError,
     BuildJobError,
     BuildJobResult,
-    RESULT_PHASES,
+    BuildStateInterface,
 )
 from buildman.jobutil.buildjob import BuildJob, BuildJobLoadException
 from buildman.manager.executor import (
-    PopenExecutor,
     EC2Executor,
     KubernetesExecutor,
     KubernetesPodmanExecutor,
+    PopenExecutor,
 )
 from buildman.orchestrator import (
-    orchestrator_from_config,
-    KeyEvent,
-    OrchestratorError,
-    OrchestratorConnectionError,
     ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION,
+    KeyEvent,
+    OrchestratorConnectionError,
+    OrchestratorError,
+    orchestrator_from_config,
 )
-
-from app import instance_keys
-from data import database
+from data import database, model
 from data.database import BUILD_PHASE
-from data import model
 from util import slash_join
 from util.morecollections import AttrDict
-
 
 logger = logging.getLogger(__name__)
 

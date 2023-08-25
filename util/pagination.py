@@ -2,7 +2,7 @@ import datetime
 import json
 
 from app import app
-from util.security.crypto import encrypt_string, decrypt_string
+from util.security.crypto import decrypt_string, encrypt_string
 
 # TTL (in seconds) for page tokens.
 _PAGE_TOKEN_TTL = datetime.timedelta(days=2).total_seconds()

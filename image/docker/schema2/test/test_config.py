@@ -1,8 +1,9 @@
 import hashlib
 import json
+
 import pytest
 
-from image.docker.schema2.config import MalformedSchema2Config, DockerSchema2Config
+from image.docker.schema2.config import DockerSchema2Config, MalformedSchema2Config
 from util.bytes import Bytes
 
 

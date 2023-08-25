@@ -1,11 +1,10 @@
 import pytest
+from mock import DEFAULT, Mock, patch, sentinel
+from peewee import PeeweeException
 
 from data.database import LogEntry3, User
 from data.model import config as _config
 from data.model.log import log_action
-
-from mock import patch, Mock, DEFAULT, sentinel
-from peewee import PeeweeException
 
 
 @pytest.fixture(scope="function")

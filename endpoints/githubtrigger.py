@@ -1,17 +1,15 @@
 import logging
 
-from flask import request, redirect, url_for, Blueprint
+from flask import Blueprint, redirect, request, url_for
 from flask_login import current_user
 
 import features
-
 from app import app, github_trigger
 from auth.decorators import require_session_login
 from auth.permissions import AdministerRepositoryPermission
 from data import model
-from endpoints.decorators import route_show_if, parse_repository_name
+from endpoints.decorators import parse_repository_name, route_show_if
 from util.http import abort
-
 
 logger = logging.getLogger(__name__)
 client = app.config["HTTPCLIENT"]

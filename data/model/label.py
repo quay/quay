@@ -1,9 +1,6 @@
 from cachetools.func import lru_cache
 
-from data.database import (
-    MediaType,
-    LabelSourceType,
-)
+from data.database import LabelSourceType, MediaType
 
 
 @lru_cache(maxsize=1)

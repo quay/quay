@@ -1,18 +1,16 @@
-import os
 import json
 import logging
-import features
+import os
 from unittest import mock
 
 from flask_mail import Message
 
 import features
-
 from _init import ROOT_DIR
-from app import mail, app, get_app_url
-from util.jinjautil import get_template_env
-from util.html import html2text
+from app import app, get_app_url, mail
 from util.fips import login_fips_safe
+from util.html import html2text
+from util.jinjautil import get_template_env
 
 logger = logging.getLogger(__name__)
 

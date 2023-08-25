@@ -1,5 +1,4 @@
 import data.model
-
 from endpoints.keyserver.models_interface import (
     KeyServerDataInterface,
     ServiceKey,

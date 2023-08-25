@@ -9,13 +9,18 @@ import subprocess
 
 from flask import abort
 
+import features
 from app import app, config_provider
 from auth.permissions import SuperUserPermission
+from endpoints.api import (
+    ApiResource,
+    internal_only,
+    nickname,
+    resource,
+    show_if,
+    verify_not_prod,
+)
 from endpoints.api.suconfig_models_pre_oci import pre_oci_model as model
-from endpoints.api import ApiResource, nickname, resource, internal_only, show_if, verify_not_prod
-
-import features
-
 
 logger = logging.getLogger(__name__)
 

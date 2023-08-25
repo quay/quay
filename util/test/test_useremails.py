@@ -1,8 +1,9 @@
+from test.fixtures import *
+
 import mock
 import pytest
 
 from util.useremails import render_email, send_recovery_email
-from test.fixtures import *
 
 
 def test_render_email():

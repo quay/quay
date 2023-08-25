@@ -1,13 +1,13 @@
 import os
-import pytest
+from test.fixtures import *
 
+import pytest
 from playhouse.test_utils import assert_query_count
 
-from data import model, database
-from endpoints.api.search import ConductRepositorySearch, ConductSearch, MAX_PER_PAGE
+from data import database, model
+from endpoints.api.search import MAX_PER_PAGE, ConductRepositorySearch, ConductSearch
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

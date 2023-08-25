@@ -1,6 +1,6 @@
 from data.database import ImageStorage, ManifestBlob, UploadedBlob
 from data.model import BlobDoesNotExist
-from data.model.storage import get_storage_by_uuid, InvalidImageException
+from data.model.storage import InvalidImageException, get_storage_by_uuid
 
 
 def get_repository_blob_by_digest(repository, blob_digest):

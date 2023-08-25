@@ -1,14 +1,13 @@
+from test.fixtures import *
+
 import pytest
+from mock import ANY, MagicMock, patch
 
-from mock import patch, ANY, MagicMock
-
-from data import model, database
+from data import database, model
+from endpoints.api.repository import Repository, RepositoryList, RepositoryTrust
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.api.repository import RepositoryTrust, Repository, RepositoryList
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -158,12 +157,6 @@ def test_create_repository(repo_name, extended_repo_names, expected_status, clie
 )
 def test_get_repo(has_tag_manifest, client, initialized_db):
     with client_with_identity("devtable", client) as cl:
-        if not has_tag_manifest:
-            database.TagManifestLabelMap.delete().execute()
-            database.TagManifestToManifest.delete().execute()
-            database.TagManifestLabel.delete().execute()
-            database.TagManifest.delete().execute()
-
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"

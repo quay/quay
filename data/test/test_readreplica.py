@@ -1,14 +1,13 @@
 import os
 import shutil
+from test.fixtures import *
+from test.testconfig import FakeTransaction
 
 import pytest
-
 from peewee import OperationalError
 
-from data.database import configure, User, read_only_config, db_disallow_replica_use
+from data.database import User, configure, db_disallow_replica_use, read_only_config
 from data.readreplica import ReadOnlyModeException
-from test.testconfig import FakeTransaction
-from test.fixtures import *
 
 
 @pytest.mark.skipif(bool(os.environ.get("TEST_DATABASE_URI")), reason="Testing requires SQLite")

@@ -1,15 +1,15 @@
-import logging
-import features
-import json
-import jwt
 import base64
+import json
+import logging
 
-from flask import make_response, Blueprint, jsonify, abort, request
+import jwt
+from flask import Blueprint, abort, jsonify, make_response, request
 
-from app import secscan_notification_queue, app
-from util.security.jwtutil import decode, TOKEN_REGEX
-from data.database import ManifestSecurityStatus, Manifest
+import features
+from app import app, secscan_notification_queue
+from data.database import Manifest, ManifestSecurityStatus
 from endpoints.decorators import anon_allowed, route_show_if
+from util.security.jwtutil import TOKEN_REGEX, decode
 
 logger = logging.getLogger(__name__)
 secscan = Blueprint("secscan", __name__)

@@ -2,25 +2,24 @@
 Various decorators for endpoint and API handlers.
 """
 
-import os
 import logging
-
+import os
 from functools import wraps
-from flask import abort, request, make_response
+
+from flask import abort, make_response, request
 
 import features
-
 from app import app, ip_resolver, model_cache, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
 from data.model import InvalidProxyCacheConfigException
+from data.model.repo_mirror import get_mirror, get_mirroring_robot
 from data.model.repository import get_repository, get_repository_state
-from data.model.repo_mirror import get_mirroring_robot, get_mirror
+from data.readreplica import ReadOnlyModeException
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
-from data.readreplica import ReadOnlyModeException
-from util.names import parse_namespace_repository, ImplicitLibraryNamespaceNotAllowed
 from util.http import abort
+from util.names import ImplicitLibraryNamespaceNotAllowed, parse_namespace_repository
 from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)

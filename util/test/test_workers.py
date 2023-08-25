@@ -1,6 +1,5 @@
-from mock import patch
-
 import pytest
+from mock import patch
 
 from util.workers import get_worker_count
 

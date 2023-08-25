@@ -1,11 +1,10 @@
-import stripe
-from app import app
-
-from util.invoice import renderInvoiceToPdf
-
-from data import model
-
 import argparse
+
+import stripe
+
+from app import app
+from data import model
+from util.invoice import renderInvoiceToPdf
 
 
 def sendInvoice(invoice_id):

@@ -1,8 +1,8 @@
 import logging
-import time
 import re
-
+import time
 from datetime import datetime
+
 from notifications import build_repository_event_data
 from util.jinjautil import get_template_env
 from util.secscan import PRIORITY_LEVELS, get_priority_for_index

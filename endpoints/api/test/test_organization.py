@@ -1,11 +1,12 @@
+from test.fixtures import *
+
 import pytest
 
 from data import model
 from endpoints.api import api
-from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.organization import Organization, OrganizationCollaboratorList
+from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,7 @@
 import os
-
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import namedtuple
+
 from six import add_metaclass
 
 MigrationPhase = namedtuple("MigrationPhase", ["name", "alembic_revision", "flags"])

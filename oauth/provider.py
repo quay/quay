@@ -3,8 +3,9 @@
 
 import json
 import logging
-from requests import Response
 from io import StringIO
+
+from requests import Response
 
 try:
     from werkzeug.exceptions import Unauthorized

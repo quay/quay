@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 
 from data.registry_model.registry_oci_model import oci_model
 

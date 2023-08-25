@@ -1,23 +1,20 @@
-import logging
 import itertools
 import json
+import logging
 import uuid
-
 from typing import Union
 
 import features
-
 from data import model
 from data.users.apptoken import AppTokenInternalAuth
 from data.users.database import DatabaseUsers
-from data.users.externalldap import LDAPUsers
 from data.users.externaljwt import ExternalJWTAuthN
+from data.users.externalldap import LDAPUsers
 from data.users.federated import FederatedUsers
 from data.users.keystone import get_keystone_users
 from util.config.superusermanager import ConfigUserManager
 from util.security.aes import AESCipher
 from util.security.secret import convert_secret_key
-
 
 logger = logging.getLogger(__name__)
 

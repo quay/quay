@@ -1,10 +1,9 @@
-import logging
 import json
+import logging
 import os
 
 from data.users.federated import FederatedUsers, UserInformation
 from util.security import jwtutil
-
 
 logger = logging.getLogger(__name__)
 

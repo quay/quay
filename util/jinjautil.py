@@ -1,7 +1,8 @@
-from app import get_app_url, avatar
+from jinja2 import Environment, FileSystemLoader
+
+from app import avatar, get_app_url
 from data import model
 from util.names import parse_robot_username
-from jinja2 import Environment, FileSystemLoader
 
 
 def icon_path(icon_name):

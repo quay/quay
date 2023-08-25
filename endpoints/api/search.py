@@ -2,43 +2,41 @@
 Conduct searches against all registry context.
 """
 
-import features
+import math
+from operator import itemgetter
 
-from endpoints.api import (
-    ApiResource,
-    parse_args,
-    query_param,
-    nickname,
-    resource,
-    require_scope,
-    path_param,
-    internal_only,
-    Unauthorized,
-    InvalidRequest,
-    show_if,
-)
-from data.database import Repository
-from data import model
-from data.registry_model import registry_model
+from flask import abort
+from stringscore import liquidmetal
+from text_unidecode import unidecode
+
+import features
+from app import app, authentication, avatar
+from auth import scopes
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
+    AdministerOrganizationPermission,
     OrganizationMemberPermission,
     ReadRepositoryPermission,
     UserAdminPermission,
-    AdministerOrganizationPermission,
-    ReadRepositoryPermission,
 )
-from auth.auth_context import get_authenticated_user
-from auth import scopes
-from app import app, avatar, authentication
-from flask import abort
-from operator import itemgetter
-from stringscore import liquidmetal
+from data import model
+from data.database import Repository
+from data.registry_model import registry_model
+from endpoints.api import (
+    ApiResource,
+    InvalidRequest,
+    Unauthorized,
+    internal_only,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
+    require_scope,
+    resource,
+    show_if,
+)
 from util.names import parse_robot_username
 from util.parsing import truthy_bool
-
-from text_unidecode import unidecode
-import math
-
 
 ENTITY_SEARCH_SCORE = 1
 TEAM_SEARCH_SCORE = 2

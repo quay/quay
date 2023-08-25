@@ -1,18 +1,17 @@
-from datetime import datetime
-import unittest
 import json
+import unittest
+from datetime import datetime
 from unittest import mock
 
 import pytest
-from httmock import urlmatch, response, HTTMock
+from httmock import HTTMock, response, urlmatch
 
 from app import app
 from data.cache.impl import InMemoryDataModelCache
 from data.database import ProxyCacheConfig, User
 from data.encryption import FieldEncrypter
 from data.fields import LazyEncryptedValue
-from proxy import Proxy, parse_www_auth, UpstreamRegistryError
-
+from proxy import Proxy, UpstreamRegistryError, parse_www_auth
 
 ANONYMOUS_TOKEN = "anonymous-token"
 USER_TOKEN = "user-token"

@@ -1,14 +1,13 @@
 import json
 import logging
-
-from datetime import datetime, timedelta
 from calendar import timegm
+from datetime import datetime, timedelta
+
 from cachetools.func import lru_cache
+from peewee import JOIN, PeeweeException, fn
 
-from peewee import JOIN, fn, PeeweeException
-
-from data.database import LogEntryKind, User, RepositoryActionCount, db, LogEntry3
-from data.model import config, user, DataModelException
+from data.database import LogEntry3, LogEntryKind, RepositoryActionCount, User, db
+from data.model import DataModelException, config, user
 
 logger = logging.getLogger(__name__)
 

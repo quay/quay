@@ -1,5 +1,5 @@
 from data import model
-from endpoints.common_models_interface import User, EndpointsCommonDataInterface
+from endpoints.common_models_interface import EndpointsCommonDataInterface, User
 
 
 class EndpointsCommonDataPreOCIModel(EndpointsCommonDataInterface):

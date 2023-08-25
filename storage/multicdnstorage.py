@@ -1,9 +1,10 @@
 import logging
-from flask import request, has_request_context
 
-from storage.cloudflarestorage import CloudFlareS3Storage
-from storage.cloud import CloudFrontedS3Storage
+from flask import has_request_context, request
+
 from storage.basestorage import BaseStorageV2, InvalidStorageConfigurationException
+from storage.cloud import CloudFrontedS3Storage
+from storage.cloudflarestorage import CloudFlareS3Storage
 from util.ipresolver import GEOIP_CONTINENT_CODES
 
 logger = logging.getLogger(__name__)

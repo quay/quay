@@ -1,26 +1,24 @@
 import logging
 import logging.config
 import os
-import time
 import socket
+import time
+
+from raven.conf import setup_logging
+from raven.handlers.logging import SentryHandler
 
 import features
-
 from app import (
+    OVERRIDE_CONFIG_DIRECTORY,
     app,
-    userfiles as user_files,
     build_logs,
     dockerfile_build_queue,
     instance_keys,
-    OVERRIDE_CONFIG_DIRECTORY,
 )
-from util.log import logfile_path
-
+from app import userfiles as user_files
 from buildman.manager.ephemeral import EphemeralBuilderManager
 from buildman.server import BuilderServer
-
-from raven.handlers.logging import SentryHandler
-from raven.conf import setup_logging
+from util.log import logfile_path
 
 logger = logging.getLogger(__name__)
 

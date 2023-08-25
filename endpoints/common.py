@@ -1,5 +1,5 @@
-import logging
 import datetime
+import logging
 import os
 
 from flask import make_response, render_template, request, session
@@ -8,18 +8,17 @@ from flask_principal import identity_changed
 
 import endpoints.decorated  # Register the various exceptions via decorators.
 import features
-
-from app import app, oauth_apps, oauth_login, LoginWrappedDBUser, IS_KUBERNETES
+from _init import __version__
+from app import IS_KUBERNETES, LoginWrappedDBUser, app, oauth_apps, oauth_login
 from auth import scopes
 from auth.permissions import QuayDeferredPermissionUser
 from config import frontend_visible_config
-from external_libraries import get_external_javascript, get_external_css
 from endpoints.common_models_pre_oci import pre_oci_model as model
-from endpoints.csrf import generate_csrf_token, QUAY_CSRF_UPDATED_HEADER_NAME
+from endpoints.csrf import QUAY_CSRF_UPDATED_HEADER_NAME, generate_csrf_token
+from external_libraries import get_external_css, get_external_javascript
 from util.config.provider.k8sprovider import QE_NAMESPACE
 from util.secscan import PRIORITY_LEVELS
 from util.timedeltastring import convert_to_timedelta
-from _init import __version__
 
 logger = logging.getLogger(__name__)
 

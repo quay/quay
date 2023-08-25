@@ -1,5 +1,6 @@
 from enum import Enum
-from auth.auth_context_type import ValidatedAuthContext, ContextEntityKind
+
+from auth.auth_context_type import ContextEntityKind, ValidatedAuthContext
 
 
 class AuthKind(Enum):

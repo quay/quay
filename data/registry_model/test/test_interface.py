@@ -4,47 +4,41 @@ import hashlib
 import json
 import os
 import uuid
-
 from datetime import datetime, timedelta
 from io import BytesIO
+from test.fixtures import *
 
 import pytest
-
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
 from data import model
+from data.cache.impl import InMemoryDataModelCache
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
-    TagManifestToManifest,
+    ImageStorageLocation,
     Manifest,
     ManifestBlob,
     ManifestLabel,
-    Tag,
-    TagToRepositoryTag,
-    ImageStorageLocation,
     Repository,
+    Tag,
 )
-from data.cache.impl import InMemoryDataModelCache
-from data.registry_model.registry_oci_model import OCIModel
-from data.registry_model.datatypes import RepositoryReference
-from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
-from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.blob import store_blob_record_and_temp_link
-from data import model
-from image.shared.types import ManifestImageLayer
+from data.model.oci.retriever import RepositoryContentRetriever
+from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
+from data.registry_model.datatypes import RepositoryReference
+from data.registry_model.registry_oci_model import OCIModel
 from image.docker.schema1 import (
-    DockerSchema1ManifestBuilder,
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
+    DockerSchema1ManifestBuilder,
 )
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from image.shared.types import ManifestImageLayer
 from util.bytes import Bytes
-
-from test.fixtures import *
 
 
 @pytest.fixture(
@@ -256,12 +250,12 @@ def test_repository_tag_history(
     # Pre-cache media type loads to ensure consistent query count.
     Manifest.media_type.get_name(1)
 
-    # If size fallback is requested, delete the sizes on the manifest rows.
-    if with_size_fallback:
-        Manifest.update(layers_compressed_size=None).execute()
-
     repository_ref = registry_model.lookup_repository(namespace, name)
     with assert_query_count(2 if with_size_fallback else 1):
+        # If size fallback is requested, delete the sizes on the manifest rows.
+        if with_size_fallback:
+            Manifest.update(layers_compressed_size=None).execute()
+
         history, has_more = registry_model.list_repository_tag_history(repository_ref)
         assert not has_more
         assert len(history) == expected_tag_count
@@ -421,11 +415,9 @@ def test_change_repository_tag_expiration(registry_model):
 @pytest.fixture()
 def clear_rows(initialized_db):
     # Remove all new-style rows so we can backfill.
-    TagToRepositoryTag.delete().execute()
     Tag.delete().execute()
     ManifestLabel.delete().execute()
     ManifestBlob.delete().execute()
-    TagManifestToManifest.delete().execute()
     Manifest.delete().execute()
 
 

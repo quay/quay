@@ -1,23 +1,22 @@
-import features
-
 from flask import request
 
-from app import all_queues, userfiles, namespace_gc_queue
+import features
+from app import all_queues, namespace_gc_queue, userfiles
 from auth.permissions import (
-    ReadRepositoryPermission,
-    ModifyRepositoryPermission,
     AdministerRepositoryPermission,
+    ModifyRepositoryPermission,
+    ReadRepositoryPermission,
 )
-from data import model, database
-from endpoints.api.build import get_job_config, _get_build_status
-from endpoints.api.superuser_models_interface import BuildTrigger
+from data import database, model
+from endpoints.api.build import _get_build_status, get_job_config
 from endpoints.api.superuser_models_interface import (
-    SuperuserDataInterface,
-    Organization,
-    User,
-    ServiceKey,
     Approval,
+    BuildTrigger,
+    Organization,
     RepositoryBuild,
+    ServiceKey,
+    SuperuserDataInterface,
+    User,
 )
 from util.request import get_request_ip
 

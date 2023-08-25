@@ -1,10 +1,9 @@
 import json
 import logging
-
 from queue import Queue
 from threading import Thread
-from mixpanel import BufferedConsumer, Mixpanel
 
+from mixpanel import BufferedConsumer, Mixpanel
 
 logger = logging.getLogger(__name__)
 

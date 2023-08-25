@@ -1,17 +1,15 @@
 import logging
 import time
-
 from datetime import date, timedelta
 from math import log10
 
 import features
-
 from app import app  # This is required to initialize the database.
-from data import model, database
+from data import database, model
 from data.logs_model import logs_model
 from util.migrate.allocator import yield_random_entries
-from workers.worker import Worker, with_exponential_backoff
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker, with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 

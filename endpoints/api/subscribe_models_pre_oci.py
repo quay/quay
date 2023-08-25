@@ -1,4 +1,7 @@
-from data.model.notification import create_unique_notification, delete_notifications_by_kind
+from data.model.notification import (
+    create_unique_notification,
+    delete_notifications_by_kind,
+)
 from data.model.user import get_private_repo_count, get_user_or_org
 from endpoints.api.subscribe_models_interface import SubscribeInterface
 

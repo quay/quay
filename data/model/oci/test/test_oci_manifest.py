@@ -1,36 +1,39 @@
 import json
-import pytest
+from test.fixtures import *
 
+import pytest
 from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
-
-from digest.digest_tools import sha256_digest
 from data.database import (
-    Tag,
-    ManifestBlob,
-    ImageStorageLocation,
-    ManifestChild,
     ImageStorage,
-    Image,
-    RepositoryTag,
+    ImageStorageLocation,
+    ManifestBlob,
+    ManifestChild,
+    Tag,
     get_epoch_timestamp_ms,
 )
-from data.model.oci.manifest import lookup_manifest, get_or_create_manifest, CreateManifestException
-from data.model.oci.tag import filter_to_alive_tags, get_tag
-from data.model.oci.label import list_manifest_labels
-from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.repository import get_repository, create_repository
 from data.model.blob import store_blob_record_and_temp_link
+from data.model.oci.label import list_manifest_labels
+from data.model.oci.manifest import (
+    CreateManifestException,
+    get_or_create_manifest,
+    lookup_manifest,
+)
+from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.oci.tag import filter_to_alive_tags, get_tag
+from data.model.repository import create_repository, get_repository
 from data.model.storage import get_layer_path
+from digest.digest_tools import sha256_digest
+from image.docker.schema1 import DockerSchema1Manifest, DockerSchema1ManifestBuilder
+from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.docker.schema2.manifest import (
+    DockerSchema2Manifest,
+    DockerSchema2ManifestBuilder,
+)
 from image.shared.interfaces import ContentRetriever
 from image.shared.schemas import parse_manifest_from_bytes
-from image.docker.schema1 import DockerSchema1ManifestBuilder, DockerSchema1Manifest
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder, DockerSchema2Manifest
-from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from util.bytes import Bytes
-
-from test.fixtures import *
 
 
 def test_lookup_manifest(initialized_db):
@@ -534,17 +537,6 @@ def test_retriever(initialized_db):
     assert random_digest in blob_digests
     assert other_random_digest in blob_digests
     assert config_digest in blob_digests
-
-    # Delete any Image rows linking to the blobs from temp tags.
-    for blob_digest in blob_digests:
-        storage_row = ImageStorage.get(content_checksum=blob_digest)
-        for image in list(Image.select().where(Image.storage == storage_row)):
-            all_temp = all(
-                [rt.hidden for rt in RepositoryTag.select().where(RepositoryTag.image == image)]
-            )
-            if all_temp:
-                RepositoryTag.delete().where(RepositoryTag.image == image).execute()
-                image.delete_instance(recursive=True)
 
     # Verify the blobs in the retriever.
     retriever = RepositoryContentRetriever(repository, storage)

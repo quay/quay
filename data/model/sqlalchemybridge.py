@@ -1,32 +1,31 @@
 import hashlib
 
+from peewee import (
+    BigIntegerField,
+    BooleanField,
+    CharField,
+    DateField,
+    DateTimeField,
+    ForeignKeyField,
+    IntegerField,
+    PrimaryKeyField,
+    TextField,
+)
 from sqlalchemy import (
-    Table,
-    MetaData,
-    Column,
-    ForeignKey,
-    Integer,
-    String,
-    Boolean,
-    Text,
-    DateTime,
-    Date,
     BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
     Index,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
     text,
 )
-from peewee import (
-    PrimaryKeyField,
-    CharField,
-    BooleanField,
-    DateTimeField,
-    TextField,
-    ForeignKeyField,
-    BigIntegerField,
-    IntegerField,
-    DateField,
-)
-
 
 OPTIONS_TO_COPY = [
     "null",

@@ -1,16 +1,16 @@
+from test.fixtures import *
+
 import pytest
+from mock import MagicMock, Mock
 
-from mock import Mock, MagicMock
-
-from endpoints.api.test.shared import conduct_api_call
+import endpoints.api.repositorynotification_models_interface as iface
 from endpoints.api.repositorynotification import (
-    RepositoryNotificationList,
     RepositoryNotification,
+    RepositoryNotificationList,
     TestRepositoryNotification,
 )
+from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-import endpoints.api.repositorynotification_models_interface as iface
-from test.fixtures import *
 
 
 @pytest.fixture()

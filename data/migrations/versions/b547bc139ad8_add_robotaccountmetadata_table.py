@@ -11,6 +11,7 @@ revision = "b547bc139ad8"
 down_revision = "0cf50323c78b"
 
 import sqlalchemy as sa
+
 from util.migrate import UTF8CharField
 
 

@@ -4,7 +4,6 @@ from gevent.hub import get_hub
 from greenlet import settrace
 from prometheus_client import Counter, Histogram
 
-
 greenlet_switch = Counter("greenlet_switch_total", "number of greenlet context switches")
 greenlet_throw = Counter("greenlet_throw_total", "number of greenlet throws")
 greenlet_duration = Histogram(

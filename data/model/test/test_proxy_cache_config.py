@@ -1,18 +1,18 @@
+from test.fixtures import *  # noqa: F401, F403
+
 import pytest
 from playhouse.test_utils import assert_query_count
-import pytest
 
 from data.database import DEFAULT_PROXY_CACHE_EXPIRATION
 from data.model import InvalidOrganizationException, InvalidProxyCacheConfigException
 from data.model.organization import create_organization
 from data.model.proxy_cache import (
     create_proxy_cache_config,
-    get_proxy_cache_config_for_org,
     delete_proxy_cache_config,
+    get_proxy_cache_config_for_org,
     has_proxy_cache_config,
 )
 from data.model.user import create_user_noverify
-from test.fixtures import *  # noqa: F401, F403
 
 
 def create_org(user_name, user_email, org_name, org_email):

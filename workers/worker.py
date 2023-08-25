@@ -1,9 +1,8 @@
 import logging
 import signal
-import sys
 import socket
+import sys
 import time
-
 from datetime import datetime, timedelta
 from functools import wraps
 from random import randint

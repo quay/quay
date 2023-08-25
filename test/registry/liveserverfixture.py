@@ -4,13 +4,11 @@ import multiprocessing
 import socket
 import socketserver
 import time
-
 from contextlib import contextmanager
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
 import pytest
 import requests
-
 from flask import request
 from flask.blueprints import Blueprint
 

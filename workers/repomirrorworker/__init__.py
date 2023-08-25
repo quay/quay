@@ -9,16 +9,15 @@ from typing import Optional
 from prometheus_client import Gauge
 
 import features
-
 from app import app
 from data import database
+from data.database import RepoMirrorConfig, RepoMirrorStatus
 from data.encryption import DecryptionFailureException
+from data.logs_model import logs_model
+from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
 from data.model.repo_mirror import claim_mirror, release_mirror
 from data.model.user import retrieve_robot_token
-from data.logs_model import logs_model
 from data.registry_model import registry_model
-from data.database import RepoMirrorConfig, RepoMirrorStatus
-from data.model.oci.tag import delete_tag, retarget_tag, lookup_alive_tags_shallow
 from notifications import spawn_notification
 from util.audit import wrap_repository
 from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults

@@ -1,12 +1,13 @@
 from app import avatar
 from data import model
+
 from .permission_models_interface import (
+    DeleteException,
     PermissionDataInterface,
-    UserPermission,
-    TeamPermission,
     Role,
     SaveException,
-    DeleteException,
+    TeamPermission,
+    UserPermission,
 )
 
 

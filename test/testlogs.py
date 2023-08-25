@@ -1,13 +1,12 @@
-import logging
 import datetime
-
-from random import SystemRandom
-from functools import wraps, partial
+import logging
 from copy import deepcopy
+from functools import partial, wraps
+from random import SystemRandom
+
 from jinja2.utils import generate_lorem_ipsum
 
 from data.buildlogs import RedisBuildLogs
-
 
 logger = logging.getLogger(__name__)
 random = SystemRandom()

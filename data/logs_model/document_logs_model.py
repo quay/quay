@@ -3,38 +3,38 @@
 import json
 import logging
 import uuid
-
-from time import time
-from datetime import timedelta, datetime, date
-from dateutil.parser import parse as parse_datetime
-
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
+from datetime import date, datetime, timedelta
+from time import time
 
+from dateutil.parser import parse as parse_datetime
 from elasticsearch.exceptions import ConnectionTimeout, NotFoundError
+from six import add_metaclass
 
 from data import model
 from data.database import CloseForLongOperation
-from data.model import config
-from data.model.log import (
-    _json_serialize,
-    ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING,
-    DataModelException,
-)
+from data.logs_model.datatypes import AggregatedLogCount, Log, LogEntriesPage
 from data.logs_model.elastic_logs import LogEntry, configure_es
-from data.logs_model.datatypes import Log, AggregatedLogCount, LogEntriesPage
 from data.logs_model.interface import (
     ActionLogsDataInterface,
     LogRotationContextInterface,
     LogsIterationTimeout,
 )
-from data.logs_model.shared import SharedModel, epoch_ms, InvalidLogsDateRangeError
-
 from data.logs_model.logs_producer import LogProducerProxy, LogSendException
+from data.logs_model.logs_producer.elasticsearch_logs_producer import (
+    ElasticsearchLogsProducer,
+)
 from data.logs_model.logs_producer.kafka_logs_producer import KafkaLogsProducer
-from data.logs_model.logs_producer.elasticsearch_logs_producer import ElasticsearchLogsProducer
-from data.logs_model.logs_producer.kinesis_stream_logs_producer import KinesisStreamLogsProducer
-
+from data.logs_model.logs_producer.kinesis_stream_logs_producer import (
+    KinesisStreamLogsProducer,
+)
+from data.logs_model.shared import InvalidLogsDateRangeError, SharedModel, epoch_ms
+from data.model import config
+from data.model.log import (
+    ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING,
+    DataModelException,
+    _json_serialize,
+)
 
 logger = logging.getLogger(__name__)
 

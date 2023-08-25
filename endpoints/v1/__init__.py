@@ -1,17 +1,14 @@
 import logging
-
 from functools import wraps
 
-from flask import Blueprint, make_response, jsonify
+from flask import Blueprint, jsonify, make_response
 
 import features
-
 from app import app
 from data.readreplica import ReadOnlyModeException
-from endpoints.decorators import anon_protect, anon_allowed
+from endpoints.decorators import anon_allowed, anon_protect
 from util.http import abort
 from util.metrics.prometheus import timed_blueprint
-
 
 logger = logging.getLogger(__name__)
 v1_bp = timed_blueprint(Blueprint("v1", __name__))
@@ -83,8 +80,4 @@ def check_v1_push_enabled(namespace_name_kwarg="namespace_name"):
     return wrapper
 
 
-from endpoints.v1 import (
-    index,
-    registry,
-    tag,
-)
+from endpoints.v1 import index, registry, tag

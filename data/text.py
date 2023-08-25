@@ -1,4 +1,4 @@
-from peewee import NodeList, SQL, fn, Field
+from peewee import SQL, Field, NodeList, fn
 
 
 def _escape_wildcard(search_query):

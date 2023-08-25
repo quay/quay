@@ -1,9 +1,10 @@
+from test.fixtures import *
+
 import pytest
 
-from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.permission import RepositoryUserPermission
+from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

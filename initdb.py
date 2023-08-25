@@ -4,69 +4,74 @@ import logging
 import json
 import hashlib
 import random
-import calendar
-import os
 import argparse
+import calendar
+import hashlib
+import json
+import logging
+import os
+import random
 import unittest
+from datetime import date, datetime, timedelta
+from email.utils import formatdate
+from itertools import count
+from threading import Event
+from typing import Any, Dict
+from uuid import UUID, uuid4
 
-from datetime import datetime, timedelta, date
 from freezegun import freeze_time
 from peewee import SqliteDatabase
-from itertools import count
-from uuid import UUID, uuid4
-from threading import Event
 
-from app import app, storage as store, tf, docker_v2_signing_key
-from email.utils import formatdate
+from app import app, docker_v2_signing_key
+from app import storage as store
+from app import tf
+from data import model
 from data.database import (
-    db,
-    db_encrypter,
-    all_models,
-    Role,
-    TeamRole,
-    Visibility,
-    LoginService,
-    BuildTriggerService,
     AccessTokenKind,
-    LogEntryKind,
-    ImageStorageLocation,
-    ImageStorageTransformation,
-    ImageStorageSignatureKind,
-    ExternalNotificationEvent,
-    ExternalNotificationMethod,
-    NotificationKind,
-    QuayRegion,
-    QuayService,
-    UserRegion,
-    OAuthAuthorizationCode,
-    ServiceKeyApprovalType,
-    MediaType,
-    LabelSourceType,
-    UserPromptKind,
-    RepositoryKind,
-    User,
-    DisableReason,
+    ApprBlobPlacementLocation,
+    ApprTagKind,
+    BuildTriggerService,
     DeletedNamespace,
     DeletedRepository,
-    appr_classes,
-    ApprTagKind,
-    ApprBlobPlacementLocation,
-    Repository,
-    TagKind,
+    DisableReason,
+    ExternalNotificationEvent,
+    ExternalNotificationMethod,
+    FederatedLogin,
+    ImageStorageLocation,
+    ImageStorageSignatureKind,
+    ImageStorageTransformation,
+    LabelSourceType,
+    LogEntryKind,
+    LoginService,
     ManifestChild,
-    TagToRepositoryTag,
-    get_epoch_timestamp_ms,
+    MediaType,
+    NotificationKind,
+    OAuthAuthorizationCode,
+    ProxyCacheConfig,
+    QuayRegion,
+    QuayService,
+    QuotaLimits,
+    QuotaType,
     RepoMirrorConfig,
     RepoMirrorRule,
+    Repository,
+    RepositoryKind,
     RepositoryState,
-    QuotaType,
-    QuotaLimits,
+    Role,
+    ServiceKeyApprovalType,
+    TagKind,
+    TeamRole,
+    User,
     UserOrganizationQuota,
-    RepositorySize,
-    ProxyCacheConfig,
-    FederatedLogin,
+    UserPromptKind,
+    UserRegion,
+    Visibility,
+    all_models,
+    appr_classes,
+    db,
+    db_encrypter,
+    get_epoch_timestamp_ms,
 )
-from data import model
 from data.decorators import is_deprecated_model
 from data.encryption import FieldEncrypter
 from data.fields import Credential
@@ -75,17 +80,16 @@ from data.queue import WorkQueue
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from digest.digest_tools import sha256_digest
-from storage.basestorage import StoragePaths
-from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
+from image.docker.schema1 import (
+    DOCKER_SCHEMA1_CONTENT_TYPES,
+    DockerSchema1ManifestBuilder,
+)
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
-from image.docker.schema1 import DockerSchema1ManifestBuilder
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.config import DockerSchema2Config
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci import OCI_CONTENT_TYPES
-
-
+from storage.basestorage import StoragePaths
 from workers import repositoryactioncounter
-
 
 logger = logging.getLogger(__name__)
 
@@ -1340,7 +1344,6 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestLegacyImage",
     "Image",
     "ProxyCacheConfig",
-    "RepositorySize",
     "RedHatSubscriptions",
     "OrganizationRhSkus",
     "QuotaRegistrySize",

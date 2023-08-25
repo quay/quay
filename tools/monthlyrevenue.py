@@ -1,6 +1,7 @@
-from typing import DefaultDict, Tuple
-from app import billing
 from collections import defaultdict
+from typing import DefaultDict, Tuple
+
+from app import billing
 
 offset = 0
 

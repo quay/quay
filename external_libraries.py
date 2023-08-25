@@ -1,13 +1,12 @@
+import hashlib
 import logging
-import urllib.request
+import os
+import re
 import urllib.error
 import urllib.parse
-import re
-import os
-import hashlib
+import urllib.request
 
-from _init import STATIC_FONTS_DIR, STATIC_WEBFONTS_DIR, STATIC_LDN_DIR
-
+from _init import STATIC_FONTS_DIR, STATIC_LDN_DIR, STATIC_WEBFONTS_DIR
 
 LOCAL_PATH = "/static/ldn/"
 

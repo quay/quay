@@ -1,13 +1,11 @@
-import logging
 import json
+import logging
 import time
-
 from threading import Event, Lock
 
 from app import app
 from data.database import CloseForLongOperation
 from workers.worker import Worker
-
 
 logger = logging.getLogger(__name__)
 

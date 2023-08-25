@@ -1,9 +1,9 @@
-import pytest
+from test.fixtures import *
 
+import pytest
 from mock import patch
 
 from util.ipresolver import IPResolver, ResolvedLocation
-from test.fixtures import *
 
 
 @pytest.fixture()

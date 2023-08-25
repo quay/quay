@@ -1,7 +1,7 @@
 from oauth.loginmanager import OAuthLoginManager
+from oauth.oidc import OIDCLoginService
 from oauth.services.github import GithubOAuthService
 from oauth.services.google import GoogleOAuthService
-from oauth.oidc import OIDCLoginService
 from oauth.services.rhsso import RHSSOOAuthService
 
 

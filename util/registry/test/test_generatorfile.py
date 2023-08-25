@@ -1,6 +1,5 @@
-from _pyio import BufferedReader, TextIOWrapper
-
 import magic
+from _pyio import BufferedReader, TextIOWrapper
 
 from util.registry.generatorfile import GeneratorFile
 

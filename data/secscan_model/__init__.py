@@ -1,17 +1,20 @@
-import os
 import logging
+import os
 from collections import namedtuple
 
-from data.secscan_model.secscan_v4_model import (
-    V4SecurityScanner,
-    NoopV4SecurityScanner,
-    ScanToken as V4ScanToken,
-)
-from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
-from data.secscan_model.datatypes import SecurityInformationLookupResult, ScanLookupStatus
 from data.database import Manifest
 from data.registry_model.datatypes import Manifest as ManifestDataType
-
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformationLookupResult,
+)
+from data.secscan_model.interface import (
+    InvalidConfigurationException,
+    SecurityScannerInterface,
+)
+from data.secscan_model.secscan_v4_model import NoopV4SecurityScanner
+from data.secscan_model.secscan_v4_model import ScanToken as V4ScanToken
+from data.secscan_model.secscan_v4_model import V4SecurityScanner
 
 logger = logging.getLogger(__name__)
 

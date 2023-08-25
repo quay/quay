@@ -1,10 +1,8 @@
-from typing import List
-
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+from typing import List
 
 from six import add_metaclass
-
 
 USER_FIELDS: List[str] = [
     "uuid",

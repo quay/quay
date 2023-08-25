@@ -1,9 +1,9 @@
 import logging
 
 from alembic.config import Config
-from alembic.script import ScriptDirectory
 from alembic.environment import EnvironmentContext
 from alembic.migration import __name__ as migration_name
+from alembic.script import ScriptDirectory
 
 
 def run_alembic_migration(db_uri, log_handler=None, setup_app=True):

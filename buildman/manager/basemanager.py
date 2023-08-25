@@ -1,5 +1,5 @@
-from abc import abstractmethod, ABC
 import inspect
+from abc import ABC, abstractmethod
 
 
 class BaseManager(ABC):

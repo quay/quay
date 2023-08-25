@@ -11,6 +11,7 @@ revision = "9093adccc784"
 down_revision = "6c21e2cfb8b6"
 
 import sqlalchemy as sa
+
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 
 

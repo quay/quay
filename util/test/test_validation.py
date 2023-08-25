@@ -4,7 +4,12 @@ from itertools import islice
 
 import pytest
 
-from util.validation import is_json, validate_label_key, generate_valid_usernames, validate_username
+from util.validation import (
+    generate_valid_usernames,
+    is_json,
+    validate_label_key,
+    validate_username,
+)
 
 
 @pytest.mark.parametrize(

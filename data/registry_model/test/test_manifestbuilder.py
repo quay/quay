@@ -1,21 +1,20 @@
 import hashlib
 import json
-
 from io import BytesIO
+from test.fixtures import *
 
 import pytest
-
 from mock import patch
 
 from app import docker_v2_signing_key
-
 from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
-from data.registry_model.manifestbuilder import create_manifest_builder, lookup_manifest_builder
+from data.registry_model.manifestbuilder import (
+    create_manifest_builder,
+    lookup_manifest_builder,
+)
 from data.registry_model.registry_oci_model import OCIModel
-
 from storage.distributedstorage import DistributedStorage
 from storage.fakestorage import FakeStorage
-from test.fixtures import *
 
 
 @pytest.fixture(params=[OCIModel])

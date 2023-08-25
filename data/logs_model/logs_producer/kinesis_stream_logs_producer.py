@@ -1,15 +1,14 @@
-import logging
 import hashlib
+import logging
 import random
 
 import boto3
-from botocore.exceptions import ClientError
 from botocore.client import Config
+from botocore.exceptions import ClientError
 
+from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface
 from data.logs_model.logs_producer.util import logs_json_serializer
-from data.logs_model.logs_producer import LogSendException
-
 
 logger = logging.getLogger(__name__)
 

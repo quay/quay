@@ -1,15 +1,18 @@
 import logging
 import os
 
-from keystoneauth1.identity import v2 as keystone_v2_auth
-from keystoneauth1.identity import v3 as keystone_v3_auth
 from keystoneauth1 import session
 from keystoneauth1.exceptions import ClientException
+from keystoneauth1.identity import v2 as keystone_v2_auth
+from keystoneauth1.identity import v3 as keystone_v3_auth
+from keystoneclient.exceptions import (
+    AuthorizationFailure as KeystoneAuthorizationFailure,
+)
+from keystoneclient.exceptions import NotFound as KeystoneNotFound
+from keystoneclient.exceptions import Unauthorized as KeystoneUnauthorized
 from keystoneclient.v2_0 import client as client_v2
 from keystoneclient.v3 import client as client_v3
-from keystoneclient.exceptions import AuthorizationFailure as KeystoneAuthorizationFailure
-from keystoneclient.exceptions import Unauthorized as KeystoneUnauthorized
-from keystoneclient.exceptions import NotFound as KeystoneNotFound
+
 from data.users.federated import FederatedUsers, UserInformation
 from util.itertoolrecipes import take
 

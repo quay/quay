@@ -3,18 +3,16 @@ import os
 import time
 
 from peewee import fn
-from data.database import DeletedNamespace, QuotaNamespaceSize, User
 
 import features
-
 from app import app
+from data.database import DeletedNamespace, QuotaNamespaceSize, User
 from data.model.quota import run_backfill
+from util.locking import GlobalLock
+from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import QueueWorker
 from workers.worker import Worker
-from util.locking import GlobalLock
-from util.log import logfile_path
-
 
 logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("QUOTA_BACKFILL_POLL_PERIOD", 15)

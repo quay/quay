@@ -1,23 +1,22 @@
 """
 Messages API.
 """
-from flask import abort
-from flask import make_response
-from flask import request
+from flask import abort, make_response, request
 
 import features
 from auth import scopes
 from auth.permissions import SuperUserPermission
 from endpoints.api import (
     ApiResource,
-    resource,
     nickname,
     require_fresh_login,
-    verify_not_prod,
-    validate_json_request,
     require_scope,
+    resource,
     show_if,
+    validate_json_request,
+    verify_not_prod,
 )
+
 from .globalmessages_models_pre_oci import pre_oci_model as model
 
 

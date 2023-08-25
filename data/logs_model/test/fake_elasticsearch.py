@@ -1,14 +1,12 @@
+import fnmatch
 import json
 import uuid
-import fnmatch
-
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime
 
 import dateutil.parser
-
-from httmock import urlmatch, HTTMock
+from httmock import HTTMock, urlmatch
 
 FAKE_ES_HOST = "fakees"
 

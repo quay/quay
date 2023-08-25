@@ -1,22 +1,21 @@
 import logging
 import logging.config
 import os
-
 from urllib.parse import unquote
 
-from alembic import context, op as alembic_op
+from alembic import context
+from alembic import op as alembic_op
 from alembic.script.revision import ResolutionError
 from alembic.util import CommandError
 from peewee import SqliteDatabase
 from sqlalchemy import create_engine
 
 from app import app
-from data.database import all_models, db, LEGACY_INDEX_MAP
+from data.database import LEGACY_INDEX_MAP, all_models, db
 from data.migrations.tester import NoopTester, PopulateTestDataTester
 from data.model.sqlalchemybridge import gen_sqlalchemy_metadata
 from release import GIT_HEAD, REGION, SERVICE
 from util.morecollections import AttrDict
-
 
 logger = logging.getLogger(__name__)
 

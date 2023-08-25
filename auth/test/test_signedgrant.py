@@ -1,6 +1,10 @@
 import pytest
 
-from auth.signedgrant import validate_signed_grant, generate_signed_token, SIGNATURE_PREFIX
+from auth.signedgrant import (
+    SIGNATURE_PREFIX,
+    generate_signed_token,
+    validate_signed_grant,
+)
 from auth.validateresult import AuthKind, ValidateResult
 
 

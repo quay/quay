@@ -1,23 +1,22 @@
-import logging
 import json
+import logging
+from datetime import datetime, timedelta
 
 from flask import url_for
-from datetime import datetime, timedelta
-from oauth.provider import AuthorizationProvider
-from oauth import utils
 
+from auth import scopes
 from data.database import (
+    OAuthAccessToken,
     OAuthApplication,
     OAuthAuthorizationCode,
-    OAuthAccessToken,
     User,
     random_string_generator,
 )
-from data.fields import DecryptedValue, Credential
-from data.model import user, config
-from auth import scopes
+from data.fields import Credential, DecryptedValue
+from data.model import config, user
+from oauth import utils
+from oauth.provider import AuthorizationProvider
 from util import get_app_url
-
 
 logger = logging.getLogger(__name__)
 

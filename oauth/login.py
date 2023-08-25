@@ -1,11 +1,14 @@
 import logging
-
 from abc import ABCMeta, abstractmethod
+
 from six import add_metaclass
 
 import features
-
-from oauth.base import OAuthService, OAuthExchangeCodeException, OAuthGetUserInfoException
+from oauth.base import (
+    OAuthExchangeCodeException,
+    OAuthGetUserInfoException,
+    OAuthService,
+)
 
 logger = logging.getLogger(__name__)
 

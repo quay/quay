@@ -1,7 +1,6 @@
-import logging
 import json
+import logging
 import time
-
 from datetime import datetime
 from gzip import GzipFile
 from tempfile import SpooledTemporaryFile
@@ -14,8 +13,8 @@ from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from util.streamingjsonencoder import StreamingJSONEncoder
 from util.timedeltastring import convert_to_timedelta
-from workers.worker import Worker
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

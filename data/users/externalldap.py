@@ -1,11 +1,11 @@
-import ldap
 import logging
 import os
-
-from ldap.controls import SimplePagedResultsControl
-from ldap.filter import filter_format, escape_filter_chars
-
 from collections import namedtuple
+
+import ldap
+from ldap.controls import SimplePagedResultsControl
+from ldap.filter import escape_filter_chars, filter_format
+
 from data.users.federated import FederatedUsers, UserInformation
 from util.itertoolrecipes import take
 

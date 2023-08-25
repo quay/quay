@@ -1,3 +1,5 @@
+from test.fixtures import *
+
 import pytest
 
 from notifications.notificationevent import (
@@ -6,8 +8,6 @@ from notifications.notificationevent import (
     VulnerabilityFoundEvent,
 )
 from util.morecollections import AttrDict
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize("event_kind", NotificationEvent.event_names())

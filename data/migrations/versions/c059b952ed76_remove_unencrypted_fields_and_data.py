@@ -15,8 +15,7 @@ import uuid
 
 import sqlalchemy as sa
 
-from data.database import FederatedLogin, User, RobotAccountToken
-
+from data.database import FederatedLogin, RobotAccountToken, User
 
 logger = logging.getLogger(__name__)
 

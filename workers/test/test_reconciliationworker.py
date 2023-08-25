@@ -2,7 +2,6 @@ import random
 import string
 from test.fixtures import *
 from unittest.mock import patch
-
 from data import model
 from util.marketplace import FakeSubscriptionApi, FakeUserApi
 from workers.reconciliationworker import ReconciliationWorker

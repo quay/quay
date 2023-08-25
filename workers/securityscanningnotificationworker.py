@@ -2,14 +2,13 @@ import logging
 import time
 
 import features
-
-from app import app, storage, secscan_notification_queue, secscan_model, registry_model
+from app import app, registry_model, secscan_model, secscan_notification_queue, storage
 from data.secscan_model.datatypes import PaginatedNotificationStatus
 from notifications import notification_batch
-from workers.queueworker import QueueWorker, JobException
 from util.log import logfile_path
 from util.secscan import PRIORITY_LEVELS
 from workers.gunicorn_worker import GunicornWorker
+from workers.queueworker import JobException, QueueWorker
 
 logger = logging.getLogger(__name__)
 

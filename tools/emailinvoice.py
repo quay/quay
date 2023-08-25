@@ -1,14 +1,12 @@
-import stripe
-from app import app
-
-from util.invoice import renderInvoiceToHtml
-from util.useremails import send_invoice_email
-
-from data import model
-
 import argparse
 
+import stripe
 from flask import Flask, current_app
+
+from app import app
+from data import model
+from util.invoice import renderInvoiceToHtml
+from util.useremails import send_invoice_email
 
 
 def sendInvoice(invoice_id):

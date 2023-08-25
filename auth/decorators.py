@@ -1,17 +1,15 @@
 import logging
-
 from functools import wraps
+
 from flask import request, session
 from prometheus_client import Counter
 
 from auth.basic import validate_basic_auth
-from auth.oauth import validate_bearer_auth
 from auth.cookie import validate_session_cookie
+from auth.oauth import validate_bearer_auth
 from auth.signedgrant import validate_signed_grant
 from auth.validateresult import AuthKind
-
 from util.http import abort
-
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@ import base64
 import hashlib
 import os
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
 class AESCipher(object):

@@ -1,12 +1,12 @@
 import copy
 import logging
-import requests
 import time
-import urllib.request
-import urllib.parse
 import urllib.error
-
+import urllib.parse
+import urllib.request
 from abc import ABCMeta, abstractmethod
+
+import requests
 from six import add_metaclass
 from six.moves.urllib.parse import quote
 

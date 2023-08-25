@@ -2,32 +2,33 @@
 Manage the tags of a repository.
 """
 from datetime import datetime
-from flask import request, abort
 
-from app import storage, docker_v2_signing_key, app
+from flask import abort, request
+
+from app import app, docker_v2_signing_key, storage
 from auth.auth_context import get_authenticated_user
-from data.registry_model import registry_model
 from data.model import repository as repository_model
+from data.registry_model import registry_model
+from endpoints.api import RepositoryParamResource
+from endpoints.api import abort as custom_abort
 from endpoints.api import (
-    resource,
     deprecated,
-    nickname,
-    require_repo_read,
-    require_repo_write,
-    RepositoryParamResource,
-    log_action,
-    show_if,
-    validate_json_request,
-    path_param,
-    parse_args,
-    query_param,
     disallow_for_app_repositories,
-    format_date,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
-    abort as custom_abort,
+    format_date,
+    log_action,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
+    require_repo_read,
+    require_repo_write,
+    resource,
+    show_if,
+    validate_json_request,
 )
-from endpoints.exception import NotFound, InvalidRequest
+from endpoints.exception import InvalidRequest, NotFound
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
 

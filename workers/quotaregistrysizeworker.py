@@ -2,12 +2,11 @@ import logging.config
 import time
 
 import features
-
 from app import app, registry_model
-from workers.gunicorn_worker import GunicornWorker
-from workers.worker import Worker
 from util.locking import GlobalLock
 from util.log import logfile_path
+from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("QUOTA_REGISTRY_SIZE_POLL_PERIOD", 60)

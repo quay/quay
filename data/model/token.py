@@ -5,13 +5,12 @@ from peewee import JOIN
 from data.database import (
     AccessToken,
     AccessTokenKind,
-    Repository,
     Namespace,
-    Role,
+    Repository,
     RepositoryBuildTrigger,
+    Role,
 )
-from data.model import DataModelException, _basequery, InvalidTokenException
-
+from data.model import DataModelException, InvalidTokenException, _basequery
 
 logger = logging.getLogger(__name__)
 

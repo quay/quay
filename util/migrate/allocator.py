@@ -1,9 +1,8 @@
 import logging
 import random
-
-from bintrees import RBTree
 from threading import Event
 
+from bintrees import RBTree
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

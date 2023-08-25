@@ -1,7 +1,7 @@
 from util.security.token import (
-    encode_public_private_token,
-    decode_public_private_token,
     DecodedToken,
+    decode_public_private_token,
+    encode_public_private_token,
 )
 
 

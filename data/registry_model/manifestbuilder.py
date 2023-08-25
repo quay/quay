@@ -1,13 +1,12 @@
-import logging
 import json
+import logging
 import uuid
-
 from collections import namedtuple
 
 from flask import session
 
 from data import model
-from data.database import db_transaction, ImageStorage, ImageStoragePlacement
+from data.database import ImageStorage, ImageStoragePlacement, db_transaction
 from data.registry_model import registry_model
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 

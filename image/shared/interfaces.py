@@ -1,4 +1,5 @@
-from abc import ABCMeta, abstractproperty, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
+
 from six import add_metaclass
 
 

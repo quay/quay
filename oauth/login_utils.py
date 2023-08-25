@@ -4,14 +4,13 @@ import logging
 from collections import namedtuple
 
 import jwt
+from peewee import IntegrityError
 
 import features
 from data import model
 from data.users.shared import can_create_user
-from peewee import IntegrityError
 from oauth.login import OAuthLoginException
 from util.validation import generate_valid_usernames
-
 
 OAuthResult = namedtuple(
     "OAuthResult",

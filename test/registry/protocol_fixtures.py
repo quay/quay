@@ -2,15 +2,13 @@
 
 import random
 import string
-
-import pytest
-
-from authlib.jose import jwk as jwklib
-
 from test.registry.fixtures import data_model
-from test.registry.protocols import Image, layer_bytes_for_contents
 from test.registry.protocol_v1 import V1Protocol
 from test.registry.protocol_v2 import V2Protocol
+from test.registry.protocols import Image, layer_bytes_for_contents
+
+import pytest
+from authlib.jose import jwk as jwklib
 
 
 @pytest.fixture(scope="session")

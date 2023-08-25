@@ -1,13 +1,12 @@
 import logging
 import time
-
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from app import app
 from data.database import UseThenDisconnect
 from data.queue import delete_expired
-from workers.worker import Worker
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 from util.config.provider.fileprovider import FileConfigProvider
-from util.config.provider.testprovider import TestConfigProvider
 from util.config.provider.k8sprovider import KubernetesConfigProvider
+from util.config.provider.testprovider import TestConfigProvider
 
 
 def get_config_provider(config_volume, yaml_filename, py_filename, testing=False, kubernetes=False):

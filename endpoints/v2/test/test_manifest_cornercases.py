@@ -1,15 +1,12 @@
 import hashlib
-
 from contextlib import contextmanager
+from test.fixtures import *
 
-from app import storage, docker_v2_signing_key
-from data import model, database
+from app import docker_v2_signing_key, storage
+from data import database, model
 from data.registry_model import registry_model
 from endpoints.v2.manifest import _write_manifest
 from image.docker.schema1 import DockerSchema1ManifestBuilder
-
-from test.fixtures import *
-
 
 ADMIN_ACCESS_USER = "devtable"
 REPO = "simple"
@@ -26,7 +23,6 @@ def set_tag_expiration_policy(namespace, expiration_s=0):
 
 
 def _perform_cleanup():
-    database.RepositoryTag.delete().where(database.RepositoryTag.hidden == True).execute()
     repo_object = model.repository.get_repository(ADMIN_ACCESS_USER, REPO)
     model.gc.garbage_collect_repo(repo_object)
 

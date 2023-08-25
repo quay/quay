@@ -1,5 +1,5 @@
-from collections import namedtuple
 import base64
+from collections import namedtuple
 
 from util.bytes import Bytes
 

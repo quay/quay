@@ -2,13 +2,12 @@ import logging
 import time
 
 import features
-
 from app import app, authentication
 from data.users.teamsync import sync_teams_to_groups
-from workers.worker import Worker
-from util.timedeltastring import convert_to_timedelta
 from util.log import logfile_path
+from util.timedeltastring import convert_to_timedelta
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 import pytest
 
 from auth.scopes import (
-    scopes_from_scope_string,
-    validate_scope_string,
     ALL_SCOPES,
     is_subset_string,
+    scopes_from_scope_string,
+    validate_scope_string,
 )
 
 

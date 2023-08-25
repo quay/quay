@@ -1,16 +1,16 @@
 from peewee import JOIN
 
 from data.database import (
-    RepositoryPermission,
-    User,
-    Repository,
-    Visibility,
-    Role,
-    TeamMember,
-    PermissionPrototype,
-    Team,
-    TeamRole,
     Namespace,
+    PermissionPrototype,
+    Repository,
+    RepositoryPermission,
+    Role,
+    Team,
+    TeamMember,
+    TeamRole,
+    User,
+    Visibility,
 )
 from data.model import DataModelException, _basequery
 from util.names import parse_robot_username

@@ -1,23 +1,20 @@
 import json
 import time
-
-import pytest
-
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
+from test.fixtures import *
+
+import pytest
 
 from data.database import QueueItem
 from data.queue import (
-    WorkQueue,
     MINIMUM_EXTENSION,
-    queue_items_locked,
+    WorkQueue,
     queue_items_available,
     queue_items_available_unlocked,
+    queue_items_locked,
 )
-
-from test.fixtures import *
-
 
 QUEUE_NAME = "testqueuename"
 

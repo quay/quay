@@ -1,32 +1,29 @@
 # -*- coding: utf-8 -*-
 import logging
-
-from email.utils import parsedate_tz, mktime_tz
 from datetime import datetime
+from email.utils import mktime_tz, parsedate_tz
 
-from jsonschema import ValidationError
 from flask import request
+from jsonschema import ValidationError
 
 import features
-
 from data import model
 from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
 from endpoints.api import (
     RepositoryParamResource,
+    define_json_response,
+    format_date,
     nickname,
     path_param,
     require_repo_admin,
     resource,
-    validate_json_request,
-    define_json_response,
     show_if,
-    format_date,
+    validate_json_request,
 )
 from endpoints.exception import NotFound
 from util.audit import track_and_log, wrap_repository
 from util.names import parse_robot_username
-
 
 common_properties = {
     "is_enabled": {

@@ -1,52 +1,47 @@
-import os
 import json
 import logging
-
-from datetime import timedelta, datetime
+import os
+from datetime import datetime, timedelta
 
 from cachetools.func import lru_cache
 from flask import (
-    abort,
-    redirect,
-    request,
-    url_for,
-    make_response,
-    Response,
-    render_template,
     Blueprint,
+    Response,
+    abort,
     jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
     send_file,
     session,
+    url_for,
 )
-
 from flask_login import current_user
-from endpoints.api import log_action
 
 import features
-
+from _init import ROOT_DIR
+from app import app, authentication, avatar
+from app import billing as stripe
 from app import (
-    app,
-    billing as stripe,
     build_logs,
-    avatar,
-    log_archive,
     config_provider,
     get_app_url,
     instance_keys,
+    log_archive,
     storage,
-    authentication,
 )
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.basic import has_basic_auth
-from auth.decorators import require_session_login, process_oauth, process_auth_or_cookie
+from auth.decorators import process_auth_or_cookie, process_oauth, require_session_login
 from auth.permissions import (
     AdministerOrganizationPermission,
-    ReadRepositoryPermission,
-    SuperUserPermission,
     AdministerRepositoryPermission,
     ModifyRepositoryPermission,
     OrganizationMemberPermission,
+    ReadRepositoryPermission,
+    SuperUserPermission,
 )
 from buildtrigger.basehandler import BuildTriggerHandler
 from buildtrigger.bitbuckethandler import BitbucketBuildTrigger
@@ -54,30 +49,30 @@ from buildtrigger.customhandler import CustomBuildTrigger
 from buildtrigger.triggerutil import TriggerProviderException
 from config import frontend_visible_config
 from data import model
-from data.database import db, RepositoryTag, TagToRepositoryTag, random_string_generator, User
+from data.database import User, db, random_string_generator
+from endpoints.api import log_action
 from endpoints.api.discovery import swagger_route_data
 from endpoints.common import (
     common_login,
-    render_page_template,
-    get_oauth_config,
     get_external_login_config,
+    get_oauth_config,
+    render_page_template,
 )
 from endpoints.csrf import csrf_protect, generate_csrf_token, verify_csrf
 from endpoints.decorators import (
-    anon_protect,
     anon_allowed,
-    route_show_if,
-    parse_repository_name,
+    anon_protect,
     param_required,
+    parse_repository_name,
+    route_show_if,
 )
 from health.healthcheck import get_healthchecker
 from util.cache import no_cache
 from util.headers import parse_basic_auth
 from util.invoice import renderInvoiceToPdf
-from util.useremails import send_email_changed
 from util.registry.gzipinputstream import GzipInputStream
-from util.request import get_request_ip, crossorigin
-from _init import ROOT_DIR
+from util.request import crossorigin, get_request_ip
+from util.useremails import send_email_changed
 
 PGP_KEY_MIMETYPE = "application/pgp-keys"
 

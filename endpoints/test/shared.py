@@ -1,12 +1,12 @@
+import base64
 import datetime
 import json
-import base64
-
 from contextlib import contextmanager
-from data import model
 
 from flask import g
 from flask_principal import Identity
+
+from data import model
 
 CSRF_TOKEN_KEY = "_csrf_token"
 

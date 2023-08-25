@@ -1,7 +1,8 @@
-from typing import Union, List
 import os
 import os.path
 import sys
+from typing import List, Union
+
 import jinja2
 
 QUAYPATH = os.getenv("QUAYPATH", ".")

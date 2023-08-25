@@ -1,14 +1,12 @@
-import unittest
 import json
 import time
-
+import unittest
 from functools import wraps
-from threading import Thread, Lock
+from threading import Lock, Thread
 
 from app import app
 from data.queue import WorkQueue
-from initdb import wipe_database, initialize_database, populate_database
-
+from initdb import initialize_database, populate_database, wipe_database
 
 QUEUE_NAME = "testqueuename"
 

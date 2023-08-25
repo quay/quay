@@ -1,10 +1,10 @@
 import logging
-
 from base64 import b64decode
+
 from flask import request
 
 from auth.credentials import validate_credentials
-from auth.validateresult import ValidateResult, AuthKind
+from auth.validateresult import AuthKind, ValidateResult
 
 logger = logging.getLogger(__name__)
 

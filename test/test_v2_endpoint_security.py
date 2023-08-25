@@ -1,12 +1,11 @@
-import unittest
 import json
+import unittest
+from test.specs import build_v2_index_specs
 
 import endpoints.decorated  # Register the various exceptions via decorators.
-
 from app import app
 from endpoints.v2 import v2_bp
-from initdb import setup_database_for_testing, finished_database_for_testing
-from test.specs import build_v2_index_specs
+from initdb import finished_database_for_testing, setup_database_for_testing
 
 app.register_blueprint(v2_bp, url_prefix="/v2")
 

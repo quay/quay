@@ -1,10 +1,10 @@
-import pytest
-
-from mock import Mock
 from io import BytesIO
+from test.fixtures import *
+
+import pytest
+from mock import Mock
 
 from data.userfiles import DelegateUserfiles, Userfiles
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

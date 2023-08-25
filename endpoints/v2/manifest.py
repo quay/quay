@@ -1,52 +1,54 @@
 import logging
-
 from functools import wraps
 
-from flask import request, url_for, Response
+from flask import Response, request, url_for
 
 import features
-
 from app import app, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
-from data.model import repository, namespacequota
-from digest import digest_tools
 from data.database import db_disallow_replica_use
-from data.registry_model import registry_model
-from data.model import RepositoryDoesNotExist, TagDoesNotExist, ManifestDoesNotExist
+from data.model import (
+    ManifestDoesNotExist,
+    RepositoryDoesNotExist,
+    TagDoesNotExist,
+    namespacequota,
+    repository,
+)
 from data.model.oci.manifest import CreateManifestException
 from data.model.oci.tag import RetargetTagException
+from data.registry_model import registry_model
+from digest import digest_tools
 from endpoints.decorators import (
-    inject_registry_model,
     anon_protect,
-    disallow_for_account_recovery_mode,
-    parse_repository_name,
     check_readonly,
+    disallow_for_account_recovery_mode,
+    inject_registry_model,
+    parse_repository_name,
 )
 from endpoints.metrics import image_pulls, image_pushes
-from endpoints.v2 import v2_bp, require_repo_read, require_repo_write
+from endpoints.v2 import require_repo_read, require_repo_write, v2_bp
 from endpoints.v2.errors import (
     ManifestInvalid,
     ManifestUnknown,
     NameInvalid,
-    TagExpired,
     NameUnknown,
     QuotaExceeded,
+    TagExpired,
 )
-from image.shared import ManifestException
-from image.shared.schemas import parse_manifest_from_bytes
 from image.docker.schema1 import (
-    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA1_CONTENT_TYPES,
+    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
     DockerSchema1Manifest,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.oci import OCI_CONTENT_TYPES
+from image.shared import ManifestException
+from image.shared.schemas import parse_manifest_from_bytes
 from notifications import spawn_notification
 from util.audit import track_and_log
 from util.bytes import Bytes
 from util.names import VALID_TAG_PATTERN
 from util.registry.replication import queue_replication_batch
-
 
 logger = logging.getLogger(__name__)
 

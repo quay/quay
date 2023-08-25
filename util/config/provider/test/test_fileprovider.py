@@ -1,9 +1,9 @@
 import os
+from test.fixtures import *
+
 import pytest
 
 from util.config.provider import FileConfigProvider
-
-from test.fixtures import *
 
 
 class TestFileConfigProvider(FileConfigProvider):

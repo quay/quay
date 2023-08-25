@@ -1,51 +1,38 @@
 import hashlib
-import pytest
 import json
 import random
-
-from datetime import datetime, timedelta
-
-from mock import patch
-
-from app import storage, docker_v2_signing_key
-
 from contextlib import contextmanager
+from datetime import datetime, timedelta
+from test.fixtures import *
+from test.helpers import check_transitive_modifications
+
+import pytest
+from freezegun import freeze_time
+from mock import patch
 from playhouse.test_utils import assert_query_count
 
-from freezegun import freeze_time
-
-from data import model, database
-from data.registry_model import registry_model
-from data.registry_model.datatypes import RepositoryReference
+from app import docker_v2_signing_key, storage
+from data import database, model
 from data.database import (
-    Image,
-    ImageStorage,
-    DerivedStorageForImage,
-    Label,
-    ManifestLabel,
     ApprBlob,
-    Manifest,
-    TagManifestToManifest,
-    ManifestBlob,
-    Tag,
-    TagToRepositoryTag,
+    ImageStorage,
     ImageStorageLocation,
-    RepositoryTag,
+    Label,
+    Manifest,
+    ManifestBlob,
+    ManifestLabel,
+    Tag,
     UploadedBlob,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
+from data.registry_model import registry_model
+from data.registry_model.datatypes import RepositoryReference
 from digest.digest_tools import sha256_digest
 from image.docker.schema1 import DockerSchema1ManifestBuilder
-
-from image.oci.manifest import OCIManifestBuilder
 from image.oci.config import OCIConfig
-
+from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
-
-from test.helpers import check_transitive_modifications
-from test.fixtures import *
-
 
 ADMIN_ACCESS_USER = "devtable"
 PUBLIC_USER = "public"
@@ -174,19 +161,9 @@ def move_tag(repository, tag, image_ids, expect_gc=True):
 
 def _get_dangling_storage_count():
     storage_ids = set([current.id for current in ImageStorage.select()])
-    referenced_by_image = set([image.storage_id for image in Image.select()])
     referenced_by_manifest = set([blob.blob_id for blob in ManifestBlob.select()])
     referenced_by_uploaded = set([upload.blob_id for upload in UploadedBlob.select()])
-    referenced_by_derived_image = set(
-        [derived.derivative_id for derived in DerivedStorageForImage.select()]
-    )
-    return len(
-        storage_ids
-        - referenced_by_image
-        - referenced_by_derived_image
-        - referenced_by_manifest
-        - referenced_by_uploaded
-    )
+    return len(storage_ids - referenced_by_manifest - referenced_by_uploaded)
 
 
 def _get_dangling_label_count():
@@ -261,48 +238,6 @@ def assert_gc_integrity(expect_storage_removed=True):
 
     updated_manifest_count = _get_dangling_manifest_count()
     assert updated_manifest_count == existing_manifest_count
-
-    # Ensure that for each call to the image+storage cleanup callback, the image and its
-    # storage is not found *anywhere* in the database.
-    for removed_image_and_storage in removed_image_storages:
-        assert isinstance(removed_image_and_storage, Image)
-
-        try:
-            # NOTE: SQLite can and will reuse AUTOINCREMENT IDs occasionally, so if we find a row
-            # with the same ID, make sure it does not have the same Docker Image ID.
-            # See: https://www.sqlite.org/autoinc.html
-            found_image = Image.get(id=removed_image_and_storage.id)
-            assert (
-                found_image.docker_image_id != removed_image_and_storage.docker_image_id
-            ), "Found unexpected removed image %s under repo %s" % (
-                found_image.id,
-                found_image.repository,
-            )
-        except Image.DoesNotExist:
-            pass
-
-        # Ensure that image storages are only removed if not shared.
-        shared = Image.select().where(Image.storage == removed_image_and_storage.storage_id).count()
-        if shared == 0:
-            shared = (
-                ManifestBlob.select()
-                .where(ManifestBlob.blob == removed_image_and_storage.storage_id)
-                .count()
-            )
-
-        if shared == 0:
-            shared = (
-                UploadedBlob.select()
-                .where(UploadedBlob.blob == removed_image_and_storage.storage_id)
-                .count()
-            )
-
-        if shared == 0:
-            with pytest.raises(ImageStorage.DoesNotExist):
-                ImageStorage.get(id=removed_image_and_storage.storage_id)
-
-            with pytest.raises(ImageStorage.DoesNotExist):
-                ImageStorage.get(uuid=removed_image_and_storage.storage.uuid)
 
     # Ensure all CAS storage is in the storage engine.
     preferred = storage.preferred_locations[0]
@@ -672,14 +607,6 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                     )
                     .count()
                 )
-                has_dependent_image = (
-                    Image.select()
-                    .where(
-                        Image.storage == uploadedblob.blob,
-                        Image.repository != repo,
-                    )
-                    .count()
-                )
                 has_dependent_uploadedblobs = (
                     UploadedBlob.select()
                     .where(
@@ -689,11 +616,7 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
                     .count()
                 )
 
-                if (
-                    not has_depedent_manifestblob
-                    and not has_dependent_image
-                    and not has_dependent_uploadedblobs
-                ):
+                if not has_depedent_manifestblob and not has_dependent_uploadedblobs:
                     expected_blobs_removed_from_storage.add(uploadedblob.blob)
 
             assert model.gc.purge_repository(repo, force=True)

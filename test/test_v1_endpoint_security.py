@@ -1,13 +1,13 @@
-import unittest
-import endpoints.decorated
 import json
+import unittest
 
+import endpoints.decorated
 from app import app
-from util.names import parse_namespace_repository
-from initdb import setup_database_for_testing, finished_database_for_testing
-from .specs import build_v1_index_specs
-
 from endpoints.v1 import v1_bp
+from initdb import finished_database_for_testing, setup_database_for_testing
+from util.names import parse_namespace_repository
+
+from .specs import build_v1_index_specs
 
 app.register_blueprint(v1_bp, url_prefix="/v1")
 

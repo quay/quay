@@ -1,12 +1,15 @@
 import os
 from datetime import timedelta
+from test.fixtures import *
 
 import pytest
 
 from data.database import Repository
-from data.model.repository import create_repository
-from data.model.repository import get_filtered_matching_repositories, get_estimated_repository_count
-from test.fixtures import *
+from data.model.repository import (
+    create_repository,
+    get_estimated_repository_count,
+    get_filtered_matching_repositories,
+)
 
 
 def test_duplicate_repository_different_kinds(initialized_db):

@@ -1,12 +1,12 @@
 from datetime import date, datetime, timedelta
+from test.fixtures import *
 
 import pytest
 
 from data import model
 from data.database import RepositoryActionCount, RepositorySearchScore
-from data.model.repository import create_repository, Repository
-from data.model.repositoryactioncount import update_repository_score, SEARCH_BUCKETS
-from test.fixtures import *
+from data.model.repository import Repository, create_repository
+from data.model.repositoryactioncount import SEARCH_BUCKETS, update_repository_score
 
 
 @pytest.mark.parametrize(

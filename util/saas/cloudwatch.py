@@ -1,12 +1,10 @@
 import logging
-import time
 import random
-
+import time
 from queue import Empty
 from threading import Thread
 
 import boto
-
 
 logger = logging.getLogger(__name__)
 

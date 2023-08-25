@@ -1,11 +1,11 @@
 """
 Manage the manifests of a repository.
 """
-from typing import List, Optional
 import json
 import logging
-
 from datetime import datetime
+from typing import List, Optional
+
 from flask import request
 
 from app import label_validator, storage
@@ -13,26 +13,25 @@ from data.model import InvalidLabelKeyException, InvalidMediaTypeException
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
-    resource,
-    nickname,
-    require_repo_read,
-    require_repo_write,
     RepositoryParamResource,
-    log_action,
-    validate_json_request,
-    path_param,
-    parse_args,
-    query_param,
     abort,
     api,
     disallow_for_app_repositories,
-    format_date,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
+    format_date,
+    log_action,
+    nickname,
+    parse_args,
+    path_param,
+    query_param,
+    require_repo_read,
+    require_repo_write,
+    resource,
+    validate_json_request,
 )
 from endpoints.exception import NotFound
 from util.validation import VALID_LABEL_KEY_REGEX
-
 
 BASE_MANIFEST_ROUTE = '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>'
 MANIFEST_DIGEST_ROUTE = BASE_MANIFEST_ROUTE.format(digest_tools.DIGEST_PATTERN)

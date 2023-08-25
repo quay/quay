@@ -1,9 +1,10 @@
+from test.fixtures import *
+
 import pytest
 
 from data.model.organization import get_organization, get_organizations
 from data.model.user import mark_namespace_for_deletion
 from data.queue import WorkQueue
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

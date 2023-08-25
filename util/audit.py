@@ -1,17 +1,15 @@
 import logging
 import random
-
 from collections import namedtuple
 from urllib.parse import urlparse
 
 from flask import request
 
-from app import analytics, userevents, ip_resolver
+from app import analytics, ip_resolver, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.logs_model import logs_model
-from util.request import get_request_ip
-
 from data.readreplica import ReadOnlyModeException
+from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)
 

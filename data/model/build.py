@@ -1,30 +1,28 @@
 import json
-
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from peewee import JOIN
 
 from data.database import (
-    BuildTriggerService,
-    RepositoryBuildTrigger,
-    Repository,
-    Namespace,
-    User,
-    RepositoryBuild,
     BUILD_PHASE,
-    db_random_func,
-    UseThenDisconnect,
     TRIGGER_DISABLE_REASON,
+    BuildTriggerService,
+    Namespace,
+    Repository,
+    RepositoryBuild,
+    RepositoryBuildTrigger,
+    User,
+    UseThenDisconnect,
+    db_random_func,
 )
+from data.fields import DecryptedValue
 from data.model import (
     InvalidBuildTriggerException,
     InvalidRepositoryBuildException,
-    db_transaction,
-    user as user_model,
     config,
+    db_transaction,
 )
-from data.fields import DecryptedValue
-
+from data.model import user as user_model
 
 PRESUMED_DEAD_BUILD_AGE = timedelta(days=15)
 PHASES_NOT_ALLOWED_TO_CANCEL_FROM = (

@@ -1,19 +1,16 @@
 import logging
 import time
-
-from contextlib import contextmanager
 from collections import namedtuple
+from contextlib import contextmanager
 
 import bitmath
-
 from prometheus_client import Counter, Histogram
 
-from data.registry_model import registry_model
 from data.database import CloseForLongOperation, db_transaction
+from data.registry_model import registry_model
 from digest import digest_tools
-from util.registry.filelike import wrap_with_handler, StreamSlice
+from util.registry.filelike import StreamSlice, wrap_with_handler
 from util.registry.gzipstream import calculate_size_handler
-
 
 logger = logging.getLogger(__name__)
 

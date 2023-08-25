@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
+from test.fixtures import *
+
 from mock import patch
 
-from workers.servicekeyworker.servicekeyworker import ServiceKeyWorker
 from util.morecollections import AttrDict
-
-from test.fixtures import *
 from workers.servicekeyworker.models_pre_oci import pre_oci_model as model
+from workers.servicekeyworker.servicekeyworker import ServiceKeyWorker
 
 
 def test_refresh_service_key(initialized_db):

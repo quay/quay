@@ -1,38 +1,38 @@
 import json
 
-from peewee import fn, JOIN, DataError
+from peewee import JOIN, DataError, fn
 
+from data import model
 from data.database import (
     ImageStorage,
-    ManifestBlob,
-    QuotaNamespaceSize,
-    Repository,
-    QuotaLimits,
-    UserOrganizationQuota,
-    QuotaType,
     Manifest,
-    get_epoch_timestamp_ms,
+    ManifestBlob,
+    QuotaLimits,
+    QuotaNamespaceSize,
+    QuotaType,
+    QuotaTypes,
+    Repository,
     Tag,
     User,
-    QuotaTypes,
+    UserOrganizationQuota,
+    get_epoch_timestamp_ms,
 )
-from data import model
 from data.model import (
-    db_transaction,
-    organization,
-    user,
-    InvalidUsernameException,
-    InvalidOrganizationException,
-    notification,
-    config,
-    InvalidSystemQuotaConfig,
     InvalidNamespaceQuota,
     InvalidNamespaceQuotaLimit,
     InvalidNamespaceQuotaType,
-    repository,
+    InvalidOrganizationException,
+    InvalidSystemQuotaConfig,
+    InvalidUsernameException,
     UnsupportedQuotaSize,
+    config,
+    db_transaction,
+    notification,
+    organization,
+    quota,
+    repository,
+    user,
 )
-from data.model import quota
 
 
 def get_namespace_quota_list(namespace_name):

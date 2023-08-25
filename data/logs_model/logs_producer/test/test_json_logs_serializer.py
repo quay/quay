@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import json
+import logging
 from datetime import datetime
+
 import pytest
 
-from data.logs_model.logs_producer.util import logs_json_serializer
 from data.logs_model.elastic_logs import LogEntry
-
+from data.logs_model.logs_producer.util import logs_json_serializer
 
 logger = logging.getLogger(__name__)
 

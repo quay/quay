@@ -1,13 +1,13 @@
-import os
 import logging
-
+import os
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
+
 import requests
-from util.abchelpers import nooper
-from util.repomirror.validator import RepoMirrorConfigValidator
+from six import add_metaclass
 
 from _init import CONF_DIR
+from util.abchelpers import nooper
+from util.repomirror.validator import RepoMirrorConfigValidator
 
 TOKEN_VALIDITY_LIFETIME_S = 60  # Amount of time the repo mirror has to call the skopeo URL
 

@@ -1,28 +1,24 @@
 import json
 import os
-import pytest
-
 from datetime import datetime, timedelta
+from test.fixtures import *
 
 import boto3
-
-from httmock import urlmatch, HTTMock
+import pytest
+from httmock import HTTMock, urlmatch
 from moto import mock_s3
 
 from app import storage as test_storage
-from data import model, database
+from data import database, model
 from data.logs_model import logs_model
-from storage import S3Storage, StorageContext, DistributedStorage
-from workers.exportactionlogsworker import ExportActionLogsWorker, POLL_PERIOD_SECONDS
-
-from test.fixtures import *
-
+from storage import DistributedStorage, S3Storage, StorageContext
+from workers.exportactionlogsworker import POLL_PERIOD_SECONDS, ExportActionLogsWorker
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
-_TEST_PATH = "some/cool/path"
+_TEST_PATH = "some/path"
 _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 
@@ -37,7 +33,7 @@ def storage_engine(request):
             engine = DistributedStorage(
                 {
                     "foo": S3Storage(
-                        _TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD
+                        _TEST_CONTEXT, _TEST_PATH, _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD
                     )
                 },
                 ["foo"],
@@ -149,28 +145,37 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
 
     url = called[0]["exported_data_url"]
 
-    if url.find("http://localhost:5000/exportedlogs/") == 0:
-        storage_id = url[len("http://localhost:5000/exportedlogs/") :]
-    else:
-        assert url.find("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
-        storage_id, _ = url[
-            len("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") :
-        ].split("?")
+    # Not direct download url from storage
+    if url != storage_engine.get_direct_download_url(
+        storage_engine.preferred_locations, "exportedactionlogs"
+    ):
+        if url.find("http://localhost:5000/exportedlogs/") == 0:
+            storage_id = url[len("http://localhost:5000/exportedlogs/") :]
+        else:
+            assert (
+                url.find(
+                    "https://somebucket.s3.amazonaws.com/" + _TEST_PATH + "/exportedactionlogs/"
+                )
+                == 0
+            )
+            storage_id, _ = url[
+                len("https://somebucket.s3.amazonaws.com/" + _TEST_PATH + "/exportedactionlogs/") :
+            ].split("?")
 
-    created = storage_engine.get_content(
-        storage_engine.preferred_locations, "exportedactionlogs/" + storage_id
-    )
-    created_json = json.loads(created)
+        created = storage_engine.get_content(
+            storage_engine.preferred_locations, "exportedactionlogs/" + storage_id
+        )
+        created_json = json.loads(created)
 
-    if has_logs:
-        found = set()
-        for log in created_json["logs"]:
-            if log.get("terminator"):
-                continue
+        if has_logs:
+            found = set()
+            for log in created_json["logs"]:
+                if log.get("terminator"):
+                    continue
 
-            found.add(log["metadata"]["index"])
+                found.add(log["metadata"]["index"])
 
-        for index in range(-10, 10):
-            assert index in found
-    else:
-        assert created_json["logs"] == [{"terminator": True}]
+            for index in range(-10, 10):
+                assert index in found
+        else:
+            assert created_json["logs"] == [{"terminator": True}]

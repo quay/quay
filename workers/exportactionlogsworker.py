@@ -1,25 +1,22 @@
+import json
 import logging
 import os.path
-import json
 import time
 import uuid
-
 from datetime import datetime, timedelta
+from enum import Enum, unique
 from io import BytesIO
 
-from enum import Enum, unique
-
 import features
-
-from app import app, export_action_logs_queue, storage as app_storage, get_app_url, avatar
-from endpoints.api import format_date
+from app import app, avatar, export_action_logs_queue, get_app_url
+from app import storage as app_storage
 from data.logs_model import logs_model
 from data.logs_model.interface import LogsIterationTimeout
-from workers.queueworker import QueueWorker
+from endpoints.api import format_date
 from util.log import logfile_path
 from util.useremails import send_logs_exported_email
 from workers.gunicorn_worker import GunicornWorker
-
+from workers.queueworker import QueueWorker
 
 logger = logging.getLogger(__name__)
 

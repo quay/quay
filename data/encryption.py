@@ -1,8 +1,8 @@
-import os
-import logging
 import base64
-
+import logging
+import os
 from collections import namedtuple
+
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 from util.security.secret import convert_secret_key

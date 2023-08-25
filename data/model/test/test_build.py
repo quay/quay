@@ -1,16 +1,16 @@
-import pytest
+from test.fixtures import *
 
+import pytest
 from mock import patch
 
 from data import model
-from data.database import BUILD_PHASE, RepositoryBuildTrigger, RepositoryBuild
+from data.database import BUILD_PHASE, RepositoryBuild, RepositoryBuildTrigger
 from data.model.build import (
-    update_trigger_disable_status,
     create_repository_build,
     get_repository_build,
     update_phase_then_close,
+    update_trigger_disable_status,
 )
-from test.fixtures import *
 
 TEST_FAIL_THRESHOLD = 5
 TEST_INTERNAL_ERROR_THRESHOLD = 2

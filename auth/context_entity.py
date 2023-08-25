@@ -1,14 +1,14 @@
 from abc import ABCMeta, abstractmethod
-from six import add_metaclass
 from enum import Enum
 
-from data import model
+from six import add_metaclass
 
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
-    OAUTH_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
+    OAUTH_TOKEN_USERNAME,
 )
+from data import model
 
 
 class ContextEntityKind(Enum):

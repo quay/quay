@@ -1,16 +1,14 @@
-import os
 import logging
+import os
 import urllib.parse
-
 from uuid import uuid4
-from _pyio import BufferedReader
 
 import magic
-
-from flask import url_for, request, send_file, make_response, abort
+from _pyio import BufferedReader
+from flask import abort, make_response, request, send_file, url_for
 from flask.views import View
-from util import get_app_url
 
+from util import get_app_url
 
 logger = logging.getLogger(__name__)
 

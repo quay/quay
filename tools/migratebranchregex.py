@@ -1,6 +1,6 @@
 import argparse
-import logging
 import json
+import logging
 
 from app import app
 from data import model

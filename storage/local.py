@@ -1,14 +1,13 @@
-import os
-import shutil
 import hashlib
 import io
 import logging
-import psutil
-
+import os
+import shutil
 from uuid import uuid4
 
-from storage.basestorage import BaseStorageV2
+import psutil
 
+from storage.basestorage import BaseStorageV2
 
 logger = logging.getLogger(__name__)
 

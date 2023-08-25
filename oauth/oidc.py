@@ -1,24 +1,23 @@
-import time
 import json
 import logging
+import time
 import urllib.parse
 
 import jwt
-from requests import request
-
+from authlib.jose import JsonWebKey, KeySet
 from cachetools.func import lru_cache
 from cachetools.ttl import TTLCache
-from authlib.jose import KeySet, JsonWebKey
+from requests import request
 
 from oauth.base import (
-    OAuthService,
+    OAuthEndpoint,
     OAuthExchangeCodeException,
     OAuthGetUserInfoException,
-    OAuthEndpoint,
+    OAuthService,
 )
 from oauth.login import OAuthLoginException
 from oauth.login_utils import get_sub_username_email_from_token
-from util.security.jwtutil import decode, InvalidTokenError
+from util.security.jwtutil import InvalidTokenError, decode
 
 logger = logging.getLogger(__name__)
 

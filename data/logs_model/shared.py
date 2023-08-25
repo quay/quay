@@ -1,6 +1,5 @@
-import uuid
 import json
-
+import uuid
 from calendar import timegm
 
 from data import model

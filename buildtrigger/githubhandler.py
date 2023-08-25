@@ -1,39 +1,33 @@
+import base64
 import logging
 import os.path
-import base64
 import re
-
 from calendar import timegm
 from functools import wraps
 from ssl import SSLError
 
-from github import (
-    Github,
-    UnknownObjectException,
-    GithubException,
-    BadCredentialsException as GitHubBadCredentialsException,
-)
-
+from github import BadCredentialsException as GitHubBadCredentialsException
+from github import Github, GithubException, UnknownObjectException
 from jsonschema import validate
 
 from app import app, github_trigger
+from buildtrigger.basehandler import BuildTriggerHandler
 from buildtrigger.triggerutil import (
+    EmptyRepositoryException,
+    InvalidPayloadException,
     RepositoryReadException,
+    SkipRequestException,
     TriggerActivationException,
     TriggerDeactivationException,
     TriggerStartException,
-    EmptyRepositoryException,
     ValidationRequestException,
-    SkipRequestException,
-    InvalidPayloadException,
     determine_build_ref,
-    raise_if_skipped_build,
     find_matching_branches,
+    raise_if_skipped_build,
 )
-from buildtrigger.basehandler import BuildTriggerHandler
 from endpoints.exception import ExternalServiceError
-from util.security.ssh import generate_ssh_keypair
 from util.dict_wrappers import JSONPathDict, SafeDictSetter
+from util.security.ssh import generate_ssh_keypair
 
 logger = logging.getLogger(__name__)
 

@@ -1,20 +1,17 @@
-import logging
-import grpc
 import json
-
+import logging
 from concurrent import futures
 from datetime import timedelta
 from threading import Event
 
+import grpc
 from flask import Flask
 
 from app import app
-from buildman.buildmanagerservicer import BuildManagerServicer
 from buildman.buildman_pb import buildman_pb2, buildman_pb2_grpc
-
+from buildman.buildmanagerservicer import BuildManagerServicer
 from buildman.jobutil.buildjob import BuildJob, BuildJobLoadException
 from data import database, model
-
 
 logger = logging.getLogger(__name__)
 

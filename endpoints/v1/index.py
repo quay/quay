@@ -1,38 +1,40 @@
 import json
 import logging
 import urllib.parse
-
 from functools import wraps
 
-from flask import request, make_response, jsonify, session
+from flask import jsonify, make_response, request, session
 
 import features
-from app import app, userevents, storage, docker_v2_signing_key
+from app import app, docker_v2_signing_key, storage, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
-from auth.credentials import validate_credentials, CredentialKind
+from auth.credentials import CredentialKind, validate_credentials
 from auth.decorators import process_auth
 from auth.permissions import (
-    ModifyRepositoryPermission,
-    UserAdminPermission,
-    ReadRepositoryPermission,
     CreateRepositoryPermission,
+    ModifyRepositoryPermission,
+    ReadRepositoryPermission,
+    UserAdminPermission,
     repository_read_grant,
     repository_write_grant,
 )
 from auth.signedgrant import generate_signed_token
 from data import model
 from data.registry_model import registry_model
-from data.registry_model.manifestbuilder import create_manifest_builder, lookup_manifest_builder
+from data.registry_model.manifestbuilder import (
+    create_manifest_builder,
+    lookup_manifest_builder,
+)
 from endpoints.api import log_action
 from endpoints.decorators import (
-    anon_protect,
     anon_allowed,
-    parse_repository_name,
-    check_repository_state,
+    anon_protect,
     check_readonly,
+    check_repository_state,
+    parse_repository_name,
 )
 from endpoints.metrics import image_pulls, image_pushes
-from endpoints.v1 import v1_bp, check_v1_push_enabled
+from endpoints.v1 import check_v1_push_enabled, v1_bp
 from notifications import spawn_notification
 from util.audit import track_and_log
 from util.http import abort

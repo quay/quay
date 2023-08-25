@@ -1,20 +1,20 @@
-import logging
 import json
+import logging
 
-from flask import abort, request, jsonify, make_response, session
+from flask import abort, jsonify, make_response, request, session
 
-from app import storage, docker_v2_signing_key
+from app import docker_v2_signing_key, storage
 from auth.decorators import process_auth
-from auth.permissions import ReadRepositoryPermission, ModifyRepositoryPermission
+from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from data.registry_model import registry_model
 from data.registry_model.manifestbuilder import lookup_manifest_builder
 from endpoints.decorators import (
     anon_protect,
-    parse_repository_name,
-    check_repository_state,
     check_readonly,
+    check_repository_state,
+    parse_repository_name,
 )
-from endpoints.v1 import v1_bp, check_v1_push_enabled
+from endpoints.v1 import check_v1_push_enabled, v1_bp
 from util.audit import track_and_log
 from util.names import TAG_ERROR, TAG_REGEX
 

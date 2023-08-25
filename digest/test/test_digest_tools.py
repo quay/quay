@@ -1,6 +1,6 @@
 import pytest
 
-from digest.digest_tools import Digest, content_path, InvalidDigestException
+from digest.digest_tools import Digest, InvalidDigestException, content_path
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,6 @@
-import dateutil.parser
-
 from datetime import datetime
 
+import dateutil.parser
 from peewee import SQL
 
 

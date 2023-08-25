@@ -1,16 +1,20 @@
 from datetime import datetime, timedelta
-from mock import patch
+from test.fixtures import *
 
 import pytest
+from mock import patch
 
-from data.model import config as _config
 from data import model
-from data.model.appspecifictoken import create_token, revoke_token, access_valid_token
-from data.model.appspecifictoken import gc_expired_tokens, get_expiring_tokens
-from data.model.appspecifictoken import get_full_token_string
+from data.model import config as _config
+from data.model.appspecifictoken import (
+    access_valid_token,
+    create_token,
+    gc_expired_tokens,
+    get_expiring_tokens,
+    get_full_token_string,
+    revoke_token,
+)
 from util.timedeltastring import convert_to_timedelta
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

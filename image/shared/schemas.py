@@ -1,17 +1,16 @@
-from image.shared import ManifestException
-from image.docker.schema1 import DockerSchema1Manifest, DOCKER_SCHEMA1_CONTENT_TYPES
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES, DockerSchema1Manifest
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
-from image.shared.types import SparseManifestList
-from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.docker.schema2.list import DockerSchema2ManifestList
+from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.index import OCIIndex
 from image.oci.manifest import OCIManifest
+from image.shared import ManifestException
+from image.shared.types import SparseManifestList
 from util.bytes import Bytes
-
 
 MANIFEST_LIST_TYPES = [DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE, OCI_IMAGE_INDEX_CONTENT_TYPE]
 

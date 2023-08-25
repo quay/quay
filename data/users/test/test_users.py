@@ -1,15 +1,14 @@
-import pytest
-
 from contextlib import contextmanager
+from test.fixtures import *
+from test.test_external_jwt_authn import fake_jwt
+from test.test_keystone_auth import fake_keystone
+from test.test_ldap import mock_ldap
+
+import pytest
 from mock import patch
 
 from data import model
 from data.users.federated import DISABLED_MESSAGE
-from test.test_ldap import mock_ldap
-from test.test_keystone_auth import fake_keystone
-from test.test_external_jwt_authn import fake_jwt
-
-from test.fixtures import *
 
 
 @pytest.mark.parametrize(

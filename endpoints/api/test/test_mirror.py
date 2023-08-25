@@ -1,13 +1,12 @@
 from datetime import datetime
+from test.fixtures import *
 
 import pytest
 
 from data import model
-from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.mirror import RepoMirrorResource
+from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
-
-from test.fixtures import *
 
 
 def _setup_mirror():

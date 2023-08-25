@@ -1,15 +1,15 @@
 import unittest
+from contextlib import contextmanager
 
 import ldap
 from ldap.filter import filter_format
+from mock import patch
+from mockldap import MockLdap
 
 from app import app
-from initdb import setup_database_for_testing, finished_database_for_testing
-from data.users import LDAPUsers
 from data import model
-from mockldap import MockLdap
-from mock import patch
-from contextlib import contextmanager
+from data.users import LDAPUsers
+from initdb import finished_database_for_testing, setup_database_for_testing
 
 
 def _create_ldap(

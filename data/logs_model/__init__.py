@@ -1,9 +1,9 @@
 import logging
 
+from data.logs_model.combined_model import CombinedLogsModel
+from data.logs_model.document_logs_model import DocumentLogsModel
 from data.logs_model.splunk_logs_model import SplunkLogsModel
 from data.logs_model.table_logs_model import TableLogsModel
-from data.logs_model.document_logs_model import DocumentLogsModel
-from data.logs_model.combined_model import CombinedLogsModel
 
 logger = logging.getLogger(__name__)
 

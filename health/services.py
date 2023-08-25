@@ -4,7 +4,7 @@ import tempfile
 
 import psutil
 
-from app import build_logs, storage, authentication, instance_keys
+from app import authentication, build_logs, instance_keys, storage
 from health.models_pre_oci import pre_oci_model as model
 
 logger = logging.getLogger(__name__)

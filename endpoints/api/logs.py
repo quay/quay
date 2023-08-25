@@ -6,34 +6,32 @@ from datetime import datetime, timedelta
 from flask import abort, request
 
 import features
-
-from app import app, export_action_logs_queue, avatar
-from auth.permissions import AdministerOrganizationPermission
-from auth.auth_context import get_authenticated_user
+from app import app, avatar, export_action_logs_queue
 from auth import scopes
+from auth.auth_context import get_authenticated_user
+from auth.permissions import AdministerOrganizationPermission
 from data.logs_model import logs_model
 from data.logs_model.shared import InvalidLogsDateRangeError
 from data.registry_model import registry_model
 from endpoints.api import (
-    resource,
-    nickname,
     ApiResource,
-    query_param,
-    parse_args,
-    RepositoryParamResource,
-    require_repo_admin,
-    related_user_resource,
-    format_date,
-    require_user_admin,
-    path_param,
-    require_scope,
-    page_support,
-    validate_json_request,
     InvalidRequest,
+    RepositoryParamResource,
+    format_date,
+    nickname,
+    page_support,
+    parse_args,
+    path_param,
+    query_param,
+    related_user_resource,
+    require_repo_admin,
+    require_scope,
+    require_user_admin,
+    resource,
     show_if,
+    validate_json_request,
 )
-from endpoints.exception import Unauthorized, NotFound
-
+from endpoints.exception import NotFound, Unauthorized
 
 LOGS_PER_PAGE = 20
 SERVICE_LEVEL_LOG_KINDS = set(

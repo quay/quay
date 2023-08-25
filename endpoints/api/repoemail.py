@@ -4,26 +4,25 @@ Authorize repository to send e-mail notifications.
 
 import logging
 
-from flask import request, abort
+from flask import abort, request
 
+import features
+from app import tf
+from data.database import db
 from endpoints.api import (
-    resource,
-    nickname,
-    require_repo_admin,
     RepositoryParamResource,
-    log_action,
-    validate_json_request,
     internal_only,
+    log_action,
+    nickname,
     path_param,
+    require_repo_admin,
+    resource,
     show_if,
+    validate_json_request,
 )
 from endpoints.api.repoemail_models_pre_oci import pre_oci_model as model
 from endpoints.exception import NotFound
-from app import tf
-from data.database import db
 from util.useremails import send_repo_authorization_email
-
-import features
 
 logger = logging.getLogger(__name__)
 

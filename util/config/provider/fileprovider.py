@@ -1,9 +1,8 @@
-import os
 import logging
+import os
 
-from util.config.provider.baseprovider import export_yaml, CannotWriteConfigException
 from util.config.provider.basefileprovider import BaseFileProvider
-
+from util.config.provider.baseprovider import CannotWriteConfigException, export_yaml
 
 logger = logging.getLogger(__name__)
 

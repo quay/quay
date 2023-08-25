@@ -1,4 +1,8 @@
-from util.morecollections import FastIndexList, StreamingDiffTracker, IndexedStreamingDiffTracker
+from util.morecollections import (
+    FastIndexList,
+    IndexedStreamingDiffTracker,
+    StreamingDiffTracker,
+)
 
 
 def test_fastindexlist_basic_usage():

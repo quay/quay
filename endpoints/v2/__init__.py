@@ -1,43 +1,39 @@
 import logging
 import os.path
-
 from functools import wraps
-from urllib.parse import urlparse
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
-from flask import Blueprint, make_response, url_for, request, jsonify, Response
+from flask import Blueprint, Response, jsonify, make_response, request, url_for
 from semantic_version import Spec
 
 import features
-
 from app import app, get_app_url, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import (
-    ReadRepositoryPermission,
-    ModifyRepositoryPermission,
     AdministerRepositoryPermission,
+    ModifyRepositoryPermission,
+    ReadRepositoryPermission,
     SuperUserPermission,
 )
-from auth.registry_jwt_auth import process_registry_jwt_auth, get_auth_headers
-from data.registry_model import registry_model
-from data.readreplica import ReadOnlyModeException
+from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
 from data.model import QuotaExceededException
-from endpoints.decorators import anon_protect, anon_allowed, route_show_if
+from data.readreplica import ReadOnlyModeException
+from data.registry_model import registry_model
+from endpoints.decorators import anon_allowed, anon_protect, route_show_if
 from endpoints.v2.errors import (
-    V2RegistryException,
+    InvalidRequest,
+    NameUnknown,
+    QuotaExceeded,
+    ReadOnlyMode,
     Unauthorized,
     Unsupported,
-    NameUnknown,
-    ReadOnlyMode,
-    InvalidRequest,
-    QuotaExceeded,
+    V2RegistryException,
 )
+from proxy import UpstreamRegistryError
 from util.http import abort
 from util.metrics.prometheus import timed_blueprint
+from util.pagination import decrypt_page_token, encrypt_page_token
 from util.registry.dockerver import docker_version
-from util.pagination import encrypt_page_token, decrypt_page_token
-from proxy import UpstreamRegistryError
-
 
 logger = logging.getLogger(__name__)
 v2_bp = timed_blueprint(Blueprint("v2", __name__))
@@ -255,10 +251,4 @@ def v2_support_enabled():
     return response
 
 
-from endpoints.v2 import (
-    blob,
-    catalog,
-    manifest,
-    tag,
-    v2auth,
-)
+from endpoints.v2 import blob, catalog, manifest, tag, v2auth

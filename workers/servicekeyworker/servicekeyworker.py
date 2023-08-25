@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from prometheus_client import Counter
 
 from app import app, instance_keys
+from workers.gunicorn_worker import GunicornWorker
 from workers.servicekeyworker.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
-from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 

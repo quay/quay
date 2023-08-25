@@ -1,7 +1,6 @@
-import re
-import os.path
 import hashlib
-
+import os.path
+import re
 
 DIGEST_PATTERN = r"([A-Za-z0-9_+.-]+):([A-Fa-f0-9]+)"
 REPLACE_WITH_PATH = re.compile(r"[+.]")
