@@ -36,7 +36,7 @@
     "js-yaml": "^3.14.0",
     "jsrsasign": "^10.1.13",
     "jszip": "^3.8.0",
-    "moment": "^2.10",
+    "moment": "^2.29",
     "moment-timezone": "^0.4.0",
     "ng-metadata": "^4.0.1",
     "node-forge": "^0.10.0",
