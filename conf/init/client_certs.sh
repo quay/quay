@@ -8,7 +8,7 @@ if [ -d /run/secrets/postgresql ]; then
 		[ -e /run/secrets/postgresql/tls.crt ] && \
 			cp /run/secrets/postgresql/tls.crt ${CERTDIR}/postgresql.crt
 		[ -e /run/secrets/postgresql/tls.key ] && \
-			cp /run/secrets/postgresql/tls.key ${CERTDIR}/postgresql.key 
+			cp /run/secrets/postgresql/tls.key ${CERTDIR}/postgresql.key
 		# SSL key needs to be restricted mode 0600
 		[ -e ${CERTDIR}/postgresql.key ] && \
 			chmod 0600 ${CERTDIR}/postgresql.key
