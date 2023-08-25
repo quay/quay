@@ -153,6 +153,7 @@ export default function RepositoryDetails() {
               >
                 <Tabs
                   mountOnEnter
+                  unmountOnExit
                   activeKey={activeTabKey}
                   onSelect={tabsOnSelect}
                 >

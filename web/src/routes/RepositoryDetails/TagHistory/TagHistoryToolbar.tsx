@@ -29,7 +29,7 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
       <ToolbarContent>
         <ToolbarItem variant="search-filter">
           <SearchInput
-            placeholder="Search by name..."
+            placeholder="Search by tag name..."
             value={query}
             onChange={(value) => {
               setQuery(value);
