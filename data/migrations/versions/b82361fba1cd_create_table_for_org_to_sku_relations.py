@@ -8,7 +8,7 @@ Create Date: 2023-06-07 14:22:09.384808
 
 # revision identifiers, used by Alembic.
 revision = "b82361fba1cd"
-down_revision = "a0fc06d604a4"
+down_revision = "8a70b8777089"
 
 from typing import Text
 
