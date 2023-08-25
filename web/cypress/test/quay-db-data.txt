@@ -85,6 +85,7 @@ ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_delegate_team_id_team;
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS fk_permissionprototype_activating_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_userid;
+ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_orgid;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS fk_oauthauthorizationcode_application_id_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS fk_oauthapplication_organization_id_user;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_authorized_user_id_user;
@@ -301,6 +302,9 @@ DROP INDEX IF EXISTS public.permissionprototype_org_id;
 DROP INDEX IF EXISTS public.permissionprototype_delegate_user_id;
 DROP INDEX IF EXISTS public.permissionprototype_delegate_team_id;
 DROP INDEX IF EXISTS public.permissionprototype_activating_user_id;
+DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id_user_id;
+DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id;
+DROP INDEX IF EXISTS public.organizationrhskus_subscription_id;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_code_name;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_application_id;
 DROP INDEX IF EXISTS public.oauthapplication_organization_id;
@@ -463,7 +467,6 @@ DROP INDEX IF EXISTS public.accesstoken_token_name;
 DROP INDEX IF EXISTS public.accesstoken_role_id;
 DROP INDEX IF EXISTS public.accesstoken_repository_id;
 DROP INDEX IF EXISTS public.accesstoken_kind_id;
-ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS uq_subscription_id;
 ALTER TABLE IF EXISTS ONLY public.visibility DROP CONSTRAINT IF EXISTS pk_visibility;
 ALTER TABLE IF EXISTS ONLY public.userregion DROP CONSTRAINT IF EXISTS pk_userregion;
 ALTER TABLE IF EXISTS ONLY public.userpromptkind DROP CONSTRAINT IF EXISTS pk_userpromptkind;
@@ -883,7 +886,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner:
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: 
 --
 
 COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
@@ -6348,8 +6351,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-06-28 18:17:46.058418	t	2023-06-28 21:12:45.983351	5	f4026e00-acc1-4634-b560-7b9dfe4ea2c0
 2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-06-28 18:17:51.112431	t	2023-06-28 21:12:51.080949	5	1f7f0b49-2e34-4a00-8414-2559e4bbe63f
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-08-25 15:22:54.808849	t	2023-08-25 18:17:54.783824	5	89f5e206-0b48-4227-8e7f-15e9a549fa2e
 \.
 
 
@@ -7419,34 +7422,34 @@ COPY public.tagtorepositorytag (id, repository_id, tag_id, repository_tag_id) FR
 --
 
 COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
-3	owners	4	1
-4	owners	5	1
-5	owners	6	1
-6	owners	7	1
-7	owners	8	1
-8	owners	9	1
-9	owners	10	1
-10	owners	11	1
-11	owners	12	1
-12	owners	13	1
-13	owners	14	1
-14	owners	15	1
-15	owners	16	1
-16	owners	17	1
-17	owners	18	1
-18	owners	19	1
-19	owners	20	1
-20	owners	21	1
-21	owners	22	1
-22	owners	23	1
-23	owners	24	1
-24	owners	25	1
-25	owners	26	1
-26	owners	27	1
-27	owners	28	1
-28	testteam	28	3
-29	testteam2	28	3
-30	owners	32	1
+3	owners	4	1	
+4	owners	5	1	
+5	owners	6	1	
+6	owners	7	1	
+7	owners	8	1	
+8	owners	9	1	
+9	owners	10	1	
+10	owners	11	1	
+11	owners	12	1	
+12	owners	13	1	
+13	owners	14	1	
+14	owners	15	1	
+15	owners	16	1	
+16	owners	17	1	
+17	owners	18	1	
+18	owners	19	1	
+19	owners	20	1	
+20	owners	21	1	
+21	owners	22	1	
+22	owners	23	1	
+23	owners	24	1	
+24	owners	25	1	
+25	owners	26	1	
+26	owners	27	1	
+27	owners	28	1	
+28	testteam	28	3	
+29	testteam2	28	3	
+30	owners	32	1	
 \.
 
 
@@ -9172,14 +9175,6 @@ ALTER TABLE ONLY public.visibility
 
 
 --
--- Name: organizationrhskus uq_subscription_id; Type: CONSTRAINT; Schema: public; Owner: quay
---
-
-ALTER TABLE ONLY public.organizationrhskus
-    ADD CONSTRAINT uq_subscription_id UNIQUE (subscription_id);
-
-
---
 -- Name: accesstoken_kind_id; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -10311,6 +10306,27 @@ CREATE INDEX oauthauthorizationcode_application_id ON public.oauthauthorizationc
 --
 
 CREATE UNIQUE INDEX oauthauthorizationcode_code_name ON public.oauthauthorizationcode USING btree (code_name);
+
+
+--
+-- Name: organizationrhskus_subscription_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX organizationrhskus_subscription_id ON public.organizationrhskus USING btree (subscription_id);
+
+
+--
+-- Name: organizationrhskus_subscription_id_org_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id ON public.organizationrhskus USING btree (subscription_id, org_id);
+
+
+--
+-- Name: organizationrhskus_subscription_id_org_id_user_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX organizationrhskus_subscription_id_org_id_user_id ON public.organizationrhskus USING btree (subscription_id, org_id, user_id);
 
 
 --
@@ -11880,6 +11896,14 @@ ALTER TABLE ONLY public.oauthauthorizationcode
 
 
 --
+-- Name: organizationrhskus fk_organizationrhskus_orgid; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.organizationrhskus
+    ADD CONSTRAINT fk_organizationrhskus_orgid FOREIGN KEY (org_id) REFERENCES public."user"(id);
+
+
+--
 -- Name: organizationrhskus fk_organizationrhskus_userid; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -12434,3 +12458,4 @@ ALTER TABLE ONLY public.userregion
 --
 -- PostgreSQL database dump complete
 --
+
