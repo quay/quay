@@ -7,6 +7,12 @@ updates:
     assignees:
       - dmage
   - package-ecosystem: npm
+    directory: /config-tool/pkg/lib/editor
+    schedule:
+      interval: weekly
+    assignees:
+      - dmage
+  - package-ecosystem: npm
     directory: /web
     schedule:
       interval: weekly
