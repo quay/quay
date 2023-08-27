@@ -26,7 +26,7 @@
     "mini-css-extract-plugin": "^2.7.6",
     "null-loader": "^4.0.1",
     "react": "^17.0.2",
-    "react-router-dom": "^6.3.0",
+    "react-router-dom": "^6.15.0",
     "react-scripts": "5.0.0",
     "recoil": "^0.7.7",
     "recoil-persist": "^4.2.0",
