@@ -698,7 +698,7 @@ describe('Tag History Tab', () => {
   it('search by name', () => {
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag History').click();
-    cy.get('input[placeholder="Search by name..."').type('manifestlist');
+    cy.get('input[placeholder="Search by tag name..."').type('manifestlist');
     cy.get('#tag-history-table > tr').each(($e, index, $list) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="tag-change"]`).should(
