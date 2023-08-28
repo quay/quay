@@ -11,6 +11,7 @@ import {
   createRobotAccount,
 } from 'src/resources/RobotsResource';
 import {updateTeamForRobot} from 'src/resources/TeamResources';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 
 export function useFetchRobotAccounts(orgName: string) {
   const {
@@ -70,13 +71,16 @@ export function useRobotAccounts({name, onSuccess, onError}) {
   const [perPage, setPerPage] = useState(10);
   const [namespace, setNamespace] = useState(name);
 
+  const {usernames} = useOrganizations();
+  const isUser = usernames.includes(name);
+
   const {
     data: robotAccountsForOrg,
     isLoading: loading,
     error,
   } = useQuery(
     ['Namespace', namespace, 'robots'],
-    ({signal}) => fetchRobotsForNamespace(namespace, false, signal),
+    ({signal}) => fetchRobotsForNamespace(namespace, isUser, signal),
     {
       placeholderData: [],
       onSuccess: () => {
@@ -99,7 +103,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
             result.robotname,
             repo.name,
             repo.permission,
-            result.isUser,
+            isUser,
           ),
         ),
       );

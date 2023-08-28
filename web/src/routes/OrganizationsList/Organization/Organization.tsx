@@ -57,11 +57,7 @@ export default function Organization() {
       return false;
     }
 
-    if (
-      !isUserOrganization &&
-      organization &&
-      (tabname == 'Settings' || tabname == 'Robot accounts')
-    ) {
+    if (!isUserOrganization && organization && tabname == 'Settings') {
       return organization.is_org_admin || organization.is_admin;
     }
     return false;

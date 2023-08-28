@@ -5,15 +5,24 @@ import {
   IRepoPerm,
 } from 'src/resources/RobotsResource';
 import {useState} from 'react';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 
 export function useRobotRepoPermissions({namespace, onSuccess, onError}) {
   const queryClient = useQueryClient();
   const [robotName, setRobotName] = useState('');
 
+  const {usernames} = useOrganizations();
+  const isUser = usernames.includes(namespace);
+
   const deleteRepoPermsMutator = useMutation(
     async ({robotName, repoNames}: bulkDeleteRepoPermsParams) => {
       setRobotName(robotName);
-      return await bulkDeleteRepoPermsForRobot(namespace, robotName, repoNames);
+      return await bulkDeleteRepoPermsForRobot(
+        namespace,
+        robotName,
+        repoNames,
+        isUser,
+      );
     },
     {
       onSuccess: (result) => {
@@ -36,7 +45,12 @@ export function useRobotRepoPermissions({namespace, onSuccess, onError}) {
   const updateRepoPermsMutator = useMutation(
     async ({robotName, repoPerms}: bulkUpdateRepoPermsParams) => {
       setRobotName(robotName);
-      return await bulkUpdateRepoPermsForRobot(namespace, robotName, repoPerms);
+      return await bulkUpdateRepoPermsForRobot(
+        namespace,
+        robotName,
+        repoPerms,
+        isUser,
+      );
     },
     {
       onSuccess: (result) => {
