@@ -415,6 +415,10 @@ describe('Repository Details Page', () => {
       cy.get('#tag-actions-kebab').click();
     });
     cy.contains('Edit labels').click();
+    cy.get('#mutable-labels').within(() => {
+      cy.contains('version=1.0.0').should('exist');
+      cy.contains('vendor=Redhat').should('exist');
+    });
     cy.contains('Add new label').click();
     cy.get('input[placeholder="key=value"]').type('foo=bar');
     cy.contains('Mutable labels').click(); // Simulates clicking outside of input
