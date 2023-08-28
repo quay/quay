@@ -23,6 +23,7 @@ export interface Tag {
   start_ts: number;
   manifest_list: ManifestList;
   expiration?: string;
+  end_ts?: number;
 }
 
 export interface ManifestList {
@@ -137,14 +138,19 @@ export const VulnerabilityOrder = {
   [VulnerabilitySeverity.Unknown]: 5,
 };
 
+// TODO: Support cancelation signal here
 export async function getTags(
   org: string,
   repo: string,
   page: number,
   limit = 100,
   specificTag = null,
+  onlyActiveTags = true,
 ) {
-  let path = `/api/v1/repository/${org}/${repo}/tag/?limit=${limit}&page=${page}&onlyActiveTags=true`;
+  let path = `/api/v1/repository/${org}/${repo}/tag/?limit=${limit}&page=${page}`;
+  if (onlyActiveTags) {
+    path = path.concat(`&onlyActiveTags=true`);
+  }
   if (specificTag) {
     path = path.concat(`&specificTag=${specificTag}`);
   }
@@ -376,4 +382,34 @@ export async function setExpiration(
   } catch (error) {
     throw new ResourceError('Unable to set tag expiration', tag, error);
   }
+}
+
+export async function restoreTag(
+  org: string,
+  repo: string,
+  tag: string,
+  digest: string,
+) {
+  const response: AxiosResponse = await axios.post(
+    `/api/v1/repository/${org}/${repo}/tag/${tag}/restore`,
+    {
+      manifest_digest: digest,
+    },
+  );
+}
+
+export async function permanentlyDeleteTag(
+  org: string,
+  repo: string,
+  tag: string,
+  digest: string,
+) {
+  const response: AxiosResponse = await axios.post(
+    `/api/v1/repository/${org}/${repo}/tag/${tag}/expire`,
+    {
+      manifest_digest: digest,
+      include_submanifests: true,
+      is_alive: false,
+    },
+  );
 }

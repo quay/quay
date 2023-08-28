@@ -8,13 +8,13 @@ import {
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
-import {useTags} from 'src/hooks/UseTags';
+import {useCreateTag} from 'src/hooks/UseTags';
 import {isNullOrUndefined} from 'src/libs/utils';
 
 export default function AddTagModal(props: AddTagModalProps) {
   const [value, setValue] = useState('');
   const {addAlert} = useAlerts();
-  const {createTag, successCreateTag, errorCreateTag} = useTags(
+  const {createTag, successCreateTag, errorCreateTag} = useCreateTag(
     props.org,
     props.repo,
   );

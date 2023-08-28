@@ -21,10 +21,6 @@ import {useEffect, useRef, useState} from 'react';
 import Settings from './Settings/Settings';
 import {DrawerContentType} from './Types';
 import AddPermissions from './Settings/PermissionsAddPermission';
-import {
-  fetchRepositoryDetails,
-  RepositoryDetails as IRepositoryDetails,
-} from 'src/resources/RepositoryResource';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
@@ -32,6 +28,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import CreateNotification from './Settings/NotificationsCreateNotification';
 import {useRepository} from 'src/hooks/UseRepository';
 import {parseOrgNameFromUrl, parseRepoNameFromUrl} from 'src/libs/utils';
+import TagHistory from './TagHistory/TagHistory';
 
 enum TabIndex {
   Tags = 'tags',
@@ -154,7 +151,12 @@ export default function RepositoryDetails() {
                 hasError={isErrorString(err)}
                 fallback={<RequestError message={err} />}
               >
-                <Tabs activeKey={activeTabKey} onSelect={tabsOnSelect}>
+                <Tabs
+                  mountOnEnter
+                  unmountOnExit
+                  activeKey={activeTabKey}
+                  onSelect={tabsOnSelect}
+                >
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
@@ -162,6 +164,16 @@ export default function RepositoryDetails() {
                     <TagsList
                       organization={organization}
                       repository={repository}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.TagHistory}
+                    title={<TabTitleText>Tag History</TabTitleText>}
+                  >
+                    <TagHistory
+                      org={organization}
+                      repo={repository}
                       repoDetails={repoDetails}
                     />
                   </Tab>

@@ -9,7 +9,7 @@ export const ToolbarPagination = (props: ToolbarPaginationProps) => {
     <ToolbarItem variant="pagination">
       <Pagination
         perPageComponent="button"
-        itemCount={props.total || props.itemsList.length}
+        itemCount={props.total || props.itemsList?.length}
         perPage={props.perPage}
         id={props.id ? props.id : 'toolbar-pagination'}
         page={props.page}
@@ -22,13 +22,14 @@ export const ToolbarPagination = (props: ToolbarPaginationProps) => {
         variant={
           props.bottom ? PaginationVariant.bottom : PaginationVariant.top
         }
+        isCompact={props.isCompact}
       />
     </ToolbarItem>
   );
 };
 
 type ToolbarPaginationProps = {
-  itemsList: any[];
+  itemsList?: any[];
   perPage: number;
   page: number;
   setPage: (pageNumber: number) => void;
@@ -36,4 +37,5 @@ type ToolbarPaginationProps = {
   bottom?: boolean;
   id?: string;
   total?: number;
+  isCompact?: boolean;
 };
