@@ -50,7 +50,7 @@ export default function Organization() {
     if (
       !isUserOrganization &&
       organization &&
-      (tabname == 'Settings' || tabname == 'Robot accounts')
+      tabname == 'Settings'
     ) {
       return organization.is_org_admin || organization.is_admin;
     }
@@ -81,7 +81,7 @@ export default function Organization() {
     {
       name: 'Robot accounts',
       component: <RobotAccountsList organizationName={organizationName} />,
-      visible: fetchTabVisibility('Robot accounts'),
+      visible: true,
     },
     {
       name: 'Settings',

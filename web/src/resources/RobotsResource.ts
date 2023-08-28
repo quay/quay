@@ -115,6 +115,7 @@ export async function bulkUpdateRepoPermsForRobot(
   orgname: string,
   robotname: string,
   repoPerms: IRepoPerm[],
+  isUser = false,
 ) {
   const responses = await Promise.allSettled(
     repoPerms.map((repoPerm) =>
@@ -123,6 +124,7 @@ export async function bulkUpdateRepoPermsForRobot(
         robotname,
         repoPerm.reponame,
         repoPerm.permission,
+        isUser,
       ),
     ),
   );
@@ -164,10 +166,11 @@ export async function bulkDeleteRepoPermsForRobot(
   orgname: string,
   robotname: string,
   repoNames: string[],
+  isUser: boolean,
 ) {
   const responses = await Promise.allSettled(
     repoNames.map((repoName) =>
-      deleteRepoPermsForRobot(orgname, robotname, repoName),
+      deleteRepoPermsForRobot(orgname, robotname, repoName, isUser),
     ),
   );
 

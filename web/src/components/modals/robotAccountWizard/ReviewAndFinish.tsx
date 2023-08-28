@@ -30,7 +30,9 @@ const RepoColumnNames = {
 };
 
 export default function ReviewAndFinish(props: ReviewAndFinishProps) {
-  const [tableMode, setTableMode] = useState<TableModeType>('Teams');
+  const [tableMode, setTableMode] = useState<TableModeType>(
+    props.userNamespace ? 'Repositories' : 'Teams',
+  );
 
   const onTableModeChange: ToggleGroupItemProps['onChange'] = (
     _isSelected,
@@ -147,6 +149,44 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
     );
   };
 
+  const fetchToggleGroups = () => {
+    if (!props.userNamespace) {
+      return (
+        <>
+          <ToggleGroupItem
+            text="Teams"
+            buttonId="Teams"
+            isSelected={tableMode === 'Teams'}
+            onChange={onTableModeChange}
+          />
+          <ToggleGroupItem
+            text="Repositories"
+            buttonId="Repositories"
+            isSelected={tableMode === 'Repositories'}
+            onChange={onTableModeChange}
+          />
+          <ToggleGroupItem
+            text="Default permissions"
+            buttonId="Default-permissions"
+            isSelected={tableMode === 'Default-permissions'}
+            onChange={onTableModeChange}
+          />
+        </>
+      );
+    } else {
+      return (
+        <>
+          <ToggleGroupItem
+            text="Repositories"
+            buttonId="Repositories"
+            isSelected={tableMode === 'Repositories'}
+            onChange={onTableModeChange}
+          />
+        </>
+      );
+    }
+  };
+
   return (
     <>
       <TextContent>
@@ -183,24 +223,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
         </FormGroup>
 
         <ToggleGroup aria-label="Default with single selectable">
-          <ToggleGroupItem
-            text="Teams"
-            buttonId="Teams"
-            isSelected={tableMode === 'Teams'}
-            onChange={onTableModeChange}
-          />
-          <ToggleGroupItem
-            text="Repositories"
-            buttonId="Repositories"
-            isSelected={tableMode === 'Repositories'}
-            onChange={onTableModeChange}
-          />
-          <ToggleGroupItem
-            text="Default permissions"
-            buttonId="Default-permissions"
-            isSelected={tableMode === 'Default-permissions'}
-            onChange={onTableModeChange}
-          />
+          {fetchToggleGroups()}
         </ToggleGroup>
       </Form>
       {fetchTableItems()}
@@ -214,4 +237,5 @@ interface ReviewAndFinishProps {
   selectedTeams: any[];
   selectedRepos: any[];
   robotdefaultPerm: string;
+  userNamespace: boolean;
 }

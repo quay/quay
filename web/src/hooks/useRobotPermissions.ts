@@ -6,12 +6,16 @@ import {
 } from 'src/resources/RobotsResource';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
+import {useOrganizations} from './UseOrganizations';
 
 export function useRobotPermissions({orgName, robName, onSuccess, onError}) {
   const [namespace, setNamespace] = useState(orgName);
   const [robotName, setRobotName] = useState(robName);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+
+  const {usernames} = useOrganizations();
+  const isUser = usernames.includes(orgName);
 
   const {
     data: robotPermissions,
@@ -20,7 +24,7 @@ export function useRobotPermissions({orgName, robName, onSuccess, onError}) {
   } = useQuery(
     ['Namespace', namespace, 'robot', robotName, 'permissions'],
     ({signal}) =>
-      fetchRobotPermissionsForNamespace(namespace, robotName, false, signal),
+      fetchRobotPermissionsForNamespace(namespace, robotName, isUser, signal),
     {
       enabled: true,
       placeholderData: [],
@@ -36,7 +40,7 @@ export function useRobotPermissions({orgName, robName, onSuccess, onError}) {
   const queryClient = useQueryClient();
   const deleteRepoPermsMutator = useMutation(
     async (repoNames: string[]) => {
-      await bulkDeleteRepoPermsForRobot(namespace, robName, repoNames);
+      await bulkDeleteRepoPermsForRobot(namespace, robName, repoNames, isUser);
     },
     {
       onSuccess: () => {
