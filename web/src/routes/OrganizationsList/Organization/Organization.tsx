@@ -108,8 +108,8 @@ export default function Organization() {
     },
     {
       name: 'Robot accounts',
-      component: <RobotAccountsList organizationName={organizationName} />,
-      visible: fetchTabVisibility('Robot accounts'),
+      component: <RobotAccountsList organizationName={organizationName} isUser={isUserOrganization} />,
+      visible: true,
     },
     {
       name: 'Default permissions',
