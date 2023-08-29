@@ -1,19 +1,19 @@
-import { ReactNode } from "react";
-import { atom } from "recoil";
+import {ReactNode} from 'react';
+import {atom} from 'recoil';
 
 export enum AlertVariant {
-    Success = 'success',
-    Failure = 'danger',
+  Success = 'success',
+  Failure = 'danger',
 }
 
 export interface AlertDetails {
-    variant: AlertVariant;
-    title: string;
-    key?: string;
-    message?: string | ReactNode;
+  variant: AlertVariant;
+  title: string;
+  key?: string;
+  message?: string | ReactNode;
 }
 
 export const alertState = atom<AlertDetails[]>({
-    key: 'alertState',
-    default: [],
+  key: 'alertState',
+  default: [],
 });

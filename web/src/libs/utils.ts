@@ -98,6 +98,16 @@ export function parseTagNameFromUrl(url: string): string {
   return urlParts[tagKeywordIndex + 1];
 }
 
+export function parseTeamNameFromUrl(url: string): string {
+  //url is in the format of <prefix>/organization/<org>/teams/<team>
+  const urlParts = url.split('/');
+  const teamKeywordIndex = urlParts.indexOf('teams');
+  if (teamKeywordIndex === -1) {
+    return '';
+  }
+  return urlParts[teamKeywordIndex + 1];
+}
+
 export function humanizeTimeForExpiry(time_seconds: number): string {
   return moment.duration(time_seconds || 0, 's').humanize();
 }
@@ -107,7 +117,7 @@ export function getSeconds(duration_str: string): number {
     return 0;
   }
 
-  let [number, suffix] = duration_str.split('');
+  const [number, suffix] = duration_str.split('');
   return moment.duration(parseInt(number), suffix).asSeconds();
 }
 

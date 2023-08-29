@@ -16,6 +16,7 @@ export interface IOrganization {
   public?: boolean;
   is_org_admin?: boolean;
   is_admin?: boolean;
+  is_member?: boolean;
   preferred_namespace?: boolean;
   teams?: string[];
   tag_expiration_s: number;
@@ -121,7 +122,7 @@ export async function updateOrgSettings(
   const updateSettingsUrl = isUser
     ? `/api/v1/user/`
     : `/api/v1/organization/${namespace}`;
-  let payload = {};
+  const payload = {};
   if (email) {
     payload['email'] = email;
   }

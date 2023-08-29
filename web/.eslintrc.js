@@ -18,6 +18,7 @@ module.exports = {
     },
   },
   plugins: ['import', 'react', '@typescript-eslint', 'prettier'],
+  ignorePatterns: ['*.md'],
   rules: {
     'react/react-in-jsx-scope': 'off',
     'prettier/prettier': ['error'],
@@ -40,6 +41,9 @@ module.exports = {
         alwaysTryTypes: true,
         project: `${__dirname}/tsconfig.json`,
       },
+    },
+    react: {
+      version: 'detect',
     },
   },
 };

@@ -23,13 +23,10 @@ import {RobotAccountColumnNames} from './ColumnNames';
 import {RobotAccountsToolBar} from 'src/routes/RepositoriesList/RobotAccountsToolBar';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {IRobot} from 'src/resources/RobotsResource';
-import {useRecoilState, useRecoilValue} from 'recoil';
-import {
-  searchRobotAccountState,
-  selectedRobotAccountsState,
-} from 'src/atoms/RobotAccountState';
+import {useRecoilState} from 'recoil';
+import {selectedRobotAccountsState} from 'src/atoms/RobotAccountState';
 import {useRobotAccounts} from 'src/hooks/useRobotAccounts';
-import {ReactElement, useState, useRef, useEffect} from 'react';
+import {ReactElement, useState, useRef} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import RobotAccountKebab from './RobotAccountKebab';
 import {useDeleteRobotAccounts} from 'src/hooks/UseDeleteRobotAccount';
@@ -53,7 +50,7 @@ import {useRobotRepoPermissions} from 'src/hooks/UseRobotRepoPermissions';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 
-const RepoPermissionDropdownItems = [
+export const RepoPermissionDropdownItems = [
   {
     name: 'None',
     description: 'No permissions on the repository',
@@ -72,7 +69,7 @@ const RepoPermissionDropdownItems = [
   },
 ];
 
-const EmptyRobotAccount = {
+const emptyRobotAccount = {
   name: '',
   created: '',
   last_accessed: '',
@@ -95,7 +92,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [robotRepos, setRobotRepos] = useState([]);
   const [teams, setTeams] = useState([]);
   const [robotForDeletion, setRobotForDeletion] = useState<IRobot[]>([]);
-  const [robotForModalView, setRobotForModalView] = useState(EmptyRobotAccount);
+  const [robotForModalView, setRobotForModalView] = useState(emptyRobotAccount);
   const [isTokenModalOpen, setTokenModalOpen] = useState<boolean>(false);
   // For repository modal view
   const [selectedRepoPerms, setSelectedRepoPerms] = useRecoilState(
@@ -268,7 +265,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     setSelectedReposForModalView([]);
     setSelectedRepoPerms([]);
     robotPermissionsPlaceholder.current.resetRobotPermissions();
-    setRobotForModalView(EmptyRobotAccount);
+    setRobotForModalView(emptyRobotAccount);
   };
 
   const onRepoModalSave = async () => {
@@ -360,7 +357,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   };
 
   const onTokenModalClose = () => {
-    setRobotForModalView(EmptyRobotAccount);
+    setRobotForModalView(emptyRobotAccount);
   };
 
   const mapOfColNamesToTableData = {

@@ -189,7 +189,10 @@ export async function fetchUserRepoPermissions(org: string, repo: string) {
   return response.data.permissions;
 }
 
-export async function fetchTeamRepoPermissions(org: string, repo: string) {
+export async function fetchAllTeamPermissionsForRepository(
+  org: string,
+  repo: string,
+) {
   const response: AxiosResponse<RepoPermissionsResponse> = await axios.get(
     `/api/v1/repository/${org}/${repo}/permissions/team/`,
   );
