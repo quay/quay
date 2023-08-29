@@ -20,8 +20,23 @@ type DbConnectionArgsStruct struct {
 	Autorollback bool       `default:""  json:"autorollback,omitempty" yaml:"autorollback,omitempty"`
 
 	// Postgres arguments
-	SslRootCert string `default:""  json:"sslrootcert,omitempty" yaml:"sslrootcert,omitempty"`
-	SslMode     string `default:""  json:"sslmode,omitempty" yaml:"sslmode,omitempty"`
+	SslRootCert           string `default:""  json:"sslrootcert,omitempty" yaml:"sslrootcert,omitempty"`
+	SslMode               string `default:""  json:"sslmode,omitempty" yaml:"sslmode,omitempty"`
+	SslCert               string `default:""  json:"sslcert,omitempty" yaml:"sslcert,omitempty"`
+	SslKey                string `default:""  json:"sslkey,omitempty" yaml:"sslkey,omitempty"`
+	SslSni                string `default:""  json:"sslsni,omitempty" yaml:"sslsni,omitempty"`
+	SslMinProtocolVersion string `default:""  json:"ssl_min_protocol_version,omitempty" yaml:"ssl_min_protocol_version,omitempty"`
+	SslMaxProtocolVersion string `default:""  json:"ssl_max_protocol_version,omitempty" yaml:"ssl_max_protocol_version,omitempty"`
+	SslCrl                string `default:""  json:"sslcrl,omitempty" yaml:"sslcrl,omitempty"`
+	SslCrlDir             string `default:""  json:"sslcrldir,omitempty" yaml:"sslcrldir,omitempty"`
+	SslCompression        int    `default:0  json:"sslcompression,omitempty" yaml:"sslcompression,omitempty"`
+
+	// Network arguments
+	Keepalives         int `default:0 json:"keepalives,omitempty" yaml:"keepalives,omitempty"`
+	KeepalivesIdle     int `default:10 json:"keepalives_idle,omitempty" yaml:"keepalives_idle,omitempty"`
+	KeepalivesInterval int `default:2 json:"keepalives_interval,omitempty" yaml:"keepalives_interval,omitempty"`
+	KeepalivesCount    int `default:3 json:"keepalives_count,omitempty" yaml:"keepalives_count,omitempty"`
+	TcpUserTimeout     int `default:0 json:"tcp_user_timeout,omitempty" yaml:"tcp_user_timeout,omitempty"`
 }
 
 // SslStruct represents the SslStruct config fields
@@ -50,6 +65,19 @@ func NewDatabaseFieldGroup(fullConfig map[string]interface{}) (*DatabaseFieldGro
 	}
 
 	return newDatabaseFieldGroup, nil
+}
+
+// function to ensure supported TLS versions are used in Postgres connection URI
+func IsValidTLS(version string) bool {
+	switch version {
+	case
+		"TLSv1",
+		"TLSv1.1",
+		"TLSv1.2",
+		"TLSv1.3":
+		return true
+	}
+	return false
 }
 
 // NewDbConnectionArgsStruct creates a new DbConnectionArgsStruct
@@ -87,6 +115,90 @@ func NewDbConnectionArgsStruct(fullConfig map[string]interface{}) (*DbConnection
 		newDbConnectionArgsStruct.SslRootCert, ok = value.(string)
 		if !ok {
 			return newDbConnectionArgsStruct, errors.New("sslrootcert must be of type string")
+		}
+	}
+	if value, ok := fullConfig["sslcert"]; ok {
+		newDbConnectionArgsStruct.SslCert, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslcert must be of type string")
+		}
+	}
+	if value, ok := fullConfig["sslkey"]; ok {
+		newDbConnectionArgsStruct.SslKey, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslkey must be of type string")
+		}
+	}
+	if value, ok := fullConfig["sslsni"]; ok {
+		newDbConnectionArgsStruct.SslSni, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslsni must be of type string")
+		}
+	}
+	if value, ok := fullConfig["ssl_min_protocolversion"]; ok {
+		newDbConnectionArgsStruct.SslMinProtocolVersion, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("ssl_min_protoclversion must be of type string")
+		}
+		if !IsValidTLS(value.(string)) {
+			return newDbConnectionArgsStruct, errors.New("ssl_min_protoclversion invalid value (supported TLSv1,TLSv1.1-TLSv1.3)")
+		}
+	}
+	if value, ok := fullConfig["ssl_max_protocolversion"]; ok {
+		newDbConnectionArgsStruct.SslMaxProtocolVersion, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("ssl_max_protoclversion must be of type string")
+		}
+		if !IsValidTLS(value.(string)) {
+			return newDbConnectionArgsStruct, errors.New("ssl_max_protoclversion invalid value (supported TLSv1,TLSv1.1-TLSv1.3)")
+		}
+	}
+	if value, ok := fullConfig["sslcrl"]; ok {
+		newDbConnectionArgsStruct.SslCrl, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslcrl must be of type string")
+		}
+	}
+	if value, ok := fullConfig["sslcrldir"]; ok {
+		newDbConnectionArgsStruct.SslCrlDir, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslcrldir must be of type string")
+		}
+	}
+	if value, ok := fullConfig["sslcompression"]; ok {
+		newDbConnectionArgsStruct.SslCompression, ok = value.(int)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslcompression must be of type int")
+		}
+	}
+	if value, ok := fullConfig["keepalives"]; ok {
+		newDbConnectionArgsStruct.Keepalives, ok = value.(int)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("keepalives must be of type int")
+		}
+	}
+	if value, ok := fullConfig["keepalives_idle"]; ok {
+		newDbConnectionArgsStruct.KeepalivesIdle, ok = value.(int)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("keepalives_idle must be of type int")
+		}
+	}
+	if value, ok := fullConfig["keepalives_interval"]; ok {
+		newDbConnectionArgsStruct.KeepalivesInterval, ok = value.(int)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("keepalives_interval must be of type int")
+		}
+	}
+	if value, ok := fullConfig["keepalives_count"]; ok {
+		newDbConnectionArgsStruct.KeepalivesCount, ok = value.(int)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("keepalives_count must be of type int")
+		}
+	}
+	if value, ok := fullConfig["tcp_user_timeout"]; ok {
+		newDbConnectionArgsStruct.TcpUserTimeout, ok = value.(int)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("tcp_user_timeout must be of type int")
 		}
 	}
 

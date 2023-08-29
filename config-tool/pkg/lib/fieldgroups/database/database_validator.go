@@ -32,35 +32,39 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 	}
 
 	sslrootcertTmpPath := fg.DbConnectionArgs.SslRootCert
-	if fg.DbConnectionArgs.SslMode == "verify-full" || fg.DbConnectionArgs.SslMode == "verify-ca" {
-		// Write database.pem needed for db validation, if any, to a temp file
-		tmpCert, err := ioutil.TempFile("/tmp", "database.*.pem")
-		if err != nil {
-			newError := shared.ValidationError{
-				Tags:       []string{"DB_URI"},
-				FieldGroup: fgName,
-				Message:    "Could write database certificate to temporary file. Error: " + err.Error(),
+	if fg.DbConnectionArgs.SslRootCert == "" {
+		if fg.DbConnectionArgs.SslMode == "verify-full" || fg.DbConnectionArgs.SslMode == "verify-ca" {
+			// Write database.pem needed for db validation, if any, to a temp file
+			tmpCert, err := ioutil.TempFile("/tmp", "database.*.pem")
+			if err != nil {
+				newError := shared.ValidationError{
+					Tags:       []string{"DB_URI"},
+					FieldGroup: fgName,
+					Message:    "Could write database certificate to temporary file. Error: " + err.Error(),
+				}
+				errors = append(errors, newError)
+				return errors
 			}
-			errors = append(errors, newError)
-			return errors
-		}
 
-		defer func() {
-			tmpCert.Close()
-			os.Remove(tmpCert.Name())
-		}()
+			defer func() {
+				tmpCert.Close()
+				os.Remove(tmpCert.Name())
+			}()
 
-		if _, err := tmpCert.Write(opts.Certificates["database.pem"]); err != nil {
-			newError := shared.ValidationError{
-				Tags:       []string{"DB_URI"},
-				FieldGroup: fgName,
-				Message:    "Could write database certificate to temporary file. Error: " + err.Error(),
+			if _, err := tmpCert.Write(opts.Certificates["database.pem"]); err != nil {
+				newError := shared.ValidationError{
+					Tags:       []string{"DB_URI"},
+					FieldGroup: fgName,
+					Message:    "Could write database certificate to temporary file. Error: " + err.Error(),
+				}
+				errors = append(errors, newError)
+				return errors
 			}
-			errors = append(errors, newError)
-			return errors
-		}
 
-		sslrootcertTmpPath = tmpCert.Name()
+			sslrootcertTmpPath = tmpCert.Name()
+		}
+	} else {
+		sslrootcertTmpPath = fg.DbConnectionArgs.SslRootCert
 	}
 
 	// Connect to database
