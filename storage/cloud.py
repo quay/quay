@@ -767,7 +767,9 @@ class S3Storage(_CloudStorage):
             access_key=s3_access_key or None,
             secret_key=s3_secret_key or None,
         )
-        chunk_size = maximum_chunk_size_gb if maximum_chunk_size_gb is not None else 5 # 5gb default
+        chunk_size = (
+            maximum_chunk_size_gb if maximum_chunk_size_gb is not None else 5
+        ) # 5gb default
         self.maximum_chunk_size = chunk_size * 1024 * 1024 * 1024
 
     def setup(self):
