@@ -108,7 +108,12 @@ export default function Organization() {
     },
     {
       name: 'Robot accounts',
-      component: <RobotAccountsList organizationName={organizationName} isUser={isUserOrganization} />,
+      component: (
+        <RobotAccountsList
+          organizationName={organizationName}
+          isUser={isUserOrganization}
+        />
+      ),
       visible: true,
     },
     {
