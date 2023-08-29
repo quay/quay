@@ -227,6 +227,7 @@ objects:
             initialDelaySeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_TIMEOUT_SECONDS}}
+
         - name: quay-app
           image: ${IMAGE}:${IMAGE_TAG}
           imagePullPolicy: ${{IMAGE_PULL_POLICY}}
@@ -238,6 +239,15 @@ objects:
           volumeMounts:
           - name: configvolume
             mountPath: /conf/stack
+          startupProbe:
+            exec:
+              command:
+              - curl
+              - -k
+              - https://localhost:8443/health/instance
+            failureThreshold: ${{QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD}}
+            timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
+            periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
           livenessProbe:
             exec:
               command:
@@ -377,6 +387,15 @@ parameters:
   - name: QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE
     value: "0"
     displayName: quay app deployment max unavailable
+  - name: QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD
+    value: "20"
+    displayName: quay app startup probe initial delay seconds
+  - name: QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS
+    value: "60"
+    displayName: quay app startup probe timeout seconds
+  - name: QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS
+    value: "60"
+    displayName: quay app startup probe initial delay seconds
   - name: QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS
     value: "15"
     displayName: quay app liveness probe initial delay seconds
