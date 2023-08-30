@@ -58,7 +58,7 @@ docker run -it --name $CONTAINER_NAME \
   -e NODE_BUILD_VERSION=$NODE_BUILD_VERSION \
   -e SERVER_NAME=$SERVER_NAME \
   -e NPM_BUILD_SCRIPT \
-  quay.io/cloudservices/frontend-build-container:3cfd142
+  quay.io/cloudservices/frontend-build-container:d8b1dfc
 
 TEST_RESULT=$?
 
