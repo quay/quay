@@ -1048,3 +1048,34 @@ class ProxyCacheConfigValidation(ApiResource):
                 message="Failed login to remote registry. Please verify entered details and try again."
             )
         raise request_error(message="Failed to validate Proxy cache configuration")
+
+
+@resource("/v1/organization/<orgname>/autoprunepolicy/")
+@path_param("orgname", "The name of the organization")
+class AutoPrunePolicies(ApiResource):
+    """
+    """
+
+    def get(self, orgname):
+        pass
+
+    def post(self, orgname):
+        pass
+
+
+@resource("/v1/organization/<orgname>/autoprunepolicy/<policy_uuid>/")
+@path_param("orgname", "The name of the organization")
+@path_param("policy_uuid", "The unique ID of the policy")
+class AutoPrunePolicy(ApiResource):
+    """
+    """
+
+    def get(self, orgname, policy_uuid):
+        pass
+
+    def patch(self, orgname, policy_uuid):
+        pass
+
+    def delete(self, orgname, policy_uuid):
+        pass
+
