@@ -70,14 +70,14 @@ class RobotPreOCIModel(RobotInterface):
                         }
                     )
                     robots[robot_name] = RobotWithPermissions(
-                    robot_dict["name"],
-                    robot_dict["token"],
-                    robot_dict["created"],
-                    (robot_dict["last_accessed"] if features.USER_LAST_ACCESSED else None),
-                    robot_dict["teams"],
-                    robot_dict["repositories"],
-                    robot_dict["description"],
-                )
+                        robot_dict["name"],
+                        robot_dict["token"],
+                        robot_dict["created"],
+                        (robot_dict["last_accessed"] if features.USER_LAST_ACCESSED else None),
+                        robot_dict["teams"],
+                        robot_dict["repositories"],
+                        robot_dict["description"],
+                    )
                 else:
                     robots[robot_name] = Robot(
                         robot_dict["name"],
