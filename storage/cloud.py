@@ -656,13 +656,6 @@ class _CloudStorage(BaseStorageV2):
                 for index, chunk in enumerate(updated_chunks):
                     abs_chunk_path = self._init_path(chunk.path)
 
-                    part = mpu.Part(index + 1)
-                    part_copy = part.copy_from(
-                        CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
-                        CopySourceRange="bytes=%s-%s"
-                        % (chunk.offset, chunk.length + chunk.offset - 1),
-                    )
-
                     part_copy = self._perform_action_with_retry(
                         mpu.Part(index + 1).copy_from,
                         CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
@@ -747,6 +740,7 @@ class S3Storage(_CloudStorage):
         port=None,
         # Boto3 options (Full url including scheme anbd optionally port)
         endpoint_url=None,
+        maximum_chunk_size_gb=None,
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {"config": Config(signature_version="s3v4")}
@@ -773,8 +767,10 @@ class S3Storage(_CloudStorage):
             access_key=s3_access_key or None,
             secret_key=s3_secret_key or None,
         )
-
-        self.maximum_chunk_size = 5 * 1024 * 1024 * 1024  # 5GB.
+        chunk_size = (
+            maximum_chunk_size_gb if maximum_chunk_size_gb is not None else 5
+        )  # 5gb default
+        self.maximum_chunk_size = chunk_size * 1024 * 1024 * 1024
 
     def setup(self):
         self.get_cloud_bucket().Cors().put(
