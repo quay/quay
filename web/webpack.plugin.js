@@ -4,7 +4,7 @@ const DynamicRemotePlugin =
 const CSSMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const webpack = require('webpack');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
-const pluginMetadata = require('./plugin-metadata');
+const pluginMetadata = require('./plugin-metadata.json');
 
 // HCC development proxy
 const proxy = require('@redhat-cloud-services/frontend-components-config-utilities/proxy');
