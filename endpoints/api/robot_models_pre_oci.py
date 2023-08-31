@@ -90,8 +90,8 @@ class RobotPreOCIModel(RobotInterface):
             if include_permissions:
                 team_name = robot_tuple.get(TeamTable.name)
                 repository_name = robot_tuple.get(Repository.name)
-                cur_robot_teams = robots[robot_name][4]
-                cur_robot_repos = robots[robot_name][5]
+                cur_robot_teams = robots[robot_name].teams
+                cur_robot_repos = robots[robot_name].repository_names
 
                 if team_name is not None:
                     check_key = robot_name + ":" + team_name
@@ -106,13 +106,13 @@ class RobotPreOCIModel(RobotInterface):
                         cur_robot_repos.append(repository_name)
 
                 robots[robot_name] = RobotWithPermissions(
-                    robots[robot_name][0],
-                    robots[robot_name][1],
-                    robots[robot_name][2],
-                    robots[robot_name][3],
+                    robots[robot_name].name,
+                    robots[robot_name].password,
+                    robots[robot_name].created,
+                    robots[robot_name].last_accessed,
                     cur_robot_teams,
                     cur_robot_repos,
-                    robots[robot_name][6],
+                    robots[robot_name].description,
                 )
 
         return list(robots.values())
