@@ -17,7 +17,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const pathTo = (relativePath) => path.resolve(__dirname, relativePath);
 
 const publicPath =
-  process.env.BETA === 'true' ? '/beta/apps/quay/js/' : '/apps/quay/js/';
+  process.env.BETA === 'true' ? '/beta/apps/quay/' : '/apps/quay/';
 
 /**
  * Shared modules consumed and/or provided by this plugin.
