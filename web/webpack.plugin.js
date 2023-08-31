@@ -16,7 +16,8 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const pathTo = (relativePath) => path.resolve(__dirname, relativePath);
 
-const publicPath = process.env.BETA === 'true' ? '/beta/apps/quay/js/' : '/apps/quay/js/';
+const publicPath =
+    process.env.BETA === 'true' ? '/beta/apps/quay/js/' : '/apps/quay/js/';
 
 /**
  * Shared modules consumed and/or provided by this plugin.
@@ -224,7 +225,8 @@ module.exports = {
       overlay: false,
     },
     ...proxy({
-      localChrome: '/Users/syed/work/redhat/consoledot-integration/insights-chrome/build/',
+      localChrome:
+        '/Users/syed/work/redhat/consoledot-integration/insights-chrome/build/',
       useProxy: true,
       env: 'stage-stable',
       port: 1337,
@@ -254,7 +256,7 @@ module.exports = {
         },
         '/api/chrome-service/v1/static/stable/stage/navigation': {
           host: 'http://localhost:8003',
-        }
+        },
       },
     }),
   },
