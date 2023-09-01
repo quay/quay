@@ -3,6 +3,7 @@ import Organization from './OrganizationsList/Organization/Organization';
 import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
+import OverviewList from './OverviewList/OverviewList';
 
 const organizationNameBreadcrumb = (match) => {
   return <span>{match.params.organizationName}</span>;
@@ -33,6 +34,8 @@ export enum NavigationPath {
   // Side Nav
   home = '/',
   organizationsList = '/organization',
+
+  overviewList = '/overview',
 
   repositoriesList = '/repository',
 
@@ -119,6 +122,11 @@ export const getNavigationRoutes = () => {
   const currentRoute = window.location.pathname;
 
   const NavigationRoutes = [
+    {
+      path: domainRoute(currentRoute, NavigationPath.overviewList),
+      Component: <OverviewList />,
+      breadcrumb: Breadcrumb.organizationsListBreadcrumb,
+    },
     {
       path: domainRoute(currentRoute, NavigationPath.organizationsList),
       Component: <OrganizationsList />,

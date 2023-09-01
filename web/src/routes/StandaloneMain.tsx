@@ -20,11 +20,16 @@ import {InfoCircleIcon} from '@patternfly/react-icons';
 import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import Alerts from './Alerts';
+import OverviewList from './OverviewList/OverviewList';
 
 const NavigationRoutes = [
   {
     path: NavigationPath.teamMember,
     Component: <Organization />,
+  },
+  {
+    path: NavigationPath.overviewList,
+    Component: <OverviewList />,
   },
   {
     path: NavigationPath.organizationsList,
