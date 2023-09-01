@@ -1,9 +1,5 @@
 import logging
-import os
-from collections import namedtuple
 
-from data.database import Manifest
-from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.secscan_model.datatypes import (
     ScanLookupStatus,
     SecurityInformationLookupResult,
