@@ -42,6 +42,7 @@ class RobotPreOCIModel(RobotInterface):
         for robot_tuple in tuples:
             robot_name = robot_tuple.get(User.username)
             if robot_name not in robots:
+                robot_dict = {}
                 token = None
                 if include_token:
                     if robot_tuple.get(RobotAccountToken.token):
@@ -67,39 +68,51 @@ class RobotPreOCIModel(RobotInterface):
                             "repositories": [],
                         }
                     )
+                    robots[robot_name] = RobotWithPermissions(
+                        robot_dict["name"],
+                        robot_dict["token"],
+                        robot_dict["created"],
+                        (robot_dict["last_accessed"] if features.USER_LAST_ACCESSED else None),
+                        robot_dict["teams"],
+                        robot_dict["repositories"],
+                        robot_dict["description"],
+                    )
+                else:
+                    robots[robot_name] = Robot(
+                        robot_dict["name"],
+                        robot_dict["token"],
+                        robot_dict["created"],
+                        robot_dict["last_accessed"],
+                        robot_dict["description"],
+                        robot_dict["unstructured_metadata"],
+                    )
 
-            robots[robot_name] = Robot(
-                robot_dict["name"],
-                robot_dict["token"],
-                robot_dict["created"],
-                robot_dict["last_accessed"],
-                robot_dict["description"],
-                robot_dict["unstructured_metadata"],
-            )
             if include_permissions:
                 team_name = robot_tuple.get(TeamTable.name)
                 repository_name = robot_tuple.get(Repository.name)
+                cur_robot_teams = robots[robot_name].teams
+                cur_robot_repos = robots[robot_name].repository_names
 
                 if team_name is not None:
                     check_key = robot_name + ":" + team_name
                     if check_key not in robot_teams:
                         robot_teams.add(check_key)
-
-                        robot_dict["teams"].append(
+                        cur_robot_teams.append(
                             Team(team_name, avatar.get_data(team_name, team_name, "team"))
                         )
 
                 if repository_name is not None:
-                    if repository_name not in robot_dict["repositories"]:
-                        robot_dict["repositories"].append(repository_name)
+                    if repository_name not in cur_robot_repos:
+                        cur_robot_repos.append(repository_name)
+
                 robots[robot_name] = RobotWithPermissions(
-                    robot_dict["name"],
-                    robot_dict["token"],
-                    robot_dict["created"],
-                    (robot_dict["last_accessed"] if features.USER_LAST_ACCESSED else None),
-                    robot_dict["teams"],
-                    robot_dict["repositories"],
-                    robot_dict["description"],
+                    robots[robot_name].name,
+                    robots[robot_name].password,
+                    robots[robot_name].created,
+                    robots[robot_name].last_accessed,
+                    cur_robot_teams,
+                    cur_robot_repos,
+                    robots[robot_name].description,
                 )
 
         return list(robots.values())
