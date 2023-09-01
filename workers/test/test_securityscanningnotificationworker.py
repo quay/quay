@@ -1,24 +1,20 @@
 import json
 import os
-from test.fixtures import *
 from urllib.parse import urlparse
 
 import pytest
 
-from app import (
-    app,
-    instance_keys,
-    notification_queue,
-    secscan_notification_queue,
-    storage,
-)
+from app import instance_keys, notification_queue, secscan_notification_queue, storage
 from data import database, model
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
+from test.fixtures import *
 from util.secscan.v4.fake import fake_security_scanner
 from workers.securityscanningnotificationworker import (
     SecurityScanningNotificationWorker,
 )
+
+from app import app  # isort: skip
 
 
 @pytest.mark.skipif(
