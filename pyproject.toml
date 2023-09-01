@@ -3,6 +3,7 @@ line-length = 100
 target-version = ['py39']
 
 [tool.isort]
+known_local_folder = "auth,avatars,buildman,buildtrigger,data,digest,endpoints,features,health,image,notifications,oauth,proxy,storage,test,tools,util,workers,_init,active_migration,app,config,external_libraries,initdb,path_converters,release"
 profile = "black"
 
 [tool.pylint.messages_control]
