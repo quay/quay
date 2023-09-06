@@ -196,7 +196,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Create Robot Acct For User Namespace', () => {
-    cy.visit('/organization/user1?tab=Robot+accounts');
+    cy.visit('/organization/user1?tab=Robotaccounts');
     cy.contains('button', 'Create robot account').click();
 
     cy.get('#robot-wizard-form-name').type('userrobot');
