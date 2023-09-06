@@ -165,7 +165,7 @@ def _layer_size_str_to_bytes(layer_size: str) -> int:
     if len(parsed_max_layer_size) < 2:
         return 0
 
-    units = {"B": 1, "K": 2**10, "M": 2**20, "G": 2**30, "T": 2**40}
+    units = {"B": 1, "K": 2 ** 10, "M": 2 ** 20, "G": 2 ** 30, "T": 2 ** 40}
 
     max_size, unit = parsed_max_layer_size[-2], parsed_max_layer_size[-1]
 

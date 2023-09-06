@@ -261,6 +261,16 @@ def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
 
 
+def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
+    blobs = registry_model.get_manifest_local_blobs(manifest, storage)
+    if blobs is None:
+        logger.error("Could not lookup blobs for manifest `%s`", manifest.digest)
+    else:
+        with queue_replication_batch(namespace_name) as queue_storage_replication:
+            for blob_digest in blobs:
+                queue_storage_replication(blob_digest)
+
+
 @v2_bp.route(MANIFEST_DIGEST_ROUTE, methods=["PUT"])
 @disallow_for_account_recovery_mode
 @parse_repository_name()
@@ -300,6 +310,10 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         raise ManifestInvalid()
 
     image_pushes.labels("v2", 201, manifest.media_type).inc()
+
+    # Queue all blob manifests for replication.
+    if features.STORAGE_REPLICATION:
+        _enqueue_blobs_for_replication(manifest, storage, namespace_name)
 
     return Response(
         "OK",
@@ -372,15 +386,9 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
             namespace_name, repo_name, tag_name, manifest_impl
         )
 
-        # Queue all blob manifests for replication.
+        # Queue all blob manifests for replication
         if features.STORAGE_REPLICATION:
-            blobs = registry_model.get_manifest_local_blobs(manifest, storage)
-            if blobs is None:
-                logger.error("Could not lookup blobs for manifest `%s`", manifest.digest)
-            else:
-                with queue_replication_batch(namespace_name) as queue_storage_replication:
-                    for blob_digest in blobs:
-                        queue_storage_replication(blob_digest)
+            _enqueue_blobs_for_replication(manifest, storage, namespace_name)
 
         track_and_log("push_repo", repository_ref, tag=tag_name)
         spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
