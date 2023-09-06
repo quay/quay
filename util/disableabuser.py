@@ -26,7 +26,7 @@ def ask_disable_namespace(username, queue_name):
     queue_prefix = "%s/%s/%%" % (queue_name, username)
     existing_queue_item_count = (
         QueueItem.select()
-        .where(QueueItem.queue_name ** queue_prefix)
+        .where(QueueItem.queue_name**queue_prefix)
         .where(
             QueueItem.available == 1,
             QueueItem.retries_remaining > 0,
