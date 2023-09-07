@@ -26,6 +26,7 @@ import {IOrganization} from 'src/resources/OrganizationResource';
 import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import AutoPruning from './AutoPruning';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const timeMachineOptions = {
@@ -261,6 +262,11 @@ export default function Settings(props: SettingsProps) {
       name: 'General Settings',
       id: 'generalsettings',
       content: <GeneralSettings organizationName={props.organizationName} />,
+    },
+    {
+      name: 'Auto-Prune Policies',
+      id: 'autoprunepolicies',
+      content: <AutoPruning org={props.organizationName} />,
     },
   ];
 

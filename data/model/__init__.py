@@ -170,6 +170,7 @@ config = Config()
 # moving the minimal number of things to _basequery
 from data.model import (
     appspecifictoken,
+    autoprune,
     blob,
     build,
     entitlements,

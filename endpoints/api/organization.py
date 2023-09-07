@@ -2,10 +2,12 @@
 Manage organizations, members and OAuth applications.
 """
 
+import json
 import logging
 
 import recaptcha2
 from flask import request
+from data.model.autoprune import AutoPruneMethod, valid_value
 
 import features
 from app import all_queues, app, authentication, avatar
@@ -1056,26 +1058,144 @@ class AutoPrunePolicies(ApiResource):
     """
     """
 
+    schemas = {
+        "AutoPrunePolicyConfig": {
+            "type": "object",
+            "description": "",
+            "required": ["method"],
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "",
+                },
+                "value": {
+                    "type": ["integer", "string"],
+                    "description": "",
+                },
+            },
+        },
+    }
+
     def get(self, orgname):
-        pass
+        permission = AdministerOrganizationPermission(orgname)
+        if not permission.can() and not allow_if_superuser():
+            raise Unauthorized()
+        
+        policies = model.autoprune.get_namespace_autoprune_policies(orgname)
+        
+        # TODO: should this be paginated? Probably shouldn't allow 50+ policies anyway
+        return {
+            "policies": [policy.get_view() for policy in policies]
+        }
 
+    @validate_json_request("AutoPrunePolicyConfig")
     def post(self, orgname):
-        pass
+        permission = AdministerOrganizationPermission(orgname)
+        if not permission.can() and not allow_if_superuser():
+            raise Unauthorized()
+        
+        app_data = request.get_json()
+        method = None
+        value = app_data.get("value")
+        try:
+            method = AutoPruneMethod(app_data.get("method"))
+        except ValueError:
+            request_error(message="Invalid method")
+
+        if not valid_value(method, value):
+            request_error(message="Invalid type given for parameter value")
+
+        policy_config = {
+            "method": method.value,
+            "value": value,
+        }
+        policy = model.autoprune.create_namespace_autoprune_policy(orgname, policy_config, create_task=True)
+        return {"uuid": policy.uuid}, 201
 
 
-@resource("/v1/organization/<orgname>/autoprunepolicy/<policy_uuid>/")
+
+@resource("/v1/organization/<orgname>/autoprunepolicy/<policy_uuid>")
 @path_param("orgname", "The name of the organization")
 @path_param("policy_uuid", "The unique ID of the policy")
 class AutoPrunePolicy(ApiResource):
     """
     """
+    schemas = {
+        "AutoPrunePolicyConfig": {
+            "type": "object",
+            "description": "",
+            "required": ["method"],
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "",
+                },
+                "value": {
+                    "type": ["integer", "string"],
+                    "description": "",
+                },
+            },
+        },
+    }
+
 
     def get(self, orgname, policy_uuid):
-        pass
+        permission = AdministerOrganizationPermission(orgname)
+        if not permission.can() and not allow_if_superuser():
+            raise Unauthorized()
+        
+        policy = model.autoprune.get_namespace_autoprune_policy(orgname, policy_uuid)
+        if policy is None:
+            raise NotFound()
+        
+        return policy.get_view()
 
-    def patch(self, orgname, policy_uuid):
-        pass
 
+    @validate_json_request("AutoPrunePolicyConfig")
+    def put(self, orgname, policy_uuid):
+        permission = AdministerOrganizationPermission(orgname)
+        if not permission.can() and not allow_if_superuser():
+            raise Unauthorized()
+        
+        policy = model.autoprune.get_namespace_autoprune_policy(orgname, policy_uuid)
+        if policy is None:
+            raise NotFound()
+
+        app_data = request.get_json()
+        method = app_data.get("method")
+        value = app_data.get("value")
+
+        # TODO: make sure this is none when the param isn't given
+        if method is not None:
+            try:
+                method = AutoPruneMethod(app_data.get("method")).value
+            except ValueError:
+                request_error(message="Invalid method")
+        else:
+            method = policy.method
+
+        if not valid_value(method, value):
+            request_error(message="Invalid type given for parameter value")
+
+        policy_config = {
+            "method": method,
+            "value": value,
+        }
+        policy = model.autoprune.update_namespace_autoprune_policy(orgname, policy_uuid, policy_config)
+        if policy is None:
+            raise NotFound()
+        return policy_uuid, 204
+
+        
     def delete(self, orgname, policy_uuid):
-        pass
+        permission = AdministerOrganizationPermission(orgname)
+        if not permission.can() and not allow_if_superuser():
+            raise Unauthorized()
+        
+        policy = model.autoprune.delete_namespace_autoprune_policy(orgname, policy_uuid)
+        if policy is None:
+            raise NotFound()
+        
+        return policy_uuid, 200
+
 

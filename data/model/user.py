@@ -1340,6 +1340,8 @@ def _delete_user_linked_data(user):
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
 
+    # TODO: add deletion of namespace policies and namespace tasks, how will that work with row locking?
+
 
 def get_pull_credentials(robotname):
     """
