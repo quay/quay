@@ -1,9 +1,9 @@
 import logging.config
 import time
-from data.model.quota import calculate_registry_size
 
 import features
 from app import app
+from data.model.quota import calculate_registry_size
 from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
