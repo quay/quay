@@ -129,7 +129,7 @@ def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
         assert len(tags) == 5
 
     with client_with_identity("devtable", app) as cl:
-        with assert_query_count(query_count):
+        with assert_query_count(query_count - 1):
             params["filter_tag_name"] = "eq:prod"
             tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
         assert len(tags) == 1
