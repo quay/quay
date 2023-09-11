@@ -1,4 +1,5 @@
 import {
+  AlertGroup,
   DropdownItem,
   PageSection,
   PageSectionVariants,
@@ -104,6 +105,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [err, setErr] = useState<string[]>();
   const [errTitle, setErrTitle] = useState<string>();
   const robotPermissionsPlaceholder = useRef(null);
+  const [alerts, setAlerts] = useState([]);
 
   const {robotAccountsForOrg, page, perPage, setPage, setPerPage} =
     useRobotAccounts({
@@ -419,6 +421,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       orgName={props.organizationName}
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
+      setAlerts={setAlerts}
     />
   );
 
@@ -478,6 +481,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   }
   return (
     <>
+      <AlertGroup isToast isLiveRegion>
+        {alerts}
+      </AlertGroup>
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal title={errTitle} error={err} setError={setErr} />
         <RobotAccountsToolBar
