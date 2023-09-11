@@ -1,0 +1,45 @@
+name: Update GeoLite2 Database
+# At 00:00 on the first day in every 3rd month, once every quarter.
+# Git doesn't do well diffing binary files, causing the file file being 
+# duplicated in history and drastically increasing the size of the repo.
+# Let's run this on large time intervals for now.
+on:
+  schedule:
+    - cron: '0 0 1 */3 *'
+jobs:
+  update-geolite2:
+    if: github.repository == 'quay/quay' && github.ref == 'refs/heads/master' # Only run this on the base repo on master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - shell: bash
+        env:
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            #!/bin/bash
+            set -eo pipefail
+
+            DATE=$(date +%F_%H-%M-%S)
+            BRANCH_NAME=geolite2-update-$DATE
+            git checkout -b $BRANCH_NAME
+
+            # Pull the new IP database
+            curl "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
+              --output /tmp/geolite2-country.tar.gz
+            mkdir /tmp/dest
+            tar -xzf /tmp/geolite2-country.tar.gz -C /tmp/dest
+            mv /tmp/dest/*/GeoLite2-Country.mmdb util/ipresolver/GeoLite2-Country.mmdb
+
+            # Commit and push the changes
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git add util/ipresolver/GeoLite2-Country.mmdb
+            git commit -m "Update GeoLite2 database"
+            git push origin $BRANCH_NAME
+
+            # Create the PR
+            gh pr create -B master -H $BRANCH_NAME \
+              --title "Update GeoLite2 database $DATE" \
+              --body 'Updating GeoLite2 database to latest version. PR created automatically by the Update GeoLite2 Database GitHub action.'
+
