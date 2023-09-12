@@ -85,7 +85,7 @@ FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
         (BuildTriggerSourceNamespaces, "get", TRIGGER_ARGS),
     ],
 )
-def test_disallowed_for_apps(resource, method, params, client):
+def test_disallowed_for_apps(resource, method, params, app):
     namespace = "devtable"
     repository = "someapprepo"
 
@@ -95,5 +95,5 @@ def test_disallowed_for_apps(resource, method, params, client):
     params = params or {}
     params["repository"] = "%s/%s" % (namespace, repository)
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         conduct_api_call(cl, resource, method, params, None, 501)

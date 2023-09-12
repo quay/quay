@@ -6,7 +6,8 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives import serialization
 
-from app import app, instance_keys
+from app import app as flask_app
+from app import instance_keys
 from auth.auth_context_type import ValidatedAuthContext
 from auth.registry_jwt_auth import InvalidJWTException, identity_from_bearer_token
 from data import model  # TODO: remove this after service keys are decoupled
@@ -15,7 +16,7 @@ from initdb import finished_database_for_testing, setup_database_for_testing
 from util.morecollections import AttrDict
 from util.security.registry_jwt import ANONYMOUS_SUB, build_context_and_subject
 
-TEST_AUDIENCE = app.config["SERVER_HOSTNAME"]
+TEST_AUDIENCE = flask_app.config["SERVER_HOSTNAME"]
 TEST_USER = AttrDict({"username": "joeuser", "uuid": "foobar", "enabled": True})
 MAX_SIGNED_S = 3660
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour

@@ -48,10 +48,10 @@ def test_entity_search(auth_engine, requires_email, client):
             assert entity["kind"] == "external"
 
 
-def test_link_external_entity(auth_engine, requires_email, client):
+def test_link_external_entity(auth_engine, requires_email, app):
     with auth_engine(requires_email=requires_email) as auth:
         with patch("endpoints.api.search.authentication", auth):
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 # Try an unknown user.
                 conduct_api_call(
                     cl,

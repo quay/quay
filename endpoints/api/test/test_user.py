@@ -10,9 +10,9 @@ from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
 
 
-def test_user_metadata_update(client):
+def test_user_metadata_update(app):
     with patch("features.USER_METADATA", FeatureNameValue("USER_METADATA", True)):
-        with client_with_identity("devtable", client) as cl:
+        with client_with_identity("devtable", app) as cl:
             metadata = {
                 "given_name": "Quay",
                 "family_name": "User",

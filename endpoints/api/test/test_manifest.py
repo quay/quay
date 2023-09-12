@@ -6,8 +6,8 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 
 
-def test_repository_manifest(client):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_manifest(app):
+    with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
         tags = registry_model.list_all_active_repository_tags(repo_ref)
         for tag in tags:

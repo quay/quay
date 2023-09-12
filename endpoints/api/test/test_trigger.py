@@ -32,7 +32,7 @@ def test_super_user_build_endpoints(context, dockerfile_path, expected):
     assert is_parent(context, dockerfile_path) == expected
 
 
-def test_enabled_disabled_trigger(app, client):
+def test_enabled_disabled_trigger(app):
     trigger = model.build.list_build_triggers("devtable", "building")[0]
     trigger.config = json.dumps({"hook_id": "someid"})
     trigger.save()
@@ -46,7 +46,7 @@ def test_enabled_disabled_trigger(app, client):
         "enabled": False,
     }
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, BuildTrigger, "PUT", params, body, 200).json
         assert not result["enabled"]
 
@@ -54,6 +54,6 @@ def test_enabled_disabled_trigger(app, client):
         "enabled": True,
     }
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, BuildTrigger, "PUT", params, body, 200).json
         assert result["enabled"]

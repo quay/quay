@@ -49,7 +49,7 @@ def _setup_mirror():
         ("admin", "admin"),
     ],
 )
-def test_create_mirror_sets_permissions(existing_robot_permission, expected_permission, client):
+def test_create_mirror_sets_permissions(existing_robot_permission, expected_permission, app):
     mirror_bot, _ = model.user.create_robot(
         "newmirrorbot", model.user.get_namespace_user("devtable")
     )
@@ -59,7 +59,7 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
             mirror_bot.username, "devtable", "simple", existing_robot_permission
         )
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         request_body = {
             "external_reference": "quay.io/foobar/barbaz",
@@ -78,25 +78,25 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
     assert config.root_rule.rule_value == ["latest", "foo", "bar"]
 
 
-def test_get_mirror_does_not_exist(client):
-    with client_with_identity("devtable", client) as cl:
+def test_get_mirror_does_not_exist(app):
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 404)
 
 
-def test_get_repo_does_not_exist(client):
-    with client_with_identity("devtable", client) as cl:
+def test_get_repo_does_not_exist(app):
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/unicorn"}
         resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 404)
 
 
-def test_get_mirror(client):
+def test_get_mirror(app):
     """
     Verify that performing a `GET` request returns expected and accurate data.
     """
     mirror = _setup_mirror()
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
 
@@ -171,13 +171,13 @@ def test_get_mirror(client):
         ("root_rule", {"rule_kind": "incorrect", "rule_value": ["3.1", "3.1*"]}, 400),
     ],
 )
-def test_change_config(key, value, expected_status, client):
+def test_change_config(key, value, expected_status, app):
     """
     Verify that changing each attribute works as expected.
     """
     mirror = _setup_mirror()
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         if key in ("http_proxy", "https_proxy", "no_proxy"):
             request_body = {"external_registry_config": {"proxy": {key: value}}}
@@ -187,7 +187,7 @@ def test_change_config(key, value, expected_status, client):
             request_body = {key: value}
         conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200)
 
@@ -240,12 +240,12 @@ def test_change_config(key, value, expected_status, client):
         ({"external_registry_username": "", "external_registry_password": ""}, 201),
     ],
 )
-def test_change_credentials(request_body, expected_status, client):
+def test_change_credentials(request_body, expected_status, app):
     """
     Verify credentials can only be modified as a pair.
     """
     mirror = _setup_mirror()
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)

@@ -15,16 +15,15 @@ from endpoints.test.shared import client_with_identity
     os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0,
     reason="Queue code is very sensitive to times on MySQL, making this flaky",
 )
-def test_export_logs(client):
-    with client_with_identity("devtable", client) as cl:
-        assert export_action_logs_queue.get() is None
+def test_export_logs(app):
+    timecode = time.time()
 
-        timecode = time.time()
+    def get_time():
+        return timecode - 2
 
-        def get_time():
-            return timecode - 2
-
-        with patch("time.time", get_time):
+    with patch("time.time", get_time):
+        with client_with_identity("devtable", app) as cl:
+            assert export_action_logs_queue.get() is None
             # Call to export logs.
             body = {
                 "callback_url": "http://some/url",
@@ -39,13 +38,13 @@ def test_export_logs(client):
             assert export_action_logs_queue.get() is not None
 
 
-def test_invalid_date_range(client):
+def test_invalid_date_range(app):
     starttime = "02/02/2020"
     endtime = "01/01/2020"
     parsed_starttime, parsed_endtime = _validate_logs_arguments(starttime, endtime)
     assert parsed_starttime >= parsed_endtime
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         conduct_api_call(
             cl,
             OrgLogs,

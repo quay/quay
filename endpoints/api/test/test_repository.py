@@ -19,29 +19,29 @@ from features import FeatureNameValue
         ("invalid_req", False, 400),
     ],
 )
-def test_post_changetrust(trust_enabled, repo_found, expected_status, client):
+def test_post_changetrust(trust_enabled, repo_found, expected_status, app):
     with patch("endpoints.api.repository.tuf_metadata_api") as mock_tuf:
         with patch(
             "endpoints.api.repository_models_pre_oci.model.repository.get_repository"
         ) as mock_model:
             mock_model.return_value = MagicMock() if repo_found else None
             mock_tuf.get_default_tags_with_expiration.return_value = ["tags", "expiration"]
-            with client_with_identity("devtable", client) as cl:
+            with client_with_identity("devtable", app) as cl:
                 params = {"repository": "devtable/repo"}
                 request_body = {"trust_enabled": trust_enabled}
                 conduct_api_call(cl, RepositoryTrust, "POST", params, request_body, expected_status)
 
 
-def test_signing_disabled(client):
+def test_signing_disabled(app):
     with patch("features.SIGNING", FeatureNameValue("SIGNING", False)):
-        with client_with_identity("devtable", client) as cl:
+        with client_with_identity("devtable", app) as cl:
             params = {"repository": "devtable/simple"}
             response = conduct_api_call(cl, Repository, "GET", params).json
             assert not response["trust_enabled"]
 
 
-def test_list_starred_repos(client):
-    with client_with_identity("devtable", client) as cl:
+def test_list_starred_repos(app):
+    with client_with_identity("devtable", app) as cl:
         params = {
             "starred": "true",
         }
@@ -70,8 +70,8 @@ def test_list_starred_repos(client):
         assert "public/publicrepo" not in repos
 
 
-def test_list_repos(client, initialized_db):
-    with client_with_identity("devtable", client) as cl:
+def test_list_repos(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
         params = {"starred": "true", "repo_kind": "application"}
         response = conduct_api_call(cl, RepositoryList, "GET", params).json
         repo_states = {r["state"] for r in response["repositories"]}
@@ -79,8 +79,8 @@ def test_list_repos(client, initialized_db):
             assert state in ["NORMAL", "MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
 
 
-def test_list_starred_app_repos(client, initialized_db):
-    with client_with_identity("devtable", client) as cl:
+def test_list_starred_app_repos(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
         params = {"starred": "true", "repo_kind": "application"}
 
         devtable = model.user.get_user("devtable")
@@ -94,8 +94,8 @@ def test_list_starred_app_repos(client, initialized_db):
         assert "devtable/someappr" in repos
 
 
-def test_list_repositories_last_modified(client):
-    with client_with_identity("devtable", client) as cl:
+def test_list_repositories_last_modified(app):
+    with client_with_identity("devtable", app) as cl:
         params = {
             "namespace": "devtable",
             "last_modified": "true",
@@ -127,12 +127,12 @@ def test_list_repositories_last_modified(client):
         pytest.param("devtable/nested1/nested2", True, 201, id="Slashes Allowed Multiple Levels"),
     ],
 )
-def test_create_repository(repo_name, extended_repo_names, expected_status, client):
+def test_create_repository(repo_name, extended_repo_names, expected_status, app):
     with patch(
         "features.EXTENDED_REPOSITORY_NAMES",
         FeatureNameValue("EXTENDED_REPOSITORY_NAMES", extended_repo_names),
     ):
-        with client_with_identity("devtable", client) as cl:
+        with client_with_identity("devtable", app) as cl:
             body = {
                 "namespace": "devtable",
                 "repository": repo_name,
@@ -141,7 +141,7 @@ def test_create_repository(repo_name, extended_repo_names, expected_status, clie
             }
 
             result = conduct_api_call(
-                client, RepositoryList, "post", None, body, expected_code=expected_status
+                cl, RepositoryList, "post", None, body, expected_code=expected_status
             ).json
             if expected_status == 201:
                 assert result["name"] == repo_name
@@ -155,8 +155,8 @@ def test_create_repository(repo_name, extended_repo_names, expected_status, clie
         False,
     ],
 )
-def test_get_repo(has_tag_manifest, client, initialized_db):
-    with client_with_identity("devtable", client) as cl:
+def test_get_repo(has_tag_manifest, initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"
@@ -171,8 +171,8 @@ def test_get_repo(has_tag_manifest, client, initialized_db):
         (database.RepositoryState.MIRROR, False),
     ],
 )
-def test_get_repo_state_can_write(state, can_write, client, initialized_db):
-    with client_with_identity("devtable", client) as cl:
+def test_get_repo_state_can_write(state, can_write, initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["can_write"]
@@ -181,14 +181,14 @@ def test_get_repo_state_can_write(state, can_write, client, initialized_db):
     repo.state = state
     repo.save()
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["can_write"] == can_write
 
 
-def test_delete_repo(client, initialized_db):
-    with client_with_identity("devtable", client) as cl:
+def test_delete_repo(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
         resp = conduct_api_call(cl, RepositoryList, "GET", {"namespace": "devtable"}).json
         repos = {repo["name"] for repo in resp["repositories"]}
         assert "simple" in repos

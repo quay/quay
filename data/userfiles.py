@@ -33,7 +33,7 @@ class UserfilesHandlers(View):
                 buffered,
                 mimetype=self._magic.from_buffer(file_header_bytes),
                 as_attachment=True,
-                attachment_filename=file_id,
+                download_name=file_id,
             )
         except IOError:
             logger.exception("Error reading user file")

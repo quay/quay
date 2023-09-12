@@ -3,7 +3,15 @@ from werkzeug.routing import BaseConverter
 import features
 
 
-class APIRepositoryPathConverter(BaseConverter):
+class QuayBaseConverter(BaseConverter):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        if "part_isolating" not in cls.__dict__:
+            cls.part_isolating = "/" not in cls.regex
+
+
+class APIRepositoryPathConverter(QuayBaseConverter):
     """
     Converter for handling repository paths.
 
@@ -17,7 +25,7 @@ class APIRepositoryPathConverter(BaseConverter):
 
 
 # TODO(kleesc): Remove after fully deprecating V1 push/pull
-class V1CreateRepositoryPathConverter(BaseConverter):
+class V1CreateRepositoryPathConverter(QuayBaseConverter):
     """
     Converter for handling PUT repository path.
     Handles both library and non-library paths (if configured).
@@ -41,7 +49,7 @@ class V1CreateRepositoryPathConverter(BaseConverter):
             self.regex = r"([^/]+(/[^/]+)+)(?<!auth)(?<!tags)(?<!images)"
 
 
-class RepositoryPathConverter(BaseConverter):
+class RepositoryPathConverter(QuayBaseConverter):
     """
     Converter for handling repository paths.
     Handles both library and non-library paths (if configured).
@@ -59,7 +67,7 @@ class RepositoryPathConverter(BaseConverter):
             self.regex = r"([^/]+(/[^/]+)+)"
 
 
-class RegexConverter(BaseConverter):
+class RegexConverter(QuayBaseConverter):
     """
     Converter for handling custom regular expression patterns in paths.
     """
@@ -69,7 +77,7 @@ class RegexConverter(BaseConverter):
         self.regex = regex_value
 
 
-class RepositoryPathRedirectConverter(BaseConverter):
+class RepositoryPathRedirectConverter(QuayBaseConverter):
     """
     Converter for handling redirect paths that don't match any other routes.
 
@@ -97,6 +105,7 @@ class RepositoryPathRedirectConverter(BaseConverter):
 
     def __init__(self, url_map):
         super().__init__(url_map)
+
         self.weight = 200
 
         if features.LIBRARY_SUPPORT:

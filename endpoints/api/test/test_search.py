@@ -19,12 +19,12 @@ from endpoints.test.shared import client_with_identity
         ("repository"),
     ],
 )
-def test_repository_search(query, client):
+def test_repository_search(query, app):
     # Prime the caches.
     database.Repository.kind.get_id("image")
     database.Repository.kind.get_name(1)
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         params = {"query": query}
         with assert_query_count(4):
             result = conduct_api_call(cl, ConductRepositorySearch, "GET", params, None, 200).json
@@ -41,8 +41,8 @@ def test_repository_search(query, client):
         ("repository"),
     ],
 )
-def test_search_query_count(query, client):
-    with client_with_identity("devtable", client) as cl:
+def test_search_query_count(query, app):
+    with client_with_identity("devtable", app) as cl:
         params = {"query": query}
         with assert_query_count(10):
             result = conduct_api_call(cl, ConductSearch, "GET", params, None, 200).json
@@ -62,7 +62,7 @@ def test_search_query_count(query, client):
         6,
     ],
 )
-def test_repository_search_pagination(page_count, client):
+def test_repository_search_pagination(page_count, app):
     # Create at least a few pages of results.
     all_repositories = set()
     user = model.user.get_user("devtable")
@@ -71,7 +71,7 @@ def test_repository_search_pagination(page_count, client):
         all_repositories.add(repo_name)
         model.repository.create_repository("devtable", repo_name, user)
 
-    with client_with_identity("devtable", client) as cl:
+    with client_with_identity("devtable", app) as cl:
         for page_index in range(0, page_count):
             params = {"query": "somerepo", "page": page_index + 1}
 
