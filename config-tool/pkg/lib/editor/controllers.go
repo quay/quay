@@ -266,6 +266,14 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 			}
 		}
 
+		// We must strip out cluster provisioned CA certs, as they will be mounted into the pod from separate config maps
+		for certName := range configBundle.Certificates {
+			if certName == "service-ca.crt" || certName == "ca-bundle.crt" {
+				delete(configBundle.Certificates, certName)
+				log.Infof("Removed Openshift certificate %s from user provided config bundle before committing to operator", certName)
+			}
+		}
+
 		// TODO: Define struct type for this with correct `yaml` tags
 		preSecret := map[string]interface{}{
 			"quayRegistryName": strings.Split(opts.podName, "-quay-config-editor")[0],
