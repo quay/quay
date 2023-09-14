@@ -2,7 +2,6 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import mock
 import pytest
@@ -32,6 +31,7 @@ from data.secscan_model.secscan_v4_model import (
     features_for,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
 
@@ -524,6 +524,37 @@ def test_features_for_duplicates():
     )
     security_info_filename = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "securityinformation_deduped.json"
+    )
+    with open(vuln_report_filename) as vuln_report_file:
+        vuln_report = json.load(vuln_report_file)
+
+    with open(security_info_filename) as security_info_file:
+        expected = json.load(security_info_file)
+
+    generated = SecurityInformation(
+        Layer(
+            vuln_report["manifest_hash"],
+            "",
+            "",
+            4,
+            features_for(vuln_report),
+        )
+    ).to_dict()
+
+    # Sort the Features' list so that the following assertion holds even if they are out of order
+    # (Ordering of the dicts' key iteration is different from Python 2 to 3)
+    expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
+    generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
+
+    assert generated == expected
+
+
+def test_rhcc_enrichments():
+    vuln_report_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "vulnerabilityreport_with_rhcc_enrichments.json"
+    )
+    security_info_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "securityinformation_with_rhcc_enrichments.json"
     )
     with open(vuln_report_filename) as vuln_report_file:
         vuln_report = json.load(vuln_report_file)
