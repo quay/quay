@@ -98,7 +98,7 @@ METADATA_SCHEMA = {
     "properties": {
         "commit": {
             "type": "string",
-            "description": "first 7 characters of the SHA-1 identifier for a git commit",
+            "description": "Full SHA-1 identifier of the commit",
             "pattern": "^([A-Fa-f0-9]{7,})$",
         },
         "parsed_ref": {
@@ -138,7 +138,7 @@ METADATA_SCHEMA = {
             "properties": {
                 "short_sha": {
                     "type": "string",
-                    "description": "The short SHA for this git commit",
+                    "description": "The short SHA for this git commit (7 characters)",
                 },
                 "url": {
                     "type": "string",
