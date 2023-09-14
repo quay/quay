@@ -18,7 +18,7 @@ export class DocumentationServiceImpl implements DocumentationService {
         return `html/use_red_hat_quay/repository_notifications#${p['event']}`;
       },
       'notifications': 'html/use_red_hat_quay/repository_notifications',
-      'builds.tag-templating': 'https://github.com/quay/quay/blob/master/buildtrigger/basehandler.py#L81'
+      'builds.tag-templating': 'https://access.redhat.com/solutions/7033393'
     };
   }
 
