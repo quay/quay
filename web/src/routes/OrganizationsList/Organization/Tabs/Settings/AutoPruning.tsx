@@ -21,25 +21,25 @@ export default function AutoPruning(props: AutoPruning){
         isLoading, 
         policies,
         dataUpdatedAt,
-    } = useNamespaceAutoPrunePolicies(props.org);
+    } = useNamespaceAutoPrunePolicies(props.org, props.isUser);
     const {
         createPolicy,
         successCreatePolicy,
         errorCreatePolicy,
         errorCreatePolicyDetails,
-    } = useCreateNamespaceAutoPrunePolicy(props.org);
+    } = useCreateNamespaceAutoPrunePolicy(props.org, props.isUser);
     const {
         updatePolicy,
         successUpdatePolicy,
         errorUpdatePolicy,
         errorUpdatePolicyDetails,
-    } = useUpdateNamespaceAutoPrunePolicy(props.org);
+    } = useUpdateNamespaceAutoPrunePolicy(props.org, props.isUser);
     const {
         deletePolicy,
         successDeletePolicy,
         errorDeletePolicy,
         errorDeletePolicyDetails,
-    } = useDeleteNamespaceAutoPrunePolicy(props.org);
+    } = useDeleteNamespaceAutoPrunePolicy(props.org, props.isUser);
 
     useEffect(()=>{
       if(successFetchingPolicies){
@@ -256,4 +256,5 @@ export default function AutoPruning(props: AutoPruning){
 
 interface AutoPruning {
     org: string;
+    isUser: boolean;
 }

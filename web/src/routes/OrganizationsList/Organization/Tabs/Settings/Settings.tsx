@@ -252,6 +252,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const quayConfig = useQuayConfig();
 
   const handleTabClick = (event, tabIndex) => {
     setActiveTabIndex(tabIndex);
@@ -262,11 +263,13 @@ export default function Settings(props: SettingsProps) {
       name: 'General Settings',
       id: 'generalsettings',
       content: <GeneralSettings organizationName={props.organizationName} />,
+      visible: true,
     },
     {
       name: 'Auto-Prune Policies',
       id: 'autoprunepolicies',
-      content: <AutoPruning org={props.organizationName} />,
+      content: <AutoPruning org={props.organizationName} isUser={props.isUserOrganization} />,
+      visible: quayConfig?.features?.AUTO_PRUNE,
     },
   ];
 
@@ -280,7 +283,7 @@ export default function Settings(props: SettingsProps) {
           aria-label="Tabs in the vertical example"
           role="region"
         >
-          {tabs.map((tab, tabIndex) => (
+          {tabs.filter(tab=>tab.visible).map((tab, tabIndex) => (
             <Tab
               key={tab.id}
               eventKey={tabIndex}
@@ -302,6 +305,7 @@ export default function Settings(props: SettingsProps) {
 
 type SettingsProps = {
   organizationName: string;
+  isUserOrganization: boolean;
 };
 
 type GeneralSettingsProps = {

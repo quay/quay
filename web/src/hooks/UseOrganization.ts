@@ -24,7 +24,7 @@ export function useOrganization(name: string) {
   };
 }
 
-export function useNamespaceAutoPrunePolicies(namespace: string){
+export function useNamespaceAutoPrunePolicies(namespace: string, isUser: boolean){
   const {
     data: policies,
     isLoading,
@@ -32,7 +32,7 @@ export function useNamespaceAutoPrunePolicies(namespace: string){
     isSuccess,
     dataUpdatedAt,
   } = useQuery(['namespace', 'autoprunepolicies', namespace], 
-  ({signal}) => fetchNamespaceAutoPrunePolicies(namespace, signal),
+  ({signal}) => fetchNamespaceAutoPrunePolicies(namespace, isUser, signal),
   );
 
   return {
@@ -44,7 +44,7 @@ export function useNamespaceAutoPrunePolicies(namespace: string){
   };
 }
 
-export function useCreateNamespaceAutoPrunePolicy(namespace: string) {
+export function useCreateNamespaceAutoPrunePolicy(namespace: string, isUser: boolean) {
   const queryClient = useQueryClient();
   const {
     mutate: createPolicy,
@@ -52,7 +52,7 @@ export function useCreateNamespaceAutoPrunePolicy(namespace: string) {
     isError: errorCreatePolicy,
     error: errorCreatePolicyDetails,
   } = useMutation(async (policy: NamespaceAutoPrunePolicy) =>
-    createNamespaceAutoPrunePolicy(namespace, policy),
+    createNamespaceAutoPrunePolicy(namespace, policy, isUser),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['namespace', 'autoprunepolicies', namespace]);
@@ -68,7 +68,7 @@ export function useCreateNamespaceAutoPrunePolicy(namespace: string) {
   };
 }
 
-export function useUpdateNamespaceAutoPrunePolicy(namespace: string) {
+export function useUpdateNamespaceAutoPrunePolicy(namespace: string, isUser: boolean) {
   const queryClient = useQueryClient();
   const {
     mutate: updatePolicy,
@@ -76,7 +76,7 @@ export function useUpdateNamespaceAutoPrunePolicy(namespace: string) {
     isError: errorUpdatePolicy,
     error: errorUpdatePolicyDetails,
   } = useMutation(async (policy: NamespaceAutoPrunePolicy) =>
-    updateNamespaceAutoPrunePolicy(namespace, policy),
+    updateNamespaceAutoPrunePolicy(namespace, policy, isUser),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['namespace', 'autoprunepolicies', namespace]);
@@ -92,7 +92,7 @@ export function useUpdateNamespaceAutoPrunePolicy(namespace: string) {
   };
 }
 
-export function useDeleteNamespaceAutoPrunePolicy(namespace: string) {
+export function useDeleteNamespaceAutoPrunePolicy(namespace: string, isUser: boolean) {
   const queryClient = useQueryClient();
   const {
     mutate: deletePolicy,
@@ -100,7 +100,7 @@ export function useDeleteNamespaceAutoPrunePolicy(namespace: string) {
     isError: errorDeletePolicy,
     error: errorDeletePolicyDetails,
   } = useMutation(async (uuid: string) =>
-    deleteNamespaceAutoPrunePolicy(namespace, uuid),
+    deleteNamespaceAutoPrunePolicy(namespace, uuid, isUser),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['namespace', 'autoprunepolicies', namespace]);

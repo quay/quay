@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-describe('Repository Settings - Notifications', () => {
+describe('Namespace settings - autoprune policies', () => {
     beforeEach(() => {
       cy.exec('npm run quay:seed');
       cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
@@ -127,4 +127,20 @@ describe('Repository Settings - Notifications', () => {
         cy.get('button[aria-label="Danger alert details"]').click();
         cy.contains('AxiosError: Request failed with status code 500');
     });
+    
+    // TODO: Uncomment once user settings is supported
+    // it('updates policy for users', () => {
+    //     cy.visit('/organization/user1?tab=Settings');
+    //     cy.contains('Auto-Prune Policies').click();
+
+    //     // Create initial policy
+    //     attemptCreateTagNumberPolicy(cy);
+    //     cy.contains('Successfully created auto-prune policy');
+    //     cy.get('input[aria-label="number of tags"]').should('have.value', '15');
+
+    //     // Update policy
+    //     attemptCreateCreationDatePolicy(cy);
+    //     cy.contains('Successfully updated auto-prune policy');
+    //     cy.get('input[aria-label="age of tags"]').should('have.value', '2w');
+    // });
 });
