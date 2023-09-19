@@ -3,18 +3,24 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.2"></a>
+## [v3.9.2] - 0001-01-01
+
 <a name="v3.9.1"></a>
-## [v3.9.1] - 2023-08-21
+## [v3.9.1] - 2023-08-30
 ### Build(Deps)
 - [7d19eac7](https://github.com/quay/quay/commit/7d19eac7a0bdfb649f2be1f7de29f9e0d723d86b): bump certifi from 2022.12.7 to 2023.7.22 ([#2062](https://github.com/quay/quay/issues/2062))
 - [d3b05d4b](https://github.com/quay/quay/commit/d3b05d4b8757fab82321e57db4065c682e0d0cda): bump reportlab from 3.5.55 to 3.6.13 (PROJQUAY-5691) ([#2056](https://github.com/quay/quay/issues/2056))
 ### Chore
+- [dc67d473](https://github.com/quay/quay/commit/dc67d473e7a3820e90d71708793721e62f416667): v3.9.1 changelog bump (PROJQUAY-5937) ([#2154](https://github.com/quay/quay/issues/2154))
 - [ea71ac15](https://github.com/quay/quay/commit/ea71ac151b10bc2f64f94d5a579e6c4fe3134b76): Bump pushgateway to 1.6.0 (PROJQUAY-5874) ([#2058](https://github.com/quay/quay/issues/2058))
 - [0b3c93f0](https://github.com/quay/quay/commit/0b3c93f0e5a2f08f5e2d05266cb927a71076e248): Add build dependency for reportlab ([#2137](https://github.com/quay/quay/issues/2137))
 - [a2e23e68](https://github.com/quay/quay/commit/a2e23e68d1058c88924ddba34c74144532845afb): Add build dependencies for lxml 4.9.2 ([#2136](https://github.com/quay/quay/issues/2136))
 - [e8acc54f](https://github.com/quay/quay/commit/e8acc54fb01b1745a25e74c20ba4dec2254c3441): fix build of PyYAML on linux/ppc64le ([#2114](https://github.com/quay/quay/issues/2114))
 ### [Redhat-3.9] Chore
 - [2032ffa7](https://github.com/quay/quay/commit/2032ffa742492c96050f4f3f710c5780f6195a53): pull changes for s390x from master ([#2107](https://github.com/quay/quay/issues/2107))
+### [Redhat-3.9] Storage
+- [a6776d94](https://github.com/quay/quay/commit/a6776d940c497c75948e436504d2ae2f065fe41f): adding maximum_chunk_size_gb storage option (PROJQUAY-2679) ([#2191](https://github.com/quay/quay/issues/2191))
 ### [Redhat-3.9] Ui
 - [a659db25](https://github.com/quay/quay/commit/a659db25ec67a2237205ebb3c4a33c20cf61adf4): Robot Accounts tab fixes (PROJQUAY-5914) ([#2135](https://github.com/quay/quay/issues/2135))
 - [7f54e765](https://github.com/quay/quay/commit/7f54e76599eec683633e16514a390ec9db61129c): displaying quota totals on user namespaces (PROJQUAY-5581) ([#2128](https://github.com/quay/quay/issues/2128))
@@ -309,6 +315,15 @@
 ### Pull Requests
 - Merge pull request [#2069](https://github.com/quay/quay/issues/2069) from dmage/merge-config-tool-3.9
 
+
+<a name="v3.8.12"></a>
+## [v3.8.12] - 2023-09-06
+### Build(Deps)
+- [8340f707](https://github.com/quay/quay/commit/8340f707143c3f59df83a49560668ff08df88df9): bump pypdf2 from 1.27.6 to 1.27.9 ([#2055](https://github.com/quay/quay/issues/2055))
+### Chore
+- [1302e11a](https://github.com/quay/quay/commit/1302e11ab32d88280cb05e473b0871db42a32f70): fix build of PyYAML on linux/ppc64le ([#2113](https://github.com/quay/quay/issues/2113))
+### [Redhat-3.8] Chore
+- [44fce9e9](https://github.com/quay/quay/commit/44fce9e9a0b2310504b19385a0cd93fb497f1433): pull changes for s390x from master ([#2112](https://github.com/quay/quay/issues/2112))
 
 <a name="v3.8.11"></a>
 ## [v3.8.11] - 2023-08-07
@@ -818,6 +833,9 @@
 - [4a2d7b40](https://github.com/quay/quay/commit/4a2d7b40c1f61005b2ea3055a18675c5677ab753): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1565](https://github.com/quay/quay/issues/1565))
 ### [Redhat-3.8] Repomirror
 - [55cb0ba1](https://github.com/quay/quay/commit/55cb0ba1a3d21f1c5db4e2f05298a494e0411316): Use skopeo list-tags to get repo tags (PROJQUAY-2179) ([#1559](https://github.com/quay/quay/issues/1559))
+
+<a name="v3.7.14"></a>
+## [v3.7.14] - 2023-09-06
 
 <a name="v3.7.13"></a>
 ## [v3.7.13] - 2023-07-13
@@ -1459,9 +1477,11 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.1...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.2...HEAD
+[v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
 [v3.9.1]: https://github.com/quay/quay/compare/v3.9.0...v3.9.1
-[v3.9.0]: https://github.com/quay/quay/compare/v3.8.11...v3.9.0
+[v3.9.0]: https://github.com/quay/quay/compare/v3.8.12...v3.9.0
+[v3.8.12]: https://github.com/quay/quay/compare/v3.8.11...v3.8.12
 [v3.8.11]: https://github.com/quay/quay/compare/v3.8.10...v3.8.11
 [v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
 [v3.8.9]: https://github.com/quay/quay/compare/v3.8.8...v3.8.9
@@ -1473,7 +1493,8 @@
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
 [v3.8.1]: https://github.com/quay/quay/compare/v3.8.0...v3.8.1
-[v3.8.0]: https://github.com/quay/quay/compare/v3.7.13...v3.8.0
+[v3.8.0]: https://github.com/quay/quay/compare/v3.7.14...v3.8.0
+[v3.7.14]: https://github.com/quay/quay/compare/v3.7.13...v3.7.14
 [v3.7.13]: https://github.com/quay/quay/compare/v3.7.12...v3.7.13
 [v3.7.12]: https://github.com/quay/quay/compare/v3.7.11...v3.7.12
 [v3.7.11]: https://github.com/quay/quay/compare/v3.7.10...v3.7.11
