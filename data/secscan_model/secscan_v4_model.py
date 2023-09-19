@@ -188,7 +188,8 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         try:
             security_report_key = cache_key.for_security_report(
-                manifest_or_legacy_image.digest, model_cache.cache_config)
+                manifest_or_legacy_image.digest, model_cache.cache_config
+            )
             report = model_cache.retrieve(security_report_key, security_report_loader)
         except APIRequestFailure as arf:
             return SecurityInformationLookupResult.for_request_error(str(arf))
