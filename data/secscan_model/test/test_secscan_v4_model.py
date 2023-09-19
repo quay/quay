@@ -2,7 +2,12 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
+
+from data.cache import InMemoryDataModelCache
+from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from test.fixtures import *
+
+from data.cache import cache_key
 
 import mock
 import pytest
@@ -147,6 +152,53 @@ def test_load_security_information_success(initialized_db, set_secscan_config):
 
     assert result.status == ScanLookupStatus.SUCCESS
     assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
+
+
+def test_load_security_information_success_with_cache(initialized_db, set_secscan_config):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    sec_info_cache_key = cache_key.for_security_report(manifest.digest)
+
+    ManifestSecurityStatus.create(
+        manifest=manifest._db_id,
+        repository=repository_ref._db_id,
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.vulnerability_report.return_value = {
+        "manifest_hash": manifest.digest,
+        "state": "IndexFinished",
+        "packages": {},
+        "distributions": {},
+        "repository": {},
+        "environments": {},
+        "package_vulnerabilities": {},
+        "success": True,
+        "err": "",
+    }
+
+    result = secscan.load_security_information(manifest)
+
+    assert result.status == ScanLookupStatus.SUCCESS
+    assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
+
+    # the response should be cached now
+    cache_result_json = model_cache.cache.get(sec_info_cache_key)
+    assert cache_result_json is not None
+
+    cache_result = json.loads(cache_result_json)
+    assert cache_result["manifest_hash"] == manifest.digest
 
 
 def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
