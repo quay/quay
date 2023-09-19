@@ -26,11 +26,11 @@
 }
 
 .fas.fa-trash {
-  font-size: var(--pf-global--icon--FontSize--lg);
+  font-size: var(--pf-v5-global--icon--FontSize--lg);
   color: grey;
 }
 
-.pf-c-button.pf-m-plain {
-  --pf-c-button--disabled--BackgroundColor: transparent
+.pf-v5-c-button.pf-m-plain {
+  --pf-v5-c-button--disabled--BackgroundColor: transparent
 ;
 }

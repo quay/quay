@@ -22,7 +22,7 @@ export default function MembersViewToolbar(props: MembersViewToolbarProps) {
           searchState={props.search}
           setSearchState={props.setSearch}
         />
-        <Flex className="pf-u-mr-md">
+        <Flex className="pf-v5-u-mr-md">
           <FlexItem>
             <SearchInput
               searchState={props.search}

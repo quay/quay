@@ -55,7 +55,7 @@ export function SecurityReportMetadataTable(
       <Text component={TextVariants.p}>Vectors</Text>
       <Table aria-label="Vulnerabilities" variant="compact">
         <Thead cellPadding={'5px'}>
-          <Tr marginWidth={0} className="pf-u-text-align-left">
+          <Tr marginWidth={0} className="pf-v5-u-text-align-left">
             {props.vulnerability.Metadata.NVD.CVSSv3.Vectors.split('/')
               .slice(1)
               .map((vector, i) => {

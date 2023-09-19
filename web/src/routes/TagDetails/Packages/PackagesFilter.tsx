@@ -19,7 +19,7 @@ export function PackagesFilter(props: PackagesFilterProps) {
   };
 
   return (
-    <Flex className="pf-u-mt-md">
+    <Flex className="pf-v5-u-mt-md">
       <FlexItem>
         <TextInput
           isRequired
