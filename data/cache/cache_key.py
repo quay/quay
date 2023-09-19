@@ -56,25 +56,6 @@ def for_active_repo_tags(repository_id, start_pagination_id, limit, cache_config
         "repo_active_tags__%s_%s_%s" % (repository_id, start_pagination_id, limit), cache_ttl
     )
 
-
-def for_appr_applications_list(namespace, limit, cache_config):
-    """
-    Returns a cache key for listing applications under the App Registry.
-    """
-    cache_ttl = cache_config.get("appr_applications_list_cache_ttl", "3600s")
-    return CacheKey("appr_applications_list_%s_%s" % (namespace, limit), cache_ttl)
-
-
-def for_appr_show_package(namespace, package_name, release, media_type, cache_config):
-    """
-    Returns a cache key for showing a package under the App Registry.
-    """
-    cache_ttl = cache_config.get("appr_show_package_cache_ttl", "3600s")
-    return CacheKey(
-        "appr_show_package_%s_%s_%s-%s" % (namespace, package_name, release, media_type), cache_ttl
-    )
-
-
 def for_security_report(digest, cache_config):
     """
     Returns a cache key for showing a security report.

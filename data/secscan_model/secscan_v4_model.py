@@ -8,7 +8,6 @@ from math import log10
 from peewee import JOIN, fn
 
 import features
-from app import model_cache
 from data.cache import cache_key
 from data.database import (
     IndexerVersion,
@@ -78,7 +77,7 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     No-op implementation of the security scanner interface for Clair V4.
     """
 
-    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None):
         return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
 
     def perform_indexing(self, start_token=None, batch_size=None):
@@ -153,7 +152,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             max_layer_size=app.config.get("SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE", None),
         )
 
-    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None):
         if not isinstance(manifest_or_legacy_image, ManifestDataType):
             return SecurityInformationLookupResult.with_status(
                 ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
