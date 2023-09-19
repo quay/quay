@@ -73,3 +73,14 @@ def for_appr_show_package(namespace, package_name, release, media_type, cache_co
     return CacheKey(
         "appr_show_package_%s_%s_%s-%s" % (namespace, package_name, release, media_type), cache_ttl
     )
+
+def for_security_report(digest, cache_config):
+    """
+    Returns a cache key for showing a security report.
+    """
+
+    # Security reports don't change often so a longer TTL can be justified.
+    cache_ttl = cache_config.get("security_report_cache_ttl", "3600s")
+    return CacheKey(
+        f"security_report_{digest}", cache_ttl
+    )
