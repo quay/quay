@@ -1,7 +1,7 @@
 import React from 'react';
 import {Text, TextContent, TextVariants} from '@patternfly/react-core';
 import {TableComposable, Tbody, Th, Thead, Tr} from '@patternfly/react-table';
-import {VulnerabilityListItem} from 'src/atoms/VulnerabilityReportState';
+import {VulnerabilityListItem} from './Types';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {MinusCircleIcon} from '@patternfly/react-icons';
 
