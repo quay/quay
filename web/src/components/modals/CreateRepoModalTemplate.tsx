@@ -6,12 +6,14 @@ import {
   FormGroup,
   TextInput,
   Radio,
-  SelectVariant,
-  Select,
-  SelectOption,
   Flex,
   FlexItem,
 } from '@patternfly/react-core';
+import {
+  SelectVariant,
+  Select,
+  SelectOption,
+} from '@patternfly/react-core/deprecated';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {useRef, useState} from 'react';
 import FormError from 'src/components/errors/FormError';
@@ -38,7 +40,11 @@ export default function CreateRepositoryModalTemplate(
   const [currentOrganization, setCurrentOrganization] = useState({
     // For org scoped view, the name is set current org and for Repository list view,
     // the name is set to 1st value from the Namespace dropdown
-    name: props.orgName ? props.orgName : (props.username ? props.username : null),
+    name: props.orgName
+      ? props.orgName
+      : props.username
+      ? props.username
+      : null,
     isDropdownOpen: false,
   });
 
@@ -200,7 +206,7 @@ export default function CreateRepositoryModalTemplate(
                 type="text"
                 id="repository-name-input"
                 value={newRepository.name}
-                onChange={handleNameInputChange}
+                onChange={(_event, value) => handleNameInputChange(value)}
                 ref={nameInputRef}
                 validated={validationState.repoName ? 'default' : 'error'}
               />
@@ -216,7 +222,7 @@ export default function CreateRepositoryModalTemplate(
             id="repository-description-input"
             name="modal-with-form-form-name"
             value={newRepository.description}
-            onChange={handleRepoDescriptionChange}
+            onChange={(_event, value) => handleRepoDescriptionChange(value)}
             ref={nameInputRef}
           />
         </FormGroup>

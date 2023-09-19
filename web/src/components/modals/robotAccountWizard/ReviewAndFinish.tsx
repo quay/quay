@@ -5,13 +5,17 @@ import {
   TextInput,
   FormGroup,
   Form,
-  Dropdown,
-  DropdownToggle,
   ToggleGroup,
   ToggleGroupItem,
   ToggleGroupItemProps,
 } from '@patternfly/react-core';
-import {TableComposable, Tbody, Td, Tr} from '@patternfly/react-table';
+import {Dropdown, DropdownToggle} from '@patternfly/react-core/deprecated';
+import {
+  Table /* data-codemods */,
+  Tbody,
+  Td,
+  Tr,
+} from '@patternfly/react-table';
 import React, {useState} from 'react';
 
 type TableModeType = 'Teams' | 'Repositories' | 'Default-permissions';
@@ -52,7 +56,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   const fetchSelectedTeams = () => {
     return (
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Tbody>
           {props.selectedTeams.map((team, rowIndex) => (
             <Tr key={team.name}>
@@ -60,7 +64,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
                 select={{
                   rowIndex,
                   isSelected: true,
-                  disable: true,
+                  isDisabled: true,
                 }}
               />
               <Td dataLabel={TeamColumnNames.name}>{team.name}</Td>
@@ -76,13 +80,13 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     );
   };
 
   const fetchSelectedRepos = () => {
     return (
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Tbody>
           {props.selectedRepos.map((repo, rowIndex) => (
             <Tr key={repo.name}>
@@ -90,7 +94,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
                 select={{
                   rowIndex,
                   isSelected: true,
-                  disable: true,
+                  isDisabled: true,
                 }}
               />
               <Td dataLabel={RepoColumnNames.name}>{repo.name}</Td>
@@ -109,7 +113,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     );
   };
 
@@ -187,19 +191,25 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
             text="Teams"
             buttonId="Teams"
             isSelected={tableMode === 'Teams'}
-            onChange={onTableModeChange}
+            onChange={(event, _isSelected) =>
+              onTableModeChange(_isSelected, event)
+            }
           />
           <ToggleGroupItem
             text="Repositories"
             buttonId="Repositories"
             isSelected={tableMode === 'Repositories'}
-            onChange={onTableModeChange}
+            onChange={(event, _isSelected) =>
+              onTableModeChange(_isSelected, event)
+            }
           />
           <ToggleGroupItem
             text="Default permissions"
             buttonId="Default-permissions"
             isSelected={tableMode === 'Default-permissions'}
-            onChange={onTableModeChange}
+            onChange={(event, _isSelected) =>
+              onTableModeChange(_isSelected, event)
+            }
           />
         </ToggleGroup>
       </Form>

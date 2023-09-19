@@ -1,7 +1,7 @@
 import {Spinner} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
-  TableComposable,
+  Table /* data-codemods */,
   Thead,
   Tr,
   Th,
@@ -242,7 +242,7 @@ export default function TagsTable(props: TableProps) {
 
   return (
     <>
-      <TableComposable id="tag-list-table" aria-label="Expandable table">
+      <Table id="tag-list-table" aria-label="Expandable table">
         <Thead>
           <Tr>
             <Th />
@@ -272,9 +272,9 @@ export default function TagsTable(props: TableProps) {
             repoDetails={props.repoDetails}
           />
         ))}
-      </TableComposable>
+      </Table>
 
-      {props.loading ? <Spinner isSVG size="lg" /> : null}
+      {props.loading ? <Spinner size="lg" /> : null}
       {props.tags.length == 0 && !props.loading ? (
         <div>This repository is empty.</div>
       ) : null}

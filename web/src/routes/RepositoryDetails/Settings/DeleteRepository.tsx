@@ -75,7 +75,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
         <TextInput
           value={repoNameInput}
           type="text"
-          onChange={(value) => setRepoNameInput(value.trim())}
+          onChange={(_event, value) => setRepoNameInput(value.trim())}
           aria-label="repo-delete-name-input"
           placeholder="Enter repository here"
         />

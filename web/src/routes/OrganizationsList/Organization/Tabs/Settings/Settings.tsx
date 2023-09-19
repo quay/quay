@@ -189,7 +189,9 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           type="email"
           id="modal-with-form-form-name"
           value={emailFormValue}
-          onChange={handleEmailChange}
+          onChange={(_event, emailFormValue: string) =>
+            handleEmailChange(emailFormValue)
+          }
         />
       </FormGroup>
 
@@ -204,7 +206,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           aria-label="Time Machine select"
           data-testid="arch-select"
           value={timeMachineFormValue}
-          onChange={(val) => setTimeMachineFormValue(val)}
+          onChange={(_event, val) => setTimeMachineFormValue(val)}
         >
           {quayConfig?.config?.TAG_EXPIRATION_OPTIONS.map((option, index) => (
             <FormSelectOption

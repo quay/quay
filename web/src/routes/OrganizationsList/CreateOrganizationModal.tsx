@@ -134,7 +134,7 @@ export const CreateOrganizationModal = (
             type="text"
             id="create-org-name-input"
             value={organizationName}
-            onChange={handleNameInputChange}
+            onChange={(_event, value: any) => handleNameInputChange(value)}
             validated={validation.type}
           />
         </FormGroup>
@@ -150,7 +150,7 @@ export const CreateOrganizationModal = (
             id="create-org-email-input"
             name="create-org-email-input"
             value={organizationEmail}
-            onChange={handleEmailInputChange}
+            onChange={(_event, value: any) => handleEmailInputChange(value)}
             validated={invalidEmailFlag ? 'error' : 'default'}
             onBlur={onInputBlur}
           />

@@ -4,8 +4,8 @@ import {
   Text,
   TextContent,
   TextVariants,
-  Wizard,
 } from '@patternfly/react-core';
+import {Wizard} from '@patternfly/react-core/deprecated';
 import React, {useState} from 'react';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useRobotAccounts} from 'src/hooks/useRobotAccounts';

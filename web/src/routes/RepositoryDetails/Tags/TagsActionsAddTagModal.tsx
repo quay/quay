@@ -83,7 +83,7 @@ export default function AddTagModal(props: AddTagModalProps) {
         <TextInput
           value={value}
           type="text"
-          onChange={(value) => setValue(value)}
+          onChange={(_event, value) => setValue(value)}
           aria-label="new tag name"
           placeholder="New tag name"
         />

@@ -95,7 +95,7 @@ function PluginMain() {
         isModalOpen={isConfirmUserModalOpen}
         setModalOpen={setConfirmUserModalOpen}
       />
-      <Banner variant="info">
+      <Banner variant="blue">
         <Flex
           spaceItems={{default: 'spaceItemsSm'}}
           justifyContent={{default: 'justifyContentCenter'}}

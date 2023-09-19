@@ -13,7 +13,7 @@ import {
 import {useEffect, useState} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -154,25 +154,33 @@ export default function ManageMembersList() {
               text="All members"
               buttonId={TableModeType.AllMembers}
               isSelected={tableMode == TableModeType.AllMembers}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
             <ToggleGroupItem
               text="Team member"
               buttonId={TableModeType.TeamMember}
               isSelected={tableMode == TableModeType.TeamMember}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
             <ToggleGroupItem
               text="Robot accounts"
               buttonId={TableModeType.RobotAccounts}
               isSelected={tableMode == TableModeType.RobotAccounts}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
             <ToggleGroupItem
               text="Invited"
               buttonId={TableModeType.Invited}
               isSelected={tableMode == TableModeType.Invited}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
           </ToggleGroup>
         </ToolbarItem>
@@ -221,7 +229,7 @@ export default function ManageMembersList() {
         searchOptions={[manageMemberColumnNames.teamMember]}
       >
         {viewToggle}
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -265,7 +273,7 @@ export default function ManageMembersList() {
               </Tr>
             ))}
           </Tbody>
-        </TableComposable>
+        </Table>
       </ManageMembersToolbar>
     </PageSection>
   );

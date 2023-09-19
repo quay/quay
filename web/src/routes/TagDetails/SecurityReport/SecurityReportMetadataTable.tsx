@@ -1,6 +1,6 @@
 import React from 'react';
 import {Text, TextContent, TextVariants} from '@patternfly/react-core';
-import {TableComposable, Tbody, Th, Thead, Tr} from '@patternfly/react-table';
+import {Table /* data-codemods */, Tbody, Th, Thead, Tr} from '@patternfly/react-table';
 import {VulnerabilityListItem} from './Types';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {MinusCircleIcon} from '@patternfly/react-icons';
@@ -53,7 +53,7 @@ export function SecurityReportMetadataTable(
       </Text>
 
       <Text component={TextVariants.p}>Vectors</Text>
-      <TableComposable aria-label="Vulnerabilities" variant="compact">
+      <Table aria-label="Vulnerabilities" variant="compact">
         <Thead cellPadding={'5px'}>
           <Tr marginWidth={0} className="pf-u-text-align-left">
             {props.vulnerability.Metadata.NVD.CVSSv3.Vectors.split('/')
@@ -88,7 +88,7 @@ export function SecurityReportMetadataTable(
               })}
           </Tr>
         </Tbody>
-      </TableComposable>
+      </Table>
       {props.vulnerability.Description && (
         <>
           <Text component={TextVariants.p}>Description</Text>

@@ -1,9 +1,5 @@
-import {
-  DropdownItem,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
-} from '@patternfly/react-core';
+import {Toolbar, ToolbarContent, ToolbarItem} from '@patternfly/react-core';
+import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {ReactElement, useState} from 'react';
 import {useRecoilState} from 'recoil';
 import {searchTagsState, selectedTagsState} from 'src/atoms/TagListState';

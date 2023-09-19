@@ -69,7 +69,6 @@ export default function Menu({isOpen, setIsOpen, ...props}: MenuProps) {
         }
         appendTo={containerRef.current || undefined}
         isVisible={isOpen}
-        popperMatchesTriggerWidth={false}
       />
     </div>
   );

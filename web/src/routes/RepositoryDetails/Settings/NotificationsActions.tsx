@@ -2,10 +2,12 @@ import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
+} from '@patternfly/react-core';
+import {
   Dropdown,
   DropdownItem,
   DropdownToggle,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
@@ -78,7 +80,7 @@ export default function Actions(props: ActionsProps) {
         toggle={
           <DropdownToggle
             isDisabled={props.isDisabled}
-            onToggle={(isOpen) => setIsOpen(isOpen)}
+            onToggle={(_event, isOpen) => setIsOpen(isOpen)}
           >
             Actions
           </DropdownToggle>

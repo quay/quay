@@ -2,8 +2,7 @@ import {
   Select,
   SelectOption,
   SelectVariant,
-  Spinner,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {useEntities} from 'src/hooks/UseEntities';
 import {Entity, getMemberType} from 'src/resources/UserResource';

@@ -1,10 +1,9 @@
+import {Flex, FlexItem} from '@patternfly/react-core';
 import {
   Select,
   SelectOption,
   SelectVariant,
-  Flex,
-  FlexItem,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import {Manifest} from 'src/resources/TagResource';
 

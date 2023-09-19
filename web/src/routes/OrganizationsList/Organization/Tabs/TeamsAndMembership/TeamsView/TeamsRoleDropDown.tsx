@@ -1,4 +1,8 @@
-import {Dropdown, DropdownItem, DropdownToggle} from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';

@@ -42,19 +42,25 @@ export default function TeamsAndMembershipList(
               text="Team View"
               buttonId={TableModeType.Teams}
               isSelected={tableMode == TableModeType.Teams}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
             <ToggleGroupItem
               text="Members View"
               buttonId={TableModeType.Members}
               isSelected={tableMode == TableModeType.Members}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
             <ToggleGroupItem
               text="Collaborators View"
               buttonId={TableModeType.Collaborators}
               isSelected={tableMode == TableModeType.Collaborators}
-              onChange={onTableModeChange}
+              onChange={(event, _isSelected) =>
+                onTableModeChange(_isSelected, event)
+              }
             />
           </ToggleGroup>
         </ToolbarItem>

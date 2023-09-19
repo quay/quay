@@ -2,12 +2,8 @@ import {NotificationEvent} from 'src/hooks/UseEvents';
 import {NotificationMethod} from 'src/hooks/UseNotificationMethods';
 import {
   ActionGroup,
-  Alert,
-  AlertActionCloseButton,
   Button,
   FormGroup,
-  Modal,
-  ModalVariant,
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
@@ -78,14 +74,14 @@ export default function CreateSlackNotification(
           required
           id="slack-webhook-url-field"
           value={url}
-          onChange={(value) => setUrl(value)}
+          onChange={(_event, value) => setUrl(value)}
         />
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

@@ -31,13 +31,17 @@ export function AllSelectedToggleButton(props: ExpandCollapseButtonProps) {
           text="All"
           buttonId="All"
           isSelected={tableMode === 'All'}
-          onChange={onTableModeChange}
+          onChange={(event, _isSelected) =>
+            onTableModeChange(_isSelected, event)
+          }
         />
         <ToggleGroupItem
           text="Selected"
           buttonId="Selected"
           isSelected={tableMode === 'Selected'}
-          onChange={onTableModeChange}
+          onChange={(event, _isSelected) =>
+            onTableModeChange(_isSelected, event)
+          }
         />
       </ToggleGroup>
     </ToolbarItem>

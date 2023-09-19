@@ -1,9 +1,5 @@
 import {
   Button,
-  Dropdown,
-  DropdownGroup,
-  DropdownItem,
-  DropdownToggle,
   Form,
   FormGroup,
   Switch,
@@ -12,6 +8,12 @@ import {
   ToolbarGroup,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownGroup,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {UserIcon} from '@patternfly/react-icons';
 import React from 'react';
 import {useState} from 'react';
@@ -110,7 +112,7 @@ export function HeaderToolbar() {
         <ToolbarContent>
           <ToolbarGroup
             variant="icon-button-group"
-            alignment={{default: 'alignRight'}}
+            align={{default: 'alignRight'}}
             spacer={{default: 'spacerNone', md: 'spacerMd'}}
           >
             <ToolbarItem spacer={toolbarSpacers}>
@@ -124,7 +126,9 @@ export function HeaderToolbar() {
                     label="New UI"
                     labelOff="New UI"
                     isChecked={isChecked}
-                    onChange={toggleSwitch}
+                    onChange={(_event, checked: boolean) =>
+                      toggleSwitch(checked)
+                    }
                   />
                 </FormGroup>
               </Form>

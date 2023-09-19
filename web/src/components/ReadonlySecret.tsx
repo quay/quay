@@ -1,4 +1,10 @@
-import {Button, Flex, InputGroup, TextInput} from '@patternfly/react-core';
+import {
+  Button,
+  Flex,
+  InputGroup,
+  TextInput,
+  InputGroupItem,
+} from '@patternfly/react-core';
 import {EyeIcon, EyeSlashIcon} from '@patternfly/react-icons';
 import {useState} from 'react';
 
@@ -9,26 +15,30 @@ export default function ReadonlySecret(props: ReadonlySecretProps) {
       {props.label}
       {':'}
       <InputGroup style={{width: 'inherit'}}>
-        <TextInput
-          type={secretHidden ? 'password' : 'text'}
-          aria-label="secret input"
-          value={props.secret}
-          isDisabled
-          style={{
-            backgroundColor: 'white',
-            width: `${props.secret.length}ch`,
-            paddingRight: 0,
-            cursor: 'auto',
-          }}
-        />
-        <Button
-          variant="plain"
-          onClick={() => setSecretHidden(!secretHidden)}
-          aria-label={secretHidden ? 'Show secret' : 'Hide secret'}
-          style={{paddingLeft: 0}}
-        >
-          {secretHidden ? <EyeIcon /> : <EyeSlashIcon />}
-        </Button>
+        <InputGroupItem isFill>
+          <TextInput
+            type={secretHidden ? 'password' : 'text'}
+            aria-label="secret input"
+            value={props.secret}
+            isDisabled
+            style={{
+              backgroundColor: 'white',
+              width: `${props.secret.length}ch`,
+              paddingRight: 0,
+              cursor: 'auto',
+            }}
+          />
+        </InputGroupItem>
+        <InputGroupItem>
+          <Button
+            variant="plain"
+            onClick={() => setSecretHidden(!secretHidden)}
+            aria-label={secretHidden ? 'Show secret' : 'Hide secret'}
+            style={{paddingLeft: 0}}
+          >
+            {secretHidden ? <EyeIcon /> : <EyeSlashIcon />}
+          </Button>
+        </InputGroupItem>
       </InputGroup>
     </Flex>
   );

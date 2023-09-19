@@ -1,5 +1,5 @@
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -131,7 +131,7 @@ export default function MembersViewList(props: MembersViewListProps) {
               ))}
               isVisible={isPopoverOpen}
               shouldClose={handleClick}
-              reference={() =>
+              triggerRef={() =>
                 document.getElementById('team-popover') as HTMLButtonElement
               }
             />
@@ -159,7 +159,7 @@ export default function MembersViewList(props: MembersViewListProps) {
         searchOptions={[memberViewColumnNames.username]}
       />
       {props.children}
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Thead>
           <Tr>
             <Th />
@@ -192,7 +192,7 @@ export default function MembersViewList(props: MembersViewListProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
       <PanelFooter>
         <ToolbarPagination
           itemsList={filteredMembers}

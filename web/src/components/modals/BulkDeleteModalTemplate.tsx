@@ -10,7 +10,7 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -48,10 +48,11 @@ export const BulkDeleteModalTemplate = <T,>(
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.selectedItems.filter((item) =>
-        item[props.mapOfColNamesToTableData[colNames[0]].label]
-          ?.toLowerCase()
-          .includes(value.toLowerCase()),
+      const filteredTableRow = props.selectedItems.filter(
+        (item) =>
+          item[props.mapOfColNamesToTableData[colNames[0]].label]
+            ?.toLowerCase()
+            .includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }
@@ -116,9 +117,8 @@ export const BulkDeleteModalTemplate = <T,>(
                 id="modal-with-form-form-name"
                 name="search input"
                 placeholder="Search"
-                iconVariant="search"
                 value={searchInput}
-                onChange={onSearch}
+                onChange={(_event, value: string) => onSearch(value)}
               />
             </ToolbarItem>
             <ToolbarPagination
@@ -130,7 +130,7 @@ export const BulkDeleteModalTemplate = <T,>(
             />
           </ToolbarContent>
         </Toolbar>
-        <TableComposable aria-label="Simple table" variant="compact">
+        <Table aria-label="Simple table" variant="compact">
           <Thead>
             <Tr>
               {colNames.map((name, idx) => (
@@ -152,7 +152,7 @@ export const BulkDeleteModalTemplate = <T,>(
               </Tr>
             ))}
           </Tbody>
-        </TableComposable>
+        </Table>
         <Toolbar>
           <ToolbarPagination
             page={bulkModalPage}
@@ -171,7 +171,7 @@ export const BulkDeleteModalTemplate = <T,>(
           id="delete-confirmation-input"
           value={confirmDeletionInput}
           type="text"
-          onChange={(value) => setConfirmDeletionInput(value)}
+          onChange={(_event, value) => setConfirmDeletionInput(value)}
           aria-label="text input example"
         />
       </PageSection>

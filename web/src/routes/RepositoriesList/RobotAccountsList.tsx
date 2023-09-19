@@ -1,5 +1,4 @@
 import {
-  DropdownItem,
   PageSection,
   PageSectionVariants,
   PanelFooter,
@@ -8,8 +7,9 @@ import {
   Text,
   TextVariants,
 } from '@patternfly/react-core';
+import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   ExpandableRowContent,
   Thead,
   Tr,
@@ -457,7 +457,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   if (loading && paginatedRobotAccountList?.length == 0) {
     return (
-      <TableComposable aria-label="Empty state table" borders={false}>
+      <Table aria-label="Empty state table" borders={false}>
         <Tbody>
           <Tr>
             <Td colSpan={8} textCenter={true}>
@@ -472,7 +472,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
             </Td>
           </Tr>
         </Tbody>
-      </TableComposable>
+      </Table>
     );
   }
   return (
@@ -560,7 +560,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           }
           showFooter={true}
         />
-        <TableComposable aria-label="Expandable table" variant={undefined}>
+        <Table aria-label="Expandable table" variant={undefined}>
           <Thead>
             <Tr>
               <Th />
@@ -601,7 +601,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                       onSelect: (_event, isSelecting) =>
                         onSelectRobot(robotAccount, rowIndex, isSelecting),
                       isSelected: isRobotAccountSelected(robotAccount),
-                      disable: !isRobotAccountSelectable(robotAccount),
+                      isDisabled: !isRobotAccountSelectable(robotAccount),
                     }}
                   />
                   <Td dataLabel={RobotAccountColumnNames.robotAccountName}>
@@ -653,7 +653,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
               </Tbody>
             );
           })}
-        </TableComposable>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             itemsList={filteredRobotAccounts}

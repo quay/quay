@@ -1,4 +1,4 @@
-import {Toolbar, ToolbarFilter} from '@patternfly/react-core';
+import {ToolbarFilter} from '@patternfly/react-core';
 import {NotificationFilter} from 'src/hooks/UseNotifications';
 
 export default function NotificationsFilterChips(

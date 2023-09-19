@@ -3,7 +3,7 @@ import {
   DropdownItem,
   KebabToggle,
   DropdownPosition,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import AddTagModal from './TagsActionsAddTagModal';
 import EditLabelsModal from './TagsActionsLabelsModal';
@@ -97,7 +97,7 @@ export default function TagActions(props: TagActionsProps) {
         toggle={
           <KebabToggle
             id="tag-actions-kebab"
-            onToggle={(isOpen: boolean) => setIsOpen(isOpen)}
+            onToggle={(_event, isOpen: boolean) => setIsOpen(isOpen)}
           />
         }
         isOpen={isOpen}

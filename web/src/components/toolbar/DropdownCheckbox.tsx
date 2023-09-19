@@ -1,11 +1,11 @@
 import {useState} from 'react';
+import {ToolbarItem} from '@patternfly/react-core';
 import {
   Dropdown,
   DropdownToggle,
   DropdownToggleCheckbox,
   DropdownItem,
-  ToolbarItem,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 
 export function DropdownCheckbox(props: DropdownCheckboxProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -70,7 +70,7 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
                 key="split-checkbox"
                 aria-label="Select all"
                 isChecked={props.selectedItems.length > 0 ? true : false}
-                onChange={(checked) =>
+                onChange={(_event, checked) =>
                   checked ? selectPageItems() : deSelectAll()
                 }
               >

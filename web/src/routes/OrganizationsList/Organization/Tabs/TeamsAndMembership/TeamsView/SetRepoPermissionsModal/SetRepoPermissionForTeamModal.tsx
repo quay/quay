@@ -1,5 +1,5 @@
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -207,7 +207,7 @@ export default function SetRepoPermissionForTeamModal(
           setKebabOpen={setKebabOpen}
           updateModifiedRepoPerms={updateModifiedRepoPerms}
         >
-          <TableComposable aria-label="Selectable table">
+          <Table aria-label="Selectable table">
             <Thead>
               <Tr>
                 <Th />
@@ -246,7 +246,7 @@ export default function SetRepoPermissionForTeamModal(
                 </Tr>
               ))}
             </Tbody>
-          </TableComposable>
+          </Table>
         </SetRepoPermissionsToolbar>
       )}
     </Modal>

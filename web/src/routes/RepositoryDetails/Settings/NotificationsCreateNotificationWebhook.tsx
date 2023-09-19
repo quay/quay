@@ -75,21 +75,21 @@ export default function CreateWebhookNotification(
           required
           id="webhook-url-field"
           value={url}
-          onChange={(value) => setUrl(value)}
+          onChange={(_event, value) => setUrl(value)}
         />
       </FormGroup>
       <FormGroup fieldId="webhook-body" label="POST JSON body template">
         <TextArea
           id="json-body-field"
           value={jsonBody}
-          onChange={(value) => setJsonBody(value)}
+          onChange={(_event, value) => setJsonBody(value)}
         />
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

@@ -1,4 +1,8 @@
-import {Dropdown, DropdownItem, DropdownToggle} from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {ITeamRepoPerms} from 'src/hooks/UseTeams';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';

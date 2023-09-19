@@ -13,15 +13,16 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+} from '@patternfly/react-core';
+import {
   Dropdown,
   DropdownItem,
-  DropdownSeparator,
   KebabToggle,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -254,13 +255,17 @@ export default function AddToRepository(props: AddToRepositoryProps) {
                   text="All"
                   buttonId="All"
                   isSelected={tableMode === 'All'}
-                  onChange={onTableModeChange}
+                  onChange={(event, _isSelected) =>
+                    onTableModeChange(_isSelected, event)
+                  }
                 />
                 <ToggleGroupItem
                   text="Selected"
                   buttonId="Selected"
                   isSelected={tableMode === 'Selected'}
-                  onChange={onTableModeChange}
+                  onChange={(event, _isSelected) =>
+                    onTableModeChange(_isSelected, event)
+                  }
                 />
               </ToggleGroup>
             </ToolbarItem>
@@ -270,7 +275,9 @@ export default function AddToRepository(props: AddToRepositoryProps) {
                 toggle={
                   <KebabToggle
                     id="toggle-bulk-perms-kebab"
-                    onToggle={onKebabToggle}
+                    onToggle={(_event, isKebabOpen: boolean) =>
+                      onKebabToggle(isKebabOpen)
+                    }
                   />
                 }
                 isOpen={isKebabOpen}
@@ -288,7 +295,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
             />
           </ToolbarContent>
         </Toolbar>
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -333,7 +340,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
               </Tbody>
             );
           })}
-        </TableComposable>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             itemsList={filteredItems}

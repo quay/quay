@@ -41,7 +41,9 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
           name="vulnerability-search"
           placeholder="Filter Vulnerabilities..."
           value={searchTerm}
-          onChange={onSearchTermChanged}
+          onChange={(_event, newSearchTerm: string) =>
+            onSearchTermChanged(newSearchTerm)
+          }
         />
       </FlexItem>
       <FlexItem>
@@ -50,7 +52,9 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
           aria-label="fixable"
           id="fixable-checkbox"
           isChecked={isFixedOnlyChecked}
-          onChange={onShowOnlyFixableChanged}
+          onChange={(_event, checked: boolean) =>
+            onShowOnlyFixableChanged(checked)
+          }
         />
       </FlexItem>
     </Flex>

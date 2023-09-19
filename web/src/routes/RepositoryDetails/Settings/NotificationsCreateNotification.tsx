@@ -1,13 +1,15 @@
 import {
   Alert,
   AlertActionCloseButton,
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
   Form,
   FormGroup,
   Title,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import './NotificationsCreateNotification.css';
 import Conditional from 'src/components/empty/Conditional';
@@ -53,7 +55,9 @@ export default function CreateNotification(props: CreateNotificationProps) {
             required
             onSelect={() => setIsEventOpen(false)}
             toggle={
-              <DropdownToggle onToggle={(isOpen) => setIsEventOpen(isOpen)}>
+              <DropdownToggle
+                onToggle={(_event, isOpen) => setIsEventOpen(isOpen)}
+              >
                 {event?.title ? event?.title : 'Select event...'}
               </DropdownToggle>
             }
@@ -76,7 +80,9 @@ export default function CreateNotification(props: CreateNotificationProps) {
             className="create-notification-dropdown"
             onSelect={() => setIsMethodOpen(false)}
             toggle={
-              <DropdownToggle onToggle={(isOpen) => setIsMethodOpen(isOpen)}>
+              <DropdownToggle
+                onToggle={(_event, isOpen) => setIsMethodOpen(isOpen)}
+              >
                 {method?.title ? method?.title : 'Select method...'}
               </DropdownToggle>
             }

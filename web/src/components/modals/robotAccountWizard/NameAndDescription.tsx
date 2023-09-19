@@ -44,7 +44,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           id="robot-wizard-form-name"
           name="form-name"
           value={props.name}
-          onChange={handleNameChange}
+          onChange={(_event, robotName: string) => handleNameChange(robotName)}
           validated={validatedName}
         />
       </FormGroup>
@@ -58,7 +58,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           id="robot-wizard-form-description"
           name="form-description"
           value={props.description}
-          onChange={(robotDescription: string) =>
+          onChange={(_event, robotDescription: string) =>
             props.setDescription(robotDescription)
           }
         />

@@ -1,5 +1,9 @@
 import {useEffect, useState} from 'react';
-import {Dropdown, DropdownItem, DropdownToggle} from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import * as React from 'react';
 
 const defaultSelectedVal = 'Read';
@@ -49,7 +53,7 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
       toggle={
         <DropdownToggle
           id="toggle-descriptions"
-          onToggle={(isOpen) => setIsOpen(isOpen)}
+          onToggle={(_event, isOpen) => setIsOpen(isOpen)}
         >
           {dropdownToggle}
         </DropdownToggle>

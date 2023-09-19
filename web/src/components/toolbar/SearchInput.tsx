@@ -16,7 +16,7 @@ export function SearchInput(props: SearchInput) {
         name="search input"
         placeholder={`Search by ${props.searchState.field}...`}
         value={props.searchState.query}
-        onChange={setSearchState}
+        onChange={(_event, val) => setSearchState(val)}
       />
     </ToolbarItem>
   );

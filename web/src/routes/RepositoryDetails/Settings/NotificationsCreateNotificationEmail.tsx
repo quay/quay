@@ -189,14 +189,14 @@ export default function CreateEmailNotification(
           id="notification-email"
           isRequired
           value={email}
-          onChange={(value) => setEmail(value)}
+          onChange={(_event, value) => setEmail(value)}
         />
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

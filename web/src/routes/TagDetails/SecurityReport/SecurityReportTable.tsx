@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import {Vulnerability, Feature} from 'src/resources/TagResource';
 import React from 'react';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Thead,
   Tr,
   Th,
@@ -206,10 +206,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <TableComposable
-        data-testid="vulnerability-table"
-        aria-label="Expandable table"
-      >
+      <Table data-testid="vulnerability-table" aria-label="Expandable table">
         <TableHead />
         {paginatedVulns.length !== 0 ? (
           paginatedVulns.map(
@@ -304,7 +301,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
             </Tr>
           </Tbody>
         )}
-      </TableComposable>
+      </Table>
       <Toolbar>
         <ToolbarContent>
           <ToolbarPagination

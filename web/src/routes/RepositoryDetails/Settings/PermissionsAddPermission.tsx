@@ -3,13 +3,15 @@ import {
   Alert,
   AlertActionCloseButton,
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
   Form,
   FormGroup,
   Title,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import EntitySearch from 'src/components/EntitySearch';
@@ -78,7 +80,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
             onSelect={() => setIsPermissionOpen(false)}
             toggle={
               <DropdownToggle
-                onToggle={(isOpen) => setIsPermissionOpen(isOpen)}
+                onToggle={(_event, isOpen) => setIsPermissionOpen(isOpen)}
               >
                 {role}
               </DropdownToggle>

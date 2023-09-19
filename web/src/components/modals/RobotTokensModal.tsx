@@ -253,10 +253,10 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             >
               <TextArea
                 value={getKubernetesContent().join('')}
-                isReadOnly={true}
                 autoResize={true}
                 className="text-area-height"
                 id="expandable-kube-content"
+                readOnlyVariant="default"
               />
             </ExpandableSection>
             <Text component={TextVariants.h6}>Step 2: Submit</Text>

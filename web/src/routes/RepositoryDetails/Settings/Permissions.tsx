@@ -1,6 +1,6 @@
 import {Spinner} from '@patternfly/react-core';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -77,7 +77,7 @@ export default function Permissions(props: PermissionsProps) {
         deselectAll={() => setSelectedMembers([])}
         setDrawerContent={props.setDrawerContent}
       />
-      <TableComposable aria-label="Repository permissions table">
+      <Table aria-label="Repository permissions table">
         <Thead>
           <Tr>
             <Th />
@@ -113,7 +113,7 @@ export default function Permissions(props: PermissionsProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     </>
   );
 }

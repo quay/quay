@@ -1,7 +1,7 @@
 import {useMemo, useState} from 'react';
 import {Spinner} from '@patternfly/react-core';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Thead,
   Tr,
   Th,
@@ -90,7 +90,7 @@ export default function TagHistory(props: TagHistoryProps) {
         setPerPage={setPerPage}
         total={isNullOrUndefined(tagList) ? 0 : tagList.length}
       />
-      <TableComposable aria-label="Tag history table" variant="compact">
+      <Table aria-label="Tag history table" variant="compact">
         <Thead>
           <Tr>
             <Th>Tag change</Th>
@@ -161,7 +161,7 @@ export default function TagHistory(props: TagHistoryProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     </>
   );
 }

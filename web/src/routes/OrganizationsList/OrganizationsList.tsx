@@ -1,5 +1,5 @@
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Thead,
   Tr,
   Th,
@@ -10,9 +10,9 @@ import {
   PageSection,
   PageSectionVariants,
   Title,
-  DropdownItem,
   PanelFooter,
 } from '@patternfly/react-core';
+import {DropdownItem} from '@patternfly/react-core/deprecated';
 import './css/Organizations.scss';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {useRecoilState, useRecoilValue} from 'recoil';
@@ -45,7 +45,7 @@ export interface OrganizationsTableItem {
 function OrgListHeader() {
   return (
     <>
-       <QuayBreadcrumb />
+      <QuayBreadcrumb />
       <PageSection variant={PageSectionVariants.light}>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Organizations</Title>
@@ -304,7 +304,7 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
         />
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -325,7 +325,7 @@ export default function OrganizationsList() {
                     onSelect: (_event, isSelecting) =>
                       onSelectOrganization(org, rowIndex, isSelecting),
                     isSelected: isOrganizationSelected(org),
-                    disable: !isOrgSelectable(org),
+                    isDisabled: !isOrgSelectable(org),
                   }}
                 />
                 <OrgTableData
@@ -335,7 +335,7 @@ export default function OrganizationsList() {
               </Tr>
             ))}
           </Tbody>
-        </TableComposable>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             itemsList={filteredOrgs}

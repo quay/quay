@@ -29,7 +29,9 @@ export function PackagesFilter(props: PackagesFilterProps) {
           name="packages-search"
           placeholder="Filter Packages..."
           value={searchTerm}
-          onChange={onSearchTermChanged}
+          onChange={(_event, newSearchTerm: string) =>
+            onSearchTermChanged(newSearchTerm)
+          }
         />
       </FlexItem>
     </Flex>

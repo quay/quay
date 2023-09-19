@@ -1,5 +1,5 @@
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -125,13 +125,17 @@ export default function TeamView(props: TeamViewProps) {
                   text="All"
                   buttonId="All"
                   isSelected={tableMode === 'All'}
-                  onChange={onTableModeChange}
+                  onChange={(event, _isSelected) =>
+                    onTableModeChange(_isSelected, event)
+                  }
                 />
                 <ToggleGroupItem
                   text="Selected"
                   buttonId="Selected"
                   isSelected={tableMode === 'Selected'}
-                  onChange={onTableModeChange}
+                  onChange={(event, _isSelected) =>
+                    onTableModeChange(_isSelected, event)
+                  }
                 />
               </ToggleGroup>
             </ToolbarItem>
@@ -146,7 +150,7 @@ export default function TeamView(props: TeamViewProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Thead>
           <Tr>
             {props.showCheckbox ? <Th /> : null}
@@ -184,7 +188,7 @@ export default function TeamView(props: TeamViewProps) {
             </Tbody>
           );
         })}
-      </TableComposable>
+      </Table>
       <PanelFooter>
         <ToolbarPagination
           itemsList={filteredItems}

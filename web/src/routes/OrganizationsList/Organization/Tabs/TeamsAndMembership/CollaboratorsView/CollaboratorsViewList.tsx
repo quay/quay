@@ -7,7 +7,7 @@ import {
 } from '@patternfly/react-core';
 import CollaboratorsViewToolbar from './CollaboratorsViewToolbar';
 import {
-  TableComposable,
+  Table /* data-codemods */,
   Tbody,
   Td,
   Th,
@@ -109,7 +109,7 @@ export default function CollaboratorsViewList(
       />
       {props.children}
       <Conditional if={isDeleteModalOpen}>{deleteCollabModal}</Conditional>
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Thead>
           <Tr>
             <Th />
@@ -156,7 +156,7 @@ export default function CollaboratorsViewList(
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
       <PanelFooter>
         <ToolbarPagination
           itemsList={filteredCollaborators}

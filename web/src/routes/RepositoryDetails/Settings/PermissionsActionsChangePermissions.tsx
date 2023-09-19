@@ -2,12 +2,12 @@ import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
-  DropdownItem,
   Menu,
   MenuContent,
   MenuItem,
   MenuList,
 } from '@patternfly/react-core';
+
 import {useEffect} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
