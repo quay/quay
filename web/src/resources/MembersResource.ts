@@ -1,6 +1,7 @@
 import {IAvatar} from './OrganizationResource';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
+import {AxiosResponse} from 'axios';
 
 export interface IMemberTeams {
   name: string;
@@ -77,15 +78,13 @@ export async function deleteCollaboratorForOrg(
   }
 }
 
-export async function addMemberToTeamAPI(
+export async function addMemberToTeamForOrg(
   orgName: string,
   teamName: string,
   member: string,
 ) {
   const addMemberUrl = `/api/v1/organization/${orgName}/team/${teamName}/members/${member}`;
-  try {
-    await axios.put(addMemberUrl, {});
-  } catch (err) {
-    console.error('Unable to add member to team', err);
-  }
+  const response: AxiosResponse = await axios.put(addMemberUrl, {});
+  assertHttpCode(response.status, 200);
+  return response.data;
 }

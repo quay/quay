@@ -29,7 +29,7 @@ import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {CreateTeamWizard} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createTeamWizard/CreateTeamWizard';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
-import {DrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
+import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import Conditional from 'src/components/empty/Conditional';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {repoPermissions} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/DefaultPermissionsList';
@@ -146,6 +146,7 @@ export default function CreatePermissionDrawer(
       org={props.orgName}
       includeTeams={false}
       onSelect={(e: Entity) => {
+        console.log("entity %s", JSON.stringify(e));
         setRepositoryCreator(e);
       }}
       onClear={setRepositoryCreator}
@@ -406,7 +407,9 @@ export default function CreatePermissionDrawer(
       <DrawerPanelContent>
         <DrawerHead className="pf-v5-c-title pf-m-xl">
           <h6
-            tabIndex={props.drawerContent != DrawerContentType.None ? 0 : -1}
+            tabIndex={
+              props.drawerContent != OrganizationDrawerContentType.None ? 0 : -1
+            }
             ref={props.drawerRef}
           >
             Create default permission
@@ -468,5 +471,5 @@ interface CreatePermissionDrawerProps {
   orgName: string;
   closeDrawer: () => void;
   drawerRef: Ref<HTMLDivElement>;
-  drawerContent: DrawerContentType;
+  drawerContent: OrganizationDrawerContentType;
 }

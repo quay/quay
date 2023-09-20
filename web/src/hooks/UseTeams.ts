@@ -5,7 +5,7 @@ import {
   fetchTeamRepoPermsForOrg,
   fetchTeamsForNamespace,
   updateTeamRepoPerm,
-  updateTeamRoleForNamespace,
+  updateTeamDetailsForNamespace,
 } from 'src/resources/TeamResources';
 import {useState} from 'react';
 import {teamViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/TeamsViewList';
@@ -234,16 +234,28 @@ export function useDeleteTeam({orgName, onSuccess, onError}) {
   };
 }
 
-export function useUpdateTeamRole(orgName: string) {
+export function useUpdateTeamDetails(orgName: string) {
   const queryClient = useQueryClient();
   const {
-    mutate: updateTeamRole,
-    isError: errorUpdateTeamRole,
-    isSuccess: successUpdateTeamRole,
-    reset: resetUpdateTeamRole,
+    mutate: updateTeamDetails,
+    isError: errorUpdateTeamDetails,
+    isSuccess: successUpdateTeamDetails,
   } = useMutation(
-    async ({teamName, teamRole}: {teamName: string; teamRole: string}) => {
-      return updateTeamRoleForNamespace(orgName, teamName, teamRole);
+    async ({
+      teamName,
+      teamRole,
+      teamDescription,
+    }: {
+      teamName: string;
+      teamRole: string;
+      teamDescription?: string;
+    }) => {
+      return updateTeamDetailsForNamespace(
+        orgName,
+        teamName,
+        teamRole,
+        teamDescription,
+      );
     },
     {
       onSuccess: () => {
@@ -252,10 +264,9 @@ export function useUpdateTeamRole(orgName: string) {
     },
   );
   return {
-    updateTeamRole,
-    errorUpdateTeamRole,
-    successUpdateTeamRole,
-    resetUpdateTeamRole,
+    updateTeamDetails,
+    errorUpdateTeamDetails,
+    successUpdateTeamDetails,
   };
 }
 

@@ -3,7 +3,7 @@ import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
   IMembers,
-  addMemberToTeamAPI,
+  addMemberToTeamForOrg,
   deleteCollaboratorForOrg,
   deleteTeamMemberForOrg,
   fetchCollaboratorsForOrg,
@@ -15,7 +15,7 @@ import {collaboratorViewColumnNames} from 'src/routes/OrganizationsList/Organiza
 import {memberViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/MembersView/MembersViewList';
 import {manageMemberColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 
-export function useAddMembersToTeam(org: string) {
+export function useAddMembersToTeam(org: string, {onSuccess, onError}) {
   const queryClient = useQueryClient();
   const {
     mutate: addMemberToTeam,
@@ -24,12 +24,17 @@ export function useAddMembersToTeam(org: string) {
     reset: resetAddingMemberToTeam,
   } = useMutation(
     async ({team, member}: {team: string; member: string}) => {
-      return addMemberToTeamAPI(org, team, member);
+      return addMemberToTeamForOrg(org, team, member);
     },
     {
       onSuccess: () => {
+        onSuccess();
         queryClient.invalidateQueries(['members']);
         queryClient.invalidateQueries(['teams']);
+        queryClient.invalidateQueries(['teamMembers']);
+      },
+      onError: () => {
+        onError();
       },
     },
   );

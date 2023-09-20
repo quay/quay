@@ -69,7 +69,10 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
     errorAddingMemberToTeam: error,
     successAddingMemberToTeam: success,
     resetAddingMemberToTeam: reset,
-  } = useAddMembersToTeam(props.orgName);
+  } = useAddMembersToTeam(props.orgName, {
+    onSuccess: {},
+    onError: {},
+  });
 
   const {addRepoPermToTeam} = useAddRepoPermissionToTeam(
     props.orgName,

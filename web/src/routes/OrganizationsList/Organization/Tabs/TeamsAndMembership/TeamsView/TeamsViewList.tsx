@@ -25,6 +25,7 @@ import {AlertVariant} from 'src/atoms/AlertState';
 import SetRepoPermissionForTeamModal from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/SetRepoPermissionsModal/SetRepoPermissionForTeamModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import Conditional from 'src/components/empty/Conditional';
+import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
 
 export const teamViewColumnNames = {
   teamName: 'Team name',
@@ -56,6 +57,8 @@ export default function TeamsViewList(props: TeamsViewListProps) {
   const {addAlert} = useAlerts();
   const [isSetRepoPermModalOpen, setIsSetRepoPermModalOpen] = useState(false);
   const [repoPermForTeam, setRepoPermForTeam] = useState<string>('');
+  const [isDeleteModalForRowOpen, setIsDeleteModalForRowOpen] = useState(false);
+  const [teamToBeDeleted, setTeamToBeDeleted] = useState<ITeams>();
 
   useEffect(() => {
     if (error) {
@@ -114,7 +117,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     },
   };
 
-  const {removeTeam} = useDeleteTeam({
+  const {removeTeam: bulkRemoveTeams} = useDeleteTeam({
     orgName: props.organizationName,
     onSuccess: () => {
       setDeleteModalIsOpen(!deleteModalIsOpen);
@@ -149,7 +152,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     <BulkDeleteModalTemplate
       mapOfColNamesToTableData={mapOfColNamesToTableData}
       handleModalToggle={handleDeleteModalToggle}
-      handleBulkDeletion={removeTeam}
+      handleBulkDeletion={bulkRemoveTeams}
       isModalOpen={deleteModalIsOpen}
       selectedItems={teams?.filter((team) =>
         selectedTeams.some((selected) => team.name === selected.name),
@@ -179,6 +182,34 @@ export default function TeamsViewList(props: TeamsViewListProps) {
       }
       organizationName={props.organizationName}
       teamName={repoPermForTeam}
+    />
+  );
+
+  const {removeTeam} = useDeleteTeam({
+    orgName: props.organizationName,
+    onSuccess: () => {
+      setIsDeleteModalForRowOpen(false);
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully deleted team: ${teamToBeDeleted.name}`,
+      });
+    },
+    onError: (err) => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: `Unable to delete team: ${teamToBeDeleted.name}, ${err}`,
+      });
+    },
+  });
+
+  const deleteRowModal = (
+    <DeleteModalForRowTemplate
+      deleteMsgTitle={'Remove team from organization'}
+      isModalOpen={isDeleteModalForRowOpen}
+      toggleModal={() => setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen)}
+      deleteHandler={removeTeam}
+      itemToBeDeleted={teamToBeDeleted}
+      keyToDisplay="name"
     />
   );
 
@@ -222,6 +253,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
           handleModalToggle={props.handleModalToggle}
         />
         {props.children}
+        <Conditional if={isDeleteModalForRowOpen}>{deleteRowModal}</Conditional>
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
@@ -281,6 +313,10 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                     deSelectAll={() => setSelectedTeams([])}
                     onSelectRepo={() => {
                       openSetRepoPermModal(team.name);
+                    }}
+                    onDeleteTeam={() => {
+                      setTeamToBeDeleted(team);
+                      setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
                     }}
                   />
                 </Td>

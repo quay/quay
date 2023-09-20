@@ -41,13 +41,17 @@ export async function updateTeamForRobot(
   return response.data?.name;
 }
 
-export async function updateTeamRoleForNamespace(
+export async function updateTeamDetailsForNamespace(
   namespace: string,
   teamName: string,
   teamRole: string,
+  description?: string,
 ) {
   const updateTeamUrl = `/api/v1/organization/${namespace}/team/${teamName}`;
   const payload = {name: teamName, role: teamRole};
+  if (description !== undefined) {
+    payload['description'] = description;
+  }
   const response: AxiosResponse = await axios.put(updateTeamUrl, payload);
   assertHttpCode(response.status, 200);
   return response.data?.name;

@@ -8,7 +8,7 @@ import {
 } from '@patternfly/react-core';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
-import {useUpdateTeamRole} from 'src/hooks/UseTeams';
+import {useUpdateTeamDetails} from 'src/hooks/UseTeams';
 
 export enum teamPermissions {
   Admin = 'admin',
@@ -21,10 +21,10 @@ export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
   const {addAlert} = useAlerts();
 
   const {
-    updateTeamRole,
-    errorUpdateTeamRole: error,
-    successUpdateTeamRole: success,
-  } = useUpdateTeamRole(props.organizationName);
+    updateTeamDetails,
+    errorUpdateTeamDetails: error,
+    successUpdateTeamDetails: success,
+  } = useUpdateTeamDetails(props.organizationName);
 
   useEffect(() => {
     if (error) {
@@ -68,7 +68,7 @@ export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
             data-testid={`${props.teamName}-${key}`}
             key={key}
             onClick={() =>
-              updateTeamRole({
+              updateTeamDetails({
                 teamName: props.teamName,
                 teamRole: teamPermissions[key],
               })
