@@ -324,6 +324,10 @@ def update_enabled(user, set_enabled):
 
 def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
     (username_valid, username_issue) = validate_username(robot_shortname)
+    if config.app_config.get("ROBOTS_DISALLOW", False):
+        msg = "Robot accounts have beeen disabled. Please contact your administrator."
+        raise InvalidRobotException(msg)
+
     if not username_valid:
         raise InvalidRobotException(
             "The name for the robot '%s' is invalid: %s" % (robot_shortname, username_issue)
@@ -435,6 +439,9 @@ def get_matching_robots(name_prefix, username, limit=10):
 
 
 def verify_robot(robot_username, password):
+    if config.app_config.get("ROBOTS_DISALLOW", False):
+        msg = "Robot accounts have been disabled. Please contact your administrator."
+        raise InvalidRobotException(msg)
     try:
         password.encode("ascii")
     except UnicodeEncodeError:

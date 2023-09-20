@@ -1394,5 +1394,10 @@ CONFIG_SCHEMA = {
             "description": "Enable customizing of terms of service for on-prem installations",
             "x-example": "https://quay.io/tos",
         },
+        "ROBOTS_DISALLOW": {
+            "type": "boolean",
+            "description": "If robot accounts are prevented from any interaction as well as from being created. Defaults to False",
+            "x-example": False,
+        },
     },
 }
