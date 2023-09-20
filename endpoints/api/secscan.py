@@ -61,7 +61,9 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     manifest or image.
     """
     result = secscan_model.load_security_information(
-        manifest_or_legacy_image, include_vulnerabilities=include_vulnerabilities, model_cache=model_cache
+        manifest_or_legacy_image,
+        include_vulnerabilities=include_vulnerabilities,
+        model_cache=model_cache,
     )
     if result.status == ScanLookupStatus.UNKNOWN_MANIFEST_OR_IMAGE:
         raise NotFound()
