@@ -56,6 +56,7 @@ def for_active_repo_tags(repository_id, start_pagination_id, limit, cache_config
         "repo_active_tags__%s_%s_%s" % (repository_id, start_pagination_id, limit), cache_ttl
     )
 
+
 def for_security_report(digest, cache_config):
     """
     Returns a cache key for showing a security report.
