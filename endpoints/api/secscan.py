@@ -6,7 +6,7 @@ import logging
 from enum import Enum, unique
 
 import features
-from app import storage
+from app import model_cache, storage
 from auth.decorators import process_basic_auth_no_pass
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
@@ -61,7 +61,9 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     manifest or image.
     """
     result = secscan_model.load_security_information(
-        manifest_or_legacy_image, include_vulnerabilities=include_vulnerabilities
+        manifest_or_legacy_image,
+        include_vulnerabilities=include_vulnerabilities,
+        model_cache=model_cache,
     )
     if result.status == ScanLookupStatus.UNKNOWN_MANIFEST_OR_IMAGE:
         raise NotFound()

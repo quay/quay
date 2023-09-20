@@ -8,6 +8,7 @@ from math import log10
 from peewee import JOIN, fn
 
 import features
+from data.cache import cache_key
 from data.database import (
     IndexerVersion,
     IndexStatus,
@@ -76,7 +77,9 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     No-op implementation of the security scanner interface for Clair V4.
     """
 
-    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+    def load_security_information(
+        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+    ):
         return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
 
     def perform_indexing(self, start_token=None, batch_size=None):
@@ -151,7 +154,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             max_layer_size=app.config.get("SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE", None),
         )
 
-    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+    def load_security_information(
+        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+    ):
         if not isinstance(manifest_or_legacy_image, ManifestDataType):
             return SecurityInformationLookupResult.with_status(
                 ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
@@ -181,8 +186,17 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         assert status.index_status == IndexStatus.COMPLETED
 
+        def security_report_loader():
+            return self._secscan_api.vulnerability_report(manifest_or_legacy_image.digest)
+
         try:
-            report = self._secscan_api.vulnerability_report(manifest_or_legacy_image.digest)
+            if model_cache:
+                security_report_key = cache_key.for_security_report(
+                    manifest_or_legacy_image.digest, model_cache.cache_config
+                )
+                report = model_cache.retrieve(security_report_key, security_report_loader)
+            else:
+                report = security_report_loader()
         except APIRequestFailure as arf:
             return SecurityInformationLookupResult.for_request_error(str(arf))
 

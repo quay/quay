@@ -20,7 +20,9 @@ class SecurityScannerInterface(object):
     """
 
     @abstractmethod
-    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+    def load_security_information(
+        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+    ):
         """
         Loads the security information for the given manifest or legacy image, returning a
         SecurityInformationLookupResult structure.
