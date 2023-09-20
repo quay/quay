@@ -17,8 +17,8 @@ from random import SystemRandom
 import rehash
 import toposort
 from cachetools.func import lru_cache
-from peewee import *
-from peewee import Function, __exception_wrapper__  # type: ignore
+from peewee import *  # type: ignore
+from peewee import Function, __exception_wrapper__
 from playhouse.pool import (
     PooledDatabase,
     PooledMySQLDatabase,

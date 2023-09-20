@@ -6,7 +6,7 @@ import logging
 from enum import Enum, unique
 
 import features
-from app import storage, model_cache
+from app import model_cache, storage
 from auth.decorators import process_basic_auth_no_pass
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model

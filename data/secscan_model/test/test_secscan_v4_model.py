@@ -2,12 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-
-from data.cache import InMemoryDataModelCache
-from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from test.fixtures import *
-
-from data.cache import cache_key
 
 import mock
 import pytest
@@ -15,6 +10,8 @@ from peewee import fn
 
 from app import app as application
 from app import instance_keys, storage
+from data.cache import InMemoryDataModelCache, cache_key
+from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
     IndexerVersion,
     IndexStatus,
