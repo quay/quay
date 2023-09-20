@@ -62,5 +62,5 @@ def for_security_report(digest, cache_config):
     """
 
     # Security reports don't change often so a longer TTL can be justified.
-    cache_ttl = cache_config.get("security_report_cache_ttl", "3600s")
+    cache_ttl = cache_config.get("security_report_cache_ttl", "300s")
     return CacheKey(f"security_report_{digest}", cache_ttl)

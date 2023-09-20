@@ -162,7 +162,7 @@ def test_load_security_information_success_with_cache(initialized_db, set_secsca
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
-    sec_info_cache_key = cache_key.for_security_report(manifest.digest)
+    sec_info_cache_key = cache_key.for_security_report(manifest.digest, {})
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -188,13 +188,13 @@ def test_load_security_information_success_with_cache(initialized_db, set_secsca
         "err": "",
     }
 
-    result = secscan.load_security_information(manifest)
+    result = secscan.load_security_information(manifest, model_cache=model_cache)
 
     assert result.status == ScanLookupStatus.SUCCESS
     assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
 
     # the response should be cached now
-    cache_result_json = model_cache.cache.get(sec_info_cache_key)
+    cache_result_json = model_cache.cache.get(sec_info_cache_key.key)
     assert cache_result_json is not None
 
     cache_result = json.loads(cache_result_json)
