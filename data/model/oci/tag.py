@@ -17,7 +17,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import config, user
+from data.model import DataModelException, config, user
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -361,6 +361,41 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
         )
+
+
+def create_temporary_tag_outside_timemachine(manifest):
+    """
+    Creates a temporary tag that is outside the time machine window.
+    Tag is immediately available for garbage collection.
+    """
+    tag_name = "$temp-%s" % str(uuid.uuid4())
+    now_ms = get_epoch_timestamp_ms()
+    try:
+        namespace = (
+            User.select(User.removed_tag_expiration_s)
+            .join(Repository, on=(Repository.namespace_user == User.id))
+            .where(Repository.id == manifest.repository_id)
+            .get()
+        )
+    except User.DoesNotExist:
+        # Should never happen, but throw error anyway
+        raise DataModelException(
+            "Could not find namespace for repository: %s" % manifest.repository_id
+        )
+
+    time_machine_ms = namespace.removed_tag_expiration_s * 1000
+    end_ms = now_ms - time_machine_ms
+
+    return Tag.create(
+        name=tag_name,
+        repository=manifest.repository_id,
+        lifetime_start_ms=now_ms,
+        lifetime_end_ms=end_ms,
+        reversion=False,
+        hidden=True,
+        manifest=manifest,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
 
 
 def retarget_tag(

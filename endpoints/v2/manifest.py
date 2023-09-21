@@ -9,6 +9,7 @@ from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
     ManifestDoesNotExist,
+    QuotaExceededException,
     RepositoryDoesNotExist,
     TagDoesNotExist,
     namespacequota,
@@ -419,23 +420,22 @@ def _write_manifest(
     # Create the manifest(s) and retarget the tag to point to it.
     try:
         manifest, tag = registry_model.create_manifest_and_retarget_tag(
-            repository_ref, manifest_impl, tag_name, storage, raise_on_error=True
+            repository_ref,
+            manifest_impl,
+            tag_name,
+            storage,
+            raise_on_error=True,
+            verify_quota=app.config.get("FEATURE_QUOTA_MANAGEMENT", False),
         )
     except CreateManifestException as cme:
         raise ManifestInvalid(detail={"message": str(cme)})
     except RetargetTagException as rte:
         raise ManifestInvalid(detail={"message": str(rte)})
+    except QuotaExceededException as qee:
+        raise QuotaExceeded()
 
     if manifest is None:
         raise ManifestInvalid()
-
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota(repository_ref)
-        if quota["severity_level"] == "Warning":
-            namespacequota.notify_organization_admins(repository_ref, "quota_warning")
-        elif quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
-            raise QuotaExceeded()
 
     return repository_ref, manifest, tag
 

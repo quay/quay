@@ -9,12 +9,13 @@ from playhouse.test_utils import assert_query_count
 
 from app import storage
 from data import model
-from data.database import ImageStorageLocation, ManifestChild, Repository, Tag
+from data.database import ImageStorageLocation, ManifestChild, Repository, Tag, User
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import (
     change_tag_expiration,
     create_temporary_tag_if_necessary,
+    create_temporary_tag_outside_timemachine,
     delete_tag,
     delete_tags_for_manifest,
     filter_to_alive_tags,
@@ -495,6 +496,31 @@ def test_create_temporary_tag_if_necessary(initialized_db):
     # Try again and ensure it is not created.
     created = create_temporary_tag_if_necessary(manifest, 30)
     assert created is None
+
+
+def test_create_temporary_tag_outside_timemachine(initialized_db):
+    tag = Tag.get()
+    manifest = tag.manifest
+    assert manifest is not None
+
+    created = create_temporary_tag_outside_timemachine(manifest)
+
+    namespace = (
+        User.select(User.removed_tag_expiration_s)
+        .join(Repository, on=(Repository.namespace_user == User.id))
+        .where(Repository.id == manifest.repository_id)
+        .get()
+    )
+
+    assert created is not None and created
+    assert created.hidden
+    assert created.name.startswith("$temp-")
+    assert created.manifest == manifest
+    assert created.lifetime_end_ms is not None
+    assert (
+        created.lifetime_end_ms
+        < get_epoch_timestamp_ms() - namespace.removed_tag_expiration_s * 1000
+    )
 
 
 def test_retarget_tag(initialized_db):
