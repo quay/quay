@@ -6,7 +6,7 @@ objects:
   - apiVersion: cloud.redhat.com/v1alpha1
     kind: Frontend
     metadata:
-      name: quayio
+      name: quay
     spec:
       envName: ${ENV_NAME}
       title: Quay
