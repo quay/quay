@@ -112,8 +112,8 @@ location ~ ^/v2/_catalog(.*)$ {
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
 
     {% if enable_rate_limits %}
-    limit_req zone=dynamicauth_heavy_http1 burst=1 nodelay;
-    limit_req zone=dynamicauth_heavy_http2 burst=5 nodelay;
+    limit_req zone=api_resources_heavy_http1 burst=1 nodelay;
+    limit_req zone=api_resources_heavy_http2 burst=5 nodelay;
     {% endif %}
 }
 
@@ -133,8 +133,8 @@ location /api/ {
     proxy_pass   http://web_app_server;
 
     {% if enable_rate_limits %}
-    limit_req zone=dynamicauth_heavy_http1 burst=25 nodelay;
-    limit_req zone=dynamicauth_heavy_http2 burst=100 nodelay;
+    limit_req zone=api_resources_heavy_http1 burst=25 nodelay;
+    limit_req zone=api_resources_heavy_http2 burst=100 nodelay;
     {% endif %}
 
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
@@ -184,8 +184,8 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     set $namespace $1;
 
     {% if enable_rate_limits %}
-    limit_req zone=namespaced_dynamicauth_light_http1 burst=50 nodelay;
-    limit_req zone=namespaced_dynamicauth_light_http2 burst=100 nodelay;
+    limit_req zone=namespaced_registry_http1 burst=50 nodelay;
+    limit_req zone=namespaced_registry_http2 burst=100 nodelay;
     {% endif %}
 
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
@@ -211,8 +211,8 @@ location ~ /v2/([^/]+)\/[^/]+/tags/ {
     set $namespace $1;
 
     {% if enable_rate_limits %}
-    limit_req zone=namespaced_dynamicauth_heavy_http1 burst=2 nodelay;
-    limit_req zone=namespaced_dynamicauth_heavy_http2 burst=2 nodelay;
+    limit_req zone=namespaced_api_resources_http1 burst=2 nodelay;
+    limit_req zone=namespaced_api_resources_http2 burst=2 nodelay;
     {% endif %}
 
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
@@ -238,8 +238,8 @@ location ~ /v2/([^/]+)\/[^/]+/manifests/ {
     set $namespace $1;
 
     {% if enable_rate_limits %}
-    limit_req zone=namespaced_dynamicauth_light_http1 burst=10 nodelay;
-    limit_req zone=namespaced_dynamicauth_light_http2 burst=50 nodelay;
+    limit_req zone=namespaced_registry_http1 burst=10 nodelay;
+    limit_req zone=namespaced_registry_http2 burst=50 nodelay;
     {% endif %}
 
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
@@ -292,8 +292,8 @@ location ~ ^/v2 {
     proxy_pass   http://registry_app_server;
 
     {% if enable_rate_limits %}
-    limit_req zone=dynamicauth_very_light_http1 burst=20 nodelay;
-    limit_req zone=dynamicauth_very_light_http2 burst=80 nodelay;
+    limit_req zone=namespaced_v2_endpoint_http1 burst=20 nodelay;
+    limit_req zone=namespaced_v2_endpoint_http2 burst=80 nodelay;
     {% endif %}
 
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
@@ -317,8 +317,8 @@ location /v1/ {
     client_max_body_size {{ maximum_layer_size }};
 
     {% if enable_rate_limits %}
-    limit_req zone=dynamicauth_heavy_http1 burst=5 nodelay;
-    limit_req zone=dynamicauth_heavy_http2 burst=25 nodelay;
+    limit_req zone=api_resources_heavy_http1 burst=5 nodelay;
+    limit_req zone=api_resources_heavy_http2 burst=25 nodelay;
     {% endif %}
 
     keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
