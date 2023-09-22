@@ -1,7 +1,7 @@
 import os
+
 import jinja2
 import yaml
-
 from jsonschema import ValidationError
 from jsonschema import validate as validate_schema
 
