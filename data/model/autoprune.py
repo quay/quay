@@ -105,10 +105,16 @@ def get_namespace_autoprune_policy(orgname, uuid):
 def create_namespace_autoprune_policy(orgname, policy_config, create_task=False):
     with db_transaction():
         try:
-            namespace_id = User.select().where(User.username == orgname).get().id
+            namespace_id = (
+                User.select().where(
+                    User.username == orgname,
+                    User.id.not_in(
+                        DeletedNamespace.select(DeletedNamespace.namespace)
+                    ))
+                .get()).id
         except User.DoesNotExist:
-            pass
-            # TODO: throw unknown user error
+            # TODO: Re-throw with something along the lines of InvalidNamespaceException
+            raise User.DoesNotExist
 
         if namespace_has_autoprune_policy(namespace_id):
             # TODO: throw namespace already has policy error
@@ -131,11 +137,17 @@ def update_namespace_autoprune_policy(orgname, uuid, policy_config):
         # TODO: throw 404 here
         return None
 
+    # If the namespace has been marked for deletion the policy shouldn't exist
+    # anyway but we'll check just in case
     try:
-        namespace_id = User.select().where(User.username == orgname).get().id
+        namespace_id = User.select().where(
+            User.username == orgname,
+            User.id.not_in(
+                DeletedNamespace.select(DeletedNamespace.namespace)
+            )).get().id
     except User.DoesNotExist:
-        pass
-        # TODO: throw unknown user error
+        # TODO: Re-throw with something along the lines of InvalidNamespaceException
+        raise User.DoesNotExist
 
     (
         NamespaceAutoPrunePolicyTable.update(policy=json.dumps(policy_config))

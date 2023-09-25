@@ -9,12 +9,14 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
+    AutoPruneTaskStatus,
     DeletedNamespace,
     EmailConfirmation,
     FederatedLogin,
     ImageStorageLocation,
     LoginService,
     Namespace,
+    NamespaceAutoPrunePolicy,
     NamespaceGeoRestriction,
     OAuthApplication,
     QuotaNamespaceSize,
@@ -1340,7 +1342,11 @@ def _delete_user_linked_data(user):
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
 
-    # TODO: add deletion of namespace policies and namespace tasks, how will that work with row locking?
+    # Delete any autoprune tasks
+    AutoPruneTaskStatus.delete().where(AutoPruneTaskStatus.namespace == user).execute()
+    
+    # Delete any autoprune policies
+    NamespaceAutoPrunePolicy.delete().where(NamespaceAutoPrunePolicy.namespace == user).execute()
 
 
 def get_pull_credentials(robotname):
