@@ -33,5 +33,6 @@ static/build/**
 docker-compose.yaml
 test/dockerclients/**
 node_modules
+**/node_modules
 .local
 **/testdata
