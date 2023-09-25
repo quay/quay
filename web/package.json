@@ -8,7 +8,7 @@
   "homepage": ".",
   "dependencies": {
     "@patternfly/patternfly": "^4.185.1",
-    "@patternfly/react-charts": "^6.94.19",
+    "@patternfly/react-charts": "^7.0.1",
     "@patternfly/react-core": "^4.202.16",
     "@patternfly/react-icons": "^4.93.7",
     "@patternfly/react-table": "^4.71.16",
