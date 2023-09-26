@@ -140,6 +140,9 @@ class UnsupportedQuotaSize(DataModelException):
 class OrgSubscriptionBindingAlreadyExists(DataModelException):
     pass
 
+class NamespacePolicyAlreadyExists(DataModelException):
+    pass
+
 
 class TooManyLoginAttemptsException(Exception):
     def __init__(self, message, retry_after):
