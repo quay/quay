@@ -113,6 +113,9 @@ jobs:
 
           if [[ 'ppc64le' == $(uname -m) ]]; then
             sed -i "s/PyYAML==5.4.1/PyYAML==6.0.1/" requirements.txt
+          else
+            GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3)
+            export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && python3 -m pip install -qq grpcio==${GRPC_LATEST}
           fi
 
           #Unit
