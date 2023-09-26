@@ -99,7 +99,7 @@ jobs:
         host: ${{ matrix.platform  == 's390x' && steps.ZVSI.outputs.IP || secrets.BUILDER_PPC64LE_SSH_HOST_UBUNTU}}
         username: ${{ matrix.platform  == 's390x' && secrets.ZVSI_SSH_USER || secrets.BUILDER_PPC64LE_SSH_USER }}
         key: ${{ matrix.platform  == 's390x' && secrets.ZVSI_PR_KEY || secrets.BUILDER_PPC64LE_SSH_KEY}}
-        envs: GH_REPOSITORY,GH_REF
+        envs: GH_REPOSITORY,GH_REF,GRPC_PYTHON_BUILD_SYSTEM_OPENSSL
         command_timeout: 100m
         script: |
           apt-get update -y
