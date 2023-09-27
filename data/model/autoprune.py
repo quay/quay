@@ -47,18 +47,21 @@ class NamespaceAutoPrunePolicy:
 
 
 def valid_value(method, value):
-    if method == AutoPruneMethod.NUMBER_OF_TAGS and not isinstance(value, int):
+    if not value:
         return False
+
+    if method == AutoPruneMethod.NUMBER_OF_TAGS and isinstance(value, int) and value > 0:
+        return True
+
     elif method == AutoPruneMethod.CREATION_DATE:
-        if not isinstance(value, str):
-            return False
+        if isinstance(value, str):
+            try:
+                convert_to_timedelta(value)
+                return True
+            except ValueError:
+                return False
 
-        try:
-            convert_to_timedelta(value)
-        except ValueError:
-            return False
-
-    return True
+    return False
 
 
 def get_namespace_autoprune_policies_by_orgname(orgname):
@@ -112,12 +115,13 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
     with db_transaction():
         try:
             namespace_id = (
-                User.select().where(
+                User.select()
+                .where(
                     User.username == orgname,
-                    User.id.not_in(
-                        DeletedNamespace.select(DeletedNamespace.namespace)
-                    ))
-                .get()).id
+                    User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)),
+                )
+                .get()
+            ).id
         except User.DoesNotExist:
             raise InvalidUsernameException("Invalid namespace provided: %s" % (orgname))
 
@@ -138,11 +142,15 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
 
 def update_namespace_autoprune_policy(orgname, uuid, policy_config):
     try:
-        namespace_id = User.select().where(
-            User.username == orgname,
-            User.id.not_in(
-                DeletedNamespace.select(DeletedNamespace.namespace)
-            )).get().id
+        namespace_id = (
+            User.select()
+            .where(
+                User.username == orgname,
+                User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)),
+            )
+            .get()
+            .id
+        )
     except User.DoesNotExist:
         raise InvalidUsernameException("Invalid namespace provided: %s" % (orgname))
 
@@ -221,6 +229,7 @@ def fetch_autoprune_task():
         try:
             # TODO: Can reuse exisiting db_for_update for create a new db_object for
             # `for update skip locked` to account for different drivers
+            # add tests for this function after wards
             return (
                 AutoPruneTaskStatus.select()
                 .where(

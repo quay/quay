@@ -1,5 +1,4 @@
 from test.fixtures import *
-from unittest.mock import MagicMock, patch
 
 import pytest, json
 
@@ -137,3 +136,20 @@ class TestNameSpaceAutoprune:
         assert policy_exists is False
         resp = get_namespace_autoprune_policy("randome", "randome-uuid")
         assert resp is None
+
+    def test_valid_method(self):
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, 10) is True
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, -1) is False
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, 0) is False
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, "1") is False
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, 1.5) is False
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, "randome string") is False
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, None) is False
+
+        assert valid_value(AutoPruneMethod.CREATION_DATE, "2d") is True
+        assert valid_value(AutoPruneMethod.CREATION_DATE, "") is False
+        assert valid_value(AutoPruneMethod.CREATION_DATE, 123) is False
+        assert valid_value(AutoPruneMethod.CREATION_DATE, "randome") is False
+
+        assert valid_value("randome method", "randome") is False
+        assert valid_value("randome method", None) is False

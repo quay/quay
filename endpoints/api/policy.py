@@ -75,10 +75,11 @@ class OrgAutoPrunePolicies(ApiResource):
             raise NotFound()
 
         app_data = request.get_json()
-        method = None
-        value = app_data.get("value")
+        method = app_data.get("method", None)
+        value = app_data.get("value", None)
+
         try:
-            method = AutoPruneMethod(app_data.get("method"))
+            method = AutoPruneMethod(method)
         except ValueError:
             request_error(message="Invalid method")
 
@@ -154,23 +155,19 @@ class OrgAutoPrunePolicy(ApiResource):
             raise NotFound()
 
         app_data = request.get_json()
-        method = app_data.get("method")
-        value = app_data.get("value")
+        method = app_data.get("method", None)
+        value = app_data.get("value", None)
 
-        # TODO: make sure this is none when the param isn't given
-        if method is not None:
-            try:
-                method = AutoPruneMethod(app_data.get("method")).value
-            except ValueError:
-                request_error(message="Invalid method")
-        else:
-            method = policy.method
+        try:
+            method = AutoPruneMethod(method)
+        except ValueError:
+            request_error(message="Invalid method")
 
         if not valid_value(method, value):
             request_error(message="Invalid type given for parameter value")
 
         policy_config = {
-            "method": method,
+            "method": method.value,
             "value": value,
         }
         policy = model.autoprune.update_namespace_autoprune_policy(
@@ -236,10 +233,10 @@ class UserAutoPrunePolicies(ApiResource):
         user = get_authenticated_user()
 
         app_data = request.get_json()
-        method = None
-        value = app_data.get("value")
+        method = app_data.get("method", None)
+        value = app_data.get("value", None)
         try:
-            method = AutoPruneMethod(app_data.get("method"))
+            method = AutoPruneMethod(method)
         except ValueError:
             request_error(message="Invalid method")
 
@@ -300,23 +297,19 @@ class UserAutoPrunePolicy(ApiResource):
             raise NotFound()
 
         app_data = request.get_json()
-        method = app_data.get("method")
-        value = app_data.get("value")
+        method = app_data.get("method", None)
+        value = app_data.get("value", None)
 
-        # TODO: make sure this is none when the param isn't given
-        if method is not None:
-            try:
-                method = AutoPruneMethod(app_data.get("method")).value
-            except ValueError:
-                request_error(message="Invalid method")
-        else:
-            method = policy.method
+        try:
+            method = AutoPruneMethod(method)
+        except ValueError:
+            request_error(message="Invalid method")
 
         if not valid_value(method, value):
             request_error(message="Invalid type given for parameter value")
 
         policy_config = {
-            "method": method,
+            "method": method.value,
             "value": value,
         }
         policy = model.autoprune.update_namespace_autoprune_policy(
