@@ -7,8 +7,63 @@ import {
   updateRepoPermsForRobot,
   IRobotRepoPerms,
   IRobotTeam,
+  IRobot,
+  createRobotAccount,
 } from 'src/resources/RobotsResource';
 import {updateTeamForRobot} from 'src/resources/TeamResources';
+
+export function useFetchRobotAccounts(orgName: string) {
+  const {
+    data: robots,
+    isLoading,
+    error,
+  } = useQuery<IRobot[]>(
+    ['robots'],
+    ({signal}) => fetchRobotsForNamespace(orgName, false, signal),
+    {
+      placeholderData: [],
+    },
+  );
+
+  return {
+    error,
+    isLoadingRobots: isLoading,
+    robots,
+  };
+}
+
+interface createNewRobotAccountForNamespaceParams {
+  robotAccntName: string;
+  description: string;
+}
+
+export function useCreateRobotAccount(orgName, {onSuccess, onError}) {
+  const queryClient = useQueryClient();
+
+  const createRobotAccntMutator = useMutation(
+    async ({
+      robotAccntName,
+      description,
+    }: createNewRobotAccountForNamespaceParams) => {
+      return createRobotAccount(orgName, robotAccntName, description);
+    },
+    {
+      onSuccess: () => {
+        onSuccess();
+        queryClient.invalidateQueries(['teamMembers']);
+      },
+      onError: () => {
+        onError();
+      },
+    },
+  );
+
+  return {
+    createRobotAccntHook: async (
+      params: createNewRobotAccountForNamespaceParams,
+    ) => createRobotAccntMutator.mutate(params),
+  };
+}
 
 export function useRobotAccounts({name, onSuccess, onError}) {
   const [page, setPage] = useState(1);

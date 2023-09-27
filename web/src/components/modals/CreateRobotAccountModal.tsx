@@ -6,7 +6,7 @@ import {
   TextVariants,
   Wizard,
 } from '@patternfly/react-core';
-import React, {useState} from 'react';
+import {SetStateAction, useState} from 'react';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useRobotAccounts} from 'src/hooks/useRobotAccounts';
 
@@ -25,6 +25,7 @@ import {
 } from 'src/atoms/RobotAccountState';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {Entity} from 'src/resources/UserResource';
 
 export default function CreateRobotAccountModal(
   props: CreateRobotAccountModalProps,
@@ -35,7 +36,7 @@ export default function CreateRobotAccountModal(
 
   // Fetching repos
   const {repos: repos, totalResults: repoCount} = useRepositories(
-    props.namespace,
+    props.orgName,
   );
 
   const [robotName, setRobotName] = useState('');
@@ -58,7 +59,7 @@ export default function CreateRobotAccountModal(
   );
 
   const {createNewRobot} = useRobotAccounts({
-    name: props.namespace,
+    name: props.orgName,
     onSuccess: () => {
       setLoading(false);
     },
@@ -68,13 +69,13 @@ export default function CreateRobotAccountModal(
   });
 
   const {usernames} = useOrganizations();
-  const isUserOrganization = usernames.includes(props.namespace);
+  const isUserOrganization = usernames.includes(props.orgName);
 
   const onSubmit = async () => {
     try {
       const reposToUpdate = filteredRepos();
       await createNewRobot({
-        namespace: props.namespace,
+        namespace: props.orgName,
         robotname: robotName,
         description: robotDescription,
         isUser: isUserOrganization,
@@ -82,6 +83,15 @@ export default function CreateRobotAccountModal(
         selectedTeams: selectedTeams,
         robotDefaultPerm: robotDefaultPerm,
       });
+      if (props?.setEntity) {
+        props.setEntity({
+          is_robot: true,
+          name: `${props.orgName}+${robotName}`,
+          kind: 'user',
+          is_org_member: true,
+        });
+      }
+
       if (!loading) {
         handleModalToggle();
       }
@@ -145,7 +155,7 @@ export default function CreateRobotAccountModal(
       component: (
         <AddToTeam
           items={props.teams}
-          namespace={props.namespace}
+          orgName={props.orgName}
           isDrawerExpanded={isDrawerExpanded}
           setDrawerExpanded={setDrawerExpanded}
           selectedTeams={selectedTeams}
@@ -157,7 +167,7 @@ export default function CreateRobotAccountModal(
       name: 'Add to repository (optional)',
       component: (
         <AddToRepository
-          namespace={props.namespace}
+          namespace={props.orgName}
           dropdownItems={props.RepoPermissionDropdownItems}
           repos={repos}
           selectedRepos={selectedRepos}
@@ -231,7 +241,8 @@ export default function CreateRobotAccountModal(
 interface CreateRobotAccountModalProps {
   isModalOpen: boolean;
   handleModalToggle?: () => void;
-  namespace: string;
+  orgName: string;
   teams: any[];
   RepoPermissionDropdownItems: any[];
+  setEntity?: React.Dispatch<SetStateAction<Entity>>;
 }

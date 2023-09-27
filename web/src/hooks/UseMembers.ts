@@ -2,8 +2,8 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
-  IMemberTeams,
   IMembers,
+  addMemberToTeamAPI,
   deleteCollaboratorForOrg,
   deleteTeamMemberForOrg,
   fetchCollaboratorsForOrg,
@@ -15,6 +15,31 @@ import {collaboratorViewColumnNames} from 'src/routes/OrganizationsList/Organiza
 import {memberViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/MembersView/MembersViewList';
 import {manageMemberColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 
+export function useAddMembersToTeam(org: string) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: addMemberToTeam,
+    isError: errorAddingMemberToTeam,
+    isSuccess: successAddingMemberToTeam,
+    reset: resetAddingMemberToTeam,
+  } = useMutation(
+    async ({team, member}: {team: string; member: string}) => {
+      return addMemberToTeamAPI(org, team, member);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['members']);
+      },
+    },
+  );
+  return {
+    addMemberToTeam,
+    errorAddingMemberToTeam,
+    successAddingMemberToTeam,
+    resetAddingMemberToTeam,
+  };
+}
+
 export function useFetchMembers(orgName: string) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -25,11 +50,11 @@ export function useFetchMembers(orgName: string) {
 
   const {
     data: members,
-    isLoading,
+    isLoading: isLoadingMembers,
     isPlaceholderData,
     isError: errorLoadingMembers,
   } = useQuery<IMembers[]>(
-    ['members'],
+    ['members', orgName],
     ({signal}) => fetchMembersForOrg(orgName, signal),
     {
       placeholderData: [],
@@ -50,7 +75,7 @@ export function useFetchMembers(orgName: string) {
     members,
     filteredMembers,
     paginatedMembers: paginatedMembers,
-    loading: isLoading || isPlaceholderData,
+    loading: isLoadingMembers || isPlaceholderData,
     error: errorLoadingMembers,
     page,
     setPage,
@@ -65,8 +90,8 @@ export interface ITeamMember {
   name: string;
   kind: string;
   is_robot: false;
-  avatar: IAvatar;
-  invited: boolean;
+  avatar?: IAvatar;
+  invited?: boolean;
 }
 
 export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
@@ -91,6 +116,7 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
   );
 
   const allMembers: ITeamMember[] = data;
+
   const filteredAllMembers =
     search.query !== ''
       ? allMembers?.filter((member) => member.name.includes(search.query))
@@ -215,7 +241,7 @@ export function useDeleteTeamMember(orgName: string) {
       return deleteTeamMemberForOrg(orgName, teamName, memberName);
     },
     {
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
         queryClient.invalidateQueries(['teamMembers']);
       },
     },
@@ -240,7 +266,7 @@ export function useDeleteCollaborator(orgName: string) {
       return deleteCollaboratorForOrg(orgName, collaborator);
     },
     {
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
         queryClient.invalidateQueries(['collaborators']);
       },
     },

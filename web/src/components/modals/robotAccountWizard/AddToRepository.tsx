@@ -308,6 +308,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
                         onSelectItem(repo, rowIndex, isSelecting),
                       isSelected: isItemSelected(repo),
                     }}
+                    data-testid={`checkbox-row-${repo.name}`}
                   />
                   <Td dataLabel={ColumnNames.name}>{repo.name}</Td>
                   <Td dataLabel={ColumnNames.permissions}>

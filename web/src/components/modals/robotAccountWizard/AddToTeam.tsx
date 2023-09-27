@@ -12,13 +12,29 @@ import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAnd
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import TeamView from './TeamView';
 import {useCreateTeam} from 'src/hooks/UseTeams';
+import {AlertVariant} from 'src/atoms/AlertState';
+import {useAlerts} from 'src/hooks/UseAlerts';
 
 export default function AddToTeam(props: AddToTeamProps) {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamDescription, setNewTeamDescription] = useState('');
   const [err, setErr] = useState<string>();
+  const {addAlert} = useAlerts();
 
-  const {createNewTeamHook} = useCreateTeam(props.namespace);
+  const {createNewTeamHook} = useCreateTeam(props.orgName, {
+    onSuccess: () => {
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully created new team: ${newTeamName}`,
+      });
+    },
+    onError: () => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: 'Failed to create new team',
+      });
+    },
+  });
 
   const createNewTeam = () => {
     props.setDrawerExpanded(true);
@@ -42,8 +58,7 @@ export default function AddToTeam(props: AddToTeamProps) {
   const onCreateNewTeam = async () => {
     try {
       await createNewTeamHook({
-        namespace: props.namespace,
-        name: newTeamName,
+        teamName: newTeamName,
         description: newTeamDescription,
       }).then(function () {
         setNewTeamName('');
@@ -114,7 +129,7 @@ export default function AddToTeam(props: AddToTeamProps) {
 
 interface AddToTeamProps {
   items: any[];
-  namespace: string;
+  orgName: string;
   isDrawerExpanded: boolean;
   setDrawerExpanded?: (boolean) => void;
   selectedTeams?: any[];

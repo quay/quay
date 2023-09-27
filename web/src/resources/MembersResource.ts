@@ -1,4 +1,4 @@
-import {fetchOrg, IAvatar} from './OrganizationResource';
+import {IAvatar} from './OrganizationResource';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 
@@ -74,5 +74,18 @@ export async function deleteCollaboratorForOrg(
     );
   } catch (err) {
     console.error(`Unable to delete collaborator for org: ${orgName}`, err);
+  }
+}
+
+export async function addMemberToTeamAPI(
+  orgName: string,
+  teamName: string,
+  member: string,
+) {
+  const addMemberUrl = `/api/v1/organization/${orgName}/team/${teamName}/members/${member}`;
+  try {
+    await axios.put(addMemberUrl, {});
+  } catch (err) {
+    console.error('Unable to add member to team', err);
   }
 }

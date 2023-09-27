@@ -1,5 +1,6 @@
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import moment from 'moment';
+import {ITeamMember} from 'src/hooks/UseMembers';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
@@ -124,3 +125,13 @@ export function getSeconds(duration_str: string): number {
 export function isNullOrUndefined(obj: any): boolean {
   return obj === null || obj === undefined;
 }
+
+export const getAccountTypeForMember = (member: ITeamMember): string => {
+  if (member.is_robot) {
+    return 'Robot account';
+  } else if (!member.is_robot && !member.invited) {
+    return 'Team member';
+  } else if (member.invited) {
+    return '(Invited)';
+  }
+};

@@ -1,29 +1,39 @@
-import {
-  Select,
-  SelectOption,
-  SelectVariant,
-  Spinner,
-} from '@patternfly/react-core';
+import {Select, SelectOption, SelectVariant} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useEntities} from 'src/hooks/UseEntities';
 import {Entity, getMemberType} from 'src/resources/UserResource';
-import EntityIcon from './EntityIcon';
 
 export default function EntitySearch(props: EntitySearchProps) {
+  const [selectedEntityName, setSelectedEntityName] = useState<string>();
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const {entities, isLoadingEntities, isError, searchTerm, setSearchTerm} =
-    useEntities(props.org);
+  const {entities, isError, searchTerm, setSearchTerm} = useEntities(
+    props.org,
+    props?.includeTeams,
+  );
 
   useEffect(() => {
-    if (searchTerm != undefined && searchTerm != '') {
-      const filteredEntity = entities.filter((e) => e.name === searchTerm);
+    if (
+      selectedEntityName !== undefined &&
+      selectedEntityName !== '' &&
+      entities.length > 0
+    ) {
+      const filteredEntity = entities.filter(
+        (e) => e.name === selectedEntityName,
+      );
       const selectedEntity =
         filteredEntity.length > 0 ? filteredEntity[0] : null;
-      props.onSelect(selectedEntity);
-    } else {
-      props.onSelect(null);
+      if (selectedEntity !== null && searchTerm !== '') {
+        props.onSelect(selectedEntity);
+      }
     }
   }, [searchTerm, JSON.stringify(entities)]);
+
+  useEffect(() => {
+    if (props?.value !== null && props?.value !== undefined) {
+      setSearchTerm(props.value);
+      setSelectedEntityName(props.value);
+    }
+  }, [props?.value]);
 
   useEffect(() => {
     if (isError) {
@@ -36,8 +46,13 @@ export default function EntitySearch(props: EntitySearchProps) {
       toggleId={props.id ? props.id : 'entity-search'}
       isOpen={isOpen}
       selections={searchTerm}
-      onSelect={(e, value) => {
-        setSearchTerm(value as string);
+      onSelect={(e, value, isPlaceholder) => {
+        // Handles the case when the selected option is an action item. The
+        // handler is defined within the child option component
+        if (!isPlaceholder) {
+          setSearchTerm(value as string);
+          setSelectedEntityName(value as string);
+        }
         setIsOpen(!isOpen);
       }}
       onToggle={() => {
@@ -49,17 +64,20 @@ export default function EntitySearch(props: EntitySearchProps) {
       }}
       shouldResetOnSelect={true}
       onClear={() => {
+        props?.onClear({});
         setSearchTerm('');
       }}
-      loadingVariant={isLoadingEntities ? 'spinner' : undefined}
+      placeholderText={props.placeholderText}
     >
-      {isLoadingEntities
-        ? undefined
-        : entities.map((e) => (
-            <SelectOption key={e.name} value={e.name}>
-              <EntityIcon type={getMemberType(e)} includeIcon />
-              {e.name}
-            </SelectOption>
+      <></>
+      {!searchTerm
+        ? props?.defaultOptions
+        : entities?.map((e) => (
+            <SelectOption
+              key={e.name}
+              value={e.name}
+              description={getMemberType(e)}
+            />
           ))}
     </Select>
   );
@@ -67,7 +85,13 @@ export default function EntitySearch(props: EntitySearchProps) {
 
 interface EntitySearchProps {
   org: string;
-  onSelect: (entity: Entity) => void;
+  includeTeams?: boolean;
+  onSelect: (selectedItem: Entity) => void;
+  onClear?: (entity: any) => void;
   onError?: () => void;
   id?: string;
+  defaultOptions?: any;
+  defaultSelection?: string;
+  placeholderText?: string;
+  value?: string;
 }

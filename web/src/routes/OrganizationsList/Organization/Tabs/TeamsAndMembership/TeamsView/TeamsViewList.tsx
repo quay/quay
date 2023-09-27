@@ -42,7 +42,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     teams,
     filteredTeams,
     paginatedTeams,
-    loading,
+    isLoadingTeams,
     error,
     page,
     setPage,
@@ -188,7 +188,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     setIsSetRepoPermModalOpen(!isSetRepoPermModalOpen);
   };
 
-  if (loading) {
+  if (isLoadingTeams) {
     return <Spinner />;
   }
 

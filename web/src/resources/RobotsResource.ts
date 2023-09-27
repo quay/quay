@@ -6,8 +6,8 @@ export interface IRobot {
   name: string;
   created: string;
   last_accessed: string;
-  teams: string[];
-  repositories: string[];
+  teams?: string[];
+  repositories?: string[];
   description: string;
 }
 
@@ -228,6 +228,19 @@ export async function deleteRobotAccount(orgname: string, robotname: string) {
       err,
     );
   }
+}
+
+export async function createRobotAccount(
+  orgName: string,
+  robotAccntName: string,
+  description: string,
+) {
+  const response: AxiosResponse = await axios.put(
+    `api/v1/organization/${orgName}/robots/${robotAccntName}`,
+    {description: description},
+  );
+  assertHttpCode(response.status, 201);
+  return response.data?.name;
 }
 
 export async function bulkDeleteRobotAccounts(

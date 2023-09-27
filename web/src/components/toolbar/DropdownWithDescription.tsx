@@ -45,6 +45,7 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
 
   return (
     <Dropdown
+      data-testid={`${props.repo?.name}-permission-dropdown`}
       onSelect={() => setIsOpen(false)}
       toggle={
         <DropdownToggle
@@ -57,6 +58,7 @@ export function DropdownWithDescription(props: DropdownWithDescriptionProps) {
       isOpen={isOpen}
       dropdownItems={props.dropdownItems.map((item) => (
         <DropdownItem
+          data-testid={`${item.name}-permission-type`}
           key={item.name}
           description={item.description}
           onClick={() => dropdownOnSelect(item.name, true)}

@@ -1,14 +1,13 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   bulkDeleteTeams,
-  createNewTeamForNamespac,
+  createNewTeamForNamespace,
   fetchTeamRepoPermsForOrg,
   fetchTeamsForNamespace,
   updateTeamRepoPerm,
   updateTeamRoleForNamespace,
 } from 'src/resources/TeamResources';
 import {useState} from 'react';
-import {IAvatar} from 'src/resources/OrganizationResource';
 import {teamViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/TeamsViewList';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {setRepoPermForTeamColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/SetRepoPermissionsModal/SetRepoPermissionForTeamModal';
@@ -18,32 +17,52 @@ import {
 } from 'src/resources/RepositoryResource';
 import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {useCurrentUser} from './UseCurrentUser';
+import {IAvatar} from 'src/resources/OrganizationResource';
+import {useAlerts} from './UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
-export function useCreateTeam(ns) {
-  const [namespace] = useState(ns);
+interface createNewTeamForNamespaceParams {
+  teamName: string;
+  description: string;
+}
+
+export function useCreateTeam(orgName, {onSuccess, onError}) {
   const queryClient = useQueryClient();
+  const {addAlert} = useAlerts();
 
-  const createTeamMutator = useMutation(
-    async ({namespace, name, description}: createNewTeamForNamespaceParams) => {
-      return createNewTeamForNamespac(namespace, name, description);
+  const {
+    data: responseData,
+    mutate: createNewTeamHook,
+    isError: errorCreateTeam,
+    isSuccess: successCreateTeam,
+  } = useMutation(
+    async ({teamName, description}: createNewTeamForNamespaceParams) => {
+      return createNewTeamForNamespace(orgName, teamName, description);
     },
     {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['organization', namespace, 'teams']);
+      onSuccess: (data) => {
+        if (data.new_team) {
+          onSuccess();
+          queryClient.invalidateQueries(['organization', orgName, 'teams']);
+        } else {
+          addAlert({
+            variant: AlertVariant.Failure,
+            title: `Team "${data.name}" already exists`,
+          });
+        }
+      },
+      onError: () => {
+        onError();
       },
     },
   );
 
   return {
-    createNewTeamHook: async (params: createNewTeamForNamespaceParams) =>
-      createTeamMutator.mutate(params),
+    responseData,
+    createNewTeamHook,
+    errorCreateTeam,
+    successCreateTeam,
   };
-}
-
-interface createNewTeamForNamespaceParams {
-  namespace: string;
-  name: string;
-  description: string;
 }
 
 export interface ITeams {
@@ -96,7 +115,7 @@ export function useFetchTeams(orgName: string) {
     teams: teams,
     filteredTeams,
     paginatedTeams: paginatedTeams,
-    loading: isLoading || isPlaceholderData,
+    isLoadingTeams: isLoading || isPlaceholderData,
     error: errorLoadingTeams,
     page,
     setPage,

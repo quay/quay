@@ -14,16 +14,19 @@ export class TeamDeleteError extends Error {
   }
 }
 
-export async function createNewTeamForNamespac(
+export async function createNewTeamForNamespace(
   namespace: string,
-  name: string,
-  description: string,
+  teamName: string,
+  description?: string,
 ) {
-  const createTeamUrl = `/api/v1/organization/${namespace}/team/${name}`;
-  const payload = {name: name, role: 'member', description: description};
+  const createTeamUrl = `/api/v1/organization/${namespace}/team/${teamName}`;
+  const payload = {name: teamName, role: 'member'};
+  if (description) {
+    payload['description'] = description;
+  }
   const response: AxiosResponse = await axios.put(createTeamUrl, payload);
   assertHttpCode(response.status, 200);
-  return response.data?.name;
+  return response.data;
 }
 
 export async function updateTeamForRobot(
@@ -57,12 +60,6 @@ export async function updateTeamRepoPerm(
 ) {
   const responses = await Promise.allSettled(
     teamRepoPerms?.map(async (repoPerm) => {
-      console.log(
-        '${%s}/${%s}: teamrole %s ',
-        orgName,
-        repoPerm.repoName,
-        repoPerm.role,
-      );
       if (repoPerm.role === 'none') {
         try {
           const response: AxiosResponse = await axios.delete(
