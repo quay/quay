@@ -357,7 +357,7 @@ interface AddToRepositoryProps {
   namespace: string;
   dropdownItems: any[];
   selectedRepos?: any[];
-  repos: IRepository[];
+  repos: IRepository[] | IRepository[][];
   setSelectedRepos: (repos) => void;
   selectedRepoPerms: any[];
   setSelectedRepoPerms: (repoPerm) => void;
