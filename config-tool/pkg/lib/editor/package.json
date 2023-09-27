@@ -87,6 +87,6 @@
     "webpack-cli": "4.10.0"
   },
   "optionalDependencies": {
-    "cypress": "^12.17.4"
+    "cypress": "^13.2.0"
   }
 }
