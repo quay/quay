@@ -3,7 +3,7 @@ import React, {useState, useImperativeHandle, useEffect} from 'react';
 import AddToRepository from './robotAccountWizard/AddToRepository';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {IRobot} from 'src/resources/RobotsResource';
-import {useRobotPermissions} from 'src/hooks/useRobotPermissions';
+import {useRobotPermissions} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useRepositories} from 'src/hooks/UseRepositories';
 

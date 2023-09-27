@@ -46,7 +46,7 @@ import {
   selectedReposPermissionState,
   selectedReposState,
 } from 'src/atoms/RepositoryState';
-import {useRobotRepoPermissions} from 'src/hooks/UseRobotRepoPermissions';
+import {useRobotRepoPermissions} from 'src/hooks/useRobotAccounts';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 
