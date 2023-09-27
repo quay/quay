@@ -149,6 +149,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       return [];
     },
     {
+      enabled: !props.isUser,
       placeholderData: () => {
         return queryClient.getQueryData([
           'organization',
@@ -672,4 +673,5 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
 interface RobotAccountsListProps {
   organizationName: string;
+  isUser: boolean;
 }

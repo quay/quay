@@ -126,81 +126,97 @@ export default function CreateRobotAccountModal(
     setActiveStep(step.name);
   };
 
-  const steps = [
-    {
-      name: 'Robot name and description',
-      component: (
-        <>
-          <TextContent>
-            <Text component={TextVariants.h1}>
-              Provide robot account name and description
-            </Text>
-          </TextContent>
-          <NameAndDescription
-            name={robotName}
-            setName={setRobotName}
-            description={robotDescription}
-            setDescription={setrobotDescription}
-            nameLabel="Provide a name for your robot account:"
-            descriptionLabel="Provide an optional description for your new robot:"
-            helperText="Enter a description to provide extra information to your teammates about this robot account. Max length: 255"
-            nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^[a-z][a-z0-9_]{1,254}$."
-            validateName={validateRobotName}
-          />
-        </>
-      ),
-    },
-    {
-      name: 'Add to team (optional)',
-      component: (
-        <AddToTeam
-          items={props.teams}
-          orgName={props.orgName}
-          isDrawerExpanded={isDrawerExpanded}
-          setDrawerExpanded={setDrawerExpanded}
-          selectedTeams={selectedTeams}
-          setSelectedTeams={setSelectedTeams}
+  const NameAndDescriptionStep = {
+    name: 'Robot name and description',
+    component: (
+      <>
+        <TextContent>
+          <Text component={TextVariants.h1}>
+            Provide robot account name and description
+          </Text>
+        </TextContent>
+        <NameAndDescription
+          name={robotName}
+          setName={setRobotName}
+          description={robotDescription}
+          setDescription={setrobotDescription}
+          nameLabel="Provide a name for your robot account:"
+          descriptionLabel="Provide an optional description for your new robot:"
+          helperText="Enter a description to provide extra information to your teammates about this robot account. Max length: 255"
+          nameHelperText="Choose a name to inform your teammates about this robot account. Must match ^[a-z][a-z0-9_]{1,254}$."
+          validateName={validateRobotName}
         />
-      ),
-    },
-    {
-      name: 'Add to repository (optional)',
-      component: (
-        <AddToRepository
-          namespace={props.orgName}
-          dropdownItems={props.RepoPermissionDropdownItems}
-          repos={repos}
-          selectedRepos={selectedRepos}
-          setSelectedRepos={setSelectedRepos}
-          selectedRepoPerms={selectedRepoPerms}
-          setSelectedRepoPerms={setSelectedRepoPerms}
-          wizardStep={true}
-        />
-      ),
-    },
-    {
-      name: 'Default permissions (optional)',
-      component: (
-        <DefaultPermissions
-          robotName={robotName}
-          repoPermissions={props.RepoPermissionDropdownItems}
-          robotDefaultPerm={robotDefaultPerm}
-          setRobotdefaultPerm={setRobotdefaultPerm}
-        />
-      ),
-    },
-    {
-      name: 'Review and Finish',
-      component: (
-        <ReviewAndFinish
-          robotName={robotName}
-          robotDescription={robotDescription}
-          selectedTeams={selectedTeams}
-          selectedRepos={filteredRepos()}
-          robotdefaultPerm={robotDefaultPerm}
-        />
-      ),
-    },
+      </>
+    ),
+  };
+
+  const AddToTeamStep = {
+    name: 'Add to team (optional)',
+    component: (
+      <AddToTeam
+        items={props.teams}
+        orgName={props.orgName}
+        isDrawerExpanded={isDrawerExpanded}
+        setDrawerExpanded={setDrawerExpanded}
+        selectedTeams={selectedTeams}
+        setSelectedTeams={setSelectedTeams}
+      />
+    ),
+  };
+
+  const AddToRepoStep = {
+    name: 'Add to repository (optional)',
+    component: (
+      <AddToRepository
+        namespace={props.orgName}
+        dropdownItems={props.RepoPermissionDropdownItems}
+        repos={repos}
+        selectedRepos={selectedRepos}
+        setSelectedRepos={setSelectedRepos}
+        selectedRepoPerms={selectedRepoPerms}
+        setSelectedRepoPerms={setSelectedRepoPerms}
+        wizardStep={true}
+      />
+    ),
+  };
+
+  const DefaultPermsStep = {
+    name: 'Default permissions (optional)',
+    component: (
+      <DefaultPermissions
+        robotName={robotName}
+        repoPermissions={props.RepoPermissionDropdownItems}
+        robotDefaultPerm={robotDefaultPerm}
+        setRobotdefaultPerm={setRobotdefaultPerm}
+      />
+    ),
+  };
+
+  const ReviewAndFinishStep = {
+    name: 'Review and Finish',
+    component: (
+      <ReviewAndFinish
+        robotName={robotName}
+        robotDescription={robotDescription}
+        selectedTeams={selectedTeams}
+        selectedRepos={filteredRepos()}
+        robotdefaultPerm={robotDefaultPerm}
+        userNamespace={isUserOrganization}
+      />
+    ),
+  };
+
+  const OrgWizardSteps = [
+    NameAndDescriptionStep,
+    AddToTeamStep,
+    AddToRepoStep,
+    DefaultPermsStep,
+    ReviewAndFinishStep,
+  ];
+  const UserWizardSteps = [
+    NameAndDescriptionStep,
+    AddToRepoStep,
+    ReviewAndFinishStep,
   ];
 
   return (
@@ -218,7 +234,7 @@ export default function CreateRobotAccountModal(
         descriptionId="robot-account-wizard-description"
         title="Create robot account (organization/namespace)"
         description="Robot Accounts are named tokens that can be granted permissions on multiple repositories under this organization."
-        steps={steps}
+        steps={isUserOrganization ? UserWizardSteps : OrgWizardSteps}
         onClose={handleModalToggle}
         height={600}
         width={1170}

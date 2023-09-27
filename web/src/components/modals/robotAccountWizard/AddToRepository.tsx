@@ -102,7 +102,9 @@ export default function AddToRepository(props: AddToRepositoryProps) {
   }, [props.robotPermissions]);
 
   const updateTable = () => {
-    if (!props.robotPermissions) {
+    if (!props.robotPermissions?.length) {
+      // clear state if no repo perms
+      setRobotRepoPermsMapping({});
       return;
     }
     const temp = {};
@@ -355,7 +357,7 @@ interface AddToRepositoryProps {
   namespace: string;
   dropdownItems: any[];
   selectedRepos?: any[];
-  repos: IRepository[];
+  repos: IRepository[] | IRepository[][];
   setSelectedRepos: (repos) => void;
   selectedRepoPerms: any[];
   setSelectedRepoPerms: (repoPerm) => void;
