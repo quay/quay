@@ -370,27 +370,12 @@ def create_temporary_tag_outside_timemachine(manifest):
     """
     tag_name = "$temp-%s" % str(uuid.uuid4())
     now_ms = get_epoch_timestamp_ms()
-    try:
-        namespace = (
-            User.select(User.removed_tag_expiration_s)
-            .join(Repository, on=(Repository.namespace_user == User.id))
-            .where(Repository.id == manifest.repository_id)
-            .get()
-        )
-    except User.DoesNotExist:
-        # Should never happen, but throw error anyway
-        raise DataModelException(
-            "Could not find namespace for repository: %s" % manifest.repository_id
-        )
-
-    time_machine_ms = namespace.removed_tag_expiration_s * 1000
-    end_ms = now_ms - time_machine_ms
 
     return Tag.create(
         name=tag_name,
         repository=manifest.repository_id,
         lifetime_start_ms=now_ms,
-        lifetime_end_ms=end_ms,
+        lifetime_end_ms=0, # Start of unix epoch time
         reversion=False,
         hidden=True,
         manifest=manifest,
