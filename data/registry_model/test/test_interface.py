@@ -6,9 +6,6 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from io import BytesIO
-from data.model import QuotaExceededException, namespacequota
-from data.model.storage import get_layer_path
-from digest.digest_tools import sha256_digest
 from test.fixtures import *
 
 import pytest
@@ -29,11 +26,14 @@ from data.database import (
     User,
     get_epoch_timestamp_ms,
 )
+from data.model import QuotaExceededException, namespacequota
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.storage import get_layer_path
 from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_oci_model import OCIModel
+from digest.digest_tools import sha256_digest
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
