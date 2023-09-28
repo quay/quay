@@ -257,5 +257,39 @@ class PreOCIModel(RepositoryDataInterface):
             repo.state,
         )
 
+    def add_quota_view(self, repos):
+        namespace_limit_bytes = {}
+        for repo in repos:
+
+            if repo.get("namespace", None) is None or repo.get("name", None) is None:
+                continue
+
+            repository_ref = model.repository.get_repository(
+                repo.get("namespace"), repo.get("name")
+            )
+            if not repository_ref:
+                continue
+
+            # Caching result in namespace_limit_bytes
+            if repository_ref.namespace_user.username not in namespace_limit_bytes:
+                quotas = model.namespacequota.get_namespace_quota_list(
+                    repository_ref.namespace_user.username
+                )
+                # Currently only one quota per namespace is supported
+                namespace_limit_bytes[repository_ref.namespace_user.username] = (
+                    quotas[0].limit_bytes
+                    if quotas
+                    else model.namespacequota.fetch_system_default(quotas)
+                )
+
+            repo_size = model.repository.get_repository_size(repository_ref.id)
+
+            # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
+            # we still want to report repo's storage consumption
+            repo["quota_report"] = {
+                "quota_bytes": repo_size,
+                "configured_quota": namespace_limit_bytes[repository_ref.namespace_user.username],
+            }
+
 
 pre_oci_model = PreOCIModel()
