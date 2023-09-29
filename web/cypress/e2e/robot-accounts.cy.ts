@@ -48,13 +48,13 @@ describe('Robot Accounts Page', () => {
       .click()
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
-        .contains(
-          "Successfully created robot account with robot name: newtestrob",
-        )
-        .should('exist');
+          .contains(
+            'Successfully created robot account with robot name: newtestrob',
+          )
+          .should('exist');
         cy.get('#robot-account-search').type('newtestrob');
         cy.contains('1 - 1 of 1');
-    });
+      });
 
     //  check that states are cleared after creating robot account
     cy.get('#create-robot-account-btn').click();
@@ -83,10 +83,8 @@ describe('Robot Accounts Page', () => {
       .within(() => cy.get('button:contains("Delete")').click())
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
-        .contains(
-          "Successfully deleted robot account",
-        )
-        .should('exist');
+          .contains('Successfully deleted robot account')
+          .should('exist');
         cy.get('#robot-account-search').clear().type('testrobot2');
         cy.contains('0 - 0 of 0');
       });
@@ -103,10 +101,8 @@ describe('Robot Accounts Page', () => {
       .click()
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
-        .contains(
-          "Successfully updated repository permission",
-        )
-        .should('exist');
+          .contains('Successfully updated repository permission')
+          .should('exist');
         cy.get('footer').find('button:contains("Save")').should('not.exist');
         cy.get('#toggle-descriptions').contains('Admin');
       });
@@ -132,10 +128,8 @@ describe('Robot Accounts Page', () => {
       .click()
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
-        .contains(
-          "Successfully updated repository permission",
-        )
-        .should('exist');
+          .contains('Successfully updated repository permission')
+          .should('exist');
         cy.get('[data-label="Permissions"]').each(($item) => {
           cy.wrap($item).contains('Write');
         });
@@ -228,10 +222,10 @@ describe('Robot Accounts Page', () => {
       .click()
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
-        .contains(
-          "Successfully created robot account with robot name: userrobot",
-        )
-        .should('exist');
+          .contains(
+            'Successfully created robot account with robot name: userrobot',
+          )
+          .should('exist');
         cy.get('#robot-account-search').type('userrobot');
         cy.contains('1 - 1 of 1');
       });
