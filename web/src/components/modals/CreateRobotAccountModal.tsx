@@ -9,7 +9,7 @@ import {
 } from '@patternfly/react-core';
 import {SetStateAction, useState} from 'react';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
-import {useCreateRobotAccount} from 'src/hooks/useCreateRobotAccount';
+import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
 
 import Footer from './robotAccountWizard/Footer';
 import AddToTeam from './robotAccountWizard/AddToTeam';
