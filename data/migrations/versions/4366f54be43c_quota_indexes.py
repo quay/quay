@@ -7,20 +7,26 @@ Create Date: 2023-09-27 16:34:30.570757
 """
 
 # revision identifiers, used by Alembic.
-revision = '4366f54be43c'
-down_revision = 'b82361fba1cd'
+revision = "4366f54be43c"
+down_revision = "b82361fba1cd"
 
 import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
     op.create_index(
-        "quotanamespacesize_namespace_user_id", "quotanamespacesize", ["namespace_user_id"], unique=True
+        "quotanamespacesize_namespace_user_id",
+        "quotanamespacesize",
+        ["namespace_user_id"],
+        unique=True,
     )
 
     # Index used by the quotatotalworker to find the next namespace to backfill
     op.create_index(
-        "quotanamespacesize_backfill_start_ms", "quotanamespacesize", ["backfill_start_ms"], unique=False
+        "quotanamespacesize_backfill_start_ms",
+        "quotanamespacesize",
+        ["backfill_start_ms"],
+        unique=False,
     )
 
     # Index used by future API's for quick sorting of the largest namespaces
