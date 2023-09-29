@@ -87,6 +87,14 @@ export default function CreateRobotAccountModal(
       selectedTeams: selectedTeams,
       robotDefaultPerm: robotDefaultPerm,
     });
+    if (props?.setEntity) {
+      props.setEntity({
+        is_robot: true,
+        name: `${props.orgName}+${robotName}`,
+        kind: 'user',
+        is_org_member: true,
+      });
+    }
   };
 
   // addDefaultPermsForRobotMutator
@@ -249,6 +257,6 @@ interface CreateRobotAccountModalProps {
   teams: any[];
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
-  showSuccessAlert: (msg) => void;
-  showErrorAlert: (msg) => void;
+  showSuccessAlert: (msg: string) => void;
+  showErrorAlert: (msg: string) => void;
 }

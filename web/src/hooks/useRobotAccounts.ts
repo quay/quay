@@ -105,6 +105,7 @@ export function useCreateRobotAccount({namespace, onSuccess, onError}) {
         onSuccess(result);
         queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
         queryClient.invalidateQueries(['organization', namespace, 'teams']);
+        queryClient.invalidateQueries(['teamMembers']);
       },
       onError: (err) => {
         onError(err);

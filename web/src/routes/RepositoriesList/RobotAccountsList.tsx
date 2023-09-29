@@ -245,7 +245,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       } else {
         setErr([addDisplayError('Failed to delete robot account', err)]);
       }
-      showSuccessAlert('Error deleting robot account');
+      showErrorAlert('Error deleting robot account');
       setSelectedRobotAccounts([]);
       setDeleteModalOpen(!isDeleteModalOpen);
     },

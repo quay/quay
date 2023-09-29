@@ -54,7 +54,8 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     );
   }, [props.tableItems]);
 
-  const {createRobotAccntHook} = useCreateRobotAccount(props.orgName, {
+  const {createNewRobot} = useCreateRobotAccount({
+    namespace: props.orgName,
     onSuccess: () => {
       addAlert({
         variant: AlertVariant.Success,
@@ -94,9 +95,13 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   };
 
   const onCreateRobotAccount = async () => {
-    await createRobotAccntHook({
-      robotAccntName: newRobotAccntName,
+    await createNewRobot({
+      namespace: props.orgName,
+      robotname: newRobotAccntName,
       description: newRobotAccntDescription,
+      reposToUpdate: null,
+      selectedTeams: null,
+      robotDefaultPerm: null,
     });
     props.setDrawerExpanded(false);
     addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`);
