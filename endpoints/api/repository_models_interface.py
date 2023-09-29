@@ -57,11 +57,6 @@ class RepositoryBaseElement(
             "state": self.state.name if self.state is not None else None,
         }
 
-        if features.QUOTA_MANAGEMENT:
-            repo["quota_report"] = model.namespacequota.get_repo_quota_for_view(
-                self.namespace_name, self.repository_name
-            )
-
         if self.should_last_modified:
             repo["last_modified"] = self.last_modified
 
@@ -330,4 +325,10 @@ class RepositoryDataInterface(object):
     def set_repository_state(self, namespace_name, repository_name, state):
         """
         Set the State of the Repository.
+        """
+
+    @abstractmethod
+    def add_quota_view(self, repos):
+        """
+        Adds quota size and limit to the repository list.
         """
