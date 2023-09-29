@@ -6,7 +6,6 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from io import BytesIO
-from test.fixtures import *
 
 import pytest
 from mock import patch
@@ -43,6 +42,7 @@ from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
 from image.shared.types import ManifestImageLayer
+from test.fixtures import *
 from util.bytes import Bytes
 
 

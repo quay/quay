@@ -1,7 +1,6 @@
 import json
 from calendar import timegm
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import pytest
 from mock import patch
@@ -44,6 +43,7 @@ from data.model.user import get_user
 from digest.digest_tools import sha256_digest
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from test.fixtures import *
 from util.bytes import Bytes
 
 

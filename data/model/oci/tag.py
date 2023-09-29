@@ -375,7 +375,7 @@ def create_temporary_tag_outside_timemachine(manifest):
         name=tag_name,
         repository=manifest.repository_id,
         lifetime_start_ms=now_ms,
-        lifetime_end_ms=0, # Start of unix epoch time
+        lifetime_end_ms=0,  # Start of unix epoch time
         reversion=False,
         hidden=True,
         manifest=manifest,
