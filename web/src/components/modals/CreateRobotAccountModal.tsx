@@ -60,34 +60,14 @@ export default function CreateRobotAccountModal(
   );
 
   const {createNewRobot} = useCreateRobotAccount({
-    namespace: props.namespace,
+    namespace: props.orgName,
     onSuccess: (result) => {
-      props.setAlerts((prevAlerts) => {
-        return [
-          ...prevAlerts,
-          <Alert
-            key={new Date().getTime()}
-            variant="success"
-            title={`Successfully created robot account with robot name: ${result['robotname']}`}
-            timeout={5000}
-          />,
-        ];
-      });
+      props.showSuccessAlert(`Successfully created robot account with robot name: ${result['robotname']}`);
       handleModalToggle();
     },
     onError: (err) => {
       setErr(addDisplayError('Unable to create robot', err));
-      props.setAlerts((prevAlerts) => {
-        return [
-          ...prevAlerts,
-          <Alert
-            key="alert"
-            variant="danger"
-            title="Unable to create robot"
-            timeout={5000}
-          />,
-        ];
-      });
+      props.showErrorAlert("Unable to create robot account");
     },
   });
 
@@ -97,7 +77,7 @@ export default function CreateRobotAccountModal(
   const onSubmit = async () => {
     const reposToUpdate = filteredRepos();
     await createNewRobot({
-      namespace: props.namespace,
+      namespace: props.orgName,
       robotname: robotName,
       description: robotDescription,
       isUser: isUserOrganization,
@@ -268,4 +248,6 @@ interface CreateRobotAccountModalProps {
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
   setAlerts: (prev) => void;
+  showSuccessAlert: (msg) => void;
+  showErrorAlert: (msg) => void;
 }

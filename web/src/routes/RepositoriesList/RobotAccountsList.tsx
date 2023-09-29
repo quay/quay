@@ -1,4 +1,5 @@
 import {
+  Alert,
   AlertGroup,
   DropdownItem,
   PageSection,
@@ -203,11 +204,40 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     return errMessages;
   };
 
+  const showSuccessAlert = (message: string) => {
+    setAlerts((prevAlerts) => {
+      return [
+        ...prevAlerts,
+        <Alert
+          key={new Date().getTime()}
+          variant="success"
+          title={message}
+          timeout={5000}
+        />,
+      ];
+    });
+  }
+
+  const showErrorAlert = (message: string) => {
+    setAlerts((prevAlerts) => {
+      return [
+        ...prevAlerts,
+        <Alert
+          key="alert"
+          variant="danger"
+          title={message}
+          timeout={5000}
+        />,
+      ];
+    });
+  }
+
   const {deleteRobotAccounts} = useDeleteRobotAccounts({
     namespace: props.organizationName,
     onSuccess: () => {
       setSelectedRobotAccounts([]);
       setDeleteModalOpen(!isDeleteModalOpen);
+      showSuccessAlert("Successfully deleted robot account");
     },
     onError: (err) => {
       setErrTitle('Robot Account deletion failed');
@@ -220,6 +250,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       } else {
         setErr([addDisplayError('Failed to delete robot account', err)]);
       }
+      showSuccessAlert("Error deleting robot account");
       setSelectedRobotAccounts([]);
       setDeleteModalOpen(!isDeleteModalOpen);
     },
@@ -227,7 +258,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   const {updateRepoPerms, deleteRepoPerms} = useRobotRepoPermissions({
     namespace: props.organizationName,
-    onSuccess: () => null,
+    onSuccess: () => {
+      showSuccessAlert("Successfully updated repository permission");
+    },
     onError: (err) => {
       setErrTitle('Repository Permission update failed');
       if (err instanceof BulkOperationError) {
@@ -241,6 +274,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           addDisplayError('Failed to update robot repository permission', err),
         ]);
       }
+      showErrorAlert("Failed to update repository permission");
     },
   });
 
@@ -421,7 +455,8 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       orgName={props.organizationName}
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
-      setAlerts={setAlerts}
+      showSuccessAlert={showSuccessAlert}
+      showErrorAlert={showErrorAlert}
     />
   );
 
