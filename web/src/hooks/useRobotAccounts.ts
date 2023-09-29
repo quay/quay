@@ -189,9 +189,9 @@ interface createNewRobotForNamespaceParams {
   robotDefaultPerm: string;
 }
 
-export function useRobotPermissions({orgName, robName, onSuccess, onError}) {
+export function useRobotPermissions({orgName, robotAcct, onSuccess, onError}) {
   const [namespace, setNamespace] = useState(orgName);
-  const [robotName, setRobotName] = useState(robName);
+  const [robotName, setRobotName] = useState(robotAcct);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
@@ -221,7 +221,7 @@ export function useRobotPermissions({orgName, robName, onSuccess, onError}) {
   const queryClient = useQueryClient();
   const deleteRepoPermsMutator = useMutation(
     async (repoNames: string[]) => {
-      await bulkDeleteRepoPermsForRobot(namespace, robName, repoNames, isUser);
+      await bulkDeleteRepoPermsForRobot(namespace, robotAcct, repoNames, isUser);
     },
     {
       onSuccess: () => {
@@ -374,11 +374,11 @@ interface bulkDeleteRepoPermsParams {
   repoNames: string[];
 }
 
-export function useRobotToken({orgName, robName, onSuccess, onError}) {
+export function useRobotToken({orgName, robotAcct, onSuccess, onError}) {
   const {usernames} = useOrganizations();
   const isUserOrganization = usernames.includes(orgName);
   const [namespace, setNamespace] = useState(orgName);
-  const [robotName, setRobotName] = useState(robName);
+  const [robotName, setRobotName] = useState(robotAcct);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const queryClient = useQueryClient();
