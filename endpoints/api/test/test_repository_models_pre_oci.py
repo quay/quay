@@ -1,4 +1,3 @@
-
 import pytest
 from mock import ANY, MagicMock, patch
 
