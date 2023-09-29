@@ -68,7 +68,6 @@ export default function CreateRobotAccountModal(
       handleModalToggle();
     },
     onError: (err) => {
-      setErr(addDisplayError('Unable to create robot', err));
       props.showErrorAlert('Unable to create robot account');
     },
   });
