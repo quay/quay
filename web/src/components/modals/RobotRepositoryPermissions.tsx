@@ -28,7 +28,7 @@ export default function RobotRepositoryPermissions(
 
   const _ = useRobotPermissions({
     orgName: props.namespace,
-    robName: props.robotAccount.name,
+    robotAcct: props.robotAccount.name,
     onSuccess: (result) => {
       setLoading(false);
       setRobotPermissions(result);

@@ -45,7 +45,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
 
   const {robotAccountToken, regenerateRobotToken} = useRobotToken({
     orgName: props.namespace,
-    robName: props.robotAccount.name,
+    robotAcct: props.robotAccount.name,
     onSuccess: (result) => {
       setLoading(false);
       setTokenData(result);
