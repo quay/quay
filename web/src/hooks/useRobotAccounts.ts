@@ -221,7 +221,12 @@ export function useRobotPermissions({orgName, robotAcct, onSuccess, onError}) {
   const queryClient = useQueryClient();
   const deleteRepoPermsMutator = useMutation(
     async (repoNames: string[]) => {
-      await bulkDeleteRepoPermsForRobot(namespace, robotAcct, repoNames, isUser);
+      await bulkDeleteRepoPermsForRobot(
+        namespace,
+        robotAcct,
+        repoNames,
+        isUser,
+      );
     },
     {
       onSuccess: () => {
