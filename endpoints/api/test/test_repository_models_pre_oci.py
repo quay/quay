@@ -1,14 +1,14 @@
-from endpoints.api.repository_models_pre_oci import pre_oci_model
-from test.fixtures import *
 
 import pytest
 from mock import ANY, MagicMock, patch
 
 from data import database, model
 from endpoints.api.repository import Repository, RepositoryList, RepositoryTrust
+from endpoints.api.repository_models_pre_oci import pre_oci_model
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
+from test.fixtures import *
 
 
 def test_add_quota_view(initialized_db):
