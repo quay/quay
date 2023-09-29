@@ -1,4 +1,4 @@
-import { ActionGroup, Button, Flex, Form, FormGroup, FormSelect, FormSelectOption, NumberInput, Spinner, TextInput, Title } from "@patternfly/react-core";
+import { ActionGroup, Button, Dropdown, DropdownItem, DropdownToggle, Flex, Form, FormGroup, FormSelect, FormSelectOption, NumberInput, Spinner, TextInput, Title } from "@patternfly/react-core";
 import { useEffect, useState } from "react";
 import { AlertVariant } from "src/atoms/AlertState";
 import Conditional from "src/components/empty/Conditional";
@@ -8,12 +8,22 @@ import { useCreateNamespaceAutoPrunePolicy, useDeleteNamespaceAutoPrunePolicy, u
 import { isNullOrUndefined } from "src/libs/utils";
 import { AutoPruneMethod, NamespaceAutoPrunePolicy } from "src/resources/OrganizationResource";
 
+// Must match convert_to_timedelta from backend
+export const shorthandTimeUnits = {
+  s: 'seconds', 
+  m: 'minutes',
+  h: 'hours',
+  d: 'days',
+  w: 'weeks',
+};
 
 export default function AutoPruning(props: AutoPruning){
     const [uuid, setUuid] = useState<string>(null); 
     const [method, setMethod] = useState<AutoPruneMethod>(AutoPruneMethod.NONE);
     const [tagCount, setTagCount] = useState<number>(10);
-    const [tagAge, setTagAge] = useState<string>("7d");
+    const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>("d");
+    const [isTagCreationDateUnitOpen, setIsTagCreationDateUnitOpen] = useState<boolean>(false);
+    const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
     const {addAlert} = useAlerts();
     const {
         error,
@@ -54,7 +64,15 @@ export default function AutoPruning(props: AutoPruning){
                 setTagCount(policy.value as number);
                 break;
               case AutoPruneMethod.TAG_CREATION_DATE:
-                setTagAge(policy.value as string);
+                const tagAgeValue = (policy.value as string).match(/\d+/g);
+                const tagAgeUnit = (policy.value as string).match(/[a-zA-Z]+/g);
+                if(tagAgeValue.length > 0 && tagAgeUnit.length > 0){
+                  setTagCreationDateValue(Number(tagAgeValue[0]));
+                  setTagCreationDateUnit(tagAgeUnit[0]);
+                } else {
+                  // Shouldn't ever happen but leave it here just in case
+                  console.error("Invalid tag age value")
+                }
                 break;
             }
           } else {
@@ -64,7 +82,8 @@ export default function AutoPruning(props: AutoPruning){
             setUuid(null);
             setMethod(AutoPruneMethod.NONE);
             setTagCount(10);
-            setTagAge("7d");
+            setTagCreationDateUnit('d');
+            setTagCreationDateValue(7);
           }
       }
     }, [successFetchingPolicies, dataUpdatedAt]);
@@ -113,7 +132,7 @@ export default function AutoPruning(props: AutoPruning){
           value = tagCount;
           break;
         case AutoPruneMethod.TAG_CREATION_DATE:
-          value = tagAge;
+          value = `${String(tagCreationDateValue)}${tagCreationDateUnit}`;
           break;
         case AutoPruneMethod.NONE:
           // Delete the policy is done by setting the method to none
@@ -132,16 +151,6 @@ export default function AutoPruning(props: AutoPruning){
       }
     }
 
-    const isValidTagAge = (tagAge) => {
-      return tagAge.match(/^[0-9]+(s|h|d|w)$/)
-    }
-
-    const isSaveDisabled = () => {
-      if(method === AutoPruneMethod.TAG_CREATION_DATE && !isValidTagAge(tagAge)){
-        return true;
-      }
-    }
-
     if(isLoading){
       return (<Spinner/>)
     }
@@ -155,7 +164,7 @@ export default function AutoPruning(props: AutoPruning){
       <>
       <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>Auto Pruning Policies</Title>
       <p style={{paddingBottom: '1em'}}>
-        Auto-pruning policies automatically delete tags across all repositories within this organization by a given method. Each method is applied per-repository, eg. If tag count is set to 10 each repository will keep the 10 most recent tags.
+        Auto-pruning policies automatically delete tags across all repositories within this organization by a given method.
       </p>
       <Form id="autpruning-form" maxWidth="70%">
         <FormGroup
@@ -191,20 +200,17 @@ export default function AutoPruning(props: AutoPruning){
         </FormGroup>
         <Conditional if={method===AutoPruneMethod.TAG_NUMBER}>
           <FormGroup
-              isInline
               label="The number of tags to keep."
               fieldId=""
-              helperText=""
+              helperText="All tags sorted by earliest creation date will get pruned until the repository total falls below the threshold"
               isRequired
           >
               <NumberInput
                   value={tagCount}
                   onMinus={()=>{tagCount > 0 ? setTagCount(tagCount-1) : setTagCount(0)}}
                   onChange={(e)=>{
-                      let val = Number((e.target as HTMLInputElement).value);
-                      if(!isNaN(val)) {
-                        setTagCount(val)
-                      }
+                    const value = (e.target as HTMLInputElement).value;
+                    setTagCount(Number(value));
                   }}
                   onPlus={()=>{setTagCount(tagCount+1)}}
                   inputAriaLabel="number of tags"
@@ -216,21 +222,49 @@ export default function AutoPruning(props: AutoPruning){
         </Conditional>
         <Conditional if={method===AutoPruneMethod.TAG_CREATION_DATE}>
           <FormGroup
-              isInline
               label="Prune tags older than given timespan."
               fieldId=""
-              helperText="e.g. 12h, 7d, 6w"
-              validated={isValidTagAge(tagAge) ? 'default' : 'error'}
-              helperTextInvalid="Invalid timespan. Must be in the form of number followed by s, h, d, or w. e.g. 12h, 7d, 6w"
+              helperText="All tags with a creation date earlier than a given time period will get pruned"
               isRequired
           >
-            <TextInput 
-              value={tagAge} 
-              type="text" 
-              onChange={(value, _) => setTagAge(value)} 
-              aria-label="age of tags"
-              data-testid="namespace-auto-prune-timespan"
-            />
+              <NumberInput
+                  value={tagCreationDateValue}
+                  onMinus={()=>{tagCreationDateValue > 0 ? setTagCreationDateValue(tagCreationDateValue-1) : setTagCreationDateValue(0)}}
+                  onChange={(e)=>{
+                    const value = (e.target as HTMLInputElement).value;
+                    setTagCreationDateValue(Number(value))
+                  }}
+                  onPlus={()=>{setTagCreationDateValue(tagCreationDateValue+1)}}
+                  inputAriaLabel="tag creation date value"
+                  minusBtnAriaLabel="minus"
+                  plusBtnAriaLabel="plus"
+                  data-testid="namespace-auto-prune-tag-creation-date-value"
+                  style={{paddingRight: '1em'}}
+              />
+              <Dropdown
+                onSelect={() => {
+                  setIsTagCreationDateUnitOpen(false);
+                  const element = document.getElementById('tag-auto-prune-creation-date-timeunit');
+                  element.focus();
+                }}
+                toggle={
+                  <DropdownToggle id="tag-auto-prune-creation-date-timeunit" onToggle={()=>setIsTagCreationDateUnitOpen(!isTagCreationDateUnitOpen)}>
+                    {shorthandTimeUnits[tagCreationDateUnit]}
+                  </DropdownToggle>
+                }
+                isOpen={isTagCreationDateUnitOpen}
+                dropdownItems={Object.keys(shorthandTimeUnits).map((key) => (
+                  <DropdownItem
+                    key={key}
+                    onClick={() => {
+                      setTagCreationDateUnit(key);
+                    }}
+                  >
+                    {shorthandTimeUnits[key]}
+                  </DropdownItem>
+                ))}
+                aria-label="tag creation date unit"
+              />
           </FormGroup>
         </Conditional>
 
@@ -243,7 +277,6 @@ export default function AutoPruning(props: AutoPruning){
               variant="primary"
               type="submit"
               onClick={onSave}
-              isDisabled={isSaveDisabled()}
             >
               Save
             </Button>

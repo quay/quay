@@ -13,15 +13,19 @@ describe('Namespace settings - autoprune policies', () => {
     const attemptCreateTagNumberPolicy = (cy) => {
         cy.get('[data-testid="namespace-auto-prune-method"]').select('By number of tags');
         cy.get('input[aria-label="number of tags"]').should('have.value', '10');
+        // Since we're using an older version of numberinput, the field can never be empty and will
+        // always include a 0. Here we backspace to remove that 0.
         cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
         cy.contains('Save').click();
     }
 
     const attemptCreateCreationDatePolicy = (cy) => {
         cy.get('[data-testid="namespace-auto-prune-method"]').select('By age of tags');
-        cy.get('input[aria-label="age of tags"]').should('have.value', '7d');
-        cy.get('input[aria-label="age of tags"]').clear();
-        cy.get('input[aria-label="age of tags"]').type('2w');
+        cy.get('input[aria-label="tag creation date value"]').should('have.value', '7');
+        cy.get('div[aria-label="tag creation date unit"]').contains('days');
+        cy.get('input[aria-label="tag creation date value"]').type('2{leftArrow}{backspace}');
+        cy.contains('days').click();
+        cy.contains('weeks').click();
         cy.contains('Save').click();
     }
 
@@ -44,7 +48,8 @@ describe('Namespace settings - autoprune policies', () => {
         // Create policy
         attemptCreateCreationDatePolicy(cy);
         cy.contains('Successfully created auto-prune policy');
-        cy.get('input[aria-label="age of tags"]').should('have.value', '2w');
+        cy.get('input[aria-label="tag creation date value"]').should('have.value', '2');
+        cy.get('div[aria-label="tag creation date unit"]').contains('weeks');
     });
     
     it('updates policy', () => {
@@ -60,7 +65,8 @@ describe('Namespace settings - autoprune policies', () => {
         // Update policy
         attemptCreateCreationDatePolicy(cy);
         cy.contains('Successfully updated auto-prune policy');
-        cy.get('input[aria-label="age of tags"]').should('have.value', '2w');
+        cy.get('input[aria-label="tag creation date value"]').should('have.value', '2');
+        cy.get('div[aria-label="tag creation date unit"]').contains('weeks');
     });
     
     it('deletes policy', () => {
@@ -141,6 +147,7 @@ describe('Namespace settings - autoprune policies', () => {
     //     // Update policy
     //     attemptCreateCreationDatePolicy(cy);
     //     cy.contains('Successfully updated auto-prune policy');
-    //     cy.get('input[aria-label="age of tags"]').should('have.value', '2w');
+    //     cy.get('input[aria-label="tag creation date value"]').should('have.value', '2');
+    //     cy.get('div[aria-label="tag creation date unit"]').contains('weeks');
     // });
 });
