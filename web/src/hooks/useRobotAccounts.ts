@@ -265,7 +265,7 @@ export function useRobotPermissions({orgName, robName, onSuccess, onError}) {
 
   return {
     result: robotPermissions,
-    loading: loading,
+    loading,
     error,
     setPage,
     setPerPage,

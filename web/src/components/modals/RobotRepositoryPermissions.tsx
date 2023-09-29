@@ -26,7 +26,7 @@ export default function RobotRepositoryPermissions(
     };
   });
 
-  const {result} = useRobotPermissions({
+  const _ = useRobotPermissions({
     orgName: props.namespace,
     robName: props.robotAccount.name,
     onSuccess: (result) => {
