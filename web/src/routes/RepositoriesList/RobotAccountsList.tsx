@@ -216,28 +216,23 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
         />,
       ];
     });
-  }
+  };
 
   const showErrorAlert = (message: string) => {
     setAlerts((prevAlerts) => {
       return [
         ...prevAlerts,
-        <Alert
-          key="alert"
-          variant="danger"
-          title={message}
-          timeout={5000}
-        />,
+        <Alert key="alert" variant="danger" title={message} timeout={5000} />,
       ];
     });
-  }
+  };
 
   const {deleteRobotAccounts} = useDeleteRobotAccounts({
     namespace: props.organizationName,
     onSuccess: () => {
       setSelectedRobotAccounts([]);
       setDeleteModalOpen(!isDeleteModalOpen);
-      showSuccessAlert("Successfully deleted robot account");
+      showSuccessAlert('Successfully deleted robot account');
     },
     onError: (err) => {
       setErrTitle('Robot Account deletion failed');
@@ -250,7 +245,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       } else {
         setErr([addDisplayError('Failed to delete robot account', err)]);
       }
-      showSuccessAlert("Error deleting robot account");
+      showSuccessAlert('Error deleting robot account');
       setSelectedRobotAccounts([]);
       setDeleteModalOpen(!isDeleteModalOpen);
     },
@@ -259,7 +254,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const {updateRepoPerms, deleteRepoPerms} = useRobotRepoPermissions({
     namespace: props.organizationName,
     onSuccess: () => {
-      showSuccessAlert("Successfully updated repository permission");
+      showSuccessAlert('Successfully updated repository permission');
     },
     onError: (err) => {
       setErrTitle('Repository Permission update failed');
@@ -274,7 +269,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           addDisplayError('Failed to update robot repository permission', err),
         ]);
       }
-      showErrorAlert("Failed to update repository permission");
+      showErrorAlert('Failed to update repository permission');
     },
   });
 

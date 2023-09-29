@@ -62,12 +62,14 @@ export default function CreateRobotAccountModal(
   const {createNewRobot} = useCreateRobotAccount({
     namespace: props.orgName,
     onSuccess: (result) => {
-      props.showSuccessAlert(`Successfully created robot account with robot name: ${result['robotname']}`);
+      props.showSuccessAlert(
+        `Successfully created robot account with robot name: ${result['robotname']}`,
+      );
       handleModalToggle();
     },
     onError: (err) => {
       setErr(addDisplayError('Unable to create robot', err));
-      props.showErrorAlert("Unable to create robot account");
+      props.showErrorAlert('Unable to create robot account');
     },
   });
 
