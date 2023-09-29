@@ -247,7 +247,6 @@ interface CreateRobotAccountModalProps {
   teams: any[];
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
-  setAlerts: (prev) => void;
   showSuccessAlert: (msg) => void;
   showErrorAlert: (msg) => void;
 }
