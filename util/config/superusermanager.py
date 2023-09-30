@@ -81,6 +81,10 @@ class ConfigUserManager(UserManager):
         return bool(self._superusers_array.value)
 
     def is_restricted_user(self, username: str, include_robots: bool = True) -> bool:
+        # do not restrict superusers
+        if self.is_superuser(username):
+            return False
+
         if include_robots:
             username = username.split("+")[0]
 
