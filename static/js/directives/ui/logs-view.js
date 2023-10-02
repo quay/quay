@@ -1,6 +1,5 @@
 import { LogUsageChart } from '../../graphing';
 import { parse } from 'path';
-import { isNumber } from "util"
 import moment from "moment"
 
 
@@ -491,10 +490,10 @@ angular.module('quay').directive('logsView', function () {
 
           if (metadata.type == 'v2auth') {
             var message = 'Login to registry[[ with';
-            
+
             if (metadata.kind == 'app_specific_token') {
               message += ' app-specific token {app_specific_token_title} and';
-            } 
+            }
             else if (metadata.kind == 'robot') {
               message += ' robot {robot} and';
             }

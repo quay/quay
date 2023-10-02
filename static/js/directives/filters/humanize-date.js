@@ -1,5 +1,8 @@
-import { isNumber } from "util"
 import moment from "moment"
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
 
 /**
  * Filter which displays a date in a human-readable format.

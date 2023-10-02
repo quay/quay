@@ -177,7 +177,11 @@ class _BlobUploadManager(object):
         assert length is not None
 
         if start_offset > 0 and start_offset > self.blob_upload.byte_count:
-            logger.error("start_offset provided greater than blob_upload.byte_count")
+            logger.error(
+                "start_offset (%d) provided greater than blob_upload.byte_count (%d)",
+                start_offset,
+                self.blob_upload.byte_count,
+            )
             raise BlobRangeMismatchException()
 
         # Ensure that we won't go over the allowed maximum size for blobs.
