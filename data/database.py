@@ -981,15 +981,15 @@ class RepositorySearchScore(BaseModel):
 
 
 class QuotaNamespaceSize(BaseModel):
-    namespace_user = ForeignKeyField(User, unique=True)
-    size_bytes = BigIntegerField(null=False, default=0)
-    backfill_start_ms = BigIntegerField(null=True)
+    namespace_user = ForeignKeyField(User, unique=True, index=True)
+    size_bytes = BigIntegerField(null=False, default=0, index=True)
+    backfill_start_ms = BigIntegerField(null=True, index=True)
     backfill_complete = BooleanField(null=False, default=False)
 
 
 class QuotaRepositorySize(BaseModel):
-    repository = ForeignKeyField(Repository, unique=True)
-    size_bytes = BigIntegerField(null=False, default=0)
+    repository = ForeignKeyField(Repository, unique=True, index=True)
+    size_bytes = BigIntegerField(null=False, default=0, index=True)
     backfill_start_ms = BigIntegerField(null=True)
     backfill_complete = BooleanField(null=False, default=False)
 
