@@ -1,23 +1,23 @@
 import logging
 
 from flask import request
-from auth.auth_context import get_authenticated_user
-from data.model.autoprune import AutoPruneMethod, valid_value
 
 import features
+from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data import model
+from data.model.autoprune import AutoPruneMethod, valid_value
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
     path_param,
     request_error,
+    require_user_admin,
     resource,
     show_if,
     validate_json_request,
-    require_user_admin,
 )
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 
 logger = logging.getLogger(__name__)
 
@@ -170,12 +170,14 @@ class OrgAutoPrunePolicy(ApiResource):
             "method": method.value,
             "value": value,
         }
-        policy = model.autoprune.update_namespace_autoprune_policy(
+        # TODO: we need to catch the not found errors here and return 404
+        updated = model.autoprune.update_namespace_autoprune_policy(
             orgname, policy_uuid, policy_config
         )
-        if policy is None:
-            raise NotFound()
-        return policy_uuid, 204
+        if not updated:
+            raise InvalidRequest("could not update policy")
+
+        return {"uuid": policy_uuid}, 204
 
     def delete(self, orgname, policy_uuid):
         permission = AdministerOrganizationPermission(orgname)
@@ -188,11 +190,11 @@ class OrgAutoPrunePolicy(ApiResource):
         except model.InvalidOrganizationException:
             raise NotFound()
 
-        policy = model.autoprune.delete_namespace_autoprune_policy(orgname, policy_uuid)
-        if policy is None:
-            raise NotFound()
+        updated = model.autoprune.delete_namespace_autoprune_policy(orgname, policy_uuid)
+        if not updated:
+            raise InvalidRequest("could not delete policy")
 
-        return policy_uuid, 200
+        return {"uuid": policy_uuid}, 200
 
 
 @resource("/v1/user/autoprunepolicy/")
@@ -312,19 +314,24 @@ class UserAutoPrunePolicy(ApiResource):
             "method": method.value,
             "value": value,
         }
-        policy = model.autoprune.update_namespace_autoprune_policy(
+        updated = model.autoprune.update_namespace_autoprune_policy(
             user.username, policy_uuid, policy_config
         )
-        if policy is None:
-            raise NotFound()
-        return policy_uuid, 204
+        if not updated:
+            raise InvalidRequest("could not update policy")
+
+        return {"uuid": policy_uuid}, 204
 
     @require_user_admin()
     def delete(self, policy_uuid):
         user = get_authenticated_user()
 
-        policy = model.autoprune.delete_namespace_autoprune_policy(user.username, policy_uuid)
+        policy = model.autoprune.get_namespace_autoprune_policy(user.username, policy_uuid)
         if policy is None:
             raise NotFound()
 
-        return policy_uuid, 200
+        updated = model.autoprune.delete_namespace_autoprune_policy(user.username, policy_uuid)
+        if not updated:
+            raise InvalidRequest("could not delete policy")
+
+        return {"uuid": policy_uuid}, 200

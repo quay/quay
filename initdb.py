@@ -900,7 +900,12 @@ def populate_database(minimal=False):
     quota2 = model.namespacequota.create_namespace_quota(new_user_4, 6000)
     model.namespacequota.create_namespace_quota_limit(quota2, "reject", 90)
 
-    create_namespace_autoprune_policy("devtable", {"method":"number_of_tags", "value": 10}, create_task=True)
+    create_namespace_autoprune_policy(
+        "devtable", {"method": "number_of_tags", "value": 10}, create_task=True
+    )
+    create_namespace_autoprune_policy(
+        "buynlarge", {"method": "creation_date", "value": "5d"}, create_task=True
+    )
 
     liborg = model.organization.create_organization(
         "library", "quay+library@devtable.com", new_user_1
