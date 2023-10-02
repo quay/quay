@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 
-from auth import log_action
+from auth.log import log_action
 from data.database import User
 
 import features

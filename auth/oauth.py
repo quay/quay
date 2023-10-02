@@ -5,7 +5,7 @@ from flask import request
 from jwt import ExpiredSignatureError, InvalidTokenError
 
 from app import analytics, app, authentication, oauth_login
-from auth import log_action
+from auth.log import log_action
 from auth.scopes import scopes_from_scope_string
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
