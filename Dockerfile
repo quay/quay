@@ -34,7 +34,7 @@ COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines \
 	; npm run --quiet build\
-	; rm -Rf node_modules\
+	; rm -Rf .cache .npm* node_modules\
 	;
 
 # Build-python installs the requirements for the python code.
