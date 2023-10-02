@@ -368,6 +368,18 @@ autostart = {{ config['quotaregistrysizeworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:autopruneworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/autopruneworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.autopruneworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.autopruneworker
+{% endif -%}
+autostart = {{ config['autopruneworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:config-editor]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s,

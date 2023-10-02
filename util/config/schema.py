@@ -1397,6 +1397,10 @@ CONFIG_SCHEMA = {
         "ROBOTS_DISALLOW": {
             "type": "boolean",
             "description": "If robot accounts are prevented from any interaction as well as from being created. Defaults to False",
+        },
+        "FEATURE_AUTO_PRUNE": {
+            "type": "boolean",
+            "description": "Enable functionality related to the auto-pruning of tags",
             "x-example": False,
         },
     },
