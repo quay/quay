@@ -145,6 +145,7 @@ reportlab==3.6.13
 svglib==1.5.1
 tinycss2==1.2.1
 tqdm==4.66.1
+tzdata==2023.3
 
 # Build dependencies
 Cython==3.0.0a9
