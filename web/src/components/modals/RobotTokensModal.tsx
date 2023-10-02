@@ -17,7 +17,7 @@ import {
   Alert,
   Button,
 } from '@patternfly/react-core';
-import {useRobotToken} from 'src/hooks/useRobotToken';
+import {useRobotToken} from 'src/hooks/useRobotAccounts';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {IRobot, IRobotToken} from 'src/resources/RobotsResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -45,7 +45,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
 
   const {robotAccountToken, regenerateRobotToken} = useRobotToken({
     orgName: props.namespace,
-    robName: props.robotAccount.name,
+    robotAcct: props.robotAccount.name,
     onSuccess: (result) => {
       setLoading(false);
       setTokenData(result);
