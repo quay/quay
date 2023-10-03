@@ -37,9 +37,8 @@ export interface SuperUserOrganizations {
 
 export async function fetchOrgsAsSuperUser() {
   const superUserOrgsUrl = `/api/v1/superuser/organizations/`;
-  const response: AxiosResponse<SuperUserOrganizations> = await axios.get(
-    superUserOrgsUrl,
-  );
+  const response: AxiosResponse<SuperUserOrganizations> =
+    await axios.get(superUserOrgsUrl);
   assertHttpCode(response.status, 200);
   return response.data?.organizations;
 }
@@ -145,8 +144,14 @@ export interface NamespaceAutoPrunePolicy {
   value?: string | number;
 }
 
-export async function fetchNamespaceAutoPrunePolicies(namespace: string, isUser: boolean, signal: AbortSignal){
-  const namespaceUrl = isUser ? '/api/v1/user/autoprunepolicy/' : `/api/v1/organization/${namespace}/autoprunepolicy/`;
+export async function fetchNamespaceAutoPrunePolicies(
+  namespace: string,
+  isUser: boolean,
+  signal: AbortSignal,
+) {
+  const namespaceUrl = isUser
+    ? '/api/v1/user/autoprunepolicy/'
+    : `/api/v1/organization/${namespace}/autoprunepolicy/`;
   // TODO: Add return type
   const response: AxiosResponse = await axios.get(namespaceUrl, {signal});
   assertHttpCode(response.status, 200);
@@ -154,20 +159,38 @@ export async function fetchNamespaceAutoPrunePolicies(namespace: string, isUser:
   return res;
 }
 
-export async function createNamespaceAutoPrunePolicy(namespace:string, policy: NamespaceAutoPrunePolicy, isUser: boolean) {
-  const namespaceUrl = isUser ? '/api/v1/user/autoprunepolicy/' : `/api/v1/organization/${namespace}/autoprunepolicy/`;
+export async function createNamespaceAutoPrunePolicy(
+  namespace: string,
+  policy: NamespaceAutoPrunePolicy,
+  isUser: boolean,
+) {
+  const namespaceUrl = isUser
+    ? '/api/v1/user/autoprunepolicy/'
+    : `/api/v1/organization/${namespace}/autoprunepolicy/`;
   const response = await axios.post(namespaceUrl, policy);
   assertHttpCode(response.status, 201);
 }
 
-export async function updateNamespaceAutoPrunePolicy(namespace:string, policy: NamespaceAutoPrunePolicy, isUser: boolean) {
-  const namespaceUrl = isUser ? `/api/v1/user/autoprunepolicy/${policy.uuid}` : `/api/v1/organization/${namespace}/autoprunepolicy/${policy.uuid}`;
+export async function updateNamespaceAutoPrunePolicy(
+  namespace: string,
+  policy: NamespaceAutoPrunePolicy,
+  isUser: boolean,
+) {
+  const namespaceUrl = isUser
+    ? `/api/v1/user/autoprunepolicy/${policy.uuid}`
+    : `/api/v1/organization/${namespace}/autoprunepolicy/${policy.uuid}`;
   const response = await axios.put(namespaceUrl, policy);
   assertHttpCode(response.status, 204);
 }
 
-export async function deleteNamespaceAutoPrunePolicy(namespace:string, uuid: string, isUser: boolean) {
-  const namespaceUrl = isUser ? `/api/v1/user/autoprunepolicy/${uuid}` : `/api/v1/organization/${namespace}/autoprunepolicy/${uuid}`;
+export async function deleteNamespaceAutoPrunePolicy(
+  namespace: string,
+  uuid: string,
+  isUser: boolean,
+) {
+  const namespaceUrl = isUser
+    ? `/api/v1/user/autoprunepolicy/${uuid}`
+    : `/api/v1/organization/${namespace}/autoprunepolicy/${uuid}`;
   const response = await axios.delete(namespaceUrl);
   assertHttpCode(response.status, 200);
 }

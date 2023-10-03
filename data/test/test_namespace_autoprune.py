@@ -1,12 +1,12 @@
-from test.fixtures import *
+import json
 
-import pytest, json
+import pytest
 
-from data.model.autoprune import *
-from data.model.user import get_user
 from data.model import InvalidUsernameException, NamespacePolicyAlreadyExists
+from data.model.autoprune import *
 from data.model.organization import create_organization
-
+from data.model.user import get_user
+from test.fixtures import *
 
 ORG1_NAME = "org1"
 ORG2_NAME = "org2"
