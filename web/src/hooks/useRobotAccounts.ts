@@ -85,9 +85,9 @@ export function useCreateRobotAccount({namespace, onSuccess, onError}) {
       robotname,
       description,
       isUser,
-      reposToUpdate,
-      selectedTeams,
-      robotDefaultPerm,
+      reposToUpdate = null,
+      selectedTeams = null,
+      robotDefaultPerm = null,
     }: createNewRobotForNamespaceParams) => {
       return createNewRobotForNamespace(
         namespace,
@@ -124,9 +124,9 @@ interface createNewRobotForNamespaceParams {
   robotname: string;
   description: string;
   isUser?: boolean;
-  reposToUpdate: IRobotRepoPerms[];
-  selectedTeams: IRobotTeam[];
-  robotDefaultPerm: string;
+  reposToUpdate?: IRobotRepoPerms[];
+  selectedTeams?: IRobotTeam[];
+  robotDefaultPerm?: string;
 }
 
 export function useRobotAccounts({name, onSuccess, onError}) {
@@ -239,9 +239,9 @@ interface createNewRobotForNamespaceParams {
   robotname: string;
   description: string;
   isUser?: boolean;
-  reposToUpdate: IRobotRepoPerms[];
-  selectedTeams: IRobotTeam[];
-  robotDefaultPerm: string;
+  reposToUpdate?: IRobotRepoPerms[];
+  selectedTeams?: IRobotTeam[];
+  robotDefaultPerm?: string;
 }
 
 export function useRobotPermissions({orgName, robotAcct, onSuccess, onError}) {

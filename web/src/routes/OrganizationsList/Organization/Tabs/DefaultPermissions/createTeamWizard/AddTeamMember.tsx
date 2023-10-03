@@ -99,9 +99,6 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
       namespace: props.orgName,
       robotname: newRobotAccntName,
       description: newRobotAccntDescription,
-      reposToUpdate: null,
-      selectedTeams: null,
-      robotDefaultPerm: null,
     });
     props.setDrawerExpanded(false);
     addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`);

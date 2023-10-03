@@ -1,5 +1,4 @@
 import {
-  Alert,
   AlertGroup,
   DropdownItem,
   PageSection,
@@ -51,6 +50,8 @@ import {
 import {useRobotRepoPermissions} from 'src/hooks/useRobotAccounts';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import {AlertVariant} from 'src/atoms/AlertState';
+import {useAlerts} from 'src/hooks/UseAlerts';
 
 export const RepoPermissionDropdownItems = [
   {
@@ -106,7 +107,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [err, setErr] = useState<string[]>();
   const [errTitle, setErrTitle] = useState<string>();
   const robotPermissionsPlaceholder = useRef(null);
-  const [alerts, setAlerts] = useState([]);
+  const {addAlert} = useAlerts();
 
   const {robotAccountsForOrg, page, perPage, setPage, setPerPage} =
     useRobotAccounts({
@@ -205,25 +206,16 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   };
 
   const showSuccessAlert = (message: string) => {
-    setAlerts((prevAlerts) => {
-      return [
-        ...prevAlerts,
-        <Alert
-          key={new Date().getTime()}
-          variant="success"
-          title={message}
-          timeout={5000}
-        />,
-      ];
+    addAlert({
+      variant: AlertVariant.Success,
+      title: message,
     });
   };
 
   const showErrorAlert = (message: string) => {
-    setAlerts((prevAlerts) => {
-      return [
-        ...prevAlerts,
-        <Alert key="alert" variant="danger" title={message} timeout={5000} />,
-      ];
+    addAlert({
+      variant: AlertVariant.Failure,
+      title: message,
     });
   };
 
@@ -511,9 +503,6 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   }
   return (
     <>
-      <AlertGroup isToast isLiveRegion>
-        {alerts}
-      </AlertGroup>
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal title={errTitle} error={err} setError={setErr} />
         <RobotAccountsToolBar
