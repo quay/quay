@@ -4,6 +4,7 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  Button,
 } from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
@@ -55,6 +56,14 @@ export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
             {props.setRepoPermModal}
           </Conditional>
         </ToolbarItem>
+        <ToolbarItem>
+          <Button
+            onClick={() => props.handleModalToggle()}
+            data-testid="create-new-team-button"
+          >
+            Create new team
+          </Button>
+        </ToolbarItem>
         <ToolbarPagination
           itemsList={props.allItems}
           perPage={props.perPage}
@@ -87,4 +96,5 @@ interface TeamsViewToolbarProps {
   deleteModal: object;
   isSetRepoPermModalOpen: boolean;
   setRepoPermModal: object;
+  handleModalToggle: () => void;
 }

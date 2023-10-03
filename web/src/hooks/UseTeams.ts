@@ -44,6 +44,7 @@ export function useCreateTeam(orgName, {onSuccess, onError}) {
         if (data.new_team) {
           onSuccess();
           queryClient.invalidateQueries(['organization', orgName, 'teams']);
+          queryClient.invalidateQueries(['teams']);
         } else {
           addAlert({
             variant: AlertVariant.Failure,
