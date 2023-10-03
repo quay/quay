@@ -61,7 +61,7 @@ def _token_data(audience, subject, iss, iat=None, exp=None, nbf=None):
             None,
             None,
             None,
-            "Invalid audience",
+            "Audience doesn't match",
             id="invalid audience",
         ),
         pytest.param(
@@ -82,7 +82,7 @@ def _token_data(audience, subject, iss, iat=None, exp=None, nbf=None):
             None,
             lambda: time.time() + 120,
             None,
-            "Issued At claim",
+            "The token is not yet valid \\(iat\\)",
             id="issued at in future",
         ),
         pytest.param(
