@@ -1344,7 +1344,7 @@ def _delete_user_linked_data(user):
 
     # Delete any autoprune tasks
     AutoPruneTaskStatus.delete().where(AutoPruneTaskStatus.namespace == user).execute()
-    
+
     # Delete any autoprune policies
     NamespaceAutoPrunePolicy.delete().where(NamespaceAutoPrunePolicy.namespace == user).execute()
 

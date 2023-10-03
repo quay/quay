@@ -1,25 +1,24 @@
-import json
 import datetime
+import json
 import logging.config
+from enum import Enum
+
+from data.database import AutoPruneTaskStatus, DeletedNamespace
+from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
 from data.database import (
-    AutoPruneTaskStatus,
-    NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable,
-    User,
     Repository,
     RepositoryState,
-    DeletedNamespace,
-    get_epoch_timestamp_ms,
+    User,
     db_for_update,
+    get_epoch_timestamp_ms,
 )
 from data.model import (
+    InvalidUsernameException,
+    NamespacePolicyAlreadyExists,
     db_transaction,
     modelutil,
     oci,
-    InvalidUsernameException,
-    NamespacePolicyAlreadyExists,
 )
-from enum import Enum
-
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)

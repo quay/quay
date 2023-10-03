@@ -268,7 +268,12 @@ export default function Settings(props: SettingsProps) {
     {
       name: 'Auto-Prune Policies',
       id: 'autoprunepolicies',
-      content: <AutoPruning org={props.organizationName} isUser={props.isUserOrganization} />,
+      content: (
+        <AutoPruning
+          org={props.organizationName}
+          isUser={props.isUserOrganization}
+        />
+      ),
       visible: quayConfig?.features?.AUTO_PRUNE,
     },
   ];
@@ -283,13 +288,15 @@ export default function Settings(props: SettingsProps) {
           aria-label="Tabs in the vertical example"
           role="region"
         >
-          {tabs.filter(tab=>tab.visible).map((tab, tabIndex) => (
-            <Tab
-              key={tab.id}
-              eventKey={tabIndex}
-              title={<TabTitleText>{tab.name}</TabTitleText>}
-            />
-          ))}
+          {tabs
+            .filter((tab) => tab.visible)
+            .map((tab, tabIndex) => (
+              <Tab
+                key={tab.id}
+                eventKey={tabIndex}
+                title={<TabTitleText>{tab.name}</TabTitleText>}
+              />
+            ))}
         </Tabs>
       </FlexItem>
 

@@ -6172,7 +6172,14 @@ SECURITY_TESTS: List[
     (UserAutoPrunePolicies, "GET", None, None, "freshuser", 200),
     (UserAutoPrunePolicies, "GET", None, None, "reader", 200),
     (UserAutoPrunePolicies, "POST", None, {"method": "number_of_tags", "value": 10}, None, 401),
-    (UserAutoPrunePolicies, "POST", None, {"method": "number_of_tags", "value": 10}, "devtable", 400),
+    (
+        UserAutoPrunePolicies,
+        "POST",
+        None,
+        {"method": "number_of_tags", "value": 10},
+        "devtable",
+        400,
+    ),
     (
         UserAutoPrunePolicies,
         "POST",

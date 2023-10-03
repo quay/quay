@@ -2,12 +2,10 @@
 Manage organizations, members and OAuth applications.
 """
 
-import json
 import logging
 
 import recaptcha2
 from flask import request
-from data.model.autoprune import AutoPruneMethod, valid_value
 
 import features
 from app import all_queues, app, authentication, avatar

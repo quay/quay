@@ -5,6 +5,7 @@ import features
 from app import app
 from util.log import logfile_path
 from data.model.autoprune import *
+from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 

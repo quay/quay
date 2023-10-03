@@ -11,6 +11,7 @@ from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
 
 import features
+from .__init__models_pre_oci import pre_oci_model as model
 from app import app, authentication, usermanager
 from auth import scopes
 from auth.auth_context import (
@@ -49,8 +50,6 @@ from util.names import parse_namespace_repository
 from util.pagination import decrypt_page_token, encrypt_page_token
 from util.request import crossorigin, get_request_ip
 from util.timedeltastring import convert_to_timedelta
-
-from .__init__models_pre_oci import pre_oci_model as model
 
 logger = logging.getLogger(__name__)
 api_bp = timed_blueprint(Blueprint("api", __name__))
@@ -585,6 +584,7 @@ import endpoints.api.mirror
 import endpoints.api.namespacequota
 import endpoints.api.organization
 import endpoints.api.permission
+import endpoints.api.policy
 import endpoints.api.prototype
 import endpoints.api.repoemail
 import endpoints.api.repository
@@ -600,4 +600,3 @@ import endpoints.api.tag
 import endpoints.api.team
 import endpoints.api.trigger
 import endpoints.api.user
-import endpoints.api.policy

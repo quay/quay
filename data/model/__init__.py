@@ -140,6 +140,7 @@ class UnsupportedQuotaSize(DataModelException):
 class OrgSubscriptionBindingAlreadyExists(DataModelException):
     pass
 
+
 class NamespacePolicyAlreadyExists(DataModelException):
     pass
 

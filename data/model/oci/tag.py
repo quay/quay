@@ -17,7 +17,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import config, user, modelutil
+from data.model import config, modelutil, user
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -773,7 +773,9 @@ def fetch_paginated_autoprune_repo_tags_by_number(
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 Tag.hidden == False,
             )
-            .order_by(Tag.lifetime_start_ms.desc())
+            # TODO: Ignoring type error for now, but it seems order_by doesn't
+            # return anything to be modified by offset. Need to investigate
+            .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
             .offset(max_tags_allowed)
         )
         tags, next_page_token = modelutil.paginate(
