@@ -2,12 +2,10 @@ import logging.config
 import time
 
 import features
-
 from app import app
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
-
 
 logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("AUTO_PRUNING_POLL_PERIOD", 30)
