@@ -4,9 +4,9 @@ import time
 import features
 
 from app import app
+from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
-from util.log import logfile_path
 
 
 logger = logging.getLogger(__name__)

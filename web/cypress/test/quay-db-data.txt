@@ -93,6 +93,7 @@ ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_
 ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS fk_notification_target_id_user;
 ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS fk_notification_kind_id_notificationkind;
 ALTER TABLE IF EXISTS ONLY public.namespacegeorestriction DROP CONSTRAINT IF EXISTS fk_namespacegeorestriction_namespace_id_user;
+ALTER TABLE IF EXISTS ONLY public.namespaceautoprunepolicy DROP CONSTRAINT IF EXISTS fk_namespaceautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS fk_messages_media_type_id_mediatype;
 ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS fk_manifestsecuritystatus_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS fk_manifestsecuritystatus_manifest_id_manifest;
@@ -122,6 +123,7 @@ ALTER TABLE IF EXISTS ONLY public.deletedrepository DROP CONSTRAINT IF EXISTS fk
 ALTER TABLE IF EXISTS ONLY public.deletednamespace DROP CONSTRAINT IF EXISTS fk_deletednamespace_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.blobupload DROP CONSTRAINT IF EXISTS fk_blobupload_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.blobupload DROP CONSTRAINT IF EXISTS fk_blobupload_location_id_imagestoragelocation;
+ALTER TABLE IF EXISTS ONLY public.autoprunetaskstatus DROP CONSTRAINT IF EXISTS fk_autoprunetaskstatus_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.appspecificauthtoken DROP CONSTRAINT IF EXISTS fk_appspecificauthtoken_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS fk_apprtag_tag_kind_id_apprtagkind;
 ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS fk_apprtag_repository_id_repository;
@@ -327,6 +329,8 @@ DROP INDEX IF EXISTS public.notification_created;
 DROP INDEX IF EXISTS public.namespacegeorestriction_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id;
+DROP INDEX IF EXISTS public.namespaceautoprunepolicy_uuid;
+DROP INDEX IF EXISTS public.namespaceautoprunepolicy_namespace_id;
 DROP INDEX IF EXISTS public.messages_uuid;
 DROP INDEX IF EXISTS public.messages_severity;
 DROP INDEX IF EXISTS public.messages_media_type_id;
@@ -436,6 +440,8 @@ DROP INDEX IF EXISTS public.blobupload_repository_id_uuid;
 DROP INDEX IF EXISTS public.blobupload_repository_id;
 DROP INDEX IF EXISTS public.blobupload_location_id;
 DROP INDEX IF EXISTS public.blobupload_created;
+DROP INDEX IF EXISTS public.autoprunetaskstatus_namespace_id;
+DROP INDEX IF EXISTS public.autoprunetaskstatus_last_ran_ms;
 DROP INDEX IF EXISTS public.appspecificauthtoken_uuid;
 DROP INDEX IF EXISTS public.appspecificauthtoken_user_id_expiration;
 DROP INDEX IF EXISTS public.appspecificauthtoken_user_id;
@@ -530,6 +536,7 @@ ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS pk_
 ALTER TABLE IF EXISTS ONLY public.notificationkind DROP CONSTRAINT IF EXISTS pk_notificationkind;
 ALTER TABLE IF EXISTS ONLY public.notification DROP CONSTRAINT IF EXISTS pk_notification;
 ALTER TABLE IF EXISTS ONLY public.namespacegeorestriction DROP CONSTRAINT IF EXISTS pk_namespacegeorestriction;
+ALTER TABLE IF EXISTS ONLY public.namespaceautoprunepolicy DROP CONSTRAINT IF EXISTS pk_namespaceautoprunepolicyid;
 ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS pk_messages;
 ALTER TABLE IF EXISTS ONLY public.mediatype DROP CONSTRAINT IF EXISTS pk_mediatype;
 ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS pk_manifestsecuritystatus;
@@ -562,6 +569,7 @@ ALTER TABLE IF EXISTS ONLY public.deletedrepository DROP CONSTRAINT IF EXISTS pk
 ALTER TABLE IF EXISTS ONLY public.deletednamespace DROP CONSTRAINT IF EXISTS pk_deletednamespace;
 ALTER TABLE IF EXISTS ONLY public.buildtriggerservice DROP CONSTRAINT IF EXISTS pk_buildtriggerservice;
 ALTER TABLE IF EXISTS ONLY public.blobupload DROP CONSTRAINT IF EXISTS pk_blobupload;
+ALTER TABLE IF EXISTS ONLY public.autoprunetaskstatus DROP CONSTRAINT IF EXISTS pk_autoprunetaskstatusid;
 ALTER TABLE IF EXISTS ONLY public.appspecificauthtoken DROP CONSTRAINT IF EXISTS pk_appspecificauthtoken;
 ALTER TABLE IF EXISTS ONLY public.apprtagkind DROP CONSTRAINT IF EXISTS pk_apprtagkind;
 ALTER TABLE IF EXISTS ONLY public.apprtag DROP CONSTRAINT IF EXISTS pk_apprtag;
@@ -633,6 +641,7 @@ ALTER TABLE IF EXISTS public.oauthaccesstoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.notificationkind ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.notification ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.namespacegeorestriction ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.namespaceautoprunepolicy ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.messages ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.mediatype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestsecuritystatus ALTER COLUMN id DROP DEFAULT;
@@ -665,6 +674,7 @@ ALTER TABLE IF EXISTS public.deletedrepository ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.deletednamespace ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.buildtriggerservice ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.blobupload ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.autoprunetaskstatus ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.appspecificauthtoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.apprtagkind ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.apprtag ALTER COLUMN id DROP DEFAULT;
@@ -793,6 +803,8 @@ DROP SEQUENCE IF EXISTS public.notification_id_seq;
 DROP TABLE IF EXISTS public.notification;
 DROP SEQUENCE IF EXISTS public.namespacegeorestriction_id_seq;
 DROP TABLE IF EXISTS public.namespacegeorestriction;
+DROP SEQUENCE IF EXISTS public.namespaceautoprunepolicy_id_seq;
+DROP TABLE IF EXISTS public.namespaceautoprunepolicy;
 DROP SEQUENCE IF EXISTS public.messages_id_seq;
 DROP TABLE IF EXISTS public.messages;
 DROP SEQUENCE IF EXISTS public.mediatype_id_seq;
@@ -857,6 +869,8 @@ DROP SEQUENCE IF EXISTS public.buildtriggerservice_id_seq;
 DROP TABLE IF EXISTS public.buildtriggerservice;
 DROP SEQUENCE IF EXISTS public.blobupload_id_seq;
 DROP TABLE IF EXISTS public.blobupload;
+DROP SEQUENCE IF EXISTS public.autoprunetaskstatus_id_seq;
+DROP TABLE IF EXISTS public.autoprunetaskstatus;
 DROP SEQUENCE IF EXISTS public.appspecificauthtoken_id_seq;
 DROP TABLE IF EXISTS public.appspecificauthtoken;
 DROP SEQUENCE IF EXISTS public.apprtagkind_id_seq;
@@ -1356,6 +1370,42 @@ ALTER TABLE public.appspecificauthtoken_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.appspecificauthtoken_id_seq OWNED BY public.appspecificauthtoken.id;
+
+
+--
+-- Name: autoprunetaskstatus; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.autoprunetaskstatus (
+    id integer NOT NULL,
+    namespace_id integer NOT NULL,
+    last_ran_ms bigint,
+    status text
+);
+
+
+ALTER TABLE public.autoprunetaskstatus OWNER TO quay;
+
+--
+-- Name: autoprunetaskstatus_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.autoprunetaskstatus_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.autoprunetaskstatus_id_seq OWNER TO quay;
+
+--
+-- Name: autoprunetaskstatus_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.autoprunetaskstatus_id_seq OWNED BY public.autoprunetaskstatus.id;
 
 
 --
@@ -2539,6 +2589,42 @@ ALTER TABLE public.messages_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.messages_id_seq OWNED BY public.messages.id;
+
+
+--
+-- Name: namespaceautoprunepolicy; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.namespaceautoprunepolicy (
+    id integer NOT NULL,
+    uuid character varying(36) NOT NULL,
+    namespace_id integer NOT NULL,
+    policy text NOT NULL
+);
+
+
+ALTER TABLE public.namespaceautoprunepolicy OWNER TO quay;
+
+--
+-- Name: namespaceautoprunepolicy_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.namespaceautoprunepolicy_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.namespaceautoprunepolicy_id_seq OWNER TO quay;
+
+--
+-- Name: namespaceautoprunepolicy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.namespaceautoprunepolicy_id_seq OWNED BY public.namespaceautoprunepolicy.id;
 
 
 --
@@ -4817,6 +4903,13 @@ ALTER TABLE ONLY public.appspecificauthtoken ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: autoprunetaskstatus id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.autoprunetaskstatus ALTER COLUMN id SET DEFAULT nextval('public.autoprunetaskstatus_id_seq'::regclass);
+
+
+--
 -- Name: blobupload id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5038,6 +5131,13 @@ ALTER TABLE ONLY public.mediatype ALTER COLUMN id SET DEFAULT nextval('public.me
 --
 
 ALTER TABLE ONLY public.messages ALTER COLUMN id SET DEFAULT nextval('public.messages_id_seq'::regclass);
+
+
+--
+-- Name: namespaceautoprunepolicy id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.namespaceautoprunepolicy ALTER COLUMN id SET DEFAULT nextval('public.namespaceautoprunepolicy_id_seq'::regclass);
 
 
 --
@@ -5469,7 +5569,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-4366f54be43c
+222debc16e18
 \.
 
 
@@ -5556,6 +5656,14 @@ COPY public.apprtagkind (id, name) FROM stdin;
 --
 
 COPY public.appspecificauthtoken (id, user_id, uuid, title, created, expiration, last_accessed, token_name, token_secret) FROM stdin;
+\.
+
+
+--
+-- Data for Name: autoprunetaskstatus; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.autoprunetaskstatus (id, namespace_id, last_ran_ms, status) FROM stdin;
 \.
 
 
@@ -6258,6 +6366,14 @@ COPY public.messages (id, content, uuid, media_type_id, severity) FROM stdin;
 
 
 --
+-- Data for Name: namespaceautoprunepolicy; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.namespaceautoprunepolicy (id, uuid, namespace_id, policy) FROM stdin;
+\.
+
+
+--
 -- Data for Name: namespacegeorestriction; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -6377,8 +6493,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-09-11 02:21:04.643195	t	2023-09-11 05:16:04.600975	5	8679e58f-1471-41e1-b50f-56d4e4ca3d78
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-09-11 02:21:09.676721	t	2023-09-11 05:16:09.663101	5	1e56dc72-356d-4c51-be56-107754797c11
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-09-13 17:17:11.501517	t	2023-09-13 20:12:11.440078	5	24378908-0a14-46c5-a234-f7c7ed41fd3b
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-09-13 17:17:16.575212	t	2023-09-13 20:12:16.519423	5	89002d87-0f6d-4271-a7f9-124e5f3239e1
 \.
 
 
@@ -7766,6 +7882,13 @@ SELECT pg_catalog.setval('public.appspecificauthtoken_id_seq', 1, false);
 
 
 --
+-- Name: autoprunetaskstatus_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.autoprunetaskstatus_id_seq', 2, true);
+
+
+--
 -- Name: blobupload_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -7987,6 +8110,13 @@ SELECT pg_catalog.setval('public.mediatype_id_seq', 18, true);
 --
 
 SELECT pg_catalog.setval('public.messages_id_seq', 1, false);
+
+
+--
+-- Name: namespaceautoprunepolicy_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.namespaceautoprunepolicy_id_seq', 3, true);
 
 
 --
@@ -8500,6 +8630,14 @@ ALTER TABLE ONLY public.appspecificauthtoken
 
 
 --
+-- Name: autoprunetaskstatus pk_autoprunetaskstatusid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.autoprunetaskstatus
+    ADD CONSTRAINT pk_autoprunetaskstatusid PRIMARY KEY (id);
+
+
+--
 -- Name: blobupload pk_blobupload; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -8753,6 +8891,14 @@ ALTER TABLE ONLY public.mediatype
 
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT pk_messages PRIMARY KEY (id);
+
+
+--
+-- Name: namespaceautoprunepolicy pk_namespaceautoprunepolicyid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.namespaceautoprunepolicy
+    ADD CONSTRAINT pk_namespaceautoprunepolicyid PRIMARY KEY (id);
 
 
 --
@@ -9469,6 +9615,20 @@ CREATE INDEX appspecificauthtoken_user_id_expiration ON public.appspecificauthto
 --
 
 CREATE INDEX appspecificauthtoken_uuid ON public.appspecificauthtoken USING btree (uuid);
+
+
+--
+-- Name: autoprunetaskstatus_last_ran_ms; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX autoprunetaskstatus_last_ran_ms ON public.autoprunetaskstatus USING btree (last_ran_ms);
+
+
+--
+-- Name: autoprunetaskstatus_namespace_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX autoprunetaskstatus_namespace_id ON public.autoprunetaskstatus USING btree (namespace_id);
 
 
 --
@@ -10232,6 +10392,20 @@ CREATE INDEX messages_severity ON public.messages USING btree (severity);
 --
 
 CREATE INDEX messages_uuid ON public.messages USING btree (uuid);
+
+
+--
+-- Name: namespaceautoprunepolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
+
+
+--
+-- Name: namespaceautoprunepolicy_uuid; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX namespaceautoprunepolicy_uuid ON public.namespaceautoprunepolicy USING btree (uuid);
 
 
 --
@@ -11688,6 +11862,14 @@ ALTER TABLE ONLY public.appspecificauthtoken
 
 
 --
+-- Name: autoprunetaskstatus fk_autoprunetaskstatus_namespace_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.autoprunetaskstatus
+    ADD CONSTRAINT fk_autoprunetaskstatus_namespace_id_user FOREIGN KEY (namespace_id) REFERENCES public."user"(id);
+
+
+--
 -- Name: blobupload fk_blobupload_location_id_imagestoragelocation; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -11917,6 +12099,14 @@ ALTER TABLE ONLY public.manifestsecuritystatus
 
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT fk_messages_media_type_id_mediatype FOREIGN KEY (media_type_id) REFERENCES public.mediatype(id);
+
+
+--
+-- Name: namespaceautoprunepolicy fk_namespaceautoprunepolicy_namespace_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.namespaceautoprunepolicy
+    ADD CONSTRAINT fk_namespaceautoprunepolicy_namespace_id_user FOREIGN KEY (namespace_id) REFERENCES public."user"(id);
 
 
 --
