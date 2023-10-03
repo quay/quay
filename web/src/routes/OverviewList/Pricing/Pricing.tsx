@@ -15,7 +15,9 @@ import {
   Text,
   DropdownToggle,
 } from '@patternfly/react-core';
+import {ExternalLinkAltIcon} from '@patternfly/react-icons';
 import React from 'react';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import '../css/Pricing.scss';
 
 const pricings = {
@@ -36,6 +38,24 @@ const pricingText = {
   XXXL: '1000 private repos - $1600/mo',
   XXXXL: '2000 private repos - $3100/mo',
   XXXXXL: '15000 private repos - $21700/mo',
+};
+
+const pricingLinks = {
+  developer: 'https://quay.io/plans/?tab=enterprise',
+  micro:
+    'https://quay.io/organizations/new/?tab=enterprise&plan=bus-micro-2018',
+  small:
+    'https://quay.io/organizations/new/?tab=enterprise&plan=bus-small-2018',
+  medium:
+    'https://quay.io/organizations/new/?tab=enterprise&plan=bus-medium-2018',
+  large:
+    'https://quay.io/organizations/new/?tab=enterprise&plan=bus-large-2018',
+  XL: 'https://quay.io/organizations/new/?tab=enterprise&plan=bus-xlarge-2018',
+  XXL: 'https://quay.io/organizations/new/?tab=enterprise&plan=bus-500-2018',
+  XXXL: 'https://quay.io/organizations/new/?tab=enterprise&plan=bus-1000-2018',
+  XXXXL: 'https://quay.io/organizations/new/?tab=enterprise&plan=bus-2000-2018',
+  XXXXXL:
+    'https://quay.io/organizations/new/?tab=enterprise&plan=price_1LRztA2OoNF1TIf0SvSrz106',
 };
 
 const MorePlansCard: React.FunctionComponent = () => {
@@ -129,8 +149,13 @@ const MorePlansCard: React.FunctionComponent = () => {
       </CardBody>
       <CardFooter style={{textAlign: 'center'}}>
         <Title headingLevel="h1">{pricings[currentPricing]}</Title>
-        <Button variant="danger" style={{marginTop: '10px'}}>
-          Start free trial
+        <Button
+          variant="danger"
+          style={{marginTop: '10px'}}
+          component="a"
+          href={pricingLinks[currentPricing]}
+        >
+          Start free trial <ExternalLinkAltIcon />
         </Button>
       </CardFooter>
     </Card>
@@ -151,8 +176,13 @@ export default function Pricing() {
           </CardBody>
           <CardFooter style={{textAlign: 'center'}}>
             <Title headingLevel="h1">$15/month</Title>
-            <Button variant="danger" style={{marginTop: '10px'}}>
-              Purchase plan
+            <Button
+              variant="danger"
+              style={{marginTop: '10px'}}
+              component="a"
+              href={pricingLinks.developer}
+            >
+              Purchase plan <ExternalLinkAltIcon />
             </Button>
           </CardFooter>
         </Card>
@@ -170,8 +200,13 @@ export default function Pricing() {
           </CardBody>
           <CardFooter style={{textAlign: 'center'}}>
             <Title headingLevel="h1">$30/month</Title>
-            <Button variant="danger" style={{marginTop: '10px'}}>
-              Purchase plan
+            <Button
+              variant="danger"
+              style={{marginTop: '10px'}}
+              component="a"
+              href={pricingLinks.micro}
+            >
+              Purchase plan <ExternalLinkAltIcon />
             </Button>
           </CardFooter>
         </Card>
@@ -189,8 +224,13 @@ export default function Pricing() {
           </CardBody>
           <CardFooter style={{textAlign: 'center'}}>
             <Title headingLevel="h1">$60/month</Title>
-            <Button variant="danger" style={{marginTop: '10px'}}>
-              Purchase plan
+            <Button
+              variant="danger"
+              style={{marginTop: '10px'}}
+              component="a"
+              href={pricingLinks.small}
+            >
+              Purchase plan <ExternalLinkAltIcon />
             </Button>
           </CardFooter>
         </Card>

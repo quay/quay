@@ -64,7 +64,11 @@ export default function OverviewList() {
   return (
     <div className="overview-list">
       {OverviewHeader}
-      <Tabs activeKey={activeTabKey} onSelect={handleTabClick}>
+      <Tabs
+        className="overview-tabs"
+        activeKey={activeTabKey}
+        onSelect={handleTabClick}
+      >
         <Tab eventKey={0} title={<TabTitleText>Overview</TabTitleText>}>
           <GettingStarted />
 

@@ -11,7 +11,6 @@ import {
   Split,
   SplitItem,
 } from '@patternfly/react-core';
-import logo from 'src/assets/quay.svg';
 
 import './css/GettingStarted.scss';
 
@@ -40,7 +39,7 @@ export default function GettingStarted() {
               href="https://quay.io"
               isLarge
             >
-              Use or Try? Quay.io Free
+              Try Quay.io free
             </Button>
             <Button
               variant="secondary"
