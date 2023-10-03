@@ -219,7 +219,7 @@ export default function AutoPruning(props: AutoPruning) {
       <Form id="autpruning-form" maxWidth="70%">
         <FormGroup
           isInline
-          label="Prune Method"
+          label="Prune Policy - select a method to prune tags"
           fieldId="method"
           helperText="The method used to prune tags."
           isRequired
@@ -252,7 +252,7 @@ export default function AutoPruning(props: AutoPruning) {
           <FormGroup
             label="The number of tags to keep."
             fieldId=""
-            helperText="All tags sorted by earliest creation date will get pruned until the repository total falls below the threshold"
+            helperText="All tags sorted by earliest creation date will be deleted until the repository total falls below the threshold"
             isRequired
           >
             <NumberInput
@@ -276,9 +276,9 @@ export default function AutoPruning(props: AutoPruning) {
         </Conditional>
         <Conditional if={method === AutoPruneMethod.TAG_CREATION_DATE}>
           <FormGroup
-            label="Prune tags older than given timespan."
+            label="Delete tags older than given timespan."
             fieldId=""
-            helperText="All tags with a creation date earlier than a given time period will get pruned"
+            helperText="All tags with a creation date earlier than the selected time period will be deleted"
             isRequired
           >
             <NumberInput
