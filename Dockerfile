@@ -23,8 +23,9 @@ RUN set -ex\
 		python39 \
 		python3-gpg \
 		skopeo \
-        findutils \
-    ; microdnf remove platform-python-pip python39-pip \
+		findutils \
+	; microdnf -y reinstall tzdata \
+	; microdnf remove platform-python-pip python39-pip \
 	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
