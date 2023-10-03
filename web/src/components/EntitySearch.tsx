@@ -1,4 +1,8 @@
-import {Select, SelectOption, SelectVariant} from '@patternfly/react-core';
+import {
+  Select,
+  SelectOption,
+  SelectVariant,
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {useEntities} from 'src/hooks/UseEntities';
 import {Entity, getMemberType} from 'src/resources/UserResource';

@@ -54,7 +54,7 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="${teamToBeUpdated}-Creator"]`).click();
 
     // verify success alert
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Team role updated successfully for: ${teamToBeUpdated}`)
       .should('exist');
   });
@@ -73,7 +73,7 @@ describe('Teams and membership page', () => {
       .click();
 
     // verify success alert
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Successfully deleted team`)
       .should('exist');
   });
@@ -88,7 +88,7 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="${collaboratorName}-del-btn"]`).click();
 
     // verify success alert
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Successfully deleted collaborator`)
       .should('exist');
   });
@@ -133,7 +133,7 @@ describe('Teams and membership page', () => {
     cy.get('#update-team-repo-permissions').click();
 
     // verify success alert
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Updated repo perm for team: ${team} successfully`)
       .should('exist');
   });
@@ -158,7 +158,7 @@ describe('Teams and membership page', () => {
     cy.get('#update-team-repo-permissions').click();
 
     // verify success alert
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Updated repo perm for team: ${team} successfully`)
       .should('exist');
   });
@@ -181,7 +181,7 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="${robotAccntToBeDeleted}-delete-icon"]`).click();
 
     // verify success alert
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Successfully deleted team member`)
       .should('exist');
   });

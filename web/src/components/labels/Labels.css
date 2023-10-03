@@ -3,6 +3,6 @@
 }
 
 .label {
-    --pf-c-label--BorderRadius: 1em;
+    --pf-v5-c-label--BorderRadius: 1em;
     margin-bottom: 3px;
 }

@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import {
   Tabs,
   Tab,
@@ -37,13 +37,13 @@ const EmptyRobotToken = {
 export default function RobotTokensModal(props: RobotTokensModalProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   const [isSecretExpanded, setSecretExpanded] = useState(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [, setLoading] = useState<boolean>(true);
   const [tokenData, setTokenData] = useState<IRobotToken>(EmptyRobotToken);
-  const [err, setErr] = useState<string[]>();
+  const [, setErr] = useState<string[]>();
   const config = useQuayConfig();
   const domain = config?.config.SERVER_HOSTNAME;
 
-  const {robotAccountToken, regenerateRobotToken} = useRobotToken({
+  const {regenerateRobotToken} = useRobotToken({
     orgName: props.namespace,
     robotAcct: props.robotAccount.name,
     onSuccess: (result) => {
@@ -134,7 +134,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   };
 
   const handleTabClick = (
-    event: React.MouseEvent<any> | React.KeyboardEvent | MouseEvent,
+    _event: React.MouseEvent<unknown> | React.KeyboardEvent | MouseEvent,
     tabIndex: string | number,
   ) => {
     setActiveTabKey(tabIndex);
@@ -209,9 +209,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             <>
               <TabTitleIcon>
                 <img
-                  src={require(activeTabKey == 1
-                    ? 'src/assets/kubernetes.svg'
-                    : 'src/assets/kubernetes-grey.svg')}
+                  src={require(
+                    activeTabKey == 1
+                      ? 'src/assets/kubernetes.svg'
+                      : 'src/assets/kubernetes-grey.svg',
+                  )}
                 />
               </TabTitleIcon>
               <TabTitleText>Kubernetes</TabTitleText>
@@ -253,7 +255,8 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             >
               <TextArea
                 value={getKubernetesContent().join('')}
-                isReadOnly={true}
+                readOnly
+                readOnlyVariant="default"
                 autoResize={true}
                 className="text-area-height"
                 id="expandable-kube-content"
@@ -296,9 +299,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             <>
               <TabTitleIcon>
                 <img
-                  src={require(activeTabKey == 2
-                    ? 'src/assets/podman.svg'
-                    : 'src/assets/podman-grey.svg')}
+                  src={require(
+                    activeTabKey == 2
+                      ? 'src/assets/podman.svg'
+                      : 'src/assets/podman-grey.svg',
+                  )}
                 />
               </TabTitleIcon>
               <TabTitleText>Podman</TabTitleText>

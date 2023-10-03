@@ -24,10 +24,7 @@ export default function TeamsAndMembershipList(
     TableModeType.Teams,
   );
 
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id);
     fetchTableItems();

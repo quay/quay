@@ -1,4 +1,10 @@
-import {Nav, NavItem, NavList, PageSidebar} from '@patternfly/react-core';
+import {
+  Nav,
+  NavItem,
+  NavList,
+  PageSidebar,
+  PageSidebarBody,
+} from '@patternfly/react-core';
 import {Link, useLocation} from 'react-router-dom';
 import {SidebarState} from 'src/atoms/SidebarState';
 import {NavigationPath} from 'src/routes/NavigationPath';
@@ -24,7 +30,7 @@ const routes: SideNavProps[] = [
     isSideNav: true,
     navPath: NavigationPath.repositoriesList,
     title: 'Repositories',
-    component: <RepositoriesList organizationName={null}/>,
+    component: <RepositoriesList organizationName={null} />,
   },
 ];
 
@@ -51,7 +57,9 @@ export function QuaySidebar() {
 
   if (sidebarState.isOpen) {
     return (
-      <PageSidebar className="page-sidebar" theme="dark" nav={Navigation} />
+      <PageSidebar className="page-sidebar" theme="dark">
+        <PageSidebarBody>{Navigation}</PageSidebarBody>
+      </PageSidebar>
     );
   }
   return <></>;

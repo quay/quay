@@ -1,4 +1,11 @@
-import {Form, FormGroup, TextInput} from '@patternfly/react-core';
+import {
+  Form,
+  FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
+  TextInput,
+} from '@patternfly/react-core';
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import {useEffect, useState} from 'react';
 
@@ -29,15 +36,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
 
   return (
     <Form>
-      <FormGroup
-        label={props.nameLabel}
-        fieldId="form-name"
-        isRequired
-        helperText={nameHelperText}
-        helperTextInvalid={nameHelperText}
-        validated={validatedName}
-        helperTextInvalidIcon={<ExclamationCircleIcon />}
-      >
+      <FormGroup label={props.nameLabel} fieldId="form-name" isRequired>
         <TextInput
           data-testid="new-robot-name-input"
           isRequired
@@ -45,25 +44,40 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           id="robot-wizard-form-name"
           name="form-name"
           value={props.name}
-          onChange={handleNameChange}
+          onChange={(_event, robotName: string) => handleNameChange(robotName)}
           validated={validatedName}
         />
+
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem
+              variant={validatedName}
+              {...(validatedName === 'error' && {
+                icon: <ExclamationCircleIcon />,
+              })}
+            >
+              {nameHelperText}
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
-      <FormGroup
-        label={props.descriptionLabel}
-        fieldId="form-description"
-        helperText={props.helperText}
-      >
+      <FormGroup label={props.descriptionLabel} fieldId="form-description">
         <TextInput
           data-testid="new-robot-description-input"
           type="text"
           id="robot-wizard-form-description"
           name="form-description"
           value={props.description}
-          onChange={(robotDescription: string) =>
+          onChange={(_event, robotDescription: string) =>
             props.setDescription(robotDescription)
           }
         />
+
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>{props.helperText}</HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
     </Form>
   );

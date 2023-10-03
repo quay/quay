@@ -10,10 +10,7 @@ type TableModeType = 'Expand' | 'Collapse';
 
 export function ExpandCollapseButton(props: ExpandCollapseButtonProps) {
   const [tableMode, setTableMode] = React.useState<TableModeType>('Collapse');
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id as TableModeType);
     if (id == 'Expand') {

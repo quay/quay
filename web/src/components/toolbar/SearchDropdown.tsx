@@ -1,10 +1,10 @@
 import {useState} from 'react';
+import {ToolbarItem} from '@patternfly/react-core';
 import {
   Dropdown,
   DropdownToggle,
   DropdownItem,
-  ToolbarItem,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {SetterOrUpdater} from 'recoil';
 import {SearchState} from './SearchTypes';
 

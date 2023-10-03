@@ -5,13 +5,12 @@ import {
   TextInput,
   FormGroup,
   Form,
-  Dropdown,
-  DropdownToggle,
   ToggleGroup,
   ToggleGroupItem,
   ToggleGroupItemProps,
 } from '@patternfly/react-core';
-import {TableComposable, Tbody, Td, Tr} from '@patternfly/react-table';
+import {Dropdown, DropdownToggle} from '@patternfly/react-core/deprecated';
+import {Table, Tbody, Td, Tr} from '@patternfly/react-table';
 import React, {useState} from 'react';
 
 type TableModeType = 'Teams' | 'Repositories' | 'Default-permissions';
@@ -34,10 +33,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
     props.userNamespace ? 'Repositories' : 'Teams',
   );
 
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id as TableModeType);
   };
@@ -54,7 +50,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   const fetchSelectedTeams = () => {
     return (
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Tbody>
           {props.selectedTeams.map((team, rowIndex) => (
             <Tr key={team.name}>
@@ -62,7 +58,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
                 select={{
                   rowIndex,
                   isSelected: true,
-                  disable: true,
+                  isDisabled: true,
                 }}
               />
               <Td dataLabel={TeamColumnNames.name}>{team.name}</Td>
@@ -78,13 +74,13 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     );
   };
 
   const fetchSelectedRepos = () => {
     return (
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Tbody>
           {props.selectedRepos.map((repo, rowIndex) => (
             <Tr key={repo.name}>
@@ -92,7 +88,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
                 select={{
                   rowIndex,
                   isSelected: true,
-                  disable: true,
+                  isDisabled: true,
                 }}
               />
               <Td dataLabel={RepoColumnNames.name}>{repo.name}</Td>
@@ -111,7 +107,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     );
   };
 

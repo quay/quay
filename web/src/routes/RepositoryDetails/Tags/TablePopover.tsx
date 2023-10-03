@@ -1,13 +1,4 @@
-import {
-  Popover,
-  PopoverPosition,
-  Button,
-  ClipboardCopy,
-  Modal,
-  ModalVariant,
-  Text,
-  Tooltip,
-} from '@patternfly/react-core';
+import {Popover, ClipboardCopy, Text} from '@patternfly/react-core';
 import {useRecoilState} from 'recoil';
 import {currentOpenPopoverState} from 'src/atoms/TagListState';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -28,9 +19,6 @@ export default function TablePopover(props: TablePopoverProps) {
         setCurrentOpenPopover('');
       }}
       headerContent={<div>Fetch Tag</div>}
-      onMouseLeave={() => {
-        setCurrentOpenPopover('');
-      }}
       bodyContent={
         <div>
           <Text style={{fontWeight: 'bold'}}>Podman Pull (By Tag)</Text>

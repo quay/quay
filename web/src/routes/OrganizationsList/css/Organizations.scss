@@ -1,19 +1,14 @@
-// .text-input-width {
-//     --pf-c-form-control--Width: 60%;
-// }
-
 $screen-sm: 768px;
-$pf-global-gutter: 1rem;
-$pf-global-gutter--md: 1.5rem;
-
+$pf-v5-global-gutter: 1rem;
+$pf-v5-global-gutter--md: 1.5rem;
 
 // Page layout
 .co-m-nav-title {
-  margin-top: $pf-global-gutter--md;
-  padding: 0 $pf-global-gutter 0;
+  margin-top: $pf-v5-global-gutter--md;
+  padding: 0 $pf-v5-global-gutter 0;
   @media (min-width: 500px) {
-    padding-left: $pf-global-gutter--md;
-    padding-right: $pf-global-gutter--md;
+    padding-left: $pf-v5-global-gutter--md;
+    padding-right: $pf-v5-global-gutter--md;
   }
   &--row {
     @media (min-width: $screen-sm) {
@@ -26,19 +21,14 @@ $pf-global-gutter--md: 1.5rem;
 
 // Trash icon
 .fas.fa-trash {
-  font-size: var(--pf-global--icon--FontSize--lg);
+  font-size: var(--pf-v5-global--icon--FontSize--lg);
   color: grey;
 }
 
-.pf-c-button.pf-m-plain {
-  --pf-c-button--disabled--BackgroundColor: transparent
+.pf-v5-c-button.pf-m-plain {
+  --pf-v5-c-button--disabled--BackgroundColor: transparent
 }
 
 .create-org-modal-slider {
   word-break: normal;
 }
-
-// search placeholder text color
-// .pf-c-form-control {
-//   --pf-c-form-control--placeholder--Color: #989898
-// }

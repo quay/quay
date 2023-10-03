@@ -13,21 +13,16 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+} from '@patternfly/react-core';
+import {
   Dropdown,
   DropdownItem,
-  DropdownSeparator,
   KebabToggle,
-} from '@patternfly/react-core';
+  KebabToggleProps,
+} from '@patternfly/react-core/deprecated';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {DropdownWithDescription} from 'src/components/toolbar/DropdownWithDescription';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {formatDate} from 'src/libs/utils';
@@ -41,9 +36,6 @@ const ColumnNames = {
 };
 
 type TableModeType = 'All' | 'Selected';
-
-const defaultSelectedVal = 'Read';
-const defaultUnSelectedVal = 'None';
 
 export default function AddToRepository(props: AddToRepositoryProps) {
   const [tableMode, setTableMode] = useState<TableModeType>('All');
@@ -60,10 +52,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
     return r1.last_modified > r2.last_modified ? -1 : 1;
   });
 
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id as TableModeType);
     if (id == 'All') {
@@ -189,7 +178,10 @@ export default function AddToRepository(props: AddToRepositoryProps) {
     });
   };
 
-  const onKebabToggle = (isKebabOpen: boolean) => {
+  const onKebabToggle: KebabToggleProps['onToggle'] = (
+    _event,
+    isKebabOpen: boolean,
+  ) => {
     setKebabOpen(isKebabOpen);
   };
 
@@ -290,7 +282,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
             />
           </ToolbarContent>
         </Toolbar>
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -336,7 +328,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
               </Tbody>
             );
           })}
-        </TableComposable>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             itemsList={filteredItems}

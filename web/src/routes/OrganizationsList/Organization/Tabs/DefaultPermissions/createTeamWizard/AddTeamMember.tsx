@@ -5,14 +5,7 @@ import {
   Text,
   TextVariants,
 } from '@patternfly/react-core';
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {ITeamMember} from 'src/hooks/UseMembers';
 import {useEffect, useState} from 'react';
 import AddTeamToolbar from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createTeamWizard/AddTeamToolbar';
@@ -184,7 +177,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
           addTeamMemberHandler={addTeamMemberHandler}
           setDrawerExpanded={props.setDrawerExpanded}
         >
-          <TableComposable aria-label="Selectable table">
+          <Table aria-label="Selectable table">
             <Thead>
               <Tr>
                 <Th>{memberAndRobotColNames.teamMember}</Th>
@@ -214,7 +207,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
                 </Tr>
               ))}
             </Tbody>
-          </TableComposable>
+          </Table>
         </AddTeamToolbar>
       </PageSection>
     </>

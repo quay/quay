@@ -1,13 +1,6 @@
 import {useMemo, useState} from 'react';
 import {Spinner} from '@patternfly/react-core';
-import {
-  TableComposable,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-} from '@patternfly/react-table';
+import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useAllTags} from 'src/hooks/UseTags';
 import {Tag} from 'src/resources/TagResource';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
@@ -90,7 +83,7 @@ export default function TagHistory(props: TagHistoryProps) {
         setPerPage={setPerPage}
         total={isNullOrUndefined(tagList) ? 0 : tagList.length}
       />
-      <TableComposable aria-label="Tag history table" variant="compact">
+      <Table aria-label="Tag history table" variant="compact">
         <Thead>
           <Tr>
             <Th>Tag change</Th>
@@ -161,7 +154,7 @@ export default function TagHistory(props: TagHistoryProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     </>
   );
 }

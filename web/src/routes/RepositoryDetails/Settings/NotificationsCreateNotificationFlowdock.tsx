@@ -2,12 +2,8 @@ import {NotificationEvent} from 'src/hooks/UseEvents';
 import {NotificationMethod} from 'src/hooks/UseNotificationMethods';
 import {
   ActionGroup,
-  Alert,
-  AlertActionCloseButton,
   Button,
   FormGroup,
-  Modal,
-  ModalVariant,
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
@@ -65,14 +61,14 @@ export default function CreateFlowdockNotification(
           required
           id="flowdock-api-token-field"
           value={apiTopken}
-          onChange={(value) => setAPIToken(value)}
+          onChange={(_event, value) => setAPIToken(value)}
         />
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

@@ -76,14 +76,14 @@ export function Signin() {
       helperText={errMessage}
       usernameLabel="Username"
       usernameValue={username}
-      onChangeUsername={(v) => setUsername(v)}
+      onChangeUsername={(_event, v) => setUsername(v)}
       isValidUsername={true}
       passwordLabel="Password"
       passwordValue={password}
-      onChangePassword={(v) => setPassword(v)}
+      onChangePassword={(_event, v) => setPassword(v)}
       isValidPassword={true}
       isRememberMeChecked={rememberMe}
-      onChangeRememberMe={(v) => setRememberMe(v)}
+      onChangeRememberMe={(_event, v) => setRememberMe(v)}
       onLoginButtonClick={(e) => onLoginButtonClick(e)}
       loginButtonLabel="Log in"
     />
@@ -91,11 +91,10 @@ export function Signin() {
 
   return (
     <LoginPage
-      className={'pdf-u-background-color-100 pf-u-text-align-left'}
+      className={'pdf-u-background-color-100 pf-v5-u-text-align-left'}
       brandImgSrc={logoUrl}
       brandImgAlt="Red Hat Quay"
       backgroundImgSrc="assets/images/rh_login.jpeg"
-      backgroundImgAlt="Red Hat Quay"
       textContent="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
       loginTitle="Log in to your account"
     >

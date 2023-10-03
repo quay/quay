@@ -2,10 +2,12 @@ import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
+} from '@patternfly/react-core';
+import {
   Dropdown,
   DropdownItem,
   DropdownToggle,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
@@ -38,7 +40,7 @@ export default function PermissionsDropdown({
       <Dropdown
         onSelect={() => setIsOpen(false)}
         toggle={
-          <DropdownToggle onToggle={(isOpen) => setIsOpen(isOpen)}>
+          <DropdownToggle onToggle={(_event, isOpen) => setIsOpen(isOpen)}>
             {member.role}
           </DropdownToggle>
         }

@@ -71,7 +71,7 @@ export function StandaloneMain() {
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
       >
-        <Banner variant="info">
+        <Banner variant="blue">
           <Flex
             spaceItems={{default: 'spaceItemsSm'}}
             justifyContent={{default: 'justifyContentCenter'}}

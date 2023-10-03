@@ -12,14 +12,17 @@ export function PackagesFilter(props: PackagesFilterProps) {
     });
   };
 
-  const onSearchTermChanged = (newSearchTerm: string) => {
+  const onSearchTermChanged = (
+    _event: React.FormEvent<HTMLInputElement>,
+    newSearchTerm: string,
+  ) => {
     props.setPage(1);
     setSearchTerm(newSearchTerm);
     props.setFilteredPackageList(filterPackagesList(newSearchTerm));
   };
 
   return (
-    <Flex className="pf-u-mt-md">
+    <Flex className="pf-v5-u-mt-md">
       <FlexItem>
         <TextInput
           isRequired

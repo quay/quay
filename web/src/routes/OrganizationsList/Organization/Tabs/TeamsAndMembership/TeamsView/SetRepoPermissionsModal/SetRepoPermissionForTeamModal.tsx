@@ -1,11 +1,4 @@
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {Button, Modal, ModalVariant, Spinner} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import Empty from 'src/components/empty/Empty';
@@ -207,7 +200,7 @@ export default function SetRepoPermissionForTeamModal(
           setKebabOpen={setKebabOpen}
           updateModifiedRepoPerms={updateModifiedRepoPerms}
         >
-          <TableComposable aria-label="Selectable table">
+          <Table aria-label="Selectable table">
             <Thead>
               <Tr>
                 <Th />
@@ -246,7 +239,7 @@ export default function SetRepoPermissionForTeamModal(
                 </Tr>
               ))}
             </Tbody>
-          </TableComposable>
+          </Table>
         </SetRepoPermissionsToolbar>
       )}
     </Modal>

@@ -1,15 +1,16 @@
-import {Form, FormGroup, TextInput} from '@patternfly/react-core';
-import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
+import {
+  Form,
+  FormGroup,
+  TextInput,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
+} from '@patternfly/react-core';
 
 export default function NameAndDescription(props: NameAndDescriptionProps) {
   return (
     <Form>
-      <FormGroup
-        label={props.nameLabel}
-        fieldId="form-name"
-        isRequired
-        helperTextInvalidIcon={<ExclamationCircleIcon />}
-      >
+      <FormGroup label={props.nameLabel} fieldId="form-name" isRequired>
         <TextInput
           data-testid="create-team-wizard-form-name"
           isRequired
@@ -21,11 +22,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           isDisabled
         />
       </FormGroup>
-      <FormGroup
-        label={props.descriptionLabel}
-        fieldId="form-description"
-        helperText={props.helperText}
-      >
+      <FormGroup label={props.descriptionLabel} fieldId="form-description">
         <TextInput
           data-testid="create-team-wizard-form-description"
           type="text"
@@ -35,6 +32,12 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
           aria-label="disabled teamDescription input"
           isDisabled
         />
+
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>{props.helperText}</HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
     </Form>
   );

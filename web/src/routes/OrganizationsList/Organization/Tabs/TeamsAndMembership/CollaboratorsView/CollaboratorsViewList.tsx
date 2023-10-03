@@ -6,14 +6,7 @@ import {
   Spinner,
 } from '@patternfly/react-core';
 import CollaboratorsViewToolbar from './CollaboratorsViewToolbar';
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useFetchCollaborators} from 'src/hooks/UseMembers';
 import {useEffect, useState} from 'react';
 import {IMembers} from 'src/resources/MembersResource';
@@ -109,7 +102,7 @@ export default function CollaboratorsViewList(
       />
       {props.children}
       <Conditional if={isDeleteModalOpen}>{deleteCollabModal}</Conditional>
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Thead>
           <Tr>
             <Th />
@@ -156,7 +149,7 @@ export default function CollaboratorsViewList(
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
       <PanelFooter>
         <ToolbarPagination
           itemsList={filteredCollaborators}

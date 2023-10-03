@@ -6,15 +6,12 @@ import {
 } from '@patternfly/react-core';
 import React from 'react';
 
-type TableModeType = 'All' | 'Selected';
+type TableModeType = 'All' | 'Selected' | 'Collapse';
 
 export function AllSelectedToggleButton(props: AllSelectedToggleButtonProps) {
   const [tableMode, setTableMode] = React.useState<TableModeType>('All');
 
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id as TableModeType);
     if (id == 'All') {

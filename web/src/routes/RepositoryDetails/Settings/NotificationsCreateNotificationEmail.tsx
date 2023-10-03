@@ -4,6 +4,9 @@ import {
   AlertActionCloseButton,
   Button,
   FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
   Modal,
   ModalVariant,
   TextInput,
@@ -177,26 +180,29 @@ export default function CreateEmailNotification(
       >
         Unable to verify email confirmation. Please wait a moment and retry.
       </Modal>
-      <FormGroup
-        fieldId="email"
-        label="E-mail address"
-        isRequired
-        validated={email == '' || isValidEmail(email) ? 'default' : 'error'}
-        helperTextInvalid="Invalid email"
-        helperTextInvalidIcon={<ExclamationCircleIcon />}
-      >
+      <FormGroup fieldId="email" label="E-mail address" isRequired>
         <TextInput
           id="notification-email"
           isRequired
           value={email}
-          onChange={(value) => setEmail(value)}
+          onChange={(_event, value) => setEmail(value)}
         />
+
+        {!isValidEmail(email) && (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="error" icon={<ExclamationCircleIcon />}>
+                Invalid email
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        )}
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

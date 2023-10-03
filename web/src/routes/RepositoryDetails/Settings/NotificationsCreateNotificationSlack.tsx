@@ -2,12 +2,11 @@ import {NotificationEvent} from 'src/hooks/UseEvents';
 import {NotificationMethod} from 'src/hooks/UseNotificationMethods';
 import {
   ActionGroup,
-  Alert,
-  AlertActionCloseButton,
   Button,
   FormGroup,
-  Modal,
-  ModalVariant,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
@@ -66,26 +65,30 @@ export default function CreateSlackNotification(
 
   return (
     <>
-      <FormGroup
-        fieldId="slack-webhook-url"
-        label="Webhook URL"
-        isRequired
-        helperTextInvalid="Must be a valid slack url in the form ^https://hooks.slack.com/services/[A-Z0-9]+/[A-Z0-9]+/[a-zA-Z0-9]+$/"
-        helperTextInvalidIcon={<ExclamationCircleIcon />}
-        validated={url == '' || isValidWebhookURL(url) ? 'default' : 'error'}
-      >
+      <FormGroup fieldId="slack-webhook-url" label="Webhook URL" isRequired>
         <TextInput
           required
           id="slack-webhook-url-field"
           value={url}
-          onChange={(value) => setUrl(value)}
+          onChange={(_event, value) => setUrl(value)}
         />
+
+        {!isValidWebhookURL(url) && (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="error" icon={<ExclamationCircleIcon />}>
+                Must be a valid slack url in the form
+                ^https://hooks.slack.com/services/[A-Z0-9]+/[A-Z0-9]+/[a-zA-Z0-9]+$/
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        )}
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

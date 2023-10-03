@@ -4,8 +4,10 @@ import {
   Button,
   Form,
   FormGroup,
-  Popover,
   TextInput,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import {useState} from 'react';
@@ -16,7 +18,8 @@ type validate = 'success' | 'error' | 'default';
 
 export function CreateNewUser(props: CreateNewUserProps) {
   const [username, setUsername] = useState(props.user.username);
-  const [validatedUsername, setValidatedUsername] = useState<validate>('success');
+  const [validatedUsername, setValidatedUsername] =
+    useState<validate>('success');
   const [helperText, setHelperText] = useState('');
 
   const handleModalToggle = () => {
@@ -77,14 +80,14 @@ export function CreateNewUser(props: CreateNewUserProps) {
   function fetchDescription() {
     return `The username ${props.user.username} was automatically generated to conform to the Docker CLI guidelines
      for use as a namespace in Quay Container Registry.
-     Please confirm the selected username or enter a different username below:`
+     Please confirm the selected username or enter a different username below:`;
   }
 
-  const updateUsername = async() => {
+  const updateUsername = async () => {
     await updateUser(username);
     handleModalToggle();
     window.location.reload();
-  }
+  };
 
   return (
     <Modal
@@ -107,25 +110,30 @@ export function CreateNewUser(props: CreateNewUserProps) {
         </Button>,
       ]}
     >
-
       <Form id="confirm-username-form">
-        <FormGroup
-          isRequired
-          fieldId="confirm-username-form-group"
-          helperText={helperText}
-          helperTextInvalid={helperText}
-          helperTextInvalidIcon={<ExclamationCircleIcon />}
-          validated={validatedUsername}
-        >
+        <FormGroup isRequired fieldId="confirm-username-form-group">
           <TextInput
             isRequired
             type="text"
             id="confirm-username-input"
             name="confirm-username-input"
             value={username}
-            onChange={handleUsernameChange}
+            onChange={(_event, value) => handleUsernameChange(value)}
             validated={validatedUsername}
           />
+
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={validatedUsername}
+                {...(validatedUsername === 'error' && {
+                  icon: <ExclamationCircleIcon />,
+                })}
+              >
+                {helperText}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
       </Form>
     </Modal>

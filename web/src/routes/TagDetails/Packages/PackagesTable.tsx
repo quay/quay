@@ -5,14 +5,7 @@ import {
   VulnerabilitySeverity,
   VulnerabilityOrder,
 } from 'src/resources/TagResource';
-import {
-  TableComposable,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-} from '@patternfly/react-table';
+import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {
   PageSection,
   PageSectionVariants,
@@ -208,7 +201,7 @@ export default function PackagesTable({features}: PackagesProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <TableComposable aria-label="packages table" data-testid="packages-table">
+      <Table aria-label="packages table" data-testid="packages-table">
         <TableHead />
         {paginatedPackagList.length !== 0 ? (
           paginatedPackagList.map((pkg: PackagesListItem) => {
@@ -250,7 +243,7 @@ export default function PackagesTable({features}: PackagesProps) {
             </Tr>
           </Tbody>
         )}
-      </TableComposable>
+      </Table>
       <ToolbarPagination
         itemsList={filteredPackagesList}
         perPage={perPage}

@@ -15,8 +15,10 @@ import {
   Button,
   Alert,
   AlertGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
-import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
@@ -35,7 +37,6 @@ const timeMachineOptions = {
 };
 
 const GeneralSettings = (props: GeneralSettingsProps) => {
-  const location = useLocation();
   const quayConfig = useQuayConfig();
   const organizationName = props.organizationName;
   const {user, loading: isUserLoading} = useCurrentUser();
@@ -45,7 +46,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
   const {updateOrgSettings} = useOrganizationSettings({
     name: props.organizationName,
-    onSuccess: (result) => {
+    onSuccess: () => {
       setAlerts((prevAlerts) => {
         return [
           ...prevAlerts,
@@ -88,7 +89,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   // Email
   const namespaceEmail = isUserOrganization
     ? user?.email || ''
-    : (organization as any)?.email || '';
+    : organization?.email || '';
   const [emailFormValue, setEmailFormValue] = useState<string>('');
   const [validated, setValidated] = useState<validate>('default');
 
@@ -165,46 +166,49 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           <Alert variant="danger" title={error} aria-live="polite" isInline />
         </FormAlert>
       )}
-      <FormGroup
-        isInline
-        label="Organization"
-        fieldId="form-organization"
-        helperText={'Namespace names cannot be changed once set.'}
-      >
+      <FormGroup isInline label="Organization" fieldId="form-organization">
         <TextInput
           isDisabled
           type="text"
           id="form-name"
           value={organizationName}
         />
+
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>
+              Namespace names cannot be changed once set.
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
 
-      <FormGroup
-        isInline
-        label="Email"
-        fieldId="form-email"
-        helperText="The e-mail address associated with the organization."
-      >
+      <FormGroup isInline label="Email" fieldId="form-email">
         <TextInput
           type="email"
           id="modal-with-form-form-name"
           value={emailFormValue}
-          onChange={handleEmailChange}
+          onChange={(_event, emailFormValue) =>
+            handleEmailChange(emailFormValue)
+          }
         />
+
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>
+              The e-mail address associated with the organization.
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
 
-      <FormGroup
-        isInline
-        label="Time Machine"
-        fieldId="form-time-machine"
-        helperText="The amount of time, after a tag is deleted, that the tag is accessible in time machine before being garbage collected."
-      >
+      <FormGroup isInline label="Time Machine" fieldId="form-time-machine">
         <FormSelect
           placeholder="Time Machine"
           aria-label="Time Machine select"
           data-testid="arch-select"
           value={timeMachineFormValue}
-          onChange={(val) => setTimeMachineFormValue(val)}
+          onChange={(_event, val) => setTimeMachineFormValue(val)}
         >
           {quayConfig?.config?.TAG_EXPIRATION_OPTIONS.map((option, index) => (
             <FormSelectOption
@@ -214,6 +218,15 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
             />
           ))}
         </FormSelect>
+
+        <FormHelperText>
+          <HelperText>
+            <HelperTextItem>
+              The amount of time, after a tag is deleted, that the tag is
+              accessible in time machine before being garbage collected.
+            </HelperTextItem>
+          </HelperText>
+        </FormHelperText>
       </FormGroup>
 
       <ActionGroup>

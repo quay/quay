@@ -1,11 +1,4 @@
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {
   PageSection,
   PanelFooter,
@@ -66,10 +59,7 @@ export default function TeamView(props: TeamViewProps) {
     page * perPage - perPage + perPage,
   );
 
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id as TableModeType);
   };
@@ -146,7 +136,7 @@ export default function TeamView(props: TeamViewProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Thead>
           <Tr>
             {props.showCheckbox ? <Th /> : null}
@@ -185,7 +175,7 @@ export default function TeamView(props: TeamViewProps) {
             </Tbody>
           );
         })}
-      </TableComposable>
+      </Table>
       <PanelFooter>
         <ToolbarPagination
           itemsList={filteredItems}

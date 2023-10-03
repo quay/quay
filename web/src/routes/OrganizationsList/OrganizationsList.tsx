@@ -1,18 +1,11 @@
-import {
-  TableComposable,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-} from '@patternfly/react-table';
+import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {
   PageSection,
   PageSectionVariants,
   Title,
-  DropdownItem,
   PanelFooter,
 } from '@patternfly/react-core';
+import {DropdownItem} from '@patternfly/react-core/deprecated';
 import './css/Organizations.scss';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {useRecoilState} from 'recoil';
@@ -38,7 +31,6 @@ import ColumnNames from './ColumnNames';
 import RepoCount from 'src/components/Table/RepoCount';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useDeleteOrganizations} from 'src/hooks/UseDeleteOrganizations';
-import {Router} from 'react-router-dom';
 
 export interface OrganizationsTableItem {
   name: string;
@@ -307,7 +299,7 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
         />
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -328,7 +320,7 @@ export default function OrganizationsList() {
                     onSelect: (_event, isSelecting) =>
                       onSelectOrganization(org, rowIndex, isSelecting),
                     isSelected: isOrganizationSelected(org),
-                    disable: !isOrgSelectable(org),
+                    isDisabled: !isOrgSelectable(org),
                   }}
                 />
                 <OrgTableData
@@ -338,7 +330,7 @@ export default function OrganizationsList() {
               </Tr>
             ))}
           </Tbody>
-        </TableComposable>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             itemsList={filteredOrgs}

@@ -26,12 +26,17 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     errorSetExpiration,
     errorSetExpirationDetails,
   } = useSetExpiration(props.org, props.repo);
+  // Setting a default value here to avoid this known Patternfly DatePicker issue:
+  // https://github.com/patternfly/patternfly-react/issues/9700
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 1);
+
   const initialDate: Date = isNullOrUndefined(props.expiration)
     ? null
     : new Date(props.expiration);
 
   useEffect(() => {
-    setDate(initialDate);
+    setDate(initialDate || defaultDate);
   }, [props.expiration]);
 
   useEffect(() => {
@@ -92,7 +97,13 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     }
   };
 
-  const onDateChange = (value: string, dateValue: Date) => {
+  const dateParse = (date: string) => new Date(date);
+
+  const onDateChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    _value: string,
+    dateValue?: Date,
+  ) => {
     if (!isNullOrUndefined(dateValue)) {
       if (isNullOrUndefined(date)) {
         setDate(dateValue);
@@ -110,7 +121,14 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     }
   };
 
-  const onTimeChange = (time, hour, minute, seconds, isValid) => {
+  const onTimeChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    _time: string,
+    hour?: number,
+    minute?: number,
+    _seconds?: number,
+    isValid?: boolean,
+  ) => {
     if (hour !== null && minute !== null && isValid) {
       if (isNullOrUndefined(date)) {
         const newDate = new Date();
@@ -185,6 +203,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                 placeholder="No date selected"
                 value={dateFormat(date)}
                 dateFormat={dateFormat}
+                dateParse={dateParse}
                 onChange={onDateChange}
                 validators={[rangeValidator]}
               />
