@@ -6,7 +6,6 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from io import BytesIO
-from test.fixtures import *
 
 import pytest
 from mock import patch
@@ -23,12 +22,17 @@ from data.database import (
     ManifestLabel,
     Repository,
     Tag,
+    User,
+    get_epoch_timestamp_ms,
 )
+from data.model import QuotaExceededException, namespacequota
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.storage import get_layer_path
 from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_oci_model import OCIModel
+from digest.digest_tools import sha256_digest
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -38,6 +42,7 @@ from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
 from image.shared.types import ManifestImageLayer
+from test.fixtures import *
 from util.bytes import Bytes
 
 
@@ -652,13 +657,70 @@ def test_create_manifest_and_retarget_tag(registry_model):
     assert sample_manifest is not None
 
     another_manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repository_ref, sample_manifest, "anothertag", storage
+        repository_ref, sample_manifest, "anothertag", storage, verify_quota=True
     )
     assert another_manifest is not None
     assert tag is not None
 
     assert tag.name == "anothertag"
     assert another_manifest.get_parsed_manifest().manifest_dict == sample_manifest.manifest_dict
+
+
+def test_create_manifest_and_retarget_tag_with_quota(registry_model):
+    CONFIG_LAYER_JSON = json.dumps(
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
+    )
+
+    # Create the blobs and manifest object
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    builder = DockerSchema2ManifestBuilder()
+    _, config_digest = _populate_blob_with_content(
+        CONFIG_LAYER_JSON, "devtable", repository_ref.name
+    )
+    builder.set_config_digest(config_digest, len(CONFIG_LAYER_JSON.encode("utf-8")))
+    blob_content = "blobcontent"
+    _, blob_digest = _populate_blob_with_content(blob_content, "devtable", repository_ref.name)
+    builder.add_layer(blob_digest, len(blob_content))
+    manifest = builder.build()
+    assert manifest is not None
+
+    # Create quota and limit
+    user = User.select().where(User.username == "devtable").get()
+    new_quota = namespacequota.create_namespace_quota(user, 1)
+    namespacequota.create_namespace_quota_limit(new_quota, "reject", 100)
+
+    rejected = False
+    try:
+        registry_model.create_manifest_and_retarget_tag(
+            repository_ref,
+            manifest,
+            "newtag",
+            storage,
+            verify_quota=True,
+        )
+    except QuotaExceededException:
+        rejected = True
+    assert rejected
+
+    # Assert that a temporary tag outside the time machine window was created since the manifest was rejected
+    # Get the tag that has beeen created in the last second
+    tag = (
+        Tag.select()
+        .where(
+            Tag.lifetime_start_ms > get_epoch_timestamp_ms() - 1000,
+            Tag.repository == repository_ref._db_id,
+        )
+        .get()
+    )
+    assert tag.name.startswith("$temp-")
+    assert tag.lifetime_end_ms is not None
+    assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - user.removed_tag_expiration_s * 1000
+    assert tag.hidden
+    assert not tag.reversion
 
 
 def test_get_schema1_parsed_manifest(registry_model):
@@ -778,6 +840,17 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
 def _populate_blob(digest):
     location = ImageStorageLocation.get(name="local_us")
     store_blob_record_and_temp_link("devtable", "simple", digest, location, 1, 120)
+
+
+def _populate_blob_with_content(content, org_name, repository_name):
+    content = Bytes.for_string_or_unicode(content).as_encoded_str()
+    digest = str(sha256_digest(content))
+    location = ImageStorageLocation.get(name="local_us")
+    blob = store_blob_record_and_temp_link(
+        org_name, repository_name, digest, location, len(content), 120
+    )
+    storage.put_content(["local_us"], get_layer_path(blob), content)
+    return blob, digest
 
 
 def test_known_issue_schema1(registry_model):

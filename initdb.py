@@ -508,6 +508,9 @@ def initialize_database():
 
     NotificationKind.create(name="test_notification")
 
+    NotificationKind.create(name="quota_warning")
+    NotificationKind.create(name="quota_error")
+
     QuayRegion.create(name="us")
     QuayService.create(name="quay")
 

@@ -7,7 +7,7 @@ from peewee import fn
 from data import database, model
 from data.cache import cache_key
 from data.database import db_disallow_replica_use, db_transaction
-from data.model import DataModelException, oci
+from data.model import DataModelException, QuotaExceededException, namespacequota, oci
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatype import FromDictionaryException
@@ -335,7 +335,13 @@ class OCIModel(RegistryDataInterface):
         return Tag.for_tag(tag, self._legacy_image_id_handler)
 
     def create_manifest_and_retarget_tag(
-        self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        tag_name,
+        storage,
+        raise_on_error=False,
+        verify_quota=False,
     ):
         """
         Creates a manifest in a repository, adding all of the necessary data in the model.
@@ -401,6 +407,21 @@ class OCIModel(RegistryDataInterface):
                     expiration_seconds = expiration_td.total_seconds()
                 except ValueError:
                     pass
+
+            if verify_quota:
+                quota = namespacequota.verify_namespace_quota(repository_ref)
+                if quota["severity_level"] == "Warning":
+                    namespacequota.notify_organization_admins(repository_ref, "quota_warning")
+                elif quota["severity_level"] == "Reject":
+                    namespacequota.notify_organization_admins(repository_ref, "quota_error")
+
+                    # Exiting here leaves the manifest without a tag causing it to not be picked
+                    # up by garbage collection. Create an expired temporary tag so it can be picked
+                    # up by GC.
+                    if created_manifest.newly_created:
+                        oci.tag.create_temporary_tag_outside_timemachine(created_manifest.manifest)
+
+                    raise QuotaExceededException()
 
             # Re-target the tag to it.
             tag = oci.tag.retarget_tag(
