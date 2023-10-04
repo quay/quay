@@ -76,12 +76,17 @@ export default function CreateRobotAccountModal(
 
   const onSubmit = async () => {
     const reposToUpdate = filteredRepos();
-    await createNewRobot({
+    const created = await createNewRobot({
       namespace: props.orgName,
       robotname: robotName,
       description: robotDescription,
       isUser: isUserOrganization,
     });
+
+    if (!created || created['name'] == '') {
+      return;
+    }
+
     if (reposToUpdate) {
       await addRepoPerms({
         namespace: props.orgName,
