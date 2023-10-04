@@ -97,8 +97,7 @@ export default function CreateRobotAccountModal(
         selectedTeams: selectedTeams,
       });
     }
-
-    if (robotDefaultPerm) {
+    if (robotDefaultPerm && robotDefaultPerm != 'None') {
       await addDefaultPerms({
         namespace: props.orgName,
         robotname: robotName,

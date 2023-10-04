@@ -195,16 +195,16 @@ export default function CreatePermissionDrawer(
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
       setEntity={setRepositoryCreator}
-      showSuccessAlert={() =>
+      showSuccessAlert={(message) =>
         addAlert({
           variant: AlertVariant.Success,
-          title: `Successfully created robot account with robot name: ${repositoryCreator?.name}`,
+          title: message,
         })
       }
-      showErrorAlert={() =>
+      showErrorAlert={(message) =>
         addAlert({
           variant: AlertVariant.Failure,
-          title: 'Unable to create robot account',
+          title: message,
         })
       }
     />
@@ -222,16 +222,16 @@ export default function CreatePermissionDrawer(
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
       setEntity={setAppliedTo}
-      showSuccessAlert={() =>
+      showSuccessAlert={(message) =>
         addAlert({
           variant: AlertVariant.Success,
-          title: 'Successfully created robot account',
+          title: message,
         })
       }
-      showErrorAlert={() =>
+      showErrorAlert={(message) =>
         addAlert({
           variant: AlertVariant.Failure,
-          title: 'Unable to create robot account',
+          title: message,
         })
       }
     />

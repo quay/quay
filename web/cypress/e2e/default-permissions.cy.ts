@@ -339,7 +339,11 @@ describe('Default permissions page', () => {
 
     // step - Review and Finish
     cy.get('[data-testid="review-and-finish-btn"]').click();
-    cy.get('.pf-c-alert.pf-m-success').should('exist');
+    cy.get('.pf-c-alert.pf-m-success')
+    .contains(
+      `Successfully created robot account with robot name: ${orgName}+${newRobotName}`,
+    )
+    .should('exist');
 
     // verify newly created robot account is shown in the dropdown
     cy.get('#repository-creator-dropdown-select-typeahead').should(
