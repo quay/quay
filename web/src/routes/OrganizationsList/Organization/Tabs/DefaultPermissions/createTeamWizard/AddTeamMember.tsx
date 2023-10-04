@@ -56,16 +56,16 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
 
   const {createNewRobot} = useCreateRobotAccount({
     namespace: props.orgName,
-    onSuccess: () => {
+    onSuccess: (result) => {
       addAlert({
         variant: AlertVariant.Success,
-        title: `Successfully created new robot accnt: ${newRobotAccntName}`,
+        title: result,
       });
     },
-    onError: () => {
+    onError: (err) => {
       addAlert({
         variant: AlertVariant.Failure,
-        title: 'Failed to create new robot accnt',
+        title: err,
       });
     },
   });

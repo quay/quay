@@ -63,9 +63,7 @@ export default function CreateRobotAccountModal(
     useCreateRobotAccount({
       namespace: props.orgName,
       onSuccess: (result) => {
-        props.showSuccessAlert(
-          `Successfully created robot account with robot name: ${result['name']}`,
-        );
+        props.showSuccessAlert(result);
         handleModalToggle();
       },
       onError: (err) => {

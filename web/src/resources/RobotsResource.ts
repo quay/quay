@@ -203,7 +203,7 @@ export async function createNewRobotForNamespace(
   const namespacePath = isUser ? 'user' : `organization/${orgname}`;
   const createOrgRobotsUrl = `/api/v1/${namespacePath}/robots/${robotname}`;
   const payload = {description: description};
-  const response = await axios.put(createOrgRobotsUrl, payload);
+  const response: AxiosResponse = await axios.put(createOrgRobotsUrl, payload);
   assertHttpCode(response.status, 201);
   return response.data;
 }
