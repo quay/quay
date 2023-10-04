@@ -90,6 +90,9 @@ def upgrade(op, tables, tester):
     logger.info("Migrating to external_reference from existing columns")
     op.add_column("repomirrorconfig", sa.Column("external_reference", sa.Text(), nullable=True))
 
+    # Allow peewee to fetch data from the table.
+    op.execute("COMMIT")
+
     logger.info("Reencrypting existing columns")
     if app.config.get("SETUP_COMPLETE", False) and not tester.is_testing():
         old_key_encrypter = FieldEncrypter(app.config.get("SECRET_KEY"))
