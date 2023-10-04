@@ -25,7 +25,7 @@ DateTime==4.3
 debtcollector==1.22.0
 decorator==4.4.1
 Deprecated==1.2.7
-dumb-init==1.2.2
+dumb-init==1.2.5.post1
 elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
 Flask==2.3.2
