@@ -71,7 +71,7 @@ oslo.utils==6.2.1
 packaging==23.1
 pbr==5.11.1
 peewee==3.13.1
-Pillow==9.3.0
+Pillow==10.0.1
 ply==3.11
 prometheus-client==0.7.1
 protobuf==3.18.3
