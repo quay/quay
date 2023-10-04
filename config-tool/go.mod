@@ -14,7 +14,7 @@ require (
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-ldap/ldap/v3 v3.2.4
 	github.com/go-redis/redis/v8 v8.0.0-beta.6
-	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v4 v4.11.0
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
