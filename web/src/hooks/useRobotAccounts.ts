@@ -130,7 +130,9 @@ export function useCreateRobotAccount({namespace, onSuccess, onError}) {
     },
     {
       onSuccess: async (result) => {
-        onSuccess(`Successfully created robot account with robot name: ${result['name']}`);
+        onSuccess(
+          `Successfully created robot account with robot name: ${result['name']}`,
+        );
         queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
       },
       onError: (err) => {
