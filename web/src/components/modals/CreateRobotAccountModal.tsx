@@ -59,18 +59,19 @@ export default function CreateRobotAccountModal(
     'Robot name and description',
   );
 
-  const {createNewRobot} = useCreateRobotAccount({
-    namespace: props.orgName,
-    onSuccess: (result) => {
-      props.showSuccessAlert(
-        `Successfully created robot account with robot name: ${result['robotname']}`,
-      );
-      handleModalToggle();
-    },
-    onError: (err) => {
-      props.showErrorAlert('Unable to create robot account');
-    },
-  });
+  const {createNewRobot, addRepoPerms, addTeams, addDefaultPerms} =
+    useCreateRobotAccount({
+      namespace: props.orgName,
+      onSuccess: (result) => {
+        props.showSuccessAlert(
+          `Successfully created robot account with robot name: ${result['name']}`,
+        );
+        handleModalToggle();
+      },
+      onError: (err) => {
+        props.showErrorAlert(err);
+      },
+    });
 
   const {usernames} = useOrganizations();
   const isUserOrganization = usernames.includes(props.orgName);
@@ -82,10 +83,31 @@ export default function CreateRobotAccountModal(
       robotname: robotName,
       description: robotDescription,
       isUser: isUserOrganization,
-      reposToUpdate: reposToUpdate,
-      selectedTeams: selectedTeams,
-      robotDefaultPerm: robotDefaultPerm,
     });
+    if (reposToUpdate) {
+      await addRepoPerms({
+        namespace: props.orgName,
+        robotname: robotName,
+        isUser: isUserOrganization,
+        reposToUpdate: reposToUpdate,
+      });
+    }
+    if (selectedTeams) {
+      await addTeams({
+        namespace: props.orgName,
+        robotname: robotName,
+        selectedTeams: selectedTeams,
+      });
+    }
+
+    if (robotDefaultPerm) {
+      await addDefaultPerms({
+        namespace: props.orgName,
+        robotname: robotName,
+        robotDefaultPerm: robotDefaultPerm,
+      });
+    }
+
     if (props?.setEntity) {
       props.setEntity({
         is_robot: true,

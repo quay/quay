@@ -49,7 +49,7 @@ describe('Robot Accounts Page', () => {
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
           .contains(
-            'Successfully created robot account with robot name: newtestrob',
+            'Successfully created robot account with robot name: testorg+newtestrob',
           )
           .should('exist');
         cy.get('#robot-account-search').type('newtestrob');
@@ -223,7 +223,7 @@ describe('Robot Accounts Page', () => {
       .then(() => {
         cy.get('.pf-c-alert.pf-m-success')
           .contains(
-            'Successfully created robot account with robot name: userrobot',
+            'Successfully created robot account with robot name: user1+userrobot',
           )
           .should('exist');
         cy.get('#robot-account-search').type('userrobot');
