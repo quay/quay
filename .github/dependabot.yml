@@ -6,6 +6,15 @@ updates:
       interval: weekly
     assignees:
       - dmage
+  - package-ecosystem: gomod
+    directory: /config-tool
+    schedule:
+      interval: weekly
+    groups:
+      k8s:
+        patterns:
+          - k8s.io/*
+          - sigs.k8s.io/*
   - package-ecosystem: npm
     directory: /config-tool/pkg/lib/editor
     schedule:
