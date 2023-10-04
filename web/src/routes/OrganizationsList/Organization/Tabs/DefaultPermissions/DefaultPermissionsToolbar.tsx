@@ -2,10 +2,13 @@ import {
   Button,
   Flex,
   FlexItem,
+  Icon,
   PanelFooter,
   Toolbar,
   ToolbarContent,
+  ToolbarItem,
 } from '@patternfly/react-core';
+import Conditional from 'src/components/empty/Conditional';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
@@ -13,6 +16,7 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {IDefaultPermission} from 'src/hooks/UseDefaultPermissions';
 import {DrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
+import {TrashIcon} from '@patternfly/react-icons';
 
 export default function DefaultPermissionsToolbar(
   props: DefaultPermissionsToolbarProps,
@@ -27,6 +31,7 @@ export default function DefaultPermissionsToolbar(
             allItemsList={props.allItems}
             itemsPerPageList={props.paginatedItems}
             onItemSelect={props.onItemSelect}
+            id="default-perm-bulk-select"
           />
           <SearchDropdown
             items={props.searchOptions}
@@ -52,6 +57,21 @@ export default function DefaultPermissionsToolbar(
           >
             Create default permission
           </Button>
+          <Conditional if={props.selectedItems?.length !== 0}>
+            <ToolbarItem>
+              <Button
+                style={{paddingBottom: '0px'}}
+                icon={
+                  <Icon size="lg">
+                    <TrashIcon />
+                  </Icon>
+                }
+                variant="plain"
+                onClick={props.handleBulkDeleteModalToggle}
+                data-testid="default-perm-bulk-delete-icon"
+              />
+            </ToolbarItem>
+          </Conditional>
           <ToolbarPagination
             itemsList={props.allItems}
             perPage={props.perPage}
@@ -95,4 +115,5 @@ interface DefaultPermissionsToolbarProps {
   setSearch: (search: SearchState) => void;
   setDrawerContent: (content: DrawerContentType) => void;
   children?: React.ReactNode;
+  handleBulkDeleteModalToggle: () => void;
 }

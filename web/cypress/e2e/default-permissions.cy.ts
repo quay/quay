@@ -367,4 +367,26 @@ describe('Default permissions page', () => {
       )
       .should('exist');
   });
+
+  it('Can bulk delete default permissions', () => {
+    const permissionsToBeDeleted = 'organization';
+    cy.visit(`/organization/orgforpermission?tab=Defaultpermissions`);
+
+    // Search for default permissions
+    cy.get('#default-permissions-search').type(`${permissionsToBeDeleted}`);
+    cy.contains('1 - 2 of 2');
+    cy.get('[name="default-perm-bulk-select"]').click();
+    cy.get(`[data-testid="default-perm-bulk-delete-icon"]`).click();
+
+    // bulk delete modal
+    cy.get('#delete-confirmation-input').type('confirm');
+    cy.get('[data-testid="bulk-delete-confirm-btn"]')
+      .click()
+      .then(() => {
+        cy.get('#default-permissions-search')
+          .clear()
+          .type(`${permissionsToBeDeleted}`);
+        cy.contains('0 - 0 of 0');
+      });
+  });
 });

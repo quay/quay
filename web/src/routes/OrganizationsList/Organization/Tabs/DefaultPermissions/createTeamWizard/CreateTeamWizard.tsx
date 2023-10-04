@@ -125,7 +125,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
           />
         </AlertGroup>
       </Conditional>
-
       <Modal
         id="create-team-modal"
         aria-label="CreateTeam"

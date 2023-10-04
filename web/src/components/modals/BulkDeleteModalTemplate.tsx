@@ -88,6 +88,7 @@ export const BulkDeleteModalTemplate = <T,>(
           onClick={bulkDelete}
           form="modal-with-form-form"
           isDisabled={confirmDeletionInput !== 'confirm'}
+          data-testid="bulk-delete-confirm-btn"
         >
           Delete
         </Button>,

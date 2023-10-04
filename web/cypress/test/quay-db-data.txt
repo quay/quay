@@ -5771,6 +5771,7 @@ COPY public.externalnotificationmethod (id, name) FROM stdin;
 COPY public.federatedlogin (id, user_id, service_id, service_ident, metadata_json) FROM stdin;
 1	30	2	robot:30	{}
 2	31	2	robot:31	{}
+3	35	2	robot:35	{}
 \.
 
 
@@ -6112,6 +6113,10 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 188	31	28	1	\N	2023-08-23 17:54:45.980317	172.19.0.1	{"member": "user1", "team": "chelsea"}
 189	31	28	1	\N	2023-08-23 17:55:15.284759	172.19.0.1	{"member": "testorg+testrobot", "team": "chelsea"}
 190	13	28	1	\N	2023-09-11 02:16:32.720762	172.18.0.1	{"prototypeid": "ee71ad91-b7a6-4fae-8322-664e0daabefa", "username": "user1", "activating_username": "testorg+testrobot", "role": "read", "delegate_team": "owners"}
+191	80	34	1	\N	2023-10-17 17:17:04.063899	172.18.0.1	{"email": "orgforpermission@gmail.com", "namespace": "orgforpermission"}
+192	13	34	1	\N	2023-10-17 17:17:24.861743	172.18.0.1	{"prototypeid": "908bc055-0bfc-4030-a230-f4a6529fd0cb", "username": "user1", "activating_username": null, "role": "write", "delegate_team": "owners"}
+193	15	34	1	\N	2023-10-17 17:18:15.092333	172.18.0.1	{"robot": "robotaccnt1", "description": "", "unstructured_metadata": null}
+194	13	34	1	\N	2023-10-17 17:18:23.56364	172.18.0.1	{"prototypeid": "4a417056-1b01-44a5-9b05-784b377c4491", "username": "user1", "activating_username": null, "role": "read", "delegate_user": "orgforpermission+robotaccnt1"}
 \.
 
 
@@ -6454,6 +6459,8 @@ COPY public.organizationrhskus (id, subscription_id, org_id, user_id) FROM stdin
 
 COPY public.permissionprototype (id, org_id, uuid, activating_user_id, delegate_user_id, delegate_team_id, role_id) FROM stdin;
 1	28	ee71ad91-b7a6-4fae-8322-664e0daabefa	30	\N	27	3
+2	34	908bc055-0bfc-4030-a230-f4a6529fd0cb	\N	\N	34	2
+3	34	4a417056-1b01-44a5-9b05-784b377c4491	\N	35	\N	3
 \.
 
 
@@ -6494,8 +6501,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-09-13 17:17:11.501517	t	2023-09-13 20:12:11.440078	5	24378908-0a14-46c5-a234-f7c7ed41fd3b
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-09-13 17:17:16.575212	t	2023-09-13 20:12:16.519423	5	89002d87-0f6d-4271-a7f9-124e5f3239e1
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-10-17 17:19:43.370147	t	2023-10-17 20:14:43.342566	5	270e0f44-cff5-4823-b8c7-a5fe59be5d6e
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-10-17 17:19:48.405094	t	2023-10-17 20:14:48.386962	5	c6699393-748a-4c4f-9517-7bc77ee508c8
 \.
 
 
@@ -7450,6 +7457,7 @@ COPY public.repositorytag (id, name, image_id, repository_id, lifetime_start_ts,
 COPY public.robotaccountmetadata (id, robot_account_id, description, unstructured_json) FROM stdin;
 1	30		{}
 2	31		{}
+3	35		{}
 \.
 
 
@@ -7460,6 +7468,7 @@ COPY public.robotaccountmetadata (id, robot_account_id, description, unstructure
 COPY public.robotaccounttoken (id, robot_account_id, token, fully_migrated) FROM stdin;
 1	30	v0$$sQInfFzCekHc9zEgzkQCI/7GPvqp0vVQ2M8fEw9X9lOQ0nZBudr/KTv2P1XpStSeXIo3ODMkG4kNxXaDDnElT6VW9LdwnzgLAfCUnguW5IW+fof/icsRCRzN99kG	t
 2	31	v0$$x8LiHeFTsuFkPd0yL8lrR7hXJtPG2XnCks7fSqD4Ql+NtwIKatgcx2pNLB98VX4lLSAMb99PmSUqYA+CGCM1UG/EG/VV36KY6PgVS8tk5XVEtemHOsy7bIy4j7xs	t
+3	35	v0$$7cFE4EaE/vBp0/y9ah06StfE63sFnbEZGsWGBf66yzMCrG2TBUQVpOwmUTcYxRZ2ClepwpZ3PElHk6/oALqdgOjsQv25pL2mz6uJOgK52cg/+ZW+Jh4ka4Nx3j9w	t
 \.
 
 
@@ -7607,6 +7616,7 @@ COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
 31	arsenal	28	3	
 32	liverpool	28	3	
 33	chelsea	28	3	
+34	owners	34	1	
 \.
 
 
@@ -7644,6 +7654,7 @@ COPY public.teammember (id, user_id, team_id) FROM stdin;
 29	29	30
 30	1	33
 31	30	33
+32	1	34
 \.
 
 
@@ -7750,6 +7761,8 @@ COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_i
 29	f96f1124-ae26-4ea6-a73b-f4b0d87e6dc0	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
 32	80d4d7c4-c3f0-442b-94a6-1e151aca9ecd	user2org1	\N	user2org1@redhat.com	f	\N	t	f	f	0	2023-06-28 18:15:16.210544	1209600	t	\N	\N	\N	\N	\N	\N	2023-06-28 18:15:16.210558	\N
 33	e53eca92-4bbe-4853-b047-ceb86c1bb12a	collaborator1	$2b$12$R0hWaRhKGFdJ16WCJ7KUzesYIxzF0o57Lq9.pUhlc4EQTXUTXmrw2	collaborator1@gmail.com	t	\N	f	f	f	0	2023-08-23 17:51:10.548163	1209600	t	\N	\N	\N	\N	\N	\N	2023-08-23 17:51:10.548165	\N
+34	03a7d59f-6269-418a-b359-219562dfce16	orgforpermission	\N	orgforpermission@gmail.com	f	\N	t	f	f	0	2023-10-17 17:17:04.051938	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:17:04.05194	\N
+35	decaf020-b68a-40ce-9475-84b2d346cd4d	orgforpermission+robotaccnt1	\N	7b092025-6bdc-4479-a1b6-01f869432be1	f	\N	f	t	f	0	2023-10-17 17:18:15.082751	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:18:15.082753	\N
 \.
 
 
@@ -7956,7 +7969,7 @@ SELECT pg_catalog.setval('public.externalnotificationmethod_id_seq', 6, true);
 -- Name: federatedlogin_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.federatedlogin_id_seq', 2, true);
+SELECT pg_catalog.setval('public.federatedlogin_id_seq', 3, true);
 
 
 --
@@ -8033,7 +8046,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 190, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 194, true);
 
 
 --
@@ -8173,7 +8186,7 @@ SELECT pg_catalog.setval('public.organizationrhskus_id_seq', 1, false);
 -- Name: permissionprototype_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.permissionprototype_id_seq', 1, true);
+SELECT pg_catalog.setval('public.permissionprototype_id_seq', 3, true);
 
 
 --
@@ -8348,14 +8361,14 @@ SELECT pg_catalog.setval('public.repositorytag_id_seq', 1, false);
 -- Name: robotaccountmetadata_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.robotaccountmetadata_id_seq', 2, true);
+SELECT pg_catalog.setval('public.robotaccountmetadata_id_seq', 3, true);
 
 
 --
 -- Name: robotaccounttoken_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.robotaccounttoken_id_seq', 2, true);
+SELECT pg_catalog.setval('public.robotaccounttoken_id_seq', 3, true);
 
 
 --
@@ -8439,14 +8452,14 @@ SELECT pg_catalog.setval('public.tagtorepositorytag_id_seq', 1, false);
 -- Name: team_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.team_id_seq', 33, true);
+SELECT pg_catalog.setval('public.team_id_seq', 34, true);
 
 
 --
 -- Name: teammember_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.teammember_id_seq', 31, true);
+SELECT pg_catalog.setval('public.teammember_id_seq', 32, true);
 
 
 --
@@ -8488,7 +8501,7 @@ SELECT pg_catalog.setval('public.uploadedblob_id_seq', 22, true);
 -- Name: user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.user_id_seq', 33, true);
+SELECT pg_catalog.setval('public.user_id_seq', 35, true);
 
 
 --

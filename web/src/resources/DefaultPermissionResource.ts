@@ -1,7 +1,11 @@
-import {IPrototype} from 'src/hooks/UseDefaultPermissions';
+import {IDefaultPermission, IPrototype} from 'src/hooks/UseDefaultPermissions';
 import axios from 'src/libs/axios';
-import {assertHttpCode, ResourceError} from './ErrorHandling';
-import {RepoMemberPermissions} from './RepositoryResource';
+import {
+  assertHttpCode,
+  BulkOperationError,
+  ResourceError,
+  throwIfError,
+} from './ErrorHandling';
 
 export async function fetchDefaultPermissions(org: string) {
   const response = await axios.get(`/api/v1/organization/${org}/prototypes`);
@@ -24,11 +28,18 @@ export async function updateDefaultPermission(
   }
 }
 
-export async function deleteDefaultPermission(org: string, id: string) {
+export async function deleteDefaultPermission(
+  org: string,
+  perm: IDefaultPermission,
+) {
   try {
-    await axios.delete(`/api/v1/organization/${org}/prototypes/${id}`);
+    await axios.delete(`/api/v1/organization/${org}/prototypes/${perm.id}`);
   } catch (err) {
-    console.error('Unable to delete default permission', err);
+    throw new ResourceError(
+      'Unable to delete default permission created by:',
+      perm.createdBy,
+      err,
+    );
   }
 }
 
@@ -61,4 +72,14 @@ export async function addRepoPermissionToTeam(
   } catch (err) {
     console.error('Unable to add repo permissions for team', err);
   }
+}
+
+export async function bulkDeleteDefaultPermissions(
+  orgName: string,
+  defaultPermissions: IDefaultPermission[],
+) {
+  const responses = await Promise.allSettled(
+    defaultPermissions.map((perm) => deleteDefaultPermission(orgName, perm)),
+  );
+  throwIfError(responses, 'Unable to delete default permissions');
 }

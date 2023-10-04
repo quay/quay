@@ -38,6 +38,7 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
       key="select-none-action"
       component="button"
       onClick={deSelectAll}
+      data-testid="select-none-action"
     >
       Select none
     </DropdownItem>,
@@ -45,6 +46,7 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
       key="select-page-items-action"
       component="button"
       onClick={selectPageItems}
+      data-testid="select-page-items-action"
     >
       Select page (
       {props.allItemsList?.length > props.itemsPerPageList?.length
@@ -56,6 +58,7 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
       key="select-all-items-action"
       component="button"
       onClick={selectAllItems}
+      data-testid="select-all-items-action"
     >
       Select all ({props.allItemsList?.length})
     </DropdownItem>,
