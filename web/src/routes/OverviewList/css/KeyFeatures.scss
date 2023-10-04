@@ -11,31 +11,3 @@
   color: black;
   align-self: center;
 }
-
-.screenshot-private-access {
-  min-height: 298px;
-  min-width: 600px;
-  object-fit: scale-down;
-  background-image: url(src/assets/QuayScreenshot_RepoSettings.png);
-}
-
-.screenshot-builds {
-  min-height: 282px;
-  min-width: 417px;
-  object-fit: contain;
-  background-image: url(src/assets/QuayChart_BuildSection.png);
-}
-
-.screenshot-security {
-  min-height: 494px;
-  min-width: 600px;
-  object-fit: contain;
-  background-image: url(src/assets/QuayScreenshot_Scanning.png);
-}
-
-.screenshot-public-page {
-  min-height: 346px;
-  min-width: 600px;
-  object-fit: contain;
-  background-image: url(src/assets/QuayScreenshot_PublicPage.png);
-}

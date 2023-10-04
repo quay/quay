@@ -9,8 +9,6 @@ import {
   DataListItem,
   Divider,
   Text,
-  Split,
-  SplitItem,
   Flex,
   FlexItem,
 } from '@patternfly/react-core';
@@ -44,17 +42,11 @@ export default function KeyFeatures() {
               }
               displaySize="large"
             >
-              <Split>
-                <SplitItem>
-                  <Text>
-                    Ensure your apps are stored privately, with access that you
-                    control. Quay is teamwork optimized, with powerful access
-                    controls.
-                  </Text>
-                </SplitItem>
-                <SplitItem isFilled />
-                <SplitItem className="screenshot-private-access" />
-              </Split>
+              <Text>
+                Ensure your apps are stored privately, with access that you
+                control. Quay is teamwork optimized, with powerful access
+                controls.
+              </Text>
             </ExpandableSection>
           </DataListItem>
 
@@ -73,18 +65,11 @@ export default function KeyFeatures() {
               }
               displaySize="large"
             >
-              <Split>
-                <SplitItem>
-                  <Text>
-                    Use Quay.io to automate your container builds, with
-                    integration to GitHub, Bitbucket, and more. Robot accounts
-                    allow you to lock down automated access and audit each
-                    deployment.
-                  </Text>
-                </SplitItem>
-                <SplitItem isFilled />
-                <SplitItem className="screenshot-builds" />
-              </Split>
+              <Text>
+                Use Quay.io to automate your container builds, with integration
+                to GitHub, Bitbucket, and more. Robot accounts allow you to lock
+                down automated access and audit each deployment.
+              </Text>
             </ExpandableSection>
           </DataListItem>
 
@@ -103,17 +88,11 @@ export default function KeyFeatures() {
               }
               displaySize="large"
             >
-              <Split>
-                <SplitItem>
-                  <Text>
-                    Quay continually scans your containers for vulnerabilities,
-                    giving you complete visibility into known issues and how to
-                    fix them.
-                  </Text>
-                </SplitItem>
-                <SplitItem isFilled />
-                <SplitItem className="screenshot-security" />
-              </Split>
+              <Text>
+                Quay continually scans your containers for vulnerabilities,
+                giving you complete visibility into known issues and how to fix
+                them.
+              </Text>
             </ExpandableSection>
           </DataListItem>
 
@@ -132,17 +111,11 @@ export default function KeyFeatures() {
               }
               displaySize="large"
             >
-              <Split>
-                <SplitItem>
-                  <Text>
-                    {
-                      "Provide a public download page for your container. The best part, they're free!"
-                    }
-                  </Text>
-                </SplitItem>
-                <SplitItem isFilled />
-                <SplitItem className="screenshot-public-page" />
-              </Split>
+              <Text>
+                {
+                  "Provide a public download page for your container. The best part, they're free!"
+                }
+              </Text>
             </ExpandableSection>
           </DataListItem>
         </DataList>
