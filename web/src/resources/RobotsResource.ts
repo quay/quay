@@ -199,22 +199,13 @@ export async function createNewRobotForNamespace(
   robotname: string,
   description: string,
   isUser = false,
-  reposToUpdate: IRobotRepoPerms[],
-  selectedTeams: IRobotTeam[],
-  robotDefaultPerm: string,
 ) {
   const namespacePath = isUser ? 'user' : `organization/${orgname}`;
   const createOrgRobotsUrl = `/api/v1/${namespacePath}/robots/${robotname}`;
   const payload = {description: description};
   const response: AxiosResponse = await axios.put(createOrgRobotsUrl, payload);
   assertHttpCode(response.status, 201);
-  return {
-    robotname: robotname,
-    isUser: isUser,
-    reposToUpdate: reposToUpdate,
-    selectedTeams: selectedTeams,
-    robotDefaultPerm: robotDefaultPerm,
-  };
+  return response.data;
 }
 
 export async function deleteRobotAccount(orgname: string, robotname: string) {

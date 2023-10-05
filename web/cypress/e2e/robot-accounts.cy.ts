@@ -47,6 +47,11 @@ describe('Robot Accounts Page', () => {
     cy.get('#create-robot-submit')
       .click()
       .then(() => {
+        cy.get('.pf-c-alert.pf-m-success')
+          .contains(
+            'Successfully created robot account with robot name: testorg+newtestrob',
+          )
+          .should('exist');
         cy.get('#robot-account-search').type('newtestrob');
         cy.contains('1 - 1 of 1');
       });
@@ -73,9 +78,13 @@ describe('Robot Accounts Page', () => {
     cy.get('li[id="testorg+testrobot2-del-btn"]').contains('Delete').click();
 
     cy.get('#delete-confirmation-input').type('confirm');
+
     cy.get('[id="bulk-delete-modal"]')
       .within(() => cy.get('button:contains("Delete")').click())
       .then(() => {
+        cy.get('.pf-c-alert.pf-m-success')
+          .contains('Successfully deleted robot account')
+          .should('exist');
         cy.get('#robot-account-search').clear().type('testrobot2');
         cy.contains('0 - 0 of 0');
       });
@@ -91,6 +100,9 @@ describe('Robot Accounts Page', () => {
       .find('button:contains("Save")')
       .click()
       .then(() => {
+        cy.get('.pf-c-alert.pf-m-success')
+          .contains('Successfully updated repository permission')
+          .should('exist');
         cy.get('footer').find('button:contains("Save")').should('not.exist');
         cy.get('#toggle-descriptions').contains('Admin');
       });
@@ -115,6 +127,9 @@ describe('Robot Accounts Page', () => {
       .find('button:contains("Save")')
       .click()
       .then(() => {
+        cy.get('.pf-c-alert.pf-m-success')
+          .contains('Successfully updated repository permission')
+          .should('exist');
         cy.get('[data-label="Permissions"]').each(($item) => {
           cy.wrap($item).contains('Write');
         });
@@ -206,6 +221,11 @@ describe('Robot Accounts Page', () => {
     cy.get('#create-robot-submit')
       .click()
       .then(() => {
+        cy.get('.pf-c-alert.pf-m-success')
+          .contains(
+            'Successfully created robot account with robot name: user1+userrobot',
+          )
+          .should('exist');
         cy.get('#robot-account-search').type('userrobot');
         cy.contains('1 - 1 of 1');
       });

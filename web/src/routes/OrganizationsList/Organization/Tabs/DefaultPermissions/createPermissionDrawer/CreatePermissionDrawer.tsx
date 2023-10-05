@@ -195,6 +195,18 @@ export default function CreatePermissionDrawer(
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
       setEntity={setRepositoryCreator}
+      showSuccessAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Success,
+          title: message,
+        })
+      }
+      showErrorAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: message,
+        })
+      }
     />
   );
 
@@ -210,6 +222,18 @@ export default function CreatePermissionDrawer(
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
       setEntity={setAppliedTo}
+      showSuccessAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Success,
+          title: message,
+        })
+      }
+      showErrorAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: message,
+        })
+      }
     />
   );
 

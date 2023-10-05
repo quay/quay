@@ -44,32 +44,139 @@ interface createNewRobotAccountForNamespaceParams {
   description: string;
 }
 
-export function useCreateRobotAccount(orgName, {onSuccess, onError}) {
+export function useCreateRobotAccount({namespace, onSuccess, onError}) {
   const queryClient = useQueryClient();
 
-  const createRobotAccntMutator = useMutation(
+  const addRepoPermsMutator = useMutation(
     async ({
-      robotAccntName,
-      description,
-    }: createNewRobotAccountForNamespaceParams) => {
-      return createRobotAccount(orgName, robotAccntName, description);
+      namespace,
+      robotname,
+      isUser,
+      reposToUpdate,
+    }: addRepoPermsParams) => {
+      return Promise.allSettled(
+        reposToUpdate.map((repo) =>
+          updateRepoPermsForRobot(
+            namespace,
+            robotname,
+            repo.name,
+            repo.permission,
+            isUser,
+          ),
+        ),
+      );
     },
     {
-      onSuccess: () => {
-        onSuccess();
+      onSuccess: async (result) => {
+        queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
+      },
+      onError: (err) => {
+        onError('Error updating repository permissions for the robot account');
+      },
+    },
+  );
+
+  const addTeamsMutator = useMutation(
+    async ({namespace, robotname, selectedTeams}: addTeamsParams) => {
+      return Promise.allSettled(
+        selectedTeams.map((team) =>
+          updateTeamForRobot(namespace, team.name, robotname),
+        ),
+      );
+    },
+    {
+      onSuccess: async (result) => {
+        queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
+        queryClient.invalidateQueries(['organization', namespace, 'teams']);
         queryClient.invalidateQueries(['teamMembers']);
       },
-      onError: () => {
-        onError();
+      onError: (err) => {
+        onError('Error updating teams for the robot account');
+      },
+    },
+  );
+
+  const addDefaultPermsMutator = useMutation(
+    async ({namespace, robotname, robotDefaultPerm}: addDefaultPermsParams) => {
+      return await addDefaultPermsForRobot(
+        namespace,
+        robotname,
+        robotDefaultPerm,
+      );
+    },
+    {
+      onSuccess: async (result) => {
+        queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
+      },
+      onError: (err) => {
+        onError('Error updating default permissions for the robot account');
+      },
+    },
+  );
+
+  const createRobotAccountMutator = useMutation(
+    async ({
+      namespace,
+      robotname,
+      description,
+      isUser,
+    }: createNewRobotForNamespaceParams) => {
+      return createNewRobotForNamespace(
+        namespace,
+        robotname,
+        description,
+        isUser,
+      );
+    },
+    {
+      onSuccess: async (result) => {
+        onSuccess(
+          `Successfully created robot account with robot name: ${result['name']}`,
+        );
+        queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
+      },
+      onError: (err) => {
+        onError('Error creating robot account');
       },
     },
   );
 
   return {
-    createRobotAccntHook: async (
-      params: createNewRobotAccountForNamespaceParams,
-    ) => createRobotAccntMutator.mutate(params),
+    createNewRobot: async (params: createNewRobotForNamespaceParams) =>
+      createRobotAccountMutator.mutateAsync(params),
+    addRepoPerms: async (params: addRepoPermsParams) =>
+      addRepoPermsMutator.mutateAsync(params),
+    addTeams: async (params: addTeamsParams) =>
+      addTeamsMutator.mutateAsync(params),
+    addDefaultPerms: async (params: addDefaultPermsParams) =>
+      addDefaultPermsMutator.mutateAsync(params),
   };
+}
+
+interface createNewRobotForNamespaceParams {
+  namespace: string;
+  robotname: string;
+  description: string;
+  isUser?: boolean;
+}
+
+interface addRepoPermsParams {
+  namespace: string;
+  robotname: string;
+  reposToUpdate: IRobotRepoPerms[];
+  isUser?: boolean;
+}
+
+interface addTeamsParams {
+  namespace: string;
+  robotname: string;
+  selectedTeams: IRobotTeam[];
+}
+
+interface addDefaultPermsParams {
+  namespace: string;
+  robotname: string;
+  robotDefaultPerm: string;
 }
 
 export function useRobotAccounts({name, onSuccess, onError}) {
@@ -98,72 +205,6 @@ export function useRobotAccounts({name, onSuccess, onError}) {
     },
   );
 
-  const queryClient = useQueryClient();
-
-  const updateRobotData = async (result) => {
-    if (result.reposToUpdate) {
-      await Promise.allSettled(
-        result.reposToUpdate.map((repo) =>
-          updateRepoPermsForRobot(
-            namespace,
-            result.robotname,
-            repo.name,
-            repo.permission,
-            isUser,
-          ),
-        ),
-      );
-    }
-
-    if (result.selectedTeams) {
-      await Promise.allSettled(
-        result.selectedTeams.map((team) =>
-          updateTeamForRobot(namespace, team.name, result.robotname),
-        ),
-      );
-    }
-
-    if (result.robotDefaultPerm && result.robotDefaultPerm != 'None') {
-      await addDefaultPermsForRobot(
-        namespace,
-        result.robotname,
-        result.robotDefaultPerm,
-      );
-    }
-  };
-
-  const createRobotAccountMutator = useMutation(
-    async ({
-      namespace,
-      robotname,
-      description,
-      isUser,
-      reposToUpdate,
-      selectedTeams,
-      robotDefaultPerm,
-    }: createNewRobotForNamespaceParams) => {
-      return createNewRobotForNamespace(
-        namespace,
-        robotname,
-        description,
-        isUser,
-        reposToUpdate,
-        selectedTeams,
-        robotDefaultPerm,
-      );
-    },
-    {
-      onSuccess: async (result) => {
-        await Promise.allSettled([updateRobotData(result)]);
-        queryClient.invalidateQueries(['Namespace', namespace, 'robots']);
-        queryClient.invalidateQueries(['organization', namespace, 'teams']);
-      },
-      onError: (err) => {
-        onError(err);
-      },
-    },
-  );
-
   return {
     robotAccountsForOrg: robotAccountsForOrg,
     loading: loading,
@@ -174,19 +215,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
     perPage,
     setNamespace,
     namespace,
-    createNewRobot: async (params: createNewRobotForNamespaceParams) =>
-      createRobotAccountMutator.mutate(params),
   };
-}
-
-interface createNewRobotForNamespaceParams {
-  namespace: string;
-  robotname: string;
-  description: string;
-  isUser?: boolean;
-  reposToUpdate: IRobotRepoPerms[];
-  selectedTeams: IRobotTeam[];
-  robotDefaultPerm: string;
 }
 
 export function useRobotPermissions({orgName, robotAcct, onSuccess, onError}) {

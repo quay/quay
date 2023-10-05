@@ -54,17 +54,18 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     );
   }, [props.tableItems]);
 
-  const {createRobotAccntHook} = useCreateRobotAccount(props.orgName, {
-    onSuccess: () => {
+  const {createNewRobot} = useCreateRobotAccount({
+    namespace: props.orgName,
+    onSuccess: (result) => {
       addAlert({
         variant: AlertVariant.Success,
-        title: `Successfully created new robot accnt: ${newRobotAccntName}`,
+        title: result,
       });
     },
-    onError: () => {
+    onError: (err) => {
       addAlert({
         variant: AlertVariant.Failure,
-        title: 'Failed to create new robot accnt',
+        title: err,
       });
     },
   });
@@ -94,8 +95,9 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   };
 
   const onCreateRobotAccount = async () => {
-    await createRobotAccntHook({
-      robotAccntName: newRobotAccntName,
+    await createNewRobot({
+      namespace: props.orgName,
+      robotname: newRobotAccntName,
       description: newRobotAccntDescription,
     });
     props.setDrawerExpanded(false);

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Modal,
   ModalVariant,
   Text,
@@ -8,7 +9,7 @@ import {
 } from '@patternfly/react-core';
 import {SetStateAction, useState} from 'react';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
-import {useRobotAccounts} from 'src/hooks/useRobotAccounts';
+import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
 
 import Footer from './robotAccountWizard/Footer';
 import AddToTeam from './robotAccountWizard/AddToTeam';
@@ -58,46 +59,64 @@ export default function CreateRobotAccountModal(
     'Robot name and description',
   );
 
-  const {createNewRobot} = useRobotAccounts({
-    name: props.orgName,
-    onSuccess: () => {
-      setLoading(false);
-    },
-    onError: (err) => {
-      setErr(addDisplayError('Unable to create robot', err));
-    },
-  });
+  const {createNewRobot, addRepoPerms, addTeams, addDefaultPerms} =
+    useCreateRobotAccount({
+      namespace: props.orgName,
+      onSuccess: (result) => {
+        props.showSuccessAlert(result);
+        handleModalToggle();
+      },
+      onError: (err) => {
+        props.showErrorAlert(err);
+      },
+    });
 
   const {usernames} = useOrganizations();
   const isUserOrganization = usernames.includes(props.orgName);
 
   const onSubmit = async () => {
-    try {
-      const reposToUpdate = filteredRepos();
-      await createNewRobot({
+    const reposToUpdate = filteredRepos();
+    const created = await createNewRobot({
+      namespace: props.orgName,
+      robotname: robotName,
+      description: robotDescription,
+      isUser: isUserOrganization,
+    });
+
+    if (!created || created['name'] == '') {
+      return;
+    }
+
+    if (reposToUpdate) {
+      await addRepoPerms({
         namespace: props.orgName,
         robotname: robotName,
-        description: robotDescription,
         isUser: isUserOrganization,
         reposToUpdate: reposToUpdate,
+      });
+    }
+    if (selectedTeams) {
+      await addTeams({
+        namespace: props.orgName,
+        robotname: robotName,
         selectedTeams: selectedTeams,
+      });
+    }
+    if (robotDefaultPerm && robotDefaultPerm != 'None') {
+      await addDefaultPerms({
+        namespace: props.orgName,
+        robotname: robotName,
         robotDefaultPerm: robotDefaultPerm,
       });
-      if (props?.setEntity) {
-        props.setEntity({
-          is_robot: true,
-          name: `${props.orgName}+${robotName}`,
-          kind: 'user',
-          is_org_member: true,
-        });
-      }
+    }
 
-      if (!loading) {
-        handleModalToggle();
-      }
-    } catch (error) {
-      console.error(error);
-      setErr(addDisplayError('Unable to create robot', error));
+    if (props?.setEntity) {
+      props.setEntity({
+        is_robot: true,
+        name: `${props.orgName}+${robotName}`,
+        kind: 'user',
+        is_org_member: true,
+      });
     }
   };
 
@@ -261,4 +280,6 @@ interface CreateRobotAccountModalProps {
   teams: any[];
   RepoPermissionDropdownItems: any[];
   setEntity?: React.Dispatch<SetStateAction<Entity>>;
+  showSuccessAlert: (msg: string) => void;
+  showErrorAlert: (msg: string) => void;
 }
