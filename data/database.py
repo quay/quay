@@ -146,11 +146,11 @@ SCHEME_SPECIALIZED_CONCAT = {
 }
 
 
-def real_for_update(query):
-    return query.for_update()
+def real_for_update(query, skip_locked=False):
+    return query.for_update("FOR UPDATE SKIP LOCKED") if skip_locked else query.for_update()
 
 
-def null_for_update(query):
+def null_for_update(query, skip_locked=False):
     return query
 
 

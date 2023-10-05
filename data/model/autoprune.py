@@ -134,7 +134,7 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
         )
 
         if create_task and not namespace_has_autoprune_task(namespace_id):
-            AutoPruneTaskStatus.create(namespace=namespace_id, status="queued", last_ran_ms=None)
+            create_autoprune_task(namespace_id)
 
         return new_policy
 
@@ -207,6 +207,10 @@ def namespace_has_autoprune_task(namespace_id):
     )
 
 
+def create_autoprune_task(namespace_id):
+    AutoPruneTaskStatus.create(namespace=namespace_id, status="queued", last_ran_ms=None)
+
+
 def update_autoprune_task(task, task_status):
     try:
         task.status = task_status
@@ -226,10 +230,7 @@ def fetch_autoprune_task():
     """
     with db_transaction():
         try:
-            # TODO: Can reuse exisiting db_for_update for create a new db_object for
-            # `for update skip locked` to account for different drivers
-            # add tests for this function after wards
-            return (
+            query = (
                 AutoPruneTaskStatus.select()
                 .where(
                     AutoPruneTaskStatus.namespace.not_in(
@@ -239,11 +240,19 @@ def fetch_autoprune_task():
                 .order_by(
                     AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"), AutoPruneTaskStatus.id
                 )
-                .for_update("FOR UPDATE SKIP LOCKED")
-                .get()
             )
+            return db_for_update(query, skip_locked=True).get()
         except AutoPruneTaskStatus.DoesNotExist:
             return []
+
+
+def fetch_autoprune_task_by_namespace_id(namespace_id):
+    try:
+        return (
+            AutoPruneTaskStatus.select().where(AutoPruneTaskStatus.namespace == namespace_id).get()
+        )
+    except AutoPruneTaskStatus.DoesNotExist:
+        return None
 
 
 def delete_autoprune_task(task):
