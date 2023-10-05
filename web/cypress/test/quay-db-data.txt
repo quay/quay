@@ -6219,6 +6219,7 @@ COPY public.logentrykind (id, name) FROM stdin;
 97	login_success
 98	logout_success
 99	permanently_delete_tag
+100 autoprune_tag_delete
 \.
 
 

@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging.config
 from enum import Enum
@@ -9,15 +8,19 @@ from data.database import (
     Repository,
     RepositoryState,
     User,
-    db_for_update,
+    DeletedNamespace,
     get_epoch_timestamp_ms,
 )
+
 from data.model import (
     InvalidUsernameException,
     NamespacePolicyAlreadyExists,
     db_transaction,
     modelutil,
     oci,
+    log,
+    user,
+    repository,
 )
 from util.timedeltastring import convert_to_timedelta
 
@@ -266,7 +269,7 @@ def delete_autoprune_task(task):
         )
 
 
-def prune_repo_by_number_of_tags(repo_id, policy_config):
+def prune_repo_by_number_of_tags(repo, policy_config, namespace):
     policy_method = policy_config.get("method", None)
 
     if policy_method != AutoPruneMethod.NUMBER_OF_TAGS.value or not valid_value(
@@ -277,20 +280,34 @@ def prune_repo_by_number_of_tags(repo_id, policy_config):
     page_token = None
     while True:
         tags, page_token = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo_id, int(policy_config["value"]), page_token, PAGINATE_SIZE
+            repo.id, int(policy_config["value"]), page_token, PAGINATE_SIZE
         )
         tags_list = [row for row in tags]
 
         for tag in tags_list:
-            # TODO: Replace with audit logs here
-            logger.info(f"Deleting tag: {tag.name} from repo_id: {repo_id}")
-            oci.tag.delete_tag(repo_id, tag.name)
+            try:
+                oci.tag.delete_tag(repo.id, tag.name)
+                log.log_action(
+                    "autoprune_tag_delete",
+                    namespace.username,
+                    repository=repo,
+                    metadata={
+                        "performer": "autoprune worker",
+                        "namespace": namespace.username,
+                        "repo": repo.name,
+                        "tag": tag.name,
+                    },
+                )
+            except Exception as err:
+                raise Exception(
+                    f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
+                )
 
         if page_token is None:
             break
 
 
-def prune_repo_by_creation_date(repo_id, policy_config):
+def prune_repo_by_creation_date(repo, policy_config, namespace):
     policy_method = policy_config.get("method", None)
 
     if policy_method != AutoPruneMethod.CREATION_DATE.value or not valid_value(
@@ -303,25 +320,34 @@ def prune_repo_by_creation_date(repo_id, policy_config):
     page_token = None
     while True:
         tags, page_token = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo_id, time_ms, page_token, PAGINATE_SIZE
+            repo.id, time_ms, page_token, PAGINATE_SIZE
         )
         tags_list = [row for row in tags]
 
         for tag in tags_list:
             try:
-                # TODO: Replace with audit logs here
-                logger.info(f"Deleting tag: {tag.name} from repo_id: {repo_id}")
-                oci.tag.delete_tag(repo_id, tag.name)
+                oci.tag.delete_tag(repo.id, tag.name)
+                log.log_action(
+                    "autoprune_tag_delete",
+                    namespace.username,
+                    repository=repo,
+                    metadata={
+                        "performer": "autoprune worker",
+                        "namespace": namespace.username,
+                        "repo": repo.name,
+                        "tag": tag.name,
+                    },
+                )
             except Exception as err:
                 raise Exception(
-                    f"Error deleting tag with name: {tag.name} with repository id: {repo_id} with error as: {str(err)}"
+                    f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
                 )
 
         if page_token is None:
             break
 
 
-def execute_poilcy_on_repo(policy, repo):
+def execute_poilcy_on_repo(policy, repo_id, namespace_id):
     policy_to_func_map = {
         AutoPruneMethod.NUMBER_OF_TAGS.value: prune_repo_by_number_of_tags,
         AutoPruneMethod.CREATION_DATE.value: prune_repo_by_creation_date,
@@ -330,11 +356,14 @@ def execute_poilcy_on_repo(policy, repo):
     if policy_to_func_map.get(policy.method, None) is None:
         raise KeyError("Unsupported policy provided", policy.method)
 
-    policy_to_func_map[policy.method](repo, policy.config)
+    namespace = user.get_namespace_user_by_user_id(namespace_id)
+    repo = repository.lookup_repository(repo_id)
+
+    policy_to_func_map[policy.method](repo, policy.config, namespace)
 
 
-def execute_policies_for_repo(policies, repo):
-    list(map(lambda policy: execute_poilcy_on_repo(policy, repo), policies))
+def execute_policies_for_repo(policies, repo, namespace_id):
+    list(map(lambda policy: execute_poilcy_on_repo(policy, repo, namespace_id), policies))
 
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None):
@@ -372,7 +401,7 @@ def execute_namespace_polices(policies, namespace_id):
         repo_list = [row for row in repos]
 
         # When implementing repo policies, fetch repo policies and add it to the policies list here
-        list(map(lambda repo: execute_policies_for_repo(policies, repo), repo_list))
+        list(map(lambda repo: execute_policies_for_repo(policies, repo, namespace_id), repo_list))
 
         if page_token is None:
             break
