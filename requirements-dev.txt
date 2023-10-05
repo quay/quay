@@ -43,7 +43,7 @@ types-html5lib==1.1.11.14
 types-ipaddress==1.0.1
 types-jsonschema==4.17.0.8
 types-maxminddb==1.5.0
-types-mock==4.0.3
+types-mock==5.1.0.2
 types-protobuf==3.18.0
 types-psutil==5.9.5.13
 types-pyOpenSSL==20.0.9
