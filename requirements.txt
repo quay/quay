@@ -149,7 +149,6 @@ tqdm==4.66.1
 tzdata==2023.3
 
 # Build dependencies
-Cython==3.0.0a9
 flit_core==3.7.1
 toml==0.10.2
 tomli==1.2.3
