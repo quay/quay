@@ -1344,6 +1344,8 @@ WHITELISTED_EMPTY_MODELS = [
     "RedHatSubscriptions",
     "OrganizationRhSkus",
     "QuotaRegistrySize",
+    "NamespaceAutoPrunePolicy",
+    "AutoPruneTaskStatus",
 ]
 
 

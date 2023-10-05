@@ -852,3 +852,5 @@ class DefaultConfig(ImmutableConfig):
 
     # Set up custom TOS for on-premise installations
     TERMS_OF_SERVICE_URL = ""
+
+    FEATURE_AUTO_PRUNE = False

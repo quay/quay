@@ -206,3 +206,5 @@ ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT: FeatureNameValue
 
 # Feature Flag: Whether to use RH internal marketplace for subscriptions
 RH_MARKETPLACE: FeatureNameValue
+
+AUTO_PRUNE: FeatureNameValue

@@ -746,6 +746,8 @@ class User(BaseModel):
                     QuotaLimits,
                     RedHatSubscriptions,
                     OrganizationRhSkus,
+                    NamespaceAutoPrunePolicy,
+                    AutoPruneTaskStatus,
                 }
                 | appr_classes
                 | v22_classes
@@ -2003,6 +2005,18 @@ class OrganizationRhSkus(BaseModel):
         (("subscription_id", "org_id"), True),
         (("subscription_id", "org_id", "user_id"), True),
     )
+
+
+class NamespaceAutoPrunePolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
+
+class AutoPruneTaskStatus(BaseModel):
+    namespace = QuayUserField(index=True, null=False)
+    last_ran_ms = BigIntegerField(null=True, index=True)
+    status = TextField(null=True)
 
 
 # Defines a map from full-length index names to the legacy names used in our code

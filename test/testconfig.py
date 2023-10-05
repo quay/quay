@@ -114,3 +114,5 @@ class TestConfig(DefaultConfig):
     RESET_CHILD_MANIFEST_EXPIRATION = True
 
     FEATURE_RH_MARKETPLACE = True
+
+    FEATURE_AUTO_PRUNE = True

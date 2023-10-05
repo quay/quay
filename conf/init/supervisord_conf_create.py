@@ -52,6 +52,7 @@ def registry_services():
         "config-editor": {"autostart": "false"},
         "quotatotalworker": {"autostart": "true"},
         "quotaregistrysizeworker": {"autostart": "true"},
+        "autopruneworker": {"autostart": "true"},
     }
 
 
@@ -90,6 +91,7 @@ def config_services():
         "config-editor": {"autostart": "true"},
         "quotatotalworker": {"autostart": "false"},
         "quotaregistrysizeworker": {"autostart": "false"},
+        "autopruneworker": {"autostart": "false"},
     }
 
 
