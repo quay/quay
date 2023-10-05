@@ -21,7 +21,7 @@ from data.database import (
     Namespace,
     db_random_func,
 )
-from data.model import config, user
+from data.model import DataModelException, config, user
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -365,6 +365,26 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
         )
+
+
+def create_temporary_tag_outside_timemachine(manifest):
+    """
+    Creates a temporary tag that is outside the time machine window.
+    Tag is immediately available for garbage collection.
+    """
+    tag_name = "$temp-%s" % str(uuid.uuid4())
+    now_ms = get_epoch_timestamp_ms()
+
+    return Tag.create(
+        name=tag_name,
+        repository=manifest.repository_id,
+        lifetime_start_ms=now_ms,
+        lifetime_end_ms=0,  # Start of unix epoch time
+        reversion=False,
+        hidden=True,
+        manifest=manifest,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
 
 
 def retarget_tag(
