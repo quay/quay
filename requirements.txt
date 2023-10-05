@@ -70,7 +70,7 @@ oslo.serialization==2.29.2
 oslo.utils==6.2.1
 packaging==23.1
 pbr==5.11.1
-peewee==3.13.1
+peewee==3.16.3
 Pillow==10.0.1
 ply==3.11
 prometheus-client==0.7.1
