@@ -84,7 +84,7 @@ pycparser==2.21
 PyGithub==2.1.1
 PyJWT==2.8.0
 pymemcache==3.0.0
-PyMySQL==0.9.3
+PyMySQL==1.1.0
 pyOpenSSL==23.2.0
 pyparsing==2.4.6
 pyrsistent==0.18.0
