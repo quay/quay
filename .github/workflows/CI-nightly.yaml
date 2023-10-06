@@ -24,11 +24,11 @@ jobs:
       matrix:
         platform: ['amd64','ppc64le','s390x']
     steps:
-    - name: install ibmcli and setup ibm login 
+    - name: install ibmcli and setup ibm login
       if: ${{ matrix.platform  == 's390x' }}
       run: |
         curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
-        ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r eu-gb 
+        ibmcloud login -q --apikey ${{ secrets.IBMCLOUD_API_KEY }} -r eu-gb
         ibmcloud plugin install vpc-infrastructure
 
     - name: Creation of ZVSI
@@ -40,9 +40,9 @@ jobs:
         #Reserving a floating ip to the ZVSI
         ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id $ZVSI_RG_ID --in $ZVSI_INSTANCE_NAME
         #Bouding the Floating ip to the ZVSI
-        ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic primary --in $ZVSI_INSTANCE_NAME          
+        ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic primary --in $ZVSI_INSTANCE_NAME
         sleep 60
-            
+
         #Saving the Floating IP to login ZVSI
         ZVSI_HOST=$(ibmcloud is floating-ip $ZVSI_FP_NAME | awk '/Address/{print $2}')
         echo $ZVSI_HOST
@@ -95,7 +95,7 @@ jobs:
         GH_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         GH_REF: ${{ github.ref }}
         GRPC_PYTHON_BUILD_SYSTEM_OPENSSL: 1
-      with: 
+      with:
         host: ${{ matrix.platform  == 's390x' && steps.ZVSI.outputs.IP || secrets.BUILDER_PPC64LE_SSH_HOST_UBUNTU}}
         username: ${{ matrix.platform  == 's390x' && secrets.ZVSI_SSH_USER || secrets.BUILDER_PPC64LE_SSH_USER }}
         key: ${{ matrix.platform  == 's390x' && secrets.ZVSI_PR_KEY || secrets.BUILDER_PPC64LE_SSH_KEY}}
@@ -111,9 +111,7 @@ jobs:
           cd build && git checkout ${GH_REF}
           cat requirements-dev.txt | grep tox | xargs python3 -m pip -qq install
 
-          if [[ 'ppc64le' == $(uname -m) ]]; then
-            sed -i "s/PyYAML==5.4.1/PyYAML==6.0.1/" requirements.txt
-          else
+          if [[ 's390x' == $(uname -m) ]]; then
             GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3)
             export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 && python3 -m pip install -qq grpcio==${GRPC_LATEST}
           fi
@@ -125,7 +123,7 @@ jobs:
           tox -e py39-e2e
 
           #registry
-          tox -e py39-registry    
+          tox -e py39-registry
 
     - name: Cleanup ZVSI
       if: ${{ steps.ZVSI.conclusion == 'success' && always() }}
