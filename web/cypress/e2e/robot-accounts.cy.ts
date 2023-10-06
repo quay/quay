@@ -47,7 +47,7 @@ describe('Robot Accounts Page', () => {
     cy.get('#create-robot-submit')
       .click()
       .then(() => {
-        cy.get('.pf-c-alert.pf-m-success')
+        cy.get('.pf-v5-c-alert.pf-m-success')
           .contains(
             'Successfully created robot account with robot name: testorg+newtestrob',
           )
@@ -82,7 +82,7 @@ describe('Robot Accounts Page', () => {
     cy.get('[id="bulk-delete-modal"]')
       .within(() => cy.get('button:contains("Delete")').click())
       .then(() => {
-        cy.get('.pf-c-alert.pf-m-success')
+        cy.get('.pf-v5-c-alert.pf-m-success')
           .contains('Successfully deleted robot account')
           .should('exist');
         cy.get('#robot-account-search').clear().type('testrobot2');
@@ -100,7 +100,7 @@ describe('Robot Accounts Page', () => {
       .find('button:contains("Save")')
       .click()
       .then(() => {
-        cy.get('.pf-c-alert.pf-m-success')
+        cy.get('.pf-v5-c-alert.pf-m-success')
           .contains('Successfully updated repository permission')
           .should('exist');
         cy.get('footer').find('button:contains("Save")').should('not.exist');
@@ -127,7 +127,7 @@ describe('Robot Accounts Page', () => {
       .find('button:contains("Save")')
       .click()
       .then(() => {
-        cy.get('.pf-c-alert.pf-m-success')
+        cy.get('.pf-v5-c-alert.pf-m-success')
           .contains('Successfully updated repository permission')
           .should('exist');
         cy.get('[data-label="Permissions"]').each(($item) => {
@@ -221,7 +221,7 @@ describe('Robot Accounts Page', () => {
     cy.get('#create-robot-submit')
       .click()
       .then(() => {
-        cy.get('.pf-c-alert.pf-m-success')
+        cy.get('.pf-v5-c-alert.pf-m-success')
           .contains(
             'Successfully created robot account with robot name: user1+userrobot',
           )

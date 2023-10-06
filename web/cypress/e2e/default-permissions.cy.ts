@@ -339,7 +339,7 @@ describe('Default permissions page', () => {
 
     // step - Review and Finish
     cy.get('[data-testid="review-and-finish-btn"]').click();
-    cy.get('.pf-c-alert.pf-m-success')
+    cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(
         `Successfully created robot account with robot name: ${orgName}+${newRobotName}`,
       )
