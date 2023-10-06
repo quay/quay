@@ -137,6 +137,7 @@ zope.event==4.5.0
 zope.interface==5.4.0
 
 # Indirect dependencies
+PyNaCl==1.5.0
 PyPDF3==1.0.6
 arabic-reshaper==3.0.0
 cssselect2==0.7.0
