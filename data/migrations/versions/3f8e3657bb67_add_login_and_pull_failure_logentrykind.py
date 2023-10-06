@@ -1,14 +1,14 @@
 """add login and pull failure logentrykind
 
 Revision ID: 3f8e3657bb67
-Revises: b82361fba1cd
+Revises: 222debc16e18
 Create Date: 2023-05-06 14:21:16.580825
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "3f8e3657bb67"
-down_revision = "b82361fba1cd"
+down_revision = "222debc16e18"
 
 import sqlalchemy as sa
 
