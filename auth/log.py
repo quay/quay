@@ -1,5 +1,6 @@
-from data.logs_model import logs_model
 from flask import request
+
+from data.logs_model import logs_model
 
 
 def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, performer=None):
