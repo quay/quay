@@ -2,7 +2,6 @@ import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
-  DropdownItem,
   Menu,
   MenuContent,
   MenuItem,
@@ -47,7 +46,7 @@ export default function ChangePermissions(props: ChangePermissionsProps) {
         flyoutMenu={
           <Menu key={1}>
             <MenuContent>
-              <MenuList>
+              <MenuList data-testid="change-permissions-menu-list">
                 {roles.map((role) => (
                   <MenuItem
                     key={role.name}

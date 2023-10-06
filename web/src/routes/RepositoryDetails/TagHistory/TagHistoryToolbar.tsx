@@ -26,12 +26,12 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
   } = props;
   return (
     <Toolbar>
-      <ToolbarContent>
+      <ToolbarContent alignItems="center">
         <ToolbarItem variant="search-filter">
           <SearchInput
             placeholder="Search by tag name..."
             value={query}
-            onChange={(value) => {
+            onChange={(_, value) => {
               setQuery(value);
             }}
             onClear={() => {
@@ -39,7 +39,7 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
             }}
           />
         </ToolbarItem>
-        <ToolbarItem>
+        <ToolbarItem alignItems="center">
           Date range:
           <DateTimePicker
             id="start-time-picker"
@@ -53,7 +53,7 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
             setValue={setEndTime}
           />
         </ToolbarItem>
-        <ToolbarItem>
+        <ToolbarItem alignSelf="center">
           <Checkbox
             label="Show future"
             id="show-future-checkbox"

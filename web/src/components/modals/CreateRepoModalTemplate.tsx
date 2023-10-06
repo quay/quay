@@ -6,12 +6,17 @@ import {
   FormGroup,
   TextInput,
   Radio,
-  SelectVariant,
-  Select,
-  SelectOption,
   Flex,
   FlexItem,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
+import {
+  Select,
+  SelectOption,
+  SelectVariant,
+} from '@patternfly/react-core/deprecated';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {useRef, useState} from 'react';
 import FormError from 'src/components/errors/FormError';
@@ -38,7 +43,11 @@ export default function CreateRepositoryModalTemplate(
   const [currentOrganization, setCurrentOrganization] = useState({
     // For org scoped view, the name is set current org and for Repository list view,
     // the name is set to 1st value from the Namespace dropdown
-    name: props.orgName ? props.orgName : (props.username ? props.username : null),
+    name: props.orgName
+      ? props.orgName
+      : props.username
+      ? props.username
+      : null,
     isDropdownOpen: false,
   });
 
@@ -65,7 +74,10 @@ export default function CreateRepositoryModalTemplate(
 
   const nameInputRef = useRef();
 
-  const handleNameInputChange = (value) => {
+  const handleNameInputChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    value,
+  ) => {
     let regex = /^[a-z0-9][.a-z0-9_-]{0,254}$/;
     if (quayConfig?.features.EXTENDED_REPOSITORY_NAMES) {
       // Extended repostitory name regex: allows "/" in repo names
@@ -149,18 +161,21 @@ export default function CreateRepositoryModalTemplate(
     >
       <FormError message={err} setErr={setErr} />
       <Form id="modal-with-form-form" maxWidth="765px">
-        <Flex>
+        <Flex
+          flexWrap={{default: 'nowrap'}}
+          spaceItems={{default: 'spaceItemsMd'}}
+        >
           <FlexItem>
             <FormGroup
               isInline
               label="Namespace"
               fieldId="modal-with-form-form-name"
               isRequired
-              helperTextInvalid="Select a namespace"
-              helperTextInvalidIcon={<ExclamationCircleIcon />}
-              validated={validationState.namespace ? 'success' : 'error'}
             >
-              <Flex>
+              <Flex
+                flexWrap={{default: 'nowrap'}}
+                spaceItems={{default: 'spaceItemsMd'}}
+              >
                 <FlexItem>
                   <Select
                     variant={SelectVariant.single}
@@ -182,8 +197,21 @@ export default function CreateRepositoryModalTemplate(
                     {namespaceSelectionList()}
                   </Select>
                 </FlexItem>
-                <FlexItem> / </FlexItem>
+                <FlexItem>/</FlexItem>
               </Flex>
+
+              {!validationState.namespace && (
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem
+                      variant="error"
+                      icon={<ExclamationCircleIcon />}
+                    >
+                      Select a namespace
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              )}
             </FormGroup>
           </FlexItem>
           <FlexItem>
@@ -191,9 +219,6 @@ export default function CreateRepositoryModalTemplate(
               label="Repository name"
               isRequired
               fieldId="modal-with-form-form-name"
-              helperTextInvalid="Must contain only lowercase alphanumeric and _- characters. Max 255 characters."
-              helperTextInvalidIcon={<ExclamationCircleIcon />}
-              validated={validationState.repoName ? 'success' : 'error'}
             >
               <TextInput
                 isRequired
@@ -204,6 +229,20 @@ export default function CreateRepositoryModalTemplate(
                 ref={nameInputRef}
                 validated={validationState.repoName ? 'default' : 'error'}
               />
+
+              {!validationState.repoName && (
+                <FormHelperText>
+                  <HelperText>
+                    <HelperTextItem
+                      variant="error"
+                      icon={<ExclamationCircleIcon />}
+                    >
+                      Must contain only lowercase alphanumeric and _-
+                      characters. Max 255 characters.
+                    </HelperTextItem>
+                  </HelperText>
+                </FormHelperText>
+              )}
             </FormGroup>
           </FlexItem>
         </Flex>
@@ -216,7 +255,7 @@ export default function CreateRepositoryModalTemplate(
             id="repository-description-input"
             name="modal-with-form-form-name"
             value={newRepository.description}
-            onChange={handleRepoDescriptionChange}
+            onChange={(_event, value) => handleRepoDescriptionChange(value)}
             ref={nameInputRef}
           />
         </FormGroup>
@@ -224,25 +263,29 @@ export default function CreateRepositoryModalTemplate(
           label="Repository visibility"
           fieldId="modal-with-form-form-email"
         >
-          <Radio
-            isChecked={repoVisibility === visibilityType.PUBLIC}
-            name="Public"
-            onChange={() => setrepoVisibility(visibilityType.PUBLIC)}
-            label="Public"
-            id={visibilityType.PUBLIC}
-            value={visibilityType.PUBLIC}
-            description="Anyone can see and pull from this repository. You choose who can push."
-          />
-          <br />
-          <Radio
-            isChecked={repoVisibility === visibilityType.PRIVATE}
-            name="Private"
-            onChange={() => setrepoVisibility(visibilityType.PRIVATE)}
-            label="Private"
-            id={visibilityType.PRIVATE}
-            value={visibilityType.PRIVATE}
-            description="You choose who can see,pull and push from/to this repository."
-          />
+          <Flex
+            direction={{default: 'column'}}
+            spaceItems={{default: 'spaceItemsMd'}}
+          >
+            <Radio
+              isChecked={repoVisibility === visibilityType.PUBLIC}
+              name="Public"
+              onChange={() => setrepoVisibility(visibilityType.PUBLIC)}
+              label="Public"
+              id={visibilityType.PUBLIC}
+              value={visibilityType.PUBLIC}
+              description="Anyone can see and pull from this repository. You choose who can push."
+            />
+            <Radio
+              isChecked={repoVisibility === visibilityType.PRIVATE}
+              name="Private"
+              onChange={() => setrepoVisibility(visibilityType.PRIVATE)}
+              label="Private"
+              id={visibilityType.PRIVATE}
+              value={visibilityType.PRIVATE}
+              description="You choose who can see,pull and push from/to this repository."
+            />
+          </Flex>
         </FormGroup>
       </Form>
     </Modal>

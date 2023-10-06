@@ -1,8 +1,8 @@
+import {Button} from '@patternfly/react-core';
 import {
-  Button,
   WizardContextConsumer,
   WizardFooter,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 
 export default function Footer(props: FooterProps) {
   if (props.isDrawerExpanded) {
@@ -11,14 +11,7 @@ export default function Footer(props: FooterProps) {
   return (
     <WizardFooter>
       <WizardContextConsumer>
-        {({
-          activeStep,
-          goToStepByName,
-          goToStepById,
-          onNext,
-          onBack,
-          onClose,
-        }) => {
+        {({activeStep, onNext, onBack, onClose}) => {
           return (
             <>
               {activeStep.name != 'Review and Finish' ? (

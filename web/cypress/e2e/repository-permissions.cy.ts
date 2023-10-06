@@ -101,7 +101,7 @@ describe('Repository Settings - Permissions', () => {
     cy.get('#permissions-select-all').click();
     cy.contains('Actions').click();
     cy.contains('Change Permissions').click();
-    cy.get('#change-permissions-menu').within(() => {
+    cy.get('[data-testid="change-permissions-menu-list"]').within(() => {
       cy.contains('Write').click();
     });
     const user1Row = cy.get('tr:contains("user1")');

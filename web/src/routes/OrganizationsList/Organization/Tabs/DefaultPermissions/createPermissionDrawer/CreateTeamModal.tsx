@@ -5,6 +5,9 @@ import {
   Modal,
   ModalVariant,
   TextInput,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
@@ -22,13 +25,19 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
   const [nameHelperText, setNameHelperText] = useState(props.nameHelperText);
   const {addAlert} = useAlerts();
 
-  const handleNameChange = (name: string) => {
+  const handleNameChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    name: string,
+  ) => {
     setInputTeamName(name);
     props.setTeamName(name);
     setNameHelperText('Validating...');
   };
 
-  const handleDescriptionChange = (descr: string) => {
+  const handleDescriptionChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    descr: string,
+  ) => {
     setInputTeamDescription(descr);
     props.setDescription(descr);
   };
@@ -104,15 +113,7 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
       ]}
     >
       <Form>
-        <FormGroup
-          label={props.nameLabel}
-          fieldId="form-name"
-          isRequired
-          helperText={nameHelperText}
-          helperTextInvalid={nameHelperText}
-          validated={validatedName}
-          helperTextInvalidIcon={<ExclamationCircleIcon />}
-        >
+        <FormGroup label={props.nameLabel} fieldId="form-name" isRequired>
           <TextInput
             data-testid="new-team-name-input"
             isRequired
@@ -123,12 +124,21 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
             onChange={handleNameChange}
             validated={validatedName}
           />
+
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={validatedName}
+                {...(validatedName === 'error' && {
+                  icon: <ExclamationCircleIcon />,
+                })}
+              >
+                {nameHelperText}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
-        <FormGroup
-          label={props.descriptionLabel}
-          fieldId="form-description"
-          helperText={props.helperText}
-        >
+        <FormGroup label={props.descriptionLabel} fieldId="form-description">
           <TextInput
             data-testid="new-team-description-input"
             type="text"
@@ -137,6 +147,12 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
             value={inputTeamDescription}
             onChange={handleDescriptionChange}
           />
+
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>{props.helperText}</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
       </Form>
     </Modal>

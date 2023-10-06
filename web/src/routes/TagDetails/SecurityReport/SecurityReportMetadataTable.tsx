@@ -1,9 +1,9 @@
 import React from 'react';
 import {Text, TextContent, TextVariants} from '@patternfly/react-core';
-import {TableComposable, Tbody, Th, Thead, Tr} from '@patternfly/react-table';
-import {VulnerabilityListItem} from 'src/atoms/VulnerabilityReportState';
+import {Table, Tbody, Th, Thead, Tr} from '@patternfly/react-table';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {MinusCircleIcon} from '@patternfly/react-icons';
+import {VulnerabilityListItem} from './Types';
 
 const getDistro = function (vuln: VulnerabilityListItem) {
   if (vuln.Metadata.DistroName) {
@@ -53,9 +53,9 @@ export function SecurityReportMetadataTable(
       </Text>
 
       <Text component={TextVariants.p}>Vectors</Text>
-      <TableComposable aria-label="Vulnerabilities" variant="compact">
+      <Table aria-label="Vulnerabilities" variant="compact">
         <Thead cellPadding={'5px'}>
-          <Tr marginWidth={0} className="pf-u-text-align-left">
+          <Tr marginWidth={0} className="pf-v5-u-text-align-left">
             {props.vulnerability.Metadata.NVD.CVSSv3.Vectors.split('/')
               .slice(1)
               .map((vector, i) => {
@@ -88,7 +88,7 @@ export function SecurityReportMetadataTable(
               })}
           </Tr>
         </Tbody>
-      </TableComposable>
+      </Table>
       {props.vulnerability.Description && (
         <>
           <Text component={TextVariants.p}>Description</Text>

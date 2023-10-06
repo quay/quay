@@ -16,7 +16,10 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
     });
   };
 
-  const onSearchTermChanged = (newSearchTerm: string) => {
+  const onSearchTermChanged = (
+    _event: React.FormEvent<HTMLInputElement>,
+    newSearchTerm: string,
+  ) => {
     props.setPage(1);
     setSearchTerm(newSearchTerm);
     props.setFilteredVulnList(
@@ -24,14 +27,17 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
     );
   };
 
-  const onShowOnlyFixableChanged = (checked: boolean) => {
+  const onShowOnlyFixableChanged = (
+    _event: React.FormEvent<HTMLInputElement>,
+    checked: boolean,
+  ) => {
     props.setPage(1);
     setIsFixedOnlyChecked(checked);
     props.setFilteredVulnList(filterVulnList(searchTerm, checked));
   };
 
   return (
-    <Flex className="pf-u-mt-md">
+    <Flex className="pf-v5-u-mt-md">
       <FlexItem>
         <TextInput
           isRequired

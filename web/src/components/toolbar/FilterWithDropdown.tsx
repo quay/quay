@@ -1,10 +1,6 @@
 import React from 'react';
-import {
-  TextInput,
-  ToolbarItem,
-  Dropdown,
-  DropdownToggle,
-} from '@patternfly/react-core';
+import {TextInput, ToolbarItem} from '@patternfly/react-core';
+import {Dropdown, DropdownToggle} from '@patternfly/react-core/deprecated';
 import {SearchState} from './SearchTypes';
 import {SetterOrUpdater} from 'recoil';
 
@@ -33,10 +29,10 @@ export function FilterWithDropdown(props: FilterWithDropdownProps) {
                 name="search input"
                 placeholder={props.searchInputText}
                 value={props.searchState.query}
-                onChange={setSearchState}
+                onChange={(_event, val: string) => setSearchState(val)}
               />,
             ]}
-            onToggle={(isOpen: boolean) => setIsOpen(isOpen)}
+            onToggle={(_event, isOpen: boolean) => setIsOpen(isOpen)}
             id="toggle-split-button"
           />
         }

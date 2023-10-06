@@ -1,3 +1,4 @@
+import {SetStateAction, useState} from 'react';
 import {
   Alert,
   Modal,
@@ -5,9 +6,8 @@ import {
   Text,
   TextContent,
   TextVariants,
-  Wizard,
 } from '@patternfly/react-core';
-import {SetStateAction, useState} from 'react';
+import {Wizard} from '@patternfly/react-core/deprecated';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
 

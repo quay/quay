@@ -3,7 +3,7 @@ import {
   DropdownItem,
   KebabToggle,
   DropdownPosition,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {IRobot} from 'src/resources/RobotsResource';
 import {useState} from 'react';
 

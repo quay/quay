@@ -4,11 +4,11 @@ import {
   TextContent,
   Text,
   TextVariants,
-  Wizard,
   AlertGroup,
   Alert,
   AlertActionCloseButton,
 } from '@patternfly/react-core';
+import {Wizard} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {
   ITeamMember,

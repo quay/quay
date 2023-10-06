@@ -1,12 +1,11 @@
 import React from 'react';
 import {
-  Button,
   EmptyState,
   EmptyStateBody,
   EmptyStateIcon,
   Page,
   PageSection,
-  Title,
+  EmptyStateHeader,
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 
@@ -15,10 +14,11 @@ export default function NotFound() {
     <Page>
       <PageSection>
         <EmptyState variant="full">
-          <EmptyStateIcon icon={ExclamationTriangleIcon} />
-          <Title headingLevel="h1" size="lg">
-            404 Page not found
-          </Title>
+          <EmptyStateHeader
+            titleText="404 Page not found"
+            icon={<EmptyStateIcon icon={ExclamationTriangleIcon} />}
+            headingLevel="h1"
+          />
           <EmptyStateBody>
             We didn&apos;t find a page that matches the address you navigated
             to.

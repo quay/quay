@@ -8,15 +8,9 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  SearchInput,
 } from '@patternfly/react-core';
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
@@ -41,17 +35,21 @@ export const BulkDeleteModalTemplate = <T,>(
     bulkModalPage * bulkModalPerPage - bulkModalPerPage + bulkModalPerPage,
   );
 
-  const onSearch = (value: string) => {
+  const onSearch = (
+    _event: React.FormEvent<HTMLInputElement>,
+    value: string,
+  ) => {
     setSearchInput(value);
     if (value === '') {
       setItemsMarkedForDelete(props.selectedItems);
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.selectedItems.filter((item) =>
-        item[props.mapOfColNamesToTableData[colNames[0]].label]
-          ?.toLowerCase()
-          .includes(value.toLowerCase()),
+      const filteredTableRow = props.selectedItems.filter(
+        (item) =>
+          item[props.mapOfColNamesToTableData[colNames[0]].label]
+            ?.toLowerCase()
+            .includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }
@@ -108,15 +106,13 @@ export const BulkDeleteModalTemplate = <T,>(
       </span>
       <PageSection variant={PageSectionVariants.light}>
         <Toolbar>
-          <ToolbarContent>
+          <ToolbarContent className="pf-v5-u-pl-0">
             <ToolbarItem>
-              <TextInput
-                isRequired
+              <SearchInput
                 type="search"
                 id="modal-with-form-form-name"
                 name="search input"
                 placeholder="Search"
-                iconVariant="search"
                 value={searchInput}
                 onChange={onSearch}
               />
@@ -127,10 +123,11 @@ export const BulkDeleteModalTemplate = <T,>(
               itemsList={itemsMarkedForDelete}
               setPage={setBulkModalPage}
               setPerPage={setBulkModalPerPage}
+              className="pf-v5-u-mr-md"
             />
           </ToolbarContent>
         </Toolbar>
-        <TableComposable aria-label="Simple table" variant="compact">
+        <Table aria-label="Simple table" variant="compact">
           <Thead>
             <Tr>
               {colNames.map((name, idx) => (
@@ -152,7 +149,7 @@ export const BulkDeleteModalTemplate = <T,>(
               </Tr>
             ))}
           </Tbody>
-        </TableComposable>
+        </Table>
         <Toolbar>
           <ToolbarPagination
             page={bulkModalPage}
@@ -160,18 +157,16 @@ export const BulkDeleteModalTemplate = <T,>(
             itemsList={itemsMarkedForDelete}
             setPage={setBulkModalPage}
             setPerPage={setBulkModalPerPage}
-            bottom={true}
           />
         </Toolbar>
-        <p>
-          {' '}
-          Confirm deletion by typing <b>&quot;confirm&quot;</b> below:{' '}
+        <p className="pf-v5-u-pt-md">
+          Confirm deletion by typing <b>&quot;confirm&quot;</b> below:
         </p>
         <TextInput
           id="delete-confirmation-input"
           value={confirmDeletionInput}
           type="text"
-          onChange={(value) => setConfirmDeletionInput(value)}
+          onChange={(_event, value) => setConfirmDeletionInput(value)}
           aria-label="text input example"
         />
       </PageSection>

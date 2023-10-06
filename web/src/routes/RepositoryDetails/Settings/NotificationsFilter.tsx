@@ -53,7 +53,7 @@ export default function NotificationsFilter(props: NotificationsFilterProps) {
                         id={`${e.title}-checkbox`}
                         label={e.title}
                         isChecked={props.filter.event.includes(e.type)}
-                        onChange={(checked: boolean) => {
+                        onChange={(_event, checked: boolean) => {
                           selectEvent(checked, e.type);
                         }}
                         name={`${e.title}-checkbox`}
@@ -84,7 +84,7 @@ export default function NotificationsFilter(props: NotificationsFilterProps) {
                       isChecked={props.filter.status.includes(
                         NotifiationStatus.enabled,
                       )}
-                      onChange={(checked: boolean) => {
+                      onChange={(_event, checked: boolean) => {
                         selectStatus(checked, NotifiationStatus.enabled);
                       }}
                       name="enabled-checkbox"
@@ -100,7 +100,7 @@ export default function NotificationsFilter(props: NotificationsFilterProps) {
                       isChecked={props.filter.status.includes(
                         NotifiationStatus.disabled,
                       )}
-                      onChange={(checked: boolean) => {
+                      onChange={(_event, checked: boolean) => {
                         selectStatus(checked, NotifiationStatus.disabled);
                       }}
                       name="disabled-checkbox"

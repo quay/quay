@@ -1,22 +1,17 @@
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import TeamsViewToolbar from './TeamsViewToolbar';
 import {Link, useSearchParams} from 'react-router-dom';
 import {
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
   PageSection,
   PageSectionVariants,
   PanelFooter,
   Spinner,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import TeamViewKebab from './TeamViewKebab';
 import {ITeams, useDeleteTeam, useFetchTeams} from 'src/hooks/UseTeams';
@@ -221,7 +216,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
         setRepoPermModal={setRepoPermModal}
       />
       {props.children}
-      <TableComposable aria-label="Selectable table">
+      <Table aria-label="Selectable table">
         <Thead>
           <Tr>
             <Th />
@@ -286,7 +281,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
       <PanelFooter>
         <ToolbarPagination
           itemsList={filteredTeams}

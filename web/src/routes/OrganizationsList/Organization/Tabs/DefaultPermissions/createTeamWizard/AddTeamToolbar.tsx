@@ -1,11 +1,10 @@
 import {
   Divider,
-  SelectGroup,
-  SelectOption,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {SelectGroup, SelectOption} from '@patternfly/react-core/deprecated';
 import {DesktopIcon} from '@patternfly/react-icons';
 import React from 'react';
 import {useState} from 'react';

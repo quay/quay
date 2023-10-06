@@ -1,10 +1,5 @@
-import {
-  DropdownItem,
-  Button,
-  Text,
-  TextVariants,
-  TextContent,
-} from '@patternfly/react-core';
+import {Button, Text, TextVariants, TextContent} from '@patternfly/react-core';
+import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import {DesktopIcon} from '@patternfly/react-icons';
 import ToggleDrawer from 'src/components/ToggleDrawer';

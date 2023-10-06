@@ -1,20 +1,22 @@
+import {SetStateAction, useEffect, useState} from 'react';
 import {
   ActionGroup,
   Alert,
   AlertActionCloseButton,
   Button,
   Divider,
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
   Form,
   FormGroup,
   Title,
+} from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
   SelectGroup,
   SelectOption,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
-import {SetStateAction, useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import EntitySearch from 'src/components/EntitySearch';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
@@ -162,7 +164,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
             onSelect={() => setIsPermissionOpen(false)}
             toggle={
               <DropdownToggle
-                onToggle={(isOpen) => setIsPermissionOpen(isOpen)}
+                onToggle={(_event, isOpen) => setIsPermissionOpen(isOpen)}
               >
                 {role}
               </DropdownToggle>

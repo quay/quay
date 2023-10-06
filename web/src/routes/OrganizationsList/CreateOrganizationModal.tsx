@@ -5,7 +5,11 @@ import {
   Form,
   FormGroup,
   TextInput,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
+import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import './css/Organizations.scss';
 import {isValidEmail} from 'src/libs/utils';
 import {useState} from 'react';
@@ -42,7 +46,7 @@ export const CreateOrganizationModal = (
     },
   });
 
-  const handleNameInputChange = (value: any) => {
+  const handleNameInputChange = (value: string) => {
     const regex = /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/;
     if (!regex.test(value) || value.length >= 256 || value.length < 2) {
       setValidation({
@@ -71,7 +75,7 @@ export const CreateOrganizationModal = (
     setOrganizationName(value);
   };
 
-  const handleEmailInputChange = (value: any) => {
+  const handleEmailInputChange = (value: string) => {
     setOrganizationEmail(value);
   };
 
@@ -125,35 +129,56 @@ export const CreateOrganizationModal = (
           label="Organization Name"
           isRequired
           fieldId="create-org-name"
-          helperText={validation.message}
-          helperTextInvalid={validation.message}
-          validated={validation.type}
         >
           <TextInput
             isRequired
             type="text"
             id="create-org-name-input"
             value={organizationName}
-            onChange={handleNameInputChange}
+            onChange={(_event, value) => handleNameInputChange(value)}
             validated={validation.type}
           />
+
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={validation.type}
+                {...(validation.type === 'error' && {
+                  icon: <ExclamationCircleIcon />,
+                })}
+              >
+                {validation.message}
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
-        <FormGroup
-          label="Organization Email"
-          fieldId="create-org-email"
-          helperText="This address must be different from your account's email"
-          helperTextInvalid={'Enter a valid email: email@provider.com'}
-          validated={invalidEmailFlag ? 'error' : 'default'}
-        >
+        <FormGroup label="Organization Email" fieldId="create-org-email">
           <TextInput
             type="email"
             id="create-org-email-input"
             name="create-org-email-input"
             value={organizationEmail}
-            onChange={handleEmailInputChange}
+            onChange={(_event, value) => handleEmailInputChange(value)}
             validated={invalidEmailFlag ? 'error' : 'default'}
             onBlur={onInputBlur}
           />
+
+          <FormHelperText>
+            <HelperText>
+              {invalidEmailFlag ? (
+                <HelperTextItem
+                  variant="error"
+                  icon={<ExclamationCircleIcon />}
+                >
+                  Enter a valid email: email@provider.com
+                </HelperTextItem>
+              ) : (
+                <HelperTextItem>
+                  {"This address must be different from your account's email"}
+                </HelperTextItem>
+              )}
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
         <br />
       </Form>

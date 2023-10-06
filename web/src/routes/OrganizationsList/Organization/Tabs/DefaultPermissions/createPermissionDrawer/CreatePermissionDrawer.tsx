@@ -7,16 +7,18 @@ import {
   DrawerHead,
   DrawerPanelBody,
   DrawerPanelContent,
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
   Form,
   FormGroup,
   Radio,
-  SelectGroup,
-  SelectOption,
   Spinner,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownToggle,
+  SelectOption,
+  SelectGroup,
+} from '@patternfly/react-core/deprecated';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
 import {useState, Ref} from 'react';
 import EntitySearch from 'src/components/EntitySearch';
@@ -397,7 +399,7 @@ export default function CreatePermissionDrawer(
         {createRobotModalForAppliedTo}
       </Conditional>
       <DrawerPanelContent>
-        <DrawerHead className="pf-c-title pf-m-xl">
+        <DrawerHead className="pf-v5-c-title pf-m-xl">
           <h6
             tabIndex={props.drawerContent != DrawerContentType.None ? 0 : -1}
             ref={props.drawerRef}
@@ -410,7 +412,7 @@ export default function CreatePermissionDrawer(
           </DrawerActions>
         </DrawerHead>
         <DrawerPanelBody>
-          <h3 className="pf-c-title pf-m-md">
+          <h3 className="pf-v5-c-title pf-m-md">
             Applies when a repository is created by:
           </h3>
         </DrawerPanelBody>

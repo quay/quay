@@ -1,17 +1,19 @@
 import {
   Button,
-  Dropdown,
-  DropdownGroup,
-  DropdownItem,
-  DropdownToggle,
-  Form,
-  FormGroup,
+  Flex,
+  FlexItem,
   Switch,
   Toolbar,
   ToolbarContent,
   ToolbarGroup,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownGroup,
+  DropdownItem,
+  DropdownToggle,
+} from '@patternfly/react-core/deprecated';
 import {UserIcon} from '@patternfly/react-icons';
 import React from 'react';
 import {useState} from 'react';
@@ -84,7 +86,10 @@ export function HeaderToolbar() {
 
   // Toggle between old UI and new UI
   const [isChecked, setIsChecked] = React.useState<boolean>(true);
-  const toggleSwitch = (checked: boolean) => {
+  const toggleSwitch = (
+    _event: React.FormEvent<HTMLInputElement>,
+    checked: boolean,
+  ) => {
     setIsChecked(checked);
 
     // Reload page and trigger patternfly cookie removal
@@ -96,12 +101,6 @@ export function HeaderToolbar() {
     const randomArg = '?_=' + new Date().getTime();
     window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
   };
-  const toolbarSpacers = {
-    default: 'spacerNone',
-    md: 'spacerSm',
-    lg: 'spacerMd',
-    xl: 'spacerLg',
-  };
 
   return (
     <>
@@ -110,24 +109,34 @@ export function HeaderToolbar() {
         <ToolbarContent>
           <ToolbarGroup
             variant="icon-button-group"
-            alignment={{default: 'alignRight'}}
+            align={{default: 'alignRight'}}
             spacer={{default: 'spacerNone', md: 'spacerMd'}}
           >
-            <ToolbarItem spacer={toolbarSpacers}>
-              <Form isHorizontal>
-                <FormGroup
-                  label="Current UI"
-                  fieldId="horizontal-form-stacked-options"
-                >
-                  <Switch
-                    id="header-toolbar-ui-switch"
-                    label="New UI"
-                    labelOff="New UI"
-                    isChecked={isChecked}
-                    onChange={toggleSwitch}
-                  />
-                </FormGroup>
-              </Form>
+            <ToolbarItem
+              spacer={{
+                default: 'spacerNone',
+                sm: 'spacerSm',
+                md: 'spacerSm',
+                lg: 'spacerMd',
+                xl: 'spacerLg',
+              }}
+            >
+              <Flex
+                spaceItems={{default: 'spaceItemsMd'}}
+                flexWrap={{default: 'nowrap'}}
+                className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+              >
+                <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
+                  Current UI
+                </FlexItem>
+                <Switch
+                  id="header-toolbar-ui-switch"
+                  label="New UI"
+                  labelOff="New UI"
+                  isChecked={isChecked}
+                  onChange={toggleSwitch}
+                />
+              </Flex>
             </ToolbarItem>
             <ToolbarItem>
               {user.username ? userDropdown : signInButton}

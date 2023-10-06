@@ -1,3 +1,4 @@
+import React from 'react';
 import {DatePicker, TimePicker} from '@patternfly/react-core';
 import {isNullOrUndefined} from 'src/libs/utils';
 
@@ -15,10 +16,14 @@ export default function DateTimePicker(props: DateTimePickerProps) {
     }
   };
 
-  const onDateChange = (value: string, dateValue: Date) => {
+  const onDateChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    _value: string,
+    dateValue?: Date,
+  ) => {
     if (!isNullOrUndefined(dateValue)) {
       if (isNullOrUndefined(date)) {
-        setValue((prevDate) => dateValue);
+        setValue(() => dateValue);
       } else {
         setValue((prevDate) => {
           const newDate = new Date(prevDate);
@@ -33,13 +38,20 @@ export default function DateTimePicker(props: DateTimePickerProps) {
     }
   };
 
-  const onTimeChange = (time, hour, minute, seconds, isValid) => {
+  const onTimeChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    _time: string,
+    hour?: number,
+    minute?: number,
+    _seconds?: number,
+    isValid?: boolean,
+  ) => {
     if (hour !== null && minute !== null && isValid) {
       if (isNullOrUndefined(date)) {
         const newDate = new Date();
         newDate.setHours(hour);
         newDate.setMinutes(minute);
-        setValue((prevDate) => newDate);
+        setValue(() => newDate);
       } else {
         setValue((prevDate) => {
           const newDate = new Date(prevDate);

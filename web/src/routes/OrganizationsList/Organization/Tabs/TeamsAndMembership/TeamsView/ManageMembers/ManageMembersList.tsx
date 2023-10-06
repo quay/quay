@@ -12,14 +12,7 @@ import {
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {
   ITeamMember,
   useDeleteTeamMember,
@@ -102,10 +95,7 @@ export default function ManageMembersList() {
     }
   }, [tableMode, allMembers]);
 
-  const onTableModeChange: ToggleGroupItemProps['onChange'] = (
-    _isSelected,
-    event,
-  ) => {
+  const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
     setTableMode(id);
   };
@@ -212,7 +202,7 @@ export default function ManageMembersList() {
         searchOptions={[manageMemberColumnNames.teamMember]}
       >
         {viewToggle}
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -256,7 +246,7 @@ export default function ManageMembersList() {
               </Tr>
             ))}
           </Tbody>
-        </TableComposable>
+        </Table>
       </ManageMembersToolbar>
     </PageSection>
   );

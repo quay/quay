@@ -3,12 +3,14 @@ import {
   AlertActionCloseButton,
   AlertGroup,
   Button,
-  Dropdown,
-  DropdownItem,
-  KebabToggle,
   Modal,
   ModalVariant,
 } from '@patternfly/react-core';
+import {
+  Dropdown,
+  DropdownItem,
+  KebabToggle,
+} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
 import Conditional from 'src/components/empty/Conditional';

@@ -3,7 +3,9 @@ import {
   EmptyState,
   EmptyStateBody,
   EmptyStateIcon,
-  Title,
+  EmptyStateHeader,
+  EmptyStateFooter,
+  Icon,
 } from '@patternfly/react-core';
 import {
   BanIcon,
@@ -14,28 +16,34 @@ import {
 export function QueuedState() {
   return (
     <EmptyState variant="full">
-      <EmptyStateIcon icon={PauseCircleIcon} />
-      <Title headingLevel="h1" size="lg">
-        Security scan is currently queued.
-      </Title>
+      <EmptyStateHeader
+        titleText="Security scan is currently queued."
+        icon={<EmptyStateIcon icon={PauseCircleIcon} />}
+        headingLevel="h1"
+      />
       <EmptyStateBody>Refresh page for updates in scan status.</EmptyStateBody>
-      <Button title="Home" onClick={() => window.location.reload()}>
-        Reload
-      </Button>
+      <EmptyStateFooter>
+        <Button title="Home" onClick={() => window.location.reload()}>
+          Reload
+        </Button>
+      </EmptyStateFooter>
     </EmptyState>
   );
 }
 
 export function FailedState() {
   const RedExclamationIcon = () => (
-    <ExclamationCircleIcon size="lg" color="red" />
+    <Icon size="lg">
+      <ExclamationCircleIcon color="red" />
+    </Icon>
   );
   return (
     <EmptyState variant="full">
-      <EmptyStateIcon icon={RedExclamationIcon} />
-      <Title headingLevel="h1" size="lg">
-        Security scan has failed.
-      </Title>
+      <EmptyStateHeader
+        titleText="Security scan has failed."
+        icon={<EmptyStateIcon icon={RedExclamationIcon} />}
+        headingLevel="h1"
+      />
       <EmptyStateBody>
         The scan could not be completed due to error.
       </EmptyStateBody>
@@ -46,10 +54,11 @@ export function FailedState() {
 export function UnsupportedState() {
   return (
     <EmptyState variant="full">
-      <EmptyStateIcon icon={BanIcon} />
-      <Title headingLevel="h1" size="lg">
-        Security scan is not supported.
-      </Title>
+      <EmptyStateHeader
+        titleText="Security scan is not supported."
+        icon={<EmptyStateIcon icon={BanIcon} />}
+        headingLevel="h1"
+      />
       <EmptyStateBody>
         Image does not have content the scanner recognizes.
       </EmptyStateBody>

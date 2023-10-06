@@ -1,11 +1,11 @@
 import {
-  Brand,
   Button,
   EmptyState,
   EmptyStateBody,
   EmptyStateIcon,
   PageSection,
-  Title,
+  EmptyStateHeader,
+  EmptyStateFooter,
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 
@@ -16,14 +16,17 @@ export default function PageLoadError() {
   return (
     <PageSection>
       <EmptyState variant="full">
-        <EmptyStateIcon icon={ExclamationTriangleIcon} />
-        <Title headingLevel="h1" size="lg">
-          Unable to reach server
-        </Title>
+        <EmptyStateHeader
+          titleText="Unable to reach server"
+          icon={<EmptyStateIcon icon={ExclamationTriangleIcon} />}
+          headingLevel="h1"
+        />
         <EmptyStateBody>Page could not be loaded</EmptyStateBody>
-        <Button title="Home" onClick={() => window.location.reload()}>
-          Retry
-        </Button>
+        <EmptyStateFooter>
+          <Button title="Home" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </EmptyStateFooter>
       </EmptyState>
     </PageSection>
   );

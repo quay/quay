@@ -1,19 +1,12 @@
 import {
-  DropdownItem,
   PageSection,
   PageSectionVariants,
   Spinner,
   Title,
   PanelFooter,
 } from '@patternfly/react-core';
-import {
-  TableComposable,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-} from '@patternfly/react-table';
+import {DropdownItem} from '@patternfly/react-core/deprecated';
+import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useRecoilState} from 'recoil';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {ReactElement, useState} from 'react';
@@ -328,7 +321,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           paginatedRepositoryList={paginatedRepositoryList}
           onSelectRepo={onSelectRepo}
         />
-        <TableComposable aria-label="Selectable table">
+        <Table aria-label="Selectable table">
           <Thead>
             <Tr>
               <Th />
@@ -359,7 +352,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                       onSelect: (_event, isSelecting) =>
                         onSelectRepo(repo, rowIndex, isSelecting),
                       isSelected: isRepoSelected(repo),
-                      disable: !isRepoSelectable(repo),
+                      isDisabled: !isRepoSelectable(repo),
                     }}
                   />
                   <Td dataLabel={RepositoryListColumnNames.name}>
@@ -403,7 +396,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
               ))
             )}
           </Tbody>
-        </TableComposable>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             total={totalResults}

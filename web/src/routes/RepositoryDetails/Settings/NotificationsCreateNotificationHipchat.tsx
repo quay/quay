@@ -4,6 +4,9 @@ import {
   ActionGroup,
   Button,
   FormGroup,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
@@ -64,20 +67,23 @@ export default function CreateHipchatNotification(
 
   return (
     <>
-      <FormGroup
-        fieldId="room-id-number"
-        label="Room ID #"
-        isRequired
-        helperTextInvalid="Must be a number"
-        helperTextInvalidIcon={<ExclamationCircleIcon />}
-        validated={roomId == '' || isValidRoomId(roomId) ? 'default' : 'error'}
-      >
+      <FormGroup fieldId="room-id-number" label="Room ID #" isRequired>
         <TextInput
           required
           id="room-id-number-field"
           value={roomId}
-          onChange={(value) => setRoomId(value)}
+          onChange={(_event, value) => setRoomId(value)}
         />
+
+        {!isValidRoomId(roomId) && (
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem variant="error" icon={<ExclamationCircleIcon />}>
+                Must be a number
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        )}
       </FormGroup>
       <FormGroup
         fieldId="room-notification-token"
@@ -88,14 +94,14 @@ export default function CreateHipchatNotification(
           required
           id="room-notification-token-field"
           value={token}
-          onChange={(value) => setToken(value)}
+          onChange={(_event, value) => setToken(value)}
         />
       </FormGroup>
       <FormGroup fieldId="title" label="Title">
         <TextInput
           id="notification-title"
           value={title}
-          onChange={(value) => setTitle(value)}
+          onChange={(_event, value) => setTitle(value)}
         />
       </FormGroup>
       <ActionGroup>

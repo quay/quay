@@ -1,4 +1,4 @@
-import {Toolbar, ToolbarFilter} from '@patternfly/react-core';
+import {ToolbarFilter} from '@patternfly/react-core';
 import {NotificationFilter} from 'src/hooks/UseNotifications';
 
 export default function NotificationsFilterChips(
@@ -18,7 +18,7 @@ export default function NotificationsFilterChips(
     <>
       <ToolbarFilter
         chips={props.filter.event}
-        deleteChip={(category, chip) => deleteFilter('event', chip as string)}
+        deleteChip={(_category, chip) => deleteFilter('event', chip as string)}
         deleteChipGroup={() => props.resetFilter('event')}
         categoryName="Event"
       >
@@ -26,7 +26,7 @@ export default function NotificationsFilterChips(
       </ToolbarFilter>
       <ToolbarFilter
         chips={props.filter.status}
-        deleteChip={(category, chip) => deleteFilter('status', chip as string)}
+        deleteChip={(_category, chip) => deleteFilter('status', chip as string)}
         deleteChipGroup={() => props.resetFilter('status')}
         categoryName="Status"
       >

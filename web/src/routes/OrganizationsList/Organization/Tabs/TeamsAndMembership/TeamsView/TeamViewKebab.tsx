@@ -3,7 +3,7 @@ import {
   DropdownItem,
   KebabToggle,
   DropdownPosition,
-} from '@patternfly/react-core';
+} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import {Link, useSearchParams} from 'react-router-dom';
 import {AlertVariant} from 'src/atoms/AlertState';

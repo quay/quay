@@ -1,12 +1,5 @@
 import {Spinner} from '@patternfly/react-core';
-import {
-  TableComposable,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {useRepositoryPermissions} from 'src/hooks/UseRepositoryPermissions';
 import PermissionsToolbar from './PermissionsToolbar';
@@ -77,7 +70,7 @@ export default function Permissions(props: PermissionsProps) {
         deselectAll={() => setSelectedMembers([])}
         setDrawerContent={props.setDrawerContent}
       />
-      <TableComposable aria-label="Repository permissions table">
+      <Table aria-label="Repository permissions table">
         <Thead>
           <Tr>
             <Th />
@@ -113,7 +106,7 @@ export default function Permissions(props: PermissionsProps) {
             </Tr>
           ))}
         </Tbody>
-      </TableComposable>
+      </Table>
     </>
   );
 }

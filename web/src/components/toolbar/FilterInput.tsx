@@ -4,8 +4,13 @@ import {SearchState} from './SearchTypes';
 import {SetterOrUpdater} from 'recoil';
 
 export function FilterInput(props: FilterInputProps) {
-  const setSearchState = (val: string) => {
-    props.onChange((prev: SearchState) => ({...prev, query: val.trim()}));
+  const setSearchState = (
+    _event:
+      | React.FormEvent<HTMLInputElement>
+      | React.SyntheticEvent<HTMLButtonElement>,
+    value: string,
+  ) => {
+    props.onChange((prev: SearchState) => ({...prev, query: value.trim()}));
   };
 
   return (
@@ -14,7 +19,7 @@ export function FilterInput(props: FilterInputProps) {
         placeholder="Search"
         value={props.searchState.query}
         onChange={setSearchState}
-        onClear={() => setSearchState('')}
+        onClear={(event) => setSearchState(event, '')}
         id={props.id}
       />
     </ToolbarItem>
