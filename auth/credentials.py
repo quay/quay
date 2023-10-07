@@ -1,22 +1,20 @@
 import logging
 from enum import Enum
 
-from auth.log import log_action
-from data.database import User
+from flask import request
 
 import features
-from app import authentication, app
-from flask import request
-from auth.oauth import validate_oauth_token
-from auth.validateresult import ValidateResult, AuthKind
+from app import app, authentication
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
     OAUTH_TOKEN_USERNAME,
 )
+from auth.log import log_action
 from auth.oauth import validate_oauth_token
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.database import User
 from util.names import parse_robot_username
 
 logger = logging.getLogger(__name__)

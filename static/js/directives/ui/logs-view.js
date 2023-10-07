@@ -21,9 +21,9 @@ angular.module('quay').directive('logsView', function () {
       'repository': '=repository',
       'allLogs': '@allLogs'
     },
-    controller: function($scope, $element, $sce, Restangular, ApiService, TriggerService,
-                         StringBuilderService, ExternalNotificationData, UtilService,
-                         Features, humanizeIntervalFilter, humanizeDateFilter, StateService) {
+    controller: function ($scope, $element, $sce, Restangular, ApiService, TriggerService,
+      StringBuilderService, ExternalNotificationData, UtilService,
+      Features, humanizeIntervalFilter, humanizeDateFilter, StateService) {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.Features = Features;
       $scope.loading = true;
@@ -43,18 +43,18 @@ angular.module('quay').directive('logsView', function () {
       $scope.options.monthAgo = moment().subtract(1, 'month').calendar();
       $scope.options.now = new Date(datetime.getUTCFullYear(), datetime.getUTCMonth(), datetime.getUTCDate());
 
-      var getOffsetDate = function(date, days) {
+      var getOffsetDate = function (date, days) {
         return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
       };
 
-      var defaultPermSuffix = function(metadata) {
+      var defaultPermSuffix = function (metadata) {
         if (metadata.activating_username) {
           return ', when creating user is {activating_username}';
         }
         return '';
       };
 
-      var getServiceKeyTitle = function(metadata) {
+      var getServiceKeyTitle = function (metadata) {
         if (metadata.name) {
           return metadata.name;
         }
@@ -63,59 +63,59 @@ angular.module('quay').directive('logsView', function () {
       };
 
       var logDescriptions = {
-        'user_create': function(metadata) {
-          if(metadata.superuser) {
+        'user_create': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} created user {username}';
           } else {
             return 'User {username} created';
           }
         },
-        'user_delete': function(metadata) {
-          if(metadata.superuser) {
+        'user_delete': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} deleted user {username}';
           } else {
             return 'User {username} deleted';
           }
         },
-        'user_enable': function(metadata) {
-          if(metadata.superuser) {
+        'user_enable': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} enabled user {username}';
           } else {
             return 'User {username} enabled';
           }
         },
-        'user_disable': function(metadata) {
-          if(metadata.superuser) {
+        'user_disable': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} disabled user {username}';
           } else {
             return 'User {username} disabled';
           }
         },
-        'user_change_password': function(metadata) {
-          if(metadata.superuser) {
+        'user_change_password': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} changed password of user {username}';
           } else {
             return 'User {username} changed password';
           }
         },
-        'user_change_email': function(metadata) {
-          if(metadata.superuser) {
+        'user_change_email': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} changed email from {old_email} to {email}';
           } else {
             return 'Changed email from {old_email} to {email}';
           }
         },
-        'user_change_name': function(metadata) {
-          if(metadata.superuser) {
+        'user_change_name': function (metadata) {
+          if (metadata.superuser) {
             return 'Superuser {superuser} renamed user {old_username} to {username}';
           } else {
             return 'User {old_username} changed name to {username}';
           }
         },
-        'user_change_invoicing': function(metadata) {
+        'user_change_invoicing': function (metadata) {
           if (metadata.invoice_email) {
             return 'Enabled email invoicing';
-          } else if(metadata.invoice_email_address) {
+          } else if (metadata.invoice_email_address) {
             return 'Set email invoicing address to {invoice_email_address}';
           } else {
             return 'Disabled email invoicing';
@@ -136,7 +136,7 @@ angular.module('quay').directive('logsView', function () {
         'repo_mirror_sync_failed': 'Mirror finished unsuccessfully for {message}[[{tags}]][[ {stdout}]][[ {stderr}]]',
         'repo_mirror_sync_tag_success': 'Mirror of {tag} successful[[ to repository {namespace}/{repo}]][[ {message}]][[ {stdout}]][[ {stderr}]]',
         'repo_mirror_sync_tag_failed': 'Mirror of {tag} failure[[ to repository {namespace}/{repo}]][[ {message}]][[ {stdout}]][[ {stderr}]]',
-        'repo_mirror_config_changed': function(metadata) {
+        'repo_mirror_config_changed': function (metadata) {
           switch (metadata.changed) {
             case 'sync_status':
               if (metadata.to === 'SYNC_CANCEL') {
@@ -192,10 +192,10 @@ angular.module('quay').directive('logsView', function () {
               return 'Mirror {changed} changed to {to}';
             default:
               return 'Mirror {changed} changed to {to}';
-            }
+          }
         },
         'change_repo_state': 'Repository state changed to {state_changed}',
-        'push_repo': function(metadata) {
+        'push_repo': function (metadata) {
           if (metadata.tag) {
             return 'Push of {tag}[[ to repository {namespace}/{repo}]]';
           } else if (metadata.release) {
@@ -204,7 +204,7 @@ angular.module('quay').directive('logsView', function () {
             return 'Repository push[[ to {namespace}/{repo}]]';
           }
         },
-        'repo_verb': function(metadata) {
+        'repo_verb': function (metadata) {
           var prefix = '';
           if (metadata.verb == 'squash') {
             prefix = 'Pull of squashed tag {tag}[[ from {namespace}/{repo}]]'
@@ -228,7 +228,7 @@ angular.module('quay').directive('logsView', function () {
 
           return prefix;
         },
-        'pull_repo': function(metadata) {
+        'pull_repo': function (metadata) {
           var description = 'repository {namespace}/{repo}';
           if (metadata.tag) {
             description = 'tag {tag}[[ from repository {namespace}/{repo}]]';
@@ -259,25 +259,25 @@ angular.module('quay').directive('logsView', function () {
           }
         },
         'delete_repo': 'Delete repository {repo}',
-        'change_repo_permission': function(metadata) {
+        'change_repo_permission': function (metadata) {
           if (metadata.username) {
             return 'Change permission for [[user ]]{username}[[ in repository {namespace}/{repo}]] to {role}';
           } else if (metadata.team) {
-              return 'Change permission for [[team ]]{team}[[ in repository {namespace}/{repo}]] to {role}';
+            return 'Change permission for [[team ]]{team}[[ in repository {namespace}/{repo}]] to {role}';
           } else if (metadata.token) {
             return 'Change permission for [[token ]]{token}[[ in repository {namespace}/{repo}]] to {role}';
           }
         },
-        'delete_repo_permission': function(metadata) {
+        'delete_repo_permission': function (metadata) {
           if (metadata.username) {
             return 'Remove permission for [[user ]]{username}[[ from repository {namespace}/{repo}]]';
           } else if (metadata.team) {
-              return 'Remove permission for [[team ]]{team}[[ from repository {namespace}/{repo}]]';
+            return 'Remove permission for [[team ]]{team}[[ from repository {namespace}/{repo}]]';
           } else if (metadata.token) {
             return 'Remove permission for [[token ]]{token}[[ from repository {namespace}/{repo}]]';
           }
         },
-        'revert_tag': function(metadata) {
+        'revert_tag': function (metadata) {
           if (metadata.manifest_digest) {
             return 'Tag {tag} restored to {manifest_digest}';
           } else {
@@ -286,15 +286,15 @@ angular.module('quay').directive('logsView', function () {
         },
         'autoprune_tag_delete': 'Tag {tag} pruned[[ in repository {namespace}/{repo} by {performer}]]',
         'delete_tag': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by user {username}]]',
-        'permanently_delete_tag': function(metadata){
-          if (metadata.manifest_digest){
+        'permanently_delete_tag': function (metadata) {
+          if (metadata.manifest_digest) {
             return 'Tag {tag} referencing {manifest_digest} permanently deleted[[ in repository {namespace}/{repo} by user {username}]]';
           } else {
             return 'Tag {tag} permanently deleted[[ in repository {namespace}/{repo} by user {username}]]'
           }
         },
         'create_tag': 'Tag {tag} created[[ in repository {namespace}/{repo} on image {image} by user {username}]]',
-        'move_tag': function(metadata) {
+        'move_tag': function (metadata) {
           if (metadata.manifest_digest) {
             return 'Tag {tag} moved[[ from {original_manifest_digest}]] to {manifest_digest}[[ in repository {namespace}/{repo} by user {username}]]';
           } else {
@@ -302,7 +302,7 @@ angular.module('quay').directive('logsView', function () {
           }
         },
         'change_repo_visibility': 'Change visibility[[ for repository {namespace}/{repo}]] to {visibility}',
-        'change_repo_trust': function(metadata) {
+        'change_repo_trust': function (metadata) {
           if (metadata.trust_enabled) {
             return 'Trust enabled[[ for {namespace}/{repo}]]';
           } else {
@@ -312,7 +312,7 @@ angular.module('quay').directive('logsView', function () {
         'add_repo_accesstoken': 'Create access token {token}[[ in repository {repo}]]',
         'delete_repo_accesstoken': 'Delete access token {token}[[ in repository {repo}]]',
         'set_repo_description': 'Change description[[ for repository {namespace}/{repo} to {description}]]',
-        'build_dockerfile': function(metadata) {
+        'build_dockerfile': function (metadata) {
           if (metadata.trigger_id) {
             var triggerDescription = TriggerService.getDescription(
               metadata['service'], metadata['config']);
@@ -323,17 +323,17 @@ angular.module('quay').directive('logsView', function () {
         'org_create': 'Organization {namespace} created',
         'org_delete': 'Organization {namespace} deleted',
         'org_change_email': 'Change organization email from {old_email} to {email}',
-        'org_change_invoicing': function(metadata) {
+        'org_change_invoicing': function (metadata) {
           if (metadata.invoice_email) {
             return 'Enabled email invoicing';
-          } else if(metadata.invoice_email_address) {
+          } else if (metadata.invoice_email_address) {
             return 'Set email invoicing address to {invoice_email_address}';
           } else {
             return 'Disabled email invoicing';
           }
         },
         'org_change_tag_expiration': 'Change time machine window to {tag_expiration}',
-        'org_change_name': function(metadata) {
+        'org_change_name': function (metadata) {
           if (metadata.superuser) {
             return 'Superuser {superuser} renamed organization from {old_name} to {new_name}';
           } else {
@@ -344,14 +344,14 @@ angular.module('quay').directive('logsView', function () {
         'org_delete_team': 'Delete team {team}',
         'org_add_team_member': 'Add member {member} to team {team}',
         'org_remove_team_member': 'Remove member {member} from team {team}',
-        'org_invite_team_member': function(metadata) {
+        'org_invite_team_member': function (metadata) {
           if (metadata.user) {
             return 'Invite {user} to team {team}';
           } else {
             return 'Invite {email} to team {team}';
           }
         },
-        'org_delete_team_member_invite': function(metadata) {
+        'org_delete_team_member_invite': function (metadata) {
           if (metadata.user) {
             return 'Rescind invite of {user} to team {team}';
           } else {
@@ -364,38 +364,38 @@ angular.module('quay').directive('logsView', function () {
 
         'org_set_team_description': 'Change description of team {team}[[ to {description}]]',
         'org_set_team_role': 'Change permission of team {team} to {role}',
-        'create_prototype_permission': function(metadata) {
+        'create_prototype_permission': function (metadata) {
           if (metadata.delegate_user) {
             return 'Create default permission: {role} for {delegate_user}' + defaultPermSuffix(metadata);
           } else if (metadata.delegate_team) {
             return 'Create default permission: {role} for {delegate_team}' + defaultPermSuffix(metadata);
           }
         },
-        'modify_prototype_permission': function(metadata) {
+        'modify_prototype_permission': function (metadata) {
           if (metadata.delegate_user) {
             return 'Modify default permission: {role} (from {original_role}) for {delegate_user}' + defaultPermSuffix(metadata);
           } else if (metadata.delegate_team) {
             return 'Modify default permission: {role} (from {original_role}) for {delegate_team}' + defaultPermSuffix(metadata);
           }
         },
-        'delete_prototype_permission': function(metadata) {
+        'delete_prototype_permission': function (metadata) {
           if (metadata.delegate_user) {
             return 'Delete default permission: {role} for {delegate_user}' + defaultPermSuffix(metadata);
           } else if (metadata.delegate_team) {
             return 'Delete default permission: {role} for {delegate_team}' + defaultPermSuffix(metadata);
           }
         },
-        'setup_repo_trigger': function(metadata) {
+        'setup_repo_trigger': function (metadata) {
           var triggerDescription = TriggerService.getDescription(
             metadata['service'], metadata['config']);
           return 'Setup build trigger[[ - ' + triggerDescription + ']]';
         },
-        'delete_repo_trigger': function(metadata) {
+        'delete_repo_trigger': function (metadata) {
           var triggerDescription = TriggerService.getDescription(
             metadata['service'], metadata['config']);
           return 'Delete build trigger[[ - ' + triggerDescription + ']]';
         },
-        'toggle_repo_trigger': function(metadata) {
+        'toggle_repo_trigger': function (metadata) {
           var triggerDescription = TriggerService.getDescription(
             metadata['service'], metadata['config']);
           if (metadata.enabled) {
@@ -410,24 +410,24 @@ angular.module('quay').directive('logsView', function () {
         'reset_application_client_secret': 'Reset the client secret of application {application_name}[[ ' +
           'with client ID {client_id}]]',
 
-        'add_repo_notification': function(metadata) {
+        'add_repo_notification': function (metadata) {
           var eventData = ExternalNotificationData.getEventInfo(metadata.event);
           return 'Add notification of event "' + eventData['title'] + '"[[ for repository {namespace}/{repo}]]';
         },
 
-        'delete_repo_notification': function(metadata) {
+        'delete_repo_notification': function (metadata) {
           var eventData = ExternalNotificationData.getEventInfo(metadata.event);
           return 'Delete notification of event "' + eventData['title'] + '"[[ for repository {namespace}/{repo}]]';
         },
 
-        'reset_repo_notification': function(metadata) {
+        'reset_repo_notification': function (metadata) {
           var eventData = ExternalNotificationData.getEventInfo(metadata.event);
           return 'Re-enable notification of event "' + eventData['title'] + '"[[ for repository {namespace}/{repo}]]';
         },
 
         'regenerate_robot_token': 'Regenerated token for robot {robot}',
 
-        'service_key_create': function(metadata) {
+        'service_key_create': function (metadata) {
           if (metadata.preshared) {
             return 'Manual creation of[[ preshared service]] key {kid}[[ for service {service}]]';
           } else {
@@ -441,7 +441,7 @@ angular.module('quay').directive('logsView', function () {
         'service_key_extend': 'Change of expiration of service key {kid}[[ from {old_expiration_date}] to {expiration_date}',
         'service_key_rotate': 'Automatic rotation of service key {kid} by {user_agent}',
 
-        'take_ownership': function(metadata) {
+        'take_ownership': function (metadata) {
           if (metadata.was_user) {
             return 'Superuser {superuser} took ownership of user namespace {namespace}';
           } else {
@@ -452,7 +452,7 @@ angular.module('quay').directive('logsView', function () {
         'manifest_label_add': 'Label {key} added to[[ manifest]] {manifest_digest}[[ under repository {namespace}/{repo}]]',
         'manifest_label_delete': 'Label {key} deleted from[[ manifest]] {manifest_digest}[[ under repository {namespace}/{repo}]]',
 
-        'change_tag_expiration': function(metadata) {
+        'change_tag_expiration': function (metadata) {
           if (metadata.expiration_date && metadata.old_expiration_date) {
             return 'Tag {tag} set to expire on {expiration_date}[[ (previously {old_expiration_date})]]';
           } else if (metadata.expiration_date) {
@@ -466,7 +466,7 @@ angular.module('quay').directive('logsView', function () {
 
         'create_app_specific_token': 'Created external application token {app_specific_token_title}',
         'revoke_app_specific_token': 'Revoked external application token {app_specific_token_title}',
-        'repo_mirror': function(metadata) {
+        'repo_mirror': function (metadata) {
           if (metadata.message) {
             return 'Repository mirror {verb} by Skopeo: {message}';
           } else {
@@ -481,14 +481,14 @@ angular.module('quay').directive('logsView', function () {
         'create_proxy_cache_config': 'Create proxy cache for {namespace}[[ with upstream {upstream_registry}]]',
         'delete_proxy_cache_config': 'Create proxy cache for {namespace}',
 
-        'start_build_trigger': function(metadata) {
+        'start_build_trigger': function (metadata) {
           var triggerDescription = TriggerService.getDescription(
             metadata['service'], metadata['config']);
           return 'Manually start build from trigger[[ - ' + triggerDescription + ']]';
         },
         'cancel_build': 'Cancel build {build_uuid}',
-        'login_success': function(metadata) {
-          metadata["useragent"] = metadata.useragent.length > 64 ? metadata.useragent.slice(0, 64)+ '...' : metadata.useragent;
+        'login_success': function (metadata) {
+          metadata["useragent"] = metadata.useragent.length > 64 ? metadata.useragent.slice(0, 64) + '...' : metadata.useragent;
 
           if (metadata.type == 'v2auth') {
             var message = 'Login to registry[[ with';
@@ -505,12 +505,12 @@ angular.module('quay').directive('logsView', function () {
             return 'Login to Quay[[ with user-agent {useragent}]]';
           }
         },
-        'login_failure': function(metadata) {
-          metadata["useragent"] = metadata.useragent.length > 64 ? metadata.useragent.slice(0, 64)+ '...' : metadata.useragent;
+        'login_failure': function (metadata) {
+          metadata["useragent"] = metadata.useragent.length > 64 ? metadata.useragent.slice(0, 64) + '...' : metadata.useragent;
 
           if (metadata.type == 'v2auth') {
             var message = 'Login to registry failed[[ with';
-            
+
             if (metadata.kind == 'app_specific_token') {
               message += ' app-specific token';
 
@@ -523,7 +523,7 @@ angular.module('quay').directive('logsView', function () {
               }
 
               message += ' and'
-            } 
+            }
             else if (metadata.kind == 'robot') {
               message += ' robot {robot} (owned by {username}) and';
             }
@@ -566,7 +566,7 @@ angular.module('quay').directive('logsView', function () {
         'create_namespace_autoprune_policy': 'Autoprune policy created for namespace {namespace}[[ with policy method {method} and value {value}]]',
         'update_namespace_autoprune_policy': 'Autoprune policy updated for namespace {namespace}[[ with policy method {method} and value {value}]]',
         'delete_namespace_autoprune_policy': 'Autoprune policy deleted for namespace {namespace}[[ with uuid {policy_uuid}]]',
-        'pull_repo_failed': function(metadata) {
+        'pull_repo_failed': function (metadata) {
           var message = 'Pull from repository {namespace}/{repo} failed';
 
           if (metadata.tag) {
@@ -579,7 +579,7 @@ angular.module('quay').directive('logsView', function () {
 
           return message;
         },
-        'push_repo_failed': function(metadata) {
+        'push_repo_failed': function (metadata) {
           var message = 'Push to repository {namespace}/{repo} failed';
 
           if (metadata.tag) {
@@ -592,7 +592,7 @@ angular.module('quay').directive('logsView', function () {
 
           return message;
         },
-        'delete_tag_failed': function(metadata) {
+        'delete_tag_failed': function (metadata) {
           var message = 'Delete tag {namespace}/{repo} failed';
 
           if (metadata.tag) {
@@ -605,7 +605,7 @@ angular.module('quay').directive('logsView', function () {
 
           return message;
         }
-};
+      };
 
       var logKinds = {
         'user_create': 'Create user',
@@ -644,7 +644,7 @@ angular.module('quay').directive('logsView', function () {
         'delete_tag_failed': 'Delete Tag Failed',
         'create_tag': 'Create Tag',
         'move_tag': 'Move Tag',
-        'revert_tag':'Restore Tag',
+        'revert_tag': 'Restore Tag',
         'org_create': 'Create organization',
         'org_delete': 'Delete organization',
         'org_change_email': 'Change organization email',
@@ -713,11 +713,11 @@ angular.module('quay').directive('logsView', function () {
         'delete_repo_webhook': 'Delete webhook'
       };
 
-      var getDateString = function(date) {
+      var getDateString = function (date) {
         return (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear();
       };
 
-      var getUrl = function(suffix) {
+      var getUrl = function (suffix) {
         var url = UtilService.getRestUrl('user/' + suffix);
         if ($scope.organization) {
           url = UtilService.getRestUrl('organization', $scope.organization.name, suffix);
@@ -735,7 +735,7 @@ angular.module('quay').directive('logsView', function () {
         return url;
       };
 
-      var update = function() {
+      var update = function () {
         var hasValidUser = !!$scope.user;
         var hasValidOrg = !!$scope.organization;
         var hasValidRepo = $scope.repository && $scope.repository.namespace;
@@ -755,14 +755,14 @@ angular.module('quay').directive('logsView', function () {
 
           var aggregateUrl = getUrl('aggregatelogs').toString();
           var loadAggregate = Restangular.one(aggregateUrl);
-          loadAggregate.customGET().then(function(resp) {
+          loadAggregate.customGET().then(function (resp) {
             $scope.chart = new LogUsageChart(logKinds);
-            $($scope.chart).bind('filteringChanged', function(e) {
-              $scope.$apply(function() { $scope.kindsAllowed = e.allowed; });
+            $($scope.chart).bind('filteringChanged', function (e) {
+              $scope.$apply(function () { $scope.kindsAllowed = e.allowed; });
             });
 
             $scope.chart.draw('bar-chart', resp.aggregated, $scope.options.logStartDate,
-                              $scope.options.logEndDate);
+              $scope.options.logEndDate);
             $scope.chartLoading = false;
           }).catch(function (resp) {
             if (resp.status === 501) {
@@ -779,7 +779,7 @@ angular.module('quay').directive('logsView', function () {
         $scope.nextPage();
       };
 
-      $scope.nextPage = function() {
+      $scope.nextPage = function () {
         if ($scope.loading || !$scope.hasAdditional) { return; }
 
         $scope.loading = true;
@@ -790,7 +790,7 @@ angular.module('quay').directive('logsView', function () {
         url.setQueryParameter('next_page', $scope.nextPageToken);
 
         var loadLogs = Restangular.one(url.toString());
-        loadLogs.customGET().then(function(resp) {
+        loadLogs.customGET().then(function (resp) {
           if ($scope.loadCounter != currentCounter) {
             // Loaded logs data is out of date.
             return;
@@ -804,7 +804,7 @@ angular.module('quay').directive('logsView', function () {
             $scope.nextPage();
           }
 
-          resp.logs.forEach(function(log) {
+          resp.logs.forEach(function (log) {
             $scope.logs.push(log);
           });
 
@@ -818,24 +818,24 @@ angular.module('quay').directive('logsView', function () {
         });
       };
 
-      $scope.toggleChart = function() {
+      $scope.toggleChart = function () {
         $scope.chartVisible = !$scope.chartVisible;
       };
 
-      $scope.isVisible = function(allowed, kind) {
+      $scope.isVisible = function (allowed, kind) {
         return allowed == null || allowed.hasOwnProperty(kind);
       };
 
-      $scope.toggleExpanded = function(log) {
+      $scope.toggleExpanded = function (log) {
         log._expanded = !log._expanded;
       };
 
-      $scope.getColor = function(kind, chart) {
+      $scope.getColor = function (kind, chart) {
         if (!chart) { return 'gray'; }
         return chart.getColor(kind);
       };
 
-      $scope.getDescription = function(log, full_description) {
+      $scope.getDescription = function (log, full_description) {
         log.metadata['_ip'] = log.ip ? log.ip : null;
 
         // Note: This is for back-compat for logs that previously did not have namespaces.
@@ -846,14 +846,14 @@ angular.module('quay').directive('logsView', function () {
 
         log.metadata['namespace'] = log.metadata['namespace'] || namespace || '';
         return StringBuilderService.buildString(logDescriptions[log.kind] || log.kind, log.metadata,
-                                                null, !full_description);
+          null, !full_description);
       };
 
-      $scope.showExportLogs = function() {
+      $scope.showExportLogs = function () {
         $scope.exportLogsInfo = {};
       };
 
-      $scope.exportLogs = function(exportLogsInfo, callback) {
+      $scope.exportLogs = function (exportLogsInfo, callback) {
         if (!exportLogsInfo.urlOrEmail) {
           callback(false);
           return;
@@ -870,7 +870,7 @@ angular.module('quay').directive('logsView', function () {
           data['callback_email'] = urlOrEmail;
         }
 
-        runExport.customPOST(data).then(function(resp) {
+        runExport.customPOST(data).then(function (resp) {
           bootbox.alert('Usage logs export queued with ID `' + resp['export_id'] + '`')
           callback(true);
         }, ApiService.errorDisplay('Could not start logs export', callback));

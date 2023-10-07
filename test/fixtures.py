@@ -3,7 +3,6 @@ import inspect
 import os
 import shutil
 from collections import namedtuple
-from test.testconfig import FakeTransaction
 
 import pytest
 from flask import Flask, jsonify
@@ -34,6 +33,7 @@ from path_converters import (
     RepositoryPathRedirectConverter,
     V1CreateRepositoryPathConverter,
 )
+from test.testconfig import FakeTransaction
 
 INIT_DB_PATH = 0
 
