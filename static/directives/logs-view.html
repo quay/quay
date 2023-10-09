@@ -80,7 +80,7 @@
             <span ng-if="log.metadata.namespace && log.metadata.repo">
               <a href="/repository/{{ log.metadata.namespace }}/{{ log.metadata.repo }}">{{ log.metadata.repo }}</a>
             </span>
-          </td>  
+          </td>
           <td class="log-datetime"><time-display datetime="log.datetime"></time-display></td>
           <td>
             <span class="log-performer" bo-if="log.metadata.oauth_token_application">
