@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from data.model import InvalidUsernameException, NamespacePolicyAlreadyExists
+from data.model import NamespaceAutoPrunePolicyAlreadyExists
 from data.model.autoprune import *
 from data.model.organization import create_organization
 from data.model.user import get_user
@@ -34,7 +34,7 @@ class TestNameSpaceAutoprune:
         assert json.loads(new_policy1.policy) == self.number_of_tags_policy
 
         # policy based on tag creation date
-        create_date_policy = {"method": "creation_date", "value": 1695668761}
+        create_date_policy = {"method": "creation_date", "value": "7d"}
         new_policy2 = create_namespace_autoprune_policy(
             ORG2_NAME, create_date_policy, create_task=False
         )
@@ -49,7 +49,7 @@ class TestNameSpaceAutoprune:
         assert namespace_has_autoprune_task(self.org1.id) is True
 
     def test_policy_creation_with_incorrect_org(self):
-        with pytest.raises(InvalidUsernameException) as excerror:
+        with pytest.raises(InvalidNamespaceException) as excerror:
             create_namespace_autoprune_policy(
                 "non-existant org", self.number_of_tags_policy, create_task=True
             )
@@ -57,7 +57,7 @@ class TestNameSpaceAutoprune:
 
     def test_policy_creation_for_org_with_policy(self):
         create_namespace_autoprune_policy(ORG1_NAME, self.number_of_tags_policy, create_task=False)
-        with pytest.raises(NamespacePolicyAlreadyExists) as excerror:
+        with pytest.raises(NamespaceAutoPrunePolicyAlreadyExists) as excerror:
             create_namespace_autoprune_policy(
                 ORG1_NAME, self.number_of_tags_policy, create_task=True
             )
@@ -93,14 +93,14 @@ class TestNameSpaceAutoprune:
         assert policies[0].config == new_policy_config
 
     def test_incorrect_update_policy(self):
-        with pytest.raises(NamespaceAutoPrunePolicyTable.DoesNotExist) as excerror:
+        with pytest.raises(NamespaceAutoPrunePolicyDoesNotExist) as excerror:
             update_namespace_autoprune_policy(ORG3_NAME, "random-uuid", {})
         assert (
             str(excerror.value)
             == f"Policy not found for namespace: {ORG3_NAME} with uuid: random-uuid"
         )
 
-        with pytest.raises(InvalidUsernameException) as excerror:
+        with pytest.raises(InvalidNamespaceException) as excerror:
             update_namespace_autoprune_policy("randome", "random-uuid", {})
         assert str(excerror.value) == f"Invalid namespace provided: randome"
 
@@ -110,12 +110,12 @@ class TestNameSpaceAutoprune:
 
     def test_incorrect_delete_policy(self):
         # incorrect orgname
-        with pytest.raises(InvalidUsernameException) as excerror:
+        with pytest.raises(InvalidNamespaceException) as excerror:
             delete_namespace_autoprune_policy("randome", "random-uuid")
         assert str(excerror.value) == f"Invalid namespace provided: randome"
 
         # incorrect uuid
-        with pytest.raises(NamespaceAutoPrunePolicyTable.DoesNotExist) as excerror:
+        with pytest.raises(NamespaceAutoPrunePolicyDoesNotExist) as excerror:
             delete_namespace_autoprune_policy(ORG3_NAME, "random-uuid")
         assert (
             str(excerror.value)

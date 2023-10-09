@@ -39,6 +39,35 @@ def test_create_org_policy(initialized_db, app):
         assert model.autoprune.namespace_has_autoprune_task(org.id)
 
 
+def test_create_org_policy_already_existing(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrgAutoPrunePolicies,
+            "POST",
+            {"orgname": "buynlarge"},
+            {"method": "creation_date", "value": "2w"},
+            expected_code=400,
+        ).json
+        assert (
+            response["error_message"]
+            == "Policy for this namespace already exists, delete existing to create new policy"
+        )
+
+
+def test_create_org_policy_nonexistent_method(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            OrgAutoPrunePolicies,
+            "POST",
+            {"orgname": "sellnsmall"},
+            {"method": "doesnotexist", "value": "2w"},
+            expected_code=400,
+        ).json
+        assert response["error_message"] == "Invalid method provided"
+
+
 def test_get_org_policy(initialized_db, app):
     policies = model.autoprune.get_namespace_autoprune_policies_by_orgname("buynlarge")
     assert len(policies) == 1
@@ -73,6 +102,18 @@ def test_update_org_policy(initialized_db, app):
         assert get_response["value"] == "2w"
 
 
+def test_update_org_policy_nonexistent_policy(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            OrgAutoPrunePolicy,
+            "PUT",
+            {"orgname": "buynlarge", "policy_uuid": "doesnotexist"},
+            {"method": "creation_date", "value": "2w"},
+            expected_code=404,
+        )
+
+
 def test_delete_org_policy(initialized_db, app):
     policies = model.autoprune.get_namespace_autoprune_policies_by_orgname("buynlarge")
     assert len(policies) == 1
@@ -90,6 +131,17 @@ def test_delete_org_policy(initialized_db, app):
             OrgAutoPrunePolicy,
             "GET",
             {"orgname": "buynlarge", "policy_uuid": policy_uuid},
+            expected_code=404,
+        )
+
+
+def test_delete_org_policy_nonexistent_policy(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            OrgAutoPrunePolicy,
+            "DELETE",
+            {"orgname": "buynlarge", "policy_uuid": "doesnotexist"},
             expected_code=404,
         )
 
@@ -119,6 +171,22 @@ def test_create_user_policy(initialized_db, app):
         )
         org = model.user.get_user("freshuser")
         assert model.autoprune.namespace_has_autoprune_task(org.id)
+
+
+def test_create_user_policy_already_existing(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        response = conduct_api_call(
+            cl,
+            UserAutoPrunePolicies,
+            "POST",
+            {"orgname": "devtable"},
+            {"method": "creation_date", "value": "2w"},
+            expected_code=400,
+        ).json
+        assert (
+            response["error_message"]
+            == "Policy for this namespace already exists, delete existing to create new policy"
+        )
 
 
 def test_get_user_policy(initialized_db, app):
@@ -156,6 +224,18 @@ def test_update_user_policy(initialized_db, app):
         assert get_response["value"] == "2w"
 
 
+def test_update_user_policy_nonexistent_policy(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserAutoPrunePolicy,
+            "PUT",
+            {"orgname": "devtable", "policy_uuid": "doesnotexist"},
+            {"method": "creation_date", "value": "2w"},
+            expected_code=404,
+        )
+
+
 def test_delete_user_policy(initialized_db, app):
     policies = model.autoprune.get_namespace_autoprune_policies_by_orgname("devtable")
     assert len(policies) == 1
@@ -173,5 +253,16 @@ def test_delete_user_policy(initialized_db, app):
             UserAutoPrunePolicy,
             "GET",
             {"orgname": "devtable", "policy_uuid": policy_uuid},
+            expected_code=404,
+        )
+
+
+def test_delete_user_policy_nonexistent_policy(initialized_db, app):
+    with client_with_identity("devtable", app) as cl:
+        conduct_api_call(
+            cl,
+            UserAutoPrunePolicy,
+            "DELETE",
+            {"orgname": "devtable", "policy_uuid": "doesnotexist"},
             expected_code=404,
         )

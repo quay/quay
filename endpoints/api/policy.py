@@ -51,15 +51,8 @@ class OrgAutoPrunePolicies(ApiResource):
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
-        # TODO: We can use org here to get the policies by Id instead of name
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
         policies = model.autoprune.get_namespace_autoprune_policies_by_orgname(orgname)
 
-        # TODO: should this be paginated? Probably shouldn't allow 50+ policies anyway
         return {"policies": [policy.get_view() for policy in policies]}
 
     @validate_json_request("AutoPrunePolicyConfig")
@@ -68,31 +61,29 @@ class OrgAutoPrunePolicies(ApiResource):
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
-        # TODO: We can use org here to get the policies by Id instead of name
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
 
-        try:
-            method = AutoPruneMethod(method)
-        except ValueError:
-            request_error(message="Invalid method")
-
-        if not valid_value(method, value):
-            request_error(message="Invalid type given for parameter value")
+        if method is None or value is None:
+            request_error(message="Missing the following parameters: method, value")
 
         policy_config = {
-            "method": method.value,
+            "method": method,
             "value": value,
         }
-        policy = model.autoprune.create_namespace_autoprune_policy(
-            orgname, policy_config, create_task=True
-        )
+
+        try:
+            policy = model.autoprune.create_namespace_autoprune_policy(
+                orgname, policy_config, create_task=True
+            )
+        except model.InvalidNamespaceException:
+            raise NotFound()
+        except model.InvalidNamespaceAutoPrunePolicy as ex:
+            request_error(ex)
+        except model.NamespaceAutoPrunePolicyAlreadyExists as ex:
+            request_error(ex)
+
         return {"uuid": policy.uuid}, 201
 
 
@@ -126,12 +117,6 @@ class OrgAutoPrunePolicy(ApiResource):
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
-        # TODO: We can use org here to get the policies by Id instead of name
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
         policy = model.autoprune.get_namespace_autoprune_policy(orgname, policy_uuid)
         if policy is None:
             raise NotFound()
@@ -144,38 +129,30 @@ class OrgAutoPrunePolicy(ApiResource):
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
-        # TODO: We can use org here to get the policies by Id instead of name
-        try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
-            raise NotFound()
-
-        policy = model.autoprune.get_namespace_autoprune_policy(orgname, policy_uuid)
-        if policy is None:
-            raise NotFound()
-
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
 
-        try:
-            method = AutoPruneMethod(method)
-        except ValueError:
-            request_error(message="Invalid method")
-
-        if not valid_value(method, value):
-            request_error(message="Invalid type given for parameter value")
+        if method is None or value is None:
+            request_error(message="Missing the following parameters: method, value")
 
         policy_config = {
-            "method": method.value,
+            "method": method,
             "value": value,
         }
-        # TODO: we need to catch the not found errors here and return 404
-        updated = model.autoprune.update_namespace_autoprune_policy(
-            orgname, policy_uuid, policy_config
-        )
-        if not updated:
-            raise InvalidRequest("could not update policy")
+
+        try:
+            updated = model.autoprune.update_namespace_autoprune_policy(
+                orgname, policy_uuid, policy_config
+            )
+            if not updated:
+                request_error(message="could not update policy")
+        except model.InvalidNamespaceException:
+            raise NotFound()
+        except model.InvalidNamespaceAutoPrunePolicy as ex:
+            request_error(ex)
+        except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
+            raise NotFound()
 
         return {"uuid": policy_uuid}, 204
 
@@ -184,15 +161,14 @@ class OrgAutoPrunePolicy(ApiResource):
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
-        # TODO: We can use org here to get the policies by Id instead of name
         try:
-            org = model.organization.get_organization(orgname)
-        except model.InvalidOrganizationException:
+            updated = model.autoprune.delete_namespace_autoprune_policy(orgname, policy_uuid)
+            if not updated:
+                raise InvalidRequest("could not delete policy")
+        except model.InvalidNamespaceException as ex:
             raise NotFound()
-
-        updated = model.autoprune.delete_namespace_autoprune_policy(orgname, policy_uuid)
-        if not updated:
-            raise InvalidRequest("could not delete policy")
+        except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
+            raise NotFound()
 
         return {"uuid": policy_uuid}, 200
 
@@ -226,7 +202,6 @@ class UserAutoPrunePolicies(ApiResource):
 
         policies = model.autoprune.get_namespace_autoprune_policies_by_orgname(user.username)
 
-        # TODO: should this be paginated? Probably shouldn't allow 50+ policies anyway
         return {"policies": [policy.get_view() for policy in policies]}
 
     @require_user_admin()
@@ -237,21 +212,25 @@ class UserAutoPrunePolicies(ApiResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
-        try:
-            method = AutoPruneMethod(method)
-        except ValueError:
-            request_error(message="Invalid method")
 
-        if not valid_value(method, value):
-            request_error(message="Invalid type given for parameter value")
+        if method is None or value is None:
+            request_error(message="Missing the following parameters: method, value")
 
         policy_config = {
-            "method": method.value,
+            "method": method,
             "value": value,
         }
-        policy = model.autoprune.create_namespace_autoprune_policy(
-            user.username, policy_config, create_task=True
-        )
+        try:
+            policy = model.autoprune.create_namespace_autoprune_policy(
+                user.username, policy_config, create_task=True
+            )
+        except model.InvalidNamespaceException:
+            raise NotFound()
+        except model.InvalidNamespaceAutoPrunePolicy as ex:
+            request_error(ex)
+        except model.NamespaceAutoPrunePolicyAlreadyExists as ex:
+            request_error(ex)
+
         return {"uuid": policy.uuid}, 201
 
 
@@ -294,31 +273,30 @@ class UserAutoPrunePolicy(ApiResource):
     def put(self, policy_uuid):
         user = get_authenticated_user()
 
-        policy = model.autoprune.get_namespace_autoprune_policy(user.username, policy_uuid)
-        if policy is None:
-            raise NotFound()
-
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
 
-        try:
-            method = AutoPruneMethod(method)
-        except ValueError:
-            request_error(message="Invalid method")
-
-        if not valid_value(method, value):
-            request_error(message="Invalid type given for parameter value")
+        if method is None or value is None:
+            request_error(message="Missing the following parameters: method, value")
 
         policy_config = {
-            "method": method.value,
+            "method": method,
             "value": value,
         }
-        updated = model.autoprune.update_namespace_autoprune_policy(
-            user.username, policy_uuid, policy_config
-        )
-        if not updated:
-            raise InvalidRequest("could not update policy")
+
+        try:
+            updated = model.autoprune.update_namespace_autoprune_policy(
+                user.username, policy_uuid, policy_config
+            )
+            if not updated:
+                raise InvalidRequest("could not update policy")
+        except model.InvalidNamespaceException:
+            raise NotFound()
+        except model.InvalidNamespaceAutoPrunePolicy as ex:
+            request_error(ex)
+        except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
+            raise NotFound()
 
         return {"uuid": policy_uuid}, 204
 
@@ -326,12 +304,13 @@ class UserAutoPrunePolicy(ApiResource):
     def delete(self, policy_uuid):
         user = get_authenticated_user()
 
-        policy = model.autoprune.get_namespace_autoprune_policy(user.username, policy_uuid)
-        if policy is None:
+        try:
+            updated = model.autoprune.delete_namespace_autoprune_policy(user.username, policy_uuid)
+            if not updated:
+                raise InvalidRequest("could not delete policy")
+        except model.InvalidNamespaceException as ex:
             raise NotFound()
-
-        updated = model.autoprune.delete_namespace_autoprune_policy(user.username, policy_uuid)
-        if not updated:
-            raise InvalidRequest("could not delete policy")
+        except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
+            raise NotFound()
 
         return {"uuid": policy_uuid}, 200

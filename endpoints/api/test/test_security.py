@@ -6061,6 +6061,7 @@ SECURITY_TESTS: List[
     ),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (OrgAutoPrunePolicies, "GET", {"orgname": "unknown"}, None, "devtable", 403),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (
@@ -6078,6 +6079,14 @@ SECURITY_TESTS: List[
         {"method": "number_of_tags", "value": 10},
         "devtable",
         201,
+    ),
+    (
+        OrgAutoPrunePolicies,
+        "POST",
+        {"orgname": "unknown"},
+        {"method": "number_of_tags", "value": 10},
+        "devtable",
+        403,
     ),
     (
         OrgAutoPrunePolicies,
@@ -6102,6 +6111,14 @@ SECURITY_TESTS: List[
         None,
         None,
         401,
+    ),
+    (
+        OrgAutoPrunePolicy,
+        "GET",
+        {"orgname": "unknown", "policy_uuid": "some_uuid"},
+        None,
+        "devtable",
+        403,
     ),
     (
         OrgAutoPrunePolicy,
@@ -6126,6 +6143,14 @@ SECURITY_TESTS: List[
         {"method": "number_of_tags", "value": 10},
         None,
         401,
+    ),
+    (
+        OrgAutoPrunePolicy,
+        "PUT",
+        {"orgname": "unknown", "policy_uuid": "some_uuid"},
+        {"method": "number_of_tags", "value": 10},
+        "devtable",
+        403,
     ),
     (
         OrgAutoPrunePolicy,
@@ -6150,6 +6175,14 @@ SECURITY_TESTS: List[
         None,
         None,
         401,
+    ),
+    (
+        OrgAutoPrunePolicy,
+        "DELETE",
+        {"orgname": "unknown", "policy_uuid": "some_uuid"},
+        None,
+        "devtable",
+        403,
     ),
     (
         OrgAutoPrunePolicy,

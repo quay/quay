@@ -141,7 +141,19 @@ class OrgSubscriptionBindingAlreadyExists(DataModelException):
     pass
 
 
-class NamespacePolicyAlreadyExists(DataModelException):
+class NamespaceAutoPrunePolicyAlreadyExists(DataModelException):
+    pass
+
+
+class NamespaceAutoPrunePolicyDoesNotExist(DataModelException):
+    pass
+
+
+class InvalidNamespaceAutoPrunePolicy(DataModelException):
+    pass
+
+
+class InvalidNamespaceException(DataModelException):
     pass
 
 
