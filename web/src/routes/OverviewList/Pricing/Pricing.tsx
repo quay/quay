@@ -13,11 +13,13 @@ import {
   LevelItem,
   Title,
   Text,
-  DropdownToggle,
+  MenuToggle,
+  MenuToggleElement,
+  DropdownGroup,
+  DropdownList,
 } from '@patternfly/react-core';
 import {ExternalLinkAltIcon} from '@patternfly/react-icons';
 import React from 'react';
-import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import '../css/Pricing.scss';
 
 const pricings = {
@@ -62,17 +64,15 @@ const MorePlansCard: React.FunctionComponent = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [currentPricing, setPricing] = React.useState('medium');
 
-  const onToggle = (isOpen: boolean) => {
-    setIsOpen(isOpen);
+  const onToggleClick = () => {
+    setIsOpen(!isOpen);
   };
 
-  const onFocus = () => {
-    const element = document.getElementById('toggle-basic');
-  };
-
-  const onSelect = () => {
+  const onSelect = (
+    _event: React.MouseEvent<Element, MouseEvent> | undefined,
+    value: string | number | undefined,
+  ) => {
     setIsOpen(false);
-    onFocus();
   };
 
   const dropdownItems = [
@@ -126,15 +126,24 @@ const MorePlansCard: React.FunctionComponent = () => {
   const plansDropdown = (
     <Dropdown
       onSelect={onSelect}
-      toggle={
-        <DropdownToggle id="toggle-basic" onToggle={onToggle}>
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          id="toggle-basic"
+          onClick={onToggleClick}
+          isExpanded={isOpen}
+          style={{margin: '10px'}}
+        >
           {pricingText[currentPricing]}
-        </DropdownToggle>
-      }
+        </MenuToggle>
+      )}
       isOpen={isOpen}
-      dropdownItems={dropdownItems}
       style={{alignSelf: 'center', minWidth: '241px', maxWidth: '241px'}}
-    />
+    >
+      <DropdownGroup>
+        <DropdownList>{dropdownItems}</DropdownList>
+      </DropdownGroup>
+    </Dropdown>
   );
 
   return (
