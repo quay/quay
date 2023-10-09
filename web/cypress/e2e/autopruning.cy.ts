@@ -29,12 +29,12 @@ describe('Namespace settings - autoprune policies', () => {
       'have.value',
       '7',
     );
-    cy.get('div[aria-label="tag creation date unit"]').contains('days');
+    cy.get('select[aria-label="tag creation date unit"]').contains('days');
     cy.get('input[aria-label="tag creation date value"]').type(
       '2{leftArrow}{backspace}',
     );
-    cy.contains('days').click();
-    cy.contains('weeks').click();
+    cy.contains('days').click({force: true});
+    cy.contains('weeks').click({force: true});
     cy.contains('Save').click();
   };
 
@@ -61,7 +61,7 @@ describe('Namespace settings - autoprune policies', () => {
       'have.value',
       '2',
     );
-    cy.get('div[aria-label="tag creation date unit"]').contains('weeks');
+    cy.get('select[aria-label="tag creation date unit"]').contains('weeks');
   });
 
   it('updates policy', () => {
@@ -81,7 +81,7 @@ describe('Namespace settings - autoprune policies', () => {
       'have.value',
       '2',
     );
-    cy.get('div[aria-label="tag creation date unit"]').contains('weeks');
+    cy.get('select[aria-label="tag creation date unit"]').contains('weeks');
   });
 
   it('deletes policy', () => {

@@ -3,7 +3,7 @@ import {
   Button,
   Dropdown,
   DropdownItem,
-  DropdownToggle,
+  MenuToggle,
   Flex,
   Form,
   FormGroup,
@@ -11,8 +11,12 @@ import {
   FormSelectOption,
   NumberInput,
   Spinner,
-  TextInput,
   Title,
+  MenuToggleElement,
+  DropdownList,
+  FormHelperText,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
@@ -45,8 +49,6 @@ export default function AutoPruning(props: AutoPruning) {
   const [method, setMethod] = useState<AutoPruneMethod>(AutoPruneMethod.NONE);
   const [tagCount, setTagCount] = useState<number>(10);
   const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
-  const [isTagCreationDateUnitOpen, setIsTagCreationDateUnitOpen] =
-    useState<boolean>(false);
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
   const {addAlert} = useAlerts();
   const {
@@ -221,7 +223,6 @@ export default function AutoPruning(props: AutoPruning) {
           isInline
           label="Prune Policy - select a method to prune tags"
           fieldId="method"
-          helperText="The method used to prune tags."
           isRequired
         >
           <FormSelect
@@ -229,7 +230,7 @@ export default function AutoPruning(props: AutoPruning) {
             aria-label="namespace-auto-prune-method"
             data-testid="namespace-auto-prune-method"
             value={method}
-            onChange={(val) => setMethod(val as AutoPruneMethod)}
+            onChange={(_, val) => setMethod(val as AutoPruneMethod)}
           >
             <FormSelectOption
               key={1}
@@ -247,14 +248,14 @@ export default function AutoPruning(props: AutoPruning) {
               label="By age of tags"
             />
           </FormSelect>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>The method used to prune tags.</HelperTextItem>
+            </HelperText>
+          </FormHelperText>
         </FormGroup>
         <Conditional if={method === AutoPruneMethod.TAG_NUMBER}>
-          <FormGroup
-            label="The number of tags to keep."
-            fieldId=""
-            helperText="All tags sorted by earliest creation date will be deleted until the repository total falls below the threshold"
-            isRequired
-          >
+          <FormGroup label="The number of tags to keep." fieldId="" isRequired>
             <NumberInput
               value={tagCount}
               onMinus={() => {
@@ -272,66 +273,69 @@ export default function AutoPruning(props: AutoPruning) {
               plusBtnAriaLabel="plus"
               data-testid="namespace-auto-prune-tag-count"
             />
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>
+                  All tags sorted by earliest creation date will be deleted
+                  until the repository total falls below the threshold
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
           </FormGroup>
         </Conditional>
         <Conditional if={method === AutoPruneMethod.TAG_CREATION_DATE}>
           <FormGroup
             label="Delete tags older than given timespan."
             fieldId=""
-            helperText="All tags with a creation date earlier than the selected time period will be deleted"
             isRequired
+            isInline
           >
-            <NumberInput
-              value={tagCreationDateValue}
-              onMinus={() => {
-                tagCreationDateValue > 0
-                  ? setTagCreationDateValue(tagCreationDateValue - 1)
-                  : setTagCreationDateValue(0);
-              }}
-              onChange={(e) => {
-                const value = (e.target as HTMLInputElement).value;
-                setTagCreationDateValue(Number(value));
-              }}
-              onPlus={() => {
-                setTagCreationDateValue(tagCreationDateValue + 1);
-              }}
-              inputAriaLabel="tag creation date value"
-              minusBtnAriaLabel="minus"
-              plusBtnAriaLabel="plus"
-              data-testid="namespace-auto-prune-tag-creation-date-value"
-              style={{paddingRight: '1em'}}
-            />
-            <Dropdown
-              onSelect={() => {
-                setIsTagCreationDateUnitOpen(false);
-                const element = document.getElementById(
-                  'tag-auto-prune-creation-date-timeunit',
-                );
-                element.focus();
-              }}
-              toggle={
-                <DropdownToggle
-                  id="tag-auto-prune-creation-date-timeunit"
-                  onToggle={() =>
-                    setIsTagCreationDateUnitOpen(!isTagCreationDateUnitOpen)
-                  }
-                >
-                  {shorthandTimeUnits[tagCreationDateUnit]}
-                </DropdownToggle>
-              }
-              isOpen={isTagCreationDateUnitOpen}
-              dropdownItems={Object.keys(shorthandTimeUnits).map((key) => (
-                <DropdownItem
-                  key={key}
-                  onClick={() => {
-                    setTagCreationDateUnit(key);
-                  }}
-                >
-                  {shorthandTimeUnits[key]}
-                </DropdownItem>
-              ))}
-              aria-label="tag creation date unit"
-            />
+            <div style={{display: 'flex'}}>
+              <NumberInput
+                value={tagCreationDateValue}
+                onMinus={() => {
+                  tagCreationDateValue > 0
+                    ? setTagCreationDateValue(tagCreationDateValue - 1)
+                    : setTagCreationDateValue(0);
+                }}
+                onChange={(e) => {
+                  const value = (e.target as HTMLInputElement).value;
+                  setTagCreationDateValue(Number(value));
+                }}
+                onPlus={() => {
+                  setTagCreationDateValue(tagCreationDateValue + 1);
+                }}
+                inputAriaLabel="tag creation date value"
+                minusBtnAriaLabel="minus"
+                plusBtnAriaLabel="plus"
+                data-testid="namespace-auto-prune-tag-creation-date-value"
+                style={{paddingRight: '1em'}}
+              />
+              <FormSelect
+                placeholder=""
+                aria-label="tag creation date unit"
+                data-testid="tag-auto-prune-creation-date-timeunit"
+                value={tagCreationDateUnit}
+                onChange={(_, val) => setTagCreationDateUnit(val)}
+                style={{width: '10em'}}
+              >
+                {Object.keys(shorthandTimeUnits).map((key) => (
+                  <FormSelectOption
+                    key={key}
+                    value={key}
+                    label={shorthandTimeUnits[key]}
+                  />
+                ))}
+              </FormSelect>
+            </div>
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>
+                  All tags with a creation date earlier than the selected time
+                  period will be deleted
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
           </FormGroup>
         </Conditional>
 
