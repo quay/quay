@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.8.12"></a>
-## [v3.8.12] - 2023-08-14
+<a name="v3.8.13"></a>
+## [v3.8.13] - 2023-09-06
 ### Arch
 - [0f0cc408](https://github.com/quay/quay/commit/0f0cc408d0120abe93541d1554e74312d0592c49): Map aarch64 to arm64 in ARCH variable ([#1606](https://github.com/quay/quay/issues/1606))
 ### Auth
@@ -135,6 +135,13 @@
 ### Pull Requests
 - Merge pull request [#2092](https://github.com/quay/quay/issues/2092) from dmage/merge-config-tool-3.8
 
+
+<a name="v3.9.2"></a>
+## [v3.9.2] - 2023-09-19
+### [Redhat-3.9] Api
+- [a7555f48](https://github.com/quay/quay/commit/a7555f4813a62cf2e88a5b7fb58828ad6fe11303): fix duplicate robot accounts (PROJQUAY-5931) ([#2198](https://github.com/quay/quay/issues/2198))
+### [Redhat-3.9] Georeplication
+- [7152164c](https://github.com/quay/quay/commit/7152164c87b816a02b2d2689a0329f146a552e38): Enqueue blobs for replication on manifest list pushes (PROJQUAY-5256) ([#2232](https://github.com/quay/quay/issues/2232))
 
 <a name="v3.9.1"></a>
 ## [v3.9.1] - 2023-08-30
@@ -445,6 +452,15 @@
 ### Pull Requests
 - Merge pull request [#2069](https://github.com/quay/quay/issues/2069) from dmage/merge-config-tool-3.9
 
+
+<a name="v3.8.12"></a>
+## [v3.8.12] - 2023-09-06
+### Build(Deps)
+- [8340f707](https://github.com/quay/quay/commit/8340f707143c3f59df83a49560668ff08df88df9): bump pypdf2 from 1.27.6 to 1.27.9 ([#2055](https://github.com/quay/quay/issues/2055))
+### Chore
+- [1302e11a](https://github.com/quay/quay/commit/1302e11ab32d88280cb05e473b0871db42a32f70): fix build of PyYAML on linux/ppc64le ([#2113](https://github.com/quay/quay/issues/2113))
+### [Redhat-3.8] Chore
+- [44fce9e9](https://github.com/quay/quay/commit/44fce9e9a0b2310504b19385a0cd93fb497f1433): pull changes for s390x from master ([#2112](https://github.com/quay/quay/issues/2112))
 
 <a name="v3.8.11"></a>
 ## [v3.8.11] - 2023-08-07
@@ -954,6 +970,9 @@
 - [4a2d7b40](https://github.com/quay/quay/commit/4a2d7b40c1f61005b2ea3055a18675c5677ab753): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1565](https://github.com/quay/quay/issues/1565))
 ### [Redhat-3.8] Repomirror
 - [55cb0ba1](https://github.com/quay/quay/commit/55cb0ba1a3d21f1c5db4e2f05298a494e0411316): Use skopeo list-tags to get repo tags (PROJQUAY-2179) ([#1559](https://github.com/quay/quay/issues/1559))
+
+<a name="v3.7.14"></a>
+## [v3.7.14] - 2023-09-06
 
 <a name="v3.7.13"></a>
 ## [v3.7.13] - 2023-07-13
@@ -1595,10 +1614,12 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.12...HEAD
-[v3.8.12]: https://github.com/quay/quay/compare/v3.9.1...v3.8.12
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.13...HEAD
+[v3.8.13]: https://github.com/quay/quay/compare/v3.9.2...v3.8.13
+[v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
 [v3.9.1]: https://github.com/quay/quay/compare/v3.9.0...v3.9.1
-[v3.9.0]: https://github.com/quay/quay/compare/v3.8.11...v3.9.0
+[v3.9.0]: https://github.com/quay/quay/compare/v3.8.12...v3.9.0
+[v3.8.12]: https://github.com/quay/quay/compare/v3.8.11...v3.8.12
 [v3.8.11]: https://github.com/quay/quay/compare/v3.8.10...v3.8.11
 [v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
 [v3.8.9]: https://github.com/quay/quay/compare/v3.8.8...v3.8.9
@@ -1610,7 +1631,8 @@
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
 [v3.8.1]: https://github.com/quay/quay/compare/v3.8.0...v3.8.1
-[v3.8.0]: https://github.com/quay/quay/compare/v3.7.13...v3.8.0
+[v3.8.0]: https://github.com/quay/quay/compare/v3.7.14...v3.8.0
+[v3.7.14]: https://github.com/quay/quay/compare/v3.7.13...v3.7.14
 [v3.7.13]: https://github.com/quay/quay/compare/v3.7.12...v3.7.13
 [v3.7.12]: https://github.com/quay/quay/compare/v3.7.11...v3.7.12
 [v3.7.11]: https://github.com/quay/quay/compare/v3.7.10...v3.7.11
