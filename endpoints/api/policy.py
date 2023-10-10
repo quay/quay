@@ -1,9 +1,9 @@
 import logging
 
 from flask import request
-from auth import scopes
 
 import features
+from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data import model
