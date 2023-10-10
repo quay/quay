@@ -141,6 +141,22 @@ class OrgSubscriptionBindingAlreadyExists(DataModelException):
     pass
 
 
+class NamespaceAutoPrunePolicyAlreadyExists(DataModelException):
+    pass
+
+
+class NamespaceAutoPrunePolicyDoesNotExist(DataModelException):
+    pass
+
+
+class InvalidNamespaceAutoPrunePolicy(DataModelException):
+    pass
+
+
+class InvalidNamespaceException(DataModelException):
+    pass
+
+
 class TooManyLoginAttemptsException(Exception):
     def __init__(self, message, retry_after):
         super(TooManyLoginAttemptsException, self).__init__(message)
@@ -170,6 +186,7 @@ config = Config()
 # moving the minimal number of things to _basequery
 from data.model import (
     appspecifictoken,
+    autoprune,
     blob,
     build,
     entitlements,

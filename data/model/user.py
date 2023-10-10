@@ -9,12 +9,14 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
+    AutoPruneTaskStatus,
     DeletedNamespace,
     EmailConfirmation,
     FederatedLogin,
     ImageStorageLocation,
     LoginService,
     Namespace,
+    NamespaceAutoPrunePolicy,
     NamespaceGeoRestriction,
     OAuthApplication,
     QuotaNamespaceSize,
@@ -44,6 +46,7 @@ from data.fields import Credential
 from data.model import (
     DataModelException,
     InvalidEmailAddressException,
+    InvalidNamespaceException,
     InvalidPasswordException,
     InvalidRobotException,
     InvalidUsernameException,
@@ -843,6 +846,13 @@ def get_namespace_user_by_user_id(namespace_user_db_id):
         raise InvalidUsernameException("User with id does not exist: %s" % namespace_user_db_id)
 
 
+def get_active_namespace_user_by_username(namespace):
+    try:
+        return User.get(User.username == namespace, User.robot == False, User.enabled == True)
+    except User.DoesNotExist:
+        raise InvalidNamespaceException("Username does not exist: %s" % namespace)
+
+
 def get_namespace_by_user_id(namespace_user_db_id):
     try:
         return User.get(User.id == namespace_user_db_id, User.robot == False).username
@@ -1339,6 +1349,12 @@ def _delete_user_linked_data(user):
 
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
+
+    # Delete any autoprune tasks
+    AutoPruneTaskStatus.delete().where(AutoPruneTaskStatus.namespace == user).execute()
+
+    # Delete any autoprune policies
+    NamespaceAutoPrunePolicy.delete().where(NamespaceAutoPrunePolicy.namespace == user).execute()
 
 
 def get_pull_credentials(robotname):
