@@ -102,7 +102,7 @@ class TestNameSpaceAutoprune:
 
         with pytest.raises(InvalidNamespaceException) as excerror:
             update_namespace_autoprune_policy("randome", "random-uuid", {})
-        assert str(excerror.value) == f"Username does not exist: randome"
+        assert str(excerror.value) == "Username does not exist: randome"
 
     def test_delete_policy(self):
         deleted = delete_namespace_autoprune_policy(ORG3_NAME, self.namespace_policy.uuid)
@@ -112,7 +112,7 @@ class TestNameSpaceAutoprune:
         # incorrect orgname
         with pytest.raises(InvalidNamespaceException) as excerror:
             delete_namespace_autoprune_policy("randome", "random-uuid")
-        assert str(excerror.value) == f"Invalid namespace provided: randome"
+        assert str(excerror.value) == "Invalid namespace provided: randome"
 
         # incorrect uuid
         with pytest.raises(NamespaceAutoPrunePolicyDoesNotExist) as excerror:

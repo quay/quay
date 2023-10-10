@@ -1,6 +1,7 @@
 import logging
 
 from flask import request
+from auth import scopes
 
 import features
 from auth.auth_context import get_authenticated_user
@@ -11,6 +12,7 @@ from endpoints.api import (
     allow_if_superuser,
     path_param,
     request_error,
+    require_scope,
     require_user_admin,
     resource,
     show_if,
@@ -47,6 +49,7 @@ class OrgAutoPrunePolicies(ApiResource):
         },
     }
 
+    @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname):
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
@@ -56,6 +59,7 @@ class OrgAutoPrunePolicies(ApiResource):
 
         return {"policies": [policy.get_view() for policy in policies]}
 
+    @require_scope(scopes.ORG_ADMIN)
     @validate_json_request("AutoPrunePolicyConfig")
     def post(self, orgname):
         permission = AdministerOrganizationPermission(orgname)
@@ -115,6 +119,7 @@ class OrgAutoPrunePolicy(ApiResource):
         },
     }
 
+    @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname, policy_uuid):
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
@@ -126,6 +131,7 @@ class OrgAutoPrunePolicy(ApiResource):
 
         return policy.get_view()
 
+    @require_scope(scopes.ORG_ADMIN)
     @validate_json_request("AutoPrunePolicyConfig")
     def put(self, orgname, policy_uuid):
         permission = AdministerOrganizationPermission(orgname)
@@ -159,6 +165,7 @@ class OrgAutoPrunePolicy(ApiResource):
 
         return {"uuid": policy_uuid}, 204
 
+    @require_scope(scopes.ORG_ADMIN)
     def delete(self, orgname, policy_uuid):
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
