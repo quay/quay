@@ -3,8 +3,23 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.3"></a>
+## [v3.9.3] - 2023-10-05
+### Quota
+- [a4a23414](https://github.com/quay/quay/commit/a4a23414f83a6878cce866686e9fcaf48b56dc8e): prevent tag creation on rejected manifest (PROJQUAY-3906) ([#2282](https://github.com/quay/quay/issues/2282))
+### [Redhat-3.9] Build(Deps)
+- [db00f7f7](https://github.com/quay/quay/commit/db00f7f7713071879a10f86d4d5b0707962dfe19): bump cypress from 10.10.0 to 12.17.4 in /web ([#2308](https://github.com/quay/quay/issues/2308))
+### [Redhat-3.9] Chore
+- [30132066](https://github.com/quay/quay/commit/30132066e32a462489dd5c0466e2c1efe43b387c): remove husky ([#2307](https://github.com/quay/quay/issues/2307))
+### [Redhat-3.9] Reconfigure
+- [8b47d3fd](https://github.com/quay/quay/commit/8b47d3fdd580737ca9a676ffbbfe3cdf3e451d21): Remove ca-bundle.crt and service-ca.crt (PROJQUAY-5233) ([#2257](https://github.com/quay/quay/issues/2257))
+
 <a name="v3.9.2"></a>
-## [v3.9.2] - 0001-01-01
+## [v3.9.2] - 2023-09-19
+### [Redhat-3.9] Api
+- [a7555f48](https://github.com/quay/quay/commit/a7555f4813a62cf2e88a5b7fb58828ad6fe11303): fix duplicate robot accounts (PROJQUAY-5931) ([#2198](https://github.com/quay/quay/issues/2198))
+### [Redhat-3.9] Georeplication
+- [7152164c](https://github.com/quay/quay/commit/7152164c87b816a02b2d2689a0329f146a552e38): Enqueue blobs for replication on manifest list pushes (PROJQUAY-5256) ([#2232](https://github.com/quay/quay/issues/2232))
 
 <a name="v3.9.1"></a>
 ## [v3.9.1] - 2023-08-30
@@ -1477,7 +1492,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.3...HEAD
+[v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
 [v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
 [v3.9.1]: https://github.com/quay/quay/compare/v3.9.0...v3.9.1
 [v3.9.0]: https://github.com/quay/quay/compare/v3.8.12...v3.9.0
