@@ -1403,5 +1403,15 @@ CONFIG_SCHEMA = {
             "description": "Enable functionality related to the auto-pruning of tags",
             "x-example": False,
         },
+        "FEATURE_UI_DELAY_AFTER_WRITE": {
+            "type": "boolean",
+            "description": "Adds a delay in the UI after each create operation. Useful if quay is reading from a different DB and there is replication delay between the write and read DBs. Defaults to False",
+            "x-example": False,
+        },
+        "UI_DELAY_AFTER_WRITE_SECONDS": {
+            "type": "int",
+            "description": "Number of seconds to wait after a write operation in the UI",
+            "x-example": 3,
+        },
     },
 }

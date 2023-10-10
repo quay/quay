@@ -49,6 +49,7 @@ CLIENT_WHITELIST = [
     "PERMANENTLY_DELETE_TAGS",
     "UI_V2_FEEDBACK_FORM",
     "TERMS_OF_SERVICE_URL",
+    "UI_DELAY_AFTER_WRITE_SECONDS",
 ]
 
 
@@ -854,3 +855,9 @@ class DefaultConfig(ImmutableConfig):
     TERMS_OF_SERVICE_URL = ""
 
     FEATURE_AUTO_PRUNE = False
+    # delay after a write operation is made to the DB. This
+    # is useful if quay is using a different DB for reads and
+    # there is a delay in replication
+
+    FEATURE_UI_DELAY_AFTER_WRITE = False
+    UI_DELAY_AFTER_WRITE_SECONDS = 3
