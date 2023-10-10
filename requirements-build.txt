@@ -5,6 +5,8 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements-build.txt requirements-build.in
 #
+calver==2022.6.26
+    # via -r requirements-build.in
 cffi==1.16.0
     # via -r requirements-build.in
 cython==0.29.36
