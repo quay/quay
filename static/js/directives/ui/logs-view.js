@@ -284,6 +284,7 @@ angular.module('quay').directive('logsView', function () {
             return 'Tag {tag} restored to {image}';
           }
         },
+        'autoprune_tag_delete': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by {performer}]]',
         'delete_tag': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by user {username}]]',
         'permanently_delete_tag': function(metadata){
           if (metadata.manifest_digest){
@@ -491,10 +492,10 @@ angular.module('quay').directive('logsView', function () {
 
           if (metadata.type == 'v2auth') {
             var message = 'Login to registry[[ with';
-            
+
             if (metadata.kind == 'app_specific_token') {
               message += ' app-specific token {app_specific_token_title} and';
-            } 
+            }
             else if (metadata.kind == 'robot') {
               message += ' robot {robot} and';
             }
@@ -602,6 +603,7 @@ angular.module('quay').directive('logsView', function () {
         'cancel_build': 'Cancel build',
         'login_success': 'Login success',
         'permanently_delete_tag': 'Permanently Delete Tag',
+        'autoprune_tag_delete': 'Autoprune worker tag deletion',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',

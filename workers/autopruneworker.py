@@ -3,6 +3,7 @@ import time
 
 import features
 from app import app
+from data.model.autoprune import *
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
@@ -18,7 +19,29 @@ class AutoPruneWorker(Worker):
         self.add_operation(self.prune, POLL_PERIOD)
 
     def prune(self):
-        logger.info("Prune method not yet implemented...")
+        for i in range(BATCH_SIZE):
+            try:
+                autoprune_task = fetch_autoprune_task()
+                if not autoprune_task:
+                    return
+            except Exception as err:
+                logger.warning("Exception while fetching autoprune task: %s" % str(err))
+
+                # Return immediately to see if the next poll will succeed
+                return
+
+            try:
+                policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
+                if not policies:
+                    # When implementing repo policies, fetch repo policies before deleting the task
+                    delete_autoprune_task(autoprune_task)
+                    continue
+
+                execute_namespace_polices(policies, autoprune_task.namespace)
+
+                update_autoprune_task(autoprune_task, task_status="success")
+            except Exception as err:
+                update_autoprune_task(autoprune_task, task_status=str(err))
 
 
 def create_gunicorn_worker():
