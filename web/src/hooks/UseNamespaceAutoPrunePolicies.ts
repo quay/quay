@@ -4,7 +4,7 @@ import {
   deleteNamespaceAutoPrunePolicy,
   fetchNamespaceAutoPrunePolicies,
   updateNamespaceAutoPrunePolicy,
-} from 'src/resources/OrganizationResource';
+} from 'src/resources/NamespaceAutoPruneResource';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 
 export function useNamespaceAutoPrunePolicies(

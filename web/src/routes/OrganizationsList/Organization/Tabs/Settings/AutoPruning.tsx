@@ -28,7 +28,7 @@ import {isNullOrUndefined} from 'src/libs/utils';
 import {
   AutoPruneMethod,
   NamespaceAutoPrunePolicy,
-} from 'src/resources/OrganizationResource';
+} from 'src/resources/NamespaceAutoPruneResource';
 
 // Must match convert_to_timedelta from backend
 export const shorthandTimeUnits = {
