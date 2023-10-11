@@ -33,8 +33,7 @@ describe('Namespace settings - autoprune policies', () => {
     cy.get('input[aria-label="tag creation date value"]').type(
       '2{leftArrow}{backspace}',
     );
-    cy.contains('days').click({force: true});
-    cy.contains('weeks').click({force: true});
+    cy.get('select[aria-label="tag creation date unit"]').select('weeks');
     cy.contains('Save').click();
   };
 
