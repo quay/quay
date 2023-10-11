@@ -37,9 +37,8 @@ export interface SuperUserOrganizations {
 
 export async function fetchOrgsAsSuperUser() {
   const superUserOrgsUrl = `/api/v1/superuser/organizations/`;
-  const response: AxiosResponse<SuperUserOrganizations> = await axios.get(
-    superUserOrgsUrl,
-  );
+  const response: AxiosResponse<SuperUserOrganizations> =
+    await axios.get(superUserOrgsUrl);
   assertHttpCode(response.status, 200);
   return response.data?.organizations;
 }
