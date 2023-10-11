@@ -284,7 +284,7 @@ angular.module('quay').directive('logsView', function () {
             return 'Tag {tag} restored to {image}';
           }
         },
-        'autoprune_tag_delete': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by {performer}]]',
+        'autoprune_tag_delete': 'Tag {tag} pruned[[ in repository {namespace}/{repo} by {performer}]]',
         'delete_tag': 'Tag {tag} deleted[[ in repository {namespace}/{repo} by user {username}]]',
         'permanently_delete_tag': function(metadata){
           if (metadata.manifest_digest){

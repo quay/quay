@@ -20,28 +20,25 @@ class AutoPruneWorker(Worker):
 
     def prune(self):
         for i in range(BATCH_SIZE):
-            try:
+            with db_transaction():
+
                 autoprune_task = fetch_autoprune_task()
                 if not autoprune_task:
+                    logger.info("no autoprune tasks found, exiting...")
                     return
-            except Exception as err:
-                logger.warning("Exception while fetching autoprune task: %s" % str(err))
 
-                # Return immediately to see if the next poll will succeed
-                return
+                try:
+                    policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
+                    if not policies:
+                        # When implementing repo policies, fetch repo policies before deleting the task
+                        delete_autoprune_task(autoprune_task)
+                        continue
 
-            try:
-                policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
-                if not policies:
-                    # When implementing repo policies, fetch repo policies before deleting the task
-                    delete_autoprune_task(autoprune_task)
-                    continue
+                    execute_namespace_polices(policies, autoprune_task.namespace)
 
-                execute_namespace_polices(policies, autoprune_task.namespace)
-
-                update_autoprune_task(autoprune_task, task_status="success")
-            except Exception as err:
-                update_autoprune_task(autoprune_task, task_status=str(err))
+                    update_autoprune_task(autoprune_task, task_status="success")
+                except Exception as err:
+                    update_autoprune_task(autoprune_task, task_status=str(err))
 
 
 def create_gunicorn_worker():

@@ -249,22 +249,23 @@ def fetch_autoprune_task():
     """
     Get the auto prune task prioritized by last_ran_ms = None followed by asc order of last_ran_ms
     """
-    with db_transaction():
-        try:
-            query = (
-                AutoPruneTaskStatus.select()
-                .where(
-                    AutoPruneTaskStatus.namespace.not_in(
-                        DeletedNamespace.select(DeletedNamespace.namespace)
-                    )
-                )
-                .order_by(
-                    AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"), AutoPruneTaskStatus.id
-                )
+    try:
+        query = (
+            AutoPruneTaskStatus.select()
+            .where(
+                AutoPruneTaskStatus.namespace.not_in(
+                    DeletedNamespace.select(DeletedNamespace.namespace)
+                ),
+                (AutoPruneTaskStatus.last_ran_ms < get_epoch_timestamp_ms() - 60 * 60 * 1000)
+                | (
+                    AutoPruneTaskStatus.last_ran_ms.is_null(True)
+                ),  # don't get tasks that have ran in the last 1 hour
             )
-            return db_for_update(query, skip_locked=True).get()
-        except AutoPruneTaskStatus.DoesNotExist:
-            return []
+            .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"), AutoPruneTaskStatus.id)
+        )
+        return db_for_update(query, skip_locked=True).get()
+    except AutoPruneTaskStatus.DoesNotExist:
+        return []
 
 
 def fetch_autoprune_task_by_namespace_id(namespace_id):
@@ -295,14 +296,14 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace):
     ):
         raise KeyError("Unsupported policy config provided", policy_config)
 
-    page_token = None
     while True:
-        tags, page_token = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo.id, int(policy_config["value"]), page_token, PAGINATE_SIZE
+        tags = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
+            repo.id, int(policy_config["value"]), PAGINATE_SIZE
         )
-        tags_list = [row for row in tags]
+        if len(tags) == 0:
+            break
 
-        for tag in tags_list:
+        for tag in tags:
             try:
                 oci.tag.delete_tag(repo.id, tag.name)
                 log.log_action(
@@ -320,9 +321,6 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace):
                 raise Exception(
                     f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
                 )
-
-        if page_token is None:
-            break
 
 
 def prune_repo_by_creation_date(repo, policy_config, namespace):
@@ -335,14 +333,15 @@ def prune_repo_by_creation_date(repo, policy_config, namespace):
 
     time_ms = int(convert_to_timedelta(policy_config["value"]).total_seconds() * 1000)
 
-    page_token = None
     while True:
-        tags, page_token = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo.id, time_ms, page_token, PAGINATE_SIZE
+        tags = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
+            repo.id, time_ms, PAGINATE_SIZE
         )
-        tags_list = [row for row in tags]
 
-        for tag in tags_list:
+        if len(tags) == 0:
+            break
+
+        for tag in tags:
             try:
                 oci.tag.delete_tag(repo.id, tag.name)
                 log.log_action(
@@ -360,9 +359,6 @@ def prune_repo_by_creation_date(repo, policy_config, namespace):
                 raise Exception(
                     f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
                 )
-
-        if page_token is None:
-            break
 
 
 def execute_poilcy_on_repo(policy, repo_id, namespace_id):
@@ -376,6 +372,8 @@ def execute_poilcy_on_repo(policy, repo_id, namespace_id):
 
     namespace = user.get_namespace_user_by_user_id(namespace_id)
     repo = repository.lookup_repository(repo_id)
+
+    logger.info("Executing autoprune policy: %s on repo: %s", policy.method, repo.name)
 
     policy_to_func_map[policy.method](repo, policy.config, namespace)
 
