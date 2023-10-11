@@ -6,8 +6,8 @@ import {
   TextContent,
   Text,
   TextVariants,
+  DropdownItem,
 } from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {
   Table,
   ExpandableRowContent,
@@ -456,7 +456,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       return;
     }
     setTableExpanded(!isTableExpanded);
-    paginatedRobotAccountList.map((robotAccount, index) => {
+    paginatedRobotAccountList.map((robotAccount) => {
       setRobotExpanded(robotAccount);
     });
   };

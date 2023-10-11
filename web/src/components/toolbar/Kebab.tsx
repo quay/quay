@@ -1,37 +1,34 @@
+import React from 'react';
 import {
   Dropdown,
-  DropdownToggle,
-  KebabToggle,
-} from '@patternfly/react-core/deprecated';
-import * as React from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
+import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 
 export function Kebab(props: KebabProps) {
-  const onToggle = () => {
-    props.setKebabOpen(!props.isKebabOpen);
-  };
-
-  const fetchToggle = () => {
-    if (!props.useActions) {
-      return <KebabToggle id={props?.id} onToggle={onToggle} />;
-    }
-    return (
-      <DropdownToggle
-        onToggle={() => props.setKebabOpen(!props.isKebabOpen)}
-        id="toggle-id-6"
-      >
-        Actions
-      </DropdownToggle>
-    );
-  };
-
   return (
     <Dropdown
       onSelect={() => props.setKebabOpen(!props.isKebabOpen)}
-      toggle={fetchToggle()}
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          id={props?.id}
+          variant={props.useActions ? 'secondary' : 'plain'}
+          onClick={() => props.setKebabOpen(!props.isKebabOpen)}
+          isExpanded={props.isKebabOpen}
+        >
+          {props.useActions ? 'Actions' : <EllipsisVIcon />}
+        </MenuToggle>
+      )}
       isOpen={props.isKebabOpen}
-      dropdownItems={props.kebabItems}
       isPlain={!props.useActions}
-    />
+      onOpenChange={(isOpen) => props.setKebabOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>{props.kebabItems}</DropdownList>
+    </Dropdown>
   );
 }
 

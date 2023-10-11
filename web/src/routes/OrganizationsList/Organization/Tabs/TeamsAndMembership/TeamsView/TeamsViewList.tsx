@@ -1,18 +1,18 @@
+import {useEffect, useState} from 'react';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import TeamsViewToolbar from './TeamsViewToolbar';
 import {Link, useSearchParams} from 'react-router-dom';
 import {
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
   PageSection,
   PageSectionVariants,
   PanelFooter,
   Spinner,
 } from '@patternfly/react-core';
-import {
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+import TeamsViewToolbar from './TeamsViewToolbar';
 import TeamViewKebab from './TeamViewKebab';
 import {ITeams, useDeleteTeam, useFetchTeams} from 'src/hooks/UseTeams';
 import {TeamsRoleDropDown} from './TeamsRoleDropDown';
@@ -98,14 +98,17 @@ export default function TeamsViewList(props: TeamsViewListProps) {
       label: 'team role',
       transformFunc: (team: ITeams) => (
         <Dropdown
-          toggle={
-            <DropdownToggle id="toggle-disabled" isDisabled>
+          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+            <MenuToggle ref={toggleRef} id="toggle-disabled" isDisabled>
               {team.role}
-            </DropdownToggle>
-          }
+            </MenuToggle>
+          )}
           isOpen={false}
-          dropdownItems={[team.role]}
-        />
+        >
+          <DropdownList>
+            <DropdownItem>{team.role}</DropdownItem>
+          </DropdownList>
+        </Dropdown>
       ),
     },
   };

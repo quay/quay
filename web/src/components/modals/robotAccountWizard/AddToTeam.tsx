@@ -1,6 +1,11 @@
-import {Button, Text, TextVariants, TextContent} from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
+import {
+  Button,
+  Text,
+  TextVariants,
+  TextContent,
+  DropdownItem,
+} from '@patternfly/react-core';
 import {DesktopIcon} from '@patternfly/react-icons';
 import ToggleDrawer from 'src/components/ToggleDrawer';
 import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAndDescription';
@@ -117,6 +122,7 @@ export default function AddToTeam(props: AddToTeamProps) {
         dropdownItems={dropdownItems}
         showToggleGroup={true}
         filterWithDropdown={true}
+        isWizardStep={props.isWizardStep}
       />
     </>
   );
@@ -129,4 +135,5 @@ interface AddToTeamProps {
   setDrawerExpanded?: (boolean) => void;
   selectedTeams?: any[];
   setSelectedTeams?: (teams) => void;
+  isWizardStep?: boolean;
 }

@@ -1,20 +1,20 @@
 import {SetStateAction, useState} from 'react';
 import {
-  Alert,
   Modal,
   ModalVariant,
   Text,
   TextContent,
   TextVariants,
+  Wizard,
+  WizardHeader,
+  WizardStep,
 } from '@patternfly/react-core';
-import {Wizard} from '@patternfly/react-core/deprecated';
 import NameAndDescription from './robotAccountWizard/NameAndDescription';
 import {useCreateRobotAccount} from 'src/hooks/useRobotAccounts';
 
 import Footer from './robotAccountWizard/Footer';
 import AddToTeam from './robotAccountWizard/AddToTeam';
 import AddToRepository from './robotAccountWizard/AddToRepository';
-import {addDisplayError} from 'src/resources/ErrorHandling';
 import DefaultPermissions from './robotAccountWizard/DefaultPermissions';
 import ReviewAndFinish from './robotAccountWizard/ReviewAndFinish';
 import {useRecoilState} from 'recoil';
@@ -36,13 +36,10 @@ export default function CreateRobotAccountModal(
   }
 
   // Fetching repos
-  const {repos: repos, totalResults: repoCount} = useRepositories(
-    props.orgName,
-  );
+  const {repos: repos} = useRepositories(props.orgName);
 
   const [robotName, setRobotName] = useState('');
   const [robotDescription, setrobotDescription] = useState('');
-  const [err, setErr] = useState<string>();
   const [selectedRepoPerms, setSelectedRepoPerms] = useRecoilState(
     selectedRobotReposPermissionState,
   );
@@ -54,10 +51,6 @@ export default function CreateRobotAccountModal(
     selectedRobotDefaultPermission,
   );
   const [isDrawerExpanded, setDrawerExpanded] = useState(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [activeStep, setActiveStep] = useState<string>(
-    'Robot name and description',
-  );
 
   const {createNewRobot, addRepoPerms, addTeams, addDefaultPerms} =
     useCreateRobotAccount({
@@ -141,13 +134,12 @@ export default function CreateRobotAccountModal(
     );
   };
 
-  const handleStepChange = (step) => {
-    setActiveStep(step.name);
-  };
-
-  const NameAndDescriptionStep = {
-    name: 'Robot name and description',
-    component: (
+  const NameAndDescriptionStep = (
+    <WizardStep
+      name="Robot name and description"
+      id="robot-name-and-desc"
+      key="robot-name-and-desc"
+    >
       <>
         <TextContent>
           <Text component={TextVariants.h1}>
@@ -166,12 +158,16 @@ export default function CreateRobotAccountModal(
           validateName={validateRobotName}
         />
       </>
-    ),
-  };
+    </WizardStep>
+  );
 
-  const AddToTeamStep = {
-    name: 'Add to team (optional)',
-    component: (
+  const AddToTeamStep = (
+    <WizardStep
+      name="Add to team (optional)"
+      id="add-to-team"
+      key="add-to-team"
+      body={{hasNoPadding: isDrawerExpanded}}
+    >
       <AddToTeam
         items={props.teams}
         orgName={props.orgName}
@@ -179,13 +175,17 @@ export default function CreateRobotAccountModal(
         setDrawerExpanded={setDrawerExpanded}
         selectedTeams={selectedTeams}
         setSelectedTeams={setSelectedTeams}
+        isWizardStep
       />
-    ),
-  };
+    </WizardStep>
+  );
 
-  const AddToRepoStep = {
-    name: 'Add to repository (optional)',
-    component: (
+  const AddToRepoStep = (
+    <WizardStep
+      name="Add to repository (optional)"
+      id="add-to-repo"
+      key="add-to-repo"
+    >
       <AddToRepository
         namespace={props.orgName}
         dropdownItems={props.RepoPermissionDropdownItems}
@@ -194,26 +194,32 @@ export default function CreateRobotAccountModal(
         setSelectedRepos={setSelectedRepos}
         selectedRepoPerms={selectedRepoPerms}
         setSelectedRepoPerms={setSelectedRepoPerms}
-        wizardStep={true}
+        isWizardStep
       />
-    ),
-  };
+    </WizardStep>
+  );
 
-  const DefaultPermsStep = {
-    name: 'Default permissions (optional)',
-    component: (
+  const DefaultPermsStep = (
+    <WizardStep
+      name="Default permissions (optional)"
+      id="default-permissions"
+      key="default-permissions"
+    >
       <DefaultPermissions
         robotName={robotName}
         repoPermissions={props.RepoPermissionDropdownItems}
         robotDefaultPerm={robotDefaultPerm}
         setRobotdefaultPerm={setRobotdefaultPerm}
       />
-    ),
-  };
+    </WizardStep>
+  );
 
-  const ReviewAndFinishStep = {
-    name: 'Review and Finish',
-    component: (
+  const ReviewAndFinishStep = (
+    <WizardStep
+      name="Review and Finish"
+      id="review-and-finish"
+      key="review-and-finish"
+    >
       <ReviewAndFinish
         robotName={robotName}
         robotDescription={robotDescription}
@@ -222,8 +228,8 @@ export default function CreateRobotAccountModal(
         robotdefaultPerm={robotDefaultPerm}
         userNamespace={isUserOrganization}
       />
-    ),
-  };
+    </WizardStep>
+  );
 
   const OrgWizardSteps = [
     NameAndDescriptionStep,
@@ -249,14 +255,16 @@ export default function CreateRobotAccountModal(
       hasNoBodyWrapper
     >
       <Wizard
-        titleId="robot-account-wizard-label"
-        descriptionId="robot-account-wizard-description"
-        title="Create robot account (organization/namespace)"
-        description="Robot Accounts are named tokens that can be granted permissions on multiple repositories under this organization."
-        steps={isUserOrganization ? UserWizardSteps : OrgWizardSteps}
         onClose={handleModalToggle}
         height={600}
         width={1170}
+        header={
+          <WizardHeader
+            onClose={handleModalToggle}
+            title="Create robot account (organization/namespace)"
+            description="Robot Accounts are named tokens that can be granted permissions on multiple repositories under this organization."
+          />
+        }
         footer={
           <Footer
             onSubmit={onSubmit}
@@ -264,11 +272,9 @@ export default function CreateRobotAccountModal(
             isDataValid={validateRobotName}
           />
         }
-        hasNoBodyPadding={
-          isDrawerExpanded && activeStep == 'Add to team (optional)'
-        }
-        onCurrentStepChanged={(step) => handleStepChange(step)}
-      />
+      >
+        {isUserOrganization ? UserWizardSteps : OrgWizardSteps}
+      </Wizard>
     </Modal>
   );
 }

@@ -1,9 +1,11 @@
+import {useEffect, useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useUpdateTeamRole} from 'src/hooks/UseTeams';
@@ -46,27 +48,37 @@ export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
     <Dropdown
       data-testid={`${props.teamName}-team-dropdown`}
       onSelect={() => setIsOpen(false)}
-      toggle={
-        <DropdownToggle onToggle={() => setIsOpen(!isOpen)}>
-          {props.teamRole.charAt(0).toUpperCase() + props.teamRole.slice(1)}
-        </DropdownToggle>
-      }
-      isOpen={isOpen}
-      dropdownItems={Object.keys(teamPermissions).map((key) => (
-        <DropdownItem
-          data-testid={`${props.teamName}-${key}`}
-          key={key}
-          onClick={() =>
-            updateTeamRole({
-              teamName: props.teamName,
-              teamRole: teamPermissions[key],
-            })
-          }
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={() => setIsOpen(!isOpen)}
+          isExpanded={isOpen}
+          data-testid={`${props.teamName}-team-dropdown-toggle`}
         >
-          {key}
-        </DropdownItem>
-      ))}
-    />
+          {props.teamRole.charAt(0).toUpperCase() + props.teamRole.slice(1)}
+        </MenuToggle>
+      )}
+      isOpen={isOpen}
+      onOpenChange={(isOpen) => setIsOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>
+        {Object.keys(teamPermissions).map((key) => (
+          <DropdownItem
+            data-testid={`${props.teamName}-${key}`}
+            key={key}
+            onClick={() =>
+              updateTeamRole({
+                teamName: props.teamName,
+                teamRole: teamPermissions[key],
+              })
+            }
+          >
+            {key}
+          </DropdownItem>
+        ))}
+      </DropdownList>
+    </Dropdown>
   );
 }
 

@@ -102,7 +102,10 @@ export default function DefaultPermissionsList(
         searchOptions={[permissionColumnNames.repoCreatedBy]}
         setDrawerContent={props.setDrawerContent}
       >
-        <Table aria-label="Selectable table">
+        <Table
+          aria-label="Selectable table"
+          data-testid="default-permissions-table"
+        >
           <Thead>
             <Tr>
               <Th />

@@ -1,9 +1,11 @@
+import {useEffect, useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
 import {ITeamRepoPerms} from 'src/hooks/UseTeams';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
 
@@ -34,25 +36,35 @@ export function SetRepoPermForTeamRoleDropDown(
     <Dropdown
       data-testid={`${props.repoPerm.repoName}-role-dropdown`}
       onSelect={() => setIsOpen(false)}
-      toggle={
-        <DropdownToggle onToggle={() => setIsOpen(!isOpen)}>
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={() => setIsOpen(!isOpen)}
+          isExpanded={isOpen}
+          data-testid={`${props.repoPerm.repoName}-role-dropdown-toggle`}
+        >
           {dropdownValue
             ? dropdownValue?.charAt(0).toUpperCase() + dropdownValue?.slice(1)
             : 'None'}
-        </DropdownToggle>
-      }
+        </MenuToggle>
+      )}
       isOpen={isOpen}
-      dropdownItems={RepoPermissionDropdownItems.map((item) => (
-        <DropdownItem
-          data-testid={`${props.repoPerm.repoName}-${item.name}`}
-          key={item.name}
-          description={item.description}
-          onClick={() => dropdownOnSelect(item.name)}
-        >
-          {item.name}
-        </DropdownItem>
-      ))}
-    />
+      onOpenChange={(isOpen) => setIsOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>
+        {RepoPermissionDropdownItems.map((item) => (
+          <DropdownItem
+            data-testid={`${props.repoPerm.repoName}-${item.name}`}
+            key={item.name}
+            description={item.description}
+            onClick={() => dropdownOnSelect(item.name)}
+          >
+            {item.name}
+          </DropdownItem>
+        ))}
+      </DropdownList>
+    </Dropdown>
   );
 }
 
