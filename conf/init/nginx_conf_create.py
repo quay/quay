@@ -139,21 +139,14 @@ def generate_rate_limiting_config(config):
     non_rate_limited_namespaces = config.get("NON_RATE_LIMITED_NAMESPACES") or set()
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
     if enable_rate_limits == True:
-        http1_bucket = [value for _, value in config["RATE_LIMITS"]["http1"].items()]
-        http2_bucket = [value for _, value in config["RATE_LIMITS"]["http2"].items()]
-        namespaced_bucket = [value for _, value in config["RATE_LIMITS"]["namespaced"].items()]
+        rate_limits = config.get("RATE_LIMITS")
     else:
-        http1_bucket = [value for _, value in DEFAULT_RATE_LIMITS["http1"].items()]
-        http2_bucket = [value for _, value in DEFAULT_RATE_LIMITS["http2"].items()]
-        namespaced_bucket = [value for _, value in DEFAULT_RATE_LIMITS["namespaced"].items()]
-
+        rate_limits = DEFAULT_RATE_LIMITS
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/rate-limiting.conf"),
         non_rate_limited_namespaces=non_rate_limited_namespaces,
         enable_rate_limits=enable_rate_limits,
-        http1_bucket=http1_bucket,
-        http2_bucket=http2_bucket,
-        namespaced_bucket=namespaced_bucket,
+        rate_limits=rate_limits,
         static_dir=STATIC_DIR,
     )
 
