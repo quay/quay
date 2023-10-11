@@ -1,9 +1,6 @@
 import {
   ActionGroup,
   Button,
-  Dropdown,
-  DropdownItem,
-  MenuToggle,
   Flex,
   Form,
   FormGroup,
@@ -12,8 +9,6 @@ import {
   NumberInput,
   Spinner,
   Title,
-  MenuToggleElement,
-  DropdownList,
   FormHelperText,
   HelperText,
   HelperTextItem,
@@ -28,7 +23,7 @@ import {
   useDeleteNamespaceAutoPrunePolicy,
   useNamespaceAutoPrunePolicies,
   useUpdateNamespaceAutoPrunePolicy,
-} from 'src/hooks/UseOrganization';
+} from 'src/hooks/UseNamespaceAutoPrunePolicies';
 import {isNullOrUndefined} from 'src/libs/utils';
 import {
   AutoPruneMethod,
@@ -258,11 +253,13 @@ export default function AutoPruning(props: AutoPruning) {
             <NumberInput
               value={tagCount}
               onMinus={() => {
-                tagCount > 0 ? setTagCount(tagCount - 1) : setTagCount(0);
+                tagCount > 1 ? setTagCount(tagCount - 1) : setTagCount(1);
               }}
               onChange={(e) => {
-                const value = (e.target as HTMLInputElement).value;
-                setTagCount(Number(value));
+                const value = Number((e.target as HTMLInputElement).value);
+                if (value > 0) {
+                  setTagCount(value);
+                }
               }}
               onPlus={() => {
                 setTagCount(tagCount + 1);
@@ -293,13 +290,15 @@ export default function AutoPruning(props: AutoPruning) {
               <NumberInput
                 value={tagCreationDateValue}
                 onMinus={() => {
-                  tagCreationDateValue > 0
+                  tagCreationDateValue > 1
                     ? setTagCreationDateValue(tagCreationDateValue - 1)
-                    : setTagCreationDateValue(0);
+                    : setTagCreationDateValue(1);
                 }}
                 onChange={(e) => {
-                  const value = (e.target as HTMLInputElement).value;
-                  setTagCreationDateValue(Number(value));
+                  const value = Number((e.target as HTMLInputElement).value);
+                  if (value > 0) {
+                    setTagCreationDateValue(value);
+                  }
                 }}
                 onPlus={() => {
                   setTagCreationDateValue(tagCreationDateValue + 1);
