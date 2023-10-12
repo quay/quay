@@ -35,6 +35,8 @@ import {RepoPermissionDropdownItems} from '../RepositoriesList/RobotAccountsList
 import {Entity} from 'src/resources/UserResource';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {CreateTeamModal} from '../OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 enum TabIndex {
   Tags = 'tags',
@@ -63,7 +65,7 @@ export default function RepositoryDetails() {
   );
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
-
+  const {addAlert} = useAlerts();
   const [err, setErr] = useState<string>();
 
   const drawerRef = useRef<HTMLDivElement>();
@@ -92,6 +94,18 @@ export default function RepositoryDetails() {
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
       setEntity={setSelectedEntity}
+      showSuccessAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Success,
+          title: message,
+        })
+      }
+      showErrorAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: message,
+        })
+      }
     />
   );
 
