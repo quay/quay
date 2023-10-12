@@ -43,7 +43,7 @@ export function provideRun($rootScope: QuayRunScope,
     'X-CSRF-Token': (<any>window).__token || ''
   });
 
-  restangular.setResponseInterceptor(function(data, operation, what, url, response, deferred) {
+  restangular.setResponseInterceptor(async function(data, operation, what, url, response, deferred) {
     var headers = response.headers();
     if (headers['x-next-csrf-token']) {
       (<any>window).__token = headers['x-next-csrf-token'];
@@ -52,6 +52,12 @@ export function provideRun($rootScope: QuayRunScope,
         'X-CSRF-Token': (<any>window).__token || ''
       });
     }
+
+    if (features.UI_DELAY_AFTER_WRITE === true && ['post', 'put', 'delete'].includes(operation)) {
+      const delay_ms: number = INJECTED_CONFIG['UI_DELAY_AFTER_WRITE_SECONDS'] * 1000 || 3000;
+      await new Promise(resolve => setTimeout(resolve, delay_ms));
+    }
+
     return data;
   });
 
@@ -105,7 +111,7 @@ export function provideRun($rootScope: QuayRunScope,
 
   $rootScope.$watch('description', (description: string) => {
     if (!description) {
-      description = `Hosted private Docker repositories. Includes full user management and history. 
+      description = `Hosted private Docker repositories. Includes full user management and history.
                      Free for public repositories.`;
     }
 
@@ -136,7 +142,7 @@ export function provideRun($rootScope: QuayRunScope,
 
   // Listen for route changes and update the title and description accordingly.
   $rootScope.$on('$routeChangeSuccess', async(event, current, previous) => {
-    const title = await metaService.getTitle(current);    
+    const title = await metaService.getTitle(current);
     const description = await metaService.getDescription(current);
 
     $rootScope.title = title || defaultTitle;
