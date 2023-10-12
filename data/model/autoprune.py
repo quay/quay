@@ -27,6 +27,9 @@ from data.model.user import get_active_namespace_user_by_username
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
+# Define a constant for the SKIP_LOCKED flag for testing purposes,
+# since we test with mysql 5.7 which does not support this flag.
+SKIP_LOCKED = True
 
 
 class AutoPruneMethod(Enum):
@@ -260,7 +263,7 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
             )
             .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"))
         )
-        return db_for_update(query, skip_locked=True).get()
+        return db_for_update(query, skip_locked=SKIP_LOCKED).get()
     except AutoPruneTaskStatus.DoesNotExist:
         return []
 

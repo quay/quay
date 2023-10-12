@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import time
 import uuid
@@ -94,6 +95,9 @@ def _past_timestamp_ms(time_delta):
 
 
 def test_prune_multiple_repos_by_tag_count(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
     new_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "number_of_tags", "value": 5}, create_task=True
     )
@@ -130,6 +134,9 @@ def test_prune_multiple_repos_by_tag_count(initialized_db):
 
 
 def test_prune_multiple_repos_by_creation_date(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
     new_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "creation_date", "value": "1w"}, create_task=True
     )
@@ -167,6 +174,9 @@ def test_prune_multiple_repos_by_creation_date(initialized_db):
 
 
 def test_delete_autoprune_task_if_no_policy_exists(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
     org = model.organization.get_organization("sellnsmall")
     model.autoprune.create_autoprune_task(org.id)
 
@@ -178,6 +188,9 @@ def test_delete_autoprune_task_if_no_policy_exists(initialized_db):
 
 
 def test_fetch_tasks_in_correct_order(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
     # Start with an empty table
     for task in AutoPruneTaskStatus.select():
         model.autoprune.delete_autoprune_task(task)

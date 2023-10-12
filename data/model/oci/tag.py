@@ -798,7 +798,7 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(repo_id, tag_lifetime_ms: 
                 (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
                 Tag.hidden == False,
             )
-            .limit(limit)
+            .limit(limit)  # type: ignore[func-returns-value]
         )
         return list(query)
     except Exception as err:
