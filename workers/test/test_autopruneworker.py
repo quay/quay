@@ -94,80 +94,76 @@ def _past_timestamp_ms(time_delta):
 
 
 def test_prune_multiple_repos_by_tag_count(initialized_db):
-    with patch("data.model.autoprune.PAGINATE_SIZE", 2):
-        assert model.autoprune.PAGINATE_SIZE == 2
-        new_policy = model.autoprune.create_namespace_autoprune_policy(
-            "sellnsmall", {"method": "number_of_tags", "value": 5}, create_task=True
-        )
-        repo1 = model.repository.create_repository(
-            "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
-        )
-        repo2 = model.repository.create_repository(
-            "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
-        )
-        repo3 = model.repository.create_repository(
-            "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
-        )
-        manifest_repo1 = _create_manifest(repo1)
-        manifest_repo2 = _create_manifest(repo2)
-        manifest_repo3 = _create_manifest(repo3)
+    new_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "number_of_tags", "value": 5}, create_task=True
+    )
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+    repo3 = model.repository.create_repository(
+        "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
+    )
+    manifest_repo1 = _create_manifest(repo1)
+    manifest_repo2 = _create_manifest(repo2)
+    manifest_repo3 = _create_manifest(repo3)
 
-        _create_tags(repo1, manifest_repo1.manifest, 10)
-        _create_tags(repo2, manifest_repo2.manifest, 3)
-        _create_tags(repo3, manifest_repo3.manifest, 5)
+    _create_tags(repo1, manifest_repo1.manifest, 10)
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+    _create_tags(repo3, manifest_repo3.manifest, 5)
 
-        _assert_repo_tag_count(repo1, 10)
-        _assert_repo_tag_count(repo2, 3)
-        _assert_repo_tag_count(repo3, 5)
+    _assert_repo_tag_count(repo1, 10)
+    _assert_repo_tag_count(repo2, 3)
+    _assert_repo_tag_count(repo3, 5)
 
-        worker = AutoPruneWorker()
-        worker.prune()
+    worker = AutoPruneWorker()
+    worker.prune()
 
-        _assert_repo_tag_count(repo1, 5)
-        _assert_repo_tag_count(repo2, 3)
-        _assert_repo_tag_count(repo3, 5)
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 3)
+    _assert_repo_tag_count(repo3, 5)
 
-        task = model.autoprune.fetch_autoprune_task_by_namespace_id(new_policy.namespace_id)
-        assert task.status == "success"
+    task = model.autoprune.fetch_autoprune_task_by_namespace_id(new_policy.namespace_id)
+    assert task.status == "success"
 
 
 def test_prune_multiple_repos_by_creation_date(initialized_db):
-    with patch("data.model.autoprune.PAGINATE_SIZE", 2):
-        assert model.autoprune.PAGINATE_SIZE == 2
-        new_policy = model.autoprune.create_namespace_autoprune_policy(
-            "sellnsmall", {"method": "creation_date", "value": "1w"}, create_task=True
-        )
-        repo1 = model.repository.create_repository(
-            "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
-        )
-        repo2 = model.repository.create_repository(
-            "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
-        )
-        repo3 = model.repository.create_repository(
-            "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
-        )
-        manifest_repo1 = _create_manifest(repo1)
-        manifest_repo2 = _create_manifest(repo2)
-        manifest_repo3 = _create_manifest(repo3)
+    new_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "creation_date", "value": "1w"}, create_task=True
+    )
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+    repo3 = model.repository.create_repository(
+        "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
+    )
+    manifest_repo1 = _create_manifest(repo1)
+    manifest_repo2 = _create_manifest(repo2)
+    manifest_repo3 = _create_manifest(repo3)
 
-        _create_tags(repo1, manifest_repo1.manifest, 5)
-        _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
-        _create_tags(repo2, manifest_repo2.manifest, 5, start_time_before="7d")
-        _create_tags(repo3, manifest_repo3.manifest, 10)
+    _create_tags(repo1, manifest_repo1.manifest, 5)
+    _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
+    _create_tags(repo2, manifest_repo2.manifest, 5, start_time_before="7d")
+    _create_tags(repo3, manifest_repo3.manifest, 10)
 
-        _assert_repo_tag_count(repo1, 10)
-        _assert_repo_tag_count(repo2, 5)
-        _assert_repo_tag_count(repo3, 10)
+    _assert_repo_tag_count(repo1, 10)
+    _assert_repo_tag_count(repo2, 5)
+    _assert_repo_tag_count(repo3, 10)
 
-        worker = AutoPruneWorker()
-        worker.prune()
+    worker = AutoPruneWorker()
+    worker.prune()
 
-        _assert_repo_tag_count(repo1, 5, assert_start_after="7d")
-        _assert_repo_tag_count(repo2, 0, assert_start_after="7d")
-        _assert_repo_tag_count(repo3, 10, assert_start_after="7d")
+    _assert_repo_tag_count(repo1, 5, assert_start_after="7d")
+    _assert_repo_tag_count(repo2, 0, assert_start_after="7d")
+    _assert_repo_tag_count(repo3, 10, assert_start_after="7d")
 
-        task = model.autoprune.fetch_autoprune_task_by_namespace_id(new_policy.namespace_id)
-        assert task.status == "success"
+    task = model.autoprune.fetch_autoprune_task_by_namespace_id(new_policy.namespace_id)
+    assert task.status == "success"
 
 
 def test_delete_autoprune_task_if_no_policy_exists(initialized_db):

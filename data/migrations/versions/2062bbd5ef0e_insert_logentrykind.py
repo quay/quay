@@ -23,4 +23,8 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    pass
+    op.execute(
+        tables.logentrykind.delete().where(
+            tables.logentrykind.name == op.inline_literal("autoprune_tag_delete")
+        )
+    )

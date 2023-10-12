@@ -27,7 +27,6 @@ from data.model.user import get_active_namespace_user_by_username
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
-PAGINATE_SIZE = 50
 
 
 class AutoPruneMethod(Enum):
@@ -245,23 +244,21 @@ def update_autoprune_task(task, task_status):
         )
 
 
-def fetch_autoprune_task():
+def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
     """
-    Get the auto prune task prioritized by last_ran_ms = None followed by asc order of last_ran_ms
+    Get the auto prune task prioritized by last_ran_ms = None followed by asc order of last_ran_ms.
+    task_run_interval_ms specifies how long a task must wait before being ran again.
     """
     try:
         query = (
-            AutoPruneTaskStatus.select()
+            AutoPruneTaskStatus.select(AutoPruneTaskStatus)
+            .join(User, on=(AutoPruneTaskStatus.namespace == User.id))
             .where(
-                AutoPruneTaskStatus.namespace.not_in(
-                    DeletedNamespace.select(DeletedNamespace.namespace)
-                ),
-                (AutoPruneTaskStatus.last_ran_ms < get_epoch_timestamp_ms() - 60 * 60 * 1000)
-                | (
-                    AutoPruneTaskStatus.last_ran_ms.is_null(True)
-                ),  # don't get tasks that have ran in the last 1 hour
+                User.enabled == True,
+                (AutoPruneTaskStatus.last_ran_ms < get_epoch_timestamp_ms() - task_run_interval_ms)
+                | (AutoPruneTaskStatus.last_ran_ms.is_null(True)),
             )
-            .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"), AutoPruneTaskStatus.id)
+            .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"))
         )
         return db_for_update(query, skip_locked=True).get()
     except AutoPruneTaskStatus.DoesNotExist:
@@ -288,17 +285,17 @@ def delete_autoprune_task(task):
         )
 
 
-def prune_repo_by_number_of_tags(repo, policy_config, namespace):
+def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit):
     policy_method = policy_config.get("method", None)
 
-    if policy_method != AutoPruneMethod.NUMBER_OF_TAGS.value or not valid_value(
-        AutoPruneMethod(policy_method), policy_config.get("value")
-    ):
+    if policy_method != AutoPruneMethod.NUMBER_OF_TAGS.value:
         raise KeyError("Unsupported policy config provided", policy_config)
+
+    assert_valid_namespace_autoprune_policy(policy_config)
 
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo.id, int(policy_config["value"]), PAGINATE_SIZE
+            repo.id, int(policy_config["value"]), tag_page_limit
         )
         if len(tags) == 0:
             break
@@ -323,19 +320,18 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace):
                 )
 
 
-def prune_repo_by_creation_date(repo, policy_config, namespace):
+def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=100):
     policy_method = policy_config.get("method", None)
 
-    if policy_method != AutoPruneMethod.CREATION_DATE.value or not valid_value(
-        AutoPruneMethod(policy_method), policy_config.get("value")
-    ):
+    if policy_method != AutoPruneMethod.CREATION_DATE.value:
         raise KeyError("Unsupported policy config provided", policy_config)
 
-    time_ms = int(convert_to_timedelta(policy_config["value"]).total_seconds() * 1000)
+    assert_valid_namespace_autoprune_policy(policy_config)
 
+    time_ms = int(convert_to_timedelta(policy_config["value"]).total_seconds() * 1000)
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo.id, time_ms, PAGINATE_SIZE
+            repo.id, time_ms, tag_page_limit
         )
 
         if len(tags) == 0:
@@ -361,7 +357,7 @@ def prune_repo_by_creation_date(repo, policy_config, namespace):
                 )
 
 
-def execute_poilcy_on_repo(policy, repo_id, namespace_id):
+def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
     policy_to_func_map = {
         AutoPruneMethod.NUMBER_OF_TAGS.value: prune_repo_by_number_of_tags,
         AutoPruneMethod.CREATION_DATE.value: prune_repo_by_creation_date,
@@ -375,22 +371,21 @@ def execute_poilcy_on_repo(policy, repo_id, namespace_id):
 
     logger.info("Executing autoprune policy: %s on repo: %s", policy.method, repo.name)
 
-    policy_to_func_map[policy.method](repo, policy.config, namespace)
+    policy_to_func_map[policy.method](repo, policy.config, namespace, tag_page_limit)
 
 
-def execute_policies_for_repo(policies, repo, namespace_id):
-    list(map(lambda policy: execute_poilcy_on_repo(policy, repo, namespace_id), policies))
+def execute_policies_for_repo(policies, repo, namespace_id, tag_page_limit=100):
+    list(
+        map(
+            lambda policy: execute_policy_on_repo(policy, repo, namespace_id, tag_page_limit),
+            policies,
+        )
+    )
 
 
-def get_paginated_repositories_for_namespace(namespace_id, page_token=None):
+def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
     try:
-        query = Repository.select(
-            Repository.name,
-            Repository.id,
-            Repository.visibility,
-            Repository.kind,
-            Repository.state,
-        ).where(
+        query = Repository.select(Repository.name, Repository.id,).where(
             Repository.state != RepositoryState.MARKED_FOR_DELETION,
             Repository.namespace_user == namespace_id,
         )
@@ -398,7 +393,7 @@ def get_paginated_repositories_for_namespace(namespace_id, page_token=None):
             query,
             Repository,
             page_token=page_token,
-            limit=PAGINATE_SIZE,
+            limit=page_size,
         )
         return repos, next_page_token
     except Exception as err:
@@ -407,17 +402,26 @@ def get_paginated_repositories_for_namespace(namespace_id, page_token=None):
         )
 
 
-def execute_namespace_polices(policies, namespace_id):
+def execute_namespace_polices(policies, namespace_id, repository_page_limit=50, tag_page_limit=100):
     if not policies:
         return
     page_token = None
 
     while True:
-        repos, page_token = get_paginated_repositories_for_namespace(namespace_id, page_token)
+        repos, page_token = get_paginated_repositories_for_namespace(
+            namespace_id, page_token, repository_page_limit
+        )
         repo_list = [row for row in repos]
 
         # When implementing repo policies, fetch repo policies and add it to the policies list here
-        list(map(lambda repo: execute_policies_for_repo(policies, repo, namespace_id), repo_list))
+        list(
+            map(
+                lambda repo: execute_policies_for_repo(
+                    policies, repo, namespace_id, tag_page_limit
+                ),
+                repo_list,
+            )
+        )
 
         if page_token is None:
             break

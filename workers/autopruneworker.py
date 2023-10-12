@@ -11,6 +11,11 @@ from workers.worker import Worker
 logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("AUTO_PRUNING_POLL_PERIOD", 30)
 BATCH_SIZE = app.config.get("AUTO_PRUNING_BATCH_SIZE", 10)
+TASK_RUN_MINIMUM_INTERVAL_MS = (
+    app.config.get("AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES", 60) * 60 * 1000
+)  # Convert to ms
+FETCH_TAGS_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_TAGS_PAGE_LIMIT", 100)
+FETCH_REPOSITORIES_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_REPOSITORIES_PAGE_LIMIT", 50)
 
 
 class AutoPruneWorker(Worker):
@@ -19,10 +24,10 @@ class AutoPruneWorker(Worker):
         self.add_operation(self.prune, POLL_PERIOD)
 
     def prune(self):
-        for i in range(BATCH_SIZE):
+        for _ in range(BATCH_SIZE):
             with db_transaction():
 
-                autoprune_task = fetch_autoprune_task()
+                autoprune_task = fetch_autoprune_task(TASK_RUN_MINIMUM_INTERVAL_MS)
                 if not autoprune_task:
                     logger.info("no autoprune tasks found, exiting...")
                     return
@@ -34,7 +39,12 @@ class AutoPruneWorker(Worker):
                         delete_autoprune_task(autoprune_task)
                         continue
 
-                    execute_namespace_polices(policies, autoprune_task.namespace)
+                    execute_namespace_polices(
+                        policies,
+                        autoprune_task.namespace,
+                        FETCH_REPOSITORIES_PAGE_LIMIT,
+                        FETCH_TAGS_PAGE_LIMIT,
+                    )
 
                     update_autoprune_task(autoprune_task, task_status="success")
                 except Exception as err:
