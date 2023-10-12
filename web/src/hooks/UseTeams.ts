@@ -99,7 +99,7 @@ export function useFetchTeams(orgName: string) {
     },
   );
 
-  const teams: ITeams[] = Object.values(data);
+  const teams: ITeams[] = data ? Object.values(data) : [];
 
   const filteredTeams =
     search.query !== ''
