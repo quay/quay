@@ -12,6 +12,7 @@ from data.database import (
     get_epoch_timestamp_ms,
 )
 from data.model import (
+    InvalidNamespaceAutoPruneMethod,
     InvalidNamespaceAutoPrunePolicy,
     InvalidNamespaceException,
     NamespaceAutoPrunePolicyAlreadyExists,
@@ -289,10 +290,16 @@ def delete_autoprune_task(task):
 
 
 def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit):
+    """
+    Prunes tags in the given repository based on the number of tags specified in the policy config.
+    """
+
     policy_method = policy_config.get("method", None)
 
     if policy_method != AutoPruneMethod.NUMBER_OF_TAGS.value:
-        raise KeyError("Unsupported policy config provided", policy_config)
+        raise InvalidNamespaceAutoPruneMethod(
+            f"Expected prune method type {AutoPruneMethod.NUMBER_OF_TAGS.value} but got {policy_method}"
+        )
 
     assert_valid_namespace_autoprune_policy(policy_config)
 
@@ -324,10 +331,17 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit)
 
 
 def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=100):
+    """
+    Prunes tags in the given repository based on the creation date specified in the policy config,
+    where the value is a valid timedelta string. (e.g. 1d, 1w, 1m, 1y)
+    """
+
     policy_method = policy_config.get("method", None)
 
     if policy_method != AutoPruneMethod.CREATION_DATE.value:
-        raise KeyError("Unsupported policy config provided", policy_config)
+        raise InvalidNamespaceAutoPruneMethod(
+            f"Expected prune method type {AutoPruneMethod.CREATION_DATE.value} but got {policy_method}"
+        )
 
     assert_valid_namespace_autoprune_policy(policy_config)
 
@@ -361,13 +375,17 @@ def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=1
 
 
 def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
+    """
+    Idenitifies the correct pruning method to execute  for the repository based on the policy method.
+    """
+
     policy_to_func_map = {
         AutoPruneMethod.NUMBER_OF_TAGS.value: prune_repo_by_number_of_tags,
         AutoPruneMethod.CREATION_DATE.value: prune_repo_by_creation_date,
     }
 
     if policy_to_func_map.get(policy.method, None) is None:
-        raise KeyError("Unsupported policy provided", policy.method)
+        raise InvalidNamespaceAutoPruneMethod("Unsupported prune method type", policy.method)
 
     namespace = user.get_namespace_user_by_user_id(namespace_id)
     repo = repository.lookup_repository(repo_id)
@@ -378,12 +396,11 @@ def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
 
 
 def execute_policies_for_repo(policies, repo, namespace_id, tag_page_limit=100):
-    list(
-        map(
-            lambda policy: execute_policy_on_repo(policy, repo, namespace_id, tag_page_limit),
-            policies,
-        )
-    )
+    """
+    Executes the policies for the given repository.
+    """
+    for policy in policies:
+        execute_policy_on_repo(policy, repo, namespace_id, tag_page_limit)
 
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
@@ -406,6 +423,10 @@ def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page
 
 
 def execute_namespace_polices(policies, namespace_id, repository_page_limit=50, tag_page_limit=100):
+    """
+    Executes the given policies for the repositories in the provided namespace.
+    """
+
     if not policies:
         return
     page_token = None
@@ -414,17 +435,9 @@ def execute_namespace_polices(policies, namespace_id, repository_page_limit=50, 
         repos, page_token = get_paginated_repositories_for_namespace(
             namespace_id, page_token, repository_page_limit
         )
-        repo_list = [row for row in repos]
 
-        # When implementing repo policies, fetch repo policies and add it to the policies list here
-        list(
-            map(
-                lambda repo: execute_policies_for_repo(
-                    policies, repo, namespace_id, tag_page_limit
-                ),
-                repo_list,
-            )
-        )
+        for repo in repos:
+            execute_policies_for_repo(policies, repo, namespace_id, tag_page_limit)
 
         if page_token is None:
             break
