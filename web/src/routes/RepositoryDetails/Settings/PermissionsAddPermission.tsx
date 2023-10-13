@@ -5,17 +5,17 @@ import {
   AlertActionCloseButton,
   Button,
   Divider,
-  Form,
-  FormGroup,
-  Title,
-} from '@patternfly/react-core';
-import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
+  DropdownList,
+  Form,
+  FormGroup,
+  MenuToggle,
+  MenuToggleElement,
   SelectGroup,
   SelectOption,
-} from '@patternfly/react-core/deprecated';
+  Title,
+} from '@patternfly/react-core';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
 import Conditional from 'src/components/empty/Conditional';
 import EntitySearch from 'src/components/EntitySearch';
@@ -50,38 +50,42 @@ export default function AddPermissions(props: AddPermissionsProps) {
     <React.Fragment key="creator">
       <Conditional if={!isUserOrganization}>
         <SelectGroup label="Teams" key="group3">
-          {props.teams?.map((t) => (
+          {props.teams?.map(({name}) => (
             <SelectOption
-              data-testid={`${t.name}-team`}
-              key={t.name}
-              value={t.name}
+              data-testid={`${name}-team`}
+              key={name}
+              value={name}
               onClick={() => {
                 props.setSelectedEntity({
+                  name,
                   is_robot: false,
-                  name: t.name,
                   kind: 'team',
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           ))}
         </SelectGroup>
         <Divider component="li" key={4} />
       </Conditional>
       <SelectGroup label="Robot accounts" key="robot-account-grp">
-        {robots?.map((r) => (
+        {robots?.map(({name}) => (
           <SelectOption
-            data-testid={`${r.name}-robot-accnt`}
-            key={r.name}
-            value={r.name}
+            data-testid={`${name}-robot-accnt`}
+            key={name}
+            value={name}
             onClick={() => {
               props.setSelectedEntity({
+                name,
                 is_robot: true,
-                name: r.name,
                 kind: 'user',
                 is_org_member: true,
               });
             }}
-          />
+          >
+            {name}
+          </SelectOption>
         ))}
       </SelectGroup>
       <Divider component="li" key={5} />
@@ -91,7 +95,6 @@ export default function AddPermissions(props: AddPermissionsProps) {
           key="Create team1"
           component="button"
           onClick={() => props.setIsTeamModalOpen(!props.isTeamModalOpen)}
-          isPlaceholder
           isFocused
         >
           <UsersIcon /> &nbsp; Create team
@@ -104,7 +107,6 @@ export default function AddPermissions(props: AddPermissionsProps) {
         onClick={() =>
           props.setIsCreateRobotModalOpen(!props.isCreateRobotModalOpen)
         }
-        isPlaceholder
         isFocused
       >
         <DesktopIcon /> &nbsp; Create robot account
@@ -162,24 +164,31 @@ export default function AddPermissions(props: AddPermissionsProps) {
         <FormGroup fieldId="permission" label="Select a permission" required>
           <Dropdown
             onSelect={() => setIsPermissionOpen(false)}
-            toggle={
-              <DropdownToggle
-                onToggle={(_event, isOpen) => setIsPermissionOpen(isOpen)}
+            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+              <MenuToggle
+                ref={toggleRef}
+                onClick={() => setIsPermissionOpen(() => !isPermissionOpen)}
+                isExpanded={isPermissionOpen}
               >
                 {role}
-              </DropdownToggle>
-            }
+              </MenuToggle>
+            )}
             isOpen={isPermissionOpen}
-            dropdownItems={roles.map((role) => (
-              <DropdownItem
-                key={role.name}
-                description={role.description}
-                onClick={() => setRole(role.role)}
-              >
-                {role.name}
-              </DropdownItem>
-            ))}
-          />
+            onOpenChange={(isOpen) => setIsPermissionOpen(isOpen)}
+            shouldFocusToggleOnSelect
+          >
+            <DropdownList>
+              {roles.map((role) => (
+                <DropdownItem
+                  key={role.name}
+                  description={role.description}
+                  onClick={() => setRole(role.role)}
+                >
+                  {role.name}
+                </DropdownItem>
+              ))}
+            </DropdownList>
+          </Dropdown>
         </FormGroup>
         <ActionGroup>
           <Button

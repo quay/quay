@@ -81,7 +81,7 @@ export default function TeamView(props: TeamViewProps) {
   };
 
   return (
-    <PageSection>
+    <PageSection {...(props.isWizardStep && {padding: {default: 'noPadding'}})}>
       <Toolbar>
         <ToolbarContent>
           {props.showCheckbox ? (
@@ -200,4 +200,5 @@ interface TeamViewProps {
   showToggleGroup: boolean;
   searchInputText?: string;
   filterWithDropdown: boolean;
+  isWizardStep?: boolean;
 }

@@ -1,3 +1,4 @@
+import {useEffect, useState} from 'react';
 import {
   Modal,
   ModalVariant,
@@ -7,9 +8,11 @@ import {
   AlertGroup,
   Alert,
   AlertActionCloseButton,
+  WizardHeader,
+  Wizard,
+  WizardStepType,
+  WizardStep,
 } from '@patternfly/react-core';
-import {Wizard} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
 import {
   ITeamMember,
   useAddMembersToTeam,
@@ -39,7 +42,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
     selectedRobotReposState,
   );
   const [isDrawerExpanded, setDrawerExpanded] = useState(false);
-  const [activeStep, setActiveStep] = useState<string>('Name & Description');
   const [addedTeamMembers, setAddedTeamMembers] = useState<ITeamMember[]>([]);
   const [deletedTeamMembers, setDeletedTeamMembers] = useState<ITeamMember[]>(
     [],
@@ -103,87 +105,6 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
     props.handleWizardToggle();
   };
 
-  const handleStepChange = (step) => {
-    setActiveStep(step.name);
-  };
-
-  const steps = [
-    {
-      name: 'Name & Description',
-      component: (
-        <>
-          <TextContent>
-            <Text component={TextVariants.h1}>Team name and description</Text>
-          </TextContent>
-          <NameAndDescription
-            name={props.teamName}
-            description={props.teamDescription}
-            nameLabel="Team name for your new team"
-            descriptionLabel="Team description for your new team"
-          />
-        </>
-      ),
-    },
-    {
-      name: 'Add to repository (optional)',
-      component: (
-        <AddToRepository
-          namespace={props.orgName}
-          dropdownItems={RepoPermissionDropdownItems}
-          repos={repos}
-          selectedRepos={selectedRepos}
-          setSelectedRepos={setSelectedRepos}
-          selectedRepoPerms={selectedRepoPerms}
-          setSelectedRepoPerms={setSelectedRepoPerms}
-          wizardStep={true}
-        />
-      ),
-    },
-    {
-      name: 'Add team member (optional)',
-      component: (
-        <>
-          <Conditional if={!isDrawerExpanded}>
-            <TextContent>
-              <Text component={TextVariants.h1}>
-                Add team member (optional)
-              </Text>
-            </TextContent>
-          </Conditional>
-          <AddTeamMember
-            orgName={props.orgName}
-            allMembers={allMembers}
-            tableItems={tableItems}
-            setTableItems={setTableItems}
-            addedTeamMembers={addedTeamMembers}
-            setAddedTeamMembers={setAddedTeamMembers}
-            deletedTeamMembers={deletedTeamMembers}
-            setDeletedTeamMembers={setDeletedTeamMembers}
-            isDrawerExpanded={isDrawerExpanded}
-            setDrawerExpanded={setDrawerExpanded}
-          />
-        </>
-      ),
-    },
-    {
-      name: 'Review and Finish',
-      component: (
-        <>
-          <TextContent>
-            <Text component={TextVariants.h1}>Review</Text>
-          </TextContent>
-          <Review
-            orgName={props.orgName}
-            teamName={props.teamName}
-            description={props.teamDescription}
-            addedTeamMembers={addedTeamMembers}
-            selectedRepos={filteredRepos()}
-          />
-        </>
-      ),
-    },
-  ];
-
   return (
     <>
       <Conditional if={error}>
@@ -204,6 +125,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
           />
         </AlertGroup>
       </Conditional>
+
       <Modal
         id="create-team-modal"
         aria-label="CreateTeam"
@@ -214,14 +136,16 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
         hasNoBodyWrapper
       >
         <Wizard
-          titleId="create-team-wizard-label"
-          descriptionId="create-team-wizard-description"
-          title="Create team"
-          description=""
-          steps={steps}
           onClose={props.handleWizardToggle}
           height={600}
           width={1170}
+          header={
+            <WizardHeader
+              onClose={props.handleWizardToggle}
+              title="Create team"
+              description=""
+            />
+          }
           footer={
             <Conditional if={!isDrawerExpanded}>
               <ReviewAndFinishFooter
@@ -230,11 +154,71 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
               />
             </Conditional>
           }
-          hasNoBodyPadding={
-            isDrawerExpanded && activeStep === 'Add team member (optional)'
-          }
-          onCurrentStepChanged={(currentStep) => handleStepChange(currentStep)}
-        />
+        >
+          <WizardStep name="Name & Description" id="name-and-description">
+            <TextContent>
+              <Text component={TextVariants.h1}>Team name and description</Text>
+            </TextContent>
+            <NameAndDescription
+              name={props.teamName}
+              description={props.teamDescription}
+              nameLabel="Team name for your new team"
+              descriptionLabel="Team description for your new team"
+            />
+          </WizardStep>
+
+          <WizardStep name="Add to repository (optional)" id="add-to-repo">
+            <AddToRepository
+              namespace={props.orgName}
+              dropdownItems={RepoPermissionDropdownItems}
+              repos={repos}
+              selectedRepos={selectedRepos}
+              setSelectedRepos={setSelectedRepos}
+              selectedRepoPerms={selectedRepoPerms}
+              setSelectedRepoPerms={setSelectedRepoPerms}
+              isWizardStep
+            />
+          </WizardStep>
+
+          <WizardStep
+            name="Add team member (optional)"
+            id="add-team-member"
+            body={{hasNoPadding: isDrawerExpanded}}
+          >
+            <Conditional if={!isDrawerExpanded}>
+              <TextContent>
+                <Text component={TextVariants.h1}>
+                  Add team member (optional)
+                </Text>
+              </TextContent>
+            </Conditional>
+            <AddTeamMember
+              orgName={props.orgName}
+              allMembers={allMembers}
+              tableItems={tableItems}
+              setTableItems={setTableItems}
+              addedTeamMembers={addedTeamMembers}
+              setAddedTeamMembers={setAddedTeamMembers}
+              deletedTeamMembers={deletedTeamMembers}
+              setDeletedTeamMembers={setDeletedTeamMembers}
+              isDrawerExpanded={isDrawerExpanded}
+              setDrawerExpanded={setDrawerExpanded}
+            />
+          </WizardStep>
+
+          <WizardStep name="Review and Finish" id="review-and-finish">
+            <TextContent>
+              <Text component={TextVariants.h1}>Review</Text>
+            </TextContent>
+            <Review
+              orgName={props.orgName}
+              teamName={props.teamName}
+              description={props.teamDescription}
+              addedTeamMembers={addedTeamMembers}
+              selectedRepos={filteredRepos()}
+            />
+          </WizardStep>
+        </Wizard>
       </Modal>
     </>
   );

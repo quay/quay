@@ -1,22 +1,20 @@
+import React, {useState} from 'react';
 import {
   Button,
+  Dropdown,
+  DropdownItem,
+  DropdownList,
   Flex,
   FlexItem,
+  MenuToggle,
+  MenuToggleElement,
   Switch,
   Toolbar,
   ToolbarContent,
   ToolbarGroup,
   ToolbarItem,
 } from '@patternfly/react-core';
-import {
-  Dropdown,
-  DropdownGroup,
-  DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
 import {UserIcon} from '@patternfly/react-icons';
-import React from 'react';
-import {useState} from 'react';
 import {GlobalAuthState, logoutUser} from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from '../errors/ErrorModal';
@@ -36,9 +34,9 @@ export function HeaderToolbar() {
     setIsDropdownOpen((prev) => !prev);
   };
 
-  const onDropdownSelect = async (e) => {
+  const onDropdownSelect = async (value) => {
     setIsDropdownOpen(false);
-    switch (e.target.value) {
+    switch (value) {
       case 'logout':
         try {
           await logoutUser();
@@ -60,26 +58,29 @@ export function HeaderToolbar() {
     }
   };
 
-  const userDropdownItems = [
-    <DropdownGroup key="group 2">
-      <DropdownItem value="logout" key="group 2 logout" component="button">
-        Logout
-      </DropdownItem>
-    </DropdownGroup>,
-  ];
-
   const userDropdown = (
     <Dropdown
-      position="right"
-      onSelect={(value) => onDropdownSelect(value)}
+      onSelect={(_event, value) => onDropdownSelect(value)}
       isOpen={isDropdownOpen}
-      toggle={
-        <DropdownToggle icon={<UserIcon />} onToggle={onDropdownToggle}>
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={onDropdownToggle}
+          isExpanded={isDropdownOpen}
+          icon={<UserIcon />}
+        >
           {user.username}
-        </DropdownToggle>
-      }
-      dropdownItems={userDropdownItems}
-    />
+        </MenuToggle>
+      )}
+      onOpenChange={(isOpen) => setIsDropdownOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>
+        <DropdownItem value="logout" key="logout" component="button">
+          Logout
+        </DropdownItem>
+      </DropdownList>
+    </Dropdown>
   );
 
   const signInButton = <Button> Sign In </Button>;
@@ -115,7 +116,6 @@ export function HeaderToolbar() {
             <ToolbarItem
               spacer={{
                 default: 'spacerNone',
-                sm: 'spacerSm',
                 md: 'spacerSm',
                 lg: 'spacerMd',
                 xl: 'spacerLg',

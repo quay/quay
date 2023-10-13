@@ -1,10 +1,12 @@
+import {useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
-  KebabToggle,
-  DropdownPosition,
-} from '@patternfly/react-core/deprecated';
-import {useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
+import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import AddTagModal from './TagsActionsAddTagModal';
 import EditLabelsModal from './TagsActionsLabelsModal';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
@@ -94,17 +96,24 @@ export default function TagActions(props: TagActionsProps) {
   return (
     <>
       <Dropdown
-        toggle={
-          <KebabToggle
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
             id="tag-actions-kebab"
-            onToggle={(_event, isOpen: boolean) => setIsOpen(isOpen)}
-          />
-        }
+            aria-label="Tag actions kebab"
+            variant="plain"
+            onClick={() => setIsOpen(() => !isOpen)}
+            isExpanded={isOpen}
+          >
+            <EllipsisVIcon />
+          </MenuToggle>
+        )}
         isOpen={isOpen}
-        isPlain
-        position={DropdownPosition.right}
-        dropdownItems={dropdownItems}
-      />
+        onOpenChange={(isOpen) => setIsOpen(isOpen)}
+        shouldFocusToggleOnSelect
+      >
+        <DropdownList>{dropdownItems}</DropdownList>
+      </Dropdown>
       <AddTagModal
         org={props.org}
         repo={props.repo}

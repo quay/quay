@@ -1,3 +1,4 @@
+import {useState, Ref} from 'react';
 import {
   ActionGroup,
   Button,
@@ -7,20 +8,19 @@ import {
   DrawerHead,
   DrawerPanelBody,
   DrawerPanelContent,
-  Form,
-  FormGroup,
-  Radio,
-  Spinner,
-} from '@patternfly/react-core';
-import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-  SelectOption,
+  DropdownList,
+  Form,
+  FormGroup,
+  MenuToggle,
+  MenuToggleElement,
+  Radio,
   SelectGroup,
-} from '@patternfly/react-core/deprecated';
+  SelectOption,
+  Spinner,
+} from '@patternfly/react-core';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
-import {useState, Ref} from 'react';
 import EntitySearch from 'src/components/EntitySearch';
 import {useCreateDefaultPermission} from 'src/hooks/UseDefaultPermissions';
 import {Entity} from 'src/resources/UserResource';
@@ -105,20 +105,22 @@ export default function CreatePermissionDrawer(
         {isLoadingRobots ? (
           <Spinner />
         ) : (
-          robots?.map((r) => (
+          robots?.map(({name}) => (
             <SelectOption
-              data-testid={`${r.name}-robot-accnt`}
-              key={r.name}
-              value={r.name}
+              data-testid={`${name}-robot-accnt`}
+              key={name}
+              value={name}
               onClick={() => {
                 setRepositoryCreator({
+                  name,
                   is_robot: true,
-                  name: r.name,
                   kind: 'user',
                   is_org_member: true,
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           ))
         )}
       </SelectGroup>
@@ -130,7 +132,6 @@ export default function CreatePermissionDrawer(
         onClick={() =>
           setIsCreateRobotModalForCreatorOpen(!isCreateRobotModalForCreatorOpen)
         }
-        isPlaceholder
         isFocused
       >
         <DesktopIcon /> &nbsp; Create robot account
@@ -245,39 +246,43 @@ export default function CreatePermissionDrawer(
         {isLoadingTeams ? (
           <Spinner />
         ) : (
-          teams?.map((t) => (
+          teams?.map(({name}) => (
             <SelectOption
-              data-testid={`${t.name}-team`}
-              key={t.name}
-              value={t.name}
+              data-testid={`${name}-team`}
+              key={name}
+              value={name}
               onClick={() => {
                 setAppliedTo({
+                  name,
                   is_robot: false,
-                  name: t.name,
                   kind: 'team',
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           ))
         )}
       </SelectGroup>
       <Divider component="li" key={4} />
       <SelectGroup label="Robot accounts" key="group4">
-        {robots?.map((r) => {
+        {robots?.map(({name}) => {
           return (
             <SelectOption
-              data-testid={`${r.name}-robot-accnt`}
-              key={r.name}
-              value={r.name}
+              data-testid={`${name}-robot-accnt`}
+              key={name}
+              value={name}
               onClick={() => {
                 setAppliedTo({
+                  name,
                   is_robot: true,
-                  name: r.name,
                   kind: 'user',
                   is_org_member: true,
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           );
         })}
       </SelectGroup>
@@ -287,7 +292,6 @@ export default function CreatePermissionDrawer(
         key="Create team1"
         component="button"
         onClick={() => setIsTeamModalOpen(!isTeamModalOpen)}
-        isPlaceholder
         isFocused
       >
         <UsersIcon /> &nbsp; Create team
@@ -301,7 +305,6 @@ export default function CreatePermissionDrawer(
             !isCreateRobotModalForAppliedToOpen,
           )
         }
-        isPlaceholder
         isFocused
       >
         <DesktopIcon /> &nbsp; Create robot account
@@ -340,17 +343,22 @@ export default function CreatePermissionDrawer(
   const dropdownForPermission = (
     <Dropdown
       data-testid={'create-default-permission-dropdown'}
-      toggle={
-        <DropdownToggle
-          id="toggle-id-6"
-          onToggle={() => setPermissionDropDownOpen(!permissionDropDownOpen)}
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={() => setPermissionDropDownOpen(!permissionDropDownOpen)}
+          isExpanded={permissionDropDownOpen}
+          data-testid="create-default-permission-dropdown-toggle"
         >
           {permission}
-        </DropdownToggle>
-      }
+        </MenuToggle>
+      )}
       isOpen={permissionDropDownOpen}
-      dropdownItems={optionsForPermission}
-    />
+      onOpenChange={(isOpen) => setPermissionDropDownOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>{optionsForPermission}</DropdownList>
+    </Dropdown>
   );
   const {createDefaultPermission} = useCreateDefaultPermission(props.orgName, {
     onSuccess: () => {

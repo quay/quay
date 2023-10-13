@@ -1,14 +1,14 @@
+import {useState} from 'react';
 import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
-} from '@patternfly/react-core';
-import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
 import {RepoMember} from 'src/resources/RepositoryResource';
@@ -39,24 +39,33 @@ export default function PermissionsDropdown({
       </Conditional>
       <Dropdown
         onSelect={() => setIsOpen(false)}
-        toggle={
-          <DropdownToggle onToggle={(_event, isOpen) => setIsOpen(isOpen)}>
-            {member.role}
-          </DropdownToggle>
-        }
-        isOpen={isOpen}
-        dropdownItems={roles.map((role) => (
-          <DropdownItem
-            key={role.name}
-            description={role.description}
-            onClick={() =>
-              setPermissions({members: member, newRole: role.role})
-            }
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
+            onClick={() => setIsOpen(() => !isOpen)}
+            isExpanded={isOpen}
           >
-            {role.name}
-          </DropdownItem>
-        ))}
-      />
+            {member.role}
+          </MenuToggle>
+        )}
+        isOpen={isOpen}
+        onOpenChange={(isOpen) => setIsOpen(isOpen)}
+        shouldFocusToggleOnSelect
+      >
+        <DropdownList>
+          {roles.map((role) => (
+            <DropdownItem
+              key={role.name}
+              description={role.description}
+              onClick={() =>
+                setPermissions({members: member, newRole: role.role})
+              }
+            >
+              {role.name}
+            </DropdownItem>
+          ))}
+        </DropdownList>
+      </Dropdown>
     </>
   );
 }

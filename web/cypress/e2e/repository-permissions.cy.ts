@@ -86,7 +86,7 @@ describe('Repository Settings - Permissions', () => {
 
   it('Bulk deletes permissions', () => {
     cy.contains('1 - 4 of 4').should('exist');
-    cy.get('#permissions-select-all').click();
+    cy.get('[name="permissions-select-all"]').click();
     cy.contains('Actions').click();
     cy.get('#bulk-delete-permissions').contains('Delete').click();
     cy.get('table').within(() => {
@@ -98,7 +98,7 @@ describe('Repository Settings - Permissions', () => {
 
   it('Bulk changes permissions', () => {
     cy.contains('1 - 4 of 4').should('exist');
-    cy.get('#permissions-select-all').click();
+    cy.get('[name="permissions-select-all"]').click();
     cy.contains('Actions').click();
     cy.contains('Change Permissions').click();
     cy.get('[data-testid="change-permissions-menu-list"]').within(() => {
@@ -128,7 +128,7 @@ describe('Repository Settings - Permissions', () => {
     cy.contains('Add Permissions').click();
     cy.get('#add-permission-form').within(() => {
       cy.get('input').type('user');
-      cy.get('li:contains("user2")').click();
+      cy.get('button:contains("user2")').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
       cy.contains('Submit').click();

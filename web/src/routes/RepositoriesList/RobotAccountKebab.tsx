@@ -1,11 +1,13 @@
+import {useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
-  KebabToggle,
-  DropdownPosition,
-} from '@patternfly/react-core/deprecated';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
+import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import {IRobot} from 'src/resources/RobotsResource';
-import {useState} from 'react';
 
 export default function RobotAccountKebab(props: RobotAccountKebabProps) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -31,37 +33,41 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
     <>
       <Dropdown
         onSelect={onSelect}
-        toggle={
-          <KebabToggle
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plain"
             id={`${props.robotAccount.name}-toggle-kebab`}
-            onToggle={() => {
-              setIsOpen(!isOpen);
-            }}
-          />
-        }
+            data-testid={`${props.robotAccount.name}-toggle-kebab`}
+            onClick={() => setIsOpen(!isOpen)}
+            isExpanded={isOpen}
+          >
+            <EllipsisVIcon />
+          </MenuToggle>
+        )}
         isOpen={isOpen}
-        dropdownItems={[
+        onOpenChange={(isOpen) => setIsOpen(isOpen)}
+        shouldFocusToggleOnSelect
+      >
+        <DropdownList>
           <DropdownItem
-            key="set-repo-perms"
             onClick={() => onSetRepoPerms()}
             id={`${props.robotAccount.name}-set-repo-perms-btn`}
           >
             {props.deleteKebabIsOpen ? props.deleteModal() : null}
             Set repository permissions
-          </DropdownItem>,
+          </DropdownItem>
+
           <DropdownItem
-            key="delete"
             onClick={() => onDelete()}
             className="red-color"
             id={`${props.robotAccount.name}-del-btn`}
           >
             {props.deleteKebabIsOpen ? props.deleteModal() : null}
             Delete
-          </DropdownItem>,
-        ]}
-        isPlain
-        position={DropdownPosition.right}
-      />
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
     </>
   );
 }

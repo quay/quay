@@ -1,19 +1,16 @@
+import {useEffect, useState} from 'react';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {
   PageSection,
   PageSectionVariants,
   Title,
   PanelFooter,
+  DropdownItem,
 } from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import './css/Organizations.scss';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {useRecoilState} from 'recoil';
-import {
-  searchOrgsState,
-  selectedOrgsState,
-} from 'src/atoms/OrganizationListState';
-import {useEffect, useState} from 'react';
+import {selectedOrgsState} from 'src/atoms/OrganizationListState';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import OrgTableData from './OrganizationsListTableData';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';

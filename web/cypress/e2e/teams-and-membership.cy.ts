@@ -48,7 +48,7 @@ describe('Teams and membership page', () => {
     // Search for a single team
     cy.get('#teams-view-search').type(`${teamToBeUpdated}`);
     cy.contains('1 - 1 of 1');
-    cy.get(`[data-testid="${teamToBeUpdated}-team-dropdown"]`)
+    cy.get(`[data-testid="${teamToBeUpdated}-team-dropdown-toggle"]`)
       .contains('Member')
       .click();
     cy.get(`[data-testid="${teamToBeUpdated}-Creator"]`).click();
@@ -128,7 +128,9 @@ describe('Teams and membership page', () => {
     // search for repo perm inside the modal
     cy.get('#set-repo-perm-for-team-search').type(`${repo}`);
     cy.contains('1 - 1 of 1');
-    cy.get(`[data-testid="${repo}-role-dropdown"]`).contains('None').click();
+    cy.get(`[data-testid="${repo}-role-dropdown-toggle"]`)
+      .contains('None')
+      .click();
     cy.get(`[data-testid="${repo}-Write"]`).click();
     cy.get('#update-team-repo-permissions').click();
 
@@ -152,7 +154,7 @@ describe('Teams and membership page', () => {
       .click();
 
     // bulk select entries and change role from kebab
-    cy.get('#add-repository-bulk-select').click();
+    cy.get('[name="add-repository-bulk-select"]').click();
     cy.get('#toggle-bulk-perms-kebab').click();
     cy.get('[role="menuitem"]').contains('Write').click();
     cy.get('#update-team-repo-permissions').click();

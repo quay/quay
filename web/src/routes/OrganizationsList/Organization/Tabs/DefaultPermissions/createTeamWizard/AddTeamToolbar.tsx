@@ -1,13 +1,14 @@
+import {useState} from 'react';
 import {
   Divider,
+  SelectGroup,
+  SelectOption,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
-import {SelectGroup, SelectOption} from '@patternfly/react-core/deprecated';
 import {DesktopIcon} from '@patternfly/react-icons';
 import React from 'react';
-import {useState} from 'react';
 import EntitySearch from 'src/components/EntitySearch';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ITeamMember} from 'src/hooks/UseMembers';
@@ -19,16 +20,18 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
   const searchRobotAccntOptions = [
     <React.Fragment key="searchRobot">
       <SelectGroup label="Robot accounts" key="group4">
-        {props?.robots.map((r) => {
+        {props?.robots.map(({name}) => {
           return (
             <SelectOption
-              data-testid={`${r.name}-robot-accnt`}
-              key={r.name}
-              value={r.name}
+              data-testid={`${name}-robot-accnt`}
+              key={name}
+              value={name}
               onClick={() => {
-                props.addTeamMemberHandler(r.name);
+                props.addTeamMemberHandler(name);
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           );
         })}
       </SelectGroup>
@@ -38,7 +41,6 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
         key="Create robot account2"
         component="button"
         onClick={() => props.setDrawerExpanded(true)}
-        isPlaceholder
         isFocused
       >
         <DesktopIcon /> &nbsp; Create robot account

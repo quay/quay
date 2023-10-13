@@ -1,4 +1,5 @@
 import {
+  DropdownItem,
   Flex,
   FlexItem,
   PanelFooter,
@@ -6,7 +7,6 @@ import {
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import Conditional from 'src/components/empty/Conditional';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {Kebab} from 'src/components/toolbar/Kebab';
