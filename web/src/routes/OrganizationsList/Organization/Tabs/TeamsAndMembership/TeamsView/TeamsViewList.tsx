@@ -219,7 +219,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
         setRepoPermModal={setRepoPermModal}
       />
       {props.children}
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Thead>
           <Tr>
             <Th />

@@ -16,7 +16,7 @@ export function useOrganizations() {
 
   // Keep state of current search in this hook
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     field: ColumnNames.name,
     query: '',

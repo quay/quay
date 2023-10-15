@@ -14,7 +14,7 @@ describe('Namespace settings - autoprune policies', () => {
     cy.get('[data-testid="namespace-auto-prune-method"]').select(
       'By number of tags',
     );
-    cy.get('input[aria-label="number of tags"]').should('have.value', '10');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '20');
     // Since we're using an older version of numberinput, the field can never be empty and will
     // always include a 0. Here we backspace to remove that 0.
     cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
@@ -45,7 +45,7 @@ describe('Namespace settings - autoprune policies', () => {
     // Create policy
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Successfully created auto-prune policy');
-    cy.get('input[aria-label="number of tags"]').should('have.value', '15');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
   });
 
   it('creates policy based on creation date', () => {
@@ -71,7 +71,7 @@ describe('Namespace settings - autoprune policies', () => {
     // Create initial policy
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Successfully created auto-prune policy');
-    cy.get('input[aria-label="number of tags"]').should('have.value', '15');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     // Update policy
     attemptCreateCreationDatePolicy(cy);
@@ -91,7 +91,7 @@ describe('Namespace settings - autoprune policies', () => {
     // Create initial policy
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Successfully created auto-prune policy');
-    cy.get('input[aria-label="number of tags"]').should('have.value', '15');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     // Delete policy
     cy.get('[data-testid="namespace-auto-prune-method"]').select('None');
@@ -147,7 +147,7 @@ describe('Namespace settings - autoprune policies', () => {
 
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Successfully created auto-prune policy');
-    cy.get('input[aria-label="number of tags"]').should('have.value', '15');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     cy.get('[data-testid="namespace-auto-prune-method"]').select('None');
     cy.contains('Save').click();
@@ -164,7 +164,7 @@ describe('Namespace settings - autoprune policies', () => {
   //     // Create initial policy
   //     attemptCreateTagNumberPolicy(cy);
   //     cy.contains('Successfully created auto-prune policy');
-  //     cy.get('input[aria-label="number of tags"]').should('have.value', '15');
+  //     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
   //     // Update policy
   //     attemptCreateCreationDatePolicy(cy);

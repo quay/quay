@@ -30,7 +30,7 @@ type TableModeType = 'All' | 'Selected';
 export default function TeamView(props: TeamViewProps) {
   const [tableMode, setTableMode] = useState<TableModeType>('All');
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [tableItems, setTableItems] = useState([]);
   const [search, setSearch] = useRecoilState(searchTeamState);
   const [searchInputText, setSearchInputText] = useState('Search, create team');
@@ -136,7 +136,7 @@ export default function TeamView(props: TeamViewProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Thead>
           <Tr>
             {props.showCheckbox ? <Th /> : null}

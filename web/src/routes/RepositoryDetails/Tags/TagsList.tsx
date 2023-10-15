@@ -39,7 +39,7 @@ export default function TagsList(props: TagsProps) {
   const filteredTags: Tag[] = searchFilter ? tags.filter(searchFilter) : tags;
 
   // Pagination related states
-  const [perPage, setPerPage] = useState<number>(10);
+  const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
   const paginatedTags: Tag[] = filteredTags.slice(
     (page - 1) * perPage,

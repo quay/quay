@@ -105,6 +105,7 @@ export default function DefaultPermissionsList(
         <Table
           aria-label="Selectable table"
           data-testid="default-permissions-table"
+          variant="compact"
         >
           <Thead>
             <Tr>

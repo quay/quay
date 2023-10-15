@@ -79,7 +79,7 @@ export interface ITeams {
 export function useFetchTeams(orgName: string) {
   const {user} = useCurrentUser();
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: teamViewColumnNames.teamName,
@@ -134,7 +134,7 @@ export interface ITeamRepoPerms {
 
 export function useFetchRepoPermForTeam(orgName: string, teamName: string) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: setRepoPermForTeamColumnNames.repoName,

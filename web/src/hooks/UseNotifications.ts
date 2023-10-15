@@ -19,7 +19,7 @@ export interface NotificationFilter {
 
 export function useNotifications(org: string, repo: string) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [filter, setFilter] = useState<NotificationFilter>({
     event: [],
     status: [],

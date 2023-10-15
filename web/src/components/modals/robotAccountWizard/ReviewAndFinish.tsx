@@ -52,7 +52,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   const fetchSelectedTeams = () => {
     return (
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Tbody>
           {props.selectedTeams.map((team, rowIndex) => (
             <Tr key={team.name}>
@@ -82,7 +82,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   const fetchSelectedRepos = () => {
     return (
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Tbody>
           {props.selectedRepos.map((repo, rowIndex) => (
             <Tr key={repo.name}>

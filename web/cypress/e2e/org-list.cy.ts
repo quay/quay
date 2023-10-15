@@ -86,28 +86,28 @@ describe('Org List Page', () => {
     );
     cy.contains('Confirm deletion by typing "confirm" below:');
     cy.get('input[id="delete-confirmation-input"]').type('confirm');
-    cy.get('[id="bulk-delete-modal"]').within(() =>
-      cy.get('button:contains("Delete")').click(),
-    ).then(() => {
-      cy.get('#toolbar-text-input').clear().type('projectquay');
-      cy.contains('0 - 0 of 0');
-    });
+    cy.get('[id="bulk-delete-modal"]')
+      .within(() => cy.get('button:contains("Delete")').click())
+      .then(() => {
+        cy.get('#toolbar-text-input').clear().type('projectquay');
+        cy.contains('0 - 0 of 0');
+      });
   });
 
   it('Pagination', () => {
     cy.visit('/organization');
 
-    cy.contains('1 - 10 of 26').should('exist');
-    cy.get('td[data-label="Name"]').should('have.length', 10);
+    cy.contains('1 - 20 of 26').should('exist');
+    cy.get('td[data-label="Name"]').should('have.length', 20);
 
     // cycle through the pages
     cy.get('button[aria-label="Go to next page"]').first().click();
-    cy.get('td[data-label="Name"]').should('have.length', 10);
+    cy.get('td[data-label="Name"]').should('have.length', 6);
 
     // Go to first page
     cy.get('button[aria-label="Go to first page"]').first().click();
     cy.contains('unleash').should('exist');
-    cy.get('td[data-label="Name"]').should('have.length', 10);
+    cy.get('td[data-label="Name"]').should('have.length', 20);
 
     // Go to last page
     cy.get('button[aria-label="Go to last page"]').first().click();

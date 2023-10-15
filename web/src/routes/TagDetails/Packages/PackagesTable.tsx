@@ -141,7 +141,7 @@ export default function PackagesTable({features}: PackagesProps) {
 
   // Pagination state
   const [page, setPage] = useState<number>(1);
-  const [perPage, setPerPage] = useState<number>(10);
+  const [perPage, setPerPage] = useState<number>(20);
   const paginatedPackagList: PackagesListItem[] = filteredPackagesList.slice(
     (page - 1) * perPage,
     page * perPage,
@@ -201,7 +201,11 @@ export default function PackagesTable({features}: PackagesProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <Table aria-label="packages table" data-testid="packages-table">
+      <Table
+        aria-label="packages table"
+        data-testid="packages-table"
+        variant="compact"
+      >
         <TableHead />
         {paginatedPackagList.length !== 0 ? (
           paginatedPackagList.map((pkg: PackagesListItem) => {
