@@ -238,7 +238,6 @@ def create_autoprune_task(namespace_id):
 def update_autoprune_task(task, task_status):
     try:
         task.status = task_status
-        task.last_ran_ms = get_epoch_timestamp_ms()
         task.save()
     except AutoPruneTaskStatus.DoesNotExist:
         return None
@@ -252,21 +251,35 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
     """
     Get the auto prune task prioritized by last_ran_ms = None followed by asc order of last_ran_ms.
     task_run_interval_ms specifies how long a task must wait before being ran again.
+    Prevents the other workers from picking up the same task by updating last_ran_ms on the task.
     """
-    try:
-        query = (
-            AutoPruneTaskStatus.select(AutoPruneTaskStatus)
-            .join(User, on=(AutoPruneTaskStatus.namespace == User.id))
-            .where(
-                User.enabled == True,
-                (AutoPruneTaskStatus.last_ran_ms < get_epoch_timestamp_ms() - task_run_interval_ms)
-                | (AutoPruneTaskStatus.last_ran_ms.is_null(True)),
+    with db_transaction():
+        try:
+            # We have to check for enabled User as a sub query since a join would lock the User row too
+            query = (
+                AutoPruneTaskStatus.select(AutoPruneTaskStatus)
+                .where(
+                    AutoPruneTaskStatus.namespace.not_in(
+                        User.select(User.id).where(
+                            User.enabled == False, User.id == AutoPruneTaskStatus.namespace
+                        )
+                    ),
+                    (
+                        AutoPruneTaskStatus.last_ran_ms
+                        < get_epoch_timestamp_ms() - task_run_interval_ms
+                    )
+                    | (AutoPruneTaskStatus.last_ran_ms.is_null(True)),
+                )
+                .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"))
             )
-            .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"))
-        )
-        return db_for_update(query, skip_locked=SKIP_LOCKED).get()
-    except AutoPruneTaskStatus.DoesNotExist:
-        return []
+            task = db_for_update(query, skip_locked=SKIP_LOCKED).get()
+        except AutoPruneTaskStatus.DoesNotExist:
+            return None
+
+        task.last_ran_ms = get_epoch_timestamp_ms()
+        task.save()
+
+        return task
 
 
 def fetch_autoprune_task_by_namespace_id(namespace_id):
@@ -312,18 +325,19 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit)
 
         for tag in tags:
             try:
-                oci.tag.delete_tag(repo.id, tag.name)
-                log.log_action(
-                    "autoprune_tag_delete",
-                    namespace.username,
-                    repository=repo,
-                    metadata={
-                        "performer": "autoprune worker",
-                        "namespace": namespace.username,
-                        "repo": repo.name,
-                        "tag": tag.name,
-                    },
-                )
+                tag = oci.tag.delete_tag(repo.id, tag.name)
+                if tag is not None:
+                    log.log_action(
+                        "autoprune_tag_delete",
+                        namespace.username,
+                        repository=repo,
+                        metadata={
+                            "performer": "autoprune worker",
+                            "namespace": namespace.username,
+                            "repo": repo.name,
+                            "tag": tag.name,
+                        },
+                    )
             except Exception as err:
                 raise Exception(
                     f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
@@ -356,18 +370,19 @@ def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=1
 
         for tag in tags:
             try:
-                oci.tag.delete_tag(repo.id, tag.name)
-                log.log_action(
-                    "autoprune_tag_delete",
-                    namespace.username,
-                    repository=repo,
-                    metadata={
-                        "performer": "autoprune worker",
-                        "namespace": namespace.username,
-                        "repo": repo.name,
-                        "tag": tag.name,
-                    },
-                )
+                tag = oci.tag.delete_tag(repo.id, tag.name)
+                if tag is not None:
+                    log.log_action(
+                        "autoprune_tag_delete",
+                        namespace.username,
+                        repository=repo,
+                        metadata={
+                            "performer": "autoprune worker",
+                            "namespace": namespace.username,
+                            "repo": repo.name,
+                            "tag": tag.name,
+                        },
+                    )
             except Exception as err:
                 raise Exception(
                     f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"

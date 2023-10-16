@@ -1290,6 +1290,13 @@ def delete_user(user, queues):
         if not is_progressing:
             return False
 
+    # Delete any autoprune tasks and policies
+    # We don't want to add this too _delete_user_linked_data since
+    # these entries should only be deleted after the namespace has
+    # been marked for deletion
+    AutoPruneTaskStatus.delete().where(AutoPruneTaskStatus.namespace == user).execute()
+    NamespaceAutoPrunePolicy.delete().where(NamespaceAutoPrunePolicy.namespace == user).execute()
+
     # Delete non-repository related items.
     _delete_user_linked_data(user)
 
@@ -1349,12 +1356,6 @@ def _delete_user_linked_data(user):
 
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
-
-    # Delete any autoprune tasks
-    AutoPruneTaskStatus.delete().where(AutoPruneTaskStatus.namespace == user).execute()
-
-    # Delete any autoprune policies
-    NamespaceAutoPrunePolicy.delete().where(NamespaceAutoPrunePolicy.namespace == user).execute()
 
 
 def get_pull_credentials(robotname):

@@ -13,7 +13,7 @@ POLL_PERIOD = app.config.get("AUTO_PRUNING_POLL_PERIOD", 30)
 BATCH_SIZE = app.config.get("AUTO_PRUNING_BATCH_SIZE", 10)
 TASK_RUN_MINIMUM_INTERVAL_MS = (
     app.config.get("AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES", 60) * 60 * 1000
-)  # Convert to ms
+)  # Convert to ms, this should never be under 30min
 FETCH_TAGS_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_TAGS_PAGE_LIMIT", 100)
 FETCH_REPOSITORIES_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_REPOSITORIES_PAGE_LIMIT", 50)
 
@@ -25,30 +25,34 @@ class AutoPruneWorker(Worker):
 
     def prune(self):
         for _ in range(BATCH_SIZE):
-            with db_transaction():
+            autoprune_task = fetch_autoprune_task(TASK_RUN_MINIMUM_INTERVAL_MS)
+            if not autoprune_task:
+                logger.info("no autoprune tasks found, exiting...")
+                return
 
-                autoprune_task = fetch_autoprune_task(TASK_RUN_MINIMUM_INTERVAL_MS)
-                if not autoprune_task:
-                    logger.info("no autoprune tasks found, exiting...")
-                    return
+            logger.info(
+                "processing autoprune task %s for namespace %s",
+                autoprune_task.id,
+                autoprune_task.namespace,
+            )
 
-                try:
-                    policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
-                    if not policies:
-                        # When implementing repo policies, fetch repo policies before deleting the task
-                        delete_autoprune_task(autoprune_task)
-                        continue
+            try:
+                policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
+                if not policies:
+                    # When implementing repo policies, fetch repo policies before deleting the task
+                    delete_autoprune_task(autoprune_task)
+                    continue
 
-                    execute_namespace_polices(
-                        policies,
-                        autoprune_task.namespace,
-                        FETCH_REPOSITORIES_PAGE_LIMIT,
-                        FETCH_TAGS_PAGE_LIMIT,
-                    )
+                execute_namespace_polices(
+                    policies,
+                    autoprune_task.namespace,
+                    FETCH_REPOSITORIES_PAGE_LIMIT,
+                    FETCH_TAGS_PAGE_LIMIT,
+                )
 
-                    update_autoprune_task(autoprune_task, task_status="success")
-                except Exception as err:
-                    update_autoprune_task(autoprune_task, task_status=str(err))
+                update_autoprune_task(autoprune_task, task_status="success")
+            except Exception as err:
+                update_autoprune_task(autoprune_task, task_status=f"failure: {str(err)}")
 
 
 def create_gunicorn_worker():
