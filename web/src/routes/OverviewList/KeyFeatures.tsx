@@ -11,6 +11,7 @@ import {
   Text,
   Flex,
   FlexItem,
+  Icon,
 } from '@patternfly/react-core';
 import {
   BuildIcon,
@@ -31,7 +32,10 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <PrivateIcon size="md" />
+                    <Icon size="lg">
+                      {' '}
+                      <PrivateIcon />{' '}
+                    </Icon>
                   </FlexItem>
                   <Divider orientation={{default: 'vertical'}} />
                   <FlexItem className="key-feature">
@@ -40,7 +44,7 @@ export default function KeyFeatures() {
                   </FlexItem>
                 </Flex>
               }
-              displaySize="large"
+              displaySize="lg"
             >
               <Text>
                 Ensure your apps are stored privately, with access that you
@@ -55,7 +59,10 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <BuildIcon size="md" />
+                    <Icon size="lg">
+                      {' '}
+                      <BuildIcon />{' '}
+                    </Icon>
                   </FlexItem>
                   <Divider orientation={{default: 'vertical'}} />
                   <FlexItem className="key-feature">
@@ -63,7 +70,7 @@ export default function KeyFeatures() {
                   </FlexItem>
                 </Flex>
               }
-              displaySize="large"
+              displaySize="lg"
             >
               <Text>
                 Use Quay.io to automate your container builds, with integration
@@ -78,7 +85,9 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <CloudSecurityIcon size="md" />
+                    <Icon size="lg">
+                      <CloudSecurityIcon />
+                    </Icon>
                   </FlexItem>
                   <Divider orientation={{default: 'vertical'}} />
                   <FlexItem className="key-feature">
@@ -86,7 +95,7 @@ export default function KeyFeatures() {
                   </FlexItem>
                 </Flex>
               }
-              displaySize="large"
+              displaySize="lg"
             >
               <Text>
                 Quay continually scans your containers for vulnerabilities,
@@ -101,7 +110,10 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <DownloadIcon size="md" />
+                    <Icon size="lg">
+                      {' '}
+                      <DownloadIcon />{' '}
+                    </Icon>
                   </FlexItem>
                   <Divider orientation={{default: 'vertical'}} />
                   <FlexItem className="key-feature">
@@ -109,7 +121,7 @@ export default function KeyFeatures() {
                   </FlexItem>
                 </Flex>
               }
-              displaySize="large"
+              displaySize="lg"
             >
               <Text>
                 {
