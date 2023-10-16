@@ -153,6 +153,10 @@ class InvalidNamespaceAutoPrunePolicy(DataModelException):
     pass
 
 
+class InvalidNamespaceAutoPruneMethod(DataModelException):
+    pass
+
+
 class InvalidNamespaceException(DataModelException):
     pass
 

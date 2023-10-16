@@ -454,6 +454,7 @@ def initialize_database():
     LogEntryKind.create(name="logout_success")
 
     LogEntryKind.create(name="permanently_delete_tag")
+    LogEntryKind.create(name="autoprune_tag_delete")
 
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
