@@ -277,6 +277,7 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
             return None
 
         task.last_ran_ms = get_epoch_timestamp_ms()
+        task.status = "running"
         task.save()
 
         return task
@@ -405,7 +406,7 @@ def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
     namespace = user.get_namespace_user_by_user_id(namespace_id)
     repo = repository.lookup_repository(repo_id)
 
-    logger.info("Executing autoprune policy: %s on repo: %s", policy.method, repo.name)
+    logger.debug("Executing autoprune policy: %s on repo: %s", policy.method, repo.name)
 
     policy_to_func_map[policy.method](repo, policy.config, namespace, tag_page_limit)
 
