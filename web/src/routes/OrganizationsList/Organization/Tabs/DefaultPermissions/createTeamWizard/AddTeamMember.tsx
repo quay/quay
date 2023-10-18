@@ -165,7 +165,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
 
   return (
     <>
-      <PageSection>
+      <PageSection padding={{default: 'noPadding'}}>
         <AddTeamToolbar
           orgName={props.orgName}
           allItems={props.tableItems}
