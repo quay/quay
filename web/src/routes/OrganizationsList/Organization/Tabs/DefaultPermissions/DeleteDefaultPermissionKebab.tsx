@@ -66,7 +66,7 @@ export default function DeleteDefaultPermissionKebab(
       <DropdownList>
         <DropdownItem
           onClick={() =>
-            removeDefaultPermission({id: props.defaultPermission.id})
+            removeDefaultPermission({perm: props.defaultPermission})
           }
           data-testid={`${props.defaultPermission.createdBy}-del-option`}
         >

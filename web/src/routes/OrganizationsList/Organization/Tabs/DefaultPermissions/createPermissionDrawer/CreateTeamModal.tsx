@@ -64,10 +64,10 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
         name: props.teamName,
         kind: 'team',
       });
+      props.handleModalToggle();
       if (props?.handleWizardToggle) {
         props?.handleWizardToggle();
       }
-      props.handleModalToggle();
     },
     onError: () => {
       addAlert({

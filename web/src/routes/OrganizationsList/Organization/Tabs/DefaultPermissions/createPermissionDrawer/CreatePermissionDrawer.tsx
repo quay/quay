@@ -175,7 +175,7 @@ export default function CreatePermissionDrawer(
       handleWizardToggle={() => setIsTeamWizardOpen(!isTeamWizardOpen)}
       validateName={validateTeamName}
       setAppliedTo={setAppliedTo}
-    ></CreateTeamModal>
+    />
   );
 
   const createTeamWizard = (
@@ -185,7 +185,7 @@ export default function CreatePermissionDrawer(
       isTeamWizardOpen={isTeamWizardOpen}
       handleWizardToggle={() => setIsTeamWizardOpen(!isTeamWizardOpen)}
       orgName={props.orgName}
-    ></CreateTeamWizard>
+    />
   );
 
   const createRobotModalForRepositoryCreator = (
