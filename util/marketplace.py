@@ -64,7 +64,7 @@ class RedHatUserApi(object):
         info = json.loads(r.content)
         if not info:
             return None
-        account_number = info[0]["accountRelationships"][0]["account"]["ebsAccountNumber"]
+        account_number = info[0]["accountRelationships"][0]["account"].get("ebsAccountNumber")
         return account_number
 
 
