@@ -10,7 +10,6 @@ import {
   AlertActionCloseButton,
   WizardHeader,
   Wizard,
-  WizardStepType,
   WizardStep,
 } from '@patternfly/react-core';
 import {
@@ -27,12 +26,12 @@ import {
   selectedRobotReposPermissionState,
   selectedRobotReposState,
 } from 'src/atoms/RobotAccountState';
-import {addRepoPermissionToTeam} from 'src/resources/DefaultPermissionResource';
 import NameAndDescription from './NameAndDescription';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
 import AddTeamMember from './AddTeamMember';
 import Review from './ReviewTeam';
 import ReviewAndFinishFooter from './ReviewAndFinishFooter';
+import {useAddRepoPermissionToTeam} from 'src/hooks/UseTeams';
 
 export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const [selectedRepoPerms, setSelectedRepoPerms] = useRecoilState(
@@ -72,18 +71,21 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
     resetAddingMemberToTeam: reset,
   } = useAddMembersToTeam(props.orgName);
 
+  const {addRepoPermToTeam} = useAddRepoPermissionToTeam(
+    props.orgName,
+    props.teamName,
+  );
+
   const {removeTeamMember} = useDeleteTeamMember(props.orgName);
 
   const onSubmitTeamWizard = async () => {
     // Add repo permission to team
     if (selectedRepoPerms?.length > 0) {
       selectedRepoPerms.map(async (repo) => {
-        await addRepoPermissionToTeam(
-          props.orgName,
-          repo.name,
-          props.teamName,
-          repo.permission,
-        );
+        await addRepoPermToTeam({
+          repoName: repo.name,
+          newRole: repo.permission,
+        });
       });
     }
     // add member to team

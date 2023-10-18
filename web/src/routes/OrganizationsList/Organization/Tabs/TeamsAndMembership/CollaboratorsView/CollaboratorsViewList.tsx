@@ -86,12 +86,6 @@ export default function CollaboratorsViewList(
 
   return (
     <>
-      <Conditional if={props.isTeamModalOpen}>
-        {props.createTeamModal}
-      </Conditional>
-      <Conditional if={props.isTeamWizardOpen}>
-        {props.createTeamWizard}
-      </Conditional>
       <PageSection variant={PageSectionVariants.light}>
         <CollaboratorsViewToolbar
           selectedMembers={selectedCollaborators}
@@ -176,9 +170,5 @@ export default function CollaboratorsViewList(
 interface CollaboratorsViewListProps {
   organizationName: string;
   children?: React.ReactNode;
-  isTeamModalOpen: boolean;
-  isTeamWizardOpen: boolean;
-  createTeamModal: JSX.Element;
-  createTeamWizard: JSX.Element;
   handleModalToggle: () => void;
 }

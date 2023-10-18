@@ -193,12 +193,6 @@ export default function TeamsViewList(props: TeamsViewListProps) {
 
   return (
     <>
-      <Conditional if={props.isTeamModalOpen}>
-        {props.createTeamModal}
-      </Conditional>
-      <Conditional if={props.isTeamWizardOpen}>
-        {props.createTeamWizard}
-      </Conditional>
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal
           title="Team deletion failed"
@@ -312,9 +306,5 @@ export default function TeamsViewList(props: TeamsViewListProps) {
 interface TeamsViewListProps {
   organizationName: string;
   children?: React.ReactNode;
-  isTeamModalOpen: boolean;
-  isTeamWizardOpen: boolean;
-  createTeamModal: JSX.Element;
-  createTeamWizard: JSX.Element;
   handleModalToggle: () => void;
 }

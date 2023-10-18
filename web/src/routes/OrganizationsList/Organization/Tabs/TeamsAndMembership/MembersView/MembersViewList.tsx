@@ -138,12 +138,6 @@ export default function MembersViewList(props: MembersViewListProps) {
 
   return (
     <>
-      <Conditional if={props.isTeamModalOpen}>
-        {props.createTeamModal}
-      </Conditional>
-      <Conditional if={props.isTeamWizardOpen}>
-        {props.createTeamWizard}
-      </Conditional>
       <PageSection variant={PageSectionVariants.light}>
         <MembersViewToolbar
           selectedMembers={selectedMembers}
@@ -217,9 +211,5 @@ export default function MembersViewList(props: MembersViewListProps) {
 interface MembersViewListProps {
   organizationName: string;
   children?: React.ReactNode;
-  isTeamModalOpen: boolean;
-  isTeamWizardOpen: boolean;
-  createTeamModal: JSX.Element;
-  createTeamWizard: JSX.Element;
   handleModalToggle: () => void;
 }

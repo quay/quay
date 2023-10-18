@@ -14,6 +14,7 @@ import MembersViewList from './MembersView/MembersViewList';
 import {CreateTeamModal} from '../DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 import {CreateTeamWizard} from '../DefaultPermissions/createTeamWizard/CreateTeamWizard';
 import {validateTeamName} from 'src/libs/utils';
+import Conditional from 'src/components/empty/Conditional';
 
 export enum TableModeType {
   Teams = 'Teams',
@@ -57,7 +58,7 @@ export default function TeamsAndMembershipList() {
       }}
       handleWizardToggle={() => setIsTeamWizardOpen(!isTeamWizardOpen)}
       validateName={validateTeamName}
-    ></CreateTeamModal>
+    />
   );
 
   const createTeamWizard = (
@@ -67,7 +68,7 @@ export default function TeamsAndMembershipList() {
       isTeamWizardOpen={isTeamWizardOpen}
       handleWizardToggle={() => setIsTeamWizardOpen(!isTeamWizardOpen)}
       orgName={organizationName}
-    ></CreateTeamWizard>
+    />
   );
 
   const viewToggle = (
@@ -100,44 +101,48 @@ export default function TeamsAndMembershipList() {
   );
 
   const fetchTableItems = () => {
+    const renderCreateTeam = (
+      <>
+        <Conditional if={isTeamModalOpen}>{createTeamModal}</Conditional>
+        <Conditional if={isTeamWizardOpen}>{createTeamWizard}</Conditional>
+      </>
+    );
+
     if (tableMode == TableModeType.Teams) {
       return (
-        <TeamsViewList
-          organizationName={organizationName}
-          isTeamModalOpen={isTeamModalOpen}
-          isTeamWizardOpen={isTeamWizardOpen}
-          createTeamModal={createTeamModal}
-          createTeamWizard={createTeamWizard}
-          handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
-        >
-          {viewToggle}
-        </TeamsViewList>
+        <>
+          {renderCreateTeam}
+          <TeamsViewList
+            organizationName={organizationName}
+            handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
+          >
+            {viewToggle}
+          </TeamsViewList>
+        </>
       );
     } else if (tableMode == TableModeType.Members) {
       return (
-        <MembersViewList
-          organizationName={organizationName}
-          isTeamModalOpen={isTeamModalOpen}
-          isTeamWizardOpen={isTeamWizardOpen}
-          createTeamModal={createTeamModal}
-          createTeamWizard={createTeamWizard}
-          handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
-        >
-          {viewToggle}
-        </MembersViewList>
+        <>
+          {renderCreateTeam}
+          <MembersViewList
+            organizationName={organizationName}
+            handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
+          >
+            {viewToggle}
+          </MembersViewList>
+        </>
       );
     } else if (tableMode == TableModeType.Collaborators) {
       return (
-        <CollaboratorsViewList
-          organizationName={organizationName}
-          isTeamModalOpen={isTeamModalOpen}
-          isTeamWizardOpen={isTeamWizardOpen}
-          createTeamModal={createTeamModal}
-          createTeamWizard={createTeamWizard}
-          handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
-        >
-          {viewToggle}
-        </CollaboratorsViewList>
+        <>
+          {renderCreateTeam}
+          <CollaboratorsViewList
+            organizationName={organizationName}
+            handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
+          >
+            {viewToggle}
+          </CollaboratorsViewList>
+        </>
       );
     }
   };
