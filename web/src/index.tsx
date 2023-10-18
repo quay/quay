@@ -2,8 +2,6 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import reportWebVitals from './reportWebVitals';
 import {RecoilRoot} from 'recoil';
-import '@patternfly/react-core/dist/styles/base.css';
-import '@patternfly/patternfly/patternfly-addons.css';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 // Load App after patternfly so custom CSS that overrides patternfly doesn't require !important
