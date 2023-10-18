@@ -129,6 +129,7 @@ export default function EntitySearch(props: EntitySearchProps) {
       onSelect={onSelect}
       onOpenChange={() => setIsOpen(false)}
       toggle={toggle}
+      shouldFocusToggleOnSelect
     >
       <SelectList id="entity-search-option-list">
         {!searchTerm

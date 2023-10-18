@@ -39,7 +39,7 @@ type TableModeType = 'All' | 'Selected';
 export default function AddToRepository(props: AddToRepositoryProps) {
   const [tableMode, setTableMode] = useState<TableModeType>('All');
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [tableItems, setTableItems] = useState([]);
   const [search, setSearch] = useRecoilState(searchRepoState);
   const [robotRepoPermsMapping, setRobotRepoPermsMapping] = useState({});
@@ -284,7 +284,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
             />
           </ToolbarContent>
         </Toolbar>
-        <Table aria-label="Selectable table">
+        <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />

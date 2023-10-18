@@ -202,7 +202,7 @@ export default function ManageMembersList() {
         searchOptions={[manageMemberColumnNames.teamMember]}
       >
         {viewToggle}
-        <Table aria-label="Selectable table">
+        <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />

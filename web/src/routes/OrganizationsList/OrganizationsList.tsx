@@ -54,7 +54,7 @@ export default function OrganizationsList() {
   const [err, setErr] = useState<string[]>();
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
-  const [perPage, setPerPage] = useState<number>(10);
+  const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
 
   const {
@@ -296,7 +296,7 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
         />
-        <Table aria-label="Selectable table">
+        <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />

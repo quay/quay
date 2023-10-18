@@ -27,7 +27,7 @@ const memberAndRobotColNames = {
 
 export default function AddTeamMember(props: AddTeamMemberProps) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [newRobotAccntName, setNewRobotAccntName] = useState('');
   const [newRobotAccntDescription, setNewRobotAccntDescription] = useState('');
   const {addAlert} = useAlerts();
@@ -177,7 +177,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
           addTeamMemberHandler={addTeamMemberHandler}
           setDrawerExpanded={props.setDrawerExpanded}
         >
-          <Table aria-label="Selectable table">
+          <Table aria-label="Selectable table" variant="compact">
             <Thead>
               <Tr>
                 <Th>{memberAndRobotColNames.teamMember}</Th>

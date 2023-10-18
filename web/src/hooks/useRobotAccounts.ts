@@ -181,7 +181,7 @@ interface addDefaultPermsParams {
 
 export function useRobotAccounts({name, onSuccess, onError}) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [namespace, setNamespace] = useState(name);
 
   const {usernames} = useOrganizations();
@@ -222,7 +222,7 @@ export function useRobotPermissions({orgName, robotAcct, onSuccess, onError}) {
   const [namespace, setNamespace] = useState(orgName);
   const [robotName, setRobotName] = useState(robotAcct);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
 
   const {usernames} = useOrganizations();
   const isUser = usernames.includes(orgName);
@@ -414,7 +414,7 @@ export function useRobotToken({orgName, robotAcct, onSuccess, onError}) {
   const [namespace, setNamespace] = useState(orgName);
   const [robotName, setRobotName] = useState(robotAcct);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const queryClient = useQueryClient();
 
   const {data: robotAccountToken, isLoading: loading} = useQuery(

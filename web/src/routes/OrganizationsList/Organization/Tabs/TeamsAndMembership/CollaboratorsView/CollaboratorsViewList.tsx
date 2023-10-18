@@ -102,7 +102,7 @@ export default function CollaboratorsViewList(
       />
       {props.children}
       <Conditional if={isDeleteModalOpen}>{deleteCollabModal}</Conditional>
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Thead>
           <Tr>
             <Th />

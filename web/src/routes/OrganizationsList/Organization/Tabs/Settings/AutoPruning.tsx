@@ -42,7 +42,7 @@ export const shorthandTimeUnits = {
 export default function AutoPruning(props: AutoPruning) {
   const [uuid, setUuid] = useState<string>(null);
   const [method, setMethod] = useState<AutoPruneMethod>(AutoPruneMethod.NONE);
-  const [tagCount, setTagCount] = useState<number>(10);
+  const [tagCount, setTagCount] = useState<number>(20);
   const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
   const {addAlert} = useAlerts();
@@ -104,7 +104,7 @@ export default function AutoPruning(props: AutoPruning) {
         // has to be reset
         setUuid(null);
         setMethod(AutoPruneMethod.NONE);
-        setTagCount(10);
+        setTagCount(20);
         setTagCreationDateUnit('d');
         setTagCreationDateValue(7);
       }

@@ -42,7 +42,7 @@ export function useAddMembersToTeam(org: string) {
 
 export function useFetchMembers(orgName: string) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: memberViewColumnNames.username,
@@ -96,7 +96,7 @@ export interface ITeamMember {
 
 export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: manageMemberColumnNames.teamMember,
@@ -183,7 +183,7 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
 
 export function useFetchCollaborators(orgName: string) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: collaboratorViewColumnNames.username,

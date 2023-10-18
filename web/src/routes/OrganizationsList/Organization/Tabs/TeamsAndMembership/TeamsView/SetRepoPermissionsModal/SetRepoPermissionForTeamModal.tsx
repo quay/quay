@@ -200,7 +200,7 @@ export default function SetRepoPermissionForTeamModal(
           setKebabOpen={setKebabOpen}
           updateModifiedRepoPerms={updateModifiedRepoPerms}
         >
-          <Table aria-label="Selectable table">
+          <Table aria-label="Selectable table" variant="compact">
             <Thead>
               <Tr>
                 <Th />
