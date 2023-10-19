@@ -32,7 +32,7 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <Icon size="lg">
+                    <Icon size="lg" id="store-containers-dropdown">
                       {' '}
                       <PrivateIcon />{' '}
                     </Icon>
@@ -46,7 +46,7 @@ export default function KeyFeatures() {
               }
               displaySize="lg"
             >
-              <Text>
+              <Text id="store-containers-info">
                 Ensure your apps are stored privately, with access that you
                 control. Quay is teamwork optimized, with powerful access
                 controls.
@@ -59,7 +59,7 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <Icon size="lg">
+                    <Icon size="lg" id="build-containers-dropdown">
                       {' '}
                       <BuildIcon />{' '}
                     </Icon>
@@ -72,7 +72,7 @@ export default function KeyFeatures() {
               }
               displaySize="lg"
             >
-              <Text>
+              <Text id="build-containers-info">
                 Use Quay.io to automate your container builds, with integration
                 to GitHub, Bitbucket, and more. Robot accounts allow you to lock
                 down automated access and audit each deployment.
@@ -85,7 +85,7 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <Icon size="lg">
+                    <Icon size="lg" id="scan-containers-dropdown">
                       <CloudSecurityIcon />
                     </Icon>
                   </FlexItem>
@@ -97,7 +97,7 @@ export default function KeyFeatures() {
               }
               displaySize="lg"
             >
-              <Text>
+              <Text id="scan-containers-info">
                 Quay continually scans your containers for vulnerabilities,
                 giving you complete visibility into known issues and how to fix
                 them.
@@ -110,7 +110,7 @@ export default function KeyFeatures() {
               toggleContent={
                 <Flex>
                   <FlexItem>
-                    <Icon size="lg">
+                    <Icon size="lg" id="public-containers-dropdown">
                       {' '}
                       <DownloadIcon />{' '}
                     </Icon>
@@ -123,7 +123,7 @@ export default function KeyFeatures() {
               }
               displaySize="lg"
             >
-              <Text>
+              <Text id="public-containers-info">
                 {
                   "Provide a public download page for your container. The best part, they're free!"
                 }

@@ -6,8 +6,6 @@ import {
   CardFooter,
   Text,
   TextContent,
-  Grid,
-  GridItem,
   Split,
   SplitItem,
 } from '@patternfly/react-core';
@@ -37,7 +35,8 @@ export default function GettingStarted() {
               className="button-primary"
               component="a"
               href="https://quay.io"
-              isLarge
+              size="lg"
+              id="try-quayio-button"
             >
               Try Quay.io free
             </Button>
@@ -45,7 +44,8 @@ export default function GettingStarted() {
               variant="secondary"
               component="a"
               href="https://quay.io/plans/"
-              isLarge
+              size="lg"
+              id="purchase-quayio-button"
             >
               Purchase private repository
             </Button>

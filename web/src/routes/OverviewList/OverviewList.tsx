@@ -68,6 +68,7 @@ export default function OverviewList() {
         className="overview-tabs"
         activeKey={activeTabKey}
         onSelect={handleTabClick}
+        id="overview-tab"
       >
         <Tab eventKey={0} title={<TabTitleText>Overview</TabTitleText>}>
           <GettingStarted />
@@ -86,6 +87,7 @@ export default function OverviewList() {
         <Tab
           eventKey={1}
           title={<TabTitleText>Pricing and Features</TabTitleText>}
+          id="pricing-tab"
         >
           <Pricing />
         </Tab>
@@ -101,6 +103,7 @@ export default function OverviewList() {
               <ExternalLinkAltIcon />
             </a>
           }
+          id="blog-tab"
         />
       </Tabs>
     </div>
