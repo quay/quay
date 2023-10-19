@@ -181,7 +181,7 @@ describe('Manage team members page', () => {
     cy.get('[data-testid="review-and-finish-btn"]').click();
 
     // verify newly created robot account is shown in the dropdown
-    cy.get('#repository-creator-dropdown-select-typeahead').should(
+    cy.get('#repository-creator-dropdown input').should(
       'have.value',
       `${orgName}+${newRobotName}`,
     );
@@ -218,7 +218,7 @@ describe('Manage team members page', () => {
     cy.get(`[data-testid="${user}"]`).click();
 
     // verify selected user is shown in the dropdown
-    cy.get('#repository-creator-dropdown-select-typeahead').should(
+    cy.get('#repository-creator-dropdown input').should(
       'have.value',
       `${user}`,
     );

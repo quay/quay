@@ -63,7 +63,6 @@ export default function EntitySearch(props: EntitySearchProps) {
     _event: React.MouseEvent<Element, MouseEvent> | undefined,
     value: string | number | undefined,
   ) => {
-    console.log("select: %s", value)
     if (value && value !== 'no results') {
       setSearchTerm(value as string);
       setSelectedEntityName(value as string);
@@ -134,8 +133,7 @@ export default function EntitySearch(props: EntitySearchProps) {
     >
       <SelectList id="entity-search-option-list">
         {!searchTerm
-          // ? props?.defaultOptions
-          ? null
+          ? props?.defaultOptions
           : entities?.map((entity, index) => (
               <SelectOption
                 data-testid={entity.name}
@@ -143,16 +141,16 @@ export default function EntitySearch(props: EntitySearchProps) {
                 value={entity.name}
                 isFocused={focusedItemIndex === index}
                 onClick={() => {
-                  console.log("inside entity %s", JSON.stringify(entity));
                   setSelectedEntityName(entity.name);
-                  props.onSelect(entity);
+                  if (props?.onSelect) {
+                    props.onSelect(entity);
+                  }
                 }}
                 description={getMemberType(entity)}
               >
                 {entity.name}
               </SelectOption>
-            ))
-            }
+            ))}
       </SelectList>
     </Select>
   );

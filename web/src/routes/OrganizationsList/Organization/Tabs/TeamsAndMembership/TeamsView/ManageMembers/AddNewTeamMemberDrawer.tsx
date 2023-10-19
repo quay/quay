@@ -9,9 +9,10 @@ import {
   DrawerPanelContent,
   Form,
   FormGroup,
+  SelectGroup,
+  SelectOption,
   Spinner,
 } from '@patternfly/react-core';
-import {SelectOption, SelectGroup} from '@patternfly/react-core/deprecated';
 import {DesktopIcon} from '@patternfly/react-icons';
 import React, {useState} from 'react';
 import {Ref} from 'react';
@@ -86,7 +87,6 @@ export default function AddNewTeamMemberDrawer(
       org={props.orgName}
       includeTeams={false}
       onSelect={(e: Entity) => {
-        console.log('entity %s', JSON.stringify(e));
         setSelectedEntity(e);
       }}
       onClear={setSelectedEntity}

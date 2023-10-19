@@ -146,7 +146,6 @@ export default function CreatePermissionDrawer(
       org={props.orgName}
       includeTeams={false}
       onSelect={(e: Entity) => {
-        console.log("entity %s", JSON.stringify(e));
         setRepositoryCreator(e);
       }}
       onClear={setRepositoryCreator}
