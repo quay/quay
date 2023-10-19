@@ -6,6 +6,8 @@ from endpoints.api import api
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.robot import UserRobot, OrgRobot, UserRobotList, OrgRobotList
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
+from test.test_ldap import mock_ldap
 from util.names import parse_robot_username
 
 from test.test_ldap import mock_ldap
@@ -23,6 +25,7 @@ from test.fixtures import *
 @pytest.mark.parametrize(
     "body",
     [
+        None,
         {},
         {"description": "this is a description"},
         {"unstructured_metadata": {"foo": "bar"}},

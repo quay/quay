@@ -486,7 +486,7 @@ def validate_json_request(schema_name, optional=False):
         def wrapped(self, *args, **kwargs):
             schema = self.schemas[schema_name]
             try:
-                json_data = request.get_json()
+                json_data = request.get_json(silent=optional)
                 if json_data is None:
                     if not optional:
                         raise InvalidRequest("Missing JSON body")
