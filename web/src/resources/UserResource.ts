@@ -96,11 +96,44 @@ export async function fetchEntities(
   return response.data?.results;
 }
 
-export async function updateUser(username: string) {
+export interface UpdateUserRequest {
+  username?: string;
+  invoice_email?: boolean;
+  family_name?: string;
+  location?: string;
+  company?: string;
+  password?: string;
+  invoice_email_address?: string;
+  tag_expiration_s?: string;
+  email?: string;
+}
+
+export async function updateUser(updateUserRequest: UpdateUserRequest) {
   const response: AxiosResponse<IUserResource> = await axios.put(
     'api/v1/user/',
-    {username: username},
+    {...updateUserRequest},
   );
   assertHttpCode(response.status, 200);
   return response.data;
+}
+
+export async function createClientKey(password: string): Promise<string> {
+  const updateUserUrl = `/api/v1/user/clientkey`;
+  const response = await axios.post(updateUserUrl, {password});
+  assertHttpCode(response.status, 200);
+  return response.data.key;
+}
+
+export interface ConvertUserRequest {
+  plan?: string;
+  adminUser: string;
+  adminPassword: string;
+}
+
+export async function convert(
+  convertUserRequest: ConvertUserRequest,
+): Promise<void> {
+  const updateUserUrl = `/api/v1/user/convert`;
+  const response = await axios.post(updateUserUrl, convertUserRequest);
+  assertHttpCode(response.status, 200);
 }
