@@ -157,7 +157,7 @@ class TestNameSpaceAutoprune:
         set_repository_state(readonly_repo, RepositoryState.READ_ONLY)
         deleted_repo = create_repository(ORG1_NAME, "deleted", None)
         set_repository_state(deleted_repo, RepositoryState.MARKED_FOR_DELETION)
-        mirror_repo = create_repository(ORG1_NAME, "deleted", None)
+        mirror_repo = create_repository(ORG1_NAME, "mirror", None)
         set_repository_state(mirror_repo, RepositoryState.MIRROR)
 
         repo_names = [f"repo{i}" for i in range(10)]
