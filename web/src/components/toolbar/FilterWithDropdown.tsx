@@ -17,11 +17,6 @@ import {SearchState} from './SearchTypes';
 export function FilterWithDropdown(props: FilterWithDropdownProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    // cleanup state
-    return () => {};
-  });
-
   const setSearchState = React.useCallback(
     (val: string) =>
       props.onChange((prev: SearchState) => ({...prev, query: val.trim()})),
