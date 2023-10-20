@@ -5,6 +5,7 @@ import pytest
 from data.model import NamespaceAutoPrunePolicyAlreadyExists
 from data.model.autoprune import *
 from data.model.organization import create_organization
+from data.model.repository import create_repository, set_repository_state
 from data.model.user import get_user
 from test.fixtures import *
 
@@ -150,3 +151,27 @@ class TestNameSpaceAutoprune:
 
         assert valid_value("randome method", "randome") is False
         assert valid_value("randome method", None) is False
+
+    def test_get_paginated_repositories_for_namespace(self):
+        readonly_repo = create_repository(ORG1_NAME, "readonly", None)
+        set_repository_state(readonly_repo, RepositoryState.READ_ONLY)
+        deleted_repo = create_repository(ORG1_NAME, "deleted", None)
+        set_repository_state(deleted_repo, RepositoryState.MARKED_FOR_DELETION)
+        mirror_repo = create_repository(ORG1_NAME, "deleted", None)
+        set_repository_state(mirror_repo, RepositoryState.MIRROR)
+
+        repo_names = [f"repo{i}" for i in range(10)]
+        for name in repo_names:
+            create_repository(ORG1_NAME, name, None)
+
+        repos = []
+        page1_repos, page1_token = get_paginated_repositories_for_namespace(self.org1, page_size=5)
+        page2_repos, page2_token = get_paginated_repositories_for_namespace(
+            self.org1, page_size=5, page_token=page1_token
+        )
+        assert page2_token is None
+
+        repos = [repo.name for repo in page1_repos] + [repo.name for repo in page2_repos]
+        assert len(repos) == 10
+        for i in range(10):
+            assert repos[i] == repo_names[i]
