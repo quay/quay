@@ -8,6 +8,7 @@ describe('Namespace settings - autoprune policies', () => {
       .then((token) => {
         cy.loginByCSRF(token);
       });
+    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
   });
 
   const attemptCreateTagNumberPolicy = (cy) => {

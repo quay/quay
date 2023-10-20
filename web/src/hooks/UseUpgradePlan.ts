@@ -122,7 +122,21 @@ export function useUpgradePlan(namespace: string, isOrg: boolean) {
     }
   };
 
+  const {
+    data: currentPlan,
+    error: currentPlanError,
+    isLoading: currentPlanIsLoading,
+    isPlaceholderData: currentPlanIsPlaceholderData,
+  } = useQuery(['organization', isOrg ? namespace : null, 'plan'], () => {
+    return fetchSubscription(isOrg ? namespace : null);
+  });
+
   return {
+    currentPlan,
+    currentPlanError,
+    currentPlanIsLoading: currentPlanIsLoading || currentPlanIsPlaceholderData,
+    privateAllowed: privateAllowed?.privateAllowed || 0,
+    privateCount: privateAllowed?.privateCount || 0,
     upgrade: upgrade,
     planRequired: planRequired,
     maxPrivateCountReached: maxPrivateCountReached,

@@ -16,7 +16,6 @@ import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {useOrganizations} from 'src/hooks/UseOrganizations';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
@@ -32,12 +31,10 @@ export enum DrawerContentType {
 export default function Organization() {
   const quayConfig = useQuayConfig();
   const {organizationName, teamName} = useParams();
-  const {usernames} = useOrganizations();
-  const isUserOrganization = usernames.includes(organizationName);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const {organization} = useOrganization(organizationName);
+  const {organization, isUserOrganization} = useOrganization(organizationName);
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
     searchParams.get('tab') || 'Repositories',
@@ -57,7 +54,15 @@ export default function Organization() {
       return false;
     }
 
-    if (!isUserOrganization && organization && tabname == 'Settings') {
+    if (isUserOrganization) {
+      return true;
+    }
+
+    if (
+      !isUserOrganization &&
+      organization &&
+      (tabname == 'Settings' || tabname == 'Robot accounts')
+    ) {
       return organization.is_org_admin || organization.is_admin;
     }
     return false;
@@ -111,7 +116,7 @@ export default function Organization() {
           isUser={isUserOrganization}
         />
       ),
-      visible: true,
+      visible: fetchTabVisibility('Robot accounts'),
     },
     {
       name: 'Default permissions',

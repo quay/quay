@@ -1,23 +1,16 @@
 import {useState} from 'react';
-import {updateOrgSettings} from 'src/resources/OrganizationResource';
+import {
+  updateOrgSettings,
+  updateOrgSettingsParams,
+} from 'src/resources/OrganizationResource';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 
 export function useOrganizationSettings({name, onSuccess, onError}) {
   const queryClient = useQueryClient();
 
   const updateOrgSettingsMutator = useMutation(
-    async ({
-      namespace,
-      tag_expiration_s,
-      email,
-      isUser,
-    }: updateOrgSettingsParams): Promise<Response> => {
-      return await updateOrgSettings(
-        namespace,
-        tag_expiration_s,
-        email,
-        isUser,
-      );
+    async (params: Partial<updateOrgSettingsParams>): Promise<Response> => {
+      return await updateOrgSettings(name, params);
     },
     {
       onSuccess: (result) => {
@@ -32,14 +25,7 @@ export function useOrganizationSettings({name, onSuccess, onError}) {
   );
 
   return {
-    updateOrgSettings: async (params: updateOrgSettingsParams) =>
+    updateOrgSettings: async (params: Partial<updateOrgSettingsParams>) =>
       updateOrgSettingsMutator.mutate(params),
   };
-}
-
-interface updateOrgSettingsParams {
-  namespace: string;
-  tag_expiration_s: number;
-  email: string;
-  isUser: boolean;
 }

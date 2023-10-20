@@ -10,6 +10,8 @@ export interface IAvatar {
 }
 
 export interface IOrganization {
+  invoice_email?: boolean;
+  invoice_email_address?: string;
   name: string;
   avatar?: IAvatar;
   can_create_repo?: boolean;
@@ -112,22 +114,26 @@ export async function createOrg(name: string, email?: string) {
   return response.data;
 }
 
+export interface updateOrgSettingsParams {
+  tag_expiration_s: number;
+  email: string;
+  isUser: boolean;
+  invoice_email_address: string;
+  invoice_email: boolean;
+}
+
 export async function updateOrgSettings(
   namespace: string,
-  tag_expiration_s: number,
-  email: string,
-  isUser: boolean,
+  params: Partial<updateOrgSettingsParams>,
 ): Promise<Response> {
-  const updateSettingsUrl = isUser
+  const updateSettingsUrl = params.isUser
     ? `/api/v1/user/`
     : `/api/v1/organization/${namespace}`;
-  const payload = {};
-  if (email) {
-    payload['email'] = email;
-  }
-  if (tag_expiration_s != null) {
-    payload['tag_expiration_s'] = tag_expiration_s;
-  }
-  const response = await axios.put(updateSettingsUrl, payload);
+  // remove undefined and null keys
+  Object.keys(params).forEach(
+    (key) =>
+      (params[key] == null || params[key] == undefined) && delete params[key],
+  );
+  const response = await axios.put(updateSettingsUrl, params);
   return response.data;
 }
