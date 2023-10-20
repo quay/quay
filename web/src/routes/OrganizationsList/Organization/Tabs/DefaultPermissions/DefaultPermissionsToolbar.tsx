@@ -15,8 +15,8 @@ import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {IDefaultPermission} from 'src/hooks/UseDefaultPermissions';
-import {DrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {TrashIcon} from '@patternfly/react-icons';
+import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 
 export default function DefaultPermissionsToolbar(
   props: DefaultPermissionsToolbarProps,
@@ -50,7 +50,7 @@ export default function DefaultPermissionsToolbar(
           <Button
             onClick={() =>
               props.setDrawerContent(
-                DrawerContentType.CreatePermissionSpecificUser,
+                OrganizationDrawerContentType.CreatePermissionSpecificUser,
               )
             }
             data-testid="create-default-permissions-btn"
@@ -113,7 +113,7 @@ interface DefaultPermissionsToolbarProps {
   searchOptions: string[];
   search: SearchState;
   setSearch: (search: SearchState) => void;
-  setDrawerContent: (content: DrawerContentType) => void;
+  setDrawerContent: (content: OrganizationDrawerContentType) => void;
   children?: React.ReactNode;
   handleBulkDeleteModalToggle: () => void;
 }

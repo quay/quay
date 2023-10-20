@@ -136,10 +136,16 @@ export default function EntitySearch(props: EntitySearchProps) {
           ? props?.defaultOptions
           : entities?.map((entity, index) => (
               <SelectOption
+                data-testid={entity.name}
                 key={entity.name}
                 value={entity.name}
                 isFocused={focusedItemIndex === index}
-                onClick={() => setSelectedEntityName(entity.name)}
+                onClick={() => {
+                  setSelectedEntityName(entity.name);
+                  if (props?.onSelect) {
+                    props.onSelect(entity);
+                  }
+                }}
                 description={getMemberType(entity)}
               >
                 {entity.name}

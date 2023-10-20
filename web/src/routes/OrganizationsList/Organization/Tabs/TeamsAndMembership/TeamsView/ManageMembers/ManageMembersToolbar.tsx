@@ -1,4 +1,5 @@
 import {
+  Button,
   Flex,
   FlexItem,
   PanelFooter,
@@ -11,6 +12,7 @@ import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ITeamMember} from 'src/hooks/UseMembers';
+import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 
 export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
   return (
@@ -32,11 +34,22 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
           <Flex className="pf-v5-u-mr-md">
             <FlexItem>
               <SearchInput
+                id="team-member-search-input"
                 searchState={props.search}
                 onChange={props.setSearch}
               />
             </FlexItem>
           </Flex>
+          <Button
+            onClick={() =>
+              props.setDrawerContent(
+                OrganizationDrawerContentType.AddNewTeamMemberDrawer,
+              )
+            }
+            data-testid="add-new-member-btn"
+          >
+            Add new member
+          </Button>
           <ToolbarPagination
             itemsList={props.paginatedItems}
             perPage={props.perPage}
@@ -79,4 +92,5 @@ interface ManageMembersToolbarProps {
   search: SearchState;
   setSearch: (search: SearchState) => void;
   children?: React.ReactNode;
+  setDrawerContent: (content: OrganizationDrawerContentType) => void;
 }

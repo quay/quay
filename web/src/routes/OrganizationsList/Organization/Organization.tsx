@@ -22,9 +22,11 @@ import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembership
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
+import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 
-export enum DrawerContentType {
+export enum OrganizationDrawerContentType {
   None,
+  AddNewTeamMemberDrawer,
   CreatePermissionSpecificUser,
 }
 
@@ -68,20 +70,27 @@ export default function Organization() {
     return false;
   };
 
-  const [drawerContent, setDrawerContent] = useState<DrawerContentType>(
-    DrawerContentType.None,
-  );
+  const [drawerContent, setDrawerContent] =
+    useState<OrganizationDrawerContentType>(OrganizationDrawerContentType.None);
 
   const closeDrawer = () => {
-    setDrawerContent(DrawerContentType.None);
+    setDrawerContent(OrganizationDrawerContentType.None);
   };
 
   const drawerRef = useRef<HTMLDivElement>();
 
   const drawerContentOptions = {
-    [DrawerContentType.None]: null,
-    [DrawerContentType.CreatePermissionSpecificUser]: (
+    [OrganizationDrawerContentType.None]: null,
+    [OrganizationDrawerContentType.CreatePermissionSpecificUser]: (
       <CreatePermissionDrawer
+        orgName={organizationName}
+        closeDrawer={closeDrawer}
+        drawerRef={drawerRef}
+        drawerContent={drawerContent}
+      />
+    ),
+    [OrganizationDrawerContentType.AddNewTeamMemberDrawer]: (
+      <AddNewTeamMemberDrawer
         orgName={organizationName}
         closeDrawer={closeDrawer}
         drawerRef={drawerRef}
@@ -101,7 +110,7 @@ export default function Organization() {
       component: !teamName ? (
         <TeamsAndMembershipList key={window.location.pathname} />
       ) : (
-        <ManageMembersList />
+        <ManageMembersList setDrawerContent={setDrawerContent} />
       ),
       visible:
         !isUserOrganization &&
@@ -142,7 +151,7 @@ export default function Organization() {
 
   return (
     <Drawer
-      isExpanded={drawerContent != DrawerContentType.None}
+      isExpanded={drawerContent != OrganizationDrawerContentType.None}
       onExpand={() => {
         drawerRef.current && drawerRef.current.focus();
       }}
