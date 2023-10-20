@@ -40,6 +40,70 @@ describe('Teams and membership page', () => {
     cy.get('#collaborators-view-search').clear();
   });
 
+  it('Can create a new team', () => {
+    const newTeam = 'qpr';
+    const teamDescription = 'premierleague club';
+    const repository = 'premierleague';
+
+    cy.visit('/organization/testorg?tab=Teamsandmembership');
+
+    // create default permission drawer
+    cy.get(`[data-testid="create-new-team-button"]`).click();
+
+    // create team modal
+    cy.get('[data-testid="new-team-name-input"]').type(`${newTeam}`);
+    cy.get('[data-testid="new-team-description-input"]').type(
+      `${teamDescription}`,
+    );
+    cy.get('[data-testid="create-team-confirm"]').click();
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains(`Successfully created new team: ${newTeam}`)
+      .should('exist');
+
+    // create team wizard
+    // step - Name & Description
+    cy.get('[data-testid="create-team-wizard-form-name"]').should(
+      'have.value',
+      `${newTeam}`,
+    );
+    cy.get('[data-testid="create-team-wizard-form-description"]').should(
+      'have.value',
+      `${teamDescription}`,
+    );
+    cy.get('[data-testid="next-btn"]').click();
+
+    // step - Add to repository
+    cy.get(`[data-testid="checkbox-row-${repository}"]`).click();
+    cy.get(`[data-testid="${repository}-permission-dropdown-toggle"]`).contains(
+      'Read',
+    );
+    cy.get('[data-testid="next-btn"]').click();
+
+    // step - Add team member
+    cy.get('[data-testid="next-btn"]').click();
+
+    // step - Review and Finish
+    cy.get(`[data-testid="${newTeam}-team-name-review"]`).should(
+      'have.value',
+      `${newTeam}`,
+    );
+    cy.get(`[data-testid="${teamDescription}-team-descr-review"]`).should(
+      'have.value',
+      `${teamDescription}`,
+    );
+    cy.get('[data-testid="selected-repos-review"]').should(
+      'have.value',
+      `${repository}`,
+    );
+    cy.get('[data-testid="review-and-finish-wizard-btn"]').click();
+
+    // verify newly created team is shown under teams view
+    cy.get('#teams-view-search').type(`${newTeam}`);
+    cy.contains('1 - 1 of 1');
+  });
+
   it('Can update team role in Team View', () => {
     const teamToBeUpdated = 'arsenal';
     cy.visit('/organization/testorg?tab=Teamsandmembership');

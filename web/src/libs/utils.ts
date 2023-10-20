@@ -51,6 +51,10 @@ export function isValidEmail(email: string): boolean {
   return regex.test(email);
 }
 
+export const validateTeamName = (name: string) => {
+  return /^[a-z][a-z0-9]+$/.test(name);
+};
+
 export function parseRepoNameFromUrl(url: string): string {
   //url is in the format of <prefix>/repository/<org>/<repo>
   //or for nested repo: <prefix>/repository/<org>/<nested>/<repo>

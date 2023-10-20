@@ -94,10 +94,7 @@ export default function Organization() {
     {
       name: 'Teams and membership',
       component: !teamName ? (
-        <TeamsAndMembershipList
-          key={window.location.pathname}
-          organizationName={organizationName}
-        />
+        <TeamsAndMembershipList key={window.location.pathname} />
       ) : (
         <ManageMembersList />
       ),

@@ -20,6 +20,7 @@ import {useCurrentUser} from './UseCurrentUser';
 import {IAvatar} from 'src/resources/OrganizationResource';
 import {useAlerts} from './UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {addRepoPermissionToTeam} from 'src/resources/DefaultPermissionResource';
 
 interface createNewTeamForNamespaceParams {
   teamName: string;
@@ -44,6 +45,7 @@ export function useCreateTeam(orgName, {onSuccess, onError}) {
         if (data.new_team) {
           onSuccess();
           queryClient.invalidateQueries(['organization', orgName, 'teams']);
+          queryClient.invalidateQueries(['teams']);
         } else {
           addAlert({
             variant: AlertVariant.Failure,
@@ -282,5 +284,29 @@ export function useUpdateTeamRepoPerm(orgName: string, teamName: string) {
       detailedErrorUpdateRepoPerm as BulkOperationError<ResourceError>,
     successUpdateRepoPerm,
     resetUpdateRepoPerm,
+  };
+}
+
+export function useAddRepoPermissionToTeam(orgName: string, teamName: string) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: addRepoPermToTeam,
+    isError: errorAddingRepoPermissionToTeam,
+    isSuccess: successAddingRepoPermissionToTeam,
+  } = useMutation(
+    async ({repoName, newRole}: {repoName: string; newRole: string}) => {
+      return addRepoPermissionToTeam(orgName, repoName, teamName, newRole);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['teams']);
+        queryClient.invalidateQueries(['teamrepopermissions']);
+      },
+    },
+  );
+  return {
+    addRepoPermToTeam,
+    errorAddingRepoPermissionToTeam,
+    successAddingRepoPermissionToTeam,
   };
 }

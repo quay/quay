@@ -85,86 +85,90 @@ export default function CollaboratorsViewList(
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <CollaboratorsViewToolbar
-        selectedMembers={selectedCollaborators}
-        deSelectAll={() => setSelectedCollaborators([])}
-        allItems={filteredCollaborators}
-        paginatedItems={paginatedCollaborators}
-        onItemSelect={onSelectCollaborator}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
-        search={search}
-        setSearch={setSearch}
-        searchOptions={[collaboratorViewColumnNames.username]}
-      />
-      {props.children}
-      <Conditional if={isDeleteModalOpen}>{deleteCollabModal}</Conditional>
-      <Table aria-label="Selectable table" variant="compact">
-        <Thead>
-          <Tr>
-            <Th />
-            <Th>{collaboratorViewColumnNames.username}</Th>
-            <Th>{collaboratorViewColumnNames.directRepositoryPermissions}</Th>
-            <Th></Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {paginatedCollaborators?.map((collaborator, rowIndex) => (
-            <Tr key={rowIndex}>
-              <Td
-                select={{
-                  rowIndex,
-                  onSelect: (_event, isSelecting) =>
-                    onSelectCollaborator(collaborator, rowIndex, isSelecting),
-                  isSelected: selectedCollaborators.some(
-                    (t) => t.name === collaborator.name,
-                  ),
-                }}
-              />
-              <Td dataLabel={collaboratorViewColumnNames.username}>
-                {collaborator.name}
-              </Td>
-              <Td
-                dataLabel={
-                  collaboratorViewColumnNames.directRepositoryPermissions
-                }
-              >
-                Direct permissions on {collaborator.repositories?.length}{' '}
-                repositories under this organization
-              </Td>
-              <Td>
-                <Button
-                  icon={<TrashIcon />}
-                  variant="plain"
-                  onClick={() => {
-                    setCollaboratorToBeDeleted(collaborator);
-                    setIsDeleteModalOpen(true);
-                  }}
-                  data-testid={`${collaborator.name}-del-icon`}
-                />
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-      <PanelFooter>
-        <ToolbarPagination
-          itemsList={filteredCollaborators}
-          perPage={perPage}
+    <>
+      <PageSection variant={PageSectionVariants.light}>
+        <CollaboratorsViewToolbar
+          selectedMembers={selectedCollaborators}
+          deSelectAll={() => setSelectedCollaborators([])}
+          allItems={filteredCollaborators}
+          paginatedItems={paginatedCollaborators}
+          onItemSelect={onSelectCollaborator}
           page={page}
           setPage={setPage}
+          perPage={perPage}
           setPerPage={setPerPage}
-          bottom={true}
+          search={search}
+          setSearch={setSearch}
+          searchOptions={[collaboratorViewColumnNames.username]}
+          handleModalToggle={props.handleModalToggle}
         />
-      </PanelFooter>
-    </PageSection>
+        {props.children}
+        <Conditional if={isDeleteModalOpen}>{deleteCollabModal}</Conditional>
+        <Table aria-label="Selectable table" variant="compact">
+          <Thead>
+            <Tr>
+              <Th />
+              <Th>{collaboratorViewColumnNames.username}</Th>
+              <Th>{collaboratorViewColumnNames.directRepositoryPermissions}</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {paginatedCollaborators?.map((collaborator, rowIndex) => (
+              <Tr key={rowIndex}>
+                <Td
+                  select={{
+                    rowIndex,
+                    onSelect: (_event, isSelecting) =>
+                      onSelectCollaborator(collaborator, rowIndex, isSelecting),
+                    isSelected: selectedCollaborators.some(
+                      (t) => t.name === collaborator.name,
+                    ),
+                  }}
+                />
+                <Td dataLabel={collaboratorViewColumnNames.username}>
+                  {collaborator.name}
+                </Td>
+                <Td
+                  dataLabel={
+                    collaboratorViewColumnNames.directRepositoryPermissions
+                  }
+                >
+                  Direct permissions on {collaborator.repositories?.length}{' '}
+                  repositories under this organization
+                </Td>
+                <Td>
+                  <Button
+                    icon={<TrashIcon />}
+                    variant="plain"
+                    onClick={() => {
+                      setCollaboratorToBeDeleted(collaborator);
+                      setIsDeleteModalOpen(true);
+                    }}
+                    data-testid={`${collaborator.name}-del-icon`}
+                  />
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        <PanelFooter>
+          <ToolbarPagination
+            itemsList={filteredCollaborators}
+            perPage={perPage}
+            page={page}
+            setPage={setPage}
+            setPerPage={setPerPage}
+            bottom={true}
+          />
+        </PanelFooter>
+      </PageSection>
+    </>
   );
 }
 
 interface CollaboratorsViewListProps {
   organizationName: string;
   children?: React.ReactNode;
+  handleModalToggle: () => void;
 }

@@ -36,6 +36,7 @@ import {repoPermissions} from 'src/routes/OrganizationsList/Organization/Tabs/De
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {validateTeamName} from 'src/libs/utils';
 
 export default function CreatePermissionDrawer(
   props: CreatePermissionDrawerProps,
@@ -154,10 +155,6 @@ export default function CreatePermissionDrawer(
       placeholderText="Search user/robot"
     />
   );
-
-  const validateTeamName = (name: string) => {
-    return /^[a-z][a-z0-9]+$/.test(name);
-  };
 
   const createTeamModal = (
     <CreateTeamModal

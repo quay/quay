@@ -27,7 +27,11 @@ import RequestError from 'src/components/errors/RequestError';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import CreateNotification from './Settings/NotificationsCreateNotification';
 import {useRepository} from 'src/hooks/UseRepository';
-import {parseOrgNameFromUrl, parseRepoNameFromUrl} from 'src/libs/utils';
+import {
+  parseOrgNameFromUrl,
+  parseRepoNameFromUrl,
+  validateTeamName,
+} from 'src/libs/utils';
 import TagHistory from './TagHistory/TagHistory';
 import Conditional from 'src/components/empty/Conditional';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
@@ -108,10 +112,6 @@ export default function RepositoryDetails() {
       }
     />
   );
-
-  const validateTeamName = (name: string) => {
-    return /^[a-z][a-z0-9]+$/.test(name);
-  };
 
   const createTeamModal = (
     <CreateTeamModal
