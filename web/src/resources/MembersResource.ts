@@ -56,26 +56,17 @@ export async function deleteTeamMemberForOrg(
   teamName: string,
   memberName: string,
 ) {
-  try {
-    const response = await axios.delete(
-      `/api/v1/organization/${orgName}/team/${teamName}/members/${memberName}`,
-    );
-  } catch (err) {
-    console.error(`Unable to delete member for team: ${teamName}`, err);
-  }
+  const response = await axios.delete(
+    `/api/v1/organization/${orgName}/team/${teamName}/members/${memberName}`,
+  );
+  assertHttpCode(response.status, 204);
 }
 
 export async function deleteCollaboratorForOrg(
   orgName: string,
   collaborator: string,
 ) {
-  try {
-    await axios.delete(
-      `/api/v1/organization/${orgName}/members/${collaborator}`,
-    );
-  } catch (err) {
-    console.error(`Unable to delete collaborator for org: ${orgName}`, err);
-  }
+  await axios.delete(`/api/v1/organization/${orgName}/members/${collaborator}`);
 }
 
 export async function addMemberToTeamForOrg(
