@@ -3,8 +3,11 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.4"></a>
+## [v3.9.4] - 0001-01-01
+
 <a name="v3.9.3"></a>
-## [v3.9.3] - 2023-10-05
+## [v3.9.3] - 2023-10-10
 ### Quota
 - [a4a23414](https://github.com/quay/quay/commit/a4a23414f83a6878cce866686e9fcaf48b56dc8e): prevent tag creation on rejected manifest (PROJQUAY-3906) ([#2282](https://github.com/quay/quay/issues/2282))
 ### [Redhat-3.9] Build(Deps)
@@ -330,6 +333,9 @@
 ### Pull Requests
 - Merge pull request [#2069](https://github.com/quay/quay/issues/2069) from dmage/merge-config-tool-3.9
 
+
+<a name="v3.8.13"></a>
+## [v3.8.13] - 2023-10-10
 
 <a name="v3.8.12"></a>
 ## [v3.8.12] - 2023-09-06
@@ -1492,11 +1498,13 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.3...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.4...HEAD
+[v3.9.4]: https://github.com/quay/quay/compare/v3.9.3...v3.9.4
 [v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
 [v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
 [v3.9.1]: https://github.com/quay/quay/compare/v3.9.0...v3.9.1
-[v3.9.0]: https://github.com/quay/quay/compare/v3.8.12...v3.9.0
+[v3.9.0]: https://github.com/quay/quay/compare/v3.8.13...v3.9.0
+[v3.8.13]: https://github.com/quay/quay/compare/v3.8.12...v3.8.13
 [v3.8.12]: https://github.com/quay/quay/compare/v3.8.11...v3.8.12
 [v3.8.11]: https://github.com/quay/quay/compare/v3.8.10...v3.8.11
 [v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
