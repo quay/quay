@@ -60,11 +60,10 @@ export default function AddToTeam(props: AddToTeamProps) {
       await createNewTeamHook({
         teamName: newTeamName,
         description: newTeamDescription,
-      }).then(function () {
-        setNewTeamName('');
-        setNewTeamDescription('');
-        props.setDrawerExpanded(false);
       });
+      setNewTeamName('');
+      setNewTeamDescription('');
+      props.setDrawerExpanded(false);
     } catch (error) {
       console.error(error);
       setErr(addDisplayError('Unable to create team', error));
