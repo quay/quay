@@ -256,8 +256,9 @@ export default function AutoPruning(props: AutoPruning) {
                 tagCount > 1 ? setTagCount(tagCount - 1) : setTagCount(1);
               }}
               onChange={(e) => {
-                const value = Number((e.target as HTMLInputElement).value);
-                if (value > 0) {
+                const input = (e.target as HTMLInputElement).value;
+                const value = Number(input);
+                if (value > 0 && /^\d+$/.test(input)) {
                   setTagCount(value);
                 }
               }}
@@ -295,8 +296,9 @@ export default function AutoPruning(props: AutoPruning) {
                     : setTagCreationDateValue(1);
                 }}
                 onChange={(e) => {
-                  const value = Number((e.target as HTMLInputElement).value);
-                  if (value > 0) {
+                  const input = (e.target as HTMLInputElement).value;
+                  const value = Number(input);
+                  if (value > 0 && /^\d+$/.test(input)) {
                     setTagCreationDateValue(value);
                   }
                 }}
