@@ -107,7 +107,7 @@ export function DeleteModal(props: ModalProps) {
         title={title}
         description={
           <Conditional if={props.modalOptions.force}>
-            <span style={{color: 'red'}}>
+            <span className="pf-v5-u-danger-color-100">
               Tags deleted cannot be restored within the time machine window and
               will be immediately eligible for garbage collection.
             </span>

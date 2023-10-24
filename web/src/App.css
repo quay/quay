@@ -12,7 +12,6 @@ html, body, #root,  .App {
   --pf-v5-c-content--hr--BackgroundColor: lemonchiffon; /* changes a <hr> color to lemonchiffon */
 }
 
-
 .page-sidebar .pf-v5-c-page__sidebar-body {
   background-color: black;
   color: black;
@@ -29,19 +28,6 @@ html, body, #root,  .App {
 .disabled-link {
     pointer-events: none;
     color: black;
-}
-
-.no-padding {
-    padding: 0 !important;
-}
-
-.no-padding-bottom {
-    padding-bottom: 0;
-}
-
-.no-padding-on-sides {
-    padding-left: 0;
-    padding-right: 0;
 }
 
 .pf-v5-c-tabs {
@@ -66,8 +52,4 @@ html, body, #root,  .App {
 
 .fit-content {
     width: fit-content;
-}
-
-.red-color {
-    color: red !important;
 }

@@ -45,7 +45,7 @@ export default function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: <div style={{color: 'red'}}>Delete repository</div>,
+      name: <div className="pf-v5-u-danger-color-100">Delete repository</div>,
       id: 'deleterepository',
       content: <DeleteRepository org={props.org} repo={props.repo} />,
     },
@@ -72,7 +72,7 @@ export default function Settings(props: SettingsProps) {
       </FlexItem>
       <FlexItem
         alignSelf={{default: 'alignSelfCenter'}}
-        style={{padding: '20px', width: '100%'}}
+        className="pf-v5-u-p-lg pf-v5-u-w-100"
       >
         {tabs.at(activeTabIndex).content}
       </FlexItem>

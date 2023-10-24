@@ -21,7 +21,7 @@ export default function TablePopover(props: TablePopoverProps) {
       headerContent={<div>Fetch Tag</div>}
       bodyContent={
         <div>
-          <Text style={{fontWeight: 'bold'}}>Podman Pull (By Tag)</Text>
+          <Text className="pf-v5-u-font-weight-bold">Podman Pull (By Tag)</Text>
           <ClipboardCopy
             data-testid="copy-tag-podman"
             isReadOnly
@@ -31,7 +31,9 @@ export default function TablePopover(props: TablePopoverProps) {
             podman pull {domain}/{props.org}/{props.repo}:{props.tag}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Podman Pull (By Digest)</Text>
+          <Text className="pf-v5-u-font-weight-bold">
+            Podman Pull (By Digest)
+          </Text>
           <ClipboardCopy
             data-testid="copy-digest-podman"
             isReadOnly
@@ -41,7 +43,7 @@ export default function TablePopover(props: TablePopoverProps) {
             podman pull {domain}/{props.org}/{props.repo}@{props.digest}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Docker Pull (By Tag)</Text>
+          <Text className="pf-v5-u-font-weight-bold">Docker Pull (By Tag)</Text>
           <ClipboardCopy
             data-testid="copy-tag-docker"
             isReadOnly
@@ -51,7 +53,9 @@ export default function TablePopover(props: TablePopoverProps) {
             docker pull {domain}/{props.org}/{props.repo}:{props.tag}
           </ClipboardCopy>
           <br />
-          <Text style={{fontWeight: 'bold'}}>Docker Pull (By Digest)</Text>
+          <Text className="pf-v5-u-font-weight-bold">
+            Docker Pull (By Digest)
+          </Text>
           <ClipboardCopy
             data-testid="copy-digest-docker"
             isReadOnly

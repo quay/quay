@@ -213,7 +213,7 @@ export default function RepositoryDetails() {
               <QuayBreadcrumb />
               <PageSection
                 variant={PageSectionVariants.light}
-                className="no-padding-bottom"
+                className="pf-v5-u-pb-0"
               >
                 <Title data-testid="repo-title" headingLevel="h1">
                   {repository}
@@ -221,8 +221,7 @@ export default function RepositoryDetails() {
               </PageSection>
               <PageSection
                 variant={PageSectionVariants.light}
-                className="no-padding-on-sides"
-                style={{padding: 0}}
+                className="pf-v5-u-pr-0 pf-v5-u-pl-0 pf-v5-u-pb-0"
               >
                 <ErrorBoundary
                   hasError={isErrorString(err)}

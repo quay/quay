@@ -66,7 +66,7 @@ export default function TagActions(props: TagActionsProps) {
           isOpen: true,
         });
       }}
-      style={{color: 'red'}}
+      className="pf-v5-u-danger-color-100"
     >
       Remove
     </DropdownItem>,
@@ -86,7 +86,7 @@ export default function TagActions(props: TagActionsProps) {
             isOpen: true,
           });
         }}
-        style={{color: 'red'}}
+        className="pf-v5-u-danger-color-100"
       >
         Permanently Delete
       </DropdownItem>,

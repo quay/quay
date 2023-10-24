@@ -220,7 +220,7 @@ function NotificationTitle({notification}: {notification: RepoNotification}) {
   );
   return (
     <Flex direction={{default: 'column'}}>
-      <FlexItem style={{marginBottom: 0}}>
+      <FlexItem className="pf-v5-u-mb-0">
         <i className="fa fa-lg quay-icon"></i>
         {notificationMethod.title}
       </FlexItem>
@@ -232,13 +232,13 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
   switch (notification.method) {
     case NotificationMethodType.email:
       return (
-        <FlexItem id="configured-email" style={{color: 'grey'}}>
+        <FlexItem id="configured-email" className="pf-v5-u-color-200">
           email: {notification.config?.email}
         </FlexItem>
       );
     case NotificationMethodType.flowdock:
       return (
-        <FlexItem id="flow-api-token" style={{color: 'grey'}}>
+        <FlexItem id="flow-api-token" className="pf-v5-u-color-200">
           <ReadonlySecret
             label="Flow API Token"
             secret={notification.config?.flow_api_token}
@@ -250,11 +250,11 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
         <>
           <FlexItem
             id="hipchat-room-id"
-            style={{color: 'grey', marginBottom: '0px'}}
+            className="pf-v5-u-color-200 pf-v5-u-mb-0"
           >
             Room ID #: {notification.config?.room_id}
           </FlexItem>
-          <FlexItem id="hipchat-token" style={{color: 'grey'}}>
+          <FlexItem id="hipchat-token" className="pf-v5-u-color-200">
             <ReadonlySecret
               label="Room Notification Token"
               secret={notification.config?.notification_token}
@@ -264,21 +264,18 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
       );
     case NotificationMethodType.slack:
       return (
-        <FlexItem id="slack-url" style={{color: 'grey'}}>
+        <FlexItem id="slack-url" className="pf-v5-u-color-200">
           Webhook URL: {notification.config?.url}
         </FlexItem>
       );
     case NotificationMethodType.webhook:
       return (
         <>
-          <FlexItem
-            id="webhook-url"
-            style={{color: 'grey', marginBottom: '0px'}}
-          >
+          <FlexItem id="webhook-url" className="pf-v5-u-color-200 pf-v5-u-mb-0">
             Webhook URL: {notification.config?.url}
           </FlexItem>
           <Conditional if={notification.config?.template != ''}>
-            <FlexItem id="webhook-body" style={{color: 'grey'}}>
+            <FlexItem id="webhook-body" className="pf-v5-u-color-200">
               POST body template (optional):
               <ClipboardCopy
                 isCode
@@ -298,7 +295,7 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
     // case NotificationMethodType.quaynotification:
     //   return (
     //     <Flex direction={{default: 'column'}}>
-    //       <FlexItem style={{marginBottom: 0}}>
+    //       <FlexItem className="pf-v5-u-mb-0">
     //         {notificationMethod.title}
     //       </FlexItem>
     //     </Flex>

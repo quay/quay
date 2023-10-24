@@ -60,7 +60,7 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
 
           <DropdownItem
             onClick={() => onDelete()}
-            className="red-color"
+            className="pf-v5-u-danger-color-100"
             id={`${props.robotAccount.name}-del-btn`}
           >
             {props.deleteKebabIsOpen ? props.deleteModal() : null}

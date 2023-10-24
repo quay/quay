@@ -18,9 +18,7 @@ export default function Empty(props: EmptyProps) {
           icon={<EmptyStateIcon icon={props.icon} />}
           headingLevel="h1"
         />
-        <EmptyStateBody style={{paddingBottom: 20}}>
-          {props.body}
-        </EmptyStateBody>
+        <EmptyStateBody className="pf-v5-u-bt-lg">{props.body}</EmptyStateBody>
         <EmptyStateFooter>{props.button}</EmptyStateFooter>
       </EmptyState>
     </PageSection>

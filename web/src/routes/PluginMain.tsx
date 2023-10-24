@@ -89,7 +89,7 @@ function PluginMain() {
   }
 
   return (
-    <Page style={{height: '100vh'}}>
+    <Page className="pf-v5-u-h-100vh">
       <CreateNewUser
         user={user}
         isModalOpen={isConfirmUserModalOpen}

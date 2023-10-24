@@ -67,7 +67,7 @@ export function StandaloneMain() {
       <Page
         header={<QuayHeader />}
         sidebar={<QuaySidebar />}
-        style={{height: '100vh'}}
+        className="pf-v5-u-h-100vh"
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
       >

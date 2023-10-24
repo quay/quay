@@ -1,4 +1,4 @@
-import {Spinner} from '@patternfly/react-core';
+import {Flex, Spinner} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
   Table,
@@ -173,22 +173,20 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.manifest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
-        <Td
-          dataLabel={ColumnNames.pull}
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <TablePopover
-            org={props.org}
-            repo={props.repo}
-            tag={tag.name}
-            digest={tag.manifest_digest}
+        <Td dataLabel={ColumnNames.pull}>
+          <Flex
+            justifyContent={{default: 'justifyContentCenter'}}
+            alignItems={{default: 'alignItemsCenter'}}
           >
-            <DownloadIcon />
-          </TablePopover>
+            <TablePopover
+              org={props.org}
+              repo={props.repo}
+              tag={tag.name}
+              digest={tag.manifest_digest}
+            >
+              <DownloadIcon />
+            </TablePopover>
+          </Flex>
         </Td>
         <Conditional
           if={

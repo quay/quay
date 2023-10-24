@@ -287,7 +287,7 @@ export default function AutoPruning(props: AutoPruning) {
             isRequired
             isInline
           >
-            <div style={{display: 'flex'}}>
+            <Flex>
               <NumberInput
                 value={tagCreationDateValue}
                 onMinus={() => {
@@ -327,7 +327,7 @@ export default function AutoPruning(props: AutoPruning) {
                   />
                 ))}
               </FormSelect>
-            </div>
+            </Flex>
             <FormHelperText>
               <HelperText>
                 <HelperTextItem>

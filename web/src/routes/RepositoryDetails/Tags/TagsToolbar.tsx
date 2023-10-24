@@ -52,7 +52,7 @@ export function TagsToolbar(props: ToolBarProps) {
         }));
       }}
       isDisabled={selectedTags.length <= 0}
-      style={{color: 'red'}}
+      className="pf-v5-u-danger-color-100"
     >
       Remove
     </DropdownItem>,
@@ -73,7 +73,7 @@ export function TagsToolbar(props: ToolBarProps) {
           }));
         }}
         isDisabled={selectedTags.length <= 0}
-        style={{color: 'red'}}
+        className="pf-v5-u-danger-color-100"
       >
         Permanently Delete
       </DropdownItem>,

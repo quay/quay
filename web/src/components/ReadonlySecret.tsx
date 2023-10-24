@@ -36,7 +36,7 @@ export default function ReadonlySecret(props: ReadonlySecretProps) {
             variant="plain"
             onClick={() => setSecretHidden(!secretHidden)}
             aria-label={secretHidden ? 'Show secret' : 'Hide secret'}
-            style={{paddingLeft: 0}}
+            className="pf-v5-u-pl-0"
           >
             {secretHidden ? <EyeIcon /> : <EyeSlashIcon />}
           </Button>

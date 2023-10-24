@@ -427,7 +427,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const kebabItems: ReactElement[] = [
     <DropdownItem
       key="delete-item"
-      className="red-color"
+      className="pf-v5-u-danger-color-100"
       onClick={handleBulkDeleteModalToggle}
     >
       Delete

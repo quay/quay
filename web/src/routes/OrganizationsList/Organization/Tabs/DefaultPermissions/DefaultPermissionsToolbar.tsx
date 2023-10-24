@@ -60,7 +60,7 @@ export default function DefaultPermissionsToolbar(
           <Conditional if={props.selectedItems?.length !== 0}>
             <ToolbarItem>
               <Button
-                style={{paddingBottom: '0px'}}
+                className="pf-v5-u-pb-0"
                 icon={
                   <Icon size="lg">
                     <TrashIcon />

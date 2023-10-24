@@ -59,7 +59,7 @@ export default function TeamViewKebab(props: TeamViewKebabProps) {
         <DropdownItem
           key="delete"
           onClick={props.onDeleteTeam}
-          className="red-color"
+          className="pf-v5-u-danger-color-100"
           data-testid={`${props.team.name}-del-option`}
         >
           Delete

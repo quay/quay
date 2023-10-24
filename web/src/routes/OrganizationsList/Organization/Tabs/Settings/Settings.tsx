@@ -75,7 +75,7 @@ export default function Settings(props: SettingsProps) {
 
       <FlexItem
         alignSelf={{default: 'alignSelfCenter'}}
-        style={{padding: '20px'}}
+        className="pf-v5-u-p-lg"
       >
         {tabs.filter((tab) => tab.visible === true).at(activeTabIndex).content}
       </FlexItem>

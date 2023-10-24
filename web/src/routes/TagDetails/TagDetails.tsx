@@ -114,10 +114,7 @@ export default function TagDetails() {
   return (
     <Page>
       <QuayBreadcrumb />
-      <PageSection
-        variant={PageSectionVariants.light}
-        className="no-padding-bottom"
-      >
+      <PageSection variant={PageSectionVariants.light} className="pf-v5-u-pb-0">
         <Title headingLevel="h1">{tag}</Title>
         <TagArchSelect
           digest={digest}
@@ -128,7 +125,7 @@ export default function TagDetails() {
       </PageSection>
       <PageSection
         variant={PageSectionVariants.light}
-        className="no-padding-on-sides"
+        className="pf-v5-u-pr-0 pf-v5-u-pl-0"
       >
         <ErrorBoundary
           hasError={isErrorString(err)}

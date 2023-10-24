@@ -162,7 +162,7 @@ export default function Organization() {
             <QuayBreadcrumb />
             <PageSection
               variant={PageSectionVariants.light}
-              className="no-padding-bottom"
+              className="pf-v5-u-pb-0"
             >
               <Title data-testid="repo-title" headingLevel="h1">
                 {organizationName}

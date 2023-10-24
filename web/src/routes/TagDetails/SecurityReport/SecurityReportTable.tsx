@@ -240,7 +240,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            <ExternalLinkAltIcon style={{marginLeft: '5px'}} />
+                            <ExternalLinkAltIcon className="pf-v5-u-ml-sm" />
                           </a>
                         ) : null}
                       </>
@@ -248,9 +248,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
                     <Td dataLabel={columnNames.severity}>
                       <ExclamationTriangleIcon
                         color={getSeverityColor(vulnerability.Severity)}
-                        style={{
-                          marginRight: '5px',
-                        }}
+                        className="pf-v5-u-mr-sm"
                       />
                       <span>{vulnerability.Severity}</span>
                     </Td>
@@ -265,7 +263,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
                         <>
                           <ArrowRightIcon
                             color={'green'}
-                            style={{marginRight: '5px'}}
+                            className="pf-v5-u-mr-sm"
                           />
                           <span>{vulnerability.FixedInVersion}</span>
                         </>

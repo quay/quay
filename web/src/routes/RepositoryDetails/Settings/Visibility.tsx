@@ -77,9 +77,11 @@ export default function Visibility(props: VisibilityProps) {
             title={
               <>
                 In order to make this repository private under{' '}
-                <span style={{fontWeight: 'bold'}}>{props.org}</span>, you will
-                need to upgrade the namespace&apos;s plan to at least a{' '}
-                <span style={{fontWeight: 'bold'}}>{planRequired?.title}</span>{' '}
+                <span className="pf-v5-u-font-weight-bold">{props.org}</span>,
+                you will need to upgrade the namespace&apos;s plan to at least a{' '}
+                <span className="pf-v5-u-font-weight-bold">
+                  {planRequired?.title}
+                </span>{' '}
                 plan
               </>
             }

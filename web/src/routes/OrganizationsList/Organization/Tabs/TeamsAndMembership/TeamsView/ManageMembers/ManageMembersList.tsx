@@ -285,7 +285,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
             <TextContent isVisited={false}>
               <Text
                 component={TextVariants.p}
-                style={{color: 'grey'}}
+                className="pf-v5-u-color-200"
                 data-testid="team-description-text"
               >
                 {getTeamDescription()}
