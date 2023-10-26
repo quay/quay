@@ -138,3 +138,24 @@ def test_retrieve_robots_token_permission(username, is_admin, with_permissions, 
         for robot in result.json["robots"]:
             assert (robot.get("token") is not None) == is_admin
             assert (robot.get("repositories") is not None) == (is_admin and with_permissions)
+
+
+def test_duplicate_robot_creation(app):
+    with client_with_identity("devtable", app) as cl:
+        resp = conduct_api_call(
+            cl,
+            UserRobot,
+            "PUT",
+            {"robot_shortname": "dtrobot"},
+            expected_code=400,
+        )
+        assert resp.json["error_message"] == "Existing robot with name: devtable+dtrobot"
+
+        resp = conduct_api_call(
+            cl,
+            OrgRobot,
+            "PUT",
+            {"orgname": "buynlarge", "robot_shortname": "coolrobot"},
+            expected_code=400,
+        )
+        assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"

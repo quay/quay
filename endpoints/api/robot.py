@@ -121,12 +121,16 @@ class UserRobot(ApiResource):
         """
         parent = get_authenticated_user()
         create_data = request.get_json(silent=True) or {}
-        robot = model.create_user_robot(
-            robot_shortname,
-            parent,
-            create_data.get("description"),
-            create_data.get("unstructured_metadata"),
-        )
+
+        try:
+            robot = model.create_user_robot(
+                robot_shortname,
+                parent,
+                create_data.get("description"),
+                create_data.get("unstructured_metadata"),
+            )
+        except Exception as e:
+            raise request_error(message=str(e))
         log_action(
             "create_robot",
             parent.username,
@@ -237,12 +241,16 @@ class OrgRobot(ApiResource):
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser():
             create_data = request.get_json(silent=True) or {}
-            robot = model.create_org_robot(
-                robot_shortname,
-                orgname,
-                create_data.get("description"),
-                create_data.get("unstructured_metadata"),
-            )
+
+            try:
+                robot = model.create_org_robot(
+                    robot_shortname,
+                    orgname,
+                    create_data.get("description"),
+                    create_data.get("unstructured_metadata"),
+                )
+            except Exception as e:
+                raise request_error(message=str(e))
             log_action(
                 "create_robot",
                 orgname,
