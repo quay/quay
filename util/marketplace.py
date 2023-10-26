@@ -61,7 +61,7 @@ class RedHatUserApi(object):
                 timeout=REQUEST_TIMEOUT,
             )
         except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.marketplace_endpoint)
+            logger.info("request to %s timed out", self.user_endpoint)
             return None
 
         info = json.loads(r.content)
@@ -179,7 +179,7 @@ class RedHatSubscriptionApi(object):
             )
         except requests.exceptions.ReadTimeout:
             logger.info("request to %s timed out", self.marketplace_endpoint)
-            return None
+            return 408
 
         return r.status_code
 
