@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-from datetime import datetime
 
 import requests
 
@@ -52,14 +51,18 @@ class RedHatUserApi(object):
         }
 
         request_url = f"{self.user_endpoint}/v2/findUsers"
-        r = requests.request(
-            method="post",
-            url=request_url,
-            cert=self.cert,
-            json=request_body_dict,
-            verify=True,
-            timeout=REQUEST_TIMEOUT,
-        )
+        try:
+            r = requests.request(
+                method="post",
+                url=request_url,
+                cert=self.cert,
+                json=request_body_dict,
+                verify=True,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.exceptions.ReadTimeout:
+            logger.info("request to %s timed out", self.marketplace_endpoint)
+            return None
 
         info = json.loads(r.content)
         if not info:
@@ -87,14 +90,19 @@ class RedHatSubscriptionApi(object):
         request_headers = {"Content-Type": "application/json"}
 
         # Using CustomerID to get active subscription for user
-        r = requests.request(
-            method="get",
-            url=subscriptions_url,
-            headers=request_headers,
-            cert=self.cert,
-            verify=True,
-            timeout=REQUEST_TIMEOUT,
-        )
+        try:
+            r = requests.request(
+                method="get",
+                url=subscriptions_url,
+                headers=request_headers,
+                cert=self.cert,
+                verify=True,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.exceptions.ReadTimeout:
+            logger.info("request to %s timed out", self.marketplace_endpoint)
+            return None
+
         try:
             subscription = max(
                 json.loads(r.content), key=lambda i: (i["effectiveEndDate"]), default=None
@@ -117,14 +125,19 @@ class RedHatSubscriptionApi(object):
         """
         extend_url = f"{self.marketplace_endpoint}/subscription/v5/extendActiveSubscription/{subscription_id}/{endDate}"
         request_headers = {"Content-Type:": "application/json"}
-        r = requests.request(
-            method="get",
-            url=extend_url,
-            headers=request_headers,
-            cert=self.cert,
-            verify=True,
-            timeout=REQUEST_TIMEOUT,
-        )
+        try:
+            r = requests.request(
+                method="get",
+                url=extend_url,
+                headers=request_headers,
+                cert=self.cert,
+                verify=True,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.exceptions.ReadTimeout:
+            logger.info("request to %s timed out", self.marketplace_endpoint)
+            return None
+
         logger.debug("Extended subscription %i to %s", subscription_id, str(endDate))
         return r
 
@@ -154,15 +167,20 @@ class RedHatSubscriptionApi(object):
             "webCustomerId": customerId,
         }
         logger.debug("Created entitlement")
-        r = requests.request(
-            method="post",
-            url=request_url,
-            cert=self.cert,
-            headers=request_headers,
-            json=request_body_dict,
-            verify=True,
-            timeout=REQUEST_TIMEOUT,
-        )
+        try:
+            r = requests.request(
+                method="post",
+                url=request_url,
+                cert=self.cert,
+                headers=request_headers,
+                json=request_body_dict,
+                verify=True,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.exceptions.ReadTimeout:
+            logger.info("request to %s timed out", self.marketplace_endpoint)
+            return None
+
         return r.status_code
 
     def get_subscription_sku(self, subscription_id):
@@ -188,6 +206,9 @@ class RedHatSubscriptionApi(object):
             return SubscriptionSKU
         except requests.exceptions.SSLError:
             raise requests.exceptions.SSLError
+        except requests.exceptions.ReadTimeout:
+            logger.info("request to %s timed out", self.marketplace_endpoint)
+            return None
 
     def get_list_of_subscriptions(
         self, account_number, filter_out_org_bindings=False, convert_to_stripe_plans=False
