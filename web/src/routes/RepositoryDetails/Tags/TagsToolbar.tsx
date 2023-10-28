@@ -1,38 +1,38 @@
-import {ReactElement, useState} from 'react';
 import {
   DropdownItem,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {ReactElement, useState} from 'react';
 import {useRecoilState} from 'recoil';
 import {searchTagsState, selectedTagsState} from 'src/atoms/TagListState';
-import {Tag} from 'src/resources/TagResource';
-import {DeleteModal, DeleteModalOptions} from './DeleteModal';
-import {ImmutableModal, ImmutableModalOptions} from './ImmutableModal';
-import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
+import {FilterInput} from 'src/components/toolbar/FilterInput';
 import {Kebab} from 'src/components/toolbar/Kebab';
 import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
-import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
-import ColumnNames from './ColumnNames';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {Tag} from 'src/resources/TagResource';
+import ColumnNames from './ColumnNames';
+import {DeleteModal, DeleteModalOptions} from './DeleteModal';
+import {ImmutableModal, ImmutableModalOptions} from './ImmutableModal';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
-import {FilterInput} from 'src/components/toolbar/FilterInput';
-
 
 export function TagsToolbar(props: ToolBarProps) {
   const quayConfig = useQuayConfig();
-  const [deleteModalOptions, setDeleteModalOptions] = useState<DeleteModalOptions>({
-    isOpen: false,
-    force: false,
-  });
-  const [immutableModalOptions, setImmutableModalOptions] = useState<ImmutableModalOptions>({
-    isOpen: false,
-    force: false,
-    immutable: false,
-  });
+  const [deleteModalOptions, setDeleteModalOptions] =
+    useState<DeleteModalOptions>({
+      isOpen: false,
+      force: false,
+    });
+  const [immutableModalOptions, setImmutableModalOptions] =
+    useState<ImmutableModalOptions>({
+      isOpen: false,
+      immutable: false,
+    });
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
@@ -58,39 +58,49 @@ export function TagsToolbar(props: ToolBarProps) {
           isOpen: !prevOptions.isOpen,
         }));
       }}
-      isDisabled={selectedTags.length <= 0 || selectedTags.some((tag: Tag) => tag.immutable)}      
-      className='dangerous-dropdown-item'
+      isDisabled={
+        selectedTags.length <= 0 ||
+        selectedTags.some((tag: Tag) => tag.immutable)
+      }
+      className="dangerous-dropdown-item"
     >
       Remove
     </DropdownItem>,
     <DropdownItem
-    key="immutable"
-    onClick={() => {
-      setKebabOpen(!isKebabOpen);
-      setImmutableModalOptions((prevOptions) => ({
-        ...prevOptions,
-        isOpen: !prevOptions.isOpen,
-        immutable: true,
-      }));
-    }}
-    isDisabled={selectedTags.length <= 0 || selectedTags.every((tag: Tag) => tag.immutable) || selectedTags.some((tag: Tag) => tag.expiration)}
-  >
-    Set immutable
-  </DropdownItem>,
-  <DropdownItem
-  key="mutable"
-  onClick={() => {
-    setKebabOpen(!isKebabOpen);
-    setImmutableModalOptions((prevOptions) => ({
-      ...prevOptions,
-      isOpen: !prevOptions.isOpen,
-      immutable: false,
-    }));
-  }}
-  isDisabled={selectedTags.length <= 0 || selectedTags.every((tag: Tag) => tag.immutable == false)}
->
-  Set mutable
-</DropdownItem>,
+      key="immutable"
+      onClick={() => {
+        setKebabOpen(!isKebabOpen);
+        setImmutableModalOptions((prevOptions) => ({
+          ...prevOptions,
+          isOpen: !prevOptions.isOpen,
+          immutable: true,
+        }));
+      }}
+      isDisabled={
+        selectedTags.length <= 0 ||
+        selectedTags.every((tag: Tag) => tag.immutable) ||
+        selectedTags.some((tag: Tag) => tag.expiration)
+      }
+    >
+      Set immutable
+    </DropdownItem>,
+    <DropdownItem
+      key="mutable"
+      onClick={() => {
+        setKebabOpen(!isKebabOpen);
+        setImmutableModalOptions((prevOptions) => ({
+          ...prevOptions,
+          isOpen: !prevOptions.isOpen,
+          immutable: false,
+        }));
+      }}
+      isDisabled={
+        selectedTags.length <= 0 ||
+        selectedTags.every((tag: Tag) => tag.immutable == false)
+      }
+    >
+      Set mutable
+    </DropdownItem>,
   ];
 
   if (
@@ -107,8 +117,11 @@ export function TagsToolbar(props: ToolBarProps) {
             isOpen: !prevOptions.isOpen,
           }));
         }}
-        isDisabled={selectedTags.length <= 0 || selectedTags.some((tag: Tag) => tag.immutable)}
-        className='dangerous-dropdown-item'
+        isDisabled={
+          selectedTags.length <= 0 ||
+          selectedTags.some((tag: Tag) => tag.immutable)
+        }
+        className="dangerous-dropdown-item"
       >
         Permanently delete
       </DropdownItem>,
@@ -187,6 +200,9 @@ export function TagsToolbar(props: ToolBarProps) {
         loadTags={props.loadTags}
         repoDetails={props.repoDetails}
         immutability={immutableModalOptions.immutable}
+        onComplete={() => {
+          setSelectedTags([]);
+        }}
       />
     </Toolbar>
   );

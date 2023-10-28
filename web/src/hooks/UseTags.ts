@@ -1,13 +1,15 @@
-import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {
+  Tag,
+  bulkDeleteTags,
   bulkSetExpiration,
   createTag,
+  getTags,
   permanentlyDeleteTag,
-  bulkDeleteTags,
-  Tag,
+  restoreTag,
+  setTagsMutability,
 } from 'src/resources/TagResource';
-import {getTags, restoreTag} from 'src/resources/TagResource';
 
 export function useAllTags(org: string, repo: string) {
   // TODO: Returns the first 50 tags due to performance concerns.
@@ -137,5 +139,34 @@ export function usePermanentlyDeleteTag(org: string, repo: string) {
     permanentlyDeleteTag: mutate,
     success: isSuccess,
     error: isError,
+  };
+}
+
+export function useSetTagsImmutability(org: string, repo: string) {
+  const queryClient = useQueryClient();
+  const {mutate, isError, isSuccess, error} = useMutation(
+    async ({tags, immutable}: {tags: Tag[]; immutable: boolean}) =>
+      setTagsMutability(
+        tags.map((tag) => ({org, repo, tag: tag.name})),
+        immutable,
+      ),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries([
+          'namespace',
+          org,
+          'repo',
+          repo,
+          'alltags',
+        ]);
+      },
+    },
+  );
+
+  return {
+    setTagImmutability: mutate,
+    success: isSuccess,
+    error: isError,
+    errorDetails: error as BulkOperationError<ResourceError>,
   };
 }

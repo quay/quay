@@ -1,4 +1,3 @@
-import {useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
@@ -7,14 +6,17 @@ import {
   MenuToggleElement,
 } from '@patternfly/react-core';
 import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
-import AddTagModal from './TagsActionsAddTagModal';
-import EditLabelsModal from './TagsActionsLabelsModal';
-import EditExpirationModal from './TagsActionsEditExpirationModal';
-import {DeleteModal, ModalOptions} from './DeleteModal';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useState} from 'react';
 import {useSetRecoilState} from 'recoil';
 import {selectedTagsState} from 'src/atoms/TagListState';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {Tag} from 'src/resources/TagResource';
+import {DeleteModal, DeleteModalOptions} from './DeleteModal';
+import {ImmutableModal, ImmutableModalOptions} from './ImmutableModal';
+import AddTagModal from './TagsActionsAddTagModal';
+import EditExpirationModal from './TagsActionsEditExpirationModal';
+import EditLabelsModal from './TagsActionsLabelsModal';
 
 export default function TagActions(props: TagActionsProps) {
   const quayConfig = useQuayConfig();
@@ -23,10 +25,16 @@ export default function TagActions(props: TagActionsProps) {
   const [isEditLabelsModalOpen, setIsEditLabelsModalOpen] = useState(false);
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
     useState(false);
-  const [deleteModalOptions, setDeleteModalOptions] = useState<ModalOptions>({
-    isOpen: false,
-    force: false,
-  });
+  const [deleteModalOptions, setDeleteModalOptions] =
+    useState<DeleteModalOptions>({
+      isOpen: false,
+      force: false,
+    });
+  const [immutableModalOptions, setImmutableModalOptions] =
+    useState<ImmutableModalOptions>({
+      isOpen: false,
+      immutable: false,
+    });
   const setSelectedTags = useSetRecoilState(selectedTagsState);
 
   const dropdownItems = [
@@ -58,6 +66,26 @@ export default function TagActions(props: TagActionsProps) {
       Change expiration
     </DropdownItem>,
     <DropdownItem
+      key="mutable"
+      onClick={() => {
+        setIsOpen(false);
+        setImmutableModalOptions((prevOptions) => ({
+          ...prevOptions,
+          isOpen: !prevOptions.isOpen,
+          immutable: props.tags.some((tag: Tag) => tag.immutable)
+            ? false
+            : true,
+        }));
+      }}
+    >
+      {props.tags.some((tag: Tag) => tag.immutable)
+        ? 'Set mutable'
+        : 'Set immutable'}
+    </DropdownItem>,
+  ];
+
+  dropdownItems.push(
+    <DropdownItem
       key="delete-tag-action"
       onClick={() => {
         setIsOpen(false);
@@ -70,7 +98,7 @@ export default function TagActions(props: TagActionsProps) {
     >
       Remove
     </DropdownItem>,
-  ];
+  );
 
   if (
     quayConfig?.config?.PERMANENTLY_DELETE_TAGS &&
@@ -154,6 +182,18 @@ export default function TagActions(props: TagActionsProps) {
         repoDetails={props.repoDetails}
         onComplete={() => setSelectedTags([])}
       />
+      <ImmutableModal
+        modalOptions={immutableModalOptions}
+        setModalOptions={setImmutableModalOptions}
+        selectedTags={props.tags}
+        setSelectedTags={setSelectedTags}
+        org={props.org}
+        repo={props.repo}
+        loadTags={props.loadTags}
+        repoDetails={props.repoDetails}
+        immutability={immutableModalOptions.immutable}
+        onComplete={() => setSelectedTags([])}
+      />
     </>
   );
 }
@@ -161,7 +201,7 @@ export default function TagActions(props: TagActionsProps) {
 interface TagActionsProps {
   org: string;
   repo: string;
-  tags: string[];
+  tags: Tag[];
   expiration: string;
   manifest: string;
   loadTags: () => void;

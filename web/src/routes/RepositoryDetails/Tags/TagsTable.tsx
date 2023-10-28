@@ -208,7 +208,7 @@ function TagsTableRow(props: RowProps) {
               org={props.org}
               repo={props.repo}
               manifest={tag.manifest_digest}
-              tags={[tag.name]}
+              tags={[tag]}
               expiration={tag.expiration}
               loadTags={props.loadTags}
               repoDetails={props.repoDetails}
