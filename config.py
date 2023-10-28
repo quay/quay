@@ -445,6 +445,7 @@ class DefaultConfig(ImmutableConfig):
     ACTION_LOG_AUDIT_LOGIN_FAILURES = False
     ACTION_LOG_AUDIT_PULL_FAILURES = False
     ACTION_LOG_AUDIT_PUSH_FAILURES = False
+    ACTION_LOG_AUDIT_DELETE_FAILURES = False
 
     # Action logs archive
     ACTION_LOG_ARCHIVE_LOCATION: Optional[str] = "local_us"
