@@ -1,9 +1,9 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {
-  assertHttpCode,
   BulkOperationError,
   ResourceError,
+  assertHttpCode,
   throwIfError,
 } from './ErrorHandling';
 
@@ -243,7 +243,7 @@ export async function deleteLabel(
   }
 }
 
-interface TagLocation {
+export interface TagLocation {
   org: string;
   repo: string;
   tag: string;
@@ -327,14 +327,14 @@ export async function setTagMutability(
   org: string,
   repo: string,
   tag: string,
-  immutability: boolean = false,
+  immutability = false,
 ) {
   try {
     const response: AxiosResponse = await axios.put(
       `/api/v1/repository/${org}/${repo}/tag/${tag}`,
       {
-        immutable: immutability
-      }
+        immutable: immutability,
+      },
     );
     assertHttpCode(response.status, 201);
   } catch (err) {
@@ -346,9 +346,14 @@ export async function setTagMutability(
   }
 }
 
-export async function setTagsMutability(tags: TagLocation[], immutability = false) {
+export async function setTagsMutability(
+  tags: TagLocation[],
+  immutability = false,
+) {
   const responses = await Promise.allSettled(
-    tags.map((tag) => setTagMutability(tag.org, tag.repo, tag.tag, immutability)),
+    tags.map((tag) =>
+      setTagMutability(tag.org, tag.repo, tag.tag, immutability),
+    ),
   );
 
   // Filter failed responses
