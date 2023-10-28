@@ -8081,8 +8081,6 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 
 SELECT pg_catalog.setval('public.logentrykind_id_seq', 107, true);
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 106, true);
-
 
 --
 -- Name: loginservice_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
