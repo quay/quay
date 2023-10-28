@@ -29,14 +29,14 @@ type DbConnectionArgsStruct struct {
 	SslMaxProtocolVersion string `default:""  json:"ssl_max_protocol_version,omitempty" yaml:"ssl_max_protocol_version,omitempty"`
 	SslCrl                string `default:""  json:"sslcrl,omitempty" yaml:"sslcrl,omitempty"`
 	SslCrlDir             string `default:""  json:"sslcrldir,omitempty" yaml:"sslcrldir,omitempty"`
-	SslCompression        int    `default:0  json:"sslcompression,omitempty" yaml:"sslcompression,omitempty"`
+	SslCompression        *int   `default:""  json:"sslcompression,omitempty" yaml:"sslcompression,omitempty"`
 
 	// Network arguments
-	Keepalives         int `default:0 json:"keepalives,omitempty" yaml:"keepalives,omitempty"`
-	KeepalivesIdle     int `default:10 json:"keepalives_idle,omitempty" yaml:"keepalives_idle,omitempty"`
-	KeepalivesInterval int `default:2 json:"keepalives_interval,omitempty" yaml:"keepalives_interval,omitempty"`
-	KeepalivesCount    int `default:3 json:"keepalives_count,omitempty" yaml:"keepalives_count,omitempty"`
-	TcpUserTimeout     int `default:0 json:"tcp_user_timeout,omitempty" yaml:"tcp_user_timeout,omitempty"`
+	Keepalives          *int `default:""  json:"keepalives,omitempty" yaml:"keepalives,omitempty"`
+	Keepalives_Idle     *int `default:""  json:"keepalives_idle,omitempty" yaml:"keepalives_idle,omitempty"`
+	Keepalives_Interval *int `default:""  json:"keepalives_interval,omitempty" yaml:"keepalives_interval,omitempty"`
+	Keepalives_Count    *int `default:""  json:"keepalives_count,omitempty" yaml:"keepalives_count,omitempty"`
+	Tcp_User_Timeout    *int `default:""  json:"tcp_user_timeout,omitempty" yaml:"tcp_user_timeout,omitempty"`
 }
 
 // SslStruct represents the SslStruct config fields
@@ -165,41 +165,66 @@ func NewDbConnectionArgsStruct(fullConfig map[string]interface{}) (*DbConnection
 			return newDbConnectionArgsStruct, errors.New("sslcrldir must be of type string")
 		}
 	}
+
 	if value, ok := fullConfig["sslcompression"]; ok {
-		newDbConnectionArgsStruct.SslCompression, ok = value.(int)
+		val, ok := value.(int)
 		if !ok {
-			return newDbConnectionArgsStruct, errors.New("sslcompression must be of type int")
+			_, ok = value.(int)
+			if !ok {
+				return newDbConnectionArgsStruct, errors.New("sslcompression must be of type int")
+			}
 		}
+		newDbConnectionArgsStruct.SslCompression = &val
 	}
 	if value, ok := fullConfig["keepalives"]; ok {
-		newDbConnectionArgsStruct.Keepalives, ok = value.(int)
+		val, ok := value.(int)
 		if !ok {
-			return newDbConnectionArgsStruct, errors.New("keepalives must be of type int")
+			_, ok = value.(int)
+			if !ok {
+				return newDbConnectionArgsStruct, errors.New("keepalives must be of type int")
+			}
 		}
+		newDbConnectionArgsStruct.Keepalives = &val
 	}
 	if value, ok := fullConfig["keepalives_idle"]; ok {
-		newDbConnectionArgsStruct.KeepalivesIdle, ok = value.(int)
+		val, ok := value.(int)
 		if !ok {
-			return newDbConnectionArgsStruct, errors.New("keepalives_idle must be of type int")
+			_, ok = value.(int)
+			if !ok {
+				return newDbConnectionArgsStruct, errors.New("keepalives_idle must be of type int")
+			}
 		}
+		newDbConnectionArgsStruct.Keepalives_Idle = &val
 	}
 	if value, ok := fullConfig["keepalives_interval"]; ok {
-		newDbConnectionArgsStruct.KeepalivesInterval, ok = value.(int)
+		val, ok := value.(int)
 		if !ok {
-			return newDbConnectionArgsStruct, errors.New("keepalives_interval must be of type int")
+			_, ok = value.(int)
+			if !ok {
+				return newDbConnectionArgsStruct, errors.New("keepalives_interval must be of type int")
+			}
 		}
+		newDbConnectionArgsStruct.Keepalives_Interval = &val
 	}
 	if value, ok := fullConfig["keepalives_count"]; ok {
-		newDbConnectionArgsStruct.KeepalivesCount, ok = value.(int)
+		val, ok := value.(int)
 		if !ok {
-			return newDbConnectionArgsStruct, errors.New("keepalives_count must be of type int")
+			_, ok = value.(int)
+			if !ok {
+				return newDbConnectionArgsStruct, errors.New("keepalives_count must be of type int")
+			}
 		}
+		newDbConnectionArgsStruct.Keepalives_Count = &val
 	}
 	if value, ok := fullConfig["tcp_user_timeout"]; ok {
-		newDbConnectionArgsStruct.TcpUserTimeout, ok = value.(int)
+		val, ok := value.(int)
 		if !ok {
-			return newDbConnectionArgsStruct, errors.New("tcp_user_timeout must be of type int")
+			_, ok = value.(int)
+			if !ok {
+				return newDbConnectionArgsStruct, errors.New("tcp_user_timeout must be of type int")
+			}
 		}
+		newDbConnectionArgsStruct.Tcp_User_Timeout = &val
 	}
 
 	return newDbConnectionArgsStruct, nil
