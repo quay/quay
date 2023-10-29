@@ -1,13 +1,16 @@
-from test.fixtures import *
-
 import pytest
-from data.registry_model import registry_model
 
+from data.model.organization import (
+    get_organization,
+    get_organizations,
+    has_immutable_tags,
+)
 from data.model.repository import create_repository
-from data.model.organization import get_organization, get_organizations, has_immutable_tags
 from data.model.test.test_repository import _create_tag
 from data.model.user import mark_namespace_for_deletion
 from data.queue import WorkQueue
+from data.registry_model import registry_model
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
