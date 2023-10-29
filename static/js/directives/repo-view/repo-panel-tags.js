@@ -19,9 +19,9 @@ angular.module('quay').directive('repoPanelTags', function () {
 
       'getImages': '&getImages'
     },
-    controller: function($scope, $element, $filter, $location, ApiService, UIService,
-                         VulnerabilityService, TableService, Features, StateService) {
-      StateService.updateStateIn($scope, function(state) {
+    controller: function ($scope, $element, $filter, $location, ApiService, UIService,
+      VulnerabilityService, TableService, Features, StateService) {
+      StateService.updateStateIn($scope, function (state) {
         $scope.inReadOnlyMode = state.inReadOnlyMode;
       });
 
@@ -50,7 +50,7 @@ angular.module('quay').directive('repoPanelTags', function () {
       $scope.repoDelegationsInfo = null;
       $scope.cosignedManifests = {};
 
-      var loadRepoSignatures = function() {
+      var loadRepoSignatures = function () {
         if (!$scope.repository || !$scope.repository.trust_enabled) {
           return;
         }
@@ -62,14 +62,14 @@ angular.module('quay').directive('repoPanelTags', function () {
           'repository': $scope.repository.namespace + '/' + $scope.repository.name
         };
 
-        ApiService.getRepoSignatures(null, params).then(function(resp) {
+        ApiService.getRepoSignatures(null, params).then(function (resp) {
           $scope.repoDelegationsInfo = resp;
-        }, function() {
+        }, function () {
           $scope.repoDelegationsInfo = {'error': true};
         });
       };
 
-      var matchCosignSignature = function(tag) {
+      var matchCosignSignature = function (tag) {
         // matches cosign style tags and returns the match with a matching group containing the signed manifest digest
 
         var cosignNamingPattern = new RegExp('^sha256-([a-f0-9]{64})\.sig$');
@@ -77,14 +77,14 @@ angular.module('quay').directive('repoPanelTags', function () {
         return tag.match(cosignNamingPattern);
       }
 
-      var getCosignSignatures = function() {
-        if (!$scope.repositoryTags || !$scope.selectedTags) { return; }
+      var getCosignSignatures = function () {
+        if (!$scope.repositoryTags || !$scope.selectedTags) {return;}
 
         // Build a list of all digests which are signed by cosign
         $scope.cosignedManifests = [];
 
         for (var tag in $scope.repositoryTags) {
-          if (!$scope.repositoryTags.hasOwnProperty(tag)) { continue; }
+          if (!$scope.repositoryTags.hasOwnProperty(tag)) {continue;}
 
           var cosignSignatureTag = matchCosignSignature(tag);
 
@@ -92,21 +92,21 @@ angular.module('quay').directive('repoPanelTags', function () {
             signedManifestDigest = cosignSignatureTag[1]; // cosign signature tags contain the signature of the signed manifest
             $scope.cosignedManifests["sha256:" + signedManifestDigest] = { // map signed manifests to their cosign signature artifact
               'signatureTagName': tag,
-              'signatureManifestDigest':  $scope.repositoryTags[tag].manifest_digest
+              'signatureManifestDigest': $scope.repositoryTags[tag].manifest_digest
             };
           }
         }
       }
 
-      var setTagState = function() {
-        if (!$scope.repositoryTags || !$scope.selectedTags) { return; }
+      var setTagState = function () {
+        if (!$scope.repositoryTags || !$scope.selectedTags) {return;}
 
         // Build a list of all the tags, with extending information.
         var allTags = [];
         for (var tag in $scope.repositoryTags) {
-          if (!$scope.repositoryTags.hasOwnProperty(tag)) { continue; }
+          if (!$scope.repositoryTags.hasOwnProperty(tag)) {continue;}
 
-          if (matchCosignSignature(tag) && !$scope.showCosignSignatures) { continue; }
+          if (matchCosignSignature(tag) && !$scope.showCosignSignatures) {continue;}
 
           var tagData = $scope.repositoryTags[tag];
           var tagInfo = $.extend(tagData, {
@@ -123,7 +123,7 @@ angular.module('quay').directive('repoPanelTags', function () {
 
         // Sort the tags by the predicate and the reverse, and map the information.
         var ordered = TableService.buildOrderedItems(allTags, $scope.options,
-            ['name', 'manifest_digest'], ['last_modified_datetime', 'size']).entries;
+          ['name', 'manifest_digest'], ['last_modified_datetime', 'size']).entries;
 
         var checked = [];
         var manifestMap = {};
@@ -165,8 +165,8 @@ angular.module('quay').directive('repoPanelTags', function () {
         var visibleStartIndex = ($scope.options.page * $scope.tagsPerPage);
         var visibleEndIndex = (($scope.options.page + 1) * $scope.tagsPerPage);
 
-        manifestDigests.sort().map(function(manifest_digest) {
-          if (manifestMap[manifest_digest].length >= 2){
+        manifestDigests.sort().map(function (manifest_digest) {
+          if (manifestMap[manifest_digest].length >= 2) {
             // Create the track entry.
             var manifestIndexRange = manifestIndexMap[manifest_digest];
             var colorIndex = manifestTrackEntries.length;
@@ -249,15 +249,15 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.checkedTags = UIService.createCheckStateController(ordered, 'name');
         $scope.checkedTags.setPage($scope.options.page, $scope.tagsPerPage);
 
-        $scope.checkedTags.listen(function(allChecked, pageChecked) {
-          $scope.selectedTags = allChecked.map(function(tag_info) {
+        $scope.checkedTags.listen(function (allChecked, pageChecked) {
+          $scope.selectedTags = allChecked.map(function (tag_info) {
             return tag_info.name;
           });
 
           $scope.fullPageSelected = ((pageChecked.length == $scope.tagsPerPage) &&
-                                     (allChecked.length != $scope.tags.length));
+            (allChecked.length != $scope.tags.length));
           $scope.allTagsSelected = ((allChecked.length > $scope.tagsPerPage) &&
-                                    (allChecked.length == $scope.tags.length));
+            (allChecked.length == $scope.tags.length));
         });
 
         $scope.checkedTags.setChecked(checked);
@@ -268,29 +268,29 @@ angular.module('quay').directive('repoPanelTags', function () {
       $scope.$watch('options.filter', setTagState);
       $scope.$watch('showCosignSignatures', setTagState);
 
-      $scope.$watch('options.page', function(page) {
+      $scope.$watch('options.page', function (page) {
         if (page != null && $scope.checkedTags) {
-         $scope.checkedTags.setPage(page, $scope.tagsPerPage);
+          $scope.checkedTags.setPage(page, $scope.tagsPerPage);
         }
       });
 
-      $scope.$watch('selectedTags', function(selectedTags) {
-        if (!selectedTags || !$scope.repository || !$scope.manifestMap) { return; }
+      $scope.$watch('selectedTags', function (selectedTags) {
+        if (!selectedTags || !$scope.repository || !$scope.manifestMap) {return;}
 
-        $scope.checkedTags.setChecked(selectedTags.map(function(tag) {
+        $scope.checkedTags.setChecked(selectedTags.map(function (tag) {
           return $scope.repositoryTags[tag];
         }));
       }, true);
 
-      $scope.$watch('repository', function(updatedRepoObject, previousRepoObject) {
+      $scope.$watch('repository', function (updatedRepoObject, previousRepoObject) {
         // Process each of the tags.
         getCosignSignatures();
         setTagState();
         loadRepoSignatures();
       });
 
-      $scope.$watch('repositoryTags', function(newTags, oldTags) {
-        if (newTags === oldTags) { return; }
+      $scope.$watch('repositoryTags', function (newTags, oldTags) {
+        if (newTags === oldTags) {return;}
 
         // Filter out properties that should not cause the tag list to be reset,
         // specifically loading sub-manifests
@@ -304,7 +304,7 @@ angular.module('quay').directive('repoPanelTags', function () {
           let {manifest_list_loading, manifest_list, $$hashKey, _mapped_manifests, ...properties} = value;
           filteredNewTags[key] = properties;
         }
-        if(JSON.stringify(filteredOldTags) === JSON.stringify(filteredNewTags)){return;}
+        if (JSON.stringify(filteredOldTags) === JSON.stringify(filteredNewTags)) {return;}
 
         // Process each of the tags.
         getCosignSignatures();
@@ -312,22 +312,22 @@ angular.module('quay').directive('repoPanelTags', function () {
         loadRepoSignatures();
       }, true);
 
-      $scope.clearSelectedTags = function() {
+      $scope.clearSelectedTags = function () {
         $scope.checkedTags.setChecked([]);
       };
 
-      $scope.selectAllTags = function() {
+      $scope.selectAllTags = function () {
         $scope.checkedTags.setChecked($scope.tags);
       };
 
-      $scope.constrastingColor = function(backgroundColor) {
+      $scope.constrastingColor = function (backgroundColor) {
         // From: https://stackoverflow.com/questions/11068240/what-is-the-most-efficient-way-to-parse-a-css-color-in-javascript
         function parseColor(input) {
           m = input.match(/^#([0-9a-f]{6})$/i)[1];
           return [
-            parseInt(m.substr(0,2),16),
-            parseInt(m.substr(2,2),16),
-            parseInt(m.substr(4,2),16)
+            parseInt(m.substr(0, 2), 16),
+            parseInt(m.substr(2, 2), 16),
+            parseInt(m.substr(4, 2), 16)
           ];
         }
 
@@ -338,12 +338,12 @@ angular.module('quay').directive('repoPanelTags', function () {
         return (o > 150) ? 'black' : 'white';
       };
 
-      $scope.getTrackEntryForIndex = function(it, index) {
+      $scope.getTrackEntryForIndex = function (it, index) {
         index += $scope.options.page * $scope.tagsPerPage;
         return it.entryByIndex[index];
       };
 
-      $scope.trackLineExpandedClass = function(it, index, track_info) {
+      $scope.trackLineExpandedClass = function (it, index, track_info) {
         var entry = $scope.getTrackEntryForIndex(it, index);
         if (!entry) {
           return '';
@@ -366,7 +366,7 @@ angular.module('quay').directive('repoPanelTags', function () {
         return '';
       };
 
-      $scope.trackLineClass = function(it, index) {
+      $scope.trackLineClass = function (it, index) {
         var entry = $scope.getTrackEntryForIndex(it, index);
         if (!entry) {
           return '';
@@ -395,7 +395,7 @@ angular.module('quay').directive('repoPanelTags', function () {
         }
       };
 
-      $scope.tablePredicateClass = function(name, predicate, reverse) {
+      $scope.tablePredicateClass = function (name, predicate, reverse) {
         if (name != predicate) {
           return '';
         }
@@ -403,27 +403,27 @@ angular.module('quay').directive('repoPanelTags', function () {
         return 'current ' + (reverse ? 'reversed' : '');
       };
 
-      $scope.askDeleteTag = function(tag) {
+      $scope.askDeleteTag = function (tag) {
         $scope.tagActionHandler.askDeleteTag(tag);
       };
 
-      $scope.askMakeTagImmutable = function(tag) {
+      $scope.askMakeTagImmutable = function (tag) {
         $scope.tagActionHandler.askMakeTagImmutable(tag);
       };
 
-      $scope.askMakeTagMutable = function(tag) {
+      $scope.askMakeTagMutable = function (tag) {
         $scope.tagActionHandler.askMakeTagMutable(tag);
       };
 
-      $scope.askMakeTagsImmutable = function(tag) {
+      $scope.askMakeTagsImmutable = function (tag) {
         $scope.tagActionHandler.askMakeTagsImmutable(tag);
       };
 
-      $scope.askMakeTagsMutable = function(tag) {
+      $scope.askMakeTagsMutable = function (tag) {
         $scope.tagActionHandler.askMakeTagsMutable(tag);
       };
 
-      $scope.askDeleteMultipleTags = function(tags) {
+      $scope.askDeleteMultipleTags = function (tags) {
         if (tags.length == 1) {
           $scope.askDeleteTag(tags[0].name);
           return;
@@ -432,29 +432,29 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.tagActionHandler.askDeleteMultipleTags(tags);
       };
 
-      $scope.askChangeTagsExpiration = function(tags) {
+      $scope.askChangeTagsExpiration = function (tags) {
         if ($scope.inReadOnlyMode) {
           return;
         }
         $scope.tagActionHandler.askChangeTagsExpiration(tags);
       };
 
-      $scope.askAddTag = function(tag) {
+      $scope.askAddTag = function (tag) {
         if ($scope.inReadOnlyMode) {
           return;
         }
         $scope.tagActionHandler.askAddTag(tag.manifest_digest);
       };
 
-      $scope.showLabelEditor = function(tag) {
+      $scope.showLabelEditor = function (tag) {
         if ($scope.inReadOnlyMode) {
           return;
         }
-        if (!tag.manifest_digest) { return; }
+        if (!tag.manifest_digest) {return;}
         $scope.tagActionHandler.showLabelEditor(tag.manifest_digest);
       };
 
-      $scope.orderBy = function(predicate) {
+      $scope.orderBy = function (predicate) {
         if (predicate == $scope.options.predicate) {
           $scope.options.reverse = !$scope.options.reverse;
           return;
@@ -464,55 +464,55 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.options.predicate = predicate;
       };
 
-      $scope.commitTagFilter = function(tag) {
+      $scope.commitTagFilter = function (tag) {
         var r = new RegExp('^[0-9a-fA-F]{7}$');
         return tag.name.match(r);
       };
 
-      $scope.cosignTagFilter = function(tag) {
+      $scope.cosignTagFilter = function (tag) {
         var r = new RegExp('^sha256-[A-Fa-f0-9]{64}\.sig$');
         return tag.name.match(r);
       };
 
-      $scope.immutableTagFilter = function(tag) {
+      $scope.immutableTagFilter = function (tag) {
         return tag.hasOwnProperty("immutable") && tag.immutable;
       };
 
-      $scope.mutableTagFilter = function(tag) {
-        return !tag.hasOwnProperty("immutable") || (tag.hasOwnProperty("immutable") && tag.immutable == false );
+      $scope.mutableTagFilter = function (tag) {
+        return !tag.hasOwnProperty("immutable") || (tag.hasOwnProperty("immutable") && tag.immutable == false);
       };
-      
-      $scope.signedTagFilter = function(tag) {
+
+      $scope.signedTagFilter = function (tag) {
         return tag.hasOwnProperty("cosign_signature_manifest_digest") && tag.cosign_signature_manifest_digest != null;
       };
 
-      $scope.unsignedTagFilter = function(tag) {
+      $scope.unsignedTagFilter = function (tag) {
         return tag.hasOwnProperty("cosign_signature_manifest_digest") && tag.cosign_signature_manifest_digest == null;
       };
 
-      $scope.allTagFilter = function(tag) {
+      $scope.allTagFilter = function (tag) {
         return true;
       };
 
-      $scope.noTagFilter = function(tag) {
+      $scope.noTagFilter = function (tag) {
         return false;
       };
 
-      $scope.manifestDigestFilter = function(manifest_digest, tag) {
+      $scope.manifestDigestFilter = function (manifest_digest, tag) {
         return tag.manifest_digest == manifest_digest;
       };
 
-      $scope.setTab = function(tab) {
+      $scope.setTab = function (tab) {
         $location.search('tab', tab);
       };
 
-      $scope.selectTrack = function(it) {
-        $scope.checkedTags.checkByFilter(function(tag) {
+      $scope.selectTrack = function (it) {
+        $scope.checkedTags.checkByFilter(function (tag) {
           return $scope.manifestDigestFilter(it.manifest_digest, tag);
         });
       };
 
-      $scope.showHistory = function(checked) {
+      $scope.showHistory = function (checked) {
         if (!checked.length) {
           return;
         }
@@ -521,31 +521,31 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.setTab('history');
       };
 
-      $scope.toggleExpandedView = function() {
+      $scope.toggleExpandedView = function () {
         $scope.expandedView = !$scope.expandedView;
       };
 
-      $scope.setExpanded = function(expanded) {
+      $scope.setExpanded = function (expanded) {
         $scope.expandedView = expanded;
       };
 
-      $scope.toggleCosignSignatureDisplay = function() {
+      $scope.toggleCosignSignatureDisplay = function () {
         $scope.showCosignSignatures = !$scope.showCosignSignatures;
       };
 
-      $scope.getTagNames = function(checked) {
-        var names = checked.map(function(tag) {
+      $scope.getTagNames = function (checked) {
+        var names = checked.map(function (tag) {
           return tag.name;
         });
 
         return names.join(',');
       };
 
-      $scope.handleLabelsChanged = function(manifest_digest) {
+      $scope.handleLabelsChanged = function (manifest_digest) {
         delete $scope.labelCache[manifest_digest];
       };
 
-      $scope.loadManifestList = function(tag) {
+      $scope.loadManifestList = function (tag) {
         if (tag.manifest_list_loading) {
           return;
         }
@@ -557,13 +557,13 @@ angular.module('quay').directive('repoPanelTags', function () {
           'manifestref': tag.manifest_digest
         };
 
-        ApiService.getRepoManifest(null, params).then(function(resp) {
+        ApiService.getRepoManifest(null, params).then(function (resp) {
           tag.manifest_list = JSON.parse(resp['manifest_data']);
           tag.manifest_list_loading = false;
         }, ApiService.errorDisplay('Could not load manifest list contents'))
       };
 
-      $scope.loadManifestLayers = function(manifest) {
+      $scope.loadManifestLayers = function (manifest) {
         if (manifest.layers_loading) {
           return;
         }
@@ -575,19 +575,19 @@ angular.module('quay').directive('repoPanelTags', function () {
           'manifestref': manifest.digest
         };
 
-        ApiService.getRepoManifest(null, params).then(function(resp) {
+        ApiService.getRepoManifest(null, params).then(function (resp) {
           child_manifest = JSON.parse(resp['manifest_data']);
           manifest.layers = child_manifest["layers"];
           manifest.layers_loading = false;
-        }, function() {
+        }, function () {
           // if we fail to get the manifest child for some reason, set layers to
           // an empty array to avoid an infinite loop.
           manifest.layers_loading = false;
           manifest.layers = [];
-	});
+        });
       };
 
-      $scope.manifestsOf = function(tag) {
+      $scope.manifestsOf = function (tag) {
         if (!tag.is_manifest_list) {
           return [];
         }
@@ -597,21 +597,19 @@ angular.module('quay').directive('repoPanelTags', function () {
           return [];
         }
 
-        childrenLayers = tag.manifest_list.manifests.every(function(manifest) {
+        childrenLayers = tag.manifest_list.manifests.every(function (manifest) {
           return manifest.layers
         })
         if (!childrenLayers) {
-          tag.manifest_list.manifests.forEach(function(child_manifest) {
-            if(!child_manifest.layers){
-              $scope.loadManifestLayers(child_manifest);
-            }
+          tag.manifest_list.manifests.forEach(function (child_manifest) {
+            $scope.loadManifestLayers(child_manifest);
           });
           return tag.manifest_list.manifests;
         }
 
         if (!tag._mapped_manifests) {
           // Calculate once and cache to avoid angular digest cycles.
-          tag._mapped_manifests = tag.manifest_list.manifests.map(function(manifest) {
+          tag._mapped_manifests = tag.manifest_list.manifests.map(function (manifest) {
 
             var layers_compressed_size = 0;
             for (var i = 0; i < manifest.layers.length; i++) {

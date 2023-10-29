@@ -16,11 +16,11 @@ angular.module('quay').directive('tagOperationsDialog', function () {
       'tagChanged': '&tagChanged',
       'labelsChanged': '&labelsChanged'
     },
-    controller: function($scope, $element, $timeout, ApiService) {
+    controller: function ($scope, $element, $timeout, ApiService) {
       $scope.addingTag = false;
       $scope.changeTagsExpirationInfo = null;
 
-      var reloadTags = function(page, tags, added, removed) {
+      var reloadTags = function (page, tags, added, removed) {
         var params = {
           'repository': $scope.repository.namespace + '/' + $scope.repository.name,
           'limit': 100,
@@ -28,8 +28,8 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           'onlyActiveTags': true
         };
 
-        ApiService.listRepoTags(null, params).then(function(resp) {
-          var newTags = resp.tags.reduce(function(result, item, index, array) {
+        ApiService.listRepoTags(null, params).then(function (resp) {
+          var newTags = resp.tags.reduce(function (result, item, index, array) {
             var tag_name = item['name'];
             result[tag_name] = item;
             return result;
@@ -42,7 +42,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           } else {
             $scope.repositoryTags = tags;
 
-            $timeout(function() {
+            $timeout(function () {
               $scope.tagChanged({
                 'data': { 'added': added, 'removed': removed }
               });
@@ -51,13 +51,13 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         });
       };
 
-      var markChanged = function(added, removed) {
+      var markChanged = function (added, removed) {
         // Reload the tags
         tags = {};
         reloadTags(1, tags, added, removed);
       };
 
-      $scope.alertOnTagOpsDisabled = function() {
+      $scope.alertOnTagOpsDisabled = function () {
         if ($scope.repository.tag_operations_disabled) {
           $('#tagOperationsDisabledModal').modal('show');
           return true;
@@ -66,7 +66,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         return false;
       };
 
-      $scope.isAnotherImageTag = function(manifest_digest, tag) {
+      $scope.isAnotherImageTag = function (manifest_digest, tag) {
         if (!$scope.repositoryTags) { return; }
 
         var found = $scope.repositoryTags[tag];
@@ -74,7 +74,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         return found.manifest_digest != manifest_digest;
       };
 
-      $scope.isOwnedTag = function(manifest_digest, tag) {
+      $scope.isOwnedTag = function (manifest_digest, tag) {
         if (!$scope.repositoryTags) { return; }
 
         var found = $scope.repositoryTags[tag];
@@ -82,7 +82,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         return found.manifest_digest == manifest_digest;
       };
 
-      $scope.createOrMoveTag = function(manifest_digest, tag) {
+      $scope.createOrMoveTag = function (manifest_digest, tag) {
         if (!$scope.repository.can_write) { return; }
         if ($scope.alertOnTagOpsDisabled()) {
           return;
@@ -100,22 +100,22 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           data['manifest_digest'] = manifest_digest;
         }
 
-        var errorHandler = ApiService.errorDisplay('Cannot create or move tag', function(resp) {
+        var errorHandler = ApiService.errorDisplay('Cannot create or move tag', function (resp) {
           $element.find('#createOrMoveTagModal').modal('hide');
         });
 
-        ApiService.changeTag(data, params).then(function(resp) {
+        ApiService.changeTag(data, params).then(function (resp) {
           $element.find('#createOrMoveTagModal').modal('hide');
           $scope.addingTag = false;
           markChanged([tag], []);
         }, errorHandler);
       };
 
-      $scope.changeTagsExpiration = function(tags, expiration_date, callback) {
+      $scope.changeTagsExpiration = function (tags, expiration_date, callback) {
         if (!$scope.repository.can_write) { return; }
 
         var count = tags.length;
-        var perform = function(index) {
+        var perform = function (index) {
           if (index >= count) {
             callback(true);
             markChanged(tags, []);
@@ -125,7 +125,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           var tag_info = tags[index];
           if (!tag_info) { return; }
 
-          $scope.changeTagExpiration(tag_info.name, expiration_date, function(result) {
+          $scope.changeTagExpiration(tag_info.name, expiration_date, function (result) {
             if (!result) {
               callback(false);
               return;
@@ -138,7 +138,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         perform(0);
       };
 
-      $scope.changeTagExpiration = function(tag, expiration_date, callback) {
+      $scope.changeTagExpiration = function (tag, expiration_date, callback) {
         if (!$scope.repository.can_write) { return; }
 
         var params = {
@@ -151,16 +151,16 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         };
 
         var errorHandler = ApiService.errorDisplay('Cannot change tag expiration', callback);
-        ApiService.changeTag(data, params).then(function() {
+        ApiService.changeTag(data, params).then(function () {
           callback(true);
         }, errorHandler);
       };
 
-      $scope.deleteMultipleTags = function(tags, callback) {
+      $scope.deleteMultipleTags = function (tags, callback) {
         if (!$scope.repository.can_write) { return; }
 
         var count = tags.length;
-        var perform = function(index) {
+        var perform = function (index) {
           if (index >= count) {
             callback(true);
             markChanged([], tags);
@@ -170,7 +170,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           var tag_info = tags[index];
           if (!tag_info) { return; }
 
-          $scope.deleteTag(tag_info.name, function(result) {
+          $scope.deleteTag(tag_info.name, function (result) {
             if (!result) {
               callback(false);
               return;
@@ -183,7 +183,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         perform(0);
       };
 
-      $scope.deleteTag = function(tag, callback, opt_skipmarking) {
+      $scope.deleteTag = function (tag, callback, opt_skipmarking) {
         if (!$scope.repository.can_write) { return; }
 
         var params = {
@@ -192,17 +192,17 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         };
 
         var errorHandler = ApiService.errorDisplay('Cannot delete tag', callback);
-        ApiService.deleteFullTag(null, params).then(function() {
+        ApiService.deleteFullTag(null, params).then(function () {
           callback(true);
           !opt_skipmarking && markChanged([], [tag]);
         }, errorHandler);
       };
 
-      $scope.toggleTagsImmutability = function(tags, immutable, callback) {
+      $scope.toggleTagsImmutability = function (tags, immutable, callback) {
         if (!$scope.repository.can_write) { return; }
 
         var count = tags.length;
-        var perform = function(index) {
+        var perform = function (index) {
           if (index >= count) {
             callback(true);
             markChanged([tags], []);
@@ -212,7 +212,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           var tag_info = tags[index];
           if (!tag_info) { return; }
 
-          $scope.toggleTagImmutability(tag_info.name, immutable, function(result) {
+          $scope.toggleTagImmutability(tag_info.name, immutable, function (result) {
             if (!result) {
               callback(false);
               return;
@@ -224,8 +224,8 @@ angular.module('quay').directive('tagOperationsDialog', function () {
 
         perform(0);
       };
-      
-      $scope.toggleTagImmutability = function(tag, immutable, callback, opt_skipmarking=false) {
+
+      $scope.toggleTagImmutability = function (tag, immutable, callback, opt_skipmarking = false) {
         if (!$scope.repository.can_write) { return; }
 
         var params = {
@@ -238,13 +238,13 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         };
 
         var errorHandler = ApiService.errorDisplay('Cannot set tag to immutable', callback);
-        ApiService.changeTag(data, params).then(function() {
+        ApiService.changeTag(data, params).then(function () {
           callback(true);
           !opt_skipmarking && markChanged([tag], []);
         }, errorHandler);
       };
 
-      $scope.restoreTag = function(tag, manifest_digest, callback) {
+      $scope.restoreTag = function (tag, manifest_digest, callback) {
         if (!$scope.repository.can_write) { return; }
 
         var params = {
@@ -257,13 +257,13 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         };
 
         var errorHandler = ApiService.errorDisplay('Cannot restore tag', callback);
-        ApiService.restoreTag(data, params).then(function() {
+        ApiService.restoreTag(data, params).then(function () {
           callback(true);
           markChanged([], [tag]);
         }, errorHandler);
       };
 
-      $scope.permanentlyDeleteTag = function(tag, manifest_digest, callback){
+      $scope.permanentlyDeleteTag = function (tag, manifest_digest, callback) {
         if ($scope.repository.can_write) {
           var params = {
             'repository': $scope.repository.namespace + '/' + $scope.repository.name,
@@ -275,26 +275,26 @@ angular.module('quay').directive('tagOperationsDialog', function () {
             'is_alive': false,
           };
           var errorHandler = ApiService.errorDisplay('Cannot permanently delete tag', callback);
-          ApiService.removeTagFromTimemachine(data, params).then(function(res){
+          ApiService.removeTagFromTimemachine(data, params).then(function (res) {
             callback(true)
             markChanged([], [tag]);
           }, errorHandler)
         }
       }
 
-      $scope.getFormattedTimespan = function(seconds) {
+      $scope.getFormattedTimespan = function (seconds) {
         if (!seconds) {
           return null;
         }
         return moment.duration(seconds, "seconds").humanize();
       };
 
-      $scope.editLabels = function(info, callback) {
+      $scope.editLabels = function (info, callback) {
         var actions = [];
         var existingMutableLabels = {};
 
         // Build the set of adds and deletes.
-        info['updated_labels'].forEach(function(label) {
+        info['updated_labels'].forEach(function (label) {
           if (label['id']) {
             existingMutableLabels[label['id']] = true;
           } else {
@@ -305,7 +305,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           }
         });
 
-        info['mutable_labels'].forEach(function(label) {
+        info['mutable_labels'].forEach(function (label) {
           if (!existingMutableLabels[label['id']]) {
             actions.push({
               'action': 'delete',
@@ -317,9 +317,9 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         // Execute the add and delete label actions.
         var currentIndex = 0;
 
-        var performAction = function() {
+        var performAction = function () {
           if (currentIndex >= actions.length) {
-            $scope.labelsChanged({'manifest_digest': info['manifest_digest']});
+            $scope.labelsChanged({ 'manifest_digest': info['manifest_digest'] });
             callback(true);
             return;
           }
@@ -361,16 +361,16 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         performAction();
       };
 
-      var filterLabels = function(labels, readOnly) {
+      var filterLabels = function (labels, readOnly) {
         if (!labels) { return []; }
 
-        return labels.filter(function(label) {
+        return labels.filter(function (label) {
           return (label['source_type'] != 'api') == readOnly;
         });
       };
 
       $scope.actionHandler = {
-        'askMakeTagImmutable': function(tag) {
+        'askMakeTagImmutable': function (tag) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -380,7 +380,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askMakeTagMutable': function(tag) {
+        'askMakeTagMutable': function (tag) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -390,7 +390,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askMakeTagsImmutable': function(tags) {
+        'askMakeTagsImmutable': function (tags) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -400,7 +400,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askMakeTagsMutable': function(tags) {
+        'askMakeTagsMutable': function (tags) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -410,7 +410,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askDeleteTag': function(tag) {
+        'askDeleteTag': function (tag) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -420,7 +420,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askDeleteMultipleTags': function(tags) {
+        'askDeleteMultipleTags': function (tags) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -430,7 +430,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askAddTag': function(manifest_digest) {
+        'askAddTag': function (manifest_digest) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -442,7 +442,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           $element.find('#createOrMoveTagModal').modal('show');
         },
 
-        'showLabelEditor': function(manifest_digest) {
+        'showLabelEditor': function (manifest_digest) {
           $scope.editLabelsInfo = {
             'manifest_digest': manifest_digest,
             'loading': true
@@ -453,7 +453,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
             'manifestref': manifest_digest
           };
 
-          ApiService.listManifestLabels(null, params).then(function(resp) {
+          ApiService.listManifestLabels(null, params).then(function (resp) {
             var labels = resp['labels'];
 
             $scope.editLabelsInfo['readonly_labels'] = filterLabels(labels, true);
@@ -465,7 +465,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           }, ApiService.errorDisplay('Could not load manifest labels'));
         },
 
-        'askChangeTagsExpiration': function(tags) {
+        'askChangeTagsExpiration': function (tags) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -478,7 +478,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askRestoreTag': function(tag, manifest_digest) {
+        'askRestoreTag': function (tag, manifest_digest) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
@@ -491,7 +491,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           $element.find('#restoreTagModal').modal('show');
         },
 
-        'askPermanentlyDeleteTag': function(tag, manifest_digest) {
+        'askPermanentlyDeleteTag': function (tag, manifest_digest) {
           if ($scope.alertOnTagOpsDisabled()) {
             console.log("alertOnTagOpsDisabled")
             return;
