@@ -1,402 +1,380 @@
 <div class="repo-panel-tags-element">
   <div class="tab-header-controls">
     <div class="btn-group btn-group-sm">
-      <button class="btn" ng-class="!expandedView ? 'btn-primary active' : 'btn-default'"
-              ng-click="setExpanded(false)">
+      <button class="btn" ng-class="!expandedView ? 'btn-primary active' : 'btn-default'" ng-click="setExpanded(false)">
         Compact
       </button>
-      <button class="btn" ng-class="expandedView ? 'btn-info active' : 'btn-default'"
-              ng-click="setExpanded(true)">
+      <button class="btn" ng-class="expandedView ? 'btn-info active' : 'btn-default'" ng-click="setExpanded(true)">
         Expanded
       </button>
     </div>
 
     <div class="btn-group btn-group-sm">
       <button class="btn" ng-class="!showCosignSignatures ? 'btn-default' : 'btn-primary active'"
-          ng-click="toggleCosignSignatureDisplay()">
+        ng-click="toggleCosignSignatureDisplay()">
         {{ !showCosignSignatures ? 'Show Signatures' : 'Hide Signatures' }}
       </button>
     </div>
   </div>
 
- <h3 class="tab-header"><span class="hidden-xs">Repository </span>Tags</h3>
+  <h3 class="tab-header"><span class="hidden-xs">Repository </span>Tags</h3>
 
- <div class="co-check-bar">
-   <span class="cor-checkable-menu" controller="checkedTags" filter="tags">
-     <div class="cor-checkable-menu-item" item-filter="allTagFilter(item)">
-      <i class="fa fa-check-square-o"></i>All Tags
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="noTagFilter(item)">
-      <i class="fa fa-square-o"></i>No Tags
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="immutableTagFilter(item)">
-      <i class="fa immutable-lock"></i>Immutable Tags
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="mutableTagFilter(item)">
-      <i class="fa mutable-lock"></i>Mutable Tags
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="signedTagFilter(item)">
-      <i class="fa fa-shield"></i>Signed Tags
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="unsignedTagFilter(item)">
-      <i class="fa ci-shield-invalid-outline"></i>Unsigned Tags
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="commitTagFilter(item)">
-      <i class="fa fa-git"></i>Commit SHAs
-     </div>
-     <div class="cor-checkable-menu-item" item-filter="cosignTagFilter(item)">
-      <i class="fa fa-pencil-square"></i>Cosign Signatures
-     </div>
+  <div class="co-check-bar">
+    <span class="cor-checkable-menu" controller="checkedTags" filter="tags">
+      <div class="cor-checkable-menu-item" item-filter="allTagFilter(item)">
+        <i class="fa fa-check-square-o"></i>All Tags
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="noTagFilter(item)">
+        <i class="fa fa-square-o"></i>No Tags
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="immutableTagFilter(item)">
+        <i class="fa immutable-lock"></i>Immutable Tags
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="mutableTagFilter(item)">
+        <i class="fa mutable-lock"></i>Mutable Tags
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="signedTagFilter(item)">
+        <i class="fa fa-shield"></i>Signed Tags
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="unsignedTagFilter(item)">
+        <i class="fa ci-shield-invalid-outline"></i>Unsigned Tags
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="commitTagFilter(item)">
+        <i class="fa fa-git"></i>Commit SHAs
+      </div>
+      <div class="cor-checkable-menu-item" item-filter="cosignTagFilter(item)">
+        <i class="fa fa-pencil-square"></i>Cosign Signatures
+      </div>
 
-     <div class="cor-checkable-menu-item" item-filter="manifestDigestFilter(mt.manifest_digest, item)"
-          ng-repeat="mt in manifestTrackEntries" ng-if="::it.visible">
-      <i class="fa fa-circle-o" ng-style="::{'color': ,t.color}"></i>
-     </div>
-   </span>
+      <div class="cor-checkable-menu-item" item-filter="manifestDigestFilter(mt.manifest_digest, item)"
+        ng-repeat="mt in manifestTrackEntries" ng-if="::it.visible">
+        <i class="fa fa-circle-o" ng-style="::{'color': ,t.color}"></i>
+      </div>
+    </span>
 
-   <span class="co-checked-actions" ng-if="checkedTags.checked.length">
-    <div class="dropdown">
-      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
-        <i class="fa fa-cog"></i>
-        Actions
-        <span class="caret"></span>
-      </button>
-      <ul class="dropdown-menu" role="menu">
-        <li>
-          <a ng-click="showHistory(checkedTags.checked)">
-            <i class="fa fa-history"></i><span class="text">View Tags History</span>
-          </a>
-        </li>
-        <li ng-if="repository.can_write && !inReadOnlyMode">
-          <a ng-click="askMakeTagsImmutable(checkedTags.checked)"
-             ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-            <i class="fa immutable-lock"></i><span class="text">Make tags immutable</span>
-          </a>
-        </li>
-        <li ng-if="repository.can_write && !inReadOnlyMode">
-          <a ng-click="askMakeTagsMutable(checkedTags.checked)"
-             ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-            <i class="fa mutable-lock"></i><span class="text">Make tags mutable</span>
-          </a>
-        </li>
-        <li ng-if="repository.can_write && !inReadOnlyMode">
-          <a ng-click="askDeleteMultipleTags(checkedTags.checked)"
-             ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-            <i class="fa fa-times"></i><span class="text">Delete Tags</span>
-          </a>
-        </li>
-        <li ng-if="repository.can_write && !inReadOnlyMode">
-          <a ng-click="askChangeTagsExpiration(checkedTags.checked)"
-             ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-            <i class="fa fa-clock-o"></i><span class="text">Change Tags Expiration</span>
-          </a>
-        </li>
-      </ul>
-    </div>
-   </span>
+    <span class="co-checked-actions" ng-if="checkedTags.checked.length">
+      <div class="dropdown">
+        <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+          <i class="fa fa-cog"></i>
+          Actions
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" role="menu">
+          <li>
+            <a ng-click="showHistory(checkedTags.checked)">
+              <i class="fa fa-history"></i><span class="text">View Tags History</span>
+            </a>
+          </li>
+          <li ng-if="repository.can_write && !inReadOnlyMode">
+            <a ng-click="askMakeTagsImmutable(checkedTags.checked)"
+              ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+              <i class="fa immutable-lock"></i><span class="text">Make tags immutable</span>
+            </a>
+          </li>
+          <li ng-if="repository.can_write && !inReadOnlyMode">
+            <a ng-click="askMakeTagsMutable(checkedTags.checked)"
+              ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+              <i class="fa mutable-lock"></i><span class="text">Make tags mutable</span>
+            </a>
+          </li>
+          <li ng-if="repository.can_write && !inReadOnlyMode">
+            <a ng-click="askDeleteMultipleTags(checkedTags.checked)"
+              ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+              <i class="fa fa-times"></i><span class="text">Delete Tags</span>
+            </a>
+          </li>
+          <li ng-if="repository.can_write && !inReadOnlyMode">
+            <a ng-click="askChangeTagsExpiration(checkedTags.checked)"
+              ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+              <i class="fa fa-clock-o"></i><span class="text">Change Tags Expiration</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </span>
 
-   <span class="co-filter-box">
-    <span class="page-controls" total-count="tags.length" current-page="options.page" page-size="tagsPerPage"></span>
-    <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Tags...">
-   </span>
- </div>
+    <span class="co-filter-box">
+      <span class="page-controls" total-count="tags.length" current-page="options.page" page-size="tagsPerPage"></span>
+      <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Tags...">
+    </span>
+  </div>
 
- <div class="co-alert co-alert-info" ng-if="allTagsSelected && !fullPageSelected">
-   All <strong>{{ tags.length }}</strong> visible tags are selected.
-   <a ng-click="clearSelectedTags()">Clear selection</a>.
- </div>
+  <div class="co-alert co-alert-info" ng-if="allTagsSelected && !fullPageSelected">
+    All <strong>{{ tags.length }}</strong> visible tags are selected.
+    <a ng-click="clearSelectedTags()">Clear selection</a>.
+  </div>
 
- <div class="co-alert co-alert-info" ng-if="fullPageSelected">
-   All <strong>{{ tagsPerPage }}</strong> tags on this page are selected.
-   <a ng-click="selectAllTags()">Select all {{ tags.length }} tags currently visible</a>.
- </div>
+  <div class="co-alert co-alert-info" ng-if="fullPageSelected">
+    All <strong>{{ tagsPerPage }}</strong> tags on this page are selected.
+    <a ng-click="selectAllTags()">Select all {{ tags.length }} tags currently visible</a>.
+  </div>
 
- <div class="cor-loader" ng-show="!isEnabled"></div>
+  <div class="cor-loader" ng-show="!isEnabled"></div>
 
- <table class="co-table co-fixed-table" id="tagsTable" ng-if="isEnabled" style="margin-top: 20px;">
-   <thead>
-    <td class="checkbox-col"></td>
-    <td ng-class="tablePredicateClass('name', options.predicate, options.reverse)">
-      <a ng-click="orderBy('name')">Tag</a>
-    </td>
-    <td class="hidden-xs unorderable-col"
-        style="width: 46px;"
-        quay-require="['SIGNING']"
+  <table class="co-table co-fixed-table" id="tagsTable" ng-if="isEnabled" style="margin-top: 20px;">
+    <thead>
+      <td class="checkbox-col"></td>
+      <td ng-class="tablePredicateClass('name', options.predicate, options.reverse)">
+        <a ng-click="orderBy('name')">Tag</a>
+      </td>
+      <td class="hidden-xs unorderable-col" style="width: 46px;" quay-require="['SIGNING']"
         ng-if="repository.trust_enabled">Sign
-    </td>
-    <td class="hidden-xs"
-        ng-class="tablePredicateClass('last_modified_datetime', options.predicate, options.reverse)"
+      </td>
+      <td class="hidden-xs" ng-class="tablePredicateClass('last_modified_datetime', options.predicate, options.reverse)"
         style="width: 140px;">
-      <a ng-click="orderBy('last_modified_datetime')">Last Modified</a>
-    </td>
-    <td class="hidden-sm hidden-xs"
-        style="width: 200px;"
-        quay-require="['SECURITY_SCANNER']">
+        <a ng-click="orderBy('last_modified_datetime')">Last Modified</a>
+      </td>
+      <td class="hidden-sm hidden-xs" style="width: 200px;" quay-require="['SECURITY_SCANNER']">
         Security Scan
-    </td>
-    <td class="hidden-xs"
-        ng-class="tablePredicateClass('size', options.predicate, options.reverse)"
+      </td>
+      <td class="hidden-xs" ng-class="tablePredicateClass('size', options.predicate, options.reverse)"
         style="width: 90px;">
-      <a ng-click="orderBy('size')" data-title="The compressed size of the tag's image" data-container="body" bs-tooltip>Size</a>
-    </td>
-    <td class="hidden-sm hidden-xs hidden-md"
-        ng-class="tablePredicateClass('expiration_date', options.predicate, options.reverse)"
-        style="width: 140px;">
-      <a ng-click="orderBy('expiration_date')" data-title="When the tag expires" data-container="body" bs-tooltip>Expires</a>
-    </td>
-    <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
+        <a ng-click="orderBy('size')" data-title="The compressed size of the tag's image" data-container="body"
+          bs-tooltip>Size</a>
+      </td>
+      <td class="hidden-sm hidden-xs hidden-md"
+        ng-class="tablePredicateClass('expiration_date', options.predicate, options.reverse)" style="width: 140px;">
+        <a ng-click="orderBy('expiration_date')" data-title="When the tag expires" data-container="body"
+          bs-tooltip>Expires</a>
+      </td>
+      <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
         style="width: 20px; position: relative;">
-    </td>
-    <td class="hidden-xs hidden-sm"
-        ng-class="tablePredicateClass('manifest_digest', options.predicate, options.reverse)"
-        style="width: 140px;">
-      <a ng-click="orderBy('manifest_digest')">Manifest</a>
-    </td>
-    <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+      </td>
+      <td class="hidden-xs hidden-sm"
+        ng-class="tablePredicateClass('manifest_digest', options.predicate, options.reverse)" style="width: 140px;">
+        <a ng-click="orderBy('manifest_digest')">Manifest</a>
+      </td>
+      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
         ng-if="manifestTracks.length <= maxTrackCount"></td>
-    <td class="options-col"></td>
-    <td class="options-col"></td>
-    <td class="hidden-xs hidden-sm" style="width: 4px"></td>
-   </thead>
+      <td class="options-col"></td>
+      <td class="options-col"></td>
+      <td class="hidden-xs hidden-sm" style="width: 4px"></td>
+    </thead>
 
-   <tbody class="co-checkable-row"
-       ng-repeat="tag in tags | slice:(tagsPerPage * options.page):(tagsPerPage * (options.page + 1))"
-       ng-class="checkedTags.isChecked(tag, checkedTags.checked) ? 'checked' : ''"
-       bindonce>
-    <tr ng-class="expandedView ? 'expanded-view': ''">
-      <td><span class="cor-checkable-item" controller="checkedTags" item="tag"></span></td>
-      <td class="co-flowing-col">
-        <span class="tag-span">
-          <span bo-text="tag.name"></span>
-          <span class="signing-valid" ng-if="::tag.cosign_signature_tag">
-            <i class="fa shield-icon ci-shield-check-full" data-title="This tag has been signed via cosign." bs-tooltip></i>
+    <tbody class="co-checkable-row"
+      ng-repeat="tag in tags | slice:(tagsPerPage * options.page):(tagsPerPage * (options.page + 1))"
+      ng-class="checkedTags.isChecked(tag, checkedTags.checked) ? 'checked' : ''" bindonce>
+      <tr ng-class="expandedView ? 'expanded-view': ''">
+        <td><span class="cor-checkable-item" controller="checkedTags" item="tag"></span></td>
+        <td class="co-flowing-col">
+          <span class="tag-span">
+            <span bo-text="tag.name"></span>
+            <span class="signing-valid" ng-if="::tag.cosign_signature_tag">
+              <i class="fa shield-icon ci-shield-check-full" data-title="This tag has been signed via cosign."
+                bs-tooltip></i>
+            </span>
+            <span ng-if="::tag.immutable">
+              <i class="fa immutable-lock" data-title="This tag is immutable." bs-tooltip></i>
+            </span>
           </span>
-          <span ng-if="::tag.immutable">
-            <i class="fa immutable-lock" data-title="This tag is immutable." bs-tooltip></i>
+          <span class="manifest-list-icons" bo-if="tag.is_manifest_list">
+            <i class="manifest-list-manifest-icon fa fa-{{ manifest.os }}" ng-repeat="manifest in manifestsOf(tag)"
+              data-title="{{ manifest.description }}" bs-tooltip></i>
           </span>
-        </span>
-        <span class="manifest-list-icons" bo-if="tag.is_manifest_list">
-          <i class="manifest-list-manifest-icon fa fa-{{ manifest.os }}"
-             ng-repeat="manifest in manifestsOf(tag)"
-             data-title="{{ manifest.description }}"
-             bs-tooltip></i>
-        </span>
-      </td>
-      <td class="signing-col hidden-xs"
-          quay-require="['SIGNING']"
-          ng-if="repository.trust_enabled">
-        <tag-signing-display tag="tag" delegations="repoDelegationsInfo" compact="true"></tag-signing-display>
-      </td>
+        </td>
+        <td class="signing-col hidden-xs" quay-require="['SIGNING']" ng-if="repository.trust_enabled">
+          <tag-signing-display tag="tag" delegations="repoDelegationsInfo" compact="true"></tag-signing-display>
+        </td>
 
-      <!-- Last Modified -->
-      <td class="hidden-xs">
-        <time-ago datetime="tag.last_modified"></time-ago>
-      </td>
+        <!-- Last Modified -->
+        <td class="hidden-xs">
+          <time-ago datetime="tag.last_modified"></time-ago>
+        </td>
 
-      <!-- Security scanning -->
-      <td quay-require="['SECURITY_SCANNER']" class="security-scan-col hidden-sm hidden-xs">
-        <!-- Manifest List -->
-        <span class="secscan-manifestlist" ng-if="::tag.is_manifest_list"
-              ng-click="setExpanded(true)"
-              data-title="The tag points to a list of manifests. Click 'Expanded' to view."
-              bs-tooltip>
-          See Child Manifests
-        </span>
+        <!-- Security scanning -->
+        <td quay-require="['SECURITY_SCANNER']" class="security-scan-col hidden-sm hidden-xs">
+          <!-- Manifest List -->
+          <span class="secscan-manifestlist" ng-if="::tag.is_manifest_list" ng-click="setExpanded(true)"
+            data-title="The tag points to a list of manifests. Click 'Expanded' to view." bs-tooltip>
+            See Child Manifests
+          </span>
 
-        <!-- Manifest security view -->
-        <manifest-security-view repository="::repository" manifest-digest="::tag.manifest_digest"
-                                ng-if="::(tag.manifest_digest && !tag.is_manifest_list)">
-        </manifest-security-view>
-      </td>
+          <!-- Manifest security view -->
+          <manifest-security-view repository="::repository" manifest-digest="::tag.manifest_digest"
+            ng-if="::(tag.manifest_digest && !tag.is_manifest_list)">
+          </manifest-security-view>
+        </td>
 
-      <!-- Size -->
-      <td class="hidden-xs">
-        <span bo-text="tag.size | bytes" bo-if="!tag.is_manifest_list"></span>
-        <span bo-if="tag.is_manifest_list">N/A</span>
-      </td>
+        <!-- Size -->
+        <td class="hidden-xs">
+          <span bo-text="tag.size | bytes" bo-if="!tag.is_manifest_list"></span>
+          <span bo-if="tag.is_manifest_list">N/A</span>
+        </td>
 
-      <!-- Expiration -->
-      <td class="hidden-xs hidden-sm hidden-md">
-        <a ng-click="askChangeTagsExpiration([tag])"
-           ng-if="!repository.tag_operations_disabled && repository.can_write">
-          <expiration-status-view expiration-date="tag.expiration_date"></expiration-status-view>
-        </a>
-        <expiration-status-view expiration-date="tag.expiration_date" ng-if="repository.tag_operations_disabled || !repository.can_write"></expiration-status-view>
-      </td>
+        <!-- Expiration -->
+        <td class="hidden-xs hidden-sm hidden-md">
+          <a ng-click="askChangeTagsExpiration([tag])"
+            ng-if="!repository.tag_operations_disabled && repository.can_write">
+            <expiration-status-view expiration-date="tag.expiration_date"></expiration-status-view>
+          </a>
+          <expiration-status-view expiration-date="tag.expiration_date"
+            ng-if="repository.tag_operations_disabled || !repository.can_write"></expiration-status-view>
+        </td>
 
-      <!-- Manifest link -->
-      <td class="hidden-xs hidden-sm hidden-md image-track"
-          ng-if="manifestTracks.length > maxTrackCount">
-        <span class="image-track-filled-dot"
-              ng-if="::trackEntryForManifest[tag.manifest_digest]"
-              ng-style="::{'backgroundColor': trackEntryForManifest[tag.manifest_digest].color}"
-              ng-click="::selectTrack(trackEntryForManifest[tag.manifest_digest])"
-              data-template-url="/static/directives/repo-view/image-tag-tooltip.html"
-              data-placement="left"
-              data-trigger="hover"
-              data-animation="am-flip-x"
-              data-auto-close="1"
-              bs-popover></span>
-      </td>
-      <td class="hidden-xs hidden-sm image-id-col">
-        <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
-      </td>
-      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+        <!-- Manifest link -->
+        <td class="hidden-xs hidden-sm hidden-md image-track" ng-if="manifestTracks.length > maxTrackCount">
+          <span class="image-track-filled-dot" ng-if="::trackEntryForManifest[tag.manifest_digest]"
+            ng-style="::{'backgroundColor': trackEntryForManifest[tag.manifest_digest].color}"
+            ng-click="::selectTrack(trackEntryForManifest[tag.manifest_digest])"
+            data-template-url="/static/directives/repo-view/image-tag-tooltip.html" data-placement="left"
+            data-trigger="hover" data-animation="am-flip-x" data-auto-close="1" bs-popover></span>
+        </td>
+        <td class="hidden-xs hidden-sm image-id-col">
+          <manifest-link repository="repository" image-id="tag.image_id"
+            manifest-digest="tag.manifest_digest"></manifest-link>
+        </td>
+        <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
           ng-if="manifestTracks.length <= maxTrackCount">
-        <span class="image-track-dot"
-              ng-if="::mt.entryByManifestDigest[tag.manifest_digest]"
-              ng-style="::{'borderColor': trackEntryForManifest[tag.manifest_digest].color}"
-              ng-click="::selectTrack(trackEntryForManifest[tag.manifest_digest])"
-              data-template-url="/static/directives/repo-view/manifest-tag-tooltip.html"
-              data-placement="left"
-              data-trigger="hover"
-              data-animation="am-flip-x"
-              data-auto-close="1"
-              bs-popover></span>
-        <span class="image-track-line"
-              ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$index)"
-              ng-class="::trackLineClass(mt, $parent.$parent.$parent.$index)"
-              ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$index).color}"></span>
-      </td>
-      <td class="options-col">
-        <i class="fa fa-download" data-title="Fetch Tag" bs-tooltip
-           ng-click="fetchTagActionHandler.askFetchTag(tag)">
-        </i>
-      </td>
-      <td class="options-col">
-        <span ng-if="repository.can_write && !inReadOnlyMode">
-          <span class="cor-options-menu">
-            <span class="cor-option" option-click="askAddTag(tag)"
-                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-              <i class="fa fa-plus"></i> Add New Tag
-            </span>
-            <span ng-if="!tag.immutable" class="cor-option" option-click="showLabelEditor(tag)"
-                  ng-if="tag.manifest_digest">
-              <i class="fa fa-tags"></i> Edit Labels
-            </span>
-            <span ng-if="!tag.immutable" class="cor-option" option-click="askMakeTagImmutable(tag.name)"
-                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-              <i class="fa immutable-lock"></i> Make immutable
-            </span>
-            <span ng-if="tag.immutable" class="cor-option" option-click="askMakeTagMutable(tag.name)"
-                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-              <i class="fa mutable-lock"></i> Make mutable
-            </span>
-            <span ng-if="!tag.immutable" class="cor-option" option-click="askDeleteTag(tag.name)"
-                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-              <i class="fa fa-times"></i> Delete Tag
-            </span>
-            <span ng-if="!tag.immutable" class="cor-option" option-click="askChangeTagsExpiration([tag])"
-                  ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
-              <i class="fa fa-clock-o"></i> Change Expiration
+          <span class="image-track-dot" ng-if="::mt.entryByManifestDigest[tag.manifest_digest]"
+            ng-style="::{'borderColor': trackEntryForManifest[tag.manifest_digest].color}"
+            ng-click="::selectTrack(trackEntryForManifest[tag.manifest_digest])"
+            data-template-url="/static/directives/repo-view/manifest-tag-tooltip.html" data-placement="left"
+            data-trigger="hover" data-animation="am-flip-x" data-auto-close="1" bs-popover></span>
+          <span class="image-track-line" ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$index)"
+            ng-class="::trackLineClass(mt, $parent.$parent.$parent.$index)"
+            ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$index).color}"></span>
+        </td>
+        <td class="options-col">
+          <i class="fa fa-download" data-title="Fetch Tag" bs-tooltip ng-click="fetchTagActionHandler.askFetchTag(tag)">
+          </i>
+        </td>
+        <td class="options-col">
+          <span ng-if="repository.can_write && !inReadOnlyMode">
+            <span class="cor-options-menu">
+              <span class="cor-option" option-click="askAddTag(tag)"
+                ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+                <i class="fa fa-plus"></i> Add New Tag
+              </span>
+              <span ng-if="!tag.immutable" class="cor-option" option-click="showLabelEditor(tag)"
+                ng-if="tag.manifest_digest">
+                <i class="fa fa-tags"></i> Edit Labels
+              </span>
+              <span ng-if="!tag.immutable" class="cor-option" option-click="askMakeTagImmutable(tag.name)"
+                ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+                <i class="fa immutable-lock"></i> Make immutable
+              </span>
+              <span ng-if="tag.immutable" class="cor-option" option-click="askMakeTagMutable(tag.name)"
+                ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+                <i class="fa mutable-lock"></i> Make mutable
+              </span>
+              <span ng-if="!tag.immutable" class="cor-option" option-click="askDeleteTag(tag.name)"
+                ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+                <i class="fa fa-times"></i> Delete Tag
+              </span>
+              <span ng-if="!tag.immutable" class="cor-option" option-click="askChangeTagsExpiration([tag])"
+                ng-class="repository.tag_operations_disabled ? 'disabled-option' : ''">
+                <i class="fa fa-clock-o"></i> Change Expiration
+              </span>
             </span>
           </span>
-        </span>
-      </td>
-      <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
-    </tr>
+        </td>
+        <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
+      </tr>
 
-    <!-- Manifest List Expanded View -->
-    <tr class="manifest-list-view" ng-if="expandedView && tag.is_manifest_list && !tag.manifest_list">
-      <td colspan="{{5 + (repository.trust_enabled ? 1 : 0) + (Features.SECURITY_SCANNER ? 1 : 0) }}">
-        <div class="cor-loader"></div>
-      </td>
-    </tr>
+      <!-- Manifest List Expanded View -->
+      <tr class="manifest-list-view" ng-if="expandedView && tag.is_manifest_list && !tag.manifest_list">
+        <td colspan="{{5 + (repository.trust_enabled ? 1 : 0) + (Features.SECURITY_SCANNER ? 1 : 0) }}">
+          <div class="cor-loader"></div>
+        </td>
+      </tr>
 
-    <tr class="manifest-list-view" ng-repeat="manifest in manifestsOf(tag)"
+      <tr class="manifest-list-view" ng-repeat="manifest in manifestsOf(tag)"
         ng-if="expandedView && tag.is_manifest_list && tag.manifest_list">
-      <td class="checkbox-col"></td>
-      <td colspan="2">
-        <i class="manifest-list-manifest-icon fa fa-{{ manifest.os }}"></i>
-        {{ manifest.description }}
-      </td>
+        <td class="checkbox-col"></td>
+        <td colspan="2">
+          <i class="manifest-list-manifest-icon fa fa-{{ manifest.os }}"></i>
+          {{ manifest.description }}
+        </td>
 
-      <!-- Security scanning -->
-      <td quay-require="['SECURITY_SCANNER']" class="security-scan-col hidden-sm hidden-xs">
-        <manifest-security-view repository="::repository" manifest-digest="::manifest.digest">
-        </manifest-security-view>
-      </td>
+        <!-- Security scanning -->
+        <td quay-require="['SECURITY_SCANNER']" class="security-scan-col hidden-sm hidden-xs">
+          <manifest-security-view repository="::repository" manifest-digest="::manifest.digest">
+          </manifest-security-view>
+        </td>
 
-      <!-- Size -->
-      <td class="hidden-xs">
-        <span bo-text="manifest.layers_compressed_size | bytes"></span>
-      </td>
+        <!-- Size -->
+        <td class="hidden-xs">
+          <span bo-text="manifest.layers_compressed_size | bytes"></span>
+        </td>
 
-      <td colspan="1" class="hidden-xs hidden-sm hidden-md"></td>
+        <td colspan="1" class="hidden-xs hidden-sm hidden-md"></td>
 
-      <td class="hidden-xs hidden-sm image-id-col">
+        <td class="hidden-xs hidden-sm image-id-col">
           <manifest-link repository="repository" manifest-digest="manifest.digest"></manifest-link>
-      </td>
+        </td>
 
-      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+        <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
           ng-if="manifestTracks.length <= maxTrackCount" bindonce>
-        <span class="image-track-line"
-          ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$parent.$parent.$index)"
-          ng-class="::trackLineExpandedClass(mt, $parent.$parent.$parent.$parent.$parent.$index)"
-          ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$parent.$parent.$index).color}"></span>
-      </td>
+          <span class="image-track-line" ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$parent.$parent.$index)"
+            ng-class="::trackLineExpandedClass(mt, $parent.$parent.$parent.$parent.$parent.$index)"
+            ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$parent.$parent.$index).color}"></span>
+        </td>
 
-      <td class="options-col"></td>
-      <td class="options-col"></td>
-      <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
-    </tr>
+        <td class="options-col"></td>
+        <td class="options-col"></td>
+        <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
+      </tr>
 
-    <!-- Expanded View -->
-    <tr ng-if="expandedView" class="expanded-viewport" ng-class="{'manifest-list': tag.is_manifest_list}">
-      <td class="checkbox-col"></td>
-      <td class="labels-col" colspan="{{5 + (repository.trust_enabled ? 1 : 0) + (Features.SECURITY_SCANNER ? 1 : 0) }}">
-        <!-- Image ID -->
-        <div class="image-id-row">
-          <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
-        </div>
-        
-        <!-- Immutable -->
-        <div class="immutable-row" ng-if="tag.immutable">
-          <span data-title="The tag cannot be overwritten, deleted or expire. Labels cannot be changed." class="immutable-element" bs-tooltip>Tag is immutable</span>
-        </div>
+      <!-- Expanded View -->
+      <tr ng-if="expandedView" class="expanded-viewport" ng-class="{'manifest-list': tag.is_manifest_list}">
+        <td class="checkbox-col"></td>
+        <td class="labels-col"
+          colspan="{{5 + (repository.trust_enabled ? 1 : 0) + (Features.SECURITY_SCANNER ? 1 : 0) }}">
+          <!-- Image ID -->
+          <div class="image-id-row">
+            <manifest-link repository="repository" image-id="tag.image_id"
+              manifest-digest="tag.manifest_digest"></manifest-link>
+          </div>
 
-        <!-- Labels -->
-        <div class="manifest-label-list" repository="repository"
-             manifest-digest="tag.manifest_digest" cache="labelCache"></div>
+          <!-- Immutable -->
+          <div class="immutable-row" ng-if="tag.immutable">
+            <span data-title="The tag cannot be overwritten, deleted or expire. Labels cannot be changed."
+              class="immutable-element" bs-tooltip>Tag is immutable</span>
+          </div>
 
-        <!-- Cosign Signatures -->
-        <div class="cosign-signature-row" ng-if="tag.cosign_signature_tag">
-          <cosign-link repository="repository" image-id="tag.image_id" manifest-digest="tag.cosign_signature_manifest_digest" tag-name="tag.cosign_signature_tag" tag-name="tag.cosign_signature_tag" signed-image-id="tag.image_id" signed-manifest-digest="tag.manifest_digest"></cosign-link>
-        </div>
+          <!-- Labels -->
+          <div class="manifest-label-list" repository="repository" manifest-digest="tag.manifest_digest"
+            cache="labelCache"></div>
 
-        <!-- Delegations -->
-        <div class="signing-delegations-list" ng-if="repository.trust_enabled">
-          <tag-signing-display compact="false" tag="tag" delegations="repoDelegationsInfo"></tag-signing-display>
-        </div>
-      </td>
+          <!-- Cosign Signatures -->
+          <div class="cosign-signature-row" ng-if="tag.cosign_signature_tag">
+            <cosign-link repository="repository" image-id="tag.image_id"
+              manifest-digest="tag.cosign_signature_manifest_digest" tag-name="tag.cosign_signature_tag"
+              tag-name="tag.cosign_signature_tag" signed-image-id="tag.image_id"
+              signed-manifest-digest="tag.manifest_digest"></cosign-link>
+          </div>
 
-      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+          <!-- Delegations -->
+          <div class="signing-delegations-list" ng-if="repository.trust_enabled">
+            <tag-signing-display compact="false" tag="tag" delegations="repoDelegationsInfo"></tag-signing-display>
+          </div>
+        </td>
+
+        <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
           ng-if="manifestTracks.length <= maxTrackCount" bindonce>
-        <span class="image-track-line"
-          ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$index)"
-          ng-class="::trackLineExpandedClass(mt, $parent.$parent.$parent.$index)"
-          ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$index).color}"></span>
-      </td>
-      <td></td>
-      <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
-    </tr>
-   </tbody>
- </table>
+          <span class="image-track-line" ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$index)"
+            ng-class="::trackLineExpandedClass(mt, $parent.$parent.$parent.$index)"
+            ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$index).color}"></span>
+        </td>
+        <td></td>
+        <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
+      </tr>
+    </tbody>
+  </table>
 
- <div class="empty" ng-if="allTags.length && !tags.length">
-  <div class="empty-primary-msg">No matching tags found.</div>
-  <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
- </div>
+  <div class="empty" ng-if="allTags.length && !tags.length">
+    <div class="empty-primary-msg">No matching tags found.</div>
+    <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
+  </div>
 
- <div class="cor-loader" ng-show="tagsLoading"></div>
- <div class="empty" ng-if="!allTags.length && !tagsLoading">
-  <div class="empty-primary-msg">This repository is empty.</div>
-  <div class="empty-secondary-msg">Push a tag or initiate a build to populate this repository.</div>
- </div>
+  <div class="cor-loader" ng-show="tagsLoading"></div>
+  <div class="empty" ng-if="!allTags.length && !tagsLoading">
+    <div class="empty-primary-msg">This repository is empty.</div>
+    <div class="empty-secondary-msg">Push a tag or initiate a build to populate this repository.</div>
+  </div>
 </div>
 
 <div class="tag-operations-dialog" repository="repository" repository-tags="repositoryTags"
-     action-handler="tagActionHandler"
-     labels-changed="handleLabelsChanged(manifest_digest)"></div>
+  action-handler="tagActionHandler" labels-changed="handleLabelsChanged(manifest_digest)"></div>
 
 <div class="fetch-tag-dialog" repository="repository" action-handler="fetchTagActionHandler"></div>
