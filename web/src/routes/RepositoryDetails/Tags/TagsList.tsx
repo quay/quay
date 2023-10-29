@@ -50,6 +50,7 @@ export default function TagsList(props: TagsProps) {
   const selectAllTags = (isSelecting = true) => {
     setSelectedTags(isSelecting ? tags.map((t) => t) : []);
   };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const selectTag = (tag: Tag, rowIndex = 0, isSelecting = true) =>
     setSelectedTags((prevSelected) => {
       const otherSelectedtagNames = prevSelected.filter((r) => r !== tag);
@@ -90,7 +91,7 @@ export default function TagsList(props: TagsProps) {
         page++;
         setLoading(false);
       } while (hasAdditional);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
       setLoading(false);
       setErr(addDisplayError('Unable to get tags', error));
