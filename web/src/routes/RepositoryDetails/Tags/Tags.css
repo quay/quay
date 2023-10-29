@@ -7,6 +7,6 @@
 }
 
 .dangerous-dropdown-item {
---pf-c-dropdown__menu-item--Color: red;
---pf-c-dropdown__menu-item--hover--Color: red;
+    --pf-c-dropdown__menu-item--Color: red;
+    --pf-c-dropdown__menu-item--hover--Color: red;
 }
