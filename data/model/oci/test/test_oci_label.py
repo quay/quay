@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from playhouse.test_utils import assert_query_count
 
@@ -13,6 +11,7 @@ from data.model.oci.label import (
     list_manifest_labels,
 )
 from data.model.oci.tag import get_tag, set_tag_immmutable
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(

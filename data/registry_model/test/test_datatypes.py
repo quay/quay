@@ -1,4 +1,3 @@
-from pyrsistent import immutable
 from data.database import get_epoch_timestamp_ms
 from data.registry_model.datatypes import Tag
 

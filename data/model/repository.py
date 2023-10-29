@@ -8,7 +8,6 @@ from enum import Enum
 from cachetools.func import ttl_cache
 from peewee import JOIN, SQL, Case, IntegrityError, fn
 
-
 from data.database import (
     BlobUpload,
     DeletedRepository,
