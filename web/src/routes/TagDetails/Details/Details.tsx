@@ -65,21 +65,15 @@ export default function Details(props: DetailsProps) {
           <DescriptionListGroup data-testid="immutable">
             <DescriptionListTerm>Immutable</DescriptionListTerm>
             <DescriptionListDescription>
-              {props.tag.immutable ? (
-                "Yes"
-              ) : (
-                "No"
-              )}
+              {props.tag.immutable ? 'Yes' : 'No'}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup data-testid="expiration">
             <DescriptionListTerm>Expiration</DescriptionListTerm>
             <DescriptionListDescription>
-              {props.tag.expiration ? (
-                formatDate(props.tag.last_modified)
-              ) : (
-                "Never"
-              )}
+              {props.tag.expiration
+                ? formatDate(props.tag.last_modified)
+                : 'Never'}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup data-testid="vulnerabilities">
@@ -94,7 +88,7 @@ export default function Details(props: DetailsProps) {
               />
             </DescriptionListDescription>
           </DescriptionListGroup>
-         <DescriptionListGroup data-testid="size">
+          <DescriptionListGroup data-testid="size">
             <DescriptionListTerm>Size</DescriptionListTerm>
             <DescriptionListDescription>
               {props.digest != '' ? (
