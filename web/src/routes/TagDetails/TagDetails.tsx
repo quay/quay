@@ -100,7 +100,7 @@ export default function TagDetails() {
           : currentDigest;
         setDigest(currentDigest);
         setTagDetails(tagResp);
-      } catch (error: any) {
+      } catch (error) {
         console.error(error);
         setErr(addDisplayError('Unable to get details for tag', error));
       }

@@ -65,12 +65,24 @@ export interface Label {
   media_type?: string;
   source_type?: string;
 }
+
+export interface ManifestLayer {
+  compressed_size: number;
+  is_remote: boolean;
+  urls: string[];
+  command: string;
+  comment: string;
+  author: string;
+  blob_digest: string;
+  created_datetime: string;
+}
+
 export interface ManifestByDigestResponse {
   digest: string;
   is_manifest_list: boolean;
   manifest_data: string;
-  config_media_type?: any;
-  layers?: any;
+  config_media_type?: never;
+  layers?: ManifestLayer[];
 }
 
 export interface SecurityDetailsResponse {
@@ -442,12 +454,9 @@ export async function restoreTag(
   tag: string,
   digest: string,
 ) {
-  const response: AxiosResponse = await axios.post(
-    `/api/v1/repository/${org}/${repo}/tag/${tag}/restore`,
-    {
-      manifest_digest: digest,
-    },
-  );
+  await axios.post(`/api/v1/repository/${org}/${repo}/tag/${tag}/restore`, {
+    manifest_digest: digest,
+  });
 }
 
 export async function permanentlyDeleteTag(
@@ -456,12 +465,9 @@ export async function permanentlyDeleteTag(
   tag: Tag,
   digest: string,
 ) {
-  const response: AxiosResponse = await axios.post(
-    `/api/v1/repository/${org}/${repo}/tag/${tag.name}/expire`,
-    {
-      manifest_digest: digest,
-      include_submanifests: true,
-      is_alive: false,
-    },
-  );
+  await axios.post(`/api/v1/repository/${org}/${repo}/tag/${tag.name}/expire`, {
+    manifest_digest: digest,
+    include_submanifests: true,
+    is_alive: false,
+  });
 }

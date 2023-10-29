@@ -20,7 +20,7 @@ export function useAllTags(org: string, repo: string) {
     isError: errorLoadingTags,
     error: errorTagsDetails,
     dataUpdatedAt,
-  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], ({signal}) =>
+  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], () =>
     getTags(org, repo, 1, 50, null, false),
   );
 
