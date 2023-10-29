@@ -7,13 +7,13 @@ import {
 } from '@patternfly/react-core';
 import {useEffect} from 'react';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
-import {Tag, bulkDeleteTags} from 'src/resources/TagResource';
 import './Tags.css';
 import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
 import {useDeleteTag} from 'src/hooks/UseTags';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
+import {Tag} from 'src/resources/TagResource';
 
 export interface DeleteModalOptions {
   isOpen: boolean;
@@ -106,7 +106,7 @@ export function DeleteModal(props: DeleteModalProps) {
       <Modal
         id="tag-deletion-modal"
         title={title}
-        titleIconVariant={ props.modalOptions.force ? 'danger' : 'warning'}
+        titleIconVariant={props.modalOptions.force ? 'danger' : 'warning'}
         description={
           <Conditional if={props.modalOptions.force}>
             <span style={{color: 'red'}}>
@@ -138,7 +138,7 @@ export function DeleteModal(props: DeleteModalProps) {
             }}
           >
             Cancel
-          </Button>, 
+          </Button>,
           <Button
             key="modal-action-button"
             variant="primary"
