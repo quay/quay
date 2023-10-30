@@ -23,6 +23,7 @@ import Settings from './Tabs/Settings/Settings';
 import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import UsageLogs from 'src/routes/UsageLogs/UsageLogs';
 
 export enum OrganizationDrawerContentType {
   None,

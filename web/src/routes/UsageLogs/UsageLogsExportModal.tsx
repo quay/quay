@@ -9,7 +9,7 @@ import {
   HelperTextItem,
 } from '@patternfly/react-core';
 
-import {exportLogs} from 'src/hooks/UseExportLogs';
+import {exportLogs} from 'src/hooks/UseUsageLogs';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 
