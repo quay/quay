@@ -134,6 +134,17 @@ export default function Organization() {
       visible: !isUserOrganization && organization?.is_admin,
     },
     {
+      name: 'Logs',
+      component: (
+        <UsageLogs
+          organization={organizationName}
+          repository={null}
+          type="org"
+        />
+      ),
+      visible: organization?.is_admin || isUserOrganization,
+    },
+    {
       name: 'Settings',
       component: (
         <Settings
