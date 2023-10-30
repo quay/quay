@@ -1,21 +1,35 @@
+import React from 'react';
 import {
   Select,
   SelectOption,
-  SelectVariant,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+  SelectList,
+  MenuToggle,
+  MenuToggleElement,
+  TextInputGroup,
+  TextInputGroupMain,
+  TextInputGroupUtilities,
+  Button,
+} from '@patternfly/react-core';
+import TimesIcon from '@patternfly/react-icons/dist/esm/icons/times-icon';
 import {useEntities} from 'src/hooks/UseEntities';
 import {Entity, getMemberType} from 'src/resources/UserResource';
 
 export default function EntitySearch(props: EntitySearchProps) {
-  const [selectedEntityName, setSelectedEntityName] = useState<string>();
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [selectedEntityName, setSelectedEntityName] = React.useState<string>();
+  const [focusedItemIndex, setFocusedItemIndex] = React.useState<number | null>(
+    null,
+  );
+  const textInputRef = React.useRef<HTMLInputElement>();
   const {entities, isError, searchTerm, setSearchTerm} = useEntities(
     props.org,
     props?.includeTeams,
   );
+  const id = props.id || 'entity-search';
 
-  useEffect(() => {
+  const onToggleClick = () => setIsOpen(!isOpen);
+
+  React.useEffect(() => {
     if (
       selectedEntityName !== undefined &&
       selectedEntityName !== '' &&
@@ -32,57 +46,112 @@ export default function EntitySearch(props: EntitySearchProps) {
     }
   }, [searchTerm, JSON.stringify(entities)]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (props?.value !== null && props?.value !== undefined) {
       setSearchTerm(props.value);
       setSelectedEntityName(props.value);
     }
   }, [props?.value]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isError) {
       props.onError();
     }
   }, [isError]);
 
+  const onSelect = (
+    _event: React.MouseEvent<Element, MouseEvent> | undefined,
+    value: string | number | undefined,
+  ) => {
+    if (value && value !== 'no results') {
+      setSearchTerm(value as string);
+      setSelectedEntityName(value as string);
+    }
+    setIsOpen(false);
+    setFocusedItemIndex(null);
+  };
+
+  const onTextInputChange = (
+    _event: React.FormEvent<HTMLInputElement>,
+    value: string,
+  ) => {
+    setSearchTerm(value);
+  };
+
+  const toggle = (toggleRef: React.Ref<MenuToggleElement>) => (
+    <MenuToggle
+      ref={toggleRef}
+      id={id}
+      variant="typeahead"
+      onClick={onToggleClick}
+      isExpanded={isOpen}
+      isFullWidth
+    >
+      <TextInputGroup isPlain>
+        <TextInputGroupMain
+          value={searchTerm}
+          onClick={onToggleClick}
+          onChange={onTextInputChange}
+          id={`${id}-input`}
+          autoComplete="off"
+          innerRef={textInputRef}
+          placeholder={props.placeholderText}
+          role="combobox"
+          isExpanded={isOpen}
+          aria-controls="entity-select-listbox"
+        />
+
+        <TextInputGroupUtilities>
+          {!!searchTerm && (
+            <Button
+              variant="plain"
+              onClick={() => {
+                setSelectedEntityName('');
+                setSearchTerm('');
+                textInputRef?.current?.focus();
+                props?.onClear({});
+              }}
+              aria-label="Clear input value"
+            >
+              <TimesIcon aria-hidden />
+            </Button>
+          )}
+        </TextInputGroupUtilities>
+      </TextInputGroup>
+    </MenuToggle>
+  );
+
   return (
     <Select
-      toggleId={props.id ? props.id : 'entity-search'}
+      id="entity-select"
       isOpen={isOpen}
-      selections={searchTerm}
-      onSelect={(e, value, isPlaceholder) => {
-        // Handles the case when the selected option is an action item. The
-        // handler is defined within the child option component
-        if (!isPlaceholder) {
-          setSearchTerm(value as string);
-          setSelectedEntityName(value as string);
-        }
-        setIsOpen(!isOpen);
-      }}
-      onToggle={() => {
-        setIsOpen(!isOpen);
-      }}
-      variant={SelectVariant.typeahead}
-      onTypeaheadInputChanged={(value) => {
-        setSearchTerm(value);
-      }}
-      shouldResetOnSelect={true}
-      onClear={() => {
-        props?.onClear({});
-        setSearchTerm('');
-      }}
-      placeholderText={props.placeholderText}
+      selected={searchTerm}
+      onSelect={onSelect}
+      onOpenChange={() => setIsOpen(false)}
+      toggle={toggle}
+      shouldFocusToggleOnSelect
     >
-      <></>
-      {!searchTerm
-        ? props?.defaultOptions
-        : entities?.map((e) => (
-            <SelectOption
-              key={e.name}
-              value={e.name}
-              description={getMemberType(e)}
-            />
-          ))}
+      <SelectList id="entity-search-option-list">
+        {!searchTerm
+          ? props?.defaultOptions
+          : entities?.map((entity, index) => (
+              <SelectOption
+                data-testid={entity.name}
+                key={entity.name}
+                value={entity.name}
+                isFocused={focusedItemIndex === index}
+                onClick={() => {
+                  setSelectedEntityName(entity.name);
+                  if (props?.onSelect) {
+                    props.onSelect(entity);
+                  }
+                }}
+                description={getMemberType(entity)}
+              >
+                {entity.name}
+              </SelectOption>
+            ))}
+      </SelectList>
     </Select>
   );
 }

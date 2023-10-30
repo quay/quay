@@ -130,7 +130,7 @@ export default function Notifications({
         setFilter={setFilter}
         resetFilter={resetFilter}
       />
-      <Table aria-label="Repository notifications table">
+      <Table aria-label="Repository notifications table" variant="compact">
         <Thead>
           <Tr>
             <Th />

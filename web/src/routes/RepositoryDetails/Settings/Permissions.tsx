@@ -70,7 +70,7 @@ export default function Permissions(props: PermissionsProps) {
         deselectAll={() => setSelectedMembers([])}
         setDrawerContent={props.setDrawerContent}
       />
-      <Table aria-label="Repository permissions table">
+      <Table aria-label="Repository permissions table" variant="compact">
         <Thead>
           <Tr>
             <Th />

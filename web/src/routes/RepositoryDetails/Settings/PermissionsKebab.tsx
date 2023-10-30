@@ -1,14 +1,15 @@
+import {useState} from 'react';
 import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
-} from '@patternfly/react-core';
-import {
   Dropdown,
   DropdownItem,
-  KebabToggle,
-} from '@patternfly/react-core/deprecated';
-import {useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
+import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import Conditional from 'src/components/empty/Conditional';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
 import {RepoMember} from 'src/resources/RepositoryResource';
@@ -42,22 +43,28 @@ export default function PermissionsKebab({member}: PermissionsKebabProps) {
       </Conditional>
       <Dropdown
         onSelect={onSelect}
-        toggle={
-          <KebabToggle
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
+            variant="plain"
             id={`${member.name}-toggle-kebab`}
-            onToggle={() => {
-              setIsOpen(!isOpen);
-            }}
-          />
-        }
+            data-testid={`${member.name}-toggle-kebab`}
+            onClick={() => setIsOpen(!isOpen)}
+            isExpanded={isOpen}
+          >
+            <EllipsisVIcon />
+          </MenuToggle>
+        )}
         isOpen={isOpen}
-        dropdownItems={[
+        onOpenChange={(isOpen) => setIsOpen(isOpen)}
+        shouldFocusToggleOnSelect
+      >
+        <DropdownList>
           <DropdownItem key="delete" onClick={() => deletePermissions(member)}>
             Delete Permission
-          </DropdownItem>,
-        ]}
-        isPlain
-      />
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
     </>
   );
 }

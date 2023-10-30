@@ -1,15 +1,15 @@
+import {ReactElement, useState} from 'react';
 import {
   PageSection,
   PageSectionVariants,
   Spinner,
   Title,
   PanelFooter,
+  DropdownItem,
 } from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useRecoilState} from 'recoil';
 import {IRepository} from 'src/resources/RepositoryResource';
-import {ReactElement, useState} from 'react';
 import {Link, useLocation} from 'react-router-dom';
 import CreateRepositoryModalTemplate from 'src/components/modals/CreateRepoModalTemplate';
 import {getRepoDetailPath} from 'src/routes/NavigationPath';
@@ -321,7 +321,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           paginatedRepositoryList={paginatedRepositoryList}
           onSelectRepo={onSelectRepo}
         />
-        <Table aria-label="Selectable table">
+        <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />

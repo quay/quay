@@ -2,6 +2,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
+  bulkDeleteDefaultPermissions,
   createDefaultPermission,
   deleteDefaultPermission,
   fetchDefaultPermissions,
@@ -36,7 +37,7 @@ interface createDefaultPermissionParams {
 
 export function useFetchDefaultPermissions(org: string) {
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: permissionColumnNames.repoCreatedBy,
@@ -81,9 +82,9 @@ export function useFetchDefaultPermissions(org: string) {
 
   return {
     loading: loadingPermissions || isPlaceholderData,
-    error: errorLoadingPermissions,
-    defaultPermissions: defaultPermissions,
-    paginatedPermissions: paginatedPermissions,
+    errorLoadingPermissions,
+    defaultPermissions,
+    paginatedPermissions,
     filteredPermissions,
     page,
     setPage,
@@ -127,11 +128,11 @@ export function useDeleteDefaultPermission(org: string) {
     isSuccess: successDeleteDefaultPermission,
     reset: resetDeleteDefaultPermission,
   } = useMutation(
-    async ({id}: {id: string}) => {
-      return deleteDefaultPermission(org, id);
+    async ({perm}: {perm: IDefaultPermission}) => {
+      return deleteDefaultPermission(org, perm);
     },
     {
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
         queryClient.invalidateQueries(['defaultpermissions']);
       },
     },
@@ -188,5 +189,30 @@ export function useCreateDefaultPermission(orgName, {onError, onSuccess}) {
   return {
     createDefaultPermission: async (params: createDefaultPermissionParams) =>
       createDefaultPermissionMutator.mutate(params),
+  };
+}
+
+export function useBulkDeleteDefaultPermissions({orgName, onSuccess, onError}) {
+  const queryClient = useQueryClient();
+
+  const bulkDeleteDefaultPermissionsMutator = useMutation(
+    async (perms: IDefaultPermission[]) => {
+      return bulkDeleteDefaultPermissions(orgName, perms);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['defaultpermissions']);
+        onSuccess();
+      },
+      onError: (err) => {
+        onError(err);
+      },
+    },
+  );
+
+  return {
+    // Mutations
+    bulkDeleteDefaultPermissions: async (perms: IDefaultPermission[]) =>
+      bulkDeleteDefaultPermissionsMutator.mutate(perms),
   };
 }

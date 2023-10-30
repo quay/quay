@@ -1,19 +1,16 @@
+import {useEffect, useState} from 'react';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {
   PageSection,
   PageSectionVariants,
   Title,
   PanelFooter,
+  DropdownItem,
 } from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import './css/Organizations.scss';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {useRecoilState} from 'recoil';
-import {
-  searchOrgsState,
-  selectedOrgsState,
-} from 'src/atoms/OrganizationListState';
-import {useEffect, useState} from 'react';
+import {selectedOrgsState} from 'src/atoms/OrganizationListState';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import OrgTableData from './OrganizationsListTableData';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
@@ -57,7 +54,7 @@ export default function OrganizationsList() {
   const [err, setErr] = useState<string[]>();
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
-  const [perPage, setPerPage] = useState<number>(10);
+  const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
 
   const {
@@ -299,7 +296,7 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
         />
-        <Table aria-label="Selectable table">
+        <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>
               <Th />

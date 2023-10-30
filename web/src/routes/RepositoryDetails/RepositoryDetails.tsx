@@ -27,7 +27,11 @@ import RequestError from 'src/components/errors/RequestError';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import CreateNotification from './Settings/NotificationsCreateNotification';
 import {useRepository} from 'src/hooks/UseRepository';
-import {parseOrgNameFromUrl, parseRepoNameFromUrl} from 'src/libs/utils';
+import {
+  parseOrgNameFromUrl,
+  parseRepoNameFromUrl,
+  validateTeamName,
+} from 'src/libs/utils';
 import TagHistory from './TagHistory/TagHistory';
 import Conditional from 'src/components/empty/Conditional';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
@@ -35,6 +39,8 @@ import {RepoPermissionDropdownItems} from '../RepositoriesList/RobotAccountsList
 import {Entity} from 'src/resources/UserResource';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {CreateTeamModal} from '../OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 enum TabIndex {
   Tags = 'tags',
@@ -63,7 +69,7 @@ export default function RepositoryDetails() {
   );
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
-
+  const {addAlert} = useAlerts();
   const [err, setErr] = useState<string>();
 
   const drawerRef = useRef<HTMLDivElement>();
@@ -92,12 +98,20 @@ export default function RepositoryDetails() {
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
       setEntity={setSelectedEntity}
+      showSuccessAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Success,
+          title: message,
+        })
+      }
+      showErrorAlert={(message) =>
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: message,
+        })
+      }
     />
   );
-
-  const validateTeamName = (name: string) => {
-    return /^[a-z][a-z0-9]+$/.test(name);
-  };
 
   const createTeamModal = (
     <CreateTeamModal

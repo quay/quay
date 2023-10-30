@@ -16,6 +16,9 @@ _DEFAULT_TIMEOUT = 10.0  # seconds
 _DEFAULT_PAGE_SIZE = 1000
 # setting config LDAP_FOLLOW_REFERRALS: 0 to disable referral lookups
 _DEFAULT_REFERRALS = True
+_DEFAULT_KEEPALIVE_IDLE = 10
+_DEFAULT_KEEPALIVE_INTERVAL = 5
+_DEFAULT_KEEPALIVE_PROBES = 3
 
 
 class LDAPConnectionBuilder(object):
@@ -78,6 +81,10 @@ class LDAPConnection(object):
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
         )
         self._conn.set_option(ldap.OPT_TIMEOUT, self._timeout or _DEFAULT_TIMEOUT)
+        self._conn.set_option(ldap.OPT_X_KEEPALIVE_IDLE, _DEFAULT_KEEPALIVE_IDLE)
+        self._conn.set_option(ldap.OPT_X_KEEPALIVE_INTERVAL, _DEFAULT_KEEPALIVE_INTERVAL)
+        self._conn.set_option(ldap.OPT_X_KEEPALIVE_PROBES, _DEFAULT_KEEPALIVE_PROBES)
+        self._conn.set_option(ldap.OPT_RESTART, ldap.OPT_ON)
 
         if self._allow_tls_fallback:
             logger.debug("TLS Fallback enabled in LDAP")
@@ -105,6 +112,7 @@ class LDAPUsers(FederatedUsers):
         user_rdn,
         uid_attr,
         email_attr,
+        memberof_attr="memberOf",
         allow_tls_fallback=False,
         secondary_user_rdns=None,
         requires_email=True,
@@ -130,6 +138,7 @@ class LDAPUsers(FederatedUsers):
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
         self._email_attr = email_attr
+        self._memberof_attr = memberof_attr
         self._allow_tls_fallback = allow_tls_fallback
         self._requires_email = requires_email
         self._force_no_pagination = force_no_pagination
@@ -494,8 +503,9 @@ class LDAPUsers(FederatedUsers):
             return (None, "LDAP Admin dn or password is invalid")
 
         group_dn = group_lookup_args["group_dn"]
+        memberof_attr = self._memberof_attr
         page_size = page_size or _DEFAULT_PAGE_SIZE
-        return (self._iterate_members(group_dn, page_size, disable_pagination), None)
+        return (self._iterate_members(group_dn, memberof_attr, page_size, disable_pagination), None)
 
     def is_superuser(self, username_or_email: str) -> bool:
         if not username_or_email:
@@ -542,10 +552,10 @@ class LDAPUsers(FederatedUsers):
         has_restricted_users, _ = self.at_least_one_user_exists(filter_restricted_users=True)
         return has_restricted_users
 
-    def _iterate_members(self, group_dn, page_size, disable_pagination):
+    def _iterate_members(self, group_dn, memberof_attr, page_size, disable_pagination):
         has_pagination = not (self._force_no_pagination or disable_pagination)
         with self._ldap.get_connection() as conn:
-            search_flt = filter_format("(memberOf=%s,%s)", (group_dn, self._base_dn))
+            search_flt = filter_format("(%s=%s,%s)", (memberof_attr, group_dn, self._base_dn))
             search_flt = self._add_user_filter(search_flt)
 
             attributes = [self._uid_attr, self._email_attr]

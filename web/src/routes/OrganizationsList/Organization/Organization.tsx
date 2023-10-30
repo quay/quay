@@ -16,28 +16,27 @@ import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {useOrganizations} from 'src/hooks/UseOrganizations';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
+import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 
-export enum DrawerContentType {
+export enum OrganizationDrawerContentType {
   None,
+  AddNewTeamMemberDrawer,
   CreatePermissionSpecificUser,
 }
 
 export default function Organization() {
   const quayConfig = useQuayConfig();
   const {organizationName, teamName} = useParams();
-  const {usernames} = useOrganizations();
-  const isUserOrganization = usernames.includes(organizationName);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const {organization} = useOrganization(organizationName);
+  const {organization, isUserOrganization} = useOrganization(organizationName);
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
     searchParams.get('tab') || 'Repositories',
@@ -57,26 +56,41 @@ export default function Organization() {
       return false;
     }
 
-    if (!isUserOrganization && organization && tabname == 'Settings') {
+    if (isUserOrganization) {
+      return true;
+    }
+
+    if (
+      !isUserOrganization &&
+      organization &&
+      (tabname == 'Settings' || tabname == 'Robot accounts')
+    ) {
       return organization.is_org_admin || organization.is_admin;
     }
     return false;
   };
 
-  const [drawerContent, setDrawerContent] = useState<DrawerContentType>(
-    DrawerContentType.None,
-  );
+  const [drawerContent, setDrawerContent] =
+    useState<OrganizationDrawerContentType>(OrganizationDrawerContentType.None);
 
   const closeDrawer = () => {
-    setDrawerContent(DrawerContentType.None);
+    setDrawerContent(OrganizationDrawerContentType.None);
   };
 
   const drawerRef = useRef<HTMLDivElement>();
 
   const drawerContentOptions = {
-    [DrawerContentType.None]: null,
-    [DrawerContentType.CreatePermissionSpecificUser]: (
+    [OrganizationDrawerContentType.None]: null,
+    [OrganizationDrawerContentType.CreatePermissionSpecificUser]: (
       <CreatePermissionDrawer
+        orgName={organizationName}
+        closeDrawer={closeDrawer}
+        drawerRef={drawerRef}
+        drawerContent={drawerContent}
+      />
+    ),
+    [OrganizationDrawerContentType.AddNewTeamMemberDrawer]: (
+      <AddNewTeamMemberDrawer
         orgName={organizationName}
         closeDrawer={closeDrawer}
         drawerRef={drawerRef}
@@ -94,12 +108,9 @@ export default function Organization() {
     {
       name: 'Teams and membership',
       component: !teamName ? (
-        <TeamsAndMembershipList
-          key={window.location.pathname}
-          organizationName={organizationName}
-        />
+        <TeamsAndMembershipList key={window.location.pathname} />
       ) : (
-        <ManageMembersList />
+        <ManageMembersList setDrawerContent={setDrawerContent} />
       ),
       visible:
         !isUserOrganization &&
@@ -114,7 +125,7 @@ export default function Organization() {
           isUser={isUserOrganization}
         />
       ),
-      visible: true,
+      visible: fetchTabVisibility('Robot accounts'),
     },
     {
       name: 'Default permissions',
@@ -128,14 +139,19 @@ export default function Organization() {
     },
     {
       name: 'Settings',
-      component: <Settings organizationName={organizationName} />,
+      component: (
+        <Settings
+          organizationName={organizationName}
+          isUserOrganization={isUserOrganization}
+        />
+      ),
       visible: fetchTabVisibility('Settings'),
     },
   ];
 
   return (
     <Drawer
-      isExpanded={drawerContent != DrawerContentType.None}
+      isExpanded={drawerContent != OrganizationDrawerContentType.None}
       onExpand={() => {
         drawerRef.current && drawerRef.current.focus();
       }}

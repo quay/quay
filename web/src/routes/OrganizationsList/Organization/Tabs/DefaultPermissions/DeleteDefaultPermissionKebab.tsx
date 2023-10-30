@@ -1,9 +1,12 @@
+import {useEffect, useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
-  KebabToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
+import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {
@@ -14,14 +17,13 @@ import {
 export default function DeleteDefaultPermissionKebab(
   props: DefaultPermissionsDropdownProps,
 ) {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState(false);
   const {addAlert} = useAlerts();
 
   const {
     removeDefaultPermission,
     errorDeleteDefaultPermission: error,
     successDeleteDefaultPermission: success,
-    resetDeleteDefaultPermission: reset,
   } = useDeleteDefaultPermission(props.orgName);
 
   useEffect(() => {
@@ -45,28 +47,33 @@ export default function DeleteDefaultPermissionKebab(
   return (
     <Dropdown
       onSelect={() => setIsOpen(!isOpen)}
-      toggle={
-        <KebabToggle
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          id={`${props.defaultPermission.createdBy}-toggle-kebab`}
           data-testid={`${props.defaultPermission.createdBy}-toggle-kebab`}
-          onToggle={() => {
-            setIsOpen(!isOpen);
-          }}
-        />
-      }
+          variant="plain"
+          onClick={() => setIsOpen(!isOpen)}
+          isExpanded={isOpen}
+        >
+          <EllipsisVIcon />
+        </MenuToggle>
+      )}
       isOpen={isOpen}
-      dropdownItems={[
+      onOpenChange={(isOpen) => setIsOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>
         <DropdownItem
-          key="delete"
           onClick={() =>
-            removeDefaultPermission({id: props.defaultPermission.id})
+            removeDefaultPermission({perm: props.defaultPermission})
           }
           data-testid={`${props.defaultPermission.createdBy}-del-option`}
         >
           Delete Permission
-        </DropdownItem>,
-      ]}
-      isPlain
-    />
+        </DropdownItem>
+      </DropdownList>
+    </Dropdown>
   );
 }
 

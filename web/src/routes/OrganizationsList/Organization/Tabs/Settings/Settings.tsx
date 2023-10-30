@@ -1,256 +1,18 @@
-import {useEffect, useState, ReactNode} from 'react';
-import {
-  Tabs,
-  Tab,
-  TabTitleText,
-  Flex,
-  FlexItem,
-  FormGroup,
-  Form,
-  FormAlert,
-  TextInput,
-  FormSelect,
-  FormSelectOption,
-  ActionGroup,
-  Button,
-  Alert,
-  AlertGroup,
-  FormHelperText,
-  HelperText,
-  HelperTextItem,
-} from '@patternfly/react-core';
-import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useState} from 'react';
+import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
-import {IOrganization} from 'src/resources/OrganizationResource';
-import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
-import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-
-type validate = 'success' | 'warning' | 'error' | 'default';
-const timeMachineOptions = {
-  '0s': 'a few seconds',
-  '1d': 'a day',
-  '1w': '7 days',
-  '2w': '14 days',
-  '4w': 'a month',
-};
-
-const GeneralSettings = (props: GeneralSettingsProps) => {
-  const quayConfig = useQuayConfig();
-  const organizationName = props.organizationName;
-  const {user, loading: isUserLoading} = useCurrentUser();
-  const {organization, isUserOrganization, loading} =
-    useOrganization(organizationName);
-  const [error, setError] = useState<string>('');
-
-  const {updateOrgSettings} = useOrganizationSettings({
-    name: props.organizationName,
-    onSuccess: () => {
-      setAlerts((prevAlerts) => {
-        return [
-          ...prevAlerts,
-          <Alert
-            key="alert"
-            variant="success"
-            title="Successfully updated settings"
-            isInline={true}
-            timeout={5000}
-          />,
-        ];
-      });
-    },
-    onError: (err) => {
-      setAlerts((prevAlerts) => {
-        return [
-          ...prevAlerts,
-          <Alert
-            key="alert"
-            variant="danger"
-            title={err.response.data.error_message}
-            isInline={true}
-            timeout={5000}
-          />,
-        ];
-      });
-    },
-  });
-
-  const [alerts, setAlerts] = useState<ReactNode[]>([]);
-
-  // Time Machine
-  const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions[quayConfig?.config?.TAG_EXPIRATION_OPTIONS[0]],
-  );
-  const namespaceTimeMachineExpiry = isUserOrganization
-    ? user?.tag_expiration_s
-    : (organization as IOrganization)?.tag_expiration_s;
-
-  // Email
-  const namespaceEmail = isUserOrganization
-    ? user?.email || ''
-    : organization?.email || '';
-  const [emailFormValue, setEmailFormValue] = useState<string>('');
-  const [validated, setValidated] = useState<validate>('default');
-
-  useEffect(() => {
-    setEmailFormValue(namespaceEmail);
-    const humanized_expiry = humanizeTimeForExpiry(namespaceTimeMachineExpiry);
-    for (const key of Object.keys(timeMachineOptions)) {
-      if (humanized_expiry == timeMachineOptions[key]) {
-        setTimeMachineFormValue(key);
-        break;
-      }
-    }
-  }, [loading, isUserLoading, isUserOrganization]);
-
-  const handleEmailChange = (emailFormValue: string) => {
-    setEmailFormValue(emailFormValue);
-    if (namespaceEmail == emailFormValue) {
-      setValidated('default');
-      setError('');
-      return;
-    }
-
-    if (!emailFormValue) {
-      setValidated('error');
-      setError('Please enter email associate with namespace');
-      return;
-    }
-
-    if (namespaceEmail != emailFormValue) {
-      if (isValidEmail(emailFormValue)) {
-        setValidated('success');
-        setError('');
-      } else {
-        setValidated('error');
-        setError('Please enter a valid email address');
-      }
-    }
-  };
-
-  const checkForChanges = () => {
-    if (namespaceEmail != emailFormValue) {
-      return validated == 'success';
-    }
-
-    return getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry;
-  };
-
-  const updateSettings = async () => {
-    try {
-      const response = await updateOrgSettings({
-        namespace: props.organizationName,
-        tag_expiration_s:
-          getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry
-            ? getSeconds(timeMachineFormValue)
-            : null,
-        email: namespaceEmail != emailFormValue ? emailFormValue : null,
-        isUser: isUserOrganization,
-      });
-      return response;
-    } catch (error) {
-      addDisplayError('Unable to update namespace settings', error);
-    }
-  };
-
-  const onSubmit = (e) => {
-    e.preventDefault();
-    updateSettings();
-  };
-
-  return (
-    <Form id="form-form" maxWidth="70%">
-      {validated === 'error' && (
-        <FormAlert>
-          <Alert variant="danger" title={error} aria-live="polite" isInline />
-        </FormAlert>
-      )}
-      <FormGroup isInline label="Organization" fieldId="form-organization">
-        <TextInput
-          isDisabled
-          type="text"
-          id="form-name"
-          value={organizationName}
-        />
-
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem>
-              Namespace names cannot be changed once set.
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup isInline label="Email" fieldId="form-email">
-        <TextInput
-          type="email"
-          id="modal-with-form-form-name"
-          value={emailFormValue}
-          onChange={(_event, emailFormValue) =>
-            handleEmailChange(emailFormValue)
-          }
-        />
-
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem>
-              The e-mail address associated with the organization.
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup isInline label="Time Machine" fieldId="form-time-machine">
-        <FormSelect
-          placeholder="Time Machine"
-          aria-label="Time Machine select"
-          data-testid="arch-select"
-          value={timeMachineFormValue}
-          onChange={(_event, val) => setTimeMachineFormValue(val)}
-        >
-          {quayConfig?.config?.TAG_EXPIRATION_OPTIONS.map((option, index) => (
-            <FormSelectOption
-              key={index}
-              value={option}
-              label={timeMachineOptions[option]}
-            />
-          ))}
-        </FormSelect>
-
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem>
-              The amount of time, after a tag is deleted, that the tag is
-              accessible in time machine before being garbage collected.
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <ActionGroup>
-        <Flex
-          justifyContent={{default: 'justifyContentFlexEnd'}}
-          width={'100%'}
-        >
-          <Button
-            variant="primary"
-            type="submit"
-            onClick={(event) => onSubmit(event)}
-            isDisabled={!checkForChanges()}
-          >
-            Save
-          </Button>
-        </Flex>
-      </ActionGroup>
-      <AlertGroup isLiveRegion>{alerts}</AlertGroup>
-    </Form>
-  );
-};
+import AutoPruning from './AutoPruning';
+import {BillingInformation} from './BillingInformation';
+import {CliConfiguration} from './CLIConfiguration';
+import {GeneralSettings} from './GeneralSettings';
 
 export default function Settings(props: SettingsProps) {
+  const organizationName = location.pathname.split('/')[2];
+  const {isUserOrganization} = useOrganization(organizationName);
+
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const quayConfig = useQuayConfig();
 
   const handleTabClick = (event, tabIndex) => {
     setActiveTabIndex(tabIndex);
@@ -261,6 +23,30 @@ export default function Settings(props: SettingsProps) {
       name: 'General Settings',
       id: 'generalsettings',
       content: <GeneralSettings organizationName={props.organizationName} />,
+      visible: true,
+    },
+    {
+      name: 'Billing Information',
+      id: 'billinginformation',
+      content: <BillingInformation organizationName={props.organizationName} />,
+      visible: quayConfig?.features?.BILLING,
+    },
+    {
+      name: 'CLI Configuration',
+      id: 'cliconfig',
+      content: <CliConfiguration />,
+      visible: isUserOrganization,
+    },
+    {
+      name: 'Auto-Prune Policies',
+      id: 'autoprunepolicies',
+      content: (
+        <AutoPruning
+          org={props.organizationName}
+          isUser={props.isUserOrganization}
+        />
+      ),
+      visible: quayConfig?.features?.AUTO_PRUNE,
     },
   ];
 
@@ -274,13 +60,16 @@ export default function Settings(props: SettingsProps) {
           aria-label="Tabs in the vertical example"
           role="region"
         >
-          {tabs.map((tab, tabIndex) => (
-            <Tab
-              key={tab.id}
-              eventKey={tabIndex}
-              title={<TabTitleText>{tab.name}</TabTitleText>}
-            />
-          ))}
+          {tabs
+            .filter((tab) => tab.visible === true)
+            .map((tab, tabIndex) => (
+              <Tab
+                key={tab.id}
+                id={tab.id}
+                eventKey={tabIndex}
+                title={<TabTitleText>{tab.name}</TabTitleText>}
+              />
+            ))}
         </Tabs>
       </FlexItem>
 
@@ -288,7 +77,7 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfCenter'}}
         style={{padding: '20px'}}
       >
-        {tabs.at(activeTabIndex).content}
+        {tabs.filter((tab) => tab.visible === true).at(activeTabIndex).content}
       </FlexItem>
     </Flex>
   );
@@ -296,8 +85,5 @@ export default function Settings(props: SettingsProps) {
 
 type SettingsProps = {
   organizationName: string;
-};
-
-type GeneralSettingsProps = {
-  organizationName: string;
+  isUserOrganization: boolean;
 };

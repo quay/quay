@@ -31,7 +31,7 @@ describe('Default permissions page', () => {
     // Search for creator
     cy.get('#default-permissions-search').type(`${createdBy}`);
     cy.contains('1 - 1 of 1');
-    cy.get(`[data-testid="${createdBy}-permission-dropdown"]`)
+    cy.get(`[data-testid="${createdBy}-permission-dropdown-toggle"]`)
       .contains('Read')
       .click();
     cy.get(`[data-testid="${createdBy}-WRITE"]`).click();
@@ -49,10 +49,13 @@ describe('Default permissions page', () => {
     // Search for creator
     cy.get('#default-permissions-search').type(`${permissionToBeDeleted}`);
     cy.contains('1 - 1 of 1');
-    cy.get(`[data-testid="${permissionToBeDeleted}-toggle-kebab"]`).click();
-    cy.get(`[data-testid="${permissionToBeDeleted}-del-option"]`)
-      .contains('Delete')
-      .click();
+    cy.get('[data-testid="default-permissions-table"]').within(() => {
+      cy.get(`[data-testid="${permissionToBeDeleted}-toggle-kebab"]`).click();
+
+      cy.get(`[data-testid="${permissionToBeDeleted}-del-option"]`)
+        .contains('Delete')
+        .click();
+    });
 
     // verify success alert
     cy.get('.pf-v5-c-alert.pf-m-success')
@@ -76,8 +79,8 @@ describe('Default permissions page', () => {
     cy.get('#applied-to-dropdown').click();
     cy.get(`[data-testid="${appliedTo}-team"]`).click();
 
+    cy.get('[data-testid="create-default-permission-dropdown-toggle"]').click();
     cy.get('[data-testid="create-default-permission-dropdown"]')
-      .click()
       .contains('Write')
       .click();
 
@@ -101,8 +104,8 @@ describe('Default permissions page', () => {
     cy.get('#applied-to-dropdown').click();
     cy.get(`[data-testid="${appliedTo}-team"]`).click();
 
+    cy.get('[data-testid="create-default-permission-dropdown-toggle"]').click();
     cy.get('[data-testid="create-default-permission-dropdown"]')
-      .click()
       .contains('Write')
       .click();
 
@@ -155,7 +158,7 @@ describe('Default permissions page', () => {
 
     // step - Add to repository
     cy.get(`[data-testid="checkbox-row-${repository}"]`).click();
-    cy.get(`[data-testid="${repository}-permission-dropdown"]`).contains(
+    cy.get(`[data-testid="${repository}-permission-dropdown-toggle"]`).contains(
       'Read',
     );
     cy.get('[data-testid="next-btn"]').click();
@@ -185,14 +188,11 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="review-and-finish-wizard-btn"]').click();
 
     // verify newly created team is shown in the dropdown
-    cy.get('#applied-to-dropdown-select-typeahead').should(
-      'have.value',
-      `${newTeam}`,
-    );
+    cy.get('#applied-to-dropdown input').should('have.value', `${newTeam}`);
 
     // permission dropdown
+    cy.get('[data-testid="create-default-permission-dropdown-toggle"]').click();
     cy.get('[data-testid="create-default-permission-dropdown"]')
-      .click()
       .contains('Write')
       .click();
 
@@ -245,7 +245,7 @@ describe('Default permissions page', () => {
 
     // step - Add to repository
     cy.get(`[data-testid="checkbox-row-${repository}"]`).click();
-    cy.get(`[data-testid="${repository}-permission-dropdown"]`).contains(
+    cy.get(`[data-testid="${repository}-permission-dropdown-toggle"]`).contains(
       'Read',
     );
     cy.get('[data-testid="next-btn"]').click();
@@ -280,14 +280,11 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="review-and-finish-wizard-btn"]').click();
 
     // verify newly created team is shown in the dropdown
-    cy.get('#applied-to-dropdown-select-typeahead').should(
-      'have.value',
-      `${newTeam}`,
-    );
+    cy.get('#applied-to-dropdown input').should('have.value', `${newTeam}`);
 
     // permission dropdown
+    cy.get('[data-testid="create-default-permission-dropdown-toggle"]').click();
     cy.get('[data-testid="create-default-permission-dropdown"]')
-      .click()
       .contains('Write')
       .click();
 
@@ -346,7 +343,7 @@ describe('Default permissions page', () => {
       .should('exist');
 
     // verify newly created robot account is shown in the dropdown
-    cy.get('#repository-creator-dropdown-select-typeahead').should(
+    cy.get('#repository-creator-dropdown input').should(
       'have.value',
       `${orgName}+${newRobotName}`,
     );
@@ -356,8 +353,8 @@ describe('Default permissions page', () => {
     cy.get(`[data-testid="${appliedTo}-team"]`).click();
 
     // permission dropdown
+    cy.get('[data-testid="create-default-permission-dropdown-toggle"]').click();
     cy.get('[data-testid="create-default-permission-dropdown"]')
-      .click()
       .contains('Write')
       .click();
 
@@ -369,5 +366,27 @@ describe('Default permissions page', () => {
         `Successfully created default permission for creator: ${orgName}+${newRobotName}`,
       )
       .should('exist');
+  });
+
+  it('Can bulk delete default permissions', () => {
+    const permissionsToBeDeleted = 'organization';
+    cy.visit(`/organization/orgforpermission?tab=Defaultpermissions`);
+
+    // Search for default permissions
+    cy.get('#default-permissions-search').type(`${permissionsToBeDeleted}`);
+    cy.contains('1 - 2 of 2');
+    cy.get('[name="default-perm-bulk-select"]').click();
+    cy.get(`[data-testid="default-perm-bulk-delete-icon"]`).click();
+
+    // bulk delete modal
+    cy.get('#delete-confirmation-input').type('confirm');
+    cy.get('[data-testid="bulk-delete-confirm-btn"]')
+      .click()
+      .then(() => {
+        cy.get('#default-permissions-search')
+          .clear()
+          .type(`${permissionsToBeDeleted}`);
+        cy.contains('0 - 0 of 0');
+      });
   });
 });

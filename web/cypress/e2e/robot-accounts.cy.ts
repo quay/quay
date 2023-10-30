@@ -61,9 +61,9 @@ describe('Robot Accounts Page', () => {
     cy.get('#robot-wizard-form-name').should('be.empty');
     cy.get('#robot-wizard-form-description').should('be.empty');
     cy.get('button:contains("Add to team (optional)")').click();
-    cy.get('#add-team-bulk-select').should('not.be.checked');
+    cy.get('[name="add-team-bulk-select"]').should('not.be.checked');
     cy.get('button:contains("Add to repository (optional)")').click();
-    cy.get('#add-repository-bulk-select').should('not.be.checked');
+    cy.get('[name="add-repository-bulk-select"]').should('not.be.checked');
     cy.get('button:contains("Default permissions (optional)")').click();
     cy.get('#toggle-descriptions').contains('None');
   });
@@ -75,7 +75,9 @@ describe('Robot Accounts Page', () => {
     cy.get('#robot-account-search').type('testrobot2');
     cy.contains('1 - 1 of 1');
     cy.get('button[id="testorg+testrobot2-toggle-kebab"]').click();
-    cy.get('li[id="testorg+testrobot2-del-btn"]').contains('Delete').click();
+    cy.get('button[id="testorg+testrobot2-del-btn"]')
+      .contains('Delete')
+      .click();
 
     cy.get('#delete-confirmation-input').type('confirm');
 
@@ -93,7 +95,7 @@ describe('Robot Accounts Page', () => {
   it('Update Repo Permissions', () => {
     cy.visit('/organization/testorg?tab=Robotaccounts');
     cy.contains('1 repository').click();
-    cy.get('#add-repository-bulk-select-text').contains('1 selected');
+    cy.get('#add-repository-bulk-select').contains('1 selected');
     cy.get('#toggle-descriptions').click();
     cy.get('[role="menuitem"]').contains('Admin').click();
     cy.get('footer')
@@ -120,7 +122,7 @@ describe('Robot Accounts Page', () => {
     cy.visit('/organization/testorg?tab=Robotaccounts');
     cy.get(`[id="${robotAccnt}-toggle-kebab"]`).click();
     cy.get(`[id="${robotAccnt}-set-repo-perms-btn"]`).click();
-    cy.get('#add-repository-bulk-select').click();
+    cy.get('[name="add-repository-bulk-select"]').click();
     cy.get('#toggle-bulk-perms-kebab').click();
     cy.get('[role="menuitem"]').contains('Write').click();
     cy.get('footer')

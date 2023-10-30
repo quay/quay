@@ -16,6 +16,7 @@ import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {getTeamMemberPath} from 'src/routes/NavigationPath';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import Conditional from 'src/components/empty/Conditional';
 
 export const memberViewColumnNames = {
   username: 'User name',
@@ -136,71 +137,79 @@ export default function MembersViewList(props: MembersViewListProps) {
   };
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <MembersViewToolbar
-        selectedMembers={selectedMembers}
-        deSelectAll={() => setSelectedMembers([])}
-        allItems={filteredMembers}
-        paginatedItems={paginatedMembers}
-        onItemSelect={onSelectMember}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
-        search={search}
-        setSearch={setSearch}
-        searchOptions={[memberViewColumnNames.username]}
-      />
-      {props.children}
-      <Table aria-label="Selectable table">
-        <Thead>
-          <Tr>
-            <Th />
-            <Th>{memberViewColumnNames.username}</Th>
-            <Th>{memberViewColumnNames.teams}</Th>
-            <Th>{memberViewColumnNames.directRepositoryPermissions}</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {paginatedMembers?.map((member, rowIndex) => (
-            <Tr key={rowIndex}>
-              <Td
-                select={{
-                  rowIndex,
-                  onSelect: (_event, isSelecting) =>
-                    onSelectMember(member, rowIndex, isSelecting),
-                  isSelected: selectedMembers.some(
-                    (t) => t.name === member.name,
-                  ),
-                }}
-              />
-              <Td dataLabel={memberViewColumnNames.username}>{member.name}</Td>
-              <Td dataLabel={memberViewColumnNames.teams}>
-                {renderTeamLabels(member.teams, rowIndex)}
-              </Td>
-              <Td dataLabel={memberViewColumnNames.directRepositoryPermissions}>
-                Direct permissions on {member.repositories?.length} repositories
-                under this organization
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-      <PanelFooter>
-        <ToolbarPagination
-          itemsList={filteredMembers}
-          perPage={perPage}
+    <>
+      <PageSection variant={PageSectionVariants.light}>
+        <MembersViewToolbar
+          selectedMembers={selectedMembers}
+          deSelectAll={() => setSelectedMembers([])}
+          allItems={filteredMembers}
+          paginatedItems={paginatedMembers}
+          onItemSelect={onSelectMember}
           page={page}
           setPage={setPage}
+          perPage={perPage}
           setPerPage={setPerPage}
-          bottom={true}
+          search={search}
+          setSearch={setSearch}
+          searchOptions={[memberViewColumnNames.username]}
+          handleModalToggle={props.handleModalToggle}
         />
-      </PanelFooter>
-    </PageSection>
+        {props.children}
+        <Table aria-label="Selectable table" variant="compact">
+          <Thead>
+            <Tr>
+              <Th />
+              <Th>{memberViewColumnNames.username}</Th>
+              <Th>{memberViewColumnNames.teams}</Th>
+              <Th>{memberViewColumnNames.directRepositoryPermissions}</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {paginatedMembers?.map((member, rowIndex) => (
+              <Tr key={rowIndex}>
+                <Td
+                  select={{
+                    rowIndex,
+                    onSelect: (_event, isSelecting) =>
+                      onSelectMember(member, rowIndex, isSelecting),
+                    isSelected: selectedMembers.some(
+                      (t) => t.name === member.name,
+                    ),
+                  }}
+                />
+                <Td dataLabel={memberViewColumnNames.username}>
+                  {member.name}
+                </Td>
+                <Td dataLabel={memberViewColumnNames.teams}>
+                  {renderTeamLabels(member.teams, rowIndex)}
+                </Td>
+                <Td
+                  dataLabel={memberViewColumnNames.directRepositoryPermissions}
+                >
+                  Direct permissions on {member.repositories?.length}{' '}
+                  repositories under this organization
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        <PanelFooter>
+          <ToolbarPagination
+            itemsList={filteredMembers}
+            perPage={perPage}
+            page={page}
+            setPage={setPage}
+            setPerPage={setPerPage}
+            bottom={true}
+          />
+        </PanelFooter>
+      </PageSection>
+    </>
   );
 }
 
 interface MembersViewListProps {
   organizationName: string;
   children?: React.ReactNode;
+  handleModalToggle: () => void;
 }

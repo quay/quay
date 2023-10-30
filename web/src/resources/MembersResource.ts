@@ -1,6 +1,7 @@
 import {IAvatar} from './OrganizationResource';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
+import {AxiosResponse} from 'axios';
 
 export interface IMemberTeams {
   name: string;
@@ -55,37 +56,26 @@ export async function deleteTeamMemberForOrg(
   teamName: string,
   memberName: string,
 ) {
-  try {
-    const response = await axios.delete(
-      `/api/v1/organization/${orgName}/team/${teamName}/members/${memberName}`,
-    );
-  } catch (err) {
-    console.error(`Unable to delete member for team: ${teamName}`, err);
-  }
+  const response = await axios.delete(
+    `/api/v1/organization/${orgName}/team/${teamName}/members/${memberName}`,
+  );
+  assertHttpCode(response.status, 204);
 }
 
 export async function deleteCollaboratorForOrg(
   orgName: string,
   collaborator: string,
 ) {
-  try {
-    await axios.delete(
-      `/api/v1/organization/${orgName}/members/${collaborator}`,
-    );
-  } catch (err) {
-    console.error(`Unable to delete collaborator for org: ${orgName}`, err);
-  }
+  await axios.delete(`/api/v1/organization/${orgName}/members/${collaborator}`);
 }
 
-export async function addMemberToTeamAPI(
+export async function addMemberToTeamForOrg(
   orgName: string,
   teamName: string,
   member: string,
 ) {
   const addMemberUrl = `/api/v1/organization/${orgName}/team/${teamName}/members/${member}`;
-  try {
-    await axios.put(addMemberUrl, {});
-  } catch (err) {
-    console.error('Unable to add member to team', err);
-  }
+  const response: AxiosResponse = await axios.put(addMemberUrl, {});
+  assertHttpCode(response.status, 200);
+  return response.data;
 }

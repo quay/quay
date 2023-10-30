@@ -79,7 +79,7 @@ export default function RobotRepositoryPermissions(
         selectedRepoPerms={props.selectedRepoPerms}
         setSelectedRepoPerms={props.setSelectedRepoPerms}
         robotPermissions={robotPermissions}
-        wizardStep={false}
+        isWizardStep={false}
         robotName={props.robotAccount.name}
         fetchingRobotPerms={loading}
         setPrevRepoPerms={props.setPrevRepoPerms}

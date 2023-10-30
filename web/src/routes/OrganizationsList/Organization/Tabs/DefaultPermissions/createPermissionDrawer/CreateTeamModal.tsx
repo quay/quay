@@ -59,15 +59,17 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
         variant: AlertVariant.Success,
         title: `Successfully created new team: ${inputTeamName}`,
       });
-      props.setAppliedTo({
-        is_robot: false,
-        name: props.teamName,
-        kind: 'team',
-      });
+      if (props?.setAppliedTo) {
+        props.setAppliedTo({
+          is_robot: false,
+          name: props.teamName,
+          kind: 'team',
+        });
+      }
+      props.handleModalToggle();
       if (props?.handleWizardToggle) {
         props?.handleWizardToggle();
       }
-      props.handleModalToggle();
     },
     onError: () => {
       addAlert({
@@ -173,5 +175,5 @@ interface CreateTeamModalProps {
   isModalOpen: boolean;
   handleModalToggle: () => void;
   handleWizardToggle?: () => void;
-  setAppliedTo: (string) => void;
+  setAppliedTo?: (string) => void;
 }

@@ -25,7 +25,7 @@ export default function TagHistory(props: TagHistoryProps) {
     props.repo,
   );
   const [page, setPage] = useState<number>(1);
-  const [perPage, setPerPage] = useState<number>(10);
+  const [perPage, setPerPage] = useState<number>(20);
 
   // Memo these to prevent recalculating on every render
   const {tagList, tagEntries} = useMemo(

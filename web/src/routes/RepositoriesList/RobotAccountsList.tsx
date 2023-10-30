@@ -6,8 +6,8 @@ import {
   TextContent,
   Text,
   TextVariants,
+  DropdownItem,
 } from '@patternfly/react-core';
-import {DropdownItem} from '@patternfly/react-core/deprecated';
 import {
   Table,
   ExpandableRowContent,
@@ -456,7 +456,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       return;
     }
     setTableExpanded(!isTableExpanded);
-    paginatedRobotAccountList.map((robotAccount, index) => {
+    paginatedRobotAccountList.map((robotAccount) => {
       setRobotExpanded(robotAccount);
     });
   };
@@ -482,7 +482,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   if (loading && paginatedRobotAccountList?.length == 0) {
     return (
-      <Table aria-label="Empty state table" borders={false}>
+      <Table aria-label="Empty state table" borders={false} variant="compact">
         <Tbody>
           <Tr>
             <Td colSpan={8} textCenter={true}>
@@ -585,7 +585,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           }
           showFooter={true}
         />
-        <Table aria-label="Expandable table" variant={undefined}>
+        <Table aria-label="Expandable table" variant="compact">
           <Thead>
             <Tr>
               <Th />

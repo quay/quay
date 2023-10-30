@@ -27,7 +27,7 @@ export const BulkDeleteModalTemplate = <T,>(
 
   const [searchInput, setSearchInput] = useState<string>('');
 
-  const [bulkModalPerPage, setBulkModalPerPage] = useState<number>(10);
+  const [bulkModalPerPage, setBulkModalPerPage] = useState<number>(20);
   const [bulkModalPage, setBulkModalPage] = useState<number>(1);
 
   const paginatedBulkItemsList = itemsMarkedForDelete.slice(
@@ -88,6 +88,7 @@ export const BulkDeleteModalTemplate = <T,>(
           onClick={bulkDelete}
           form="modal-with-form-form"
           isDisabled={confirmDeletionInput !== 'confirm'}
+          data-testid="bulk-delete-confirm-btn"
         >
           Delete
         </Button>,

@@ -34,7 +34,7 @@ describe('Packages Report Page', () => {
     cy.contains('Quay Security Reporting has recognized 49 packages');
     cy.contains('Patches are available for 30 vulnerabilities');
     cy.get('[data-testid="packages-chart"]').contains('49').should('exist');
-    cy.get('td[data-label="Package Name"]').should('have.length', 10);
+    cy.get('td[data-label="Package Name"]').should('have.length', 20);
   });
 
   it('render no packages', () => {
@@ -57,7 +57,7 @@ describe('Packages Report Page', () => {
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
-    cy.get('td[data-label="Package Name"]').should('have.length', 10);
+    cy.get('td[data-label="Package Name"]').should('have.length', 20);
     cy.get('input[placeholder="Filter Packages..."]').type('python');
     cy.get('td[data-label="Package Name"]').should('have.length', 7);
     cy.get('td[data-label="Package Name"]')
@@ -106,11 +106,11 @@ describe('Packages Report Page', () => {
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
-    cy.contains('1 - 10 of 49').should('exist');
-    cy.get('td[data-label="Package Name"]').should('have.length', 10);
+    cy.contains('1 - 20 of 49').should('exist');
+    cy.get('td[data-label="Package Name"]').should('have.length', 20);
 
     // Change per page
-    cy.get('button:contains("1 - 10 of 49")').first().click();
+    cy.get('button:contains("1 - 20 of 49")').first().click();
     cy.contains('20 per page').click();
     cy.get('td[data-label="Package Name"]').should('have.length', 20);
 
@@ -138,8 +138,8 @@ describe('Packages Report Page', () => {
 
     // Switch per page while while being on a different page
     cy.get('button:contains("41 - 49 of 49")').first().click();
-    cy.contains('10 per page').click();
-    cy.contains('1 - 10 of 49').should('exist');
-    cy.get('td[data-label="Package Name"]').should('have.length', 10);
+    cy.contains('20 per page').click();
+    cy.contains('1 - 20 of 49').should('exist');
+    cy.get('td[data-label="Package Name"]').should('have.length', 20);
   });
 });

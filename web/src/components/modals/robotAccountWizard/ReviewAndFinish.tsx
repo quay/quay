@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {
   TextContent,
   Text,
@@ -8,10 +9,11 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   ToggleGroupItemProps,
+  Dropdown,
+  MenuToggle,
+  MenuToggleElement,
 } from '@patternfly/react-core';
-import {Dropdown, DropdownToggle} from '@patternfly/react-core/deprecated';
 import {Table, Tbody, Td, Tr} from '@patternfly/react-table';
-import React, {useState} from 'react';
 
 type TableModeType = 'Teams' | 'Repositories' | 'Default-permissions';
 
@@ -50,7 +52,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   const fetchSelectedTeams = () => {
     return (
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Tbody>
           {props.selectedTeams.map((team, rowIndex) => (
             <Tr key={team.name}>
@@ -80,7 +82,7 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
 
   const fetchSelectedRepos = () => {
     return (
-      <Table aria-label="Selectable table">
+      <Table aria-label="Selectable table" variant="compact">
         <Tbody>
           {props.selectedRepos.map((repo, rowIndex) => (
             <Tr key={repo.name}>
@@ -94,11 +96,11 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
               <Td dataLabel={RepoColumnNames.name}>{repo.name}</Td>
               <Td dataLabel={RepoColumnNames.permissions}>
                 <Dropdown
-                  toggle={
-                    <DropdownToggle id="toggle-disabled" isDisabled>
+                  toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                    <MenuToggle ref={toggleRef} id="toggle-disabled" isDisabled>
                       {repo.permission}
-                    </DropdownToggle>
-                  }
+                    </MenuToggle>
+                  )}
                 />
               </Td>
               <Td dataLabel={RepoColumnNames.lastUpdated}>
@@ -134,11 +136,11 @@ export default function ReviewAndFinish(props: ReviewAndFinishProps) {
           </FormGroup>
           <FormGroup label="Permission" fieldId="robot-permission" isRequired />
           <Dropdown
-            toggle={
-              <DropdownToggle id="toggle-disabled" isDisabled>
+            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+              <MenuToggle ref={toggleRef} id="toggle-disabled" isDisabled>
                 {props.robotdefaultPerm}
-              </DropdownToggle>
-            }
+              </MenuToggle>
+            )}
           />
         </Form>
       </>

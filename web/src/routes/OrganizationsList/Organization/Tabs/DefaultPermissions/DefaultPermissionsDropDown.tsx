@@ -1,9 +1,11 @@
+import {useEffect, useState} from 'react';
 import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
 import {
   IDefaultPermission,
   useUpdateDefaultPermission,
@@ -15,7 +17,7 @@ import {AlertVariant} from 'src/atoms/AlertState';
 export default function DefaultPermissionsDropDown(
   props: DefaultPermissionsDropdownProps,
 ) {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState(false);
   const {addAlert} = useAlerts();
 
   const {
@@ -46,28 +48,38 @@ export default function DefaultPermissionsDropDown(
     <Dropdown
       data-testid={`${props.defaultPermission.createdBy}-permission-dropdown`}
       onSelect={() => setIsOpen(false)}
-      toggle={
-        <DropdownToggle onToggle={() => setIsOpen(!isOpen)}>
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={() => setIsOpen(!isOpen)}
+          isExpanded={isOpen}
+          data-testid={`${props.defaultPermission.createdBy}-permission-dropdown-toggle`}
+        >
           {props.defaultPermission.permission.charAt(0).toUpperCase() +
             props.defaultPermission.permission.slice(1)}
-        </DropdownToggle>
-      }
+        </MenuToggle>
+      )}
       isOpen={isOpen}
-      dropdownItems={Object.keys(repoPermissions).map((key) => (
-        <DropdownItem
-          data-testid={`${props.defaultPermission.createdBy}-${key}`}
-          key={repoPermissions[key]}
-          onClick={() =>
-            setDefaultPermission({
-              id: props.defaultPermission.id,
-              newRole: repoPermissions[key],
-            })
-          }
-        >
-          {repoPermissions[key]}
-        </DropdownItem>
-      ))}
-    />
+      onOpenChange={(isOpen) => setIsOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>
+        {Object.keys(repoPermissions).map((key) => (
+          <DropdownItem
+            data-testid={`${props.defaultPermission.createdBy}-${key}`}
+            key={repoPermissions[key]}
+            onClick={() =>
+              setDefaultPermission({
+                id: props.defaultPermission.id,
+                newRole: repoPermissions[key],
+              })
+            }
+          >
+            {repoPermissions[key]}
+          </DropdownItem>
+        ))}
+      </DropdownList>
+    </Dropdown>
   );
 }
 

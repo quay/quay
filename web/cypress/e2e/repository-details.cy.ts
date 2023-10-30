@@ -346,7 +346,7 @@ describe('Repository Details Page', () => {
   it('search by manifest', () => {
     cy.visit('/repository/user1/hello-world');
     cy.get('#toolbar-dropdown-filter').click();
-    cy.get('a').contains('Manifest').click();
+    cy.get('span').contains('Manifest').click();
     cy.get('#tagslist-search-input').type('f54a58bc1aac');
     cy.contains('latest').should('exist');
     cy.contains('manifestlist').should('not.exist');

@@ -1,3 +1,4 @@
+import {useState, Ref} from 'react';
 import {
   ActionGroup,
   Button,
@@ -7,20 +8,19 @@ import {
   DrawerHead,
   DrawerPanelBody,
   DrawerPanelContent,
-  Form,
-  FormGroup,
-  Radio,
-  Spinner,
-} from '@patternfly/react-core';
-import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-  SelectOption,
+  DropdownList,
+  Form,
+  FormGroup,
+  MenuToggle,
+  MenuToggleElement,
+  Radio,
   SelectGroup,
-} from '@patternfly/react-core/deprecated';
+  SelectOption,
+  Spinner,
+} from '@patternfly/react-core';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
-import {useState, Ref} from 'react';
 import EntitySearch from 'src/components/EntitySearch';
 import {useCreateDefaultPermission} from 'src/hooks/UseDefaultPermissions';
 import {Entity} from 'src/resources/UserResource';
@@ -29,13 +29,14 @@ import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {CreateTeamWizard} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createTeamWizard/CreateTeamWizard';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
-import {DrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
+import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import Conditional from 'src/components/empty/Conditional';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {repoPermissions} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/DefaultPermissionsList';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {validateTeamName} from 'src/libs/utils';
 
 export default function CreatePermissionDrawer(
   props: CreatePermissionDrawerProps,
@@ -105,20 +106,22 @@ export default function CreatePermissionDrawer(
         {isLoadingRobots ? (
           <Spinner />
         ) : (
-          robots?.map((r) => (
+          robots?.map(({name}) => (
             <SelectOption
-              data-testid={`${r.name}-robot-accnt`}
-              key={r.name}
-              value={r.name}
+              data-testid={`${name}-robot-accnt`}
+              key={name}
+              value={name}
               onClick={() => {
                 setRepositoryCreator({
+                  name,
                   is_robot: true,
-                  name: r.name,
                   kind: 'user',
                   is_org_member: true,
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           ))
         )}
       </SelectGroup>
@@ -130,7 +133,6 @@ export default function CreatePermissionDrawer(
         onClick={() =>
           setIsCreateRobotModalForCreatorOpen(!isCreateRobotModalForCreatorOpen)
         }
-        isPlaceholder
         isFocused
       >
         <DesktopIcon /> &nbsp; Create robot account
@@ -154,10 +156,6 @@ export default function CreatePermissionDrawer(
     />
   );
 
-  const validateTeamName = (name: string) => {
-    return /^[a-z][a-z0-9]+$/.test(name);
-  };
-
   const createTeamModal = (
     <CreateTeamModal
       teamName={teamName}
@@ -174,7 +172,7 @@ export default function CreatePermissionDrawer(
       handleWizardToggle={() => setIsTeamWizardOpen(!isTeamWizardOpen)}
       validateName={validateTeamName}
       setAppliedTo={setAppliedTo}
-    ></CreateTeamModal>
+    />
   );
 
   const createTeamWizard = (
@@ -184,7 +182,7 @@ export default function CreatePermissionDrawer(
       isTeamWizardOpen={isTeamWizardOpen}
       handleWizardToggle={() => setIsTeamWizardOpen(!isTeamWizardOpen)}
       orgName={props.orgName}
-    ></CreateTeamWizard>
+    />
   );
 
   const createRobotModalForRepositoryCreator = (
@@ -245,39 +243,43 @@ export default function CreatePermissionDrawer(
         {isLoadingTeams ? (
           <Spinner />
         ) : (
-          teams?.map((t) => (
+          teams?.map(({name}) => (
             <SelectOption
-              data-testid={`${t.name}-team`}
-              key={t.name}
-              value={t.name}
+              data-testid={`${name}-team`}
+              key={name}
+              value={name}
               onClick={() => {
                 setAppliedTo({
+                  name,
                   is_robot: false,
-                  name: t.name,
                   kind: 'team',
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           ))
         )}
       </SelectGroup>
       <Divider component="li" key={4} />
       <SelectGroup label="Robot accounts" key="group4">
-        {robots?.map((r) => {
+        {robots?.map(({name}) => {
           return (
             <SelectOption
-              data-testid={`${r.name}-robot-accnt`}
-              key={r.name}
-              value={r.name}
+              data-testid={`${name}-robot-accnt`}
+              key={name}
+              value={name}
               onClick={() => {
                 setAppliedTo({
+                  name,
                   is_robot: true,
-                  name: r.name,
                   kind: 'user',
                   is_org_member: true,
                 });
               }}
-            />
+            >
+              {name}
+            </SelectOption>
           );
         })}
       </SelectGroup>
@@ -287,7 +289,6 @@ export default function CreatePermissionDrawer(
         key="Create team1"
         component="button"
         onClick={() => setIsTeamModalOpen(!isTeamModalOpen)}
-        isPlaceholder
         isFocused
       >
         <UsersIcon /> &nbsp; Create team
@@ -301,7 +302,6 @@ export default function CreatePermissionDrawer(
             !isCreateRobotModalForAppliedToOpen,
           )
         }
-        isPlaceholder
         isFocused
       >
         <DesktopIcon /> &nbsp; Create robot account
@@ -340,17 +340,22 @@ export default function CreatePermissionDrawer(
   const dropdownForPermission = (
     <Dropdown
       data-testid={'create-default-permission-dropdown'}
-      toggle={
-        <DropdownToggle
-          id="toggle-id-6"
-          onToggle={() => setPermissionDropDownOpen(!permissionDropDownOpen)}
+      toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+        <MenuToggle
+          ref={toggleRef}
+          onClick={() => setPermissionDropDownOpen(!permissionDropDownOpen)}
+          isExpanded={permissionDropDownOpen}
+          data-testid="create-default-permission-dropdown-toggle"
         >
           {permission}
-        </DropdownToggle>
-      }
+        </MenuToggle>
+      )}
       isOpen={permissionDropDownOpen}
-      dropdownItems={optionsForPermission}
-    />
+      onOpenChange={(isOpen) => setPermissionDropDownOpen(isOpen)}
+      shouldFocusToggleOnSelect
+    >
+      <DropdownList>{optionsForPermission}</DropdownList>
+    </Dropdown>
   );
   const {createDefaultPermission} = useCreateDefaultPermission(props.orgName, {
     onSuccess: () => {
@@ -401,7 +406,9 @@ export default function CreatePermissionDrawer(
       <DrawerPanelContent>
         <DrawerHead className="pf-v5-c-title pf-m-xl">
           <h6
-            tabIndex={props.drawerContent != DrawerContentType.None ? 0 : -1}
+            tabIndex={
+              props.drawerContent != OrganizationDrawerContentType.None ? 0 : -1
+            }
             ref={props.drawerRef}
           >
             Create default permission
@@ -463,5 +470,5 @@ interface CreatePermissionDrawerProps {
   orgName: string;
   closeDrawer: () => void;
   drawerRef: Ref<HTMLDivElement>;
-  drawerContent: DrawerContentType;
+  drawerContent: OrganizationDrawerContentType;
 }

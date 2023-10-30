@@ -160,14 +160,14 @@ describe('Repository Settings - Notifications', () => {
   });
 
   it('Bulk enables notification', () => {
-    cy.get('#notifications-select-all').click();
+    cy.get('[name="notifications-select-all"]').click();
     cy.contains('Actions').click();
     cy.contains('Enable').click();
     cy.contains('Disabled (3 failed attempts)').should('not.exist');
   });
 
   it('Bulk deletes notification', () => {
-    cy.get('#notifications-select-all').click();
+    cy.get('[name="notifications-select-all"]').click();
     cy.contains('Actions').click();
     cy.get('#bulk-delete-notifications').contains('Delete').click();
     cy.contains('No notifications found');

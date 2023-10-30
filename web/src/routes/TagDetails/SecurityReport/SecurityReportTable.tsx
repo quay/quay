@@ -78,7 +78,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
 
   // Pagination state
   const [page, setPage] = useState<number>(1);
-  const [perPage, setPerPage] = useState<number>(10);
+  const [perPage, setPerPage] = useState<number>(20);
 
   const paginatedVulns: VulnerabilityListItem[] = filteredVulnList.slice(
     (page - 1) * perPage,
@@ -206,7 +206,11 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <Table data-testid="vulnerability-table" aria-label="Expandable table">
+      <Table
+        data-testid="vulnerability-table"
+        aria-label="Expandable table"
+        variant="compact"
+      >
         <TableHead />
         {paginatedVulns.length !== 0 ? (
           paginatedVulns.map(

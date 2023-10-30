@@ -163,7 +163,7 @@ export function DeleteModal(props: ModalProps) {
             <Label>{tag}</Label>{' '}
           </span>
         ))}
-        <Conditional if={props.tags?.length > 10}>
+        <Conditional if={props.tags?.length > 20}>
           <div>
             <b>Note:</b> This operation can take several minutes.
           </div>

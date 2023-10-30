@@ -73,7 +73,7 @@
     "ANONYMOUS_ACCESS": true,
     "APP_REGISTRY": false,
     "APP_SPECIFIC_TOKENS": true,
-    "BILLING": false,
+    "BILLING": true,
     "BITBUCKET_BUILD": false,
     "BLACKLISTED_EMAILS": false,
     "BUILD_SUPPORT": true,
@@ -125,8 +125,9 @@
     "USER_INITIALIZE": false,
     "USER_LAST_ACCESSED": true,
     "USER_LOG_ACCESS": false,
-    "USER_METADATA": false,
-    "USER_RENAME": false
+    "USER_METADATA": true,
+    "USER_RENAME": false,
+    "AUTO_PRUNE": true
   },
   "oauth": {
     "GITHUB_TRIGGER_CONFIG": {

@@ -1,14 +1,14 @@
+import {useEffect, useState} from 'react';
 import {
   Alert,
   AlertActionCloseButton,
   AlertGroup,
-} from '@patternfly/react-core';
-import {
   Dropdown,
   DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
 import {
@@ -77,37 +77,39 @@ export default function Actions(props: ActionsProps) {
       </Conditional>
       <Dropdown
         onSelect={() => setIsOpen(false)}
-        toggle={
-          <DropdownToggle
+        toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+          <MenuToggle
+            ref={toggleRef}
             isDisabled={props.isDisabled}
-            onToggle={(_event, isOpen) => setIsOpen(isOpen)}
+            onClick={() => setIsOpen(() => !isOpen)}
+            isExpanded={isOpen}
           >
             Actions
-          </DropdownToggle>
-        }
+          </MenuToggle>
+        )}
         isOpen={isOpen}
-        dropdownItems={[
-          <Conditional
-            key="notifications-bulk-delete"
-            if={notificationsToEnable.length > 0}
-          >
+        onOpenChange={(isOpen) => setIsOpen(isOpen)}
+        shouldFocusToggleOnSelect
+      >
+        <DropdownList>
+          <Conditional if={notificationsToEnable.length > 0}>
             <DropdownItem
               onClick={() => enableNotifications(notificationsToEnable)}
             >
               Enable
             </DropdownItem>
-          </Conditional>,
+          </Conditional>
+
           <DropdownItem
-            key="notifications-bulk-delete"
             id="bulk-delete-notifications"
             onClick={() => {
               deleteNotifications(props.selectedItems.map((n) => n.uuid));
             }}
           >
             Delete
-          </DropdownItem>,
-        ]}
-      />
+          </DropdownItem>
+        </DropdownList>
+      </Dropdown>
     </>
   );
 }

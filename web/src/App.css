@@ -1,4 +1,6 @@
 /* Global Styles */
+@import '~@patternfly/patternfly/patternfly.css';
+@import '~@patternfly/patternfly/patternfly-addons.css';
 
 html, body, #root,  .App {
   height: 100%;

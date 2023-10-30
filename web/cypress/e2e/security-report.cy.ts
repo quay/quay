@@ -54,9 +54,9 @@ describe('Security Report Page', () => {
     cy.get('[data-testid="vulnerability-chart"]').within(() =>
       cy.contains('41'),
     );
-    cy.get('td[data-label="Advisory"]').should('have.length', 10);
+    cy.get('td[data-label="Advisory"]').should('have.length', 20);
 
-    cy.get('button:contains("1 - 10 of 41")').first().click();
+    cy.get('button:contains("1 - 20 of 41")').first().click();
     cy.contains('100 per page').click();
     cy.get('td[data-label="Advisory"]').should('have.length', 41);
     cy.get('[data-testid="vulnerability-table"]').within(() => {
@@ -85,8 +85,8 @@ describe('Security Report Page', () => {
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
-    cy.get('td[data-label="Advisory"]').should('have.length', 10);
-    cy.get('button:contains("1 - 10 of 41")').first().click();
+    cy.get('td[data-label="Advisory"]').should('have.length', 20);
+    cy.get('button:contains("1 - 20 of 41")').first().click();
     cy.contains('100 per page').click();
     cy.get('td[data-label="Advisory"]').should('have.length', 41);
     cy.get('#fixable-checkbox').click();
@@ -103,7 +103,7 @@ describe('Security Report Page', () => {
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
-    cy.get('td[data-label="Advisory"]').should('have.length', 10);
+    cy.get('td[data-label="Advisory"]').should('have.length', 20);
     cy.get('input[placeholder="Filter Vulnerabilities..."]').type('python');
     cy.get('td[data-label="Advisory"]').should('have.length', 7);
     cy.get('td[data-label="Package"]')
@@ -157,11 +157,11 @@ describe('Security Report Page', () => {
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
-    cy.contains('1 - 10 of 41').should('exist');
-    cy.get('td[data-label="Advisory"]').should('have.length', 10);
+    cy.contains('1 - 20 of 41').should('exist');
+    cy.get('td[data-label="Advisory"]').should('have.length', 20);
 
     // Change per page
-    cy.get('button:contains("1 - 10 of 41")').first().click();
+    cy.get('button:contains("1 - 20 of 41")').first().click();
     cy.contains('20 per page').click();
     cy.get('td[data-label="Advisory"]').should('have.length', 20);
 
@@ -181,9 +181,9 @@ describe('Security Report Page', () => {
 
     // Switch per page while while being on a different page
     cy.get('button:contains("41 - 41 of 41")').first().click();
-    cy.contains('10 per page').click();
-    cy.contains('1 - 10 of 41').should('exist');
-    cy.get('td[data-label="Advisory"]').should('have.length', 10);
+    cy.contains('20 per page').click();
+    cy.contains('1 - 20 of 41').should('exist');
+    cy.get('td[data-label="Advisory"]').should('have.length', 20);
   });
 
   it('render default desc sorted vlunerabilities', () => {
@@ -193,14 +193,14 @@ describe('Security Report Page', () => {
       {fixture: 'security/mixedVulns.json'},
     ).as('getDescSortedSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
-    cy.get('td[data-label="Advisory"]').should('have.length', 10);
+    cy.get('td[data-label="Advisory"]').should('have.length', 20);
     cy.get('[data-testid="vulnerability-table"]').within(() => {
       cy.get('[data-label="Severity"]')
         .get('span:contains("Critical")')
         .should('have.length', 3);
       cy.get('[data-label="Severity"]')
         .get('span:contains("High")')
-        .should('have.length', 7);
+        .should('have.length', 12);
     });
   });
 
@@ -224,7 +224,7 @@ describe('Security Report Page', () => {
         .should('have.length', 2);
       cy.get('[data-label="Severity"]')
         .get('span:contains("Medium")')
-        .should('have.length', 6);
+        .should('have.length', 16);
     });
   });
 });

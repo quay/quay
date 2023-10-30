@@ -1,3 +1,4 @@
+import {useRef, useState} from 'react';
 import {
   Modal,
   ModalVariant,
@@ -11,14 +12,13 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
-} from '@patternfly/react-core';
-import {
-  Select,
   SelectOption,
-  SelectVariant,
-} from '@patternfly/react-core/deprecated';
+  Select,
+  SelectList,
+  MenuToggle,
+  MenuToggleElement,
+} from '@patternfly/react-core';
 import {IRepository} from 'src/resources/RepositoryResource';
-import {useRef, useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -178,23 +178,28 @@ export default function CreateRepositoryModalTemplate(
               >
                 <FlexItem>
                   <Select
-                    variant={SelectVariant.single}
-                    aria-label="Select Input"
-                    onToggle={() =>
-                      setCurrentOrganization((prevState) => ({
-                        ...prevState,
-                        isDropdownOpen: !prevState.isDropdownOpen,
-                      }))
-                    }
-                    onSelect={handleNamespaceSelection}
+                    aria-label="Namespace select"
                     isOpen={currentOrganization.isDropdownOpen}
-                    maxHeight="200px"
-                    width="200px"
-                    isDisabled={props.orgName !== null}
-                    placeholderText={'Select namespace'}
-                    selections={currentOrganization.name}
+                    selected={currentOrganization.name || 'Select namespace'}
+                    onSelect={handleNamespaceSelection}
+                    toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() =>
+                          setCurrentOrganization((prevState) => ({
+                            ...prevState,
+                            isDropdownOpen: !prevState.isDropdownOpen,
+                          }))
+                        }
+                        isExpanded={currentOrganization.isDropdownOpen}
+                        isDisabled={props.orgName !== null}
+                      >
+                        {currentOrganization.name}
+                      </MenuToggle>
+                    )}
+                    shouldFocusToggleOnSelect
                   >
-                    {namespaceSelectionList()}
+                    <SelectList>{namespaceSelectionList()}</SelectList>
                   </Select>
                 </FlexItem>
                 <FlexItem>/</FlexItem>

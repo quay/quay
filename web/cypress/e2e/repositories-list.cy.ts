@@ -18,7 +18,7 @@ describe('Repositories List Page', () => {
     cy.contains('Repositories').should('exist');
     cy.get('[data-testid="repository-list-table"]')
       .children()
-      .should('have.length', 10);
+      .should('have.length', 20);
     cy.get('input[placeholder="Search by Name..."]').type('user1');
     cy.get('[data-testid="repository-list-table"]').within(() => {
       cy.contains('user1/hello-world').should('exist');
@@ -169,12 +169,12 @@ describe('Repositories List Page', () => {
   it('makes multiple repositories private', () => {
     cy.visit('/repository');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select page (10)').click();
+    cy.contains('Select page (20)').click();
     cy.contains('Actions').click();
     cy.contains('Make Private').click();
     cy.contains('Make repositories private');
     cy.contains(
-      'Update 10 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',
+      'Update 20 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',
     );
     cy.contains('Make private').click();
     cy.contains('public').should('not.exist');
@@ -228,11 +228,11 @@ describe('Repositories List Page', () => {
       {repositories: repos},
     ).as('getRepositories');
     cy.visit('/repository');
-    cy.contains('1 - 10 of 50').should('exist');
-    cy.get('td[data-label="Name"]').should('have.length', 10);
+    cy.contains('1 - 20 of 50').should('exist');
+    cy.get('td[data-label="Name"]').should('have.length', 20);
 
     // Change per page
-    cy.get('button:contains("1 - 10 of 50")').first().click();
+    cy.get('button:contains("1 - 20 of 50")').first().click();
     cy.contains('20 per page').click();
     cy.get('td[data-label="Name"]').should('have.length', 20);
 
@@ -252,8 +252,8 @@ describe('Repositories List Page', () => {
 
     // Switch per page while while being on a different page
     cy.get('button:contains("41 - 50 of 50")').first().click();
-    cy.contains('10 per page').click();
-    cy.contains('1 - 10 of 50').should('exist');
-    cy.get('td[data-label="Name"]').should('have.length', 10);
+    cy.contains('20 per page').click();
+    cy.contains('1 - 20 of 50').should('exist');
+    cy.get('td[data-label="Name"]').should('have.length', 20);
   });
 });

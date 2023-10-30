@@ -120,7 +120,7 @@ class UserRobot(ApiResource):
         Create a new user robot with the specified name.
         """
         parent = get_authenticated_user()
-        create_data = request.get_json() or {}
+        create_data = request.get_json(silent=True) or {}
         robot = model.create_user_robot(
             robot_shortname,
             parent,
@@ -236,7 +236,7 @@ class OrgRobot(ApiResource):
         """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser():
-            create_data = request.get_json() or {}
+            create_data = request.get_json(silent=True) or {}
             robot = model.create_org_robot(
                 robot_shortname,
                 orgname,

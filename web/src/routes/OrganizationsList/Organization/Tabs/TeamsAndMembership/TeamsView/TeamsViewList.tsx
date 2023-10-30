@@ -1,18 +1,18 @@
+import {useEffect, useState} from 'react';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import TeamsViewToolbar from './TeamsViewToolbar';
 import {Link, useSearchParams} from 'react-router-dom';
 import {
+  Dropdown,
+  DropdownItem,
+  DropdownList,
+  MenuToggle,
+  MenuToggleElement,
   PageSection,
   PageSectionVariants,
   PanelFooter,
   Spinner,
 } from '@patternfly/react-core';
-import {
-  Dropdown,
-  DropdownItem,
-  DropdownToggle,
-} from '@patternfly/react-core/deprecated';
-import {useEffect, useState} from 'react';
+import TeamsViewToolbar from './TeamsViewToolbar';
 import TeamViewKebab from './TeamViewKebab';
 import {ITeams, useDeleteTeam, useFetchTeams} from 'src/hooks/UseTeams';
 import {TeamsRoleDropDown} from './TeamsRoleDropDown';
@@ -24,6 +24,8 @@ import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 import SetRepoPermissionForTeamModal from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/SetRepoPermissionsModal/SetRepoPermissionForTeamModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import Conditional from 'src/components/empty/Conditional';
+import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
 
 export const teamViewColumnNames = {
   teamName: 'Team name',
@@ -55,6 +57,8 @@ export default function TeamsViewList(props: TeamsViewListProps) {
   const {addAlert} = useAlerts();
   const [isSetRepoPermModalOpen, setIsSetRepoPermModalOpen] = useState(false);
   const [repoPermForTeam, setRepoPermForTeam] = useState<string>('');
+  const [isDeleteModalForRowOpen, setIsDeleteModalForRowOpen] = useState(false);
+  const [teamToBeDeleted, setTeamToBeDeleted] = useState<ITeams>();
 
   useEffect(() => {
     if (error) {
@@ -98,19 +102,22 @@ export default function TeamsViewList(props: TeamsViewListProps) {
       label: 'team role',
       transformFunc: (team: ITeams) => (
         <Dropdown
-          toggle={
-            <DropdownToggle id="toggle-disabled" isDisabled>
+          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+            <MenuToggle ref={toggleRef} id="toggle-disabled" isDisabled>
               {team.role}
-            </DropdownToggle>
-          }
+            </MenuToggle>
+          )}
           isOpen={false}
-          dropdownItems={[team.role]}
-        />
+        >
+          <DropdownList>
+            <DropdownItem>{team.role}</DropdownItem>
+          </DropdownList>
+        </Dropdown>
       ),
     },
   };
 
-  const {removeTeam} = useDeleteTeam({
+  const {removeTeam: bulkRemoveTeams} = useDeleteTeam({
     orgName: props.organizationName,
     onSuccess: () => {
       setDeleteModalIsOpen(!deleteModalIsOpen);
@@ -145,7 +152,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     <BulkDeleteModalTemplate
       mapOfColNamesToTableData={mapOfColNamesToTableData}
       handleModalToggle={handleDeleteModalToggle}
-      handleBulkDeletion={removeTeam}
+      handleBulkDeletion={bulkRemoveTeams}
       isModalOpen={deleteModalIsOpen}
       selectedItems={teams?.filter((team) =>
         selectedTeams.some((selected) => team.name === selected.name),
@@ -178,6 +185,34 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     />
   );
 
+  const {removeTeam} = useDeleteTeam({
+    orgName: props.organizationName,
+    onSuccess: () => {
+      setIsDeleteModalForRowOpen(false);
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully deleted team: ${teamToBeDeleted.name}`,
+      });
+    },
+    onError: (err) => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: `Unable to delete team: ${teamToBeDeleted.name}, ${err}`,
+      });
+    },
+  });
+
+  const deleteRowModal = (
+    <DeleteModalForRowTemplate
+      deleteMsgTitle={'Remove team from organization'}
+      isModalOpen={isDeleteModalForRowOpen}
+      toggleModal={() => setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen)}
+      deleteHandler={removeTeam}
+      itemToBeDeleted={teamToBeDeleted}
+      keyToDisplay="name"
+    />
+  );
+
   const openSetRepoPermModal = (teamName: string) => {
     setRepoPermForTeam(teamName);
     setIsSetRepoPermModalOpen(!isSetRepoPermModalOpen);
@@ -188,115 +223,124 @@ export default function TeamsViewList(props: TeamsViewListProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <ErrorModal
-        title="Team deletion failed"
-        error={err}
-        setError={setIsError}
-      />
-      <TeamsViewToolbar
-        selectedTeams={selectedTeams}
-        deSelectAll={() => setSelectedTeams([])}
-        allItems={filteredTeams}
-        paginatedItems={paginatedTeams}
-        onItemSelect={onSelectTeam}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
-        search={search}
-        setSearch={setSearch}
-        searchOptions={[teamViewColumnNames.teamName]}
-        isKebabOpen={isKebabOpen}
-        setKebabOpen={setKebabOpen}
-        kebabItems={kebabItems}
-        deleteKebabIsOpen={deleteModalIsOpen}
-        deleteModal={deleteModal}
-        isSetRepoPermModalOpen={isSetRepoPermModalOpen}
-        setRepoPermModal={setRepoPermModal}
-      />
-      {props.children}
-      <Table aria-label="Selectable table">
-        <Thead>
-          <Tr>
-            <Th />
-            <Th>{teamViewColumnNames.teamName}</Th>
-            <Th>{teamViewColumnNames.members}</Th>
-            <Th>{teamViewColumnNames.repositories}</Th>
-            <Th>{teamViewColumnNames.teamRole}</Th>
-            <Th />
-          </Tr>
-        </Thead>
-        <Tbody>
-          {paginatedTeams?.map((team, rowIndex) => (
-            <Tr key={rowIndex}>
-              <Td
-                select={{
-                  rowIndex,
-                  onSelect: (_event, isSelecting) =>
-                    onSelectTeam(team, rowIndex, isSelecting),
-                  isSelected: selectedTeams.some((t) => t.name === team.name),
-                }}
-              />
-              <Td dataLabel={teamViewColumnNames.teamName}>{team.name}</Td>
-              <Td dataLabel={teamViewColumnNames.members}>
-                <Link
-                  to={getTeamMemberPath(
-                    location.pathname,
-                    props.organizationName,
-                    team.name,
-                    searchParams.get('tab'),
-                  )}
-                >
-                  {team.member_count}
-                </Link>
-              </Td>
-              <Td dataLabel={teamViewColumnNames.repositories}>
-                <Link
-                  to="#"
-                  onClick={() => {
-                    openSetRepoPermModal(team.name);
-                  }}
-                >
-                  {team.repo_count}
-                </Link>
-              </Td>
-              <Td dataLabel={teamViewColumnNames.teamRole}>
-                <TeamsRoleDropDown
-                  organizationName={props.organizationName}
-                  teamName={team.name}
-                  teamRole={team.role}
-                />
-              </Td>
-              <Td data-label="kebab">
-                <TeamViewKebab
-                  organizationName={props.organizationName}
-                  team={team}
-                  deSelectAll={() => setSelectedTeams([])}
-                  onSelectRepo={() => {
-                    openSetRepoPermModal(team.name);
-                  }}
-                />
-              </Td>
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-      <PanelFooter>
-        <ToolbarPagination
-          itemsList={filteredTeams}
-          perPage={perPage}
+    <>
+      <PageSection variant={PageSectionVariants.light}>
+        <ErrorModal
+          title="Team deletion failed"
+          error={err}
+          setError={setIsError}
+        />
+        <TeamsViewToolbar
+          selectedTeams={selectedTeams}
+          deSelectAll={() => setSelectedTeams([])}
+          allItems={filteredTeams}
+          paginatedItems={paginatedTeams}
+          onItemSelect={onSelectTeam}
           page={page}
           setPage={setPage}
+          perPage={perPage}
           setPerPage={setPerPage}
-          bottom={true}
+          search={search}
+          setSearch={setSearch}
+          searchOptions={[teamViewColumnNames.teamName]}
+          isKebabOpen={isKebabOpen}
+          setKebabOpen={setKebabOpen}
+          kebabItems={kebabItems}
+          deleteKebabIsOpen={deleteModalIsOpen}
+          deleteModal={deleteModal}
+          isSetRepoPermModalOpen={isSetRepoPermModalOpen}
+          setRepoPermModal={setRepoPermModal}
+          handleModalToggle={props.handleModalToggle}
         />
-      </PanelFooter>
-    </PageSection>
+        {props.children}
+        <Conditional if={isDeleteModalForRowOpen}>{deleteRowModal}</Conditional>
+        <Table aria-label="Selectable table" variant="compact">
+          <Thead>
+            <Tr>
+              <Th />
+              <Th>{teamViewColumnNames.teamName}</Th>
+              <Th>{teamViewColumnNames.members}</Th>
+              <Th>{teamViewColumnNames.repositories}</Th>
+              <Th>{teamViewColumnNames.teamRole}</Th>
+              <Th />
+            </Tr>
+          </Thead>
+          <Tbody>
+            {paginatedTeams?.map((team, rowIndex) => (
+              <Tr key={rowIndex}>
+                <Td
+                  select={{
+                    rowIndex,
+                    onSelect: (_event, isSelecting) =>
+                      onSelectTeam(team, rowIndex, isSelecting),
+                    isSelected: selectedTeams.some((t) => t.name === team.name),
+                  }}
+                />
+                <Td dataLabel={teamViewColumnNames.teamName}>{team.name}</Td>
+                <Td dataLabel={teamViewColumnNames.members}>
+                  <Link
+                    to={getTeamMemberPath(
+                      location.pathname,
+                      props.organizationName,
+                      team.name,
+                      searchParams.get('tab'),
+                    )}
+                  >
+                    {team.member_count}
+                  </Link>
+                </Td>
+                <Td dataLabel={teamViewColumnNames.repositories}>
+                  <Link
+                    to="#"
+                    onClick={() => {
+                      openSetRepoPermModal(team.name);
+                    }}
+                  >
+                    {team.repo_count}
+                  </Link>
+                </Td>
+                <Td dataLabel={teamViewColumnNames.teamRole}>
+                  <TeamsRoleDropDown
+                    organizationName={props.organizationName}
+                    teamName={team.name}
+                    teamRole={team.role}
+                  />
+                </Td>
+                <Td data-label="kebab">
+                  <TeamViewKebab
+                    organizationName={props.organizationName}
+                    team={team}
+                    deSelectAll={() => setSelectedTeams([])}
+                    onSelectRepo={() => {
+                      openSetRepoPermModal(team.name);
+                    }}
+                    onDeleteTeam={() => {
+                      setTeamToBeDeleted(team);
+                      setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
+                    }}
+                  />
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        <PanelFooter>
+          <ToolbarPagination
+            itemsList={filteredTeams}
+            perPage={perPage}
+            page={page}
+            setPage={setPage}
+            setPerPage={setPerPage}
+            bottom={true}
+          />
+        </PanelFooter>
+      </PageSection>
+    </>
   );
 }
 
 interface TeamsViewListProps {
   organizationName: string;
   children?: React.ReactNode;
+  handleModalToggle: () => void;
 }

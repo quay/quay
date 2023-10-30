@@ -1,4 +1,11 @@
-import {Flex, FlexItem, Toolbar, ToolbarContent} from '@patternfly/react-core';
+import {
+  Flex,
+  FlexItem,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+  Button,
+} from '@patternfly/react-core';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
@@ -33,6 +40,14 @@ export default function CollaboratorsViewToolbar(
             />
           </FlexItem>
         </Flex>
+        <ToolbarItem>
+          <Button
+            onClick={() => props.handleModalToggle()}
+            data-testid="create-new-team-button"
+          >
+            Create new team
+          </Button>
+        </ToolbarItem>
         <ToolbarPagination
           itemsList={props.allItems}
           perPage={props.perPage}
@@ -62,4 +77,5 @@ interface CollaboratorsViewToolbarProps {
   searchOptions: string[];
   search: SearchState;
   setSearch: (search: SearchState) => void;
+  handleModalToggle: () => void;
 }
