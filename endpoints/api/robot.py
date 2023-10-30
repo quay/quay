@@ -9,6 +9,7 @@ from auth.permissions import (
     AdministerOrganizationPermission,
     OrganizationMemberPermission,
 )
+from data.model import InvalidRobotException
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
@@ -129,7 +130,7 @@ class UserRobot(ApiResource):
                 create_data.get("description"),
                 create_data.get("unstructured_metadata"),
             )
-        except Exception as e:
+        except InvalidRobotException as e:
             raise request_error(message=str(e))
         log_action(
             "create_robot",
@@ -249,7 +250,7 @@ class OrgRobot(ApiResource):
                     create_data.get("description"),
                     create_data.get("unstructured_metadata"),
                 )
-            except Exception as e:
+            except InvalidRobotException as e:
                 raise request_error(message=str(e))
             log_action(
                 "create_robot",
