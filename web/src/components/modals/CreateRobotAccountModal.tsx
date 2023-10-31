@@ -25,6 +25,7 @@ import {
   selectedRobotReposPermissionState,
 } from 'src/atoms/RobotAccountState';
 import {useRepositories} from 'src/hooks/UseRepositories';
+import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {Entity} from 'src/resources/UserResource';
 
@@ -60,7 +61,7 @@ export default function CreateRobotAccountModal(
         handleModalToggle();
       },
       onError: (err) => {
-        props.showErrorAlert(err);
+        props.showErrorAlert(addDisplayError('Error', err));
       },
     });
 
