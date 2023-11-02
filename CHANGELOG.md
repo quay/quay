@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.8.13"></a>
-## [v3.8.13] - 2023-09-06
+<a name="v3.8.14"></a>
+## [v3.8.14] - 2023-11-01
 ### Arch
 - [0f0cc408](https://github.com/quay/quay/commit/0f0cc408d0120abe93541d1554e74312d0592c49): Map aarch64 to arm64 in ARCH variable ([#1606](https://github.com/quay/quay/issues/1606))
 ### Auth
@@ -115,6 +115,7 @@
 ### [Redhat-3.8] Arch
 - [2e6f9b1e](https://github.com/quay/quay/commit/2e6f9b1e747db123a8237fcda9ab679ba761e5cd): add ppc64le support to quay (PROJQUAY-4595) ([#1558](https://github.com/quay/quay/issues/1558))
 ### [Redhat-3.8] Build(Deps)
+- [d4df6b53](https://github.com/quay/quay/commit/d4df6b532238371107f2a05e34adb6c39e078cb2): bump golang.org/x/net from 0.13.0 to 0.17.0 (PROJQUAY-6208) ([#2447](https://github.com/quay/quay/issues/2447))
 - [aa8996f1](https://github.com/quay/quay/commit/aa8996f147a44eb63eb14a6868a165a0cbe0632b): bump golang.org/x/net (PROJQUAY-5339) ([#2095](https://github.com/quay/quay/issues/2095))
 ### [Redhat-3.8] Chore
 - [44fce9e9](https://github.com/quay/quay/commit/44fce9e9a0b2310504b19385a0cd93fb497f1433): pull changes for s390x from master ([#2112](https://github.com/quay/quay/issues/2112))
@@ -135,6 +136,17 @@
 ### Pull Requests
 - Merge pull request [#2092](https://github.com/quay/quay/issues/2092) from dmage/merge-config-tool-3.8
 
+
+<a name="v3.9.3"></a>
+## [v3.9.3] - 2023-10-10
+### Quota
+- [a4a23414](https://github.com/quay/quay/commit/a4a23414f83a6878cce866686e9fcaf48b56dc8e): prevent tag creation on rejected manifest (PROJQUAY-3906) ([#2282](https://github.com/quay/quay/issues/2282))
+### [Redhat-3.9] Build(Deps)
+- [db00f7f7](https://github.com/quay/quay/commit/db00f7f7713071879a10f86d4d5b0707962dfe19): bump cypress from 10.10.0 to 12.17.4 in /web ([#2308](https://github.com/quay/quay/issues/2308))
+### [Redhat-3.9] Chore
+- [30132066](https://github.com/quay/quay/commit/30132066e32a462489dd5c0466e2c1efe43b387c): remove husky ([#2307](https://github.com/quay/quay/issues/2307))
+### [Redhat-3.9] Reconfigure
+- [8b47d3fd](https://github.com/quay/quay/commit/8b47d3fdd580737ca9a676ffbbfe3cdf3e451d21): Remove ca-bundle.crt and service-ca.crt (PROJQUAY-5233) ([#2257](https://github.com/quay/quay/issues/2257))
 
 <a name="v3.9.2"></a>
 ## [v3.9.2] - 2023-09-19
@@ -452,6 +464,9 @@
 ### Pull Requests
 - Merge pull request [#2069](https://github.com/quay/quay/issues/2069) from dmage/merge-config-tool-3.9
 
+
+<a name="v3.8.13"></a>
+## [v3.8.13] - 2023-10-10
 
 <a name="v3.8.12"></a>
 ## [v3.8.12] - 2023-09-06
@@ -1614,11 +1629,13 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.13...HEAD
-[v3.8.13]: https://github.com/quay/quay/compare/v3.9.2...v3.8.13
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.14...HEAD
+[v3.8.14]: https://github.com/quay/quay/compare/v3.9.3...v3.8.14
+[v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
 [v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
 [v3.9.1]: https://github.com/quay/quay/compare/v3.9.0...v3.9.1
-[v3.9.0]: https://github.com/quay/quay/compare/v3.8.12...v3.9.0
+[v3.9.0]: https://github.com/quay/quay/compare/v3.8.13...v3.9.0
+[v3.8.13]: https://github.com/quay/quay/compare/v3.8.12...v3.8.13
 [v3.8.12]: https://github.com/quay/quay/compare/v3.8.11...v3.8.12
 [v3.8.11]: https://github.com/quay/quay/compare/v3.8.10...v3.8.11
 [v3.8.10]: https://github.com/quay/quay/compare/v3.8.9...v3.8.10
