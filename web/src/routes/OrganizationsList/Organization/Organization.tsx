@@ -112,10 +112,7 @@ export default function Organization() {
       ) : (
         <ManageMembersList setDrawerContent={setDrawerContent} />
       ),
-      visible:
-        !isUserOrganization &&
-        organization?.is_member &&
-        organization?.is_admin,
+      visible: organization?.is_member,
     },
     {
       name: 'Robot accounts',
