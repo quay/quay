@@ -29,7 +29,9 @@ class CloudFlareS3Storage(S3Storage):
         *args,
         **kwargs,
     ):
-        super(CloudFlareS3Storage, self).__init__(context, storage_path, s3_bucket, s3_region=s3_region, *args, **kwargs)
+        super(CloudFlareS3Storage, self).__init__(
+            context, storage_path, s3_bucket, s3_region=s3_region, *args, **kwargs
+        )
 
         self.cloudflare_domain = cloudflare_domain
         self.cloudflare_privatekey = self._load_private_key(cloudflare_privatekey_filename)
