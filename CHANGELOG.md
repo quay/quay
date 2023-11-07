@@ -3,8 +3,15 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.5"></a>
+## [v3.9.5] - 2023-11-07
+### Build(Deps)
+- [384aa6e5](https://github.com/quay/quay/commit/384aa6e5df2af3ca4fd46b8f7243ca167676716a): bump urllib3 from 1.26.9 to 1.26.18 (PROJQUAY-6110) ([#2458](https://github.com/quay/quay/issues/2458))
+
 <a name="v3.9.4"></a>
-## [v3.9.4] - 0001-01-01
+## [v3.9.4] - 2023-10-26
+### Build(Deps)
+- [ef2035c7](https://github.com/quay/quay/commit/ef2035c7489649542374ecc4792139ed9745f7f0): bump golang.org/x/net from 0.13.0 to 0.17.0 (PROJQUAY-6208) ([#2435](https://github.com/quay/quay/issues/2435))
 
 <a name="v3.9.3"></a>
 ## [v3.9.3] - 2023-10-10
@@ -1498,7 +1505,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.5...HEAD
+[v3.9.5]: https://github.com/quay/quay/compare/v3.9.4...v3.9.5
 [v3.9.4]: https://github.com/quay/quay/compare/v3.9.3...v3.9.4
 [v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
 [v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
