@@ -251,6 +251,8 @@ export default function TeamsViewList(props: TeamsViewListProps) {
           isSetRepoPermModalOpen={isSetRepoPermModalOpen}
           setRepoPermModal={setRepoPermModal}
           handleModalToggle={props.handleModalToggle}
+          isReadOnly={props.isReadOnly}
+          isAdmin={props.isAdmin}
         />
         {props.children}
         <Conditional if={isDeleteModalForRowOpen}>{deleteRowModal}</Conditional>
@@ -278,48 +280,60 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                 />
                 <Td dataLabel={teamViewColumnNames.teamName}>{team.name}</Td>
                 <Td dataLabel={teamViewColumnNames.members}>
-                  <Link
-                    to={getTeamMemberPath(
-                      location.pathname,
-                      props.organizationName,
-                      team.name,
-                      searchParams.get('tab'),
-                    )}
-                  >
-                    {team.member_count}
-                  </Link>
+                  {team.can_view ? (
+                    <Link
+                      to={getTeamMemberPath(
+                        location.pathname,
+                        props.organizationName,
+                        team.name,
+                        searchParams.get('tab'),
+                      )}
+                    >
+                      {team.member_count}
+                    </Link>
+                  ) : (
+                    team.member_count
+                  )}
                 </Td>
                 <Td dataLabel={teamViewColumnNames.repositories}>
-                  <Link
-                    to="#"
-                    onClick={() => {
-                      openSetRepoPermModal(team.name);
-                    }}
-                  >
-                    {team.repo_count}
-                  </Link>
+                  {team.can_view ? (
+                    <Link
+                      to="#"
+                      onClick={() => {
+                        openSetRepoPermModal(team.name);
+                      }}
+                    >
+                      {team.repo_count}
+                    </Link>
+                  ) : (
+                    team.repo_count
+                  )}
                 </Td>
                 <Td dataLabel={teamViewColumnNames.teamRole}>
                   <TeamsRoleDropDown
                     organizationName={props.organizationName}
                     teamName={team.name}
                     teamRole={team.role}
+                    isReadOnly={props.isReadOnly}
+                    isAdmin={props.isAdmin}
                   />
                 </Td>
-                <Td data-label="kebab">
-                  <TeamViewKebab
-                    organizationName={props.organizationName}
-                    team={team}
-                    deSelectAll={() => setSelectedTeams([])}
-                    onSelectRepo={() => {
-                      openSetRepoPermModal(team.name);
-                    }}
-                    onDeleteTeam={() => {
-                      setTeamToBeDeleted(team);
-                      setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
-                    }}
-                  />
-                </Td>
+                <Conditional if={props.isAdmin && !props.isReadOnly}>
+                  <Td data-label="kebab">
+                    <TeamViewKebab
+                      organizationName={props.organizationName}
+                      team={team}
+                      deSelectAll={() => setSelectedTeams([])}
+                      onSelectRepo={() => {
+                        openSetRepoPermModal(team.name);
+                      }}
+                      onDeleteTeam={() => {
+                        setTeamToBeDeleted(team);
+                        setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
+                      }}
+                    />
+                  </Td>
+                </Conditional>
               </Tr>
             ))}
           </Tbody>
@@ -343,4 +357,6 @@ interface TeamsViewListProps {
   organizationName: string;
   children?: React.ReactNode;
   handleModalToggle: () => void;
+  isReadOnly: boolean;
+  isAdmin: boolean;
 }
