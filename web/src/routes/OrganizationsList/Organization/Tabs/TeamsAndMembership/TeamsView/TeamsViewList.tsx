@@ -279,7 +279,10 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                   }}
                 />
                 <Td dataLabel={teamViewColumnNames.teamName}>{team.name}</Td>
-                <Td dataLabel={teamViewColumnNames.members}>
+                <Td
+                  dataLabel={teamViewColumnNames.members}
+                  data-testid={`member-count-for-${team.name}`}
+                >
                   {team.can_view ? (
                     <Link
                       to={getTeamMemberPath(

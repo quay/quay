@@ -275,7 +275,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           </Title>
         </FlexItem>
         <Conditional
-          if={config?.registry_state === 'readonly' && organization.is_admin}
+          if={config?.registry_state !== 'readonly' && organization.is_admin}
         >
           <Tooltip content={<div>Edit team description</div>}>
             <Button
@@ -411,7 +411,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                 </Td>
                 <Conditional
                   if={
-                    config?.registry_state === 'readonly' &&
+                    config?.registry_state !== 'readonly' &&
                     organization.is_admin
                   }
                 >

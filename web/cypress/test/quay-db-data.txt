@@ -6117,6 +6117,15 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 192	13	34	1	\N	2023-10-17 17:17:24.861743	172.18.0.1	{"prototypeid": "908bc055-0bfc-4030-a230-f4a6529fd0cb", "username": "user1", "activating_username": null, "role": "write", "delegate_team": "owners"}
 193	15	34	1	\N	2023-10-17 17:18:15.092333	172.18.0.1	{"robot": "robotaccnt1", "description": "", "unstructured_metadata": null}
 194	13	34	1	\N	2023-10-17 17:18:23.56364	172.18.0.1	{"prototypeid": "4a417056-1b01-44a5-9b05-784b377c4491", "username": "user1", "activating_username": null, "role": "read", "delegate_user": "orgforpermission+robotaccnt1"}
+195	97	29	\N	\N	2023-11-07 19:52:44.17271	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
+196	98	29	29	\N	2023-11-07 19:52:57.985505	172.18.0.1	{}
+197	97	1	\N	\N	2023-11-07 19:53:02.794702	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
+198	98	1	1	\N	2023-11-07 19:53:16.409503	172.18.0.1	{}
+199	97	29	\N	\N	2023-11-07 19:53:30.735871	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
+200	32	32	29	\N	2023-11-07 19:53:55.418174	172.18.0.1	{"team": "teamforreadonly"}
+201	31	32	29	\N	2023-11-07 19:54:08.826725	172.18.0.1	{"member": "user1", "team": "teamforreadonly"}
+202	98	29	29	\N	2023-11-07 19:54:14.934915	172.18.0.1	{}
+203	97	1	\N	\N	2023-11-07 19:54:19.160078	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
 \.
 
 
@@ -6501,8 +6510,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-10-17 17:19:43.370147	t	2023-10-17 20:14:43.342566	5	270e0f44-cff5-4823-b8c7-a5fe59be5d6e
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-10-17 17:19:48.405094	t	2023-10-17 20:14:48.386962	5	c6699393-748a-4c4f-9517-7bc77ee508c8
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-11-07 19:57:36.102126	t	2023-11-07 22:52:36.037751	5	e90498e4-d92b-487a-90a3-1ab34388af7c
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-11-07 19:57:37.766105	t	2023-11-07 22:52:37.740851	5	9ccfcc76-8277-4dc0-8a14-b37440753124
 \.
 
 
@@ -7617,6 +7626,7 @@ COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
 32	liverpool	28	3	
 33	chelsea	28	3	
 34	owners	34	1	
+35	teamforreadonly	32	3	
 \.
 
 
@@ -7655,6 +7665,7 @@ COPY public.teammember (id, user_id, team_id) FROM stdin;
 30	1	33
 31	30	33
 32	1	34
+33	1	35
 \.
 
 
@@ -7755,14 +7766,14 @@ COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_i
 26	df00c09a-f39b-4afe-b676-91d5bee4e507	centos	\N	ae63b4ec-f66a-48b2-a5fb-5f46d8a3e953	f	\N	t	f	f	0	2022-11-21 18:56:36.90184	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:36.901869	\N
 27	06580557-80cb-4b69-83cd-09b9c538330b	ceph	\N	3260450e-c0b6-4cf6-90ca-ce31c882fa80	f	\N	t	f	f	0	2022-11-21 18:56:42.081825	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-21 18:56:42.081839	\N
 28	45c1c5df-3c10-4aa3-acba-5a15ea53e420	testorg	\N	c50be933-debc-4ed0-b1a0-df461c2f7456	f	\N	t	f	f	0	2022-11-29 13:46:30.797525	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:46:30.797539	\N
-1	918b26a3-cbf2-434c-a18f-dad69167193e	user1	$2b$12$c4u19A/x6a.6Ihm2pAin7.nXUCIqI0vtf7miS7tZ.oXhHtsKVS.Bq	user1@redhat.com	t	\N	f	f	f	0	2022-10-31 18:50:36.685961	1209600	t	\N	\N	\N	\N	\N	\N	2022-10-31 18:50:36.685976	\N
 30	824e31bd-e531-4a2a-838d-cfdc7442978f	testorg+testrobot	\N	b4a78057-79f2-440a-b089-e2779be746b9	f	\N	f	t	f	0	2022-11-29 13:48:38.924504	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:48:38.924541	\N
 31	87860588-5674-4bc4-a297-abda8f99e877	testorg+testrobot2	\N	c117d71c-c3cb-4513-ab37-32f0dcb16007	f	\N	f	t	f	0	2022-11-30 21:23:53.656399	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-30 21:23:53.656402	\N
-29	f96f1124-ae26-4ea6-a73b-f4b0d87e6dc0	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
 32	80d4d7c4-c3f0-442b-94a6-1e151aca9ecd	user2org1	\N	user2org1@redhat.com	f	\N	t	f	f	0	2023-06-28 18:15:16.210544	1209600	t	\N	\N	\N	\N	\N	\N	2023-06-28 18:15:16.210558	\N
 33	e53eca92-4bbe-4853-b047-ceb86c1bb12a	collaborator1	$2b$12$R0hWaRhKGFdJ16WCJ7KUzesYIxzF0o57Lq9.pUhlc4EQTXUTXmrw2	collaborator1@gmail.com	t	\N	f	f	f	0	2023-08-23 17:51:10.548163	1209600	t	\N	\N	\N	\N	\N	\N	2023-08-23 17:51:10.548165	\N
 34	03a7d59f-6269-418a-b359-219562dfce16	orgforpermission	\N	orgforpermission@gmail.com	f	\N	t	f	f	0	2023-10-17 17:17:04.051938	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:17:04.05194	\N
 35	decaf020-b68a-40ce-9475-84b2d346cd4d	orgforpermission+robotaccnt1	\N	7b092025-6bdc-4479-a1b6-01f869432be1	f	\N	f	t	f	0	2023-10-17 17:18:15.082751	1209600	t	\N	\N	\N	\N	\N	\N	2023-10-17 17:18:15.082753	\N
+1	0786ea63-9149-42ee-ba47-ca83dc1c3a26	user1	$2b$12$c4u19A/x6a.6Ihm2pAin7.nXUCIqI0vtf7miS7tZ.oXhHtsKVS.Bq	user1@redhat.com	t	\N	f	f	f	0	2022-10-31 18:50:36.685961	1209600	t	\N	\N	\N	\N	\N	\N	2022-10-31 18:50:36.685976	\N
+29	7c0cc290-7126-4919-961f-620afe46a736	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
 \.
 
 
@@ -8046,7 +8057,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 194, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 203, true);
 
 
 --
@@ -8452,14 +8463,14 @@ SELECT pg_catalog.setval('public.tagtorepositorytag_id_seq', 1, false);
 -- Name: team_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.team_id_seq', 34, true);
+SELECT pg_catalog.setval('public.team_id_seq', 35, true);
 
 
 --
 -- Name: teammember_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.teammember_id_seq', 32, true);
+SELECT pg_catalog.setval('public.teammember_id_seq', 33, true);
 
 
 --
