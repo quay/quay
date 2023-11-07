@@ -6,6 +6,7 @@ import {
   Toolbar,
   ToolbarContent,
 } from '@patternfly/react-core';
+import Conditional from 'src/components/empty/Conditional';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
@@ -40,16 +41,18 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
               />
             </FlexItem>
           </Flex>
-          <Button
-            onClick={() =>
-              props.setDrawerContent(
-                OrganizationDrawerContentType.AddNewTeamMemberDrawer,
-              )
-            }
-            data-testid="add-new-member-btn"
-          >
-            Add new member
-          </Button>
+          <Conditional if={props.isAdmin && !props.isReadOnly}>
+            <Button
+              onClick={() =>
+                props.setDrawerContent(
+                  OrganizationDrawerContentType.AddNewTeamMemberDrawer,
+                )
+              }
+              data-testid="add-new-member-btn"
+            >
+              Add new member
+            </Button>
+          </Conditional>
           <ToolbarPagination
             itemsList={props.paginatedItems}
             perPage={props.perPage}
@@ -93,4 +96,6 @@ interface ManageMembersToolbarProps {
   setSearch: (search: SearchState) => void;
   children?: React.ReactNode;
   setDrawerContent: (content: OrganizationDrawerContentType) => void;
+  isReadOnly: boolean;
+  isAdmin: boolean;
 }

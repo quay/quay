@@ -15,6 +15,8 @@ import {CreateTeamModal} from '../DefaultPermissions/createPermissionDrawer/Crea
 import {CreateTeamWizard} from '../DefaultPermissions/createTeamWizard/CreateTeamWizard';
 import {validateTeamName} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useOrganization} from 'src/hooks/UseOrganization';
 
 export enum TableModeType {
   Teams = 'Teams',
@@ -29,6 +31,8 @@ export default function TeamsAndMembershipList() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState<boolean>(false);
   const [isTeamWizardOpen, setIsTeamWizardOpen] = useState<boolean>(false);
   const {organizationName} = useParams();
+  const config = useQuayConfig();
+  const {organization} = useOrganization(organizationName);
 
   const [tableMode, setTableMode] = useState<TableModeType>(
     TableModeType.Teams,
@@ -87,12 +91,14 @@ export default function TeamsAndMembershipList() {
               buttonId={TableModeType.Members}
               isSelected={tableMode == TableModeType.Members}
               onChange={onTableModeChange}
+              isDisabled={!organization.is_admin}
             />
             <ToggleGroupItem
               text="Collaborators View"
               buttonId={TableModeType.Collaborators}
               isSelected={tableMode == TableModeType.Collaborators}
               onChange={onTableModeChange}
+              isDisabled={!organization.is_admin}
             />
           </ToggleGroup>
         </ToolbarItem>
@@ -115,6 +121,8 @@ export default function TeamsAndMembershipList() {
           <TeamsViewList
             organizationName={organizationName}
             handleModalToggle={() => setIsTeamModalOpen(!isTeamModalOpen)}
+            isReadOnly={config?.registry_state === 'readonly'}
+            isAdmin={organization.is_admin}
           >
             {viewToggle}
           </TeamsViewList>
