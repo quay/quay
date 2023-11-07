@@ -142,12 +142,14 @@ class TestNameSpaceAutoprune:
         assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, "1") is False
         assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, 1.5) is False
         assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, "randome string") is False
+        assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, "9e-41") is False
         assert valid_value(AutoPruneMethod.NUMBER_OF_TAGS, None) is False
 
         assert valid_value(AutoPruneMethod.CREATION_DATE, "2d") is True
         assert valid_value(AutoPruneMethod.CREATION_DATE, "") is False
         assert valid_value(AutoPruneMethod.CREATION_DATE, 123) is False
         assert valid_value(AutoPruneMethod.CREATION_DATE, "randome") is False
+        assert valid_value(AutoPruneMethod.CREATION_DATE, "9e-41") is False
 
         assert valid_value("randome method", "randome") is False
         assert valid_value("randome method", None) is False
