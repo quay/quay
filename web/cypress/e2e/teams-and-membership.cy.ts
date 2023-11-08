@@ -82,6 +82,9 @@ describe('Teams and membership page', () => {
     cy.get('[data-testid="next-btn"]').click();
 
     // step - Add team member
+    cy.get('#search-member-dropdown').click();
+    cy.get('#search-member-dropdown-input').type('user1');
+    cy.get(`[data-testid="user1"]`).click();
     cy.get('[data-testid="next-btn"]').click();
 
     // step - Review and Finish
@@ -98,6 +101,11 @@ describe('Teams and membership page', () => {
       `${repository}`,
     );
     cy.get('[data-testid="review-and-finish-wizard-btn"]').click();
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains('Successfully added members to team')
+      .should('exist');
 
     // verify newly created team is shown under teams view
     cy.get('#teams-view-search').type(`${newTeam}`);
