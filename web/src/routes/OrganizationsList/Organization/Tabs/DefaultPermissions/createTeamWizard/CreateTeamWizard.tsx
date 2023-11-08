@@ -32,6 +32,8 @@ import AddTeamMember from './AddTeamMember';
 import Review from './ReviewTeam';
 import ReviewAndFinishFooter from './ReviewAndFinishFooter';
 import {useAddRepoPermissionToTeam} from 'src/hooks/UseTeams';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const [selectedRepoPerms, setSelectedRepoPerms] = useRecoilState(
@@ -45,6 +47,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const [deletedTeamMembers, setDeletedTeamMembers] = useState<ITeamMember[]>(
     [],
   );
+  const {addAlert} = useAlerts();
 
   // Fetching repos
   const {repos} = useRepositories(props.orgName);
@@ -70,8 +73,18 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
     successAddingMemberToTeam: success,
     resetAddingMemberToTeam: reset,
   } = useAddMembersToTeam(props.orgName, {
-    onSuccess: {},
-    onError: {},
+    onSuccess: () => {
+      addAlert({
+        variant: AlertVariant.Success,
+        title: 'Successfully added members to team',
+      });
+    },
+    onError: () => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: 'Unable to add members to team',
+      });
+    },
   });
 
   const {addRepoPermToTeam} = useAddRepoPermissionToTeam(

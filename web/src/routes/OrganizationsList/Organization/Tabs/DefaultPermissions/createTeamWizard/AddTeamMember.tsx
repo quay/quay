@@ -63,25 +63,25 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
     },
   });
 
-  const addTeamMemberHandler = (robotName) => {
+  const addTeamMemberHandler = (memberName: string, isRobot: boolean) => {
     const robotExists = props.tableItems?.some(
-      (item) => item.name === robotName,
+      (item) => item.name === memberName,
     );
     if (!robotExists) {
       props.setTableItems((prev) => [
         ...prev,
         {
-          name: robotName,
+          name: memberName,
           kind: 'user',
-          is_robot: true,
+          is_robot: isRobot,
         },
       ]);
       props.setAddedTeamMembers((prev) => [
         ...prev,
         {
-          name: robotName,
+          name: memberName,
           kind: 'user',
-          is_robot: true,
+          is_robot: isRobot,
         },
       ]);
     }
@@ -94,7 +94,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
       description: newRobotAccntDescription,
     });
     props.setDrawerExpanded(false);
-    addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`);
+    addTeamMemberHandler(`${props.orgName}+${newRobotAccntName}`, true);
   };
 
   const validateRobotName = () => {
@@ -148,6 +148,11 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
       prev.filter((item) => member.name !== item.name),
     );
 
+    // remove member if added to potential team member list
+    props.setAddedTeamMembers((prev) =>
+      prev.filter((item) => item.name !== member.name),
+    );
+
     // Add to delete member list if member already exists in db
     props.setDeletedTeamMembers((prev) => {
       const memberExists = props?.allMembers.find(
@@ -164,53 +169,51 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   }
 
   return (
-    <>
-      <PageSection padding={{default: 'noPadding'}}>
-        <AddTeamToolbar
-          orgName={props.orgName}
-          allItems={props.tableItems}
-          page={page}
-          setPage={setPage}
-          perPage={perPage}
-          setPerPage={setPerPage}
-          robots={robots}
-          addTeamMemberHandler={addTeamMemberHandler}
-          setDrawerExpanded={props.setDrawerExpanded}
-        >
-          <Table aria-label="Selectable table" variant="compact">
-            <Thead>
-              <Tr>
-                <Th>{memberAndRobotColNames.teamMember}</Th>
-                <Th>{memberAndRobotColNames.account}</Th>
-                <Th />
+    <PageSection padding={{default: 'noPadding'}}>
+      <AddTeamToolbar
+        orgName={props.orgName}
+        allItems={props.tableItems}
+        page={page}
+        setPage={setPage}
+        perPage={perPage}
+        setPerPage={setPerPage}
+        robots={robots}
+        addTeamMemberHandler={addTeamMemberHandler}
+        setDrawerExpanded={props.setDrawerExpanded}
+      >
+        <Table aria-label="Selectable table" variant="compact">
+          <Thead>
+            <Tr>
+              <Th>{memberAndRobotColNames.teamMember}</Th>
+              <Th>{memberAndRobotColNames.account}</Th>
+              <Th />
+            </Tr>
+          </Thead>
+          <Tbody>
+            {paginatedItems?.map((member, rowIndex) => (
+              <Tr key={rowIndex}>
+                <Td dataLabel={memberAndRobotColNames.teamMember}>
+                  {member.name}
+                </Td>
+                <Td dataLabel={memberAndRobotColNames.account}>
+                  {getAccountTypeForMember(member)}
+                </Td>
+                <Td>
+                  <Button
+                    icon={<TrashIcon />}
+                    variant="plain"
+                    onClick={() => {
+                      handleDeleteTeamMember(member);
+                    }}
+                    data-testid={`${member.name}-delete-icon`}
+                  />
+                </Td>
               </Tr>
-            </Thead>
-            <Tbody>
-              {paginatedItems?.map((member, rowIndex) => (
-                <Tr key={rowIndex}>
-                  <Td dataLabel={memberAndRobotColNames.teamMember}>
-                    {member.name}
-                  </Td>
-                  <Td dataLabel={memberAndRobotColNames.account}>
-                    {getAccountTypeForMember(member)}
-                  </Td>
-                  <Td>
-                    <Button
-                      icon={<TrashIcon />}
-                      variant="plain"
-                      onClick={() => {
-                        handleDeleteTeamMember(member);
-                      }}
-                      data-testid={`${member.name}-delete-icon`}
-                    />
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </AddTeamToolbar>
-      </PageSection>
-    </>
+            ))}
+          </Tbody>
+        </Table>
+      </AddTeamToolbar>
+    </PageSection>
   );
 }
 
