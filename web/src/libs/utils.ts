@@ -62,6 +62,9 @@ export function parseRepoNameFromUrl(url: string): string {
   const urlParts = url.split('/');
   const repoKeywordIndex = urlParts.indexOf('repository');
   let endIndex = urlParts.indexOf('tag');
+  if (endIndex == -1) {
+    endIndex = urlParts.indexOf('manifest');
+  }
   if (repoKeywordIndex === -1) {
     return '';
   }
@@ -91,6 +94,24 @@ export function parseTagNameFromUrl(url: string): string {
   const urlParts = url.split('/');
   const repoKeywordIndex = urlParts.indexOf('repository');
   const tagKeywordIndex = urlParts.indexOf('tag');
+
+  if (repoKeywordIndex === -1) {
+    return null;
+  }
+
+  if (tagKeywordIndex === -1) {
+    return null;
+  }
+
+  return urlParts[tagKeywordIndex + 1];
+}
+
+export function parseManifestDigestFromUrl(url: string): string {
+  //or <prefix>/repository/<org>/<repo>/manifest/<manifest_disgest>
+
+  const urlParts = url.split('/');
+  const repoKeywordIndex = urlParts.indexOf('repository');
+  const tagKeywordIndex = urlParts.indexOf('manifest');
 
   if (repoKeywordIndex === -1) {
     return '';

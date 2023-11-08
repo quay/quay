@@ -25,6 +25,7 @@ import {
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
 import {
+  parseManifestDigestFromUrl,
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
@@ -57,13 +58,21 @@ export default function TagDetails() {
   const org = parseOrgNameFromUrl(location.pathname);
   const repo = parseRepoNameFromUrl(location.pathname);
   const tag = parseTagNameFromUrl(location.pathname);
+  const manifestDigest = parseManifestDigestFromUrl(location.pathname);
 
   useEffect(() => {
     (async () => {
       resetSecurityDetails();
       resetSecurityError();
       try {
-        const resp: TagsResponse = await getTags(org, repo, 1, 100, tag);
+        const resp: TagsResponse = await getTags(
+          org,
+          repo,
+          1,
+          100,
+          tag,
+          manifestDigest,
+        );
 
         // These should never happen but checking for errors just in case
         if (resp.tags.length === 0) {

@@ -805,3 +805,29 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(repo_id, tag_lifetime_ms: 
         raise Exception(
             f"Error fetching repository tags by creation date for repository id: {repo_id} with error as: {str(err)}"
         )
+
+
+def fetch_tag_name_for_manifest_digest(namespace: str, repository: str, manifest_digest: str):
+    """
+    Returns corresponding tag name for a namespace/repository manifest digest
+    """
+    ns = user.get_user_or_org(namespace)
+    try:
+        query = (
+            Tag.select(Tag)
+            .join_from(Tag, Repository)
+            .join_from(Tag, Manifest)
+            .where(
+                Repository.namespace_user == ns.id,
+                Repository.name == repository,
+                Manifest.digest == manifest_digest,
+            )
+        )
+
+        result = query.get()
+        return result.name if result else None
+
+    except Exception as err:
+        raise Exception(
+            f"Error fetching tag for namespace: {namespace}, repo: {repository}, manifest digest: {manifest_digest}, with error as: {str(err)}"
+        )
