@@ -16,6 +16,7 @@ import {useAlerts} from 'src/hooks/UseAlerts';
 import {useSetExpiration} from 'src/hooks/UseTags';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
+import Conditional from 'src/components/empty/Conditional';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
   const [date, setDate] = useState<Date>(null);
@@ -26,17 +27,23 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     errorSetExpiration,
     errorSetExpirationDetails,
   } = useSetExpiration(props.org, props.repo);
-  // Setting a default value here to avoid this known Patternfly DatePicker issue:
-  // https://github.com/patternfly/patternfly-react/issues/9700
-  const defaultDate = new Date();
-  defaultDate.setDate(defaultDate.getDate() + 1);
-
+  const [validDate, setValidDate] = useState<boolean>(true);
+  const [timePickerError, setTimePickerError] = useState<string>(null);
   const initialDate: Date = isNullOrUndefined(props.expiration)
     ? null
     : new Date(props.expiration);
 
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getFullYear() == today.getFullYear() &&
+      date.getMonth() == today.getMonth() &&
+      date.getDate() == today.getDate()
+    );
+  };
+
   useEffect(() => {
-    setDate(initialDate || defaultDate);
+    setDate(initialDate);
   }, [props.expiration]);
 
   useEffect(() => {
@@ -97,27 +104,32 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     }
   };
 
-  const dateParse = (date: string) => new Date(date);
-
   const onDateChange = (
     _event: React.FormEvent<HTMLInputElement>,
     _value: string,
     dateValue?: Date,
   ) => {
-    if (!isNullOrUndefined(dateValue)) {
-      if (isNullOrUndefined(date)) {
-        setDate(dateValue);
+    const isInputInvalid = dateValue !== null && dateValue === undefined;
+    if (!isInputInvalid) {
+      const newDate = isNullOrUndefined(date) ? new Date() : new Date(date);
+      newDate.setFullYear(dateValue.getFullYear());
+      newDate.setMonth(dateValue.getMonth());
+      newDate.setDate(dateValue.getDate());
+      if (isNullOrUndefined(date) && isToday(newDate)) {
+        newDate.setHours(newDate.getHours() + 1);
+      } else if (isNullOrUndefined(date)) {
+        newDate.setHours(0, 0, 0, 0);
+      }
+      setDate(newDate);
+      if (newDate <= new Date()) {
+        setValidDate(false);
+        setTimePickerError('Time is before the allowable range.');
       } else {
-        setDate((prevDate) => {
-          const newDate = new Date(prevDate);
-          newDate.setFullYear(dateValue.getFullYear());
-          newDate.setMonth(dateValue.getMonth());
-          newDate.setDate(dateValue.getDate());
-          return newDate;
-        });
+        setValidDate(true);
+        setTimePickerError(null);
       }
     } else {
-      setDate(null);
+      setValidDate(false);
     }
   };
 
@@ -129,29 +141,26 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     _seconds?: number,
     isValid?: boolean,
   ) => {
-    if (hour !== null && minute !== null && isValid) {
-      if (isNullOrUndefined(date)) {
-        const newDate = new Date();
-        newDate.setHours(hour);
-        newDate.setMinutes(minute);
+    const isInputValid = hour !== null && minute !== null && isValid;
+    if (isInputValid) {
+      const newDate = isNullOrUndefined(date) ? new Date() : new Date(date);
+      newDate.setHours(hour, minute);
+      if (newDate > new Date()) {
+        setValidDate(true);
+        setTimePickerError(null);
         setDate(newDate);
       } else {
-        setDate((prevDate) => {
-          const newDate = new Date(prevDate);
-          newDate.setHours(hour);
-          newDate.setMinutes(minute);
-          return newDate;
-        });
+        setValidDate(false);
+        setTimePickerError('Time is before the allowable range.');
       }
     } else {
-      setDate(null);
+      setValidDate(false);
     }
   };
 
   const rangeValidator = (date: Date) => {
     const now = new Date();
-    now.setHours(0);
-    now.setMinutes(0);
+    now.setHours(0, 0, 0, 0);
     return date < now ? 'Date is before the allowable range.' : '';
   };
 
@@ -166,6 +175,12 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     setDate(initialDate);
   };
 
+  const onClear = () => {
+    setDate(null);
+    setValidDate(true);
+    setTimePickerError(null);
+  };
+
   return (
     <>
       <Modal
@@ -178,7 +193,12 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
           <Button key="cancel" variant="primary" onClick={onClose}>
             Cancel
           </Button>,
-          <Button key="modal-action-button" variant="primary" onClick={onSave}>
+          <Button
+            key="modal-action-button"
+            variant="primary"
+            isDisabled={!validDate}
+            onClick={onSave}
+          >
             Change Expiration
           </Button>,
         ]}
@@ -203,7 +223,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                 placeholder="No date selected"
                 value={dateFormat(date)}
                 dateFormat={dateFormat}
-                dateParse={dateParse}
+                dateParse={(date: string) => new Date(date)}
                 onChange={onDateChange}
                 validators={[rangeValidator]}
               />
@@ -214,12 +234,14 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                 onChange={onTimeChange}
               />
               <span style={{paddingRight: '1em'}} />
-              <Button
-                variant={ButtonVariant.secondary}
-                onClick={() => setDate(null)}
-              >
+              <Button variant={ButtonVariant.secondary} onClick={onClear}>
                 Clear
               </Button>
+              <Conditional
+                if={timePickerError !== null && timePickerError.length > 0}
+              >
+                <div style={{color: 'red'}}>{timePickerError}</div>
+              </Conditional>
             </DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>

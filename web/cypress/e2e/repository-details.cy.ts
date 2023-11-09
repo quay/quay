@@ -547,12 +547,23 @@ describe('Repository Details Page', () => {
       .within(() => {
         cy.contains('latest').should('exist');
       });
+
+    // Ensure current date can be chosen
+    cy.get('[aria-label="Toggle date picker"]').click();
+    cy.get(`[aria-label="${moment().format('D MMMM YYYY')}"]`).click();
+    cy.get('input[aria-label="Date picker"]').should(
+      'have.value',
+      moment().format('dddd, MMMM D, YYYY'),
+    );
+
     cy.get('[aria-label="Toggle date picker"]').click();
     cy.get('button[aria-label="Next month"]').click();
     const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
     cy.get(`[aria-label="${oneMonth}"]`).click();
     cy.get('#expiration-time-picker').click();
     cy.contains('1:00 AM').click();
+    cy.get('#expiration-time-picker-input').clear();
+    cy.get('#expiration-time-picker-input').type('2:03');
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
@@ -560,7 +571,7 @@ describe('Repository Details Page', () => {
     });
     const oneMonthFormat = moment().add(1, 'month').format('MMM D, YYYY');
     cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthFormat}, 1:00 AM`,
+      `Successfully set expiration for tag latest to ${oneMonthFormat}, 2:03 AM`,
     ).should('exist');
 
     // Reset back to Never
@@ -568,7 +579,7 @@ describe('Repository Details Page', () => {
       cy.get('#tag-actions-kebab').click();
     });
     cy.contains('Change expiration').click();
-    cy.get('input[aria-label="Date picker"]').clear();
+    cy.contains('Clear').click();
     cy.contains('Change Expiration').click();
 
     const latestRowUpdatedNever = cy.get('tbody:contains("latest")');
