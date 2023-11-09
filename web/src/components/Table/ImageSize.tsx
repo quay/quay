@@ -5,8 +5,10 @@ import {
   ManifestByDigestResponse,
 } from 'src/resources/TagResource';
 import prettyBytes from 'pretty-bytes';
+import {useRecoilState} from 'recoil';
+import {childManifestSizeState} from 'src/atoms/TagListState';
 
-export default function ImageSize(props: ImageSizeProps) {
+export function useImageSize(org: string, repo: string, digest: string) {
   const [size, setSize] = useState<number>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [err, setErr] = useState<boolean>(false);
@@ -15,7 +17,7 @@ export default function ImageSize(props: ImageSizeProps) {
     (async () => {
       try {
         const manifestResp: ManifestByDigestResponse =
-          await getManifestByDigest(props.org, props.repo, props.digest);
+          await getManifestByDigest(org, repo, digest);
         const calculatedSizeMesnifestResp = manifestResp.layers
           ? manifestResp.layers.reduce(
               (prev, curr) => prev + curr.compressed_size,
@@ -29,7 +31,17 @@ export default function ImageSize(props: ImageSizeProps) {
         setLoading(false);
       }
     })();
-  }, [props.digest]);
+  }, [digest]);
+
+  return {size, loading, err};
+}
+
+export function ImageSize(props: ImageSizeProps) {
+  const {size, loading, err} = useImageSize(
+    props.org,
+    props.repo,
+    props.digest,
+  );
 
   if (loading) {
     return <Skeleton />;
@@ -39,6 +51,37 @@ export default function ImageSize(props: ImageSizeProps) {
   }
 
   // Behavior based on old UI
+  if (size === 0) {
+    return <>Unknown</>;
+  }
+
+  return <>{prettyBytes(size)}</>;
+}
+
+export function ChildManifestSize(props: ImageSizeProps) {
+  const {size, loading, err} = useImageSize(
+    props.org,
+    props.repo,
+    props.digest,
+  );
+
+  const [, setChildManifestSize] = useRecoilState(
+    childManifestSizeState(props.digest),
+  );
+
+  useEffect(() => {
+    if (size !== 0) {
+      setChildManifestSize(size);
+    }
+  }, [size]);
+
+  if (loading) {
+    return <Skeleton />;
+  }
+  if (err) {
+    return <>Error</>;
+  }
+
   if (size === 0) {
     return <>Unknown</>;
   }
