@@ -18,14 +18,18 @@ export default function ManifestListSize(props: ManifestListSizeProps) {
   if (loading) {
     return <Skeleton />;
   } else {
-    const lowestValue = Math.min(...loadedSizes);
-    const highestValue = Math.max(...loadedSizes);
+    if (loadedSizes.length === 1) {
+      return <>{prettyBytes(loadedSizes[0])}</>;
+    } else {
+      const lowestValue = Math.min(...loadedSizes);
+      const highestValue = Math.max(...loadedSizes);
 
-    return (
-      <>
-        {prettyBytes(lowestValue)} ~ {prettyBytes(highestValue)}
-      </>
-    );
+      return (
+        <>
+          {prettyBytes(lowestValue)} - {prettyBytes(highestValue)}
+        </>
+      );
+    }
   }
 }
 
