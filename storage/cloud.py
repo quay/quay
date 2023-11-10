@@ -793,6 +793,61 @@ class S3Storage(_CloudStorage):
         )
 
 
+class IBMCloudStorage(_CloudStorage):
+    def __init__(
+        self,
+        context,
+        hostname,
+        is_secure,
+        storage_path,
+        access_key,
+        secret_key,
+        bucket_name,
+        port=None,
+        maximum_chunk_size_mb=None,
+    ):
+        upload_params = {}
+        connect_kwargs = {
+            "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
+        }
+
+        super(IBMCloudStorage, self).__init__(
+            context,
+            boto3.session.Session,
+            connect_kwargs,
+            upload_params,
+            storage_path,
+            bucket_name,
+            access_key,
+            secret_key,
+        )
+
+        chunk_size = (
+            maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 100
+        )  # 100mb default, recommended by IBM
+        self.maximum_chunk_size = chunk_size * 1024 * 1024
+
+    def setup(self):
+        self.get_cloud_bucket().Cors().put(
+            CORSConfiguration={
+                "CORSRules": [
+                    {
+                        "AllowedOrigins": ["*"],
+                        "AllowedMethods": ["GET"],
+                        "MaxAgeSeconds": 3000,
+                        "AllowedHeaders": ["Authorization"],
+                    },
+                    {
+                        "AllowedOrigins": ["*"],
+                        "AllowedMethods": ["PUT"],
+                        "MaxAgeSeconds": 3000,
+                        "AllowedHeaders": ["Content-Type", "x-amz-acl", "origin"],
+                    },
+                ]
+            }
+        )
+
+
 class GoogleCloudStorage(_CloudStorage):
     ENDPOINT_URL = "https://storage.googleapis.com"
 
