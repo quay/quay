@@ -2,6 +2,7 @@ from storage.azurestorage import AzureStorage
 from storage.cloud import (
     CloudFrontedS3Storage,
     GoogleCloudStorage,
+    IBMCloudStorage,
     RadosGWStorage,
     RHOCSStorage,
     S3Storage,
@@ -29,6 +30,7 @@ STORAGE_DRIVER_CLASSES = {
     "RHOCSStorage": RHOCSStorage,
     "CloudFlareStorage": CloudFlareS3Storage,
     "MultiCDNStorage": MultiCDNStorage,
+    "IBMCloudStorage": IBMCloudStorage,
 }
 
 
