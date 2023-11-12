@@ -63,6 +63,13 @@ export function QuayBreadcrumb() {
         continue;
       } else {
         newObj['title'] = object.match.pathname.split('/').slice(-1)[0];
+
+        switch (object.match.route.Component.type.name) {
+          case 'OrganizationsList':
+          case 'RepositoriesList':
+            newObj['title'] = object.match.route.breadcrumb;
+            break;
+        }
       }
       newObj['active'] =
         object.match.pathname.localeCompare(window.location.pathname) === 0;
