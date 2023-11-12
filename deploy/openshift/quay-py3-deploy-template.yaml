@@ -283,6 +283,8 @@ objects:
             value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
           - name: WORKER_CONNECTION_COUNT_REGISTRY
             value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
+          - name: DB_CONNECTION_POOLING
+            value: ${DB_CONNECTION_POOLING}
 parameters:
   - name: NAME
     value: "quay-py3"
