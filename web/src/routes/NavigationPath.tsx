@@ -17,6 +17,10 @@ const tagNameBreadcrumb = (match) => {
   return <span>{match.params.tagName}</span>;
 };
 
+const manifestDigestBreadcrumb = (match) => {
+  return <span>{match.params.manifestDigest}</span>;
+};
+
 const teamMemberBreadcrumb = (match) => {
   return <span>{match.params.teamName}</span>;
 };
@@ -27,6 +31,7 @@ const Breadcrumb = {
   organizationDetailBreadcrumb: organizationNameBreadcrumb,
   repositoryDetailBreadcrumb: repositoryNameBreadcrumb,
   tagDetailBreadcrumb: tagNameBreadcrumb,
+  manifestDigestBreadcrumb: manifestDigestBreadcrumb,
   teamMemberBreadcrumb: teamMemberBreadcrumb,
 };
 
@@ -47,6 +52,9 @@ export enum NavigationPath {
 
   // Tag Detail
   tagDetail = '/repository/:organizationName/:repositoryName/tag/:tagName',
+
+  // Manifest Detail
+  manifestDetail = '/repository/:organizationName/:repositoryName/manifest/:manifestDigest',
 
   // Team Member
   teamMember = '/organization/:organizationName/teams/:teamName',
@@ -124,33 +132,38 @@ export const getNavigationRoutes = () => {
   const NavigationRoutes = [
     {
       path: domainRoute(currentRoute, NavigationPath.overviewList),
-      Component: <OverviewList />,
+      element: <OverviewList />,
       breadcrumb: Breadcrumb.organizationsListBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.organizationsList),
-      Component: <OrganizationsList />,
+      element: <OrganizationsList />,
       breadcrumb: Breadcrumb.organizationsListBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.organizationDetail),
-      Component: <Organization />,
+      element: <Organization />,
       breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.repositoriesList),
-      Component: <RepositoriesList organizationName={null} />,
+      element: <RepositoriesList organizationName={null} />,
       breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.repositoryDetail),
-      Component: <RepositoryDetails />,
+      element: <RepositoryDetails />,
       breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.tagDetail),
-      Component: <TagDetails />,
+      element: <TagDetails />,
       breadcrumb: Breadcrumb.tagDetailBreadcrumb,
+    },
+    {
+      path: domainRoute(currentRoute, NavigationPath.manifestDetail),
+      element: <TagDetails />,
+      breadcrumb: Breadcrumb.manifestDigestBreadcrumb,
     },
   ];
   return NavigationRoutes;
