@@ -168,6 +168,7 @@ describe('Repositories List Page', () => {
 
   it('makes multiple repositories private', () => {
     cy.visit('/repository');
+    cy.get('input[placeholder="Search by Name..."]').type('projectquay');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (20)').click();
     cy.contains('Actions').click();
@@ -185,7 +186,7 @@ describe('Repositories List Page', () => {
     cy.get('input[placeholder="Search by Name..."]').type('hello');
     cy.get('td[data-label="Name"]')
       .filter(':contains("hello-world")')
-      .should('have.length', 1);
+      .should('have.length', 2);
   });
 
   it('searches by name including organization', () => {

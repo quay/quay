@@ -45,6 +45,8 @@ import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organi
 import {useFetchTeams, useUpdateTeamDetails} from 'src/hooks/UseTeams';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
 import Conditional from 'src/components/empty/Conditional';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useOrganization} from 'src/hooks/UseOrganization';
 
 export enum TableModeType {
   AllMembers = 'All Members',
@@ -65,6 +67,8 @@ interface IMemberInfo {
 
 export default function ManageMembersList(props: ManageMembersListProps) {
   const {organizationName, teamName} = useParams();
+  const config = useQuayConfig();
+  const {organization} = useOrganization(organizationName);
 
   const {
     allMembers,
@@ -199,6 +203,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               data-testid={TableModeType.TeamMember}
               isSelected={tableMode == TableModeType.TeamMember}
               onChange={onTableModeChange}
+              isDisabled={!organization.is_admin}
             />
             <ToggleGroupItem
               text="Robot accounts"
@@ -206,6 +211,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               data-testid={TableModeType.RobotAccounts}
               isSelected={tableMode == TableModeType.RobotAccounts}
               onChange={onTableModeChange}
+              isDisabled={!organization.is_admin}
             />
             <ToggleGroupItem
               text="Invited"
@@ -213,6 +219,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               data-testid={TableModeType.Invited}
               isSelected={tableMode == TableModeType.Invited}
               onChange={onTableModeChange}
+              isDisabled={!organization.is_admin}
             />
           </ToggleGroup>
         </ToolbarItem>
@@ -267,17 +274,21 @@ export default function ManageMembersList(props: ManageMembersListProps) {
             {teamName}
           </Title>
         </FlexItem>
-        <Tooltip content={<div>Edit team description</div>}>
-          <Button
-            variant={'plain'}
-            onClick={() => {
-              setIsEditing(true);
-              setTeamDescr(getTeamDescription());
-            }}
-            icon={<PencilAltIcon />}
-            data-testid="edit-team-description-btn"
-          />
-        </Tooltip>
+        <Conditional
+          if={config?.registry_state !== 'readonly' && organization.is_admin}
+        >
+          <Tooltip content={<div>Edit team description</div>}>
+            <Button
+              variant={'plain'}
+              onClick={() => {
+                setIsEditing(true);
+                setTeamDescr(getTeamDescription());
+              }}
+              icon={<PencilAltIcon />}
+              data-testid="edit-team-description-btn"
+            />
+          </Tooltip>
+        </Conditional>
       </Flex>
       {!isEditing ? (
         <Flex className="text-area-section">
@@ -361,6 +372,8 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         setSearch={setSearch}
         searchOptions={[manageMemberColumnNames.teamMember]}
         setDrawerContent={props.setDrawerContent}
+        isReadOnly={config?.registry_state === 'readonly'}
+        isAdmin={organization.is_admin}
       >
         {viewToggle}
         {teamDescriptionComponent}
@@ -375,7 +388,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
             </Tr>
           </Thead>
           <Tbody>
-            {tableMembersList.map((teamMember, rowIndex) => (
+            {tableMembersList?.map((teamMember, rowIndex) => (
               <Tr key={rowIndex}>
                 <Td
                   select={{
@@ -396,20 +409,27 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                 <Td dataLabel={manageMemberColumnNames.account}>
                   {getAccountTypeForMember(teamMember)}
                 </Td>
-                <Td>
-                  <Button
-                    icon={<TrashIcon />}
-                    variant="plain"
-                    onClick={() => {
-                      setMemberToBeDeleted({
-                        teamName: teamName,
-                        memberName: teamMember.name,
-                      });
-                      setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
-                    }}
-                    data-testid={`${teamMember.name}-delete-icon`}
-                  />
-                </Td>
+                <Conditional
+                  if={
+                    config?.registry_state !== 'readonly' &&
+                    organization.is_admin
+                  }
+                >
+                  <Td>
+                    <Button
+                      icon={<TrashIcon />}
+                      variant="plain"
+                      onClick={() => {
+                        setMemberToBeDeleted({
+                          teamName: teamName,
+                          memberName: teamMember.name,
+                        });
+                        setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
+                      }}
+                      data-testid={`${teamMember.name}-delete-icon`}
+                    />
+                  </Td>
+                </Conditional>
               </Tr>
             ))}
           </Tbody>

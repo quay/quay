@@ -41,7 +41,13 @@ export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
           </FlexItem>
         </Flex>
         <ToolbarItem>
-          <Conditional if={props.selectedTeams?.length !== 0}>
+          <Conditional
+            if={
+              props.selectedTeams?.length !== 0 &&
+              props.isAdmin &&
+              !props.isReadOnly
+            }
+          >
             <Kebab
               isKebabOpen={props.isKebabOpen}
               setKebabOpen={props.setKebabOpen}
@@ -57,12 +63,14 @@ export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
           </Conditional>
         </ToolbarItem>
         <ToolbarItem>
-          <Button
-            onClick={() => props.handleModalToggle()}
-            data-testid="create-new-team-button"
-          >
-            Create new team
-          </Button>
+          <Conditional if={props.isAdmin && !props.isReadOnly}>
+            <Button
+              onClick={() => props.handleModalToggle()}
+              data-testid="create-new-team-button"
+            >
+              Create new team
+            </Button>
+          </Conditional>
         </ToolbarItem>
         <ToolbarPagination
           itemsList={props.allItems}
@@ -97,4 +105,6 @@ interface TeamsViewToolbarProps {
   isSetRepoPermModalOpen: boolean;
   setRepoPermModal: object;
   handleModalToggle: () => void;
+  isReadOnly: boolean;
+  isAdmin: boolean;
 }

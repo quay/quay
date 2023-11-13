@@ -54,6 +54,7 @@ export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
           onClick={() => setIsOpen(!isOpen)}
           isExpanded={isOpen}
           data-testid={`${props.teamName}-team-dropdown-toggle`}
+          isDisabled={!props.isAdmin || props.isReadOnly}
         >
           {props.teamRole.charAt(0).toUpperCase() + props.teamRole.slice(1)}
         </MenuToggle>
@@ -86,4 +87,6 @@ interface TeamsRoleDropDownProps {
   organizationName: string;
   teamName: string;
   teamRole: string;
+  isReadOnly: boolean;
+  isAdmin: boolean;
 }
