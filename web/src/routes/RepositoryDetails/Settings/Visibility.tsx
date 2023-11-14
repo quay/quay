@@ -95,7 +95,7 @@ export default function Visibility(props: VisibilityProps) {
       return (
         <>
           {publicRepoDescription}
-          <Button onClick={() => setVisibility('private')}>Make Private</Button>
+          <Button onClick={() => setVisibility('private')}>Make private</Button>
         </>
       );
     }

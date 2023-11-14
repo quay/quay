@@ -12,7 +12,7 @@ export const CliConfiguration = () => {
         direction={{default: 'column'}}
       >
         <FlexItem>
-          <Title headingLevel="h3">Docker CLI Password</Title>
+          <Title headingLevel="h3">Docker CLI password</Title>
         </FlexItem>
         <FlexItem>
           {`The Docker CLI stores passwords entered on the command line in

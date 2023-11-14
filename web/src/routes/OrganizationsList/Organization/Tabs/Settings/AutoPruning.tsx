@@ -206,7 +206,7 @@ export default function AutoPruning(props: AutoPruning) {
   return (
     <>
       <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
-        Auto Pruning Policies
+        Auto-Pruning policies
       </Title>
       <p style={{paddingBottom: '1em'}}>
         Auto-pruning policies automatically delete tags across all repositories
@@ -215,7 +215,7 @@ export default function AutoPruning(props: AutoPruning) {
       <Form id="autpruning-form" maxWidth="70%">
         <FormGroup
           isInline
-          label="Prune Policy - select a method to prune tags"
+          label="Prune policy - select a method to prune tags"
           fieldId="method"
           isRequired
         >

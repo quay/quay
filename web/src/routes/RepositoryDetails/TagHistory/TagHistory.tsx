@@ -98,7 +98,7 @@ export default function TagHistory(props: TagHistoryProps) {
                 quayConfig?.config?.PERMANENTLY_DELETE_TAGS
               }
             >
-              <Th>Permanently Delete</Th>
+              <Th>Permanently delete</Th>
             </Conditional>
           </Tr>
         </Thead>

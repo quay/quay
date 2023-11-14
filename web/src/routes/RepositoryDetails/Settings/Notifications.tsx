@@ -104,7 +104,7 @@ export default function Notifications({
               props.setDrawerContent(DrawerContentType.CreateNotification)
             }
           >
-            Create Notification
+            Create notification
           </Button>
         }
       />

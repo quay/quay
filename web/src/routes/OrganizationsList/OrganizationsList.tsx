@@ -258,7 +258,7 @@ export default function OrganizationsList() {
           button={
             <ToolbarButton
               id="create-organization-button"
-              buttonValue="Create Organization"
+              buttonValue="Create organization"
               Modal={createOrgModal}
               isModalOpen={isOrganizationModalOpen}
               setModalOpen={setOrganizationModalOpen}

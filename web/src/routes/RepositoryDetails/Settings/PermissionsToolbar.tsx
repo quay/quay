@@ -46,7 +46,7 @@ export default function PermissionsToolbar(props: PermissionsToolbarProps) {
               props.setDrawerContent(DrawerContentType.AddPermission)
             }
           >
-            Add Permissions
+            Add permissions
           </Button>
         </ToolbarItem>
         <ToolbarItem>

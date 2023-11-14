@@ -236,7 +236,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           <GridItem span={6}>
             <FormGroup
               isInline
-              label="Full Name"
+              label="Full name"
               fieldId="org-settings-fullname"
             >
               <TextInput
@@ -278,7 +278,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </Grid>
       )}
 
-      <FormGroup isInline label="Time Machine" fieldId="form-time-machine">
+      <FormGroup isInline label="Time machine" fieldId="form-time-machine">
         <FormSelect
           placeholder="Time Machine"
           aria-label="Time Machine select"

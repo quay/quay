@@ -37,7 +37,7 @@ describe('Repository Settings - Visibility', () => {
     cy.contains(
       'This Repository is currently public and is visible to all users, and may be pulled by all users.',
     ).should('exist');
-    cy.contains('Make Private').should('exist');
+    cy.contains('Make private').should('exist');
   });
 
   it('Sets private', () => {
@@ -53,7 +53,7 @@ describe('Repository Settings - Visibility', () => {
     cy.contains(
       'This Repository is currently public and is visible to all users, and may be pulled by all users.',
     ).should('exist');
-    cy.contains('Make Private').click();
+    cy.contains('Make private').click();
     cy.contains(
       'This Repository is currently private. Only users on the permissions list may view and interact with it.',
     ).should('exist');

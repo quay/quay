@@ -194,7 +194,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       component="button"
       onClick={toggleMakePrivateClick}
     >
-      Make Private
+      Make private
     </DropdownItem>,
   ];
 
@@ -276,7 +276,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         button={
           <ToolbarButton
             id=""
-            buttonValue="Create Repository"
+            buttonValue="Create repository"
             Modal={createRepoModal}
             isModalOpen={isCreateRepoModalOpen}
             setModalOpen={setCreateRepoModalOpen}
@@ -298,7 +298,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           currentOrg={currentOrg}
           pageModal={createRepoModal}
           showPageButton={true}
-          buttonText="Create Repository"
+          buttonText="Create repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}

@@ -29,7 +29,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
     <>
       <Modal
         variant={ModalVariant.small}
-        title="Delete Repository?"
+        title="Delete repository?"
         id="delete-repository-modal"
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -87,7 +87,7 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
         style={{marginBottom: '1em'}}
       />
       <Button variant="danger" onClick={() => setIsModalOpen(true)}>
-        Delete Repository
+        Delete repository
       </Button>
     </>
   );

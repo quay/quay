@@ -138,7 +138,7 @@ describe('Repository Details Page', () => {
       .first()
       .within(() => cy.get('input').click());
     cy.contains('Actions').click();
-    cy.contains('Permanently Delete').click();
+    cy.contains('Permanently delete').click();
     cy.contains('Permanently delete the following tag(s)?').should('exist');
     cy.contains(
       'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
@@ -182,7 +182,7 @@ describe('Repository Details Page', () => {
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
     });
-    cy.contains('Permanently Delete').click();
+    cy.contains('Permanently delete').click();
     cy.contains('Permanently delete the following tag(s)?').should('exist');
     cy.contains(
       'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
@@ -673,7 +673,7 @@ describe('Repository Details Page', () => {
   });
 });
 
-describe('Tag History Tab', () => {
+describe('Tag history Tab', () => {
   const tagHistoryRows = [
     {
       change:
@@ -718,7 +718,7 @@ describe('Tag History Tab', () => {
 
   it('renders history list', () => {
     cy.visit('/repository/user1/hello-world');
-    cy.contains('Tag History').click();
+    cy.contains('Tag history').click();
     cy.get('#tag-history-table > tr').each(($e, index, $list) => {
       cy.wrap($e).within(() => {
         const expectedValues = tagHistoryRows[index];
@@ -742,7 +742,7 @@ describe('Tag History Tab', () => {
 
   it('search by name', () => {
     cy.visit('/repository/user1/hello-world');
-    cy.contains('Tag History').click();
+    cy.contains('Tag history').click();
     cy.get('input[placeholder="Search by tag name..."').type('manifestlist');
     cy.get('#tag-history-table > tr').each(($e, index, $list) => {
       cy.wrap($e).within(() => {
@@ -768,7 +768,7 @@ describe('Tag History Tab', () => {
       },
     );
     cy.visit('/repository/user1/hello-world');
-    cy.contains('Tag History').click();
+    cy.contains('Tag history').click();
     cy.contains('latest will expire').should('not.exist');
     cy.get('#show-future-checkbox').click();
     cy.contains('latest will expire').should('exist');
@@ -788,7 +788,7 @@ describe('Tag History Tab', () => {
       },
     );
     cy.visit('/repository/user1/hello-world');
-    cy.contains('Tag History').click();
+    cy.contains('Tag history').click();
     cy.get('#show-future-checkbox').click();
     cy.get('#start-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-26');
@@ -816,7 +816,7 @@ describe('Tag History Tab', () => {
 
   it('revert tag', () => {
     cy.visit('/repository/user1/hello-world');
-    cy.contains('Tag History').click();
+    cy.contains('Tag history').click();
     cy.contains('Restore to sha2567e9b6e7ba2842c').click();
     cy.contains('Restore Tag').should('exist');
     cy.contains('This will change the image to which the tag points.').should(
@@ -859,7 +859,7 @@ describe('Tag History Tab', () => {
       },
     );
     cy.visit('/repository/user1/hello-world');
-    cy.contains('Tag History').click();
+    cy.contains('Tag history').click();
     cy.contains('Delete testdelete sha25612345e7ba2842c ').click(10, 10);
     cy.contains('Permanently Delete Tag').should('exist');
     cy.contains(
@@ -884,6 +884,6 @@ describe('Tag History Tab', () => {
       'exist',
     );
     cy.contains('Revert').should('not.exist');
-    cy.contains('Permanently Delete').should('not.exist');
+    cy.contains('Permanently delete').should('not.exist');
   });
 });

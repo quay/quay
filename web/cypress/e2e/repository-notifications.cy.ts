@@ -177,7 +177,7 @@ describe('Repository Settings - Notifications', () => {
   // TODO: Need notifications in the header
   // to be implemented first
   // it('Creates quay notification',()=>{
-  //     cy.contains('Create Notification').click();
+  //     cy.contains('Create notification').click();
   //     cy.get('#create-notification-form').within(()=>{
   //         cy.contains('Select event').click();
   //         cy.contains('Push to Repository').click();
@@ -198,7 +198,7 @@ describe('Repository Settings - Notifications', () => {
   // });
 
   it('Creates Flowdock notification', () => {
-    cy.contains('Create Notification').click();
+    cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
       cy.contains('Push to Repository').click();
@@ -221,7 +221,7 @@ describe('Repository Settings - Notifications', () => {
   });
 
   it('Creates Hipchat notification', () => {
-    cy.contains('Create Notification').click();
+    cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
       cy.contains('Push to Repository').click();
@@ -245,7 +245,7 @@ describe('Repository Settings - Notifications', () => {
   });
 
   it('Creates Slack notification', () => {
-    cy.contains('Create Notification').click();
+    cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
       cy.contains('Push to Repository').click();
@@ -270,7 +270,7 @@ describe('Repository Settings - Notifications', () => {
   });
 
   it('Creates Webhook notification', () => {
-    cy.contains('Create Notification').click();
+    cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
       cy.contains('Push to Repository').click();
@@ -333,7 +333,7 @@ describe('Repository Settings - Notifications', () => {
       '/api/v1/repository/testorg/testrepo/notification/',
       {},
     ).as('createNotification');
-    cy.contains('Create Notification').click();
+    cy.contains('Create notification').click();
     cy.get('#create-notification-form').within(() => {
       cy.contains('Select event').click();
       cy.contains('Push to Repository').click();

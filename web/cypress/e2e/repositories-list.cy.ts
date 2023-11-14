@@ -60,7 +60,7 @@ describe('Repositories List Page', () => {
     cy.intercept('/repository').as('getRepositories');
     cy.visit('/repository');
     cy.wait('@getRepositories');
-    cy.contains('Create Repository').click();
+    cy.contains('Create repository').click();
     cy.contains('Create repository').should('exist');
     //cy.contains('Select namespace').click();
     //cy.get('li:contains("user1")').click();
@@ -80,7 +80,7 @@ describe('Repositories List Page', () => {
 
   it('create private repository', () => {
     cy.visit('/repository');
-    cy.contains('Create Repository').click();
+    cy.contains('Create repository').click();
     cy.contains('Create repository').should('exist');
     //cy.contains('Select namespace').click();
     //cy.get('li:contains("user1")').click();
@@ -101,7 +101,7 @@ describe('Repositories List Page', () => {
 
   it('create repository under organization', () => {
     cy.visit('/organization/testorg');
-    cy.contains('Create Repository').click();
+    cy.contains('Create repository').click();
     cy.contains('Create repository').should('exist');
     cy.get('button:contains("testorg")').should('exist');
     cy.get('input[id="repository-name-input"]').type('new-repo');
@@ -137,7 +137,7 @@ describe('Repositories List Page', () => {
         cy.contains(
           'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.',
         ).should('exist');
-        cy.contains('Create Repository');
+        cy.contains('Create repository');
       });
   });
 
@@ -172,7 +172,7 @@ describe('Repositories List Page', () => {
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (20)').click();
     cy.contains('Actions').click();
-    cy.contains('Make Private').click();
+    cy.contains('Make private').click();
     cy.contains('Make repositories private');
     cy.contains(
       'Update 20 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',
