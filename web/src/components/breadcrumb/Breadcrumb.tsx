@@ -9,7 +9,11 @@ import React, {useEffect, useState} from 'react';
 import useBreadcrumbs, {
   BreadcrumbComponentType,
 } from 'use-react-router-breadcrumbs';
-import {parseOrgNameFromUrl, parseRepoNameFromUrl, parseTagNameFromUrl} from 'src/libs/utils';
+import {
+  parseOrgNameFromUrl,
+  parseRepoNameFromUrl,
+  parseTagNameFromUrl,
+} from 'src/libs/utils';
 
 export function QuayBreadcrumb() {
   const location = useLocation();
@@ -39,23 +43,32 @@ export function QuayBreadcrumb() {
     // second breadcrumb is organization name
     else if (existingBreadcrumbs.length == 1) {
       nextBreadcrumb['title'] = parseOrgNameFromUrl(location.pathname);
-      nextBreadcrumb['pathname'] = location.pathname.split(/repository|organization/)[0] + 'organization/' + nextBreadcrumb['title'];
+      nextBreadcrumb['pathname'] =
+        location.pathname.split(/repository|organization/)[0] +
+        'organization/' +
+        nextBreadcrumb['title'];
     }
     // third breadcrumb is repo name
     else if (existingBreadcrumbs.length == 2) {
       nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
-      nextBreadcrumb['pathname'] = location.pathname.split(nextBreadcrumb['title'])[0] + nextBreadcrumb['title'];
+      nextBreadcrumb['pathname'] =
+        location.pathname.split(nextBreadcrumb['title'])[0] +
+        nextBreadcrumb['title'];
     }
     // fourth breadcrumb is tag name
     else if (existingBreadcrumbs.length == 3) {
-      nextBreadcrumb['title'] = parseTagNameFromUrl(location.pathname)
-      nextBreadcrumb['pathname'] = existingBreadcrumbs[2]['pathname'] + '/tag/' + nextBreadcrumb['title'];
+      nextBreadcrumb['title'] = parseTagNameFromUrl(location.pathname);
+      nextBreadcrumb['pathname'] =
+        existingBreadcrumbs[2]['pathname'] + '/tag/' + nextBreadcrumb['title'];
     }
-    if (location.pathname.replace(/.*\/organization|.*\/repository/g, '') == nextBreadcrumb['pathname'].replace(/.*\/organization|.*\/repository/g, '')) {
+    if (
+      location.pathname.replace(/.*\/organization|.*\/repository/g, '') ==
+      nextBreadcrumb['pathname'].replace(/.*\/organization|.*\/repository/g, '')
+    ) {
       nextBreadcrumb['active'] = true;
     }
     return nextBreadcrumb;
-  }
+  };
 
   const buildFromRoute = () => {
     const result = [];
@@ -70,7 +83,7 @@ export function QuayBreadcrumb() {
       if (object.key != '') {
         newObj['title'] = object.key.replace(/\//, '');
       }
-      newObj = fetchBreadcrumb(result, newObj)
+      newObj = fetchBreadcrumb(result, newObj);
       result.push(newObj);
       if (newObj['active']) {
         break;
