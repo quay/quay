@@ -70,7 +70,6 @@ def frontend_visible_config(config_dict):
 
 # Configuration that should not be changed by end users
 class ImmutableConfig(object):
-
     # Requests based HTTP client with a large request pool
     HTTPCLIENT = build_requests_session()
 
@@ -861,3 +860,6 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_UI_DELAY_AFTER_WRITE = False
     UI_DELAY_AFTER_WRITE_SECONDS = 3
+
+    # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
+    ROBOTS_WHITELIST: Optional[List[str]] = []
