@@ -33,6 +33,12 @@ export interface IQuotaReport {
   configured_quota: number;
 }
 
+export enum RepositoryState {
+  NORMAL = 'NORMAL',
+  READ_ONLY = 'READ_ONLY',
+  MIRROR = 'MIRROR',
+}
+
 export async function fetchAllRepos(
   namespaces: string[],
   flatten = false,
@@ -142,6 +148,20 @@ export async function setRepositoryVisibility(
   const api = `/api/v1/repository/${namespace}/${repositoryName}/changevisibility`;
   const response: AxiosResponse = await axios.post(api, {
     visibility,
+  });
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function setRepositoryState(
+  namespace: string,
+  repositoryName: string,
+  state: RepositoryState,
+) {
+  // TODO: Add return type to AxiosResponse
+  const api = `/api/v1/repository/${namespace}/${repositoryName}/changestate`;
+  const response: AxiosResponse = await axios.put(api, {
+    state,
   });
   assertHttpCode(response.status, 200);
   return response.data;

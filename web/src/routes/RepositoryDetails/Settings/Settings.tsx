@@ -5,11 +5,13 @@ import DeleteRepository from './DeleteRepository';
 import Permissions from './Permissions';
 import Notifications from './Notifications';
 import Visibility from './Visibility';
+import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-
+  const config = useQuayConfig();
   const tabs = [
     {
       name: 'User and robot permissions',
@@ -33,6 +35,21 @@ export default function Settings(props: SettingsProps) {
         />
       ),
     },
+    ...(config?.features?.REPO_MIRROR
+      ? [
+          {
+            name: 'Repository state',
+            id: 'repositorystate',
+            content: (
+              <RepositoryStateForm
+                org={props.org}
+                repo={props.repo}
+                repoDetails={props.repoDetails}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       name: 'Repository visibility',
       id: 'repositoryvisiblity',
