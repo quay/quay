@@ -9,12 +9,14 @@ import React, {useEffect, useState} from 'react';
 import useBreadcrumbs, {
   BreadcrumbComponentType,
 } from 'use-react-router-breadcrumbs';
-import {useRecoilState} from 'recoil';
-import {BrowserHistoryState} from 'src/atoms/BrowserHistoryState';
+import {
+  parseOrgNameFromUrl,
+  parseRepoNameFromUrl,
+  parseTagNameFromUrl,
+} from 'src/libs/utils';
 
 export function QuayBreadcrumb() {
-  const [browserHistory, setBrowserHistoryState] =
-    useRecoilState(BrowserHistoryState);
+  const location = useLocation();
 
   const [breadcrumbItems, setBreadcrumbItems] = useState<QuayBreadcrumbItem[]>(
     [],
@@ -30,130 +32,82 @@ export function QuayBreadcrumb() {
 
   const resetBreadCrumbs = () => {
     setBreadcrumbItems([]);
-    setBrowserHistoryState([]);
   };
 
-  const fetchRepoName = (route) => {
-    const re = new RegExp(urlParams.organizationName + '/(.*)', 'i');
-    const result = route.match(re);
-    return result[1];
-  };
-
-  const buildBreadCrumbFromPrevRoute = (object) => {
-    const prevObj = {};
-    prevObj['pathname'] = object.match.pathname;
-    prevObj['title'] = fetchRepoName(prevObj['pathname']);
-    prevObj['active'] =
-      prevObj['pathname'].localeCompare(window.location.pathname) === 0;
-    return prevObj;
+  const fetchBreadcrumb = (existingBreadcrumbs, nextBreadcrumb) => {
+    // existingBreadcrumbs is a list of breadcrumbs on the page
+    // first breadcrumb is either organization or repository
+    if (existingBreadcrumbs.length == 0) {
+      nextBreadcrumb['title'] = nextBreadcrumb['pathname'].split('/').at(-1);
+    }
+    // second breadcrumb is organization name
+    else if (existingBreadcrumbs.length == 1) {
+      nextBreadcrumb['title'] = parseOrgNameFromUrl(location.pathname);
+      nextBreadcrumb['pathname'] =
+        location.pathname.split(/repository|organization/)[0] +
+        'organization/' +
+        nextBreadcrumb['title'];
+    }
+    // third breadcrumb is repo name
+    else if (existingBreadcrumbs.length == 2) {
+      nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
+      nextBreadcrumb['pathname'] =
+        location.pathname.split(nextBreadcrumb['title'])[0] +
+        nextBreadcrumb['title'];
+    }
+    // fourth breadcrumb is tag name
+    else if (existingBreadcrumbs.length == 3) {
+      nextBreadcrumb['title'] = parseTagNameFromUrl(location.pathname);
+      nextBreadcrumb['pathname'] =
+        existingBreadcrumbs[2]['pathname'] + '/tag/' + nextBreadcrumb['title'];
+    }
+    if (
+      location.pathname.replace(/.*\/organization|.*\/repository/g, '') ==
+      nextBreadcrumb['pathname'].replace(/.*\/organization|.*\/repository/g, '')
+    ) {
+      nextBreadcrumb['active'] = true;
+    }
+    return nextBreadcrumb;
   };
 
   const buildFromRoute = () => {
     const result = [];
-    const history = [];
-    let prevItem = null;
-
     for (let i = 0; i < routerBreadcrumbs.length; i++) {
-      const newObj = {};
-      const object = routerBreadcrumbs[i];
-      newObj['pathname'] = object.match.pathname;
-      if (object.match.route.Component.type.name == 'RepositoryDetails') {
-        prevItem = object;
-        // Continuing till we find the last RepositoryDetails route for nested repo paths
-        continue;
-      } else {
-        newObj['title'] = object.match.pathname.split('/').slice(-1)[0];
-      }
-      newObj['active'] =
-        object.match.pathname.localeCompare(window.location.pathname) === 0;
-
-      if (prevItem) {
-        const prevObj = buildBreadCrumbFromPrevRoute(prevItem);
-        result.push(prevObj);
-        history.push(prevObj);
-        prevItem = null;
-      }
-
-      result.push(newObj);
-      history.push(newObj);
-    }
-
-    // If prevItem was not pushed in the for loop
-    if (prevItem) {
-      const prevObj = buildBreadCrumbFromPrevRoute(prevItem);
-      result.push(prevObj);
-      history.push(prevObj);
-      prevItem = null;
-    }
-
-    setBreadcrumbItems(result);
-    setBrowserHistoryState(history);
-  };
-
-  const currentBreadcrumbItem = () => {
-    const newItem = {};
-    const lastItem = routerBreadcrumbs[routerBreadcrumbs.length - 1];
-
-    newItem['pathname'] = lastItem.location.pathname;
-    // Form QuayBreadcrumbItem for the current path
-    if (lastItem.match.route.Component.type.name == 'RepositoryDetails') {
-      newItem['title'] = fetchRepoName(newItem['pathname']);
-    } else {
-      newItem['title'] = newItem['pathname'].split('/').slice(-1)[0];
-    }
-
-    newItem['active'] = true;
-    return newItem;
-  };
-
-  const buildFromBrowserHistory = () => {
-    const result = [];
-    const history = [];
-    const newItem = currentBreadcrumbItem();
-
-    for (const value of Array.from(browserHistory.values())) {
-      const newObj = {};
-      newObj['pathname'] = value['pathname'];
-      if (typeof value['title'] === 'string') {
-        newObj['title'] = value['title'];
-      } else if (value.title?.props?.children) {
-        newObj['title'] = value['title']['props']['children'];
-      }
-      newObj['active'] =
-        value['pathname'].localeCompare(window.location.pathname) === 0;
-      if (newItem['pathname'] == newObj['pathname']) {
-        newItem['title'] = newObj['title'];
+      if (result.length == 4) {
         break;
       }
+      let newObj = {};
+      const object = routerBreadcrumbs[i];
+
+      newObj['pathname'] = object.match.pathname;
+      if (object.key != '') {
+        newObj['title'] = object.key.replace(/\//, '');
+      }
+      newObj = fetchBreadcrumb(result, newObj);
       result.push(newObj);
-      history.push(newObj);
+      if (newObj['active']) {
+        break;
+      }
     }
-    result.push(newItem);
-    history.push(newItem);
+
     setBreadcrumbItems(result);
-    setBrowserHistoryState(history);
   };
 
   useEffect(() => {
-    // urlParams has atleast one item - {*: 'endpoint'}
-    // If size = 1, no params are defined in the url, so we reset breadcrumb history
+    // urlParams has at least one item - Eg: root of the page => {*: 'organization'/'repository'}
+    // If size = 1, no params are defined in the url and therefore no breadcrumbs exist for the page. So, we set breadcrumb items as an empty list
     if (Object.keys(urlParams).length <= 1) {
       resetBreadCrumbs();
       return;
     }
-
-    if (browserHistory.length > 0) {
-      buildFromBrowserHistory();
-    } else {
-      buildFromRoute();
-    }
+    buildFromRoute();
   }, [window.location.pathname]);
 
   return (
     <div>
       {breadcrumbItems.length > 0 ? (
         <PageBreadcrumb>
-          <Breadcrumb>
+          <Breadcrumb test-id="page-breadcrumbs-list">
             {breadcrumbItems.map((object, i) => (
               <BreadcrumbItem
                 render={(props) => (
