@@ -128,11 +128,6 @@ export const getNavigationRoutes = () => {
 
   const NavigationRoutes = [
     {
-      path: domainRoute(currentRoute, NavigationPath.overviewList),
-      element: <OverviewList />,
-      breadcrumb: Breadcrumb.organizationsListBreadcrumb,
-    },
-    {
       path: domainRoute(currentRoute, NavigationPath.organizationsList),
       element: <OrganizationsList />,
       breadcrumb: Breadcrumb.organizationsListBreadcrumb,
