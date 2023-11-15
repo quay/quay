@@ -641,6 +641,7 @@ class OrganizationPlan(ApiResource):
                             "performer": get_authenticated_user().username,
                             "ip": get_request_ip(),
                             "plan": price["stripeId"],
+                            "trial_period_days": price["free_trial_days"],
                         },
                     },
                     mode="subscription",
