@@ -95,7 +95,7 @@ export const CreateOrganizationModal = (
 
   return (
     <Modal
-      title="Create organization"
+      title="Create Organization"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}

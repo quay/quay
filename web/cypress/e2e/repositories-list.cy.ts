@@ -60,8 +60,8 @@ describe('Repositories List Page', () => {
     cy.intercept('/repository').as('getRepositories');
     cy.visit('/repository');
     cy.wait('@getRepositories');
-    cy.contains('Create repository').click();
-    cy.contains('Create repository').should('exist');
+    cy.contains('Create Repository').click();
+    cy.contains('Create Repository').should('exist');
     //cy.contains('Select namespace').click();
     //cy.get('li:contains("user1")').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
@@ -80,8 +80,8 @@ describe('Repositories List Page', () => {
 
   it('create private repository', () => {
     cy.visit('/repository');
-    cy.contains('Create repository').click();
-    cy.contains('Create repository').should('exist');
+    cy.contains('Create Repository').click();
+    cy.contains('Create Repository').should('exist');
     //cy.contains('Select namespace').click();
     //cy.get('li:contains("user1")').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
@@ -101,8 +101,8 @@ describe('Repositories List Page', () => {
 
   it('create repository under organization', () => {
     cy.visit('/organization/testorg');
-    cy.contains('Create repository').click();
-    cy.contains('Create repository').should('exist');
+    cy.contains('Create Repository').click();
+    cy.contains('Create Repository').should('exist');
     cy.get('button:contains("testorg")').should('exist');
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
@@ -137,7 +137,7 @@ describe('Repositories List Page', () => {
         cy.contains(
           'Either no repositories exist yet or you may not have permission to view any. If you have permission, try creating a new repository.',
         ).should('exist');
-        cy.contains('Create repository');
+        cy.contains('Create Repository');
       });
   });
 

@@ -38,7 +38,7 @@ export default function Settings(props: SettingsProps) {
       visible: isUserOrganization,
     },
     {
-      name: 'Auto-Prune policies',
+      name: 'Auto-Prune Policies',
       id: 'autoprunepolicies',
       content: (
         <AutoPruning

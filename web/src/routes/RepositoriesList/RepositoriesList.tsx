@@ -276,7 +276,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         button={
           <ToolbarButton
             id=""
-            buttonValue="Create repository"
+            buttonValue="Create Repository"
             Modal={createRepoModal}
             isModalOpen={isCreateRepoModalOpen}
             setModalOpen={setCreateRepoModalOpen}
@@ -298,7 +298,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           currentOrg={currentOrg}
           pageModal={createRepoModal}
           showPageButton={true}
-          buttonText="Create repository"
+          buttonText="Create Repository"
           isModalOpen={isCreateRepoModalOpen}
           setModalOpen={setCreateRepoModalOpen}
           isKebabOpen={isKebabOpen}

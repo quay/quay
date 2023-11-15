@@ -14,15 +14,15 @@ describe('Repository Details Page - Delete', () => {
       }),
     ).as('getConfig');
     cy.visit('/repository/testorg/testrepo?tab=settings');
-    cy.contains('Delete repository').click();
+    cy.contains('Delete Repository').click();
   });
 
   it('Deletes repository', () => {
     cy.contains(
       'Deleting a repository cannot be undone. Here be dragons!',
     ).should('exist');
-    cy.contains('Delete repository').click();
-    cy.contains('Delete repository?').should('exist');
+    cy.contains('Delete Repository').click();
+    cy.contains('Delete Repository?').should('exist');
     cy.contains(
       'You are requesting to delete the repository testorg/testrepo. This action is non-reversable.',
     ).should('exist');

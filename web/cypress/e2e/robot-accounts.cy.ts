@@ -113,7 +113,7 @@ describe('Robot Accounts Page', () => {
   it('Bulk Update Repo Permissions', () => {
     const robotAccnt = 'testorg+testrobot2';
     cy.visit('/organization/testorg');
-    cy.contains('Create repository').click();
+    cy.contains('Create Repository').click();
     cy.get('input[id="repository-name-input"]').type('testrepo1');
     cy.get('[id="create-repository-modal"]').within(() =>
       cy.get('button:contains("Create")').click(),

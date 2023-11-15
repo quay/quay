@@ -62,7 +62,7 @@ export default function Settings(props: SettingsProps) {
       ),
     },
     {
-      name: <div style={{color: 'red'}}>Delete repository</div>,
+      name: <div style={{color: 'red'}}>Delete Repository</div>,
       id: 'deleterepository',
       content: <DeleteRepository org={props.org} repo={props.repo} />,
     },
