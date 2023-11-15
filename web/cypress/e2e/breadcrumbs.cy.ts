@@ -12,17 +12,17 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Organization list page', () => {
     cy.visit('/organization');
-    cy.get('.pf-v5-c-breadcrumb__list').should('not.exist');
+    cy.get('nav[test-id="page-breadcrumbs-list"]').should('not.exist');
   });
 
   it('Repository list page', () => {
     cy.visit('/repository');
-    cy.get('.pf-v5-c-breadcrumb__list').should('not.exist');
+    cy.get('nav[test-id="page-breadcrumbs-list"]').should('not.exist');
   });
 
   it('Organization page', () => {
     cy.visit('/organization/projectquay');
-    cy.get('.pf-v5-c-breadcrumb__list').within(() => {
+    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -49,7 +49,7 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Repository page', () => {
     cy.visit('/repository/projectquay/repo1');
-    cy.get('.pf-v5-c-breadcrumb__list').within(() => {
+    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {
@@ -82,7 +82,7 @@ describe('Tests for Breadcrumbs', () => {
 
   it('Tags list page', () => {
     cy.visit('/repository/user1/hello-world/tag/latest');
-    cy.get('.pf-v5-c-breadcrumb__list').within(() => {
+    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
           switch (index) {

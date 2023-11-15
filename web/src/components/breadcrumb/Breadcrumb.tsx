@@ -107,7 +107,7 @@ export function QuayBreadcrumb() {
     <div>
       {breadcrumbItems.length > 0 ? (
         <PageBreadcrumb>
-          <Breadcrumb>
+          <Breadcrumb test-id="page-breadcrumbs-list">
             {breadcrumbItems.map((object, i) => (
               <BreadcrumbItem
                 render={(props) => (
