@@ -68,7 +68,7 @@ def get_price(plan, require_business_plan):
         raise NotFound()
 
     if require_business_plan and not plan_found["bus_features"] and not plan_found["price"] == 0:
-        logger.warning("Business attempting to subscribe to personal plan: %s", user.username)
+        logger.warning("Business attempting to subscribe to personal plan: %s", plan_found["title"])
         raise request_error(message="No matching plan found")
 
     return plan_found
