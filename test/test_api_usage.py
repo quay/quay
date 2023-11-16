@@ -5076,7 +5076,7 @@ class TestOrganizationRhSku(ApiTestCase):
         self.postResponse(
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
-            data={"subscription_id": 12345678},
+            data={"subscriptions": [{"subscription_id": 12345678}]},
             expected_code=201,
         )
         json = self.getJsonResponse(
@@ -5093,7 +5093,7 @@ class TestOrganizationRhSku(ApiTestCase):
         self.postResponse(
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
-            data={"subscription_id": 12345678},
+            data={"subscriptions": [{"subscription_id": 12345678}]},
             expected_code=400,
         )
 
@@ -5103,7 +5103,7 @@ class TestOrganizationRhSku(ApiTestCase):
         self.postResponse(
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
-            data={"subscription_id": 11111111},
+            data={"subscriptions": [{"subscription_id": 11111}]},
             expected_code=401,
         )
 
@@ -5112,19 +5112,36 @@ class TestOrganizationRhSku(ApiTestCase):
         self.postResponse(
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
-            data={"subscription_id": 12345678},
+            data={"subscriptions": [{"subscription_id": 12345678}]},
             expected_code=201,
         )
         self.deleteResponse(
             resource_name=OrganizationRhSkuSubscriptionField,
             params=dict(orgname=SUBSCRIPTION_ORG, subscription_id=12345678),
-            expected_code=204,
+            expected_code=200,
         )
         json = self.getJsonResponse(
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
         )
         self.assertEqual(len(json), 0)
+
+    def test_sku_stacking(self):
+        # multiples of same sku
+        self.login(SUBSCRIPTION_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}, {"subscription_id": 11223344}]},
+            expected_code=201,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+        )
+        self.assertEqual(len(json), 2)
+        json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
+        self.assertEqual(True, json["privateAllowed"])
 
 
 if __name__ == "__main__":

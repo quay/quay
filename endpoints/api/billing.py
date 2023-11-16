@@ -955,9 +955,11 @@ class OrganizationRhSku(ApiResource):
             if query:
                 subscriptions = list(query.dicts())
                 for subscription in subscriptions:
-                    subscription["sku"] = marketplace_subscriptions.get_subscription_sku(
+                    subscription_sku = marketplace_subscriptions.get_subscription_sku(
                         subscription["subscription_id"]
                     )
+                    subscription["sku"] = subscription_sku
+                    subscription["metadata"] = get_plan_using_rh_sku(subscription_sku)
                 return subscriptions
             else:
                 return []
@@ -971,35 +973,71 @@ class OrganizationRhSku(ApiResource):
         """
         permission = AdministerOrganizationPermission(orgname)
         request_data = request.get_json()
-        subscription_id = request_data["subscription_id"]
+        organization = model.organization.get_organization(orgname)
+        subscriptions = request_data["subscriptions"]
         if permission.can():
-            organization = model.organization.get_organization(orgname)
-            user = get_authenticated_user()
-            account_number = marketplace_users.get_account_number(user)
-            subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+            for subscription in subscriptions:
+                subscription_id = subscription.get("subscription_id")
+                if subscription_id is None:
+                    break
+                user = get_authenticated_user()
+                account_number = marketplace_users.get_account_number(user)
+                subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
 
-            if subscriptions is None:
-                abort(401, message="no valid subscriptions present")
+                if subscriptions is None:
+                    abort(401, message="no valid subscriptions present")
 
-            user_subscription_ids = [int(subscription["id"]) for subscription in subscriptions]
-            if int(subscription_id) in user_subscription_ids:
-                try:
-                    model.organization_skus.bind_subscription_to_org(
-                        user_id=user.id, subscription_id=subscription_id, org_id=organization.id
+                user_subscription_ids = [int(subscription["id"]) for subscription in subscriptions]
+                if int(subscription_id) in user_subscription_ids:
+                    try:
+                        model.organization_skus.bind_subscription_to_org(
+                            user_id=user.id, subscription_id=subscription_id, org_id=organization.id
+                        )
+                    except model.OrgSubscriptionBindingAlreadyExists:
+                        abort(400, message="subscription is already bound to an org")
+                else:
+                    abort(
+                        401,
+                        message=f"subscription {subscription_id} does not belong to {user.username}",
                     )
-                    return "Okay", 201
-                except model.OrgSubscriptionBindingAlreadyExists:
-                    abort(400, message="subscription is already bound to an org")
-            else:
-                abort(401, message=f"subscription does not belong to {user.username}")
 
+            return "Okay", 201
+
+        abort(401)
+
+
+@resource("/v1/organization/<orgname>/marketplace/batchremove")
+@path_param("orgname", "The name of the organization")
+@show_if(features.BILLING)
+class OrganizationRhSkuBatchRemoval(ApiResource):
+    @require_scope(scopes.ORG_ADMIN)
+    @nickname("batchRemoveSku")
+    def post(self, orgname):
+        """
+        Batch remove skus from org
+        """
+        permission = AdministerOrganizationPermission(orgname)
+        request_data = request.get_json()
+        subscriptions = request_data["subscriptions"]
+        if permission.can():
+            try:
+                organization = model.organization.get_organization(orgname)
+            except InvalidOrganizationException:
+                return ("Organization not valid", 400)
+            for subscription in subscriptions:
+                subscription_id = int(subscription.get("subscription_id"))
+                if subscription_id is None:
+                    break
+                model.organization_skus.remove_subscription_from_org(
+                    organization.id, subscription_id
+                )
+            return ("Deleted", 200)
         abort(401)
 
 
 @resource("/v1/organization/<orgname>/marketplace/<subscription_id>")
 @path_param("orgname", "The name of the organization")
 @path_param("subscription_id", "Marketplace subscription id")
-@related_user_resource(UserPlan)
 @show_if(features.BILLING)
 class OrganizationRhSkuSubscriptionField(ApiResource):
     """
@@ -1007,6 +1045,7 @@ class OrganizationRhSkuSubscriptionField(ApiResource):
     """
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("removeSkuFromOrg")
     def delete(self, orgname, subscription_id):
         """
         Remove sku from an org
@@ -1019,7 +1058,7 @@ class OrganizationRhSkuSubscriptionField(ApiResource):
                 return ("Organization not valid", 400)
 
             model.organization_skus.remove_subscription_from_org(organization.id, subscription_id)
-            return ("Deleted", 204)
+            return ("Deleted", 200)
         abort(401)
 
 
@@ -1040,7 +1079,7 @@ class UserSkuList(ApiResource):
         user = get_authenticated_user()
         account_number = marketplace_users.get_account_number(user)
         if not account_number:
-            raise NotFound()
+            return []
 
         user_subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
 
@@ -1053,5 +1092,7 @@ class UserSkuList(ApiResource):
                 subscription["assigned_to_org"] = organization.username
             else:
                 subscription["assigned_to_org"] = None
+
+            subscription["metadata"] = get_plan_using_rh_sku(subscription["sku"])
 
         return user_subscriptions

@@ -20,6 +20,8 @@ angular.module('quay').directive('planManager', function () {
     controller: function($scope, $element, PlanService, ApiService) {
       $scope.isExistingCustomer = false;
 
+      $scope.marketplaceTotal = 0;
+
       $scope.parseDate = function(timestamp) {
         return new Date(timestamp * 1000);
       };

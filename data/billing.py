@@ -1,5 +1,6 @@
 import random
 import string
+import sys
 from calendar import timegm
 from datetime import datetime, timedelta
 from typing import Any, Dict
@@ -292,6 +293,7 @@ PLANS = [
         "price": 45000,
         "privateRepos": 250,
         "rh_sku": "MW00589MO",
+        "billing_enabled": False,
         "stripeId": "bus-xlarge-2018",
         "audience": "For extra large businesses",
         "bus_features": True,
@@ -305,6 +307,7 @@ PLANS = [
         "price": 85000,
         "privateRepos": 500,
         "rh_sku": "MW00590MO",
+        "billing_enabled": False,
         "stripeId": "bus-500-2018",
         "audience": "For huge business",
         "bus_features": True,
@@ -354,10 +357,18 @@ PLANS = [
         "plans_page_hidden": False,
     },
     {
-        "title": "subscriptionwatch",
+        "title": "premium",
         "privateRepos": 100,
         "stripeId": "not_a_stripe_plan",
         "rh_sku": "MW02701",
+        "sku_billing": True,
+        "plans_page_hidden": True,
+    },
+    {
+        "title": "selfsupport",
+        "privateRepos": sys.maxsize,
+        "stripeId": "not_a_stripe_plan",
+        "rh_sku": "MW02702",
         "sku_billing": True,
         "plans_page_hidden": True,
     },
@@ -389,6 +400,8 @@ def get_plan_using_rh_sku(sku):
     """
     Returns the plan with given sku or None if none.
     """
+    if sku is None:
+        return None
     for plan in PLANS:
         if plan.get("rh_sku") == sku:
             return plan
