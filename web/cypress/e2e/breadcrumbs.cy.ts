@@ -27,13 +27,13 @@ describe('Tests for Breadcrumbs', () => {
         .each(($el, index) => {
           switch (index) {
             case 0:
-              cy.wrap($el).should('have.text', 'organization');
+              cy.wrap($el).should('have.text', 'Organization');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/organization');
               break;
             case 1:
-              cy.wrap($el).should('have.text', 'projectquay');
+              cy.wrap($el).should('have.text', 'Projectquay');
               cy.wrap($el).children('a').should('have.class', 'disabled-link');
               cy.wrap($el)
                 .children('a')
@@ -54,19 +54,19 @@ describe('Tests for Breadcrumbs', () => {
         .each(($el, index) => {
           switch (index) {
             case 0:
-              cy.wrap($el).should('have.text', 'repository');
+              cy.wrap($el).should('have.text', 'Repository');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/repository');
               break;
             case 1:
-              cy.wrap($el).should('have.text', 'projectquay');
+              cy.wrap($el).should('have.text', 'Projectquay');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/organization/projectquay');
               break;
             case 2:
-              cy.wrap($el).should('have.text', 'repo1');
+              cy.wrap($el).should('have.text', 'Repo1');
               cy.wrap($el).children('a').should('have.class', 'disabled-link');
               cy.wrap($el)
                 .children('a')
@@ -87,25 +87,25 @@ describe('Tests for Breadcrumbs', () => {
         .each(($el, index) => {
           switch (index) {
             case 0:
-              cy.wrap($el).should('have.text', 'repository');
+              cy.wrap($el).should('have.text', 'Repository');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/repository');
               break;
             case 1:
-              cy.wrap($el).should('have.text', 'user1');
+              cy.wrap($el).should('have.text', 'User1');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/organization/user1');
               break;
             case 2:
-              cy.wrap($el).should('have.text', 'hello-world');
+              cy.wrap($el).should('have.text', 'Hello-world');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/repository/user1/hello-world');
               break;
             case 3:
-              cy.wrap($el).should('have.text', 'latest');
+              cy.wrap($el).should('have.text', 'Latest');
               cy.wrap($el).children('a').should('have.class', 'disabled-link');
               cy.wrap($el)
                 .children('a')
