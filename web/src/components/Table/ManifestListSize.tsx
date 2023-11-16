@@ -1,17 +1,17 @@
 import {Skeleton} from '@patternfly/react-core';
 import prettyBytes from 'pretty-bytes';
 import {Manifest} from 'src/resources/TagResource';
-import {useRecoilValueLoadable} from 'recoil';
+import {useRecoilValue} from 'recoil';
 import {childManifestSizeState} from 'src/atoms/TagListState';
 
 export default function ManifestListSize(props: ManifestListSizeProps) {
   const childManifestSizes = props.manifests.map((manifest) =>
-    useRecoilValueLoadable(childManifestSizeState(manifest.digest)),
+    useRecoilValue(childManifestSizeState(manifest.digest)),
   );
 
   const loadedSizes = childManifestSizes
-    .filter((size) => size.contents != null)
-    .map((size) => size.contents);
+    .filter((size) => size != null)
+    .map((size) => size);
 
   const loading = loadedSizes.length < props.manifests.length;
 
@@ -26,7 +26,7 @@ export default function ManifestListSize(props: ManifestListSizeProps) {
 
       return (
         <>
-          {prettyBytes(lowestValue)} - {prettyBytes(highestValue)}
+          {prettyBytes(lowestValue)} ~ {prettyBytes(highestValue)}
         </>
       );
     }
