@@ -20,12 +20,13 @@ import {formatDate} from 'src/libs/utils';
 import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
 import ColumnNames from './ColumnNames';
 import {DownloadIcon} from '@patternfly/react-icons';
-import ImageSize from 'src/components/Table/ImageSize';
+import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import TagExpiration from './TagsTableExpiration';
+import ManifestListSize from 'src/components/Table/ManifestListSize';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -66,7 +67,7 @@ function SubRow(props: SubRowProps) {
       </Td>
       <Td dataLabel="size" noPadding={false} colSpan={3}>
         <ExpandableRowContent>
-          <ImageSize
+          <ChildManifestSize
             org={props.org}
             repo={props.repo}
             digest={props.manifest.digest}
@@ -90,13 +91,6 @@ function TagsTableRow(props: RowProps) {
   const config = useQuayConfig();
   const tag = props.tag;
   const rowIndex = props.rowIndex;
-  let size =
-    typeof tag.manifest_list != 'undefined' ? 'N/A' : prettyBytes(tag.size);
-
-  // Behavior taken from previous UI
-  if (tag.size === 0) {
-    size = 'Unknown';
-  }
 
   // Reset SecurityDetailsState so that loading skeletons appear when viewing report
   const emptySecurityDetails = useResetRecoilState(SecurityDetailsState);
@@ -157,7 +151,13 @@ function TagsTableRow(props: RowProps) {
             />
           )}
         </Td>
-        <Td dataLabel={ColumnNames.size}>{size}</Td>
+        <Td dataLabel={ColumnNames.size}>
+          {tag.manifest_list ? (
+            <ManifestListSize manifests={tag.manifest_list.manifests} />
+          ) : (
+            prettyBytes(tag.size)
+          )}
+        </Td>
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
         </Td>

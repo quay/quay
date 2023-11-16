@@ -15,7 +15,7 @@ import {Tag} from 'src/resources/TagResource';
 import {formatDate} from 'src/libs/utils';
 import Labels from 'src/components/labels/Labels';
 import SecurityDetails from 'src/routes/RepositoryDetails/Tags/SecurityDetails';
-import ImageSize from 'src/components/Table/ImageSize';
+import {ImageSize} from 'src/components/Table/ImageSize';
 
 export default function Details(props: DetailsProps) {
   return (

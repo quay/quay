@@ -1,35 +1,16 @@
 import {Skeleton} from '@patternfly/react-core';
-import {useEffect, useState} from 'react';
-import {
-  getManifestByDigest,
-  ManifestByDigestResponse,
-} from 'src/resources/TagResource';
 import prettyBytes from 'pretty-bytes';
+import {useEffect} from 'react';
+import {useSetRecoilState} from 'recoil';
+import {childManifestSizeState} from 'src/atoms/TagListState';
+import {useImageSize} from 'src/hooks/UseImageSize';
 
-export default function ImageSize(props: ImageSizeProps) {
-  const [size, setSize] = useState<number>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [err, setErr] = useState<boolean>(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const manifestResp: ManifestByDigestResponse =
-          await getManifestByDigest(props.org, props.repo, props.digest);
-        const calculatedSizeMesnifestResp = manifestResp.layers
-          ? manifestResp.layers.reduce(
-              (prev, curr) => prev + curr.compressed_size,
-              0,
-            )
-          : 0;
-        setSize(calculatedSizeMesnifestResp);
-      } catch (err) {
-        setErr(true);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [props.digest]);
+export function ImageSize(props: ImageSizeProps) {
+  const {size, loading, err} = useImageSize(
+    props.org,
+    props.repo,
+    props.digest,
+  );
 
   if (loading) {
     return <Skeleton />;
@@ -39,6 +20,37 @@ export default function ImageSize(props: ImageSizeProps) {
   }
 
   // Behavior based on old UI
+  if (size === 0) {
+    return <>Unknown</>;
+  }
+
+  return <>{prettyBytes(size)}</>;
+}
+
+export function ChildManifestSize(props: ImageSizeProps) {
+  const {size, loading, err} = useImageSize(
+    props.org,
+    props.repo,
+    props.digest,
+  );
+
+  const setChildManifestSize = useSetRecoilState(
+    childManifestSizeState(props.digest),
+  );
+
+  useEffect(() => {
+    if (size !== 0) {
+      setChildManifestSize(size);
+    }
+  }, [size]);
+
+  if (loading) {
+    return <Skeleton />;
+  }
+  if (err) {
+    return <>Error</>;
+  }
+
   if (size === 0) {
     return <>Unknown</>;
   }
