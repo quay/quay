@@ -8,7 +8,6 @@ import time
 import unittest
 from calendar import timegm
 from contextlib import contextmanager
-from test.helpers import assert_action_logged, check_transitive_modifications
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from cryptography.hazmat.backends import default_backend
@@ -144,6 +143,7 @@ from endpoints.api.user import (
 from endpoints.building import PreparedBuild
 from endpoints.webhooks import webhooks
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import assert_action_logged, check_transitive_modifications
 from util.morecollections import AttrDict
 from util.secscan.v4.fake import fake_security_scanner
 
@@ -175,6 +175,9 @@ ADMIN_ACCESS_EMAIL = "jschorr@devtable.com"
 ORG_REPO = "orgrepo"
 
 ORGANIZATION = "buynlarge"
+
+SUBSCRIPTION_USER = "subscription"
+SUBSCRIPTION_ORG = "subscriptionsorg"
 
 NEW_USER_DETAILS = {
     "username": "bobby",
@@ -5069,59 +5072,76 @@ class TestSuperUserManagement(ApiTestCase):
 
 class TestOrganizationRhSku(ApiTestCase):
     def test_bind_sku_to_org(self):
-        self.login(ADMIN_ACCESS_USER)
+        self.login(SUBSCRIPTION_USER)
         self.postResponse(
             resource_name=OrganizationRhSku,
-            params=dict(orgname=ORGANIZATION),
-            data={"subscription_id": 12345},
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}]},
             expected_code=201,
         )
         json = self.getJsonResponse(
             resource_name=OrganizationRhSku,
-            params=dict(orgname=ORGANIZATION),
+            params=dict(orgname=SUBSCRIPTION_ORG),
         )
         self.assertEqual(len(json), 1)
 
     def test_bind_sku_duplicate(self):
-        user = model.user.get_user(ADMIN_ACCESS_USER)
-        org = model.organization.get_organization(ORGANIZATION)
-        model.organization_skus.bind_subscription_to_org(12345, org.id, user.id)
-        self.login(ADMIN_ACCESS_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(12345678, org.id, user.id)
+        self.login(SUBSCRIPTION_USER)
         self.postResponse(
             resource_name=OrganizationRhSku,
-            params=dict(orgname=ORGANIZATION),
-            data={"subscription_id": 12345},
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}]},
             expected_code=400,
         )
 
     def test_bind_sku_unauthorized(self):
         # bind a sku that user does not own
-        self.login(ADMIN_ACCESS_USER)
+        self.login(SUBSCRIPTION_USER)
         self.postResponse(
             resource_name=OrganizationRhSku,
-            params=dict(orgname=ORGANIZATION),
-            data={"subscription_id": 11111},
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 11111}]},
             expected_code=401,
         )
 
     def test_remove_sku_from_org(self):
-        self.login(ADMIN_ACCESS_USER)
+        self.login(SUBSCRIPTION_USER)
         self.postResponse(
             resource_name=OrganizationRhSku,
-            params=dict(orgname=ORGANIZATION),
-            data={"subscription_id": 12345},
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}]},
             expected_code=201,
         )
         self.deleteResponse(
             resource_name=OrganizationRhSkuSubscriptionField,
-            params=dict(orgname=ORGANIZATION, subscription_id=12345),
-            expected_code=204,
+            params=dict(orgname=SUBSCRIPTION_ORG, subscription_id=12345678),
+            expected_code=200,
         )
         json = self.getJsonResponse(
             resource_name=OrganizationRhSku,
-            params=dict(orgname=ORGANIZATION),
+            params=dict(orgname=SUBSCRIPTION_ORG),
         )
         self.assertEqual(len(json), 0)
+
+    def test_sku_stacking(self):
+        # multiples of same sku
+        self.login(SUBSCRIPTION_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}, {"subscription_id": 11223344}]},
+            expected_code=201,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+        )
+        self.assertEqual(len(json), 2)
+        json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
+        self.assertEqual(True, json["privateAllowed"])
 
 
 if __name__ == "__main__":

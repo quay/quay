@@ -41,15 +41,26 @@
   </div>
 
   <!-- Chart -->
-  <div class="usage-chart" total="subscribedPlan.privateRepos || 0"
+  <div class="usage-chart"
        current="subscription.usedPrivateRepos || 0"
        limit="limit"
+       total="subscribedPlan.privateRepos || 0"
+       marketplace-total="marketplaceTotal"
        usage-title="Repository Usage"
        ng-show="!planLoading"></div>
+
+  <!-- Org Binding -->
+  <div class="org-binding"
+       ng-show="!planLoading"
+       organization="organization"
+       marketplace-total="marketplaceTotal"></div>
+
+  <hr></hr>
 
   <!-- Plans Table -->
   <div class="visible-xs" style="margin-top: 10px"></div>
 
+  <h3>Monthly Subscriptions Purchased via Stripe</h3>
   <table class="table table-hover plans-list-table" ng-show="!planLoading">
     <thead>
       <td>Plan</td>

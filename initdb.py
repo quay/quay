@@ -646,6 +646,12 @@ def populate_database(minimal=False):
     outside_org.verified = True
     outside_org.save()
 
+    subscriptionuser = model.user.create_user(
+        "subscription", "password", "subscriptions@devtable.com"
+    )
+    subscriptionuser.verified = True
+    subscriptionuser.save()
+
     model.notification.create_notification(
         "test_notification",
         new_user_1,
@@ -940,6 +946,11 @@ def populate_database(minimal=False):
         "http://localhost:8000/o2c.html",
         client_id="deadbeef",
     )
+
+    subscriptionsorg = model.organization.create_organization(
+        "subscriptionsorg", "quay+subscriptionsorg@devtable.com", subscriptionuser
+    )
+    subscriptionsorg.save()
 
     model.oauth.create_application(
         org,

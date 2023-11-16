@@ -1,0 +1,51 @@
+<div class="org-binding-settings-element" >
+  <span><h3>Monthly Subscriptions From Red Hat Customer Portal</h3></span>
+  <div class="cor-loader-inline" ng-show="marketplaceLoading"></div>
+  <span ng-show="!organization && !marketplaceLoading">
+    <div ng-repeat="(sku, subscriptions) in userMarketplaceSubscriptions">
+      {{subscriptions.length}}x {{ sku }}
+    </div>
+  </span>
+
+  <table ng-show="organization && !marketplaceLoading">
+    <tr class="indented-row" ng-repeat="(sku, subscriptions) in orgMarketplaceSubscriptions">
+      <td>
+        {{ subscriptions.length }} x {{ sku }} attached to this org
+      </td>
+    </tr>
+    <tr class="indented-row">
+      <td style="padding: 10px">
+        <select class="form-control" ng-model="subscriptionBinding">
+          <option ng-repeat="(sku, subscriptions) in availableSubscriptions" value="{{ subscriptions }}">
+            {{subscriptions.length}} x {{sku}}
+          </option>
+        </select>
+        <input class="form-control" type="number" min="1" max="{{subscriptions.length}}" ng-model="numSubscriptions" placeholder="Number of subscriptions">
+        <a class="btn btn-primary" ng-click="bindSku(subscriptionBinding, numSubscriptions)">Attach subscriptions</a>
+        <div class="co-alert co-alert-success" ng-show="bindOrgSuccess">
+          Successfully bound subscription to org
+        </div>
+        <div class="co-alert co-alert-success" ng-show="removeSkuSuccess">
+          Successfully removed subscription from org
+        </div>
+      </td>
+      <td style="padding: 10px">
+        <select class="form-control" ng-model="subscriptionRemovals">
+          <option ng-repeat="(sku, orgSubscriptions) in orgMarketplaceSubscriptions" value="{{orgSubscriptions}}">
+            {{sku}}
+          </option>
+        </select>
+        <input class="form-control"
+          type="number"
+          min="1"
+          max="{{JSON.parse(subscriptions).length}}"
+          ng-model="numRemovals"
+          placeholder="Number of subscriptions"
+        >
+        <a class="btn btn-default" ng-click="batchRemoveSku(subscriptionRemovals, numRemovals)">
+          Remove subscriptions
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>

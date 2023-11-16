@@ -198,11 +198,11 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
 
   planService.updateSubscription = function($scope, orgname, planId, success, failure) {
     if (!Features.BILLING) { return; }
-    
+
     var subscriptionDetails = {
       plan: planId,
     };
-    
+
     planService.getPlan(planId, function(plan) {
       ApiService.updateSubscription(orgname, subscriptionDetails).then(
 	function(resp) {
@@ -214,7 +214,7 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
 	failure
       );
     });
-  };  
+  };
 
   planService.getCardInfo = function(orgname, callback) {
     if (!Features.BILLING) { return; }
@@ -297,7 +297,7 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
           callbacks['success'](resp)
           document.location = resp.url;
         }, 250);
-        
+
       },
       function(resp) {
         planService.handleCardError(resp);
@@ -305,6 +305,56 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
       }
     );
   };
+
+  planService.listUserMarketplaceSubscriptions = function(callback) {
+    if (!Features.BILLING || !Features.RH_MARKETPLACE) { return; }
+    ApiService.getUserMarketplaceSubscriptions().then(function(resp) {
+      callback(resp);
+    });
+  };
+
+  planService.listOrgMarketplaceSubscriptions = function(orgname, callback) {
+    if (!Features.BILLING || !Features.RH_MARKETPLACE) { return; }
+    var params = {
+      'orgname': orgname
+    }
+    ApiService.listOrgSkus(null, params).then(function(resp) {
+      callback(resp);
+    });
+
+  }
+
+  planService.bindSkuToOrg = function(subscriptions, orgname, callback) {
+    if(!Features.BILLING || !Features.RH_MARKETPLACE) { return; }
+    var params = {
+        'orgname': orgname
+    };
+    ApiService.bindSkuToOrg(subscriptions, params).then(function(resp) {
+        callback(resp);
+    });
+  };
+
+  planService.batchRemoveSku = function(subscriptions, orgname, callback) {
+    if(!Features.BILLING || !Features.RH_MARKETPLACE) { return; }
+    var params = {
+        'orgname': orgname
+    };
+    ApiService.batchRemoveSku(subscriptions, params).then(function(resp) {
+          callback(resp);
+    });
+  };
+
+  // planService.removeSku = function(subscription_id, orgname, callback) {
+  //   if(!Features.BILLING || !Features.RH_MARKETPLACE) { return; }
+  //   var params = {
+  //       'orgname': orgname,
+  //       'subscription_id': subscription_id
+  //   };
+  //   ApiService.removeSkuFromOrg(null, params).then(function(resp) {
+  //         callback(resp);
+  //   });
+  //
+  // };
 
   return planService;
 }]);

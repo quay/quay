@@ -235,6 +235,7 @@ PLANS = [
         "price": 3000,
         "privateRepos": 10,
         "rh_sku": "MW00585MO",
+        "billing_enabled": False,
         "stripeId": "bus-micro-2018",
         "audience": "For startups",
         "bus_features": True,
@@ -248,6 +249,7 @@ PLANS = [
         "price": 6000,
         "privateRepos": 20,
         "rh_sku": "MW00586MO",
+        "billing_enabled": False,
         "stripeId": "bus-small-2018",
         "audience": "For small businesses",
         "bus_features": True,
@@ -261,6 +263,7 @@ PLANS = [
         "price": 12500,
         "privateRepos": 50,
         "rh_sku": "MW00587MO",
+        "billing_enabled": False,
         "stripeId": "bus-medium-2018",
         "audience": "For normal businesses",
         "bus_features": True,
@@ -274,6 +277,7 @@ PLANS = [
         "price": 25000,
         "privateRepos": 125,
         "rh_sku": "MW00588MO",
+        "billing_enabled": False,
         "stripeId": "bus-large-2018",
         "audience": "For large businesses",
         "bus_features": True,
@@ -287,6 +291,7 @@ PLANS = [
         "price": 45000,
         "privateRepos": 250,
         "rh_sku": "MW00589MO",
+        "billing_enabled": False,
         "stripeId": "bus-xlarge-2018",
         "audience": "For extra large businesses",
         "bus_features": True,
@@ -300,6 +305,7 @@ PLANS = [
         "price": 85000,
         "privateRepos": 500,
         "rh_sku": "MW00590MO",
+        "billing_enabled": False,
         "stripeId": "bus-500-2018",
         "audience": "For huge business",
         "bus_features": True,
@@ -313,6 +319,7 @@ PLANS = [
         "price": 160000,
         "privateRepos": 1000,
         "rh_sku": "MW00591MO",
+        "billing_enabled": False,
         "stripeId": "bus-1000-2018",
         "audience": "For the SaaS savvy enterprise",
         "bus_features": True,
@@ -326,6 +333,7 @@ PLANS = [
         "price": 310000,
         "privateRepos": 2000,
         "rh_sku": "MW00592MO",
+        "billing_enabled": False,
         "stripeId": "bus-2000-2018",
         "audience": "For the SaaS savvy big enterprise",
         "bus_features": True,
@@ -346,9 +354,27 @@ PLANS = [
         "superseded_by": None,
         "plans_page_hidden": False,
     },
+    {
+        "title": "subscriptionwatch",
+        "privateRepos": 100,
+        "stripeId": "not_a_stripe_plan",
+        "rh_sku": "MW74656",
+        "plans_page_hidden": True,
+        "billing_enabled": True,
+    },
 ]
 
-RH_SKUS = [plan["rh_sku"] for plan in PLANS if plan.get("rh_sku") is not None]
+RECONCILER_SKUS = [
+    plan["rh_sku"]
+    for plan in PLANS
+    if plan.get("rh_sku") is not None and not plan.get("billing_enabled")
+]
+
+RH_SKUS = [
+    plan["rh_sku"]
+    for plan in PLANS
+    if plan.get("rh_sku") is not None and plan.get("billing_enabled")
+]
 
 
 def get_plan(plan_id):
@@ -366,6 +392,8 @@ def get_plan_using_rh_sku(sku):
     """
     Returns the plan with given sku or None if none.
     """
+    if sku is None:
+        return None
     for plan in PLANS:
         if plan.get("rh_sku") == sku:
             return plan

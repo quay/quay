@@ -225,39 +225,72 @@ class RedHatSubscriptionApi(object):
         """
         subscription_list = []
         for sku in RH_SKUS:
-            user_subscription = self.lookup_subscription(account_number, sku)
-            if user_subscription is not None:
-                bound_to_org = organization_skus.subscription_bound_to_org(user_subscription["id"])
+            subscriptions = self.lookup_subscription(account_number, sku)
+            if subscriptions:
+                for user_subscription in subscriptions:
+                    if user_subscription is not None:
+                        bound_to_org = organization_skus.subscription_bound_to_org(
+                            user_subscription["id"]
+                        )
 
-                if filter_out_org_bindings and bound_to_org[0]:
-                    continue
+                        if filter_out_org_bindings and bound_to_org[0]:
+                            continue
 
-                if convert_to_stripe_plans:
-                    subscription_list.append(get_plan_using_rh_sku(sku))
-                else:
-                    # add in sku field for convenience
-                    user_subscription["sku"] = sku
-                    subscription_list.append(user_subscription)
+                        if convert_to_stripe_plans:
+                            subscription_list.append(get_plan_using_rh_sku(sku))
+                        else:
+                            # add in sku field for convenience
+                            user_subscription["sku"] = sku
+                            subscription_list.append(user_subscription)
         return subscription_list
 
 
 TEST_USER = {
     "account_number": 12345,
-    "email": "test_user@test.com",
-    "username": "test_user",
-    "password": "password",
+    "email": "subscriptions@devtable.com",
+    "username": "subscription",
+    "subscriptions": [
+        {
+            "id": 12345678,
+            "masterEndSystemName": "Quay",
+            "createdEndSystemName": "SUBSCRIPTION",
+            "createdDate": 1675957362000,
+            "lastUpdateEndSystemName": "SUBSCRIPTION",
+            "lastUpdateDate": 1675957362000,
+            "installBaseStartDate": 1707368400000,
+            "installBaseEndDate": 1707368399000,
+            "webCustomerId": 123456,
+            "subscriptionNumber": "12399889",
+            "quantity": 1,
+            "effectiveStartDate": 1707368400000,
+            "effectiveEndDate": 3813177600,
+        },
+        {
+            "id": 11223344,
+            "masterEndSystemName": "Quay",
+            "createdEndSystemName": "SUBSCRIPTION",
+            "createdDate": 1675957362000,
+            "lastUpdateEndSystemName": "SUBSCRIPTION",
+            "lastUpdateDate": 1675957362000,
+            "installBaseStartDate": 1707368400000,
+            "installBaseEndDate": 1707368399000,
+            "webCustomerId": 123456,
+            "subscriptionNumber": "12399889",
+            "quantity": 1,
+            "effectiveStartDate": 1707368400000,
+            "effectiveEndDate": 3813177600,
+        },
+    ],
 }
+STRIPE_USER = {"account_number": 11111, "email": "stripe_user@test.com", "username": "stripe_user"}
 FREE_USER = {
     "account_number": 23456,
     "email": "free_user@test.com",
     "username": "free_user",
-    "password": "password",
 }
 
-DEV_ACCOUNT_NUMBER = 76543
 
-
-class FakeUserApi(object):
+class FakeUserApi(RedHatUserApi):
     """
     Fake class used for tests
     """
@@ -267,15 +300,12 @@ class FakeUserApi(object):
             return TEST_USER["account_number"]
         if email == FREE_USER["email"]:
             return FREE_USER["account_number"]
+        if email == STRIPE_USER["email"]:
+            return STRIPE_USER["account_number"]
         return None
 
-    def get_account_number(self, user):
-        if user.username == "devtable":
-            return DEV_ACCOUNT_NUMBER
-        return self.lookup_customer_id(user.email)
 
-
-class FakeSubscriptionApi(object):
+class FakeSubscriptionApi(RedHatSubscriptionApi):
     """
     Fake class used for tests
     """
@@ -285,6 +315,8 @@ class FakeSubscriptionApi(object):
         self.subscription_created = False
 
     def lookup_subscription(self, customer_id, sku_id):
+        if customer_id == TEST_USER["account_number"] and sku_id == "MW74656":
+            return TEST_USER["subscriptions"]
         return None
 
     def create_entitlement(self, customer_id, sku_id):
@@ -294,23 +326,11 @@ class FakeSubscriptionApi(object):
         self.subscription_extended = True
 
     def get_subscription_sku(self, subscription_id):
-        if id == 12345:
-            return "FakeSku"
+        valid_ids = [subscription["id"] for subscription in TEST_USER["subscriptions"]]
+        if subscription_id in valid_ids:
+            return "MW74656"
         else:
             return None
-
-    def get_list_of_subscriptions(
-        self, account_number, filter_out_org_bindings=False, convert_to_stripe_plans=False
-    ):
-        if account_number == DEV_ACCOUNT_NUMBER:
-            return [
-                {
-                    "id": 12345,
-                    "sku": "FakeSku",
-                    "privateRepos": 0,
-                }
-            ]
-        return []
 
 
 class MarketplaceUserApi(object):
@@ -324,7 +344,7 @@ class MarketplaceUserApi(object):
     def init_app(self, app):
         marketplace_enabled = app.config.get("FEATURE_RH_MARKETPLACE", False)
 
-        marketplace_user_api = FakeUserApi()
+        marketplace_user_api = FakeUserApi(app.config)
 
         if marketplace_enabled and not app.config.get("TESTING"):
             marketplace_user_api = RedHatUserApi(app.config)

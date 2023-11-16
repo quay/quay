@@ -20,6 +20,8 @@ angular.module('quay').directive('planManager', function () {
     controller: function($scope, $element, PlanService, ApiService) {
       $scope.isExistingCustomer = false;
 
+      $scope.marketplaceTotal = 0;
+
       $scope.parseDate = function(timestamp) {
         return new Date(timestamp * 1000);
       };
@@ -41,7 +43,7 @@ angular.module('quay').directive('planManager', function () {
         if (!subscribedPlan) {
           return false;
         }
-        
+
         return plan.stripeId === subscribedPlan.stripeId;
       };
 
@@ -122,4 +124,3 @@ angular.module('quay').directive('planManager', function () {
   };
   return directiveDefinitionObject;
 });
-

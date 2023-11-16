@@ -7,7 +7,7 @@ from app import app
 from app import billing as stripe
 from app import marketplace_subscriptions, marketplace_users
 from data import model
-from data.billing import RH_SKUS, get_plan
+from data.billing import RECONCILER_SKUS, get_plan
 from data.model import entitlements
 from util import marketplace
 from util.locking import GlobalLock, LockNotAcquiredException
@@ -33,30 +33,6 @@ class ReconciliationWorker(Worker):
             self._reconcile_entitlements,
             app.config.get("RECONCILIATION_FREQUENCY", RECONCILIATION_FREQUENCY),
         )
-
-    def _check_stripe_matches_sku(self, user, sku):
-        """
-        Check if user's stripe plan matches with RH sku
-        """
-        stripe_id = user.stripe_id
-
-        if stripe_id is None:
-            return False
-
-        stripe_customer = stripe.Customer.retrieve(stripe_id)
-        if stripe_customer is None:
-            logger.debug("user %s has no valid subscription on stripe", user.username)
-            return False
-
-        if stripe_customer.subscription:
-            plan = get_plan(stripe_customer.subscription.plan.id)
-            if plan is None:
-                return False
-
-            if plan.get("rh_sku") == sku:
-                return True
-
-        return False
 
     def _perform_reconciliation(self, user_api, marketplace_api):
         """
@@ -89,12 +65,27 @@ class ReconciliationWorker(Worker):
                     continue
 
             # check if we need to create a subscription for customer in RH marketplace
-            for sku_id in RH_SKUS:
-                if self._check_stripe_matches_sku(user, sku_id):
-                    subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
-                    if subscription is None:
-                        marketplace_api.create_entitlement(ebsAccountNumber, sku_id)
-                    break
+            stripe_id = user.stripe_id
+            stripe_customer = stripe.Customer.retrieve(stripe_id)
+            if stripe_customer is None:
+                logger.debug("Stripe was unable to find user %s", user.username)
+                continue
+
+            if stripe_customer.subscription:
+                plan = get_plan(stripe_customer.subscription.plan.id)
+                if plan is None:
+                    logger.debug("No plan definition found for %s", user.username)
+                    continue
+
+                for sku_id in RECONCILER_SKUS:
+                    if plan.get("rh_sku") == sku_id:
+                        subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
+                        if subscription is None:
+                            logger.debug("Found %s to create for %s", sku_id, user.username)
+                            marketplace_api.create_entitlement(ebsAccountNumber, sku_id)
+                        break
+            else:
+                logger.debug("User %s does not have a stripe subscription", user.username)
 
             logger.debug("Finished work for user %s", user.username)
 

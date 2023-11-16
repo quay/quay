@@ -5,16 +5,16 @@
       <tr>
         <td>Current Plan:</td>
         <td>
-          <div class="sub-usage" ng-if="subscription.usedPrivateRepos > currentPlan.privateRepos">
+          <div class="sub-usage" ng-if="subscription.usedPrivateRepos > (currentPlan.privateRepos + currentMarketplace)">
             <i class="fa fa-exclamation-triangle red"></i> <strong>{{ subscription.usedPrivateRepos }}</strong> private repositories exceeds the amount allowed by your plan. Upgrade your plan to avoid service disruptions.
           </div>
 
-          <div class="sub-usage" ng-if="subscription.usedPrivateRepos == currentPlan.privateRepos">
+          <div class="sub-usage" ng-if="subscription.usedPrivateRepos == (currentPlan.privateRepos + currentMarketplace)">
             <i class="fa fa-exclamation-triangle yellow"></i> <strong>{{ subscription.usedPrivateRepos }}</strong> private repositories is the maximum allowed by your plan. Upgrade your plan to create more private repositories.
           </div>
 
           <a class="co-modify-link" ng-href="{{ getEntityPrefix() }}/billing">{{ currentPlan.privateRepos }} private repositories</a>
-          <div class="help-text">Up to {{ currentPlan.privateRepos }} private repositories, unlimited public repositories</div>
+          <div class="help-text">Up to {{ currentPlan.privateRepos + currentMarketplace}} private repositories, unlimited public repositories</div>
         </td>
       </tr>
       <tr ng-show="currentCard">
