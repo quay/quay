@@ -145,3 +145,7 @@ export const getAccountTypeForMember = (member: ITeamMember): string => {
     return '(Invited)';
   }
 };
+
+export const titleCase = (str: string): string => {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};

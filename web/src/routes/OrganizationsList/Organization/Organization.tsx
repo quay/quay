@@ -23,6 +23,7 @@ import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
+import {titleCase} from 'src/libs/utils';
 
 export enum OrganizationDrawerContentType {
   None,
@@ -162,7 +163,7 @@ export default function Organization() {
               className="no-padding-bottom"
             >
               <Title data-testid="repo-title" headingLevel="h1">
-                {organizationName}
+                {titleCase(organizationName)}
               </Title>
             </PageSection>
             <PageSection

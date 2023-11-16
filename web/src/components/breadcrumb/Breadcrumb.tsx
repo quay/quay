@@ -13,6 +13,7 @@ import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
+  titleCase,
 } from 'src/libs/utils';
 
 export function QuayBreadcrumb() {
@@ -115,7 +116,7 @@ export function QuayBreadcrumb() {
                     to={object.pathname}
                     className={object.active ? 'disabled-link' : ''}
                   >
-                    {object.title}
+                    {titleCase(object.title)}
                   </Link>
                 )}
                 key={i}
