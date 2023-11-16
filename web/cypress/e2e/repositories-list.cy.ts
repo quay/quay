@@ -37,7 +37,7 @@ describe('Repositories List Page', () => {
 
   it('renders list of repositories for a single organization', () => {
     cy.visit('/organization/user1');
-    cy.get('[data-testid="repo-title"]').within(() => cy.contains('user1'));
+    cy.get('[data-testid="repo-title"]').within(() => cy.contains('User1'));
     cy.get('[data-testid="repository-list-table"]')
       .children()
       .should('have.length', 2);
