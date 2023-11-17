@@ -158,7 +158,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
             defaultOptions={creatorDefaultOptions}
             placeholderText="Search for user, add/create robot account"
             value={props.selectedEntity?.name}
-            onClear={props.setSelectedEntity}
+            onClear={() => props.setSelectedEntity(null)}
           />
         </FormGroup>
         <FormGroup fieldId="permission" label="Select a permission" required>

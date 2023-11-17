@@ -148,7 +148,7 @@ export default function CreatePermissionDrawer(
       onSelect={(e: Entity) => {
         setRepositoryCreator(e);
       }}
-      onClear={setRepositoryCreator}
+      onClear={() => setRepositoryCreator(null)}
       value={repositoryCreator?.name}
       onError={() => setError('Unable to look up users')}
       defaultOptions={creatorDefaultOptions}
@@ -314,8 +314,10 @@ export default function CreatePermissionDrawer(
       id="applied-to-dropdown"
       org={props.orgName}
       includeTeams={true}
-      onSelect={() => undefined}
-      onClear={setAppliedTo}
+      onSelect={(e: Entity) => {
+        setAppliedTo(e);
+      }}
+      onClear={() => setAppliedTo(null)}
       value={appliedTo?.name}
       onError={() => setError('Unable to look up teams')}
       defaultOptions={appliedToDefaultOptions}

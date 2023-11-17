@@ -59,7 +59,6 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
               onSelect={(e: Entity) =>
                 props.addTeamMemberHandler(e.name, false)
               }
-              onClear={() => undefined}
               onError={() => setError('Unable to look up robot accounts')}
               defaultOptions={searchRobotAccntOptions}
               placeholderText="Add a user, robot to the team"
