@@ -67,6 +67,12 @@ export default function EntitySearch(props: EntitySearchProps) {
       setSearchTerm(value as string);
       setSelectedEntityName(value as string);
     }
+    // onClear() prop can be skipped in case the value needs to be cleared automatically from
+    // the dropdown after selection (used in AddTeamMember wizard step)
+    if (!props.onClear) {
+      setSearchTerm('');
+      setSelectedEntityName('');
+    }
     setIsOpen(false);
     setFocusedItemIndex(null);
   };
@@ -109,7 +115,7 @@ export default function EntitySearch(props: EntitySearchProps) {
                 setSelectedEntityName('');
                 setSearchTerm('');
                 textInputRef?.current?.focus();
-                props?.onClear({});
+                props.onClear();
               }}
               aria-label="Clear input value"
             >
@@ -160,7 +166,7 @@ interface EntitySearchProps {
   org: string;
   includeTeams?: boolean;
   onSelect: (selectedItem: Entity) => void;
-  onClear?: (entity: any) => void;
+  onClear?: () => void;
   onError?: () => void;
   id?: string;
   defaultOptions?: any;
