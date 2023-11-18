@@ -47,7 +47,7 @@ export default function TagTabs(props: TagTabsProps) {
           digest={props.digest}
         />
       </Tab>
-      <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+      <Conditional if={config?.features.SECURITY_SCANNER}>
         <Tab
           eventKey={TabIndex.SecurityReport}
           title={<TabTitleText>Security Report</TabTitleText>}

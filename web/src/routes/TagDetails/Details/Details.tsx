@@ -97,7 +97,7 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+          <Conditional if={config?.features.SECURITY_SCANNER}>
             <DescriptionListGroup data-testid="vulnerabilities">
               <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
               <DescriptionListDescription>
