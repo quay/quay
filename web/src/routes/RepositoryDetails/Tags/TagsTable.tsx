@@ -29,6 +29,7 @@ import TagExpiration from './TagsTableExpiration';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
 
 function SubRow(props: SubRowProps) {
+  const config = useQuayConfig();
   return (
     <Tr
       key={`${props.manifest.platform.os}-${props.manifest.platform.architecture}-${props.rowIndex}`}
@@ -54,17 +55,19 @@ function SubRow(props: SubRowProps) {
       ) : (
         <Td />
       )}
-      <Td dataLabel="security" noPadding={false} colSpan={1}>
-        <ExpandableRowContent>
-          <SecurityDetails
-            org={props.org}
-            repo={props.repo}
-            digest={props.manifest.digest}
-            tag={props.tag.name}
-            variant="condensed"
-          />
-        </ExpandableRowContent>
-      </Td>
+      <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+        <Td dataLabel="security" noPadding={false} colSpan={1}>
+          <ExpandableRowContent>
+            <SecurityDetails
+              org={props.org}
+              repo={props.repo}
+              digest={props.manifest.digest}
+              tag={props.tag.name}
+              variant="condensed"
+            />
+          </ExpandableRowContent>
+        </Td>
+      </Conditional>
       <Td dataLabel="size" noPadding={false} colSpan={3}>
         <ExpandableRowContent>
           <ChildManifestSize
@@ -138,19 +141,21 @@ function TagsTableRow(props: RowProps) {
             {tag.name}
           </Link>
         </Td>
-        <Td dataLabel={ColumnNames.security}>
-          {tag.is_manifest_list ? (
-            'See Child Manifests'
-          ) : (
-            <SecurityDetails
-              org={props.org}
-              repo={props.repo}
-              digest={tag.manifest_digest}
-              tag={tag.name}
-              variant="condensed"
-            />
-          )}
-        </Td>
+        <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+          <Td dataLabel={ColumnNames.security}>
+            {tag.is_manifest_list ? (
+              'See Child Manifests'
+            ) : (
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={tag.manifest_digest}
+                tag={tag.name}
+                variant="condensed"
+              />
+            )}
+          </Td>
+        </Conditional>
         <Td dataLabel={ColumnNames.size}>
           {tag.manifest_list ? (
             <ManifestListSize manifests={tag.manifest_list.manifests} />
@@ -227,6 +232,7 @@ function TagsTableRow(props: RowProps) {
 }
 
 export default function TagsTable(props: TableProps) {
+  const config = useQuayConfig();
   // Control expanded tags
   const [expandedTags, setExpandedTags] = useState<string[]>([]);
   const setTagExpanded = (tag: Tag, isExpanding = true) =>
@@ -252,7 +258,9 @@ export default function TagsTable(props: TableProps) {
             <Th />
             <Th />
             <Th>Tag</Th>
-            <Th>Security</Th>
+            <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+              <Th>Security</Th>
+            </Conditional>
             <Th>Size</Th>
             <Th>Last Modified</Th>
             <Th>Expires</Th>
