@@ -55,7 +55,7 @@ function SubRow(props: SubRowProps) {
       ) : (
         <Td />
       )}
-      <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+      <Conditional if={config?.features.SECURITY_SCANNER}>
         <Td dataLabel="security" noPadding={false} colSpan={1}>
           <ExpandableRowContent>
             <SecurityDetails
@@ -141,7 +141,7 @@ function TagsTableRow(props: RowProps) {
             {tag.name}
           </Link>
         </Td>
-        <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+        <Conditional if={config?.features.SECURITY_SCANNER}>
           <Td dataLabel={ColumnNames.security}>
             {tag.is_manifest_list ? (
               'See Child Manifests'
@@ -258,7 +258,7 @@ export default function TagsTable(props: TableProps) {
             <Th />
             <Th />
             <Th>Tag</Th>
-            <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+            <Conditional if={config?.features.SECURITY_SCANNER}>
               <Th>Security</Th>
             </Conditional>
             <Th>Size</Th>
