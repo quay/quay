@@ -38,6 +38,7 @@ const Breadcrumb = {
 export enum NavigationPath {
   // Side Nav
   home = '/',
+  signIn = '/signin',
   organizationsList = '/organization',
 
   overviewList = '/overview',
@@ -114,6 +115,10 @@ export function getOrganizationListPath(currentRoute: string) {
 
 export function getRepositoryListPath(currentRoute: string) {
   return domainRoute(currentRoute, NavigationPath.repositoriesList);
+}
+
+export function getSignInPath(currentRoute: string) {
+  return domainRoute(currentRoute, NavigationPath.signIn);
 }
 
 export function getDomain() {
