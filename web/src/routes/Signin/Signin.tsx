@@ -15,6 +15,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {AxiosError} from 'axios';
 import './Signin.css';
 import {addDisplayError} from 'src/resources/ErrorHandling';
+import {getOrganizationListPath} from '../NavigationPath';
 
 export function Signin() {
   const [username, setUsername] = useState('');
@@ -41,7 +42,7 @@ export function Signin() {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
         GlobalAuthState.isLoggedIn = true;
-        navigate('/organization');
+        navigate(getOrganizationListPath(location.pathname));
       } else {
         setErr('Invalid login credentials');
       }

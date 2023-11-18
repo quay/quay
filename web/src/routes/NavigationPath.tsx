@@ -108,6 +108,14 @@ export function getTeamMemberPath(
   return domainRoute(currentRoute, teamMemberPath);
 }
 
+export function getOrganizationListPath(currentRoute: string) {
+  return domainRoute(currentRoute, NavigationPath.organizationsList);
+}
+
+export function getRepositoryListPath(currentRoute: string) {
+  return domainRoute(currentRoute, NavigationPath.repositoriesList);
+}
+
 export function getDomain() {
   return process.env.REACT_APP_QUAY_DOMAIN || 'quay.io';
 }
