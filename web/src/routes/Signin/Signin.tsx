@@ -7,7 +7,7 @@ import {
 } from '@patternfly/react-core';
 import logo from 'src/assets/quay.svg';
 import {GlobalAuthState, loginUser} from 'src/resources/AuthResource';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import {useRecoilState} from 'recoil';
 import {AuthState} from 'src/atoms/AuthState';
 import axios, {getCsrfToken} from 'src/libs/axios';
@@ -24,6 +24,7 @@ export function Signin() {
   const [err, setErr] = useState<string>();
   const [, setAuthState] = useRecoilState(AuthState);
 
+  const location = useLocation();
   const navigate = useNavigate();
   const quayConfig = useQuayConfig();
 
