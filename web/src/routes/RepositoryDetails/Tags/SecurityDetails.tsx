@@ -1,24 +1,24 @@
-import {useEffect, useState} from 'react';
-import {
-  SecurityDetailsResponse,
-  getSecurityDetails,
-} from 'src/resources/TagResource';
-import {Link, useLocation} from 'react-router-dom';
 import {Skeleton} from '@patternfly/react-core';
-import {getTagDetailPath} from 'src/routes/NavigationPath';
-import {TabIndex} from 'src/routes/TagDetails/Types';
-import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import {
-  ExclamationTriangleIcon,
   CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from '@patternfly/react-icons';
-import {getSeverityColor} from 'src/libs/utils';
+import {useEffect, useState} from 'react';
+import {Link, useLocation} from 'react-router-dom';
+import {useSetRecoilState} from 'recoil';
 import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
-import {useResetRecoilState, useSetRecoilState} from 'recoil';
+import {getSeverityColor} from 'src/libs/utils';
 import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
+import {
+  SecurityDetailsResponse,
+  VulnerabilitySeverity,
+  getSecurityDetails,
+} from 'src/resources/TagResource';
+import {getTagDetailPath} from 'src/routes/NavigationPath';
+import {TabIndex} from 'src/routes/TagDetails/Types';
 
 enum Variant {
   condensed = 'condensed',

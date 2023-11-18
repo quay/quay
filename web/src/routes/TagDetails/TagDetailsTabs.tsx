@@ -6,9 +6,8 @@ import SecurityReport from './SecurityReport/SecurityReport';
 import {Tag} from 'src/resources/TagResource';
 import {TabIndex} from './Types';
 import {Packages} from './Packages/Packages';
-import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import {isErrorString} from 'src/resources/ErrorHandling';
-import RequestError from 'src/components/errors/RequestError';
+import Conditional from 'src/components/empty/Conditional';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 // Return the tab as an enum or null if it does not exist
 function getTabIndex(tab: string) {
@@ -18,6 +17,7 @@ function getTabIndex(tab: string) {
 }
 
 export default function TagTabs(props: TagTabsProps) {
+  const config = useQuayConfig();
   const [activeTabKey, setActiveTabKey] = useState<TabIndex>(TabIndex.Details);
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,18 +47,20 @@ export default function TagTabs(props: TagTabsProps) {
           digest={props.digest}
         />
       </Tab>
-      <Tab
-        eventKey={TabIndex.SecurityReport}
-        title={<TabTitleText>Security Report</TabTitleText>}
-      >
-        <SecurityReport />
-      </Tab>
-      <Tab
-        eventKey={TabIndex.Packages}
-        title={<TabTitleText>Packages</TabTitleText>}
-      >
-        <Packages />
-      </Tab>
+      <Conditional if={config?.config?.FEATURE_SECURITY_SCANNER}>
+        <Tab
+          eventKey={TabIndex.SecurityReport}
+          title={<TabTitleText>Security Report</TabTitleText>}
+        >
+          <SecurityReport />
+        </Tab>
+        <Tab
+          eventKey={TabIndex.Packages}
+          title={<TabTitleText>Packages</TabTitleText>}
+        >
+          <Packages />
+        </Tab>
+      </Conditional>
     </Tabs>
   );
 }
