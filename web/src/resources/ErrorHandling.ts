@@ -28,7 +28,10 @@ export class ResourceError extends Error {
   }
 }
 
-export function throwIfError(responses: PromiseSettledResult<void>[], message?: string) {
+export function throwIfError(
+  responses: PromiseSettledResult<void>[],
+  message?: string,
+) {
   // Aggregate failed responses
   const errResponses = responses.filter(
     (r) => r.status == 'rejected',
