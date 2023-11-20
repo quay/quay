@@ -9,6 +9,7 @@ import {
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useUpdateTeamDetails} from 'src/hooks/UseTeams';
+import {titleCase} from 'src/libs/utils';
 
 export enum teamPermissions {
   Admin = 'admin',
@@ -56,7 +57,7 @@ export function TeamsRoleDropDown(props: TeamsRoleDropDownProps) {
           data-testid={`${props.teamName}-team-dropdown-toggle`}
           isDisabled={!props.isAdmin || props.isReadOnly}
         >
-          {props.teamRole.charAt(0).toUpperCase() + props.teamRole.slice(1)}
+          {titleCase(props.teamRole)}
         </MenuToggle>
       )}
       isOpen={isOpen}

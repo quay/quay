@@ -39,7 +39,7 @@ export function QuayBreadcrumb() {
     // existingBreadcrumbs is a list of breadcrumbs on the page
     // first breadcrumb is either organization or repository
     if (existingBreadcrumbs.length == 0) {
-      nextBreadcrumb['title'] = nextBreadcrumb['pathname'].split('/').at(-1);
+      nextBreadcrumb['title'] = titleCase(nextBreadcrumb['pathname'].split('/').at(-1));
     }
     // second breadcrumb is organization name
     else if (existingBreadcrumbs.length == 1) {
@@ -116,7 +116,7 @@ export function QuayBreadcrumb() {
                     to={object.pathname}
                     className={object.active ? 'disabled-link' : ''}
                   >
-                    {titleCase(object.title)}
+                    {object.title}
                   </Link>
                 )}
                 key={i}
