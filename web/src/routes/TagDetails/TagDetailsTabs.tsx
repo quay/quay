@@ -6,7 +6,6 @@ import SecurityReport from './SecurityReport/SecurityReport';
 import {Tag} from 'src/resources/TagResource';
 import {TabIndex} from './Types';
 import {Packages} from './Packages/Packages';
-import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 // Return the tab as an enum or null if it does not exist
@@ -47,20 +46,20 @@ export default function TagTabs(props: TagTabsProps) {
           digest={props.digest}
         />
       </Tab>
-      <Conditional if={config?.features.SECURITY_SCANNER}>
-        <Tab
-          eventKey={TabIndex.SecurityReport}
-          title={<TabTitleText>Security Report</TabTitleText>}
-        >
-          <SecurityReport />
-        </Tab>
-        <Tab
-          eventKey={TabIndex.Packages}
-          title={<TabTitleText>Packages</TabTitleText>}
-        >
-          <Packages />
-        </Tab>
-      </Conditional>
+      <Tab
+        eventKey={TabIndex.SecurityReport}
+        title={<TabTitleText>Security Report</TabTitleText>}
+        isHidden={!config?.features.SECURITY_SCANNER}
+      >
+        <SecurityReport />
+      </Tab>
+      <Tab
+        eventKey={TabIndex.Packages}
+        title={<TabTitleText>Packages</TabTitleText>}
+        isHidden={!config?.features.SECURITY_SCANNER}
+      >
+        <Packages />
+      </Tab>
     </Tabs>
   );
 }
