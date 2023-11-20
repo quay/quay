@@ -33,7 +33,7 @@ describe('Tests for Breadcrumbs', () => {
                 .should('have.attr', 'href', '/organization');
               break;
             case 1:
-              cy.wrap($el).should('have.text', 'Projectquay');
+              cy.wrap($el).should('have.text', 'projectquay');
               cy.wrap($el).children('a').should('have.class', 'disabled-link');
               cy.wrap($el)
                 .children('a')
