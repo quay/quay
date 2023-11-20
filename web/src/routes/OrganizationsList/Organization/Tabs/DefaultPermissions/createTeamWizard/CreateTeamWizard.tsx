@@ -121,6 +121,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
       });
     }
     props.handleWizardToggle();
+    setSelectedRepoPerms([]);
   };
 
   return (
@@ -148,17 +149,26 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
         aria-label="CreateTeam"
         variant={ModalVariant.large}
         isOpen={props.isTeamWizardOpen}
-        onClose={props.handleWizardToggle}
+        onClose={() => {
+          props.handleWizardToggle();
+          setSelectedRepoPerms([]);
+        }}
         showClose={false}
         hasNoBodyWrapper
       >
         <Wizard
-          onClose={props.handleWizardToggle}
+          onClose={() => {
+            props.handleWizardToggle();
+            setSelectedRepoPerms([]);
+          }}
           height={600}
           width={1170}
           header={
             <WizardHeader
-              onClose={props.handleWizardToggle}
+              onClose={() => {
+                props.handleWizardToggle();
+                setSelectedRepoPerms([]);
+              }}
               title="Create team"
               description=""
             />

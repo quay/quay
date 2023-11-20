@@ -115,7 +115,7 @@ export default function EntitySearch(props: EntitySearchProps) {
                 setSelectedEntityName('');
                 setSearchTerm('');
                 textInputRef?.current?.focus();
-                props.onClear();
+                props?.onClear();
               }}
               aria-label="Clear input value"
             >
