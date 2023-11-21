@@ -217,7 +217,8 @@ export default function SetRepoPermissionForTeamModal(
                       rowIndex,
                       onSelect: (_event, isSelecting) =>
                         onSelectRepoPerm(repoPerm, rowIndex, isSelecting),
-                      isSelected: isItemSelected(repoPerm),
+                      isSelected:
+                        isItemSelected(repoPerm) || repoPerm.role !== 'none',
                     }}
                   />
                   <Td dataLabel={setRepoPermForTeamColumnNames.repoName}>

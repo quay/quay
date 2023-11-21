@@ -13,6 +13,7 @@ import EntitySearch from 'src/components/EntitySearch';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ITeamMember} from 'src/hooks/UseMembers';
 import {IRobot} from 'src/resources/RobotsResource';
+import {Entity} from 'src/resources/UserResource';
 
 export default function AddTeamToolbar(props: AddTeamToolbarProps) {
   const [error, setError] = useState<string>('');
@@ -26,9 +27,7 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
               data-testid={`${name}-robot-accnt`}
               key={name}
               value={name}
-              onClick={() => {
-                props.addTeamMemberHandler(name);
-              }}
+              onClick={() => props.addTeamMemberHandler(name, true)}
             >
               {name}
             </SelectOption>
@@ -54,11 +53,12 @@ export default function AddTeamToolbar(props: AddTeamToolbarProps) {
         <ToolbarContent>
           <ToolbarItem variant="search-filter">
             <EntitySearch
-              id={'search-robot-account-dropdown'}
+              id={'search-member-dropdown'}
               org={props.orgName}
               includeTeams={false}
-              onSelect={() => undefined}
-              onClear={() => undefined}
+              onSelect={(e: Entity) =>
+                props.addTeamMemberHandler(e.name, false)
+              }
               onError={() => setError('Unable to look up robot accounts')}
               defaultOptions={searchRobotAccntOptions}
               placeholderText="Add a user, robot to the team"
@@ -87,6 +87,6 @@ interface AddTeamToolbarProps {
   setPerPage: (perPage: number) => void;
   children?: React.ReactNode;
   robots: IRobot[];
-  addTeamMemberHandler: (robotAccnt: string) => void;
+  addTeamMemberHandler: (robotAccnt: string, isRobot: boolean) => void;
   setDrawerExpanded?: (boolean) => void;
 }
