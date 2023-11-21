@@ -28,7 +28,6 @@ import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
-  titleCase,
 } from '../../libs/utils';
 
 export default function TagDetails() {
@@ -119,7 +118,7 @@ export default function TagDetails() {
         variant={PageSectionVariants.light}
         className="no-padding-bottom"
       >
-        <Title headingLevel="h1">{titleCase(tag)}</Title>
+        <Title headingLevel="h1">{tag}</Title>
         <TagArchSelect
           digest={digest}
           options={tagDetails.manifest_list?.manifests}

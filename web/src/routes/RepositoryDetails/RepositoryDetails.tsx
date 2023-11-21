@@ -31,7 +31,6 @@ import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   validateTeamName,
-  titleCase,
 } from 'src/libs/utils';
 import TagHistory from './TagHistory/TagHistory';
 import Conditional from 'src/components/empty/Conditional';
@@ -217,7 +216,7 @@ export default function RepositoryDetails() {
                 className="no-padding-bottom"
               >
                 <Title data-testid="repo-title" headingLevel="h1">
-                  {titleCase(repository)}
+                  {repository}
                 </Title>
               </PageSection>
               <PageSection
