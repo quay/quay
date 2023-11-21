@@ -187,7 +187,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       component="button"
       onClick={toggleMakePublicClick}
     >
-      Make Public
+      Make public
     </DropdownItem>,
     <DropdownItem
       key="make private"

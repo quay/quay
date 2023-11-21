@@ -157,7 +157,7 @@ describe('Repositories List Page', () => {
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (2)').click();
     cy.contains('Actions').click();
-    cy.contains('Make Public').click();
+    cy.contains('Make public').click();
     cy.contains('Make repositories public');
     cy.contains(
       'Update 2 repositories visibility to be public so they are visible to all user, and may be pulled by all users.',
