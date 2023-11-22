@@ -165,6 +165,11 @@ export const getNavigationRoutes = () => {
       element: <TagDetails />,
       breadcrumb: Breadcrumb.manifestDigestBreadcrumb,
     },
+    {
+      path: domainRoute(currentRoute, NavigationPath.teamMember),
+      element: <RepositoryDetails />,
+      breadcrumb: Breadcrumb.teamMemberBreadcrumb,
+    },
   ];
   return NavigationRoutes;
 };

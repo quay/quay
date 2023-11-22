@@ -3,7 +3,7 @@ import {
   BreadcrumbItem,
   PageBreadcrumb,
 } from '@patternfly/react-core';
-import {getNavigationRoutes} from 'src/routes/NavigationPath';
+import {getNavigationRoutes, NavigationPath} from 'src/routes/NavigationPath';
 import {Link, useParams, useLocation} from 'react-router-dom';
 import React, {useEffect, useState} from 'react';
 import useBreadcrumbs, {
@@ -13,6 +13,7 @@ import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
+  parseTeamNameFromUrl,
   titleCase,
 } from 'src/libs/utils';
 
@@ -35,7 +36,11 @@ export function QuayBreadcrumb() {
     setBreadcrumbItems([]);
   };
 
-  const fetchBreadcrumb = (existingBreadcrumbs, nextBreadcrumb) => {
+  const fetchBreadcrumb = (
+    existingBreadcrumbs,
+    nextBreadcrumb,
+    routerBreadcrumb,
+  ) => {
     // existingBreadcrumbs is a list of breadcrumbs on the page
     // first breadcrumb is either organization or repository
     if (existingBreadcrumbs.length == 0) {
@@ -51,12 +56,23 @@ export function QuayBreadcrumb() {
         'organization/' +
         nextBreadcrumb['title'];
     }
-    // third breadcrumb is repo name
+    // third breadcrumb is repo name or team name
+    //  Eg: /organization/<orgname>/<reponame> or /organization/<orgname>/teams/quay?tab=Teamsandmembership
     else if (existingBreadcrumbs.length == 2) {
-      nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
-      nextBreadcrumb['pathname'] =
-        location.pathname.split(nextBreadcrumb['title'])[0] +
-        nextBreadcrumb['title'];
+      switch (routerBreadcrumb.match.route.path) {
+        case NavigationPath.repositoryDetail:
+          nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
+          nextBreadcrumb['pathname'] =
+            location.pathname.split(nextBreadcrumb['title'])[0] +
+            nextBreadcrumb['title'];
+          break;
+        case NavigationPath.teamMember:
+          nextBreadcrumb['title'] = parseTeamNameFromUrl(location.pathname);
+          nextBreadcrumb['pathname'] =
+            location.pathname.split(nextBreadcrumb['title'])[0] +
+            nextBreadcrumb['title'];
+          break;
+      }
     }
     // fourth breadcrumb is tag name
     else if (existingBreadcrumbs.length == 3) {
@@ -86,7 +102,7 @@ export function QuayBreadcrumb() {
       if (object.key != '') {
         newObj['title'] = object.key.replace(/\//, '');
       }
-      newObj = fetchBreadcrumb(result, newObj);
+      newObj = fetchBreadcrumb(result, newObj, object);
       result.push(newObj);
       if (newObj['active']) {
         break;
