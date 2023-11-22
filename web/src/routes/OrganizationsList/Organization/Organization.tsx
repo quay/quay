@@ -23,6 +23,7 @@ import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
+import {IsTeamsRoute} from 'src/libs/utils';
 
 export enum OrganizationDrawerContentType {
   None,
@@ -52,8 +53,17 @@ export default function Organization() {
   );
 
   const fetchTabVisibility = (tabname) => {
+    const response = IsTeamsRoute();
     if (quayConfig?.config?.REGISTRY_STATE == 'readonly') {
       return false;
+    }
+
+    if (IsTeamsRoute()) {
+      if (tabname != 'Teams and membership') {
+        return false;
+      } else {
+        return true;
+      }
     }
 
     if (isUserOrganization) {
@@ -103,7 +113,7 @@ export default function Organization() {
     {
       name: 'Repositories',
       component: <RepositoriesList organizationName={organizationName} />,
-      visible: true,
+      visible: IsTeamsRoute() ? false : true,
     },
     {
       name: 'Teams and membership',
@@ -132,7 +142,9 @@ export default function Organization() {
           setDrawerContent={setDrawerContent}
         />
       ),
-      visible: !isUserOrganization && organization?.is_admin,
+      visible: IsTeamsRoute()
+        ? false
+        : !isUserOrganization && organization?.is_admin,
     },
     {
       name: 'Settings',

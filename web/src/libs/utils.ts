@@ -1,6 +1,7 @@
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import moment from 'moment';
 import {ITeamMember} from 'src/hooks/UseMembers';
+import {useLocation} from 'react-router-dom';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
@@ -148,4 +149,16 @@ export const getAccountTypeForMember = (member: ITeamMember): string => {
 
 export const titleCase = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+export const IsTeamsRoute = (): boolean => {
+  const location = useLocation();
+  const pathParts = location.pathname.split('/');
+  if (pathParts.length <= 2) {
+    return false;
+  }
+  if (pathParts.at(-2) == 'teams') {
+    return true;
+  }
+  return false;
 };
