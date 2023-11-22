@@ -129,6 +129,8 @@ objects:
     name: quay-py3-app
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
   spec:
     replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS}}
     minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
@@ -268,7 +270,6 @@ objects:
             timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
           resources:
             limits:
-              cpu: ${{QUAY_APP_CPU_LIMIT}}
               memory: ${{QUAY_APP_MEMORY_LIMIT}}
             requests:
               cpu: ${{QUAY_APP_CPU_REQUEST}}
@@ -368,9 +369,6 @@ parameters:
   - name: QUAY_APP_MEMORY_LIMIT
     value: "4096Mi"
     displayName: "quay app memory limit"
-  - name: QUAY_APP_CPU_LIMIT
-    value: "1"
-    displayName: "quay app CPU limit"
   - name: QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS
     value: "0"
     displayName: quay app deployment min ready seconds
