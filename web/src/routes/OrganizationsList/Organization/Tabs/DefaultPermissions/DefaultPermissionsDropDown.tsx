@@ -13,6 +13,7 @@ import {
 import {repoPermissions} from './DefaultPermissionsList';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {titleCase} from 'src/libs/utils';
 
 export default function DefaultPermissionsDropDown(
   props: DefaultPermissionsDropdownProps,
@@ -55,8 +56,7 @@ export default function DefaultPermissionsDropDown(
           isExpanded={isOpen}
           data-testid={`${props.defaultPermission.createdBy}-permission-dropdown-toggle`}
         >
-          {props.defaultPermission.permission.charAt(0).toUpperCase() +
-            props.defaultPermission.permission.slice(1)}
+          {titleCase(props.defaultPermission.permission)}
         </MenuToggle>
       )}
       isOpen={isOpen}

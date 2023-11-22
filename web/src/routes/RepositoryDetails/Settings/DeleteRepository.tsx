@@ -86,7 +86,11 @@ export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
         title="Deleting a repository cannot be undone. Here be dragons!"
         style={{marginBottom: '1em'}}
       />
-      <Button variant="danger" onClick={() => setIsModalOpen(true)}>
+      <Button
+        variant="danger"
+        test-id="delete-repository-btn"
+        onClick={() => setIsModalOpen(true)}
+      >
         Delete Repository
       </Button>
     </>

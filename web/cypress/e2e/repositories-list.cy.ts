@@ -61,7 +61,7 @@ describe('Repositories List Page', () => {
     cy.visit('/repository');
     cy.wait('@getRepositories');
     cy.contains('Create Repository').click();
-    cy.contains('Create repository').should('exist');
+    cy.contains('Create Repository').should('exist');
     //cy.contains('Select namespace').click();
     //cy.get('li:contains("user1")').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
@@ -81,7 +81,7 @@ describe('Repositories List Page', () => {
   it('create private repository', () => {
     cy.visit('/repository');
     cy.contains('Create Repository').click();
-    cy.contains('Create repository').should('exist');
+    cy.contains('Create Repository').should('exist');
     //cy.contains('Select namespace').click();
     //cy.get('li:contains("user1")').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
@@ -102,7 +102,7 @@ describe('Repositories List Page', () => {
   it('create repository under organization', () => {
     cy.visit('/organization/testorg');
     cy.contains('Create Repository').click();
-    cy.contains('Create repository').should('exist');
+    cy.contains('Create Repository').should('exist');
     cy.get('button:contains("testorg")').should('exist');
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
@@ -157,7 +157,7 @@ describe('Repositories List Page', () => {
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (2)').click();
     cy.contains('Actions').click();
-    cy.contains('Make Public').click();
+    cy.contains('Make public').click();
     cy.contains('Make repositories public');
     cy.contains(
       'Update 2 repositories visibility to be public so they are visible to all user, and may be pulled by all users.',
@@ -172,7 +172,7 @@ describe('Repositories List Page', () => {
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (20)').click();
     cy.contains('Actions').click();
-    cy.contains('Make Private').click();
+    cy.contains('Make private').click();
     cy.contains('Make repositories private');
     cy.contains(
       'Update 20 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',

@@ -45,7 +45,7 @@ export default function NotificationsToolbar(props: NotificationsToolbarProps) {
               props.setDrawerContent(DrawerContentType.CreateNotification)
             }
           >
-            Create Notification
+            Create notification
           </Button>
         </ToolbarItem>
         <ToolbarItem>

@@ -13,6 +13,7 @@ import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
+  titleCase,
 } from 'src/libs/utils';
 
 export function QuayBreadcrumb() {
@@ -38,7 +39,9 @@ export function QuayBreadcrumb() {
     // existingBreadcrumbs is a list of breadcrumbs on the page
     // first breadcrumb is either organization or repository
     if (existingBreadcrumbs.length == 0) {
-      nextBreadcrumb['title'] = nextBreadcrumb['pathname'].split('/').at(-1);
+      nextBreadcrumb['title'] = titleCase(
+        nextBreadcrumb['pathname'].split('/').at(-1),
+      );
     }
     // second breadcrumb is organization name
     else if (existingBreadcrumbs.length == 1) {

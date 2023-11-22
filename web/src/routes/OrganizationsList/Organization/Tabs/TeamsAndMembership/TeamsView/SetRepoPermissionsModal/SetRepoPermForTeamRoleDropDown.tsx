@@ -8,6 +8,7 @@ import {
 } from '@patternfly/react-core';
 import {ITeamRepoPerms} from 'src/hooks/UseTeams';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
+import {titleCase} from 'src/libs/utils';
 
 export function SetRepoPermForTeamRoleDropDown(
   props: SetRepoPermForTeamRoleDropDownProps,
@@ -43,9 +44,7 @@ export function SetRepoPermForTeamRoleDropDown(
           isExpanded={isOpen}
           data-testid={`${props.repoPerm.repoName}-role-dropdown-toggle`}
         >
-          {dropdownValue
-            ? dropdownValue?.charAt(0).toUpperCase() + dropdownValue?.slice(1)
-            : 'None'}
+          {dropdownValue ? titleCase(dropdownValue) : 'None'}
         </MenuToggle>
       )}
       isOpen={isOpen}

@@ -20,19 +20,19 @@ export default function Settings(props: SettingsProps) {
 
   const tabs = [
     {
-      name: 'General Settings',
+      name: 'General settings',
       id: 'generalsettings',
       content: <GeneralSettings organizationName={props.organizationName} />,
       visible: true,
     },
     {
-      name: 'Billing Information',
+      name: 'Billing information',
       id: 'billinginformation',
       content: <BillingInformation organizationName={props.organizationName} />,
       visible: quayConfig?.features?.BILLING,
     },
     {
-      name: 'CLI Configuration',
+      name: 'CLI configuration',
       id: 'cliconfig',
       content: <CliConfiguration />,
       visible: isUserOrganization,

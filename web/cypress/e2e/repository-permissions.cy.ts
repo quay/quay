@@ -125,7 +125,7 @@ describe('Repository Settings - Permissions', () => {
   });
 
   it('Adds user/robot/team permission', () => {
-    cy.contains('Add Permissions').click();
+    cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
       cy.get('input').type('user');
       cy.get('button:contains("user2")').click();
@@ -139,7 +139,7 @@ describe('Repository Settings - Permissions', () => {
       cy.get(`[data-label="type"]`).should('have.text', ' User ');
       cy.get(`[data-label="role"]`).should('have.text', 'read');
     });
-    cy.contains('Add Permissions').click();
+    cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
       cy.get('input').type('test');
       cy.contains('testorg+testrobot2').click();
@@ -156,7 +156,7 @@ describe('Repository Settings - Permissions', () => {
       cy.get(`[data-label="type"]`).should('have.text', ' Robot ');
       cy.get(`[data-label="role"]`).should('have.text', 'read');
     });
-    cy.contains('Add Permissions').click();
+    cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
       cy.get('input').type('test');
       cy.contains('testteam2').click();

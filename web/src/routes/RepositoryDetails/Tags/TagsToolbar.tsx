@@ -75,7 +75,7 @@ export function TagsToolbar(props: ToolBarProps) {
         isDisabled={selectedTags.length <= 0}
         style={{color: 'red'}}
       >
-        Permanently Delete
+        Permanently delete
       </DropdownItem>,
     );
   }

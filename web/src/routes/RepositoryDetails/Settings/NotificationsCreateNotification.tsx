@@ -37,7 +37,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
 
   return (
     <>
-      <Title headingLevel="h3">Create Notification</Title>
+      <Title headingLevel="h3">Create notification</Title>
       <Form id="create-notification-form">
         <Conditional if={error != ''}>
           <Alert

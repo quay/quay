@@ -27,7 +27,7 @@ describe('Tests for Breadcrumbs', () => {
         .each(($el, index) => {
           switch (index) {
             case 0:
-              cy.wrap($el).should('have.text', 'organization');
+              cy.wrap($el).should('have.text', 'Organization');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/organization');
@@ -54,7 +54,7 @@ describe('Tests for Breadcrumbs', () => {
         .each(($el, index) => {
           switch (index) {
             case 0:
-              cy.wrap($el).should('have.text', 'repository');
+              cy.wrap($el).should('have.text', 'Repository');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/repository');
@@ -87,7 +87,7 @@ describe('Tests for Breadcrumbs', () => {
         .each(($el, index) => {
           switch (index) {
             case 0:
-              cy.wrap($el).should('have.text', 'repository');
+              cy.wrap($el).should('have.text', 'Repository');
               cy.wrap($el)
                 .children('a')
                 .should('have.attr', 'href', '/repository');

@@ -246,7 +246,7 @@ export default function RepositoryDetails() {
                     </Tab>
                     <Tab
                       eventKey={TabIndex.TagHistory}
-                      title={<TabTitleText>Tag History</TabTitleText>}
+                      title={<TabTitleText>Tag history</TabTitleText>}
                     >
                       <TagHistory
                         org={organization}

@@ -88,7 +88,7 @@ export default function TagActions(props: TagActionsProps) {
         }}
         style={{color: 'red'}}
       >
-        Permanently Delete
+        Permanently delete
       </DropdownItem>,
     );
   }

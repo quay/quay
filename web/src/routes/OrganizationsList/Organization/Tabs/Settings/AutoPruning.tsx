@@ -206,7 +206,7 @@ export default function AutoPruning(props: AutoPruning) {
   return (
     <>
       <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
-        Auto Pruning Policies
+        Auto-Pruning Policies
       </Title>
       <p style={{paddingBottom: '1em'}}>
         Auto-pruning policies automatically delete tags across all repositories

@@ -24,7 +24,7 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {DropdownWithDescription} from 'src/components/toolbar/DropdownWithDescription';
 import {IRepository} from 'src/resources/RepositoryResource';
-import {formatDate} from 'src/libs/utils';
+import {formatDate, titleCase} from 'src/libs/utils';
 import _ from 'lodash';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
 
@@ -98,8 +98,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
     const temp = {};
     props.robotPermissions?.map(function (repoPerm) {
       const repo = repoPerm.repository.name;
-      const permission =
-        repoPerm.role.charAt(0).toUpperCase() + repoPerm.role.slice(1);
+      const permission = titleCase(repoPerm.role);
       const newItems = {
         ...temp,
         [repo]: permission,

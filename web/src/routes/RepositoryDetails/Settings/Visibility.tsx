@@ -38,7 +38,7 @@ export default function Visibility(props: VisibilityProps) {
           This Repository is currently private. Only users on the permissions
           list may view and interact with it.
         </div>
-        <Button onClick={() => setVisibility('public')}>Make Public</Button>
+        <Button onClick={() => setVisibility('public')}>Make public</Button>
       </>
     );
   } else {
@@ -95,7 +95,7 @@ export default function Visibility(props: VisibilityProps) {
       return (
         <>
           {publicRepoDescription}
-          <Button onClick={() => setVisibility('private')}>Make Private</Button>
+          <Button onClick={() => setVisibility('private')}>Make private</Button>
         </>
       );
     }
