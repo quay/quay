@@ -59,7 +59,7 @@ export default function Settings(props: SettingsProps) {
           loading={loading}
         />
       ),
-      visible: quayConfig?.features?.SECURITY_VULNERABILITY_REPORTING,
+      visible: quayConfig?.features?.SECURITY_VULNERABILITY_SUPPRESSION,
     },
   ];
 
