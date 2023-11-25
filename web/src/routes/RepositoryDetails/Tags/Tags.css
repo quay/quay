@@ -4,25 +4,25 @@
 
 .tags-input {
     min-width: 100%;
-    border-width: var(--pf-global--BorderWidth--sm);
+    border-width: var(--pf-v5-global--BorderWidth--sm);
     border-style: solid;
-    border-top-color: var(--pf-global--BorderColor--300);
-    border-right-color: var(--pf-global--BorderColor--300);
-    border-left-color: var(--pf-global--BorderColor--300);
-    border-bottom-color: var(--pf-global--BorderColor--200);
-    padding-top: var(--pf-global--spacer--xs);
-    padding-right: var(--pf-global--spacer--xs);
-    padding-bottom: var(--pf-global--spacer--xs);
-    padding-left: var(--pf-global--spacer--xs);
-    min-height: calc(var(--pf-global--FontSize--md) * var(--pf-global--LineHeight--md) * 3);
+    border-top-color: var(--pf-v5-global--BorderColor--300);
+    border-right-color: var(--pf-v5-global--BorderColor--300);
+    border-left-color: var(--pf-v5-global--BorderColor--300);
+    border-bottom-color: var(--pf-v5-global--BorderColor--200);
+    padding-top: var(--pf-v5-global--spacer--xs);
+    padding-right: var(--pf-v5-global--spacer--xs);
+    padding-bottom: var(--pf-v5-global--spacer--xs);
+    padding-left: var(--pf-v5-global--spacer--xs);
+    min-height: calc(var(--pf-v5-global--FontSize--md) * var(--pf-v5-global--LineHeight--md) * 3);
 }
 
 .tags-input .tags {
     align-content: flex-start;
     display: flex;
     flex-wrap: wrap;
-    gap: var(--pf-global--spacer--xs);
-    min-height: calc(var(--pf-global--FontSize--md) * var(--pf-global--LineHeight--md));
+    gap: var(--pf-v5-global--spacer--xs);
+    min-height: calc(var(--pf-v5-global--FontSize--md) * var(--pf-v5-global--LineHeight--md));
 }
 
 .tags-input .tags > span {
@@ -37,10 +37,10 @@
 }
 
 .tags-input .tags .input.invalid-tag {
-    color: var(--pf-global--danger-color--100);
+    color: var(--pf-v5-global--danger-color--100);
 }
 
 .invalid-input {
-    border-color: var(--pf-global--danger-color--100);
-    background-color:  var(--pf-global--danger-color--200);
+    border-color: var(--pf-v5-global--danger-color--100);
+    background-color:  var(--pf-v5-global--danger-color--200);
 }

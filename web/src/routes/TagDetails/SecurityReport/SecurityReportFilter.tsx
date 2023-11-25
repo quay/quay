@@ -60,7 +60,7 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
   };
 
   return (
-    <Flex className="pf-v5-u-mt-md" alignItems={{default: 'alignItemsCenter'}}>
+    <Flex>
       <FlexItem>
         <TextInput
           isRequired

@@ -7,7 +7,7 @@
 }
 
 .security-table-row-suppressed > td {
-    color: var(--pf-global--disabled-color--200);
+    color: var(--pf-v5-global--disabled-color--200);
 }
 
 .security-table-row-suppressed td svg {

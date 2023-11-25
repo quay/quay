@@ -202,11 +202,13 @@ export default function SecurityReportTable(props: SecurityDetailsProps) {
       <TableTitle />
       <Toolbar>
         <ToolbarContent>
-          <SecurityReportFilter
-            setPage={setPage}
-            vulnList={vulnList}
-            setFilteredVulnList={setFilteredVulnList}
-          />
+          <ToolbarItem>
+            <SecurityReportFilter
+              setPage={setPage}
+              vulnList={vulnList}
+              setFilteredVulnList={setFilteredVulnList}
+            />
+          </ToolbarItem>
           <ToolbarItem>
             <Button onClick={() => props.setIsOpen(true)}>
               Set Suppressions
