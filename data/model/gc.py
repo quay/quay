@@ -29,19 +29,10 @@ from data.database import (
     Star,
     Tag,
     UploadedBlob,
-    db_for_update,
-)
-from data.model import (
-    Star,
-    Tag,
-    UploadedBlob,
     VulnerabilitySuppression,
-    blob,
-    config,
     db_for_update,
-    db_transaction,
-    storage,
 )
+from data.model import blob, config, db_transaction, storage
 from data.model.oci import tag as oci_tag
 from data.model.quota import reset_backfill, subtract_blob_size
 from data.secscan_model import secscan_model
