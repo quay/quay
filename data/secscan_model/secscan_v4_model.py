@@ -576,6 +576,19 @@ def features_for(report):
     Transforms a Clair v4 `VulnerabilityReport` dict into the standard shape of a
     Quay Security scanner response.
     """
+    cvss_enrichment_key = "message/vnd.clair.map.vulnerability; enricher=clair.cvss schema=https://csrc.nist.gov/schema/nvd/feed/1.1/cvss-v3.x.json"
+    rhcc_enrichment_key = "message/vnd.clair.map.layer; enricher=clair.rhcc schema=??"
+
+    cvss_enrichments = (
+        {
+            key: sorted(val, key=lambda x: x["baseScore"], reverse=True)[0]
+            for key, val in list(report["enrichments"][cvss_enrichment_key])[0].items()
+        }
+        if report.get("enrichments", {}).get(cvss_enrichment_key, {})
+        else {}
+    )
+
+    rhcc_enrichments = report.get("enrichments", {}).get(rhcc_enrichment_key, {})
 
     features = []
     dedupe_vulns = {}
@@ -596,15 +609,6 @@ def features_for(report):
                 pkg_vulns.append(report["vulnerabilities"][vuln_id])
             dedupe_vulns[vuln_key] = True
 
-        enrichments = (
-            {
-                key: sorted(val, key=lambda x: x["baseScore"], reverse=True)[0]
-                for key, val in list(report["enrichments"].values())[0][0].items()
-            }
-            if report.get("enrichments", {})
-            else {}
-        )
-
         features.append(
             Feature(
                 pkg["name"],
@@ -614,7 +618,7 @@ def features_for(report):
                 pkg["version"],
                 [
                     Vulnerability(
-                        fetch_vuln_severity(vuln, enrichments),
+                        fetch_vuln_severity(vuln, cvss_enrichments),
                         vuln["updater"],
                         vuln["links"],
                         maybe_urlencoded(
@@ -630,13 +634,15 @@ def features_for(report):
                             vuln.get("distribution", {}).get("version"),
                             NVD(
                                 CVSSv3(
-                                    enrichments.get(vuln["id"], {}).get("vectorString", ""),
-                                    enrichments.get(vuln["id"], {}).get("baseScore", ""),
+                                    cvss_enrichments.get(vuln["id"], {}).get("vectorString", ""),
+                                    cvss_enrichments.get(vuln["id"], {}).get("baseScore", ""),
                                 )
                             ),
                         ),
                     )
                     for vuln in pkg_vulns
+                    if (not rhcc_enrichments.get(pkg_env["introduced_in"], False))
+                    or (rhcc_enrichments.get(pkg_env["introduced_in"]) == pkg_id)
                 ],
             )
         )
