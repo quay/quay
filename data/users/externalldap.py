@@ -522,9 +522,13 @@ class LDAPUsers(FederatedUsers):
         if not username_or_email:
             return False
 
+        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
+        if all([dbuser is None, dbmail is None, not login]):
+            return False  # Robots are not in LDAP so return False as not being a superuser
+
         logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_superusers=True
+            username_or_email, filter_superusers=True, login=True
         )
         if found_user is None:
             logger.debug("LDAP superuser %s not found: %s", username_or_email, err_msg)
@@ -544,10 +548,13 @@ class LDAPUsers(FederatedUsers):
         if self._ldap_restricted_user_filter is None:
             return True
 
+        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
+        if all([dbuser is None, dbmail is None, not login]):
+            return False  # Robots are not in LDAP so return False as not restricted
+
         logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email,
-            filter_restricted_users=True,
+            username_or_email, filter_restricted_users=True, login=True
         )
         if found_user is None:
             logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
