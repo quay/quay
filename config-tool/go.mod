@@ -20,7 +20,7 @@ require (
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
 	github.com/json-iterator/go v1.1.12
 	github.com/lib/pq v1.10.9
-	github.com/minio/minio-go/v7 v7.0.63
+	github.com/minio/minio-go/v7 v7.0.64
 	github.com/ncw/swift v1.0.53
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/sirupsen/logrus v1.9.3
