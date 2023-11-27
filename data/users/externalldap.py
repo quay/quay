@@ -6,9 +6,9 @@ import ldap
 from ldap.controls import SimplePagedResultsControl
 from ldap.filter import escape_filter_chars, filter_format
 
+from data.model.user import get_nonrobot_user, find_user_by_email
 from data.users.federated import FederatedUsers, UserInformation
 from util.itertoolrecipes import take
-from data.model.user import get_nonrobot_user, find_user_by_email
 
 logger = logging.getLogger(__name__)
 
