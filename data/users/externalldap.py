@@ -266,7 +266,7 @@ class LDAPUsers(FederatedUsers):
             return (None, "Empty username/email")
 
         dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
-        if all([dbuser == None, dbmail == None, not login]):
+        if all([dbuser is None, dbmail is None, not login]):
             return (None, "Robot account")
 
         # Verify the admin connection works first. We do this here to avoid wrapping
@@ -308,7 +308,7 @@ class LDAPUsers(FederatedUsers):
         self, username_or_email, filter_superusers=False, filter_restricted_users=False, login=False
     ):
         dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
-        if all([dbuser == None, dbmail == None, not login]):
+        if all([dbuser is None, dbmail is None, not login]):
             return (None, "Robot account")
 
         with_dns, err_msg = self._ldap_user_search(
