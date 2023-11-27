@@ -523,7 +523,7 @@ class LDAPUsers(FederatedUsers):
             return False
 
         dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
-        if all([dbuser is None, dbmail is None, not login]):
+        if all([dbuser is None, dbmail is None]):
             return False  # Robots are not in LDAP so return False as not being a superuser
 
         logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
@@ -549,7 +549,7 @@ class LDAPUsers(FederatedUsers):
             return True
 
         dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
-        if all([dbuser is None, dbmail is None, not login]):
+        if all([dbuser is None, dbmail is None]):
             return False  # Robots are not in LDAP so return False as not restricted
 
         logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
