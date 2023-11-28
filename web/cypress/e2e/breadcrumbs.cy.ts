@@ -122,4 +122,41 @@ describe('Tests for Breadcrumbs', () => {
         });
     });
   });
+
+  it('Teams page', () => {
+    cy.visit('/organization/projectquay/teams/owners?tab=Teamsandmembership');
+    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+      cy.get('li')
+        .each(($el, index) => {
+          switch (index) {
+            case 0:
+              cy.wrap($el).should('have.text', 'Organization');
+              cy.wrap($el)
+                .children('a')
+                .should('have.attr', 'href', '/organization');
+              break;
+            case 1:
+              cy.wrap($el).should('have.text', 'projectquay');
+              cy.wrap($el)
+                .children('a')
+                .should('have.attr', 'href', '/organization/projectquay');
+              break;
+            case 2:
+              cy.wrap($el).should('have.text', 'owners');
+              cy.wrap($el).children('a').should('have.class', 'disabled-link');
+              cy.wrap($el)
+                .children('a')
+                .should(
+                  'have.attr',
+                  'href',
+                  '/organization/projectquay/teams/owners',
+                );
+              break;
+          }
+        })
+        .then(($lis) => {
+          expect($lis).to.have.length(3);
+        });
+    });
+  });
 });
