@@ -65,3 +65,19 @@ def for_security_report(digest, cache_config):
     # Security reports don't change often so a longer TTL can be justified.
     cache_ttl = cache_config.get("security_report_cache_ttl", "300s")
     return CacheKey(f"security_report_{digest}", cache_ttl)
+
+
+def for_repository_lookup(namespace_name, repo_name, manifest_ref, kind_filter, cache_config):
+    """
+    Returns a cache key for repository lookup.
+    """
+
+    cache_ttl = cache_config.get("repository_lookup_cache_ttl", "120s")
+    cache_key = f"repository_lookup_{namespace_name}_{repo_name}"
+
+    if manifest_ref is not None:
+        cache_key = f"{cache_key}_{manifest_ref}"
+    if kind_filter is not None:
+        cache_key = f"{cache_key}_{kind_filter}"
+
+    return CacheKey(cache_key, cache_ttl)
