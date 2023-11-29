@@ -5,7 +5,7 @@ from datetime import datetime
 
 from flask import abort, request
 
-from app import app, docker_v2_signing_key, storage
+from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
 from data.model import repository as repository_model
 from data.registry_model import registry_model
@@ -248,7 +248,7 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.delete_tag(repo_ref, tag)
+        tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
         if tag_ref is None:
             raise NotFound()
 

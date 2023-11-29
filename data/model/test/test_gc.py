@@ -3,15 +3,13 @@ import json
 import random
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from test.fixtures import *
-from test.helpers import check_transitive_modifications
 
 import pytest
 from freezegun import freeze_time
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
-from app import docker_v2_signing_key, storage
+from app import docker_v2_signing_key, model_cache, storage
 from data import database, model
 from data.database import (
     ApprBlob,
@@ -32,6 +30,8 @@ from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.oci.config import OCIConfig
 from image.oci.manifest import OCIManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
+from test.fixtures import *
+from test.helpers import check_transitive_modifications
 from util.bytes import Bytes
 
 ADMIN_ACCESS_USER = "devtable"
@@ -84,7 +84,7 @@ def gc_now(repository):
 
 def delete_tag(repository, tag, perform_gc=True, expect_gc=True):
     repo_ref = RepositoryReference.for_repo_obj(repository)
-    registry_model.delete_tag(repo_ref, tag)
+    registry_model.delete_tag(model_cache, repo_ref, tag)
     if perform_gc:
         assert gc_now(repository) == expect_gc
 

@@ -11,7 +11,7 @@ import pytest
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
-from app import docker_v2_signing_key, storage
+from app import docker_v2_signing_key, model_cache, storage
 from data import model
 from data.cache import cache_key
 from data.cache.impl import InMemoryDataModelCache
@@ -368,11 +368,11 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
     # Delete every tag in the repository.
     for tag in tags:
         if via_manifest:
-            assert registry_model.delete_tag(repository_ref, tag.name)
+            assert registry_model.delete_tag(model_cache, repository_ref, tag.name)
         else:
             manifest = registry_model.get_manifest_for_tag(tag)
             if manifest is not None:
-                registry_model.delete_tags_for_manifest(manifest)
+                registry_model.delete_tags_for_manifest(model_cache, manifest)
 
         # Make sure the tag is no longer found.
         with assert_query_count(1):
