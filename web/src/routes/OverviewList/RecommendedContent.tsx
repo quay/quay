@@ -39,7 +39,7 @@ export default function RecommendedContent() {
               <Button
                 variant="link"
                 component="a"
-                href="https://docs.projectquay.io/welcome.html"
+                href="https://docs.projectquay.io/quay_io.html"
               >
                 View Documentation <ExternalLinkAltIcon />
               </Button>
