@@ -4,7 +4,7 @@ from functools import wraps
 from flask import Response, request, url_for
 
 import features
-from app import app, storage, model_cache
+from app import app, model_cache, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
