@@ -4,7 +4,7 @@ from functools import wraps
 from flask import Response, request, url_for
 
 import features
-from app import app, model_cache, storage
+from app import app, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
@@ -68,11 +68,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
     try:
         repository_ref = registry_model.lookup_repository(
-            namespace_name,
-            repo_name,
-            raise_on_error=True,
-            manifest_ref=manifest_ref,
-            model_cache=model_cache,
+            namespace_name, repo_name, raise_on_error=True, manifest_ref=manifest_ref
         )
     except RepositoryDoesNotExist as e:
         image_pulls.labels("v2", "tag", 404).inc()
@@ -141,11 +137,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
     try:
         repository_ref = registry_model.lookup_repository(
-            namespace_name,
-            repo_name,
-            raise_on_error=True,
-            manifest_ref=manifest_ref,
-            model_cache=model_cache,
+            namespace_name, repo_name, raise_on_error=True, manifest_ref=manifest_ref
         )
     except RepositoryDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
@@ -301,9 +293,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     # manifest does not contain the tag and this call was not given a tag name.
     # Instead, we write the manifest with a temporary tag, as it is being pushed
     # as part of a call for a manifest list.
-    repository_ref = registry_model.lookup_repository(
-        namespace_name, repo_name, model_cache=model_cache
-    )
+    repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         image_pushes.labels("v2", 404, "").inc()
         raise NameUnknown("repository not found")
@@ -372,9 +362,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     forbidden by the spec.
     """
     with db_disallow_replica_use():
-        repository_ref = registry_model.lookup_repository(
-            namespace_name, repo_name, model_cache=model_cache
-        )
+        repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
         if repository_ref is None:
             raise NameUnknown("repository not found")
 
@@ -425,9 +413,7 @@ def _write_manifest(
     namespace_name, repo_name, tag_name, manifest_impl, registry_model=registry_model
 ):
     # Ensure that the repository exists.
-    repository_ref = registry_model.lookup_repository(
-        namespace_name, repo_name, model_cache=model_cache
-    )
+    repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
