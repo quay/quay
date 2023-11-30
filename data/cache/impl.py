@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pickle
 from abc import ABCMeta, abstractmethod
 from contextlib import contextmanager
 from datetime import datetime
@@ -29,6 +30,22 @@ def is_not_none(value):
 
 def lock_key_for(cache_key):
     return "LOCK_" + cache_key
+
+
+def serialize_val(cache_val):
+    try:
+        return json.dumps(cache_val)
+    except TypeError:
+        # used to serialize non json values like objects, lists, classes, etc
+        return pickle.dumps(cache_val)
+
+
+def deserialize_val(cache_val):
+    try:
+        return json.loads(cache_val)
+    except UnicodeDecodeError:
+        # used to deserialize non json values
+        return pickle.loads(cache_val)
 
 
 @add_metaclass(ABCMeta)
@@ -96,8 +113,7 @@ class InMemoryDataModelCache(DataModelCache):
         if result != not_found:
             logger.debug("Found result in cache for key %s: %s", cache_key.key, result)
             cache_count.labels("hit").inc()
-
-            return json.loads(result)
+            return deserialize_val(result)
         else:
             cache_count.labels("miss").inc()
 
@@ -112,7 +128,7 @@ class InMemoryDataModelCache(DataModelCache):
                 cache_key.expiration,
             )
             expires = convert_to_timedelta(cache_key.expiration) + datetime.now()
-            self.cache.set(cache_key.key, json.dumps(result), expires=expires)
+            self.cache.set(cache_key.key, serialize_val(result), expires=expires)
             logger.debug(
                 "Cached loaded result for key %s with expiration %s: %s",
                 cache_key.key,
@@ -161,14 +177,14 @@ class MemcachedModelCache(DataModelCache):
                 if isinstance(value, str):
                     return value, _STRING_TYPE
 
-                return json.dumps(value), _JSON_TYPE
+                return serialize_val(value), _JSON_TYPE
 
             def deserialize_json(key, value, flags):
                 if flags == _STRING_TYPE:
                     return value
 
                 if flags == _JSON_TYPE:
-                    return json.loads(value)
+                    return deserialize_val(value)
 
                 raise Exception("Unknown flags for value: {}".format(flags))
 
@@ -259,7 +275,7 @@ class RedisDataModelCache(DataModelCache):
                     cache_count.labels("hit").inc()
                     logger.debug("Found result in cache for key %s", cache_key.key)
 
-                    return json.loads(cached_result)
+                    return deserialize_val(cached_result)
                 else:
                     cache_count.labels("miss").inc()
             except RedisError as re:
@@ -287,7 +303,7 @@ class RedisDataModelCache(DataModelCache):
                 )
                 self.client.set(
                     cache_key.key,
-                    json.dumps(result),
+                    serialize_val(result),
                     ex=int(expires.total_seconds()) if expires else None,
                     nx=True,
                 )
