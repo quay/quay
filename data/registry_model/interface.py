@@ -43,7 +43,13 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def lookup_repository(
-        self, namespace_name, repo_name, kind_filter=None, raise_on_error=False, manifest_ref=None
+        self,
+        namespace_name,
+        repo_name,
+        kind_filter=None,
+        raise_on_error=False,
+        manifest_ref=None,
+        model_cache=None,
     ):
         """
         Looks up and returns a reference to the repository with the given namespace and name, or
