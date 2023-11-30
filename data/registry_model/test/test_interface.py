@@ -8,12 +8,14 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 import pytest
+import pickle
 from mock import patch
 from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
 from data import model
 from data.cache.impl import InMemoryDataModelCache
+from data.cache import cache_key
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
     ImageStorageLocation,
@@ -110,6 +112,30 @@ def test_lookup_repository(repo_namespace, repo_name, expected, registry_model):
     repo_ref = registry_model.lookup_repository(repo_namespace, repo_name)
     if expected:
         assert repo_ref
+    else:
+        assert repo_ref is None
+
+
+@pytest.mark.parametrize(
+    "repo_namespace, repo_name, expected",
+    [
+        ("devtable", "simple", True),
+        ("buynlarge", "orgrepo", True),
+        ("buynlarge", "unknownrepo", False),
+    ],
+)
+def test_lookup_repository_with_cache(repo_namespace, repo_name, expected, registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    cache_key_for_repository_lookup = cache_key.for_repository_lookup(repo_namespace, repo_name, None, None, {})
+    repo_ref = registry_model.lookup_repository(repo_namespace, repo_name, model_cache=model_cache)
+    cached_result = model_cache.cache.get(cache_key_for_repository_lookup.key)
+
+    if expected:
+        deserialized_result = pickle.loads(cached_result)
+        assert repo_ref._db_id is deserialized_result.id
+        assert repo_ref.name == deserialized_result.name
     else:
         assert repo_ref is None
 
