@@ -409,8 +409,7 @@ def get_robot_and_metadata(robot_shortname, parent):
 
 def lookup_robot(robot_username):
     try:
-        if robot_username and isinstance(robot_username, str):
-            robot_username.encode("ascii")
+        robot_username.encode("ascii")
     except UnicodeEncodeError:
         raise InvalidRobotException("Could not find robot with specified username")
 
@@ -451,14 +450,7 @@ def verify_robot(robot_username, password):
             msg = "Robot account have been disabled. Please contact your administrator."
             raise InvalidRobotException(msg)
     try:
-        if (
-            robot_username
-            and isinstance(robot_username, str)
-            and password
-            and isinstance(password, str)
-        ):
-            robot_username.encode("ascii")
-            password.encode("ascii")
+        password.encode("ascii")
     except UnicodeEncodeError:
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotException(msg)

@@ -127,13 +127,13 @@ def validate_credentials(auth_username, auth_password_or_token):
         except model.DeactivatedRobotOwnerException as dre:
             robot_owner, robot_name = parse_robot_username(auth_username)
 
+            try:
+                performer = model.user.lookup_robot(auth_username)
+            except User.DoesNotExist:
+                performer = None
+
             logger.debug(
                 "Tried to use the robot %s for a disabled user: %s", (robot_name, robot_owner)
-            )
-
-            error_message = (
-                "The owning user of robot '%s' has been disabled. Please contact your administrator."
-                % robot_name
             )
 
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
@@ -146,13 +146,13 @@ def validate_credentials(auth_username, auth_password_or_token):
                         "robot": auth_username,
                         "username": robot_owner,
                         "useragent": request.user_agent.string,
-                        "message": error_message,
+                        "message": str(dre),
                     },
-                    performer=robot,
+                    performer=performer,
                 )
 
             return (
-                ValidateResult(AuthKind.credentials, error_message=error_message),
+                ValidateResult(AuthKind.credentials, error_message=str(dre)),
                 CredentialKind.robot,
             )
         except model.InvalidRobotCredentialException as ire:
@@ -184,7 +184,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                 ValidateResult(AuthKind.credentials, error_message=str(ire)),
                 CredentialKind.robot,
             )
-        except (model.InvalidRobotException, model.InvalidRobotOwnerException) as ire:
+        except model.InvalidRobotException as ire:
 
             if isinstance(ire, model.InvalidRobotException):
                 logger.warning(
@@ -197,10 +197,13 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             robot_owner, _ = parse_robot_username(auth_username)
 
+            # need to get the owner here in case it wasn't found due to a non-existing user
+            owner = model.user.get_nonrobot_user(robot_owner)
+
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
                 log_action(
                     "login_failure",
-                    robot_owner if not isinstance(ire, model.InvalidRobotOwnerException) else None,
+                    owner.username if owner else None,
                     {
                         "type": "v2auth",
                         "kind": "robot",

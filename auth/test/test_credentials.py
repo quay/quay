@@ -27,33 +27,16 @@ def test_valid_robot(app):
 
 def test_valid_robot_for_disabled_user(app):
     user = model.user.get_user("devtable")
+
+    robot, password = model.user.create_robot("somerobot", user)
+
     user.enabled = False
     user.save()
 
-    robot, password = model.user.create_robot("somerobot", user)
     result, kind = validate_credentials(robot.username, password)
     assert kind == CredentialKind.robot
 
-    err = (
-        "The owning user of robot '%s' has been disabled. Please contact your administrator."
-        % robot.username
-    )
-    assert result == ValidateResult(AuthKind.credentials, error_message=err)
-
-
-def test_valid_robot_for_non_existing_user(app):
-    user = model.user.create_user_noverify(
-        "nonexistant", "nonexistant@void.com", email_required=False
-    )
-    user.save()
-
-    robot, password = model.user.create_robot("somerobot", user)
-    user.delete()
-
-    result, kind = validate_credentials(robot.username, password)
-    assert kind == CredentialKind.robot
-
-    err = "Robot %s owner does not exist" % robot.username
+    err = "Robot %s owner %s is disabled" % (robot.username, user.username)
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
 
 
@@ -61,7 +44,6 @@ def test_valid_robot_with_invalid_password(app):
     robot, _ = model.user.create_robot("somerobot", model.user.get_user("devtable"))
     result, kind = validate_credentials(robot.username, "wrongpassword")
     assert kind == CredentialKind.robot
-    assert result == ValidateResult(AuthKind.credentials, robot=robot)
 
     err = "Could not find robot with username: %s and supplied password." % robot.username
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
@@ -70,11 +52,10 @@ def test_valid_robot_with_invalid_password(app):
 def test_valid_robot_with_invalid_token(app):
     robot, password = model.user.create_robot("somerobot", model.user.get_user("devtable"))
     token = RobotAccountToken.get(robot_account=robot)
-    token.delete()
+    token.delete_instance()
 
     result, kind = validate_credentials(robot.username, password)
     assert kind == CredentialKind.robot
-    assert result == ValidateResult(AuthKind.credentials, robot=robot)
 
     err = "Could not find robot with username: %s and supplied password." % robot.username
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
