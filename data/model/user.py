@@ -790,6 +790,12 @@ def validate_reset_code(token):
 
 
 def find_user_by_email(email):
+    # Make sure we didn't get any unicode for the email.
+    try:
+        if email and isinstance(email, str):
+            email.encode("ascii")
+    except UnicodeEncodeError:
+        return None
 
     try:
         return User.get(User.email == email)
