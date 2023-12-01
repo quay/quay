@@ -733,32 +733,13 @@ class OCIModel(RegistryDataInterface):
         return RepositoryReference.for_repo_obj(repo)
 
     def lookup_repository(
-        self,
-        namespace_name,
-        repo_name,
-        kind_filter=None,
-        raise_on_error=False,
-        manifest_ref=None,
-        model_cache=None,
+        self, namespace_name, repo_name, kind_filter=None, raise_on_error=False, manifest_ref=None
     ):
         """
         Looks up and returns a reference to the repository with the given namespace and name, or
         None if none.
         """
-
-        def get_repository_loader():
-            return model.repository.get_repository(
-                namespace_name, repo_name, kind_filter=kind_filter
-            )
-
-        if model_cache is not None:
-            repository_lookup_key = cache_key.for_repository_lookup(
-                namespace_name, repo_name, manifest_ref, kind_filter, model_cache.cache_config
-            )
-            repo = model_cache.retrieve(repository_lookup_key, get_repository_loader)
-        else:
-            repo = get_repository_loader()
-
+        repo = model.repository.get_repository(namespace_name, repo_name, kind_filter=kind_filter)
         if repo is None:
             if raise_on_error:
                 raise model.RepositoryDoesNotExist()
