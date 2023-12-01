@@ -1,0 +1,16 @@
+{
+  "namespace": "testorg",
+  "name": "testrepo",
+  "kind": "image",
+  "description": "",
+  "is_public": true,
+  "is_organization": true,
+  "is_starred": false,
+  "status_token": "",
+  "trust_enabled": false,
+  "tag_expiration_s": 1209600,
+  "is_free_account": true,
+  "state": "NORMAL",
+  "can_write": true,
+  "can_admin": true
+}

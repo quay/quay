@@ -41,6 +41,7 @@ import {useFetchTeams} from 'src/hooks/UseTeams';
 import {CreateTeamModal} from '../OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import Builds from './Builds/Builds';
 
 enum TabIndex {
   Tags = 'tags',
@@ -268,6 +269,17 @@ export default function RepositoryDetails() {
                         setDrawerContent={setDrawerContent}
                         repoDetails={repoDetails}
                       />
+                    </Tab>
+                    <Tab
+                      eventKey={TabIndex.Builds}
+                      title={<TabTitleText>Builds</TabTitleText>}
+                      isHidden={
+                        config?.features.UI_V2_BUILDS != true ||
+                        config?.features.BUILD_SUPPORT != true ||
+                        !repoDetails?.can_write
+                      }
+                    >
+                      <Builds org={organization} repo={repository} />
                     </Tab>
                   </Tabs>
                 </ErrorBoundary>

@@ -1,0 +1,869 @@
+{
+  "builds": [
+    {
+      "id": "build001-9159-400b-b93a-4597bebe78f7",
+      "phase": "error",
+      "started": "Tue, 28 Nov 2023 15:37:33 -0000",
+      "display_name": "commit1",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["commit1"],
+      "manual_user": "user1",
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger1-df41-4eae-a897-f09d69aab706",
+        "service": "custom-git",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit1e3865e0849f387533e0a272cfd7776fb4",
+        "git_url": "https://github.com/quay/quay"
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build002-6e4f-4aa0-a777-3a61e18289f4",
+      "phase": "internalerror",
+      "started": "Mon, 27 Nov 2023 20:21:19 -0000",
+      "display_name": "e49ac87",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest"],
+      "manual_user": "user1",
+      "is_writer": true,
+      "trigger": null,
+      "trigger_metadata": {},
+      "resource_key": "build002-d451-4990-bce2-c2e846f4f942",
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null,
+      "archive_url": "http://localhost:8080/userfiles/build002-d451-4990-bce2-c2e846f4f942"
+    },
+    {
+      "id": "build003-6e4f-4aa0-a777-3a61e18289f4",
+      "phase": "build-scheduled",
+      "started": "Mon, 27 Nov 2023 20:21:19 -0000",
+      "display_name": "e49aasd",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": null,
+      "trigger_metadata": {},
+      "resource_key": "build3a0-d451-4990-bce2-c2e846f4f942",
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null,
+      "archive_url": "http://localhost:8080/userfiles/build3a0-d451-4990-bce2-c2e846f4f942"
+    },
+    {
+      "id": "build004-03e8-4221-9430-01eec72cede9",
+      "phase": "unpacking",
+      "started": "Sun, 12 Nov 2023 16:24:50 -0000",
+      "display_name": "23c1123",
+      "status": {},
+      "subdirectory": "",
+      "dockerfile_path": "",
+      "context": "",
+      "tags": [],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger1-df41-4eae-a897-f09d69aab706",
+        "service": "custom-git",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": null,
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build005-03e8-4221-9430-01eec72cede9",
+      "phase": "pulling",
+      "started": "Sun, 12 Nov 2023 16:24:50 -0000",
+      "display_name": "23c1124",
+      "status": {},
+      "subdirectory": "",
+      "dockerfile_path": "",
+      "context": "",
+      "tags": [],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger2-df41-4eae-a897-f09d69aab706",
+        "service": "github",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": null,
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build006-03e8-4221-9430-01eec72cede9",
+      "phase": "building",
+      "started": "Sun, 12 Nov 2023 16:24:50 -0000",
+      "display_name": "23c1125",
+      "status": {},
+      "subdirectory": "",
+      "dockerfile_path": "",
+      "context": "",
+      "tags": [],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger3-df41-4eae-a897-f09d69aab706",
+        "service": "bitbucket",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": null,
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build007-03e8-4221-9430-01eec72cede9",
+      "phase": "pushing",
+      "started": "Sun, 12 Nov 2023 16:24:50 -0000",
+      "display_name": "23c1126",
+      "status": {},
+      "subdirectory": "",
+      "dockerfile_path": "",
+      "context": "",
+      "tags": [],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger4-df41-4eae-a897-f09d69aab706",
+        "service": "gitlab",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": null,
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build008-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "waiting",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger5-df41-4eae-a897-f09d69aab706",
+        "service": "custom-git",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "custom-git build from branch",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build009-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "complete",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger6-df41-4eae-a897-f09d69aab706",
+        "service": "github",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "github build from branch",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build010-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "cancelled",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger7-df41-4eae-a897-f09d69aab706",
+        "service": "gitlab",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "gitlab build from branch",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build011-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "expired",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger8-df41-4eae-a897-f09d69aab706",
+        "service": "bitbucket",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "bitbucket build from branch",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build012-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "waiting",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger9-df41-4eae-a897-f09d69aab706",
+        "service": "custom-git",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": null,
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/tags/newtag",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "custom git build from tag",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build013-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "waiting",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger10-df41-4eae-a897-f09d69aab70",
+        "service": "github",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/tags/newtag",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "github build from tag",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build014-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "waiting",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger11-df41-4eae-a897-f09d69aa706",
+        "service": "gitlab",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/tags/newtag",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "gitlab build from tag",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build015-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "waiting",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger12-df41-4eae-a897-f09d6aab706",
+        "service": "bitbucket",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/tags/newtag",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "bitbucket build from tag",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    },
+    {
+      "id": "build016-e52a-4cf9-87f2-9d9590df7acf",
+      "phase": "waiting",
+      "started": "Thu, 28 Sep 2023 16:52:29 -0000",
+      "display_name": "commit2",
+      "status": {},
+      "subdirectory": "/Dockerfile",
+      "dockerfile_path": "/Dockerfile",
+      "context": "/",
+      "tags": ["latest", "master"],
+      "manual_user": null,
+      "is_writer": true,
+      "trigger": {
+        "id": "trigger13-df41-4eae-a897-f09d6aab706",
+        "service": "bitbucket",
+        "is_active": true,
+        "build_source": "https://github.com/quay/quay",
+        "repository_url": "https://github.com/quay/quay",
+        "config": {
+          "build_source": "https://github.com/quay/quay",
+          "dockerfile_path": "/Dockerfile",
+          "context": "/",
+          "default_tag_from_ref": true,
+          "tag_templates": [],
+          "credentials": [
+            {
+              "name": "SSH Public Key",
+              "value": ""
+            },
+            {
+              "name": "Webhook Endpoint URL",
+              "value": ""
+            }
+          ]
+        },
+        "can_invoke": true,
+        "enabled": true,
+        "disabled_reason": null
+      },
+      "trigger_metadata": {
+        "commit": "commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+        "ref": "refs/tags/newtag",
+        "default_branch": "master",
+        "git_url": "https://github.com/quay/quay",
+        "commit_info": {
+          "url": "https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda",
+          "message": "random text to test long description, random text to test long description, random text to test long description, random text to test long description, random text to test long description, random text to test long description, random text to test long description, random text to test long description, random text to test long description, random text to test long description,  success viewing long description",
+          "date": "2023-11-28T10:42:17-05:00",
+          "author": {
+            "username": "user1"
+          },
+          "committer": {
+            "username": "web-flow"
+          }
+        }
+      },
+      "resource_key": null,
+      "pull_robot": null,
+      "repository": {
+        "namespace": "org1",
+        "name": "test"
+      },
+      "error": null
+    }
+  ]
+}

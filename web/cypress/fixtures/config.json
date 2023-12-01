@@ -127,7 +127,8 @@
     "USER_LOG_ACCESS": false,
     "USER_METADATA": true,
     "USER_RENAME": false,
-    "AUTO_PRUNE": true
+    "AUTO_PRUNE": true,
+    "UI_V2_BUILDS": true
   },
   "oauth": {
     "GITHUB_TRIGGER_CONFIG": {
