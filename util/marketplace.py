@@ -66,6 +66,7 @@ class RedHatUserApi(object):
 
         info = json.loads(r.content)
         if not info:
+            logger.debug("request to %s did not return any data", self.user_endpoint)
             return None
         account_number = info[0]["accountRelationships"][0]["account"].get("ebsAccountNumber")
         return account_number
