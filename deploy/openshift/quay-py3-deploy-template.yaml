@@ -129,6 +129,8 @@ objects:
     name: ${NAME}-app
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+    annotations:
+      ignore-check.kube-linter.io/unset-cpu-requirements: "no cpu limits"
   spec:
     replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS}}
     minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
@@ -237,6 +239,15 @@ objects:
           volumeMounts:
           - name: configvolume
             mountPath: /conf/stack
+          startupProbe:
+            exec:
+              command:
+              - curl
+              - -k
+              - https://localhost:8443/health/instance
+            failureThreshold: ${{QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD}}
+            timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
+            periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
           livenessProbe:
             exec:
               command:
@@ -257,7 +268,6 @@ objects:
             timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
           resources:
             limits:
-              cpu: ${{QUAY_APP_CPU_LIMIT}}
               memory: ${{QUAY_APP_MEMORY_LIMIT}}
             requests:
               cpu: ${{QUAY_APP_CPU_REQUEST}}
@@ -357,9 +367,6 @@ parameters:
   - name: QUAY_APP_MEMORY_LIMIT
     value: "4096Mi"
     displayName: "quay app memory limit"
-  - name: QUAY_APP_CPU_LIMIT
-    value: "1"
-    displayName: "quay app CPU limit"
   - name: QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS
     value: "0"
     displayName: quay app deployment min ready seconds
@@ -378,6 +385,15 @@ parameters:
   - name: QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE
     value: "0"
     displayName: quay app deployment max unavailable
+  - name: QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD
+    value: "20"
+    displayName: quay app startup probe initial delay seconds
+  - name: QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS
+    value: "60"
+    displayName: quay app startup probe timeout seconds
+  - name: QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS
+    value: "60"
+    displayName: quay app startup probe initial delay seconds
   - name: QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS
     value: "15"
     displayName: quay app liveness probe initial delay seconds
@@ -396,15 +412,15 @@ parameters:
   - name: QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS
     value: "10"
     displayName: quay app readiness probe timeout
-  - name: DEBUGLOG
-    value: "false"
-    displayName: debug log
   - name: QUAY_DISABLE_MIN_REPLICAS_CHECK
     value: "check_not_disabled"
     displayName: disable DVO check for minimum replicas
   - name: QUAY_DISABLE_MIN_REPLICAS_REASON
     value: ""
     displayName: reason for disabling check
+  - name: DEBUGLOG
+    value: "false"
+    displayName: debug log
   - name: QUAY_APP_COMPONENT_ANNOTATIONS_KEY
     value: "quay-py3-app-deployment"
     displayName: quay app annotation
