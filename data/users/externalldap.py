@@ -248,8 +248,9 @@ class LDAPUsers(FederatedUsers):
                 logger.debug("LDAP referral search exception")
                 return (None, "Username not found")
 
-        except ldap.LDAPError:
+        except ldap.LDAPError as ldaperr:
             logger.debug("LDAP search exception")
+            logger.debug(str(ldaperr))
             return (None, "Username not found")
 
     def _ldap_user_search(
