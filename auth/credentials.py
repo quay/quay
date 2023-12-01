@@ -121,43 +121,44 @@ def validate_credentials(auth_username, auth_password_or_token):
         try:
             robot = model.user.verify_robot(auth_username, auth_password_or_token)
 
-            robot_user, robot_name = parse_robot_username(auth_username)
+            logger.debug("Successfully validated credentials for robot %s", auth_username)
 
-            owner = model.user.get_nonrobot_user(robot_user)
+            return ValidateResult(AuthKind.credentials, robot=robot), CredentialKind.robot
+        except model.DeactivatedRobotOwnerException as dre:
+            robot_owner, robot_name = parse_robot_username(auth_username)
 
-            if owner and not owner.enabled:
-                logger.debug("Tried to use a robot for a disabled user: %s", auth_username)
+            logger.debug(
+                "Tried to use the robot %s for a disabled user: %s", (robot_name, robot_owner)
+            )
 
-                error_message = "This user has been disabled. Please contact your administrator."
+            error_message = (
+                "The owning user of robot '%s' has been disabled. Please contact your administrator."
+                % robot_name
+            )
 
-                if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
-                    log_action(
-                        "login_failure",
-                        owner.username,
-                        {
-                            "type": "v2auth",
-                            "kind": "robot",
-                            "robot": auth_username,
-                            "username": owner.username,
-                            "useragent": request.user_agent.string,
-                            "message": error_message,
-                        },
-                        performer=robot,
-                    )
-
-                return (
-                    ValidateResult(AuthKind.credentials, error_message=error_message),
-                    CredentialKind.robot,
+            if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
+                log_action(
+                    "login_failure",
+                    robot_owner,
+                    {
+                        "type": "v2auth",
+                        "kind": "robot",
+                        "robot": auth_username,
+                        "username": robot_owner,
+                        "useragent": request.user_agent.string,
+                        "message": error_message,
+                    },
+                    performer=robot,
                 )
 
-            logger.debug("Successfully validated credentials for robot %s", auth_username)
-            return ValidateResult(AuthKind.credentials, robot=robot), CredentialKind.robot
+            return (
+                ValidateResult(AuthKind.credentials, error_message=error_message),
+                CredentialKind.robot,
+            )
         except model.InvalidRobotCredentialException as ire:
             logger.warning("Failed to validate credentials for robot %s: %s", auth_username, ire)
 
-            robot_user, _ = parse_robot_username(auth_username)
-
-            owner = model.user.get_nonrobot_user(robot_user)
+            robot_owner, _ = parse_robot_username(auth_username)
 
             try:
                 performer = model.user.lookup_robot(auth_username)
@@ -167,12 +168,12 @@ def validate_credentials(auth_username, auth_password_or_token):
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
                 log_action(
                     "login_failure",
-                    owner.username if owner is not None else None,
+                    robot_owner,
                     {
                         "type": "v2auth",
                         "kind": "robot",
                         "robot": auth_username,
-                        "username": robot_user,
+                        "username": robot_owner,
                         "useragent": request.user_agent.string,
                         "message": str(ire),
                     },
@@ -183,22 +184,28 @@ def validate_credentials(auth_username, auth_password_or_token):
                 ValidateResult(AuthKind.credentials, error_message=str(ire)),
                 CredentialKind.robot,
             )
-        except model.InvalidRobotException as ire:
-            logger.warning("Failed to validate credentials for robot %s: %s", auth_username, ire)
+        except (model.InvalidRobotException, model.InvalidRobotOwnerException) as ire:
 
-            robot_user, _ = parse_robot_username(auth_username)
+            if isinstance(ire, model.InvalidRobotException):
+                logger.warning(
+                    "Failed to validate credentials for robot %s: %s", auth_username, ire
+                )
+            elif isinstance(ire, model.InvalidRobotOwnerException):
+                logger.warning(
+                    "Tried to use the robot %s for a non-existing user: %s", auth_username, ire
+                )
 
-            owner = model.user.get_nonrobot_user(robot_user)
+            robot_owner, _ = parse_robot_username(auth_username)
 
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
                 log_action(
                     "login_failure",
-                    owner.username if owner is not None else None,
+                    robot_owner if not isinstance(ire, model.InvalidRobotOwnerException) else None,
                     {
                         "type": "v2auth",
                         "kind": "robot",
                         "robot": auth_username,
-                        "username": robot_user,
+                        "username": robot_owner,
                         "useragent": request.user_agent.string,
                         "message": str(ire),
                     },
