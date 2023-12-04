@@ -10,8 +10,8 @@ from data import model
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
-    nickname,
     log_action,
+    nickname,
     path_param,
     request_error,
     require_scope,
