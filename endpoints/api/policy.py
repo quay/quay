@@ -10,6 +10,7 @@ from data import model
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
+    nickname,
     path_param,
     request_error,
     require_scope,
@@ -50,7 +51,11 @@ class OrgAutoPrunePolicies(ApiResource):
     }
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("listOrganizationAutoPrunePolicies")
     def get(self, orgname):
+        """
+        Lists the auto-prune policies for the organization
+        """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
@@ -61,7 +66,11 @@ class OrgAutoPrunePolicies(ApiResource):
 
     @require_scope(scopes.ORG_ADMIN)
     @validate_json_request("AutoPrunePolicyConfig")
+    @nickname("createOrganizationAutoPrunePolicy")
     def post(self, orgname):
+        """
+        Creates an auto-prune policy for the organization
+        """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
@@ -120,7 +129,11 @@ class OrgAutoPrunePolicy(ApiResource):
     }
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("getOrganizationAutoPrunePolicy")
     def get(self, orgname, policy_uuid):
+        """
+        Fetches the auto-prune policy for the organization
+        """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
@@ -133,7 +146,11 @@ class OrgAutoPrunePolicy(ApiResource):
 
     @require_scope(scopes.ORG_ADMIN)
     @validate_json_request("AutoPrunePolicyConfig")
+    @nickname("updateOrganizationAutoPrunePolicy")
     def put(self, orgname, policy_uuid):
+        """
+        Updates the auto-prune policy for the organization
+        """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
@@ -166,7 +183,11 @@ class OrgAutoPrunePolicy(ApiResource):
         return {"uuid": policy_uuid}, 204
 
     @require_scope(scopes.ORG_ADMIN)
+    @nickname("deleteOrganizationAutoPrunePolicy")
     def delete(self, orgname, policy_uuid):
+        """
+        Deletes the auto-prune policy for the organization
+        """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
@@ -209,7 +230,11 @@ class UserAutoPrunePolicies(ApiResource):
     }
 
     @require_user_admin()
+    @nickname("listUserAutoPrunePolicies")
     def get(self):
+        """
+        Lists the auto-prune policies for the currently logged in user
+        """
         user = get_authenticated_user()
 
         policies = model.autoprune.get_namespace_autoprune_policies_by_orgname(user.username)
@@ -218,7 +243,11 @@ class UserAutoPrunePolicies(ApiResource):
 
     @require_user_admin()
     @validate_json_request("AutoPrunePolicyConfig")
+    @nickname("createUserAutoPrunePolicy")
     def post(self):
+        """
+        Creates the auto-prune policy for the currently logged in user
+        """
         user = get_authenticated_user()
 
         app_data = request.get_json()
@@ -273,7 +302,11 @@ class UserAutoPrunePolicy(ApiResource):
     }
 
     @require_user_admin()
+    @nickname("getUserAutoPrunePolicy")
     def get(self, policy_uuid):
+        """
+        Fetches the auto-prune policy for the currently logged in user
+        """
         user = get_authenticated_user()
 
         policy = model.autoprune.get_namespace_autoprune_policy(user.username, policy_uuid)
@@ -284,7 +317,11 @@ class UserAutoPrunePolicy(ApiResource):
 
     @require_user_admin()
     @validate_json_request("AutoPrunePolicyConfig")
+    @nickname("updateUserAutoPrunePolicy")
     def put(self, policy_uuid):
+        """
+        Updates the auto-prune policy for the currently logged in user
+        """
         user = get_authenticated_user()
 
         app_data = request.get_json()
@@ -315,7 +352,11 @@ class UserAutoPrunePolicy(ApiResource):
         return {"uuid": policy_uuid}, 204
 
     @require_user_admin()
+    @nickname("deleteUserAutoPrunePolicy")
     def delete(self, policy_uuid):
+        """
+        Deletes the auto-prune policy for the currently logged in user
+        """
         user = get_authenticated_user()
 
         try:
