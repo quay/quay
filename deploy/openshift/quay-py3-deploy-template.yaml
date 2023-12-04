@@ -235,7 +235,8 @@ objects:
           - /quay-registry/quay-entrypoint.sh
           - ${{QUAY_ENTRYPOINT}}
           ports:
-          - containerPort: 8443
+          - containerPort: ${{LOADBALANCER_SERVICE_TARGET_PORT}}
+          - containerPort: ${{LOADBALANCER_SERVICE_PROXY_TARGET_PORT}}
           volumeMounts:
           - name: configvolume
             mountPath: /conf/stack
@@ -244,7 +245,7 @@ objects:
               command:
               - curl
               - -k
-              - https://localhost:8443/health/instance
+              - https://localhost:${{LOADBALANCER_SERVICE_TARGET_PORT}}/health/instance
             failureThreshold: ${{QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD}}
             timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
             periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
@@ -253,7 +254,7 @@ objects:
               command:
               - curl
               - -k
-              - https://localhost:8443/health/instance
+              - https://localhost:${{LOADBALANCER_SERVICE_TARGET_PORT}}/health/instance
             initialDelaySeconds: ${{QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS}}
@@ -262,7 +263,7 @@ objects:
               command:
               - curl
               - -k
-              - https://localhost:8443/health/endtoend
+              - https://localhost:${{LOADBALANCER_SERVICE_TARGET_PORT}}/health/endtoend
             initialDelaySeconds: ${{QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_APP_READINESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
