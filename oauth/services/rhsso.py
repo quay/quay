@@ -60,6 +60,13 @@ class RHSSOOAuthService(OIDCLoginService):
                 # This generates a generic OAUTH error page
                 # also any issues with reaching the export
                 # compliance API should trigger this
-                raise OAuthLoginException(str(e))
+                # Adding error log to capture the error on sentry without causing quay.io logins to fail
+                logger.error(
+                    f"Got unknown response from export compliance service: {result.text}, with status_code: {result.status_code}"
+                    f"for sub: {sub}, lusername: {lusername}"
+                    f"Failing with exception as: {str(e)}",
+                    extra={"stack": True},
+                    exc_info=True,
+                )
 
         return sub, lusername, email_address
