@@ -10,6 +10,7 @@ from data import model
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
+    log_action,
     nickname,
     path_param,
     request_error,
@@ -98,6 +99,16 @@ class OrgAutoPrunePolicies(ApiResource):
         except model.NamespaceAutoPrunePolicyAlreadyExists as ex:
             request_error(ex)
 
+        log_action(
+            "create_namespace_autoprune_policy",
+            orgname,
+            {
+                "method": policy_config["method"],
+                "value": policy_config["value"],
+                "namespace": orgname,
+            },
+        )
+
         return {"uuid": policy.uuid}, 201
 
 
@@ -180,6 +191,16 @@ class OrgAutoPrunePolicy(ApiResource):
         except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
             raise NotFound()
 
+        log_action(
+            "update_namespace_autoprune_policy",
+            orgname,
+            {
+                "method": policy_config["method"],
+                "value": policy_config["value"],
+                "namespace": orgname,
+            },
+        )
+
         return {"uuid": policy_uuid}, 204
 
     @require_scope(scopes.ORG_ADMIN)
@@ -200,6 +221,12 @@ class OrgAutoPrunePolicy(ApiResource):
             raise NotFound()
         except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
             raise NotFound()
+
+        log_action(
+            "delete_namespace_autoprune_policy",
+            orgname,
+            {"policy_uuid": policy_uuid, "namespace": orgname},
+        )
 
         return {"uuid": policy_uuid}, 200
 
@@ -271,6 +298,16 @@ class UserAutoPrunePolicies(ApiResource):
             request_error(ex)
         except model.NamespaceAutoPrunePolicyAlreadyExists as ex:
             request_error(ex)
+
+        log_action(
+            "create_namespace_autoprune_policy",
+            user.username,
+            {
+                "method": policy_config["method"],
+                "value": policy_config["value"],
+                "namespace": user.username,
+            },
+        )
 
         return {"uuid": policy.uuid}, 201
 
@@ -349,6 +386,16 @@ class UserAutoPrunePolicy(ApiResource):
         except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
             raise NotFound()
 
+        log_action(
+            "update_namespace_autoprune_policy",
+            user.username,
+            {
+                "method": policy_config["method"],
+                "value": policy_config["value"],
+                "namespace": user.username,
+            },
+        )
+
         return {"uuid": policy_uuid}, 204
 
     @require_user_admin()
@@ -367,5 +414,11 @@ class UserAutoPrunePolicy(ApiResource):
             raise NotFound()
         except model.NamespaceAutoPrunePolicyDoesNotExist as ex:
             raise NotFound()
+
+        log_action(
+            "delete_namespace_autoprune_policy",
+            user.username,
+            {"policy_uuid": policy_uuid, "namespace": user.username},
+        )
 
         return {"uuid": policy_uuid}, 200

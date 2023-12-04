@@ -506,6 +506,9 @@ angular.module('quay').directive('logsView', function () {
           }
         },
         'logout_success': 'Logout from Quay',
+        'create_namespace_autoprune_policy': 'Autoprune policy created for namespace {namespace}[[ with policy method {method} and value {value}]]',
+        'update_namespace_autoprune_policy': 'Autoprune policy updated for namespace {namespace}[[ with policy method {method} and value {value}]]',
+        'delete_namespace_autoprune_policy': 'Autoprune policy deleted for namespace {namespace}[[ with uuid {policy_uuid}]]',
 };
 
       var logKinds = {
