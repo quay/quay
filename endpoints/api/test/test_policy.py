@@ -1,6 +1,9 @@
+import json
+
 import pytest
 
 from data import database, model
+from data.model.log import get_latest_logs_query, get_log_entry_kinds
 from endpoints.api.policy import (
     OrgAutoPrunePolicies,
     OrgAutoPrunePolicy,
@@ -37,6 +40,19 @@ def test_create_org_policy(initialized_db, app):
         )
         org = model.organization.get_organization("sellnsmall")
         assert model.autoprune.namespace_has_autoprune_task(org.id)
+
+        # Check audit log was created
+        logs = list(get_latest_logs_query(performer="devtable", namespace="sellnsmall"))
+        log_kinds = get_log_entry_kinds()
+        log = None
+        for l in logs:
+            if l.kind == log_kinds["create_namespace_autoprune_policy"]:
+                log = l
+                break
+        assert log is not None
+        assert json.loads(log.metadata_json)["method"] == "creation_date"
+        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["namespace"] == "sellnsmall"
 
 
 def test_create_org_policy_already_existing(initialized_db, app):
@@ -101,6 +117,19 @@ def test_update_org_policy(initialized_db, app):
         assert get_response["method"] == "creation_date"
         assert get_response["value"] == "2w"
 
+        # Check audit log was created
+        logs = list(get_latest_logs_query(performer="devtable", namespace="buynlarge"))
+        log_kinds = get_log_entry_kinds()
+        log = None
+        for l in logs:
+            if l.kind == log_kinds["update_namespace_autoprune_policy"]:
+                log = l
+                break
+        assert log is not None
+        assert json.loads(log.metadata_json)["method"] == "creation_date"
+        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["namespace"] == "buynlarge"
+
 
 def test_update_org_policy_nonexistent_policy(initialized_db, app):
     with client_with_identity("devtable", app) as cl:
@@ -133,6 +162,18 @@ def test_delete_org_policy(initialized_db, app):
             {"orgname": "buynlarge", "policy_uuid": policy_uuid},
             expected_code=404,
         )
+
+        # Check audit log was created
+        logs = list(get_latest_logs_query(performer="devtable", namespace="buynlarge"))
+        log_kinds = get_log_entry_kinds()
+        log = None
+        for l in logs:
+            if l.kind == log_kinds["delete_namespace_autoprune_policy"]:
+                log = l
+                break
+        assert log is not None
+        assert json.loads(log.metadata_json)["policy_uuid"] == policy_uuid
+        assert json.loads(log.metadata_json)["namespace"] == "buynlarge"
 
 
 def test_delete_org_policy_nonexistent_policy(initialized_db, app):
@@ -171,6 +212,19 @@ def test_create_user_policy(initialized_db, app):
         )
         org = model.user.get_user("freshuser")
         assert model.autoprune.namespace_has_autoprune_task(org.id)
+
+        # Check audit log was created
+        logs = list(get_latest_logs_query(performer="freshuser", namespace="freshuser"))
+        log_kinds = get_log_entry_kinds()
+        log = None
+        for l in logs:
+            if l.kind == log_kinds["create_namespace_autoprune_policy"]:
+                log = l
+                break
+        assert log is not None
+        assert json.loads(log.metadata_json)["method"] == "creation_date"
+        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["namespace"] == "freshuser"
 
 
 def test_create_user_policy_already_existing(initialized_db, app):
@@ -223,6 +277,19 @@ def test_update_user_policy(initialized_db, app):
         assert get_response["method"] == "creation_date"
         assert get_response["value"] == "2w"
 
+        # Check audit log was created
+        logs = list(get_latest_logs_query(performer="devtable", namespace="devtable"))
+        log_kinds = get_log_entry_kinds()
+        log = None
+        for l in logs:
+            if l.kind == log_kinds["update_namespace_autoprune_policy"]:
+                log = l
+                break
+        assert log is not None
+        assert json.loads(log.metadata_json)["method"] == "creation_date"
+        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["namespace"] == "devtable"
+
 
 def test_update_user_policy_nonexistent_policy(initialized_db, app):
     with client_with_identity("devtable", app) as cl:
@@ -255,6 +322,18 @@ def test_delete_user_policy(initialized_db, app):
             {"orgname": "devtable", "policy_uuid": policy_uuid},
             expected_code=404,
         )
+
+        # Check audit log was created
+        logs = list(get_latest_logs_query(performer="devtable", namespace="devtable"))
+        log_kinds = get_log_entry_kinds()
+        log = None
+        for l in logs:
+            if l.kind == log_kinds["delete_namespace_autoprune_policy"]:
+                log = l
+                break
+        assert log is not None
+        assert json.loads(log.metadata_json)["policy_uuid"] == policy_uuid
+        assert json.loads(log.metadata_json)["namespace"] == "devtable"
 
 
 def test_delete_user_policy_nonexistent_policy(initialized_db, app):
