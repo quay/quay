@@ -3,8 +3,24 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.1"></a>
+## [v3.10.1] - 2023-12-05
+### [Redhat-3.10] Api
+- [1499ae5c](https://github.com/quay/quay/commit/1499ae5cf2e0b6dc3adf35dd262d2f0d91258a9f): adding nickname decorator to autoprune policy endpoints (PROJQUAY-6483) ([#2535](https://github.com/quay/quay/issues/2535))
+### [Redhat-3.10] Autoprune
+- [73b36220](https://github.com/quay/quay/commit/73b36220b35e929fb7b57f893dbfccdfb4c45c9c): adding audit logs to namespace autoprune policy API (PROJQUAY-6229) ([#2538](https://github.com/quay/quay/issues/2538))
+### [Redhat-3.10] Storage
+- [9dde0359](https://github.com/quay/quay/commit/9dde03599862f6f4f3b3ef41ebb1db8234442edb): adding IBM COS storage option (PROJQUAY-2679) ([#2536](https://github.com/quay/quay/issues/2536))
+### [Redhat-3.10] Ui
+- [d4b18ad4](https://github.com/quay/quay/commit/d4b18ad4fa01eda0cd74d0b9ed3063e5686195c4): fix search for bulk delete default permission modal (PROJQUAY-6369) ([#2467](https://github.com/quay/quay/issues/2467))
+- [bf6733ff](https://github.com/quay/quay/commit/bf6733ffa24a67dcb2b5dcddc8e38a883f234328): fix tab visibility for teams and membership (PROJQUAY-6333) ([#2482](https://github.com/quay/quay/issues/2482))
+- [fea7c2cb](https://github.com/quay/quay/commit/fea7c2cb7c82b9b08651ba1b3e6212c6ab4d0cec): breadcrumbs on new ui (PROJQUAY-5452) ([#2490](https://github.com/quay/quay/issues/2490))
+- [4d3aa4dd](https://github.com/quay/quay/commit/4d3aa4dd0a4c92801c0ea2048fa16e9fac307054): Allow adding user from create team wizard (PROJQUAY-6336) ([#2502](https://github.com/quay/quay/issues/2502))
+### [Redhat-3.10] User(Robots)
+- [2044413b](https://github.com/quay/quay/commit/2044413b83273bc49ac7d3bb929763722e5a2376): disallow robot login and create 2nd (PROJQUAY-5968) ([#2541](https://github.com/quay/quay/issues/2541))
+
 <a name="v3.10.0"></a>
-## [v3.10.0] - 2023-10-23
+## [v3.10.0] - 2023-11-15
 ### Api
 - [e5a5e178](https://github.com/quay/quay/commit/e5a5e17814670305463e1c230359963d4ccb01fe): accepting empty body for create robot endpoints (PROJQUAY-6224) ([#2420](https://github.com/quay/quay/issues/2420))
 - [c93b6d08](https://github.com/quay/quay/commit/c93b6d080d0464a0ac40b71f0b76b906adebedfa): fix duplicate robot accounts (PROJQUAY-5931) ([#2192](https://github.com/quay/quay/issues/2192))
@@ -367,9 +383,23 @@
 - [dd96025f](https://github.com/quay/quay/commit/dd96025ff56f92f87042655cd65302a9d49e8b98): Support custom LDAP memberOf attribute (PROJQUAY-5928) ([#2406](https://github.com/quay/quay/issues/2406))
 ### User(Robots)
 - [67028af9](https://github.com/quay/quay/commit/67028af9e22c2d5e3754e3700eaba8a71473eb50): disallow robot login and create (PROJQUAY-5968) ([#2155](https://github.com/quay/quay/issues/2155))
+### [Redhat-3.10] Autoprune
+- [3f733179](https://github.com/quay/quay/commit/3f7331794d3668ca84eb4ccb1b8498beabc61518): validating input to autoprune policy (PROJQUAY-6230) ([#2461](https://github.com/quay/quay/issues/2461))
+### [Redhat-3.10] Federationuser(Ldap)
+- [8ecfd47f](https://github.com/quay/quay/commit/8ecfd47f6a7ed1eb0321c789bc1730cb34ecf9b8): fixing keepalive settings for LDAP connections (PROJQUAY-5137) ([#2489](https://github.com/quay/quay/issues/2489))
+### [Redhat-3.10] Secscan
+- [db1c7368](https://github.com/quay/quay/commit/db1c7368253917b34650359774dcd2c9781e010c): enable gc for manifests by default (PROJQUAY-4126) ([#2486](https://github.com/quay/quay/issues/2486))
+### [Redhat-3.10] Ui
+- [304d35b8](https://github.com/quay/quay/commit/304d35b86def7bf6624a61e7585829df67307b23): Add form for repository state (PROJQUAY-5715) ([#2484](https://github.com/quay/quay/issues/2484))
+- [026561ce](https://github.com/quay/quay/commit/026561ce932b237494b0f773714222f6950db38c): allow current day to be selected for tag expiration (PROJQUAY-6262) ([#2466](https://github.com/quay/quay/issues/2466))
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.5"></a>
+## [v3.9.5] - 2023-11-07
+### Build(Deps)
+- [384aa6e5](https://github.com/quay/quay/commit/384aa6e5df2af3ca4fd46b8f7243ca167676716a): bump urllib3 from 1.26.9 to 1.26.18 (PROJQUAY-6110) ([#2458](https://github.com/quay/quay/issues/2458))
 
 <a name="v3.9.4"></a>
 ## [v3.9.4] - 2023-10-26
@@ -1868,8 +1898,10 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.0...HEAD
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.4...v3.10.0
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.1...HEAD
+[v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.5...v3.10.0
+[v3.9.5]: https://github.com/quay/quay/compare/v3.9.4...v3.9.5
 [v3.9.4]: https://github.com/quay/quay/compare/v3.9.3...v3.9.4
 [v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
 [v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
