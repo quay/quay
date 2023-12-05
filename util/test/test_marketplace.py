@@ -52,6 +52,48 @@ mocked_user_service_response = [
     },
 ]
 
+mocked_organization_only_response = [
+    {
+        "id": "12345678",
+        "accountRelationships": [
+            {
+                "emails": [{"address": "example@example.com", "status": "enabled"}],
+                "accountId": "fakeid",
+                "startDate": "2022-09-19T04:18:19.228Z",
+                "id": "fakeid",
+                "account": {
+                    "id": "222222222",
+                    "cdhPartyNumber": "11111111",
+                    "ebsAccountNumber": "102030",
+                    "name": "Red Hat",
+                    "displayName": "Red Hat",
+                    "status": "enabled",
+                    "type": "organization",
+                },
+            }
+        ],
+    },
+    {
+        "id": "87654321",
+        "accountRelationships": [
+            {
+                "emails": [{"address": "example@example.com", "status": "enabled"}],
+                "accountId": "fakeid",
+                "startDate": "2022-09-20T14:31:09.974Z",
+                "id": "fakeid",
+                "account": {
+                    "id": "fakeid",
+                    "cdhPartyNumber": "0000000",
+                    "ebsAccountNumber": "1234567",
+                    "name": "Test Org",
+                    "status": "enabled",
+                    "type": "organization",
+                },
+            }
+        ],
+    },
+]
+
 
 class TestMarketplace:
     @patch("requests.request")
@@ -78,3 +120,7 @@ class TestMarketplace:
 
         customer_id = user_api.lookup_customer_id("example@example.com")
         assert customer_id == "1234567"
+
+        requests_mock.return_value.content = json.dumps(mocked_organization_only_response)
+        customer_id = user_api.lookup_customer_id("example@example.com")
+        assert customer_id is None
