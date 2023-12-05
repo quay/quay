@@ -116,7 +116,7 @@ export function useFetchTeams(orgName: string) {
   return {
     teams: teams,
     filteredTeams,
-    paginatedTeams: paginatedTeams,
+    paginatedTeams,
     isLoadingTeams: isLoading || isPlaceholderData,
     error: errorLoadingTeams,
     page,

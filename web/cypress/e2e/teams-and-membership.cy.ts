@@ -47,7 +47,7 @@ describe('Teams and membership page', () => {
 
     cy.visit('/organization/testorg?tab=Teamsandmembership');
 
-    // create default permission drawer
+    // create new team button
     cy.get(`[data-testid="create-new-team-button"]`).click();
 
     // create team modal
@@ -218,5 +218,34 @@ describe('Teams and membership page', () => {
     cy.get('.pf-v5-c-alert.pf-m-success')
       .contains(`Updated repo perm for team: ${team} successfully`)
       .should('exist');
+  });
+
+  it("A user(member or creator) in the team can view teams info but can't edit without admin role", () => {
+    const team = 'teamforreadonly';
+    const organization = 'user2org1';
+    const user = 'user1';
+    cy.visit(`/organization/${organization}?tab=Teamsandmembership`);
+    cy.get('#Teams').click();
+
+    // Search for a single team
+    cy.get('#teams-view-search').type(`${team}`);
+    cy.contains('1 - 1 of 1');
+
+    // verify create new team button not visible
+    cy.get(`[data-testid="create-new-team-button"]`).should('not.exist');
+
+    // verify create team role dropdown is disabled
+    cy.get(`[data-testid="${team}-team-dropdown-toggle"]`).should(
+      'be.disabled',
+    );
+    // verify kebab option is not seen
+    cy.get(`[data-testid="${team}-toggle-kebab"]`).should('not.exist');
+
+    // verify editable options in manage members view cannot be seen
+    cy.get(`[data-testid="member-count-for-${team}"]`).contains('1').click();
+    cy.url().should('include', `teams/${team}`);
+    cy.get('[data-testid="add-new-member-button"]').should('not.exist');
+    cy.get(`[data-testid="edit-team-description-btn"]`).should('not.exist');
+    cy.get(`[data-testid="${user}-delete-icon"]`).should('not.exist');
   });
 });
