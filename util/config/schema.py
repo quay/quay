@@ -1398,6 +1398,10 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "If robot accounts are prevented from any interaction as well as from being created. Defaults to False",
         },
+        "ROBOTS_WHITELIST": {
+            "type": "array",
+            "description": "List of robot accounts allowed for example, mirroring. Defaults to empty",
+        },
         "FEATURE_AUTO_PRUNE": {
             "type": "boolean",
             "description": "Enable functionality related to the auto-pruning of tags",
