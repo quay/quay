@@ -299,6 +299,8 @@ objects:
             value: ${DB_CONNECTION_POOLING}
           - name: WORKER_COUNT_WEB
             value: ${WORKER_COUNT_WEB}
+          - name: WORKER_COUNT_REGISTRY
+            value: ${WORKER_COUNT_REGISTRY}
 parameters:
   - name: NAME
     value: "quay-py3"
@@ -506,4 +508,6 @@ parameters:
   - name: IGNORE_VALIDATION
     value: "false"
   - name: WORKER_COUNT_WEB
-    value: "8"
+    value: "4"
+  - name: WORKER_COUNT_REGISTRY
+    value: "28"
