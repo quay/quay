@@ -82,17 +82,17 @@ export default function DefaultPermissionsList(
 
   const mapOfColNamesToTableData = {
     'Repository Created By': {
-      label: 'creator',
+      label: 'createdBy',
       transformFunc: (perm: IDefaultPermission) => {
         return `${perm.createdBy}`;
       },
     },
     'Permission Applied To': {
-      label: 'members',
+      label: 'appliedTo',
       transformFunc: (perm: IDefaultPermission) => perm.appliedTo,
     },
     Permission: {
-      label: 'team role',
+      label: 'permission',
       transformFunc: (perm: IDefaultPermission) => (
         <Dropdown
           toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
