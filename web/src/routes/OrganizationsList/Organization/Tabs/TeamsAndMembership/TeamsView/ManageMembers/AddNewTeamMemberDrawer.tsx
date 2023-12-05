@@ -89,7 +89,7 @@ export default function AddNewTeamMemberDrawer(
       onSelect={(e: Entity) => {
         setSelectedEntity(e);
       }}
-      onClear={setSelectedEntity}
+      onClear={() => setSelectedEntity(null)}
       value={selectedEntity?.name}
       onError={() => setError('Unable to look up users')}
       defaultOptions={creatorDefaultOptions}

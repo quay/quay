@@ -29,8 +29,8 @@ export function useAddMembersToTeam(org: string, {onSuccess, onError}) {
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['members']);
         queryClient.invalidateQueries(['teams']);
+        queryClient.invalidateQueries(['members']);
         queryClient.invalidateQueries(['teamMembers']);
       },
       onError: () => {

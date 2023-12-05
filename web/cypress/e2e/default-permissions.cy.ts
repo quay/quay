@@ -164,7 +164,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="next-btn"]').click();
 
     // step - Add team member
-    cy.get('#search-robot-account-dropdown').click();
+    cy.get('#search-member-dropdown').click();
     cy.get(`[data-testid="${robotAccnt}-robot-accnt"]`).click();
     cy.get('[data-testid="next-btn"]').click();
 
@@ -251,7 +251,7 @@ describe('Default permissions page', () => {
     cy.get('[data-testid="next-btn"]').click();
 
     // step - Add team member from the drawer
-    cy.get('#search-robot-account-dropdown').click();
+    cy.get('#search-member-dropdown').click();
     cy.get(`[data-testid="create-new-robot-accnt-btn"]`).click();
     cy.get('[data-testid="new-robot-name-input"]').type(`${newRobotName}`);
     cy.get('[data-testid="new-robot-description-input"]').type(
