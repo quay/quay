@@ -68,8 +68,13 @@ class RedHatUserApi(object):
         if not info:
             logger.debug("request to %s did not return any data", self.user_endpoint)
             return None
-        account_number = info[0]["accountRelationships"][0]["account"].get("ebsAccountNumber")
-        return account_number
+        for account in info:
+            if account["accountRelationships"][0]["account"]["type"] == "person":
+                account_number = account["accountRelationships"][0]["account"].get(
+                    "ebsAccountNumber"
+                )
+                return account_number
+        return None
 
 
 class RedHatSubscriptionApi(object):
