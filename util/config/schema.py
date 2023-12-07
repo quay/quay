@@ -1417,5 +1417,10 @@ CONFIG_SCHEMA = {
             "description": "Number of seconds to wait after a write operation in the UI",
             "x-example": 3,
         },
+        "FEATURE_BLOCK_UNSIGNED_IMAGES": {
+            "type": "boolean",
+            "description": "Enable functionality related to blocking unsigned images",
+            "x-example": False,
+        },
     },
 }

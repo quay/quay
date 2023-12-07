@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections import namedtuple
@@ -516,3 +517,27 @@ def _build_blob_map(
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
     return blob_map
+
+
+def is_signed_manifest(manifest: Manifest):
+    try:
+        signature_tag_name = manifest.digest.replace(":", "-") + ".sig"
+        signature_manifest = (
+            Manifest.select(Manifest.manifest_bytes)
+            .join(Tag)
+            .where(Tag.name == signature_tag_name, Manifest.repository == manifest.repository.id)
+            .get()
+        )
+    except Manifest.DoesNotExist:
+        return False
+
+    try:
+        signature_manifest = json.loads(signature_manifest.manifest_bytes)
+    except json.JSONDecodeError as e:
+        return False
+
+    for layer in signature_manifest.get("layers", []):
+        if layer.get("mediaType", "") == "application/vnd.dev.cosign.simplesigning.v1+json":
+            return True
+
+    return False

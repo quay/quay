@@ -863,3 +863,5 @@ class DefaultConfig(ImmutableConfig):
 
     # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
     ROBOTS_WHITELIST: Optional[List[str]] = []
+
+    FEATURE_BLOCK_UNSIGNED_IMAGES = False
