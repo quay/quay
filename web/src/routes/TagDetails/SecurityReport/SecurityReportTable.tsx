@@ -210,7 +210,7 @@ export default function SecurityReportTable(props: SecurityDetailsProps) {
             />
           </ToolbarItem>
           <ToolbarItem>
-            <Button onClick={() => props.setIsOpen(true)}>
+            <Button onClick={() => props.setSuppressionModalOpen(true)}>
               Set Suppressions
             </Button>
           </ToolbarItem>
@@ -346,5 +346,5 @@ export default function SecurityReportTable(props: SecurityDetailsProps) {
 
 export interface SecurityDetailsProps {
   features: Feature[];
-  setIsOpen: (isOpen: boolean) => void;
+  setSuppressionModalOpen: (isOpen: boolean) => void;
 }

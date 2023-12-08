@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useRecoilValue } from 'recoil';
+import {useState} from 'react';
+import {useRecoilValue} from 'recoil';
 import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
 import RequestError from 'src/components/errors/RequestError';
-import { isErrorString } from 'src/resources/ErrorHandling';
-import { Tag } from 'src/resources/TagResource';
-import { VulnerabilitySuppressionsModal } from 'src/routes/RepositoryDetails/Tags/VulnerabilitySuppressionsModal';
-import { SecurityReportChart } from './SecurityReportChart';
+import {isErrorString} from 'src/resources/ErrorHandling';
+import {Tag} from 'src/resources/TagResource';
+import {VulnerabilitySuppressionsModal} from 'src/components/modals/VulnerabilitySuppressionsModal';
+import {SecurityReportChart} from './SecurityReportChart';
 import {
   FailedState,
   QueuedState,
@@ -17,7 +17,6 @@ import {
 import SecurityReportTable from './SecurityReportTable';
 
 export default function SecurityReport(props: SecurityReportProps) {
-
   const [isOpen, setIsOpen] = useState(false);
   const data = useRecoilValue(SecurityDetailsState);
   const error = useRecoilValue(SecurityDetailsErrorState);
@@ -39,14 +38,11 @@ export default function SecurityReport(props: SecurityReportProps) {
   const features = data ? data.data.Layer.Features : null;
   return (
     <>
-      <SecurityReportChart
-        features={features}
-        setIsOpen={setIsOpen}
-      />
+      <SecurityReportChart features={features} />
       <hr />
       <SecurityReportTable
         features={features}
-        setIsOpen={setIsOpen}
+        setSuppressionModalOpen={setIsOpen}
       />
 
       <VulnerabilitySuppressionsModal

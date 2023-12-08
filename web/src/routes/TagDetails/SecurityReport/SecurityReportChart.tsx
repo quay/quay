@@ -234,7 +234,6 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
             patchesAvailable={patchesAvailable}
             suppressed={suppressed}
             suppressionStats={suppressionStats}
-            setIsOpen={props.setIsOpen}
           />
         </SplitItem>
         <SplitItem>
@@ -244,7 +243,6 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
             patchesAvailable={patchesAvailable}
             suppressed={suppressed}
             suppressionStats={suppressionStats}
-            setIsOpen={props.setIsOpen}
           />
         </SplitItem>
       </Split>
@@ -275,10 +273,8 @@ interface VulnerabilityStatsProps {
   patchesAvailable: number;
   suppressed: number;
   suppressionStats: VulnerabilitySuppressionStats;
-  setIsOpen: (isOpen: boolean) => void;
 }
 
 interface SecurityDetailsChartProps {
-  setIsOpen: (isOpen: boolean) => void;
   features: Feature[];
 }
