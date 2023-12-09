@@ -51,6 +51,7 @@ export default function SecurityReport(props: SecurityReportProps) {
         org={props.org}
         repo={props.repo}
         digest={props.digest}
+        tag={props.tag}
       />
     </>
   );
