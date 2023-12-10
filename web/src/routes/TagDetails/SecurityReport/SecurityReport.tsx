@@ -17,7 +17,7 @@ import {
 import SecurityReportTable from './SecurityReportTable';
 
 export default function SecurityReport(props: SecurityReportProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isSuppressionModalOpen, setIsSuppressionModalOpen] = useState(false);
   const data = useRecoilValue(SecurityDetailsState);
   const error = useRecoilValue(SecurityDetailsErrorState);
 
@@ -42,17 +42,19 @@ export default function SecurityReport(props: SecurityReportProps) {
       <hr />
       <SecurityReportTable
         features={features}
-        setSuppressionModalOpen={setIsOpen}
+        setSuppressionModalOpen={setIsSuppressionModalOpen}
       />
 
-      <VulnerabilitySuppressionsModal
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        org={props.org}
-        repo={props.repo}
-        digest={props.digest}
-        tag={props.tag}
-      />
+      {isSuppressionModalOpen && (
+        <VulnerabilitySuppressionsModal
+          isOpen={isSuppressionModalOpen}
+          setIsOpen={setIsSuppressionModalOpen}
+          org={props.org}
+          repo={props.repo}
+          digest={props.digest}
+          tag={props.tag}
+        />
+      )}
     </>
   );
 }

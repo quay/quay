@@ -1,6 +1,6 @@
-import { AxiosError, AxiosResponse } from 'axios';
+import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
-import { BulkOperationError, assertHttpCode } from './ErrorHandling';
+import {BulkOperationError, assertHttpCode} from './ErrorHandling';
 
 export interface IAvatar {
   name: string;
@@ -29,7 +29,7 @@ export interface IOrganization {
 export async function fetchOrg(orgname: string, signal: AbortSignal) {
   const getOrgUrl = `/api/v1/organization/${orgname}`;
   // TODO: Add return type
-  const response: AxiosResponse = await axios.get(getOrgUrl, { signal });
+  const response: AxiosResponse = await axios.get(getOrgUrl, {signal});
   assertHttpCode(response.status, 200);
   return response.data as IOrganization;
 }
@@ -106,7 +106,7 @@ interface CreateOrgRequest {
 
 export async function createOrg(name: string, email?: string) {
   const createOrgUrl = `/api/v1/organization/`;
-  const reqBody: CreateOrgRequest = { name: name };
+  const reqBody: CreateOrgRequest = {name: name};
   if (email) {
     reqBody.email = email;
   }
@@ -145,9 +145,8 @@ export async function setOrganizationVulnerabilitySuppressions(
 ): Promise<Response> {
   const api = `/api/v1/organization/${namespace}`;
   const response: AxiosResponse<Response> = await axios.put(api, {
-    suppressed_vulnerabilities: suppressions
-  },
-  );
+    suppressed_vulnerabilities: suppressions,
+  });
   assertHttpCode(response.status, 200);
   return response.data;
 }

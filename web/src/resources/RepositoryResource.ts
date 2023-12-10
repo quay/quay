@@ -166,21 +166,15 @@ export async function setRepositoryState(
     state,
   });
 }
-
-export interface RepositoryVulnerabilitySuppressionsResponse {
-  success: boolean;
-}
-
 export async function setRepositoryVulnerabilitySuppressions(
   namespace: string,
   repositoryName: string,
   suppressions: string[],
-): Promise<RepositoryVulnerabilitySuppressionsResponse> {
+): Promise<Response> {
   const api = `/api/v1/repository/${namespace}/${repositoryName}`;
-  const response: AxiosResponse<RepositoryVulnerabilitySuppressionsResponse> =
-    await axios.put(api, {
-      suppressed_vulnerabilities: suppressions,
-    });
+  const response: AxiosResponse<Response> = await axios.put(api, {
+    suppressed_vulnerabilities: suppressions,
+  });
   assertHttpCode(response.status, 200);
   return response.data;
 }
