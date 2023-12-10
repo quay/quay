@@ -3,14 +3,12 @@ Manage the manifests of a repository.
 """
 import json
 import logging
-from datetime import datetime
 from typing import List, Optional
 
 from flask import request
 
 import features
 from app import label_validator, storage
-from data.database import Manifest
 from data.model import (
     InvalidLabelKeyException,
     InvalidMediaTypeException,
