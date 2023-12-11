@@ -1,5 +1,4 @@
 import unittest
-from test.fixtures import *  # noqa: F401, F403
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +19,6 @@ from data.database import (
 )
 from data.model import oci
 from data.registry_model import datatypes, registry_model
-from data.registry_model.shared import SyntheticIDHandler
 from endpoints.test.shared import conduct_call
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -38,6 +36,7 @@ from image.oci import (
 )
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import *  # noqa: F401, F403
+from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
@@ -497,7 +496,7 @@ class TestManifestPullThroughStorage:
             tag = Tag.filter(Tag.repository_id == repository_ref.id).get()
             # get_manifest_for_tag returns a tag of datatypes.Tag, so we convert
             # the one we have to that type.
-            tag = datatypes.Tag.for_tag(tag, SyntheticIDHandler())
+            tag = datatypes.Tag.for_tag(tag)
 
         assert tag is not None
         manifest = registry_model.get_manifest_for_tag(tag)

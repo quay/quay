@@ -13,20 +13,6 @@ class RegistryDataInterface(object):
     """
 
     @abstractmethod
-    def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
-        """
-        Returns the legacy image ID for the tag in the repository or None if none.
-        """
-
-    @abstractmethod
-    def get_legacy_tags_map(self, repository_ref, storage):
-        """
-        Returns a map from tag name to its legacy image ID, for all tags in the repository.
-
-        Note that this can be a *very* heavy operation.
-        """
-
-    @abstractmethod
     def find_matching_tag(self, repository_ref, tag_names):
         """
         Finds an alive tag in the repository matching one of the given tag names and returns it or
@@ -90,14 +76,6 @@ class RegistryDataInterface(object):
         method will fail and return None.
 
         Returns a reference to the (created manifest, tag) or (None, None) on error.
-        """
-
-    @abstractmethod
-    def get_legacy_image(self, repository_ref, docker_image_id, storage, include_blob=False):
-        """
-        Returns the matching LegacyImages under the matching repository, if any.
-
-        If none, returns None.
         """
 
     @abstractmethod

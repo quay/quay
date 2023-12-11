@@ -337,10 +337,6 @@ secscan_model.configure(app, instance_keys, storage)
 
 logs_model.configure(app.config)
 
-# NOTE: We re-use the page token key here as this is just to obfuscate IDs for V1, and
-# does not need to actually be secure.
-registry_model.set_id_hash_salt(app.config.get("PAGE_TOKEN_KEY"))
-
 
 @login_manager.user_loader
 def load_user(user_uuid):

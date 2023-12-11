@@ -256,9 +256,7 @@ class ProxyModel(OCIModel):
             return wrapped_manifest
 
         db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
-        existing_tag = Tag.for_tag(
-            db_tag, self._legacy_image_id_handler, manifest_row=db_tag.manifest
-        )
+        existing_tag = Tag.for_tag(db_tag, manifest_row=db_tag.manifest)
         new_tag = False
         try:
             tag, new_tag = self._update_manifest_for_tag(
@@ -327,7 +325,7 @@ class ProxyModel(OCIModel):
         allotted for the namespace or if there are not enough tags to prune.
         """
         db_tag = oci.tag.get_current_tag(repository_ref.id, tag_name)
-        existing_tag = Tag.for_tag(db_tag, self._legacy_image_id_handler)
+        existing_tag = Tag.for_tag(db_tag)
         if existing_tag is None:
             try:
                 _, tag = self._create_and_tag_manifest(
@@ -453,7 +451,7 @@ class ProxyModel(OCIModel):
                     q.execute()
                     self._create_placeholder_blobs(upstream_manifest, manifest.id, repo_ref.id)
                     db_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
-                    return Tag.for_tag(db_tag, self._legacy_image_id_handler), False
+                    return Tag.for_tag(db_tag), False
 
         # if we got here, the manifest is stale, so we both create a new manifest
         # entry in the db, and retarget the tag.
@@ -506,10 +504,8 @@ class ProxyModel(OCIModel):
                 if tag is None:
                     return None, None
 
-                wrapped_manifest = Manifest.for_manifest(db_manifest, self._legacy_image_id_handler)
-                wrapped_tag = Tag.for_tag(
-                    tag, self._legacy_image_id_handler, manifest_row=db_manifest
-                )
+                wrapped_manifest = Manifest.for_manifest(db_manifest)
+                wrapped_tag = Tag.for_tag(tag, manifest_row=db_manifest)
 
                 if not manifest.is_manifest_list:
                     self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)
@@ -556,10 +552,9 @@ class ProxyModel(OCIModel):
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
                 expiration = self._config.expiration_s or None
                 tag = Tag.for_tag(
-                    oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration),
-                    self._legacy_image_id_handler,
+                    oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration)
                 )
-                wrapped_manifest = Manifest.for_manifest(db_manifest, self._legacy_image_id_handler)
+                wrapped_manifest = Manifest.for_manifest(db_manifest)
 
                 if not manifest.is_manifest_list:
                     self._create_placeholder_blobs(manifest, db_manifest.id, repository_ref.id)

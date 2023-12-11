@@ -216,22 +216,6 @@ def test_repository_tags(repo_namespace, repo_name, registry_model):
     tags = registry_model.list_all_active_repository_tags(repository_ref)
     assert len(tags)
 
-    tags_map = registry_model.get_legacy_tags_map(repository_ref, storage)
-
-    for tag in tags:
-        found_tag = registry_model.get_repo_tag(repository_ref, tag.name)
-        assert found_tag == tag
-
-        retriever = RepositoryContentRetriever(repository_ref.id, storage)
-        legacy_image = tag.manifest.lookup_legacy_image(0, retriever)
-        found_image = registry_model.get_legacy_image(
-            repository_ref, found_tag.manifest.legacy_image_root_id, storage
-        )
-
-        if found_image is not None:
-            assert found_image.docker_image_id == legacy_image.docker_image_id
-            assert tags_map[tag.name] == found_image.docker_image_id
-
 
 @pytest.mark.parametrize(
     "namespace, name, expected_tag_count, has_expired",
@@ -360,42 +344,27 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
     assert len(history) == len(previous_history)
 
 
-@pytest.mark.parametrize(
-    "use_manifest",
-    [
-        True,
-        False,
-    ],
-)
-def test_retarget_tag_history(use_manifest, registry_model):
+def test_retarget_tag_history(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "history")
     history, _ = registry_model.list_repository_tag_history(repository_ref)
 
-    if use_manifest:
-        manifest_or_legacy_image = registry_model.lookup_manifest_by_digest(
-            repository_ref, history[0].manifest_digest, allow_dead=True
-        )
-    else:
-        manifest_or_legacy_image = registry_model.get_legacy_image(
-            repository_ref, history[0].manifest.legacy_image_root_id, storage
-        )
+    manifest = registry_model.lookup_manifest_by_digest(
+        repository_ref, history[0].manifest_digest, allow_dead=True
+    )
 
     # Retarget the tag.
-    assert manifest_or_legacy_image
+    assert manifest
     updated_tag = registry_model.retarget_tag(
         repository_ref,
         "latest",
-        manifest_or_legacy_image,
+        manifest,
         storage,
         docker_v2_signing_key,
         is_reversion=True,
     )
 
     # Ensure the tag has changed targets.
-    if use_manifest:
-        assert updated_tag.manifest_digest == manifest_or_legacy_image.digest
-    else:
-        assert updated_tag.manifest.legacy_image_root_id == manifest_or_legacy_image.docker_image_id
+    assert updated_tag.manifest_digest == manifest.digest
 
     # Ensure history has been updated.
     new_history, _ = registry_model.list_repository_tag_history(repository_ref)
