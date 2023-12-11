@@ -160,20 +160,6 @@ angular.module('quay').directive('headerBar', function () {
           return false;
         }
 
-        // for quay.io only display the toggle for redhat users
-        var user = UserService.currentUser();
-        var domain = Config.getDomain();
-
-        // can happen when we are still loading
-        if (!domain || !user || !user.email) {
-          return false;
-        }
-
-        if (domain.endsWith('quay.io') && !user.email.endsWith('redhat.com')) {
-          return false;
-        }
-
-        // for others (upstream,downstream), show the UI toggle
         return true;
       }
     }
