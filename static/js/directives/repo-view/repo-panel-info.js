@@ -31,8 +31,17 @@ angular.module('quay').directive('repoPanelInfo', function () {
       });
 
       $scope.updateDescription = function(content) {
-        $scope.repository.description = content;
-        $scope.repository.put();
+        var params = {
+          'repository': $scope.repository.namespace + '/' + $scope.repository.name
+        };
+
+        var data = {
+          'description': content
+        };
+
+        ApiService.updateRepo(data, params).then(function() {
+          $scope.repository.description = content;
+        }, ApiService.errorDisplay('Could not update repository description'));
       };
 
       $scope.getAggregatedUsage = function(stats, days) {
