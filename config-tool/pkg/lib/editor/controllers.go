@@ -299,6 +299,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+opts.password)
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
