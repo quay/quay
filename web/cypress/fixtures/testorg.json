@@ -1,0 +1,12 @@
+{
+  "name": "testorg",
+  "email": "",
+  "avatar": {
+    "name": "testorg",
+    "hash": "randomhash2cf4cc52b46227ca8eb034e5bdb84d87283f53187810d201b821c9",
+    "color": "#2ca02c",
+    "kind": "user"
+  },
+  "is_admin": false,
+  "is_member": false
+}
