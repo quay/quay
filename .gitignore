@@ -120,3 +120,6 @@ web/cypress/downloads
 # marketplace
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
+
+# rehash-openssl
+rehash-openssl/target

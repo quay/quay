@@ -1,0 +1,18 @@
+[package]
+name = "rehash-openssl"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "rehash_openssl"
+crate-type = ["cdylib"]
+
+[dependencies]
+hex = "0.4.3"
+openssl = "0.10.61"
+pyo3 = "0.19.0"
+
+[dependencies.ffi]
+version = "*"
+package = "openssl-sys"
