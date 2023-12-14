@@ -181,7 +181,7 @@ RUN set -ex\
 # symlink.
 	; ln -s $QUAYCONF /conf\
 # Make a grip of runtime directories.
-	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage\
+	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" "$QUAYDIR/sqlite/data" /datastorage\
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
@@ -200,7 +200,7 @@ EXPOSE 8080 8443 7443 9091 55443
 # correctly above.
 # It's probably unwise to mount /tmp as a volume but if someone must,
 # make sure it's mode 1777 like /tmp should be.
-VOLUME ["/datastorage", "/tmp", "/conf/stack"]
+VOLUME ["/datastorage", "/tmp", "/conf/stack", "/sqlite/data"]
 # In non-Openshift environments, drop privilege.
 USER 1001
 ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
