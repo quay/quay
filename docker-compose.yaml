@@ -79,6 +79,7 @@ services:
     volumes:
       - ".:/quay-registry"
       - "./local-dev/stack:/quay-registry/conf/stack"
+      - "./local-dev/sqlite:/quay-registry/sqlite/data"
     ports:
       - "8080:8080"
       - "8443:8443"
