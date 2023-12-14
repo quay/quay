@@ -1,8 +1,12 @@
 # pylint: disable=W0401, W0621, W0613, W0614, R0913
-import binascii
 import hashlib
-import tarfile
-from io import BytesIO
+
+from app import app as original_app
+from app import instance_keys
+from data.registry_model import registry_model
+from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.oci.index import OCIIndexBuilder
 from test.fixtures import *
 from test.registry.fixtures import *
 from test.registry.liveserverfixture import *
@@ -13,19 +17,6 @@ from test.registry.protocols import (
     ProtocolOptions,
     layer_bytes_for_contents,
 )
-
-import bencode
-import rehash
-from werkzeug.datastructures import Accept
-
-from app import app as original_app
-from app import instance_keys
-from data.registry_model import registry_model
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
-from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
-from image.docker.schema2.list import DockerSchema2ManifestListBuilder
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from image.oci.index import OCIIndexBuilder
 from util.security.registry_jwt import decode_bearer_header
 from util.timedeltastring import convert_to_timedelta
 
