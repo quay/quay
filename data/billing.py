@@ -375,6 +375,13 @@ def get_plan_using_rh_sku(sku):
 class FakeStripe(object):
     ACTIVE_CUSTOMERS: Dict[str, Any] = {}
 
+    class error(object):
+        class InvalidRequestException(Exception):
+            pass
+
+        class APIConnectionError(Exception):
+            pass
+
     class FakeSubscription(AttrDict):
         @classmethod
         def build(cls, data, customer):
