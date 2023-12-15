@@ -34,30 +34,6 @@ class ReconciliationWorker(Worker):
             app.config.get("RECONCILIATION_FREQUENCY", RECONCILIATION_FREQUENCY),
         )
 
-    def _check_stripe_matches_sku(self, user, sku):
-        """
-        Check if user's stripe plan matches with RH sku
-        """
-        stripe_id = user.stripe_id
-
-        if stripe_id is None:
-            return False
-
-        stripe_customer = stripe.Customer.retrieve(stripe_id)
-        if stripe_customer is None:
-            logger.debug("user %s has no valid subscription on stripe", user.username)
-            return False
-
-        if stripe_customer.subscription:
-            plan = get_plan(stripe_customer.subscription.plan.id)
-            if plan is None:
-                return False
-
-            if plan.get("rh_sku") == sku:
-                return True
-
-        return False
-
     def _perform_reconciliation(self, user_api, marketplace_api):
         """
         Gather all entitlements from internal marketplace api and store in quay db
@@ -89,12 +65,23 @@ class ReconciliationWorker(Worker):
                     continue
 
             # check if we need to create a subscription for customer in RH marketplace
+            try:
+                stripe_customer = stripe.Customer.retrieve(user.stripe_id)
+            except stripe.error.APIConnectionError:
+                logger.error("Cannot connect to Stripe")
+                continue
+            except stripe.error.InvalidRequestError:
+                logger.warn("Invalid request for stripe_id %s", user.stripe_id)
+                continue
             for sku_id in RH_SKUS:
-                if self._check_stripe_matches_sku(user, sku_id):
-                    subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
-                    if subscription is None:
-                        marketplace_api.create_entitlement(ebsAccountNumber, sku_id)
-                    break
+                if stripe_customer.subscription:
+                    plan = get_plan(stripe_customer.subscription.plan.id)
+                    if plan is None:
+                        continue
+                    if plan.get("rh_sku") == sku_id:
+                        subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
+                        if subscription is None:
+                            marketplace_api.create_entitlement(ebsAccountNumber, sku_id)
 
             logger.debug("Finished work for user %s", user.username)
 
