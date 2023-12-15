@@ -44,7 +44,7 @@
 
         <!-- Normal -->
         <ul class="nav navbar-nav navbar-right hidden-xs" ng-switch on="user.anonymous">
-          <li class="new-ui-toggle" ng-if="shouldShowNewUiToggle()">
+          <li class="new-ui-toggle" ng-if="shouldShowNewUiToggle() && !user.anonymous && user.prompts && user.prompts.length == 0">
               <new-ui-toggle></new-ui-toggle>
           </li>
           <li>
