@@ -41,6 +41,9 @@ describe('Tag Details Page', () => {
     cy.get('[data-testid="vulnerabilities"]')
       .contains('12 High')
       .should('exist');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('2 Suppressed')
+      .should('exist');
     cy.get('[data-testid="labels"]')
       .contains('version = 1.0.0')
       .should('exist');
@@ -87,7 +90,10 @@ describe('Tag Details Page', () => {
       'include',
       '/repository/user1/hello-world/tag/latest?tab=securityreport',
     );
-    cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
+    cy.contains('Quay Security Reporting has detected 39 vulnerabilities');
+    cy.contains(
+      '2 vulnerabilities are suppressed by the repository and manifest settings.',
+    );
   });
 
   it('switch to packages tab', () => {

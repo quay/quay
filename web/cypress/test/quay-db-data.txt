@@ -7904,6 +7904,8 @@ COPY public.visibility (id, name) FROM stdin;
 --
 
 COPY public.vulnerabilitysuppression (id, manifest_id, repository_id, organization_id, vulnerability_names) FROM stdin;
+1	1	\N	\N	["RHSA-2022:2031"]
+2	\N	1	\N	["PVE-2022-50870"]
 \.
 
 
