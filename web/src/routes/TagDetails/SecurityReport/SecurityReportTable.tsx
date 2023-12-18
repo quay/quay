@@ -25,6 +25,7 @@ import {
 } from '@patternfly/react-table';
 import sha1 from 'js-sha1';
 import React, {useEffect, useState} from 'react';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {getSeverityColor} from 'src/libs/utils';
 import {Feature, Vulnerability} from 'src/resources/TagResource';
 import {SecurityReportFilter} from './SecurityReportFilter';
@@ -64,6 +65,7 @@ function TableTitle() {
 }
 
 export default function SecurityReportTable(props: SecurityDetailsProps) {
+  const config = useQuayConfig();
   const [vulnList, setVulnList] = useState<VulnerabilityListItem[]>([]);
   const [filteredVulnList, setFilteredVulnList] = useState<
     VulnerabilityListItem[]
@@ -209,11 +211,13 @@ export default function SecurityReportTable(props: SecurityDetailsProps) {
               setFilteredVulnList={setFilteredVulnList}
             />
           </ToolbarItem>
-          <ToolbarItem>
-            <Button onClick={() => props.setSuppressionModalOpen(true)}>
-              Set Suppressions
-            </Button>
-          </ToolbarItem>
+          {config?.features?.SECURITY_VULNERABILITY_SUPPRESSION && (
+            <ToolbarItem>
+              <Button onClick={() => props.setSuppressionModalOpen(true)}>
+                Set Suppressions
+              </Button>
+            </ToolbarItem>
+          )}
           <ToolbarPagination
             itemsList={filteredVulnList}
             perPage={perPage}

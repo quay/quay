@@ -117,6 +117,7 @@
     "RH_MARKETPLACE": true,
     "SECURITY_NOTIFICATIONS": true,
     "SECURITY_SCANNER": true,
+    "SECURITY_VULNERABILITY_SUPPRESSION": true,
     "SIGNING": false,
     "STORAGE_REPLICATION": false,
     "SUPER_USERS": true,

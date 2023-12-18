@@ -63,7 +63,7 @@ export default function Settings(props: SettingsProps) {
       ),
     },
     config?.features.SECURITY_VULNERABILITY_SUPPRESSION && {
-      name: 'Vulnerability reporting',
+      name: 'Vulnerability Reporting',
       id: 'vulnerabiltyreporting',
       content: (
         <RepositoryVulnerabilitySuppression

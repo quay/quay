@@ -1,6 +1,7 @@
 /// <reference types="cypress" />
 
 import {formatDate} from '../../src/libs/utils';
+import _ from 'lodash';
 
 describe('Tag Details Page', () => {
   before(() => {
@@ -10,7 +11,7 @@ describe('Tag Details Page', () => {
   beforeEach(() => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
+      'http://localhost:8080/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
@@ -92,8 +93,11 @@ describe('Tag Details Page', () => {
     );
     cy.contains('Quay Security Reporting has detected 39 vulnerabilities');
     cy.contains(
-      '2 vulnerabilities are suppressed by the repository and manifest settings.',
+      '2 vulnerabilities are suppressed by the repository and manifest settings',
     );
+    cy.get('[id="toolbar-pagination"]').contains('39').should('exist');
+    cy.get('[id="suppressed-checkbox"]').click();
+    cy.get('[id="toolbar-pagination"]').contains('41').should('exist');
   });
 
   it('switch to packages tab', () => {
@@ -106,6 +110,84 @@ describe('Tag Details Page', () => {
     cy.contains('Quay Security Reporting has recognized 49 packages');
   });
 
+  it('set vulnerability suppression', () => {
+    cy.visit('/repository/user1/hello-world/tag/latest?tab=securityreport');
+    cy.get('button').contains('Set Suppressions').click();
+    cy.get('[id="vulnerability-suppression-modal"]').should('be.visible');
+    cy.get('button').contains('Update').should('be.disabled');
+    cy.get('[id="tags-input"]').type('PVE-2022-47833{enter}');
+    cy.get('button').contains('Update').should('be.enabled');
+
+    let vulnreport: JSON;
+    cy.readFile('cypress/fixtures/security/mixedVulns.json')
+      .then((json) => {
+        vulnreport = json;
+      })
+      .as('vulnreport');
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
+      (req) =>
+        req.reply((res) => {
+          const clickFeature = vulnreport.data.Layer.Features.find(
+            (feature: any) => feature.Name === 'click',
+          );
+
+          // Add the "SuppressedBy" property to the first vulnerability
+          _.set(clickFeature, 'Vulnerabilities[0].SuppressedBy', 'manifest');
+
+          // Reply with the modified json
+          res.body = vulnreport;
+
+          console.log('Request:', req);
+          console.log('Response:', res);
+          return res;
+        }),
+    ).as('getSecurityReportWithSuppression');
+
+    cy.get('button').contains('Update').click();
+
+    cy.get('[id="vulnerability-suppression-modal"]').should('not.exist');
+    cy.contains('Quay Security Reporting has detected 38 vulnerabilities');
+    cy.contains(
+      '3 vulnerabilities are suppressed by the repository and manifest settings',
+    );
+    cy.contains(
+      'Successfully updated vulnerability suppressions for hello-world:latest',
+    );
+    cy.get('[id="suppressed-checkbox"]').click();
+    cy.get('[id="vulnerabilities-search"]').type('PVE-2022-47833');
+    cy.get('[data-testid="vulnerability-table"]').within(() => {
+      cy.contains('PVE-2022-47833').should('exist');
+    });
+    cy.get('[data-testid="vulnerability-table"]')
+      .find('tbody')
+      .first()
+      .find('tr')
+      .first()
+      .find('td')
+      .first()
+      .find('button')
+      .click();
+    cy.get('[data-testid="vulnerability-table"]')
+      .find('tbody')
+      .first()
+      .find('tr')
+      .contains('This vulnerability is suppressed at the manifest level')
+      .should('exist');
+  });
+
+  it('Should not be visible without FEATURE_SECURITY_VULNERABILITY_SUPPRESSION', () => {
+    cy.intercept('GET', '/config', (req) =>
+      req.reply((res) => {
+        res.body.features['SECURITY_VULNERABILITY_SUPPRESSION'] = false;
+        return res;
+      }),
+    ).as('getConfigNoVulnSuppression');
+    cy.visit('/repository/user1/hello-world/tag/latest?tab=securityreport');
+    cy.get('button').contains('Set Suppressions').should('not.exist');
+  });
+
   it('switch to security report tab via vulnerabilities field', () => {
     cy.visit('/repository/user1/hello-world/tag/latest');
     cy.contains('12 High').click();
@@ -113,7 +195,7 @@ describe('Tag Details Page', () => {
       'include',
       '/repository/user1/hello-world/tag/latest?tab=securityreport',
     );
-    cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
+    cy.contains('Quay Security Reporting has detected 39 vulnerabilities');
   });
 
   it('switch between architectures', () => {
