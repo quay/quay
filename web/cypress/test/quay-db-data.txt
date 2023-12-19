@@ -6128,6 +6128,8 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 203	97	1	\N	\N	2023-11-07 19:54:19.160078	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
 204	97	1	1	\N	2023-12-19 16:20:54.359353	192.168.65.1	{"type": "quayauth", "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
 205	14	6	1	157	2023-12-19 16:21:03.929908	192.168.65.1	{"repo": "prometheus", "namespace": "prometheus"}
+206	97	1	1	\N	2023-12-19 19:07:57.988927	192.168.65.1	{"type": "quayauth", "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+207	32	6	1	\N	2023-12-19 19:08:07.292302	192.168.65.1	{"team": "prometheus"}
 \.
 
 
@@ -6516,7 +6518,7 @@ COPY public.quayservice (id, name) FROM stdin;
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
 2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-12-19 16:25:51.443047	t	2023-12-19 19:20:51.433717	5	5fa131ff-d4e0-447b-91b6-b86a6b9b8842
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-12-19 16:25:56.462327	t	2023-12-19 19:20:56.452973	5	3059bf09-f1b3-40b3-9ab9-a4cb8d6fe2e5
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-12-19 19:13:11.990138	t	2023-12-19 22:08:11.981463	5	c5a82770-cbe8-42aa-827d-69a8efa0a090
 \.
 
 
@@ -7636,6 +7638,7 @@ COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
 33	chelsea	28	3	
 34	owners	34	1	
 35	teamforreadonly	32	3	
+36	prometheus	6	3	
 \.
 
 
@@ -8066,7 +8069,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 205, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 207, true);
 
 
 --
@@ -8472,7 +8475,7 @@ SELECT pg_catalog.setval('public.tagtorepositorytag_id_seq', 1, false);
 -- Name: team_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.team_id_seq', 35, true);
+SELECT pg_catalog.setval('public.team_id_seq', 36, true);
 
 
 --
