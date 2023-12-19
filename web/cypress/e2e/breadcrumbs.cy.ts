@@ -159,4 +159,41 @@ describe('Tests for Breadcrumbs', () => {
         });
     });
   });
+
+  it('Org repo same name', () => {
+    cy.visit('/repository/prometheus/prometheus');
+    cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
+      cy.get('li')
+        .each(($el, index) => {
+          switch (index) {
+            case 0:
+              cy.wrap($el).should('have.text', 'Repository');
+              cy.wrap($el)
+                .children('a')
+                .should('have.attr', 'href', '/repository');
+              break;
+            case 1:
+              cy.wrap($el).should('have.text', 'prometheus');
+              cy.wrap($el)
+                .children('a')
+                .should('have.attr', 'href', '/organization/prometheus');
+              break;
+            case 2:
+              cy.wrap($el).should('have.text', 'prometheus');
+              cy.wrap($el).children('a').should('have.class', 'disabled-link');
+              cy.wrap($el)
+                .children('a')
+                .should(
+                  'have.attr',
+                  'href',
+                  '/repository/prometheus/prometheus',
+                );
+              break;
+          }
+        })
+        .then(($lis) => {
+          expect($lis).to.have.length(3);
+        });
+    });
+  });
 });
