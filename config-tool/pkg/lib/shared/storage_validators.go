@@ -34,7 +34,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 	switch storageType {
 	case "LocalStorage":
 		return true, []ValidationError{}
-	case "RHOCSStorage", "RadosGWStorage":
+	case "RHOCSStorage", "RadosGWStorage", "IBMCloudStorage":
 
 		// Check access key
 		if ok, err := ValidateRequiredString(args.AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".access_key", fgName); !ok {
