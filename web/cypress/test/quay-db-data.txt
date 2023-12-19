@@ -6745,6 +6745,7 @@ COPY public.repository (id, namespace_user_id, name, visibility_id, description,
 154	4	repo149	1	This is the description of repo149	8db24323-26f1-4fc1-9a10-1ac9d6f768d5	1	f	0
 155	32	hello-world	1		730ebab8-f2ab-4e55-9c9d-f064d11f68d6	1	f	0
 156	28	premierleague	1		94590e48-ff0e-4eb0-a74d-84416dedf157	1	f	0
+157	6	prometheus	1		d32b90ed-a1dc-4084-8691-70e492f3d34a	1	f	0
 \.
 
 
@@ -6909,6 +6910,7 @@ COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 154	154	0	2023-01-02
 155	155	0	2023-06-27
 156	156	0	2023-08-22
+157	157	0	2023-12-18
 \.
 
 
@@ -7125,6 +7127,7 @@ COPY public.repositorypermission (id, team_id, user_id, repository_id, role_id) 
 159	31	\N	5	3
 160	\N	1	156	1
 161	\N	33	156	2
+162	\N	1	157	1
 \.
 
 
@@ -7289,6 +7292,7 @@ COPY public.repositorysearchscore (id, repository_id, score, last_updated) FROM 
 154	154	0	\N
 155	155	0	\N
 156	156	0	\N
+157	157	0	\N
 \.
 
 
@@ -7630,6 +7634,7 @@ COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
 33	chelsea	28	3	
 34	owners	34	1	
 35	teamforreadonly	32	3	
+36	prometheus	6	3	
 \.
 
 
@@ -8060,7 +8065,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 203, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 207, true);
 
 
 --
@@ -8298,14 +8303,14 @@ SELECT pg_catalog.setval('public.repomirrorrule_id_seq', 1, false);
 -- Name: repository_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repository_id_seq', 156, true);
+SELECT pg_catalog.setval('public.repository_id_seq', 157, true);
 
 
 --
 -- Name: repositoryactioncount_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 156, true);
+SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 157, true);
 
 
 --
@@ -8347,14 +8352,14 @@ SELECT pg_catalog.setval('public.repositorynotification_id_seq', 5, true);
 -- Name: repositorypermission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorypermission_id_seq', 161, true);
+SELECT pg_catalog.setval('public.repositorypermission_id_seq', 162, true);
 
 
 --
 -- Name: repositorysearchscore_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 156, true);
+SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 157, true);
 
 
 --
@@ -8466,7 +8471,7 @@ SELECT pg_catalog.setval('public.tagtorepositorytag_id_seq', 1, false);
 -- Name: team_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.team_id_seq', 35, true);
+SELECT pg_catalog.setval('public.team_id_seq', 36, true);
 
 
 --
