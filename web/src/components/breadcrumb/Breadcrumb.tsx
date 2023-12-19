@@ -39,7 +39,7 @@ export function QuayBreadcrumb() {
   const lastOccurrenceOfSubstring = (substring: string): string => {
     const lastIndex = location.pathname.lastIndexOf(substring);
     return location.pathname.slice(0, lastIndex);
-  }
+  };
 
   const fetchBreadcrumb = (
     existingBreadcrumbs,
@@ -67,11 +67,15 @@ export function QuayBreadcrumb() {
       switch (routerBreadcrumb.match.route.path) {
         case NavigationPath.repositoryDetail:
           nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
-          nextBreadcrumb['pathname'] = lastOccurrenceOfSubstring(nextBreadcrumb['title']) + nextBreadcrumb['title'];
+          nextBreadcrumb['pathname'] =
+            lastOccurrenceOfSubstring(nextBreadcrumb['title']) +
+            nextBreadcrumb['title'];
           break;
         case NavigationPath.teamMember:
           nextBreadcrumb['title'] = parseTeamNameFromUrl(location.pathname);
-          nextBreadcrumb['pathname'] = lastOccurrenceOfSubstring(nextBreadcrumb['title']) + nextBreadcrumb['title'];
+          nextBreadcrumb['pathname'] =
+            lastOccurrenceOfSubstring(nextBreadcrumb['title']) +
+            nextBreadcrumb['title'];
           break;
       }
     }
