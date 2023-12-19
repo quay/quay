@@ -6126,10 +6126,6 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 201	31	32	29	\N	2023-11-07 19:54:08.826725	172.18.0.1	{"member": "user1", "team": "teamforreadonly"}
 202	98	29	29	\N	2023-11-07 19:54:14.934915	172.18.0.1	{}
 203	97	1	\N	\N	2023-11-07 19:54:19.160078	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
-204	97	1	1	\N	2023-12-19 16:20:54.359353	192.168.65.1	{"type": "quayauth", "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-205	14	6	1	157	2023-12-19 16:21:03.929908	192.168.65.1	{"repo": "prometheus", "namespace": "prometheus"}
-206	97	1	1	\N	2023-12-19 19:07:57.988927	192.168.65.1	{"type": "quayauth", "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-207	32	6	1	\N	2023-12-19 19:08:07.292302	192.168.65.1	{"team": "prometheus"}
 \.
 
 
@@ -6517,8 +6513,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-12-19 16:25:51.443047	t	2023-12-19 19:20:51.433717	5	5fa131ff-d4e0-447b-91b6-b86a6b9b8842
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-12-19 19:13:11.990138	t	2023-12-19 22:08:11.981463	5	c5a82770-cbe8-42aa-827d-69a8efa0a090
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-11-07 19:57:36.102126	t	2023-11-07 22:52:36.037751	5	e90498e4-d92b-487a-90a3-1ab34388af7c
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-11-07 19:57:37.766105	t	2023-11-07 22:52:37.740851	5	9ccfcc76-8277-4dc0-8a14-b37440753124
 \.
 
 
