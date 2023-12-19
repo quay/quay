@@ -6,13 +6,8 @@ import {
   fetchUserRepoPermissions,
   RepoMember,
 } from 'src/resources/RepositoryResource';
+import {EntityKind} from 'src/resources/UserResource';
 import {PermissionsColumnNames} from 'src/routes/RepositoryDetails/Settings/ColumnNames';
-
-enum MemberType {
-  user = 'user',
-  robot = 'robot',
-  team = 'team',
-}
 
 export function useRepositoryPermissions(org: string, repo: string) {
   const [page, setPage] = useState(1);
@@ -50,9 +45,9 @@ export function useRepositoryPermissions(org: string, repo: string) {
 
   const members: RepoMember[] = [];
   for (const [name, roleData] of Object.entries(userRoles)) {
-    const type: MemberType = roleData.is_robot
-      ? MemberType.robot
-      : MemberType.user;
+    const type: EntityKind = roleData.is_robot
+      ? EntityKind.robot
+      : EntityKind.user;
     members.push({
       org: org,
       repo: repo,
@@ -66,7 +61,7 @@ export function useRepositoryPermissions(org: string, repo: string) {
       org: org,
       repo: repo,
       name: name,
-      type: MemberType.team,
+      type: EntityKind.team,
       role: roleData.role,
     });
   }

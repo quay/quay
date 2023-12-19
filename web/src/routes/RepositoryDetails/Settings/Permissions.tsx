@@ -8,7 +8,8 @@ import PermissionsDropdown from './PermissionsDropdown';
 import {RepoMember} from 'src/resources/RepositoryResource';
 import PermissionsKebab from './PermissionsKebab';
 import {DrawerContentType} from '../Types';
-import EntityIcon from 'src/components/EntityIcon';
+import Entity from 'src/components/Entity';
+import {EntityKind} from 'src/resources/UserResource';
 
 export default function Permissions(props: PermissionsProps) {
   const {
@@ -95,7 +96,7 @@ export default function Permissions(props: PermissionsProps) {
               />
               <Td data-label="membername">{member.name}</Td>
               <Td data-label="type">
-                <EntityIcon type={member.type} includeText />
+                <Entity type={EntityKind[member.type]} includeText />
               </Td>
               <Td data-label="role">
                 <PermissionsDropdown member={member} />

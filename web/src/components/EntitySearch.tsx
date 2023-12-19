@@ -12,7 +12,7 @@ import {
 } from '@patternfly/react-core';
 import TimesIcon from '@patternfly/react-icons/dist/esm/icons/times-icon';
 import {useEntities} from 'src/hooks/UseEntities';
-import {Entity, getMemberType} from 'src/resources/UserResource';
+import {Entity, getEntityKind} from 'src/resources/UserResource';
 
 export default function EntitySearch(props: EntitySearchProps) {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -152,7 +152,7 @@ export default function EntitySearch(props: EntitySearchProps) {
                     props.onSelect(entity);
                   }
                 }}
-                description={getMemberType(entity)}
+                description={getEntityKind(entity)}
               >
                 {entity.name}
               </SelectOption>

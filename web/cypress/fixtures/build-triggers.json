@@ -1,0 +1,86 @@
+{
+  "triggers": [
+    {
+      "id": "githubfe-70b5-4bf9-8eb9-8dccf9874aed",
+      "service": "github",
+      "is_active": true,
+      "build_source": "testgitorg/testgitrepo",
+      "repository_url": "https://github.com/testgitorg/testgitrepo",
+      "config": {
+        "build_source": "testgitorg/testgitrepo",
+        "dockerfile_path": "/Dockerfile",
+        "context": "/",
+        "branchtag_regex": "^newbranch$",
+        "default_tag_from_ref": true,
+        "latest_for_default_branch": true,
+        "tag_templates": ["${commit_info.short_sha}"],
+        "credentials": [
+          {
+            "name": "SSH Public Key",
+            "value": "fakekey"
+          }
+        ],
+        "deploy_key_id": 12347637,
+        "hook_id": 123455926,
+        "master_branch": "master"
+      },
+      "can_invoke": true,
+      "enabled": true,
+      "disabled_reason": null
+    },
+    {
+      "id": "custom-git35014-4962-81a0-9a8d336ca851",
+      "service": "custom-git",
+      "is_active": true,
+      "build_source": "https://github.com/testgitorg/testgitrepo",
+      "repository_url": null,
+      "config": {
+        "build_source": "https://github.com/testgitorg/testgitrepo",
+        "dockerfile_path": "/Dockerfile",
+        "context": "/web",
+        "default_tag_from_ref": true,
+        "latest_for_default_branch": false,
+        "tag_templates": ["${commit_info.short_sha}"],
+        "credentials": [
+          {
+            "name": "SSH Public Key",
+            "value": "fakekey"
+          },
+          {
+            "name": "Webhook Endpoint URL",
+            "value": "https://$token:faketoken@localhost:8080/webhooks/push/trigger/67595ac0-5014-4962-81a0-9a8d336ca851"
+          }
+        ]
+      },
+      "can_invoke": true,
+      "enabled": true,
+      "disabled_reason": null
+    },
+    {
+      "id": "gitlab82-9fd5-4005-bc95-d3156855f0d5",
+      "service": "gitlab",
+      "is_active": true,
+      "build_source": "testgitorg/testgitrepo",
+      "repository_url": "https://gitlab.com/testgitorg/testgitrepo",
+      "config": {
+        "build_source": "testgitorg/testgitrepo",
+        "dockerfile_path": "/application/Dockerfile",
+        "context": "/",
+        "default_tag_from_ref": false,
+        "latest_for_default_branch": false,
+        "tag_templates": [],
+        "credentials": [
+          {
+            "name": "SSH Public Key",
+            "value": "fakekey"
+          }
+        ],
+        "key_id": 12349342,
+        "hook_id": 12345496
+      },
+      "can_invoke": true,
+      "enabled": false,
+      "disabled_reason": "user_toggled"
+    }
+  ]
+}

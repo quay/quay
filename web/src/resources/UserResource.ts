@@ -2,7 +2,6 @@ import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
-import {MemberType} from './RepositoryResource';
 
 export interface IUserResource {
   anonymous: boolean;
@@ -58,21 +57,28 @@ export interface Entity {
   avatar?: IAvatar;
   is_org_member?: boolean;
   name: string;
-  kind?: string;
+  kind?: EntityKind;
   is_robot?: boolean;
+}
+
+export enum EntityKind {
+  user = 'user',
+  robot = 'robot',
+  team = 'team',
+  organization = 'organization',
 }
 
 interface EntitiesResponse {
   results: Entity[];
 }
 
-export function getMemberType(entity: Entity) {
-  if (entity.kind == MemberType.team) {
-    return MemberType.team;
-  } else if (entity.kind == MemberType.user && entity.is_robot) {
-    return MemberType.robot;
-  } else if (entity.kind == MemberType.user) {
-    return MemberType.user;
+export function getEntityKind(entity: Entity) {
+  if (entity.kind == EntityKind.team) {
+    return EntityKind.team;
+  } else if (entity.kind == EntityKind.user && entity.is_robot) {
+    return EntityKind.robot;
+  } else if (entity.kind == EntityKind.user) {
+    return EntityKind.user;
   }
 }
 
