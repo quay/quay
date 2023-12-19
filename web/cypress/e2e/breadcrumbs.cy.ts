@@ -161,7 +161,9 @@ describe('Tests for Breadcrumbs', () => {
   });
 
   it('Org repo team same name', () => {
-    cy.visit('/organization/prometheus/teams/prometheus?tab=Teamsandmembership');
+    cy.visit(
+      '/organization/prometheus/teams/prometheus?tab=Teamsandmembership',
+    );
     cy.get('nav[test-id="page-breadcrumbs-list"]').within(() => {
       cy.get('li')
         .each(($el, index) => {
