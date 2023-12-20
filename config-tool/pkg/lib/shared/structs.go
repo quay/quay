@@ -19,7 +19,7 @@ func (ve ValidationError) String() string {
 
 // DistributedStorageArgs
 type DistributedStorageArgs struct {
-	// Args for RHOCSStorage, RadosGWStorage
+	// Args for RHOCSStorage, RadosGWStorage, IBMCloudStorage
 	Hostname    string `default:"" validate:"" json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Port        int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
 	IsSecure    bool   `default:"" validate:"" json:"is_secure" yaml:"is_secure"`
@@ -53,7 +53,7 @@ type DistributedStorageArgs struct {
 	// Args for CloudFlare
 	CloudflareDomain string `default:"" validate:"" json:"cloudflare_domain,omitempty" yaml:"cloudflare_domain,omitempty"`
 	// Args for MultiCDNStorage
-	DefaultProvider string `default:"" validate:"" json:"default_provider,omitempty" yaml:"default_provider,omitempty"`
-	Providers map[string]interface{} `default:"" validate:"" json:"providers,omitempty" yaml:"providers,omitempty"`
-	StorageConfig map[string]interface{} `default:"" validate:"" json:"storage_config,omitempty" yaml:"storage_config,omitempty"`
+	DefaultProvider string                 `default:"" validate:"" json:"default_provider,omitempty" yaml:"default_provider,omitempty"`
+	Providers       map[string]interface{} `default:"" validate:"" json:"providers,omitempty" yaml:"providers,omitempty"`
+	StorageConfig   map[string]interface{} `default:"" validate:"" json:"storage_config,omitempty" yaml:"storage_config,omitempty"`
 }

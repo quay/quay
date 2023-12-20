@@ -40,7 +40,7 @@
               <td colspan="2">
                 <span class="config-string-field" binding="config.REGISTRY_TITLE"></span>
                 <div class="help-text" style="margin-top: 10px;">
-                  Name of registry to be displayed in the Contact Page. 
+                  Name of registry to be displayed in the Contact Page.
                 </div>
               </td>
             </tr>
@@ -72,7 +72,7 @@
                   is displayed.
                 </div>
               </td>
-            </tr>           
+            </tr>
           </table>
         </div>
       </div>
@@ -215,7 +215,7 @@
               </td>
             </tr>
           </table>
-        </div>    
+        </div>
       </div>
 
 
@@ -459,6 +459,7 @@
                       <option value="AzureStorage">Azure Blob Storage</option>
                       <option value="GoogleCloudStorage">Google Cloud Storage</option>
                       <option value="RadosGWStorage">Ceph Object Gateway (RADOS)</option>
+                      <option value="IBMCloudStorage">IBM Cloud Object Storage</option>
                       <option value="SwiftStorage">OpenStack Storage (Swift)</option>
                       <option value="CloudFrontedS3Storage">CloudFront + Amazon S3</option>
                       <option value="CloudFlareStorage">CloudFlare + Amazon S3</option>
@@ -745,7 +746,7 @@
             <tr>
               <td>Security Scanner PSK:</td>
               <td>
-                <span class="config-string-field" binding="config.SECURITY_SCANNER_V4_PSK" 
+                <span class="config-string-field" binding="config.SECURITY_SCANNER_V4_PSK"
                       is-readonly="fieldGroupReadonly('SecurityScanner')" placeholder="Base64 Encoded PSK"></span>
                 <div class="help-text" style="margin-top: 10px;">
                   Clair Pre-Shared Key. Make sure to include this value in your Clair config.
@@ -1735,7 +1736,7 @@
                 <span class="config-list-field" item-title="Super User"
                       binding="config.SUPER_USERS" item-pattern="[a-z0-9_]{4,30}"></span>
                 <div class="help-text">
-                  Users included in this list will be given elevated access to Quay. 
+                  Users included in this list will be given elevated access to Quay.
                 </div>
               </td>
             </tr>
@@ -1995,14 +1996,14 @@
                 <span class="cor-loader-inline" ng-show="operatorCommitStatus == 'inProgress'"></span>
                 <span class="service-title">Committing to Operator</span>
               </div>
-              
-              
+
+
               <!-- Successful commit to operator -->
               <div class="service-verification-row" ng-if="operatorCommitStatus == 'success'">
                 <i class="fa fa-lg fa-check-circle" ng-show="operatorCommitStatus == 'success'"></i>
                 <span class="service-title">Config Sent to Operator</span>
               </div>
-              
+
               <!-- Error in Commit-->
               <div class="service-verification-row" ng-if="operatorCommitStatus == 'error'">
                 <i class="fa fa-lg fa-warning" ng-show="operatorCommitStatus == 'error'"></i>
