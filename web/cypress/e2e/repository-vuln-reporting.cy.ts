@@ -18,7 +18,7 @@ describe('Repository Settings - Vulnerability Reporting', () => {
 
   it('View and reset suppressions', () => {
     cy.visit('/repository/user1/hello-world?tab=settings');
-    cy.contains('Vulnerability reporting').click();
+    cy.contains('Vulnerability Reporting').click();
     cy.get('.tags-input').contains('PVE-2022-50870');
     cy.get('[id="save-suppressions-button"]').should('be.disabled');
     cy.get('[id="tags-input"]').type('PVE-2022-47833{enter}');
@@ -53,6 +53,6 @@ describe('Repository Settings - Vulnerability Reporting', () => {
       }),
     ).as('getConfigNoVulnSuppression');
     cy.visit('/repository/user1/hello-world?tab=settings');
-    cy.contains('Vulnerability reporting').should('not.exist');
+    cy.get('#pf-tab-4-vulnerabilityreporting').should('not.exist');
   });
 });

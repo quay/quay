@@ -52,7 +52,7 @@ export default function Settings(props: SettingsProps) {
     },
     {
       name: 'Vulnerability Reporting',
-      id: 'vulnerability reporting',
+      id: 'vulnerabilityreporting',
       content: (
         <OrganizationVulnerabilitySuppression
           organization={organization}
