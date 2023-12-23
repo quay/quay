@@ -1,11 +1,7 @@
-import logging
-from typing import List, Tuple, Union
-
-import urllib
-from data.model import vulnerabilitysuppression
-import features
 import itertools
 import logging
+import re
+import urllib
 from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
@@ -480,7 +476,15 @@ class V4SecurityScanner(SecurityScannerInterface):
 
                         found_vulnerabilities = None
                         if vulnerability_report is not None:
-                            found_vulnerabilities = vulnerability_report.get("vulnerabilities")
+                            if features.SECURITY_VULNERABILITY_SUPPRESSION:
+                                found_vulnerabilities = filtered_vulnerabilities_for(
+                                    vulnerability_report,
+                                    vulnerabilitysuppression.derive_vulnerability_suppressions(
+                                        manifest
+                                    ),
+                                )
+                            else:
+                                found_vulnerabilities = vulnerability_report.get("vulnerabilities")
 
                         if found_vulnerabilities is not None:
                             import notifications
@@ -697,6 +701,24 @@ def _get_suppressed(
             )
 
     return None
+
+
+def filtered_vulnerabilities_for(report, suppressions: List[Tuple[str, str]]):
+    filtered_vulnerabilities = {}
+
+    if report.get("vulnerabilities") is None:
+        return filtered_vulnerabilities
+
+    # filter out any vulnerabilities found in the report that are suppressed
+    for vuln_id, vuln_details in report["vulnerabilities"].items():
+        vuln_suppressed = vulnerabilitysuppression.is_vulnerability_suppressed(
+            vuln_details["name"], suppressions
+        )
+
+        if not vuln_suppressed:
+            filtered_vulnerabilities[vuln_id] = vuln_details
+
+    return filtered_vulnerabilities
 
 
 def filtered_features_for(
