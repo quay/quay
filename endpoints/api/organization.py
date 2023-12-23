@@ -26,6 +26,7 @@ from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from endpoints.api import (
     ApiResource,
+    abort,
     allow_if_superuser,
     internal_only,
     log_action,
@@ -41,7 +42,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.api.user import PrivateRepositories, User
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
@@ -361,10 +362,16 @@ class Organization(ApiResource):
                             },
                         )
                     except model.InvalidVulnerabilitySuppression as e:
-                        pass
+                        raise InvalidRequest(str(e))
                     except Exception as e:
                         logger.exception(
                             "Error setting suppressed vulnerabilities for org %s: %s", (org, str(e))
+                        )
+
+                        abort(
+                            500,
+                            message="Failed to set vulnerability suppression for organization %s"
+                            % org.username,
                         )
 
                 elif len(suppressed_vulns) == 0:
@@ -376,11 +383,17 @@ class Organization(ApiResource):
                         model.vulnerabilitysuppression.delete_vulnerability_suppression_for_org(org)
                         log_action("org_clear_suppressed_vulnerabilities", orgname, {})
                     except model.InvalidVulnerabilitySuppression as e:
-                        pass
+                        raise InvalidRequest(str(e))
                     except Exception as e:
                         logger.exception(
                             "Error clearing suppressed vulnerabilities for org %s: %s",
                             (org, str(e)),
+                        )
+
+                        abort(
+                            500,
+                            message="Failed to delete vulnerability suppression for organization %s"
+                            % org.username,
                         )
 
             teams = model.team.get_teams_within_org(org)
