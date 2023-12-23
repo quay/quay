@@ -103,14 +103,22 @@ describe('Org Settings Page', () => {
   });
 
   it('Should not be visible without FEATURE_SECURITY_VULNERABILITY_SUPPRESSION', () => {
+    let quayConfig: JSON;
+    cy.readFile('cypress/fixtures/config.json')
+      .then((json) => {
+        quayConfig = json;
+      })
+      .as('quayconfig');
+
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
-        res.body.features['SECURITY_VULNERABILITY_SUPPRESSION'] = false;
+        quayConfig.features['SECURITY_VULNERABILITY_SUPPRESSION'] = false;
+        res.body = quayConfig;
         return res;
       }),
     ).as('getConfigNoVulnSuppression');
+
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.contains('Vulnerability Reporting').should('not.exist');
+    cy.get('#pf-tab-3-vulnerabilityreporting').should('not.exist');
   });
 });
