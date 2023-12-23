@@ -8642,7 +8642,7 @@ SELECT pg_catalog.setval('public.visibility_id_seq', 2, true);
 -- Name: vulnerabilitysuppression_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.vulnerabilitysuppression_id_seq', 1, false);
+SELECT pg_catalog.setval('public.vulnerabilitysuppression_id_seq', 3, false);
 
 
 --
