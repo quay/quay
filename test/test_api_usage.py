@@ -16,6 +16,7 @@ from httmock import HTTMock, all_requests, urlmatch
 from mock import patch
 from playhouse.test_utils import _QueryLogHandler, assert_query_count
 
+import features
 from app import (
     all_queues,
     app,
@@ -26,8 +27,6 @@ from app import (
     storage,
 )
 from buildtrigger.basehandler import BuildTriggerHandler
-import features
-from initdb import setup_database_for_testing, finished_database_for_testing
 from data import database, model
 from data.database import Repository as RepositoryTable
 from data.database import RepositoryActionCount
@@ -829,7 +828,7 @@ class TestCreateNewUser(ApiTestCase):
 
     def test_recaptcha_whitelisted_users(self):
         self.login(READ_ACCESS_USER)
-        with (self.toggleFeature("RECAPTCHA", True)):
+        with self.toggleFeature("RECAPTCHA", True):
             app.config["RECAPTCHA_WHITELISTED_USERS"] = READ_ACCESS_USER
             self.postResponse(User, data=NEW_USER_DETAILS, expected_code=200)
 
@@ -2572,7 +2571,9 @@ class TestGetRepository(ApiTestCase):
         with patch("features.SECURITY_VULNERABILITY_SUPPRESSION", False):
             # base + repo + is_starred + tags
             with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
-                self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
+                self.getJsonResponse(
+                    Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
+                )
 
             # base + repo + is_starred + tags
             with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):

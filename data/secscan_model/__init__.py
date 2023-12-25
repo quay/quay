@@ -39,14 +39,17 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
         self._model.perform_indexing_recent_manifests(batch_size)
 
     def load_security_information(
-        
-        self, manifest_or_legacy_image, include_vulnerabilities, include_suppressions, model_cache=None
+        self,
+        manifest_or_legacy_image,
+        include_vulnerabilities,
+        include_suppressions,
+        model_cache=None,
     ):
         manifest = manifest_or_legacy_image.as_manifest()
 
         info = self._model.load_security_information(
-            manifest, include_vulnerabilities, include_suppressions
-        , model_cache)
+            manifest, include_vulnerabilities, include_suppressions, model_cache
+        )
         if info.status != ScanLookupStatus.NOT_YET_INDEXED:
             return info
 
