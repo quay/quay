@@ -2,7 +2,7 @@ import json
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
-from test.fixtures import *
+from unittest.mock import patch
 
 import mock
 import pytest
@@ -37,12 +37,14 @@ from data.secscan_model.secscan_v4_model import (
     filtered_features_for,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
 
 @pytest.fixture()
 def set_secscan_config():
     application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
+    application.config["SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX"] = True
 
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
@@ -342,6 +344,57 @@ def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.COMPLETED
+
+
+def test_perform_indexing_notificaton_with_suppression(initialized_db, set_secscan_config):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    vulnerable_manifest = registry_model.get_manifest_for_tag(tag)
+
+    for manifest in Manifest.select():
+        if manifest.digest != vulnerable_manifest.digest:
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                error_json={},
+                index_status=IndexStatus.COMPLETED,
+                indexer_hash="abc",
+                indexer_version=IndexerVersion.V4,
+                last_indexed=datetime.utcnow(),
+                metadata_json={},
+            )
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.vulnerability_report.return_value = {
+        "manifest_hash": vulnerable_manifest.digest,
+        "vulnerabilities": {
+            "someid": {
+                "id": "someid",
+                "name": "CVE-9999-0101",
+                "description": "some description",
+                "severity": "Low",
+                "normalized_severity": "Low",
+                "links": "",
+            }
+        },
+    }
+
+    vulnerabilitysuppression.create_vulnerability_suppression_for_manifest(
+        vulnerable_manifest,
+        ["CVE-9999-0101"],
+    )
+
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+
+    with patch("notifications.spawn_notification") as mock_spawn_notification:
+        secscan.perform_indexing()
+
+        mock_spawn_notification.assert_not_called()
 
 
 def test_perform_indexing_failed(initialized_db, set_secscan_config):
