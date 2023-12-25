@@ -4,7 +4,7 @@ import urllib
 from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from peewee import JOIN, fn
 
@@ -333,6 +333,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         try:
             indexer_state = self._secscan_api.state()
         except APIRequestFailure:
+            logger.debug("Failed to get indexer state")
             return None
 
         if not batch_size:
@@ -485,7 +486,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                             else:
                                 found_vulnerabilities = vulnerability_report.get("vulnerabilities")
 
-                        if found_vulnerabilities is not None:
+                        if found_vulnerabilities:
                             import notifications
 
                             keys = list(found_vulnerabilities)
@@ -703,7 +704,7 @@ def _get_suppressed(
 
 
 def filtered_vulnerabilities_for(report, suppressions: List[Tuple[str, str]]):
-    filtered_vulnerabilities = {}
+    filtered_vulnerabilities: Dict[str, str] = {}
 
     if report.get("vulnerabilities") is None:
         return filtered_vulnerabilities
