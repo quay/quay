@@ -57,11 +57,12 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
     ],
 )
 def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):
+    app.config["FEATURE_SECURITY_SCANNER"] = True
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
 
     def secscan_api(*args, **kwargs):
         api = Mock()
-        api.vulnerability_report.return_value = {"vulnerabilities": []}
+        api.vulnerability_report.return_value = {"vulnerabilities": {}}
         api.state.return_value = {"state": "abc"}
         api.index.return_value = ({"err": None, "state": IndexReportState.Index_Finished}, "abc")
 
