@@ -1,6 +1,5 @@
 import itertools
 import logging
-import re
 import urllib
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -711,9 +710,7 @@ def filtered_vulnerabilities_for(report, suppressions: List[Tuple[str, str]]):
 
     # filter out any vulnerabilities found in the report that are suppressed
     for vuln_id, vuln_details in report["vulnerabilities"].items():
-        vuln_suppressed = vulnerabilitysuppression.is_vulnerability_suppressed(
-            vuln_details["name"], suppressions
-        )
+        vuln_suppressed = vulnerabilitysuppression.is_suppressed(vuln_details["name"], suppressions)
 
         if not vuln_suppressed:
             filtered_vulnerabilities[vuln_id] = vuln_details
