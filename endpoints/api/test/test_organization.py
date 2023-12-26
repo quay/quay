@@ -46,8 +46,8 @@ def test_get_organization_collaborators(app):
             assert "anotherorgrepo" not in collaborator["repositories"]
 
 
-def test_organization_vulnerability_suppression(client):
-    with client_with_identity("devtable", client) as cl:
+def test_organization_vulnerability_suppression(app):
+    with client_with_identity("devtable", app) as cl:
         suppressed_vulnerabilities = ["CVE-2019-1234"]
 
         org = model.organization.get_organization("buynlarge")
@@ -109,8 +109,8 @@ def test_organization_vulnerability_suppression(client):
         ("",),
     ],
 )
-def test_organization_vulnerability_suppression_invalid(client, suppressed_vulns):
-    with client_with_identity("devtable", client) as cl:
+def test_organization_vulnerability_suppression_invalid(app, suppressed_vulns):
+    with client_with_identity("devtable", app) as cl:
         params = {
             "orgname": "buynlarge",
         }

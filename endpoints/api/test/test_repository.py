@@ -211,8 +211,8 @@ def test_delete_repo(initialized_db, app):
         assert marker.queue_id
 
 
-def test_repository_vulnerability_suppression(client):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_vulnerability_suppression(app):
+    with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
         suppressed_vulnerabilities = ["CVE-2019-1234"]
 
@@ -247,8 +247,8 @@ def test_repository_vulnerability_suppression(client):
         )
 
 
-def test_repository_vulnerability_suppression_nonexistent(client):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_vulnerability_suppression_nonexistent(app):
+    with client_with_identity("devtable", app) as cl:
         # try to set suppressed vulnerabilities for a repository that doesn't exist
 
         params = {"repository": "devtable/doesnotexist"}
@@ -276,8 +276,8 @@ def test_repository_vulnerability_suppression_nonexistent(client):
         ("",),
     ],
 )
-def test_repository_vulnerability_suppression_invalid(client, suppressed_vulns):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_vulnerability_suppression_invalid(app, suppressed_vulns):
+    with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
 
         params = {"repository": "devtable/simple"}
