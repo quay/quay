@@ -17,7 +17,7 @@ describe('Repository Details Page', () => {
   it('renders tag', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world');
@@ -41,7 +41,7 @@ describe('Repository Details Page', () => {
   it('renders manifest list tag', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world');
@@ -298,7 +298,7 @@ describe('Repository Details Page', () => {
   it('clicking tag security data goes to security report page', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world');
@@ -308,7 +308,7 @@ describe('Repository Details Page', () => {
       '/repository/user1/hello-world/tag/latest?tab=securityreport&digest=sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
     );
     cy.contains(
-      'Quay Security Reporting has detected 41 vulnerabilities',
+      'Quay Security Reporting has detected 39 vulnerabilities',
     ).should('exist');
     cy.contains('latest').should('exist');
   });
@@ -316,7 +316,7 @@ describe('Repository Details Page', () => {
   it('clicking platform security data goes to security report page', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world');
@@ -331,7 +331,7 @@ describe('Repository Details Page', () => {
     );
     cy.contains('linux on amd64').should('exist');
     cy.contains(
-      'Quay Security Reporting has detected 41 vulnerabilities',
+      'Quay Security Reporting has detected 39 vulnerabilities',
     ).should('exist');
   });
 
