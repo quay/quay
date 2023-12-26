@@ -2560,23 +2560,23 @@ class TestGetRepository(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
         with patch("features.SECURITY_VULNERABILITY_SUPPRESSION", False):
             # base + repo + is_starred + tags
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
+            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
                 self.getJsonResponse(
                     Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
                 )
 
             # base + repo + is_starred + tags
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
+            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
                 json = self.getJsonResponse(
                     Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
                 )
