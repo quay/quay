@@ -328,7 +328,7 @@ def test_load_security_information_success_with_cache(initialized_db, set_secsca
 def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
     secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.return_value = (
         {"err": None, "state": IndexReportState.Index_Finished},
@@ -643,7 +643,7 @@ def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.side_effect = APIRequestFailure()
-    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
 
     secscan.perform_indexing_recent_manifests()
     next_token = secscan.perform_indexing()
@@ -689,7 +689,7 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.side_effect = APIRequestFailure()
-    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
 
     secscan.perform_indexing_recent_manifests()
     next_token = secscan.perform_indexing()
