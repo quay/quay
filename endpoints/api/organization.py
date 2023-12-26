@@ -365,7 +365,7 @@ class Organization(ApiResource):
                         raise InvalidRequest(str(e))
                     except Exception as e:
                         logger.exception(
-                            "Error setting suppressed vulnerabilities for org %s: %s", (org, str(e))
+                            "Error setting suppressed vulnerabilities for org %s: %s", org, str(e)
                         )
 
                         abort(
@@ -387,7 +387,8 @@ class Organization(ApiResource):
                     except Exception as e:
                         logger.exception(
                             "Error clearing suppressed vulnerabilities for org %s: %s",
-                            (org, str(e)),
+                            org,
+                            str(e),
                         )
 
                         abort(
