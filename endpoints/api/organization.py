@@ -82,7 +82,7 @@ def team_view(orgname, team):
     }
 
 
-def org_view(o, teams, suppressed_vulnerabilities):
+def org_view(o, teams):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
 
@@ -105,8 +105,9 @@ def org_view(o, teams, suppressed_vulnerabilities):
         view["tag_expiration_s"] = o.removed_tag_expiration_s
         view["is_free_account"] = o.stripe_id is None
 
-        if features.SECURITY_VULNERABILITY_SUPPRESSION and suppressed_vulnerabilities is not None:
-            view["suppressed_vulnerabilities"] = suppressed_vulnerabilities
+        if features.SECURITY_VULNERABILITY_SUPPRESSION:
+            suppressions = model.vulnerabilitysuppression.get_vulnerability_suppression_for_org(o)
+            view["suppressed_vulnerabilities"] = suppressions
 
         if features.QUOTA_MANAGEMENT:
             quotas = model.namespacequota.get_namespace_quota_list(o.username)
@@ -256,13 +257,6 @@ class Organization(ApiResource):
         """
         try:
             org = model.organization.get_organization(orgname)
-
-            if features.SECURITY_VULNERABILITY_SUPPRESSION:
-                suppressed_vulns = (
-                    model.vulnerabilitysuppression.get_vulnerability_suppression_for_org(org)
-                )
-            else:
-                suppressed_vulns = None
         except model.InvalidOrganizationException:
             raise NotFound()
 
@@ -271,7 +265,7 @@ class Organization(ApiResource):
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 
-        return org_view(org, teams, suppressed_vulns)
+        return org_view(org, teams)
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("changeOrganizationDetails")
@@ -398,12 +392,7 @@ class Organization(ApiResource):
                         )
 
             teams = model.team.get_teams_within_org(org)
-            suppressed_vulns = (
-                model.vulnerabilitysuppression.get_vulnerability_suppression_for_org(org)
-                if features.SECURITY_VULNERABILITY_SUPPRESSION
-                else None
-            )
-            return org_view(org, teams, suppressed_vulns)
+            return org_view(org, teams)
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
@@ -702,7 +691,7 @@ class ApplicationInformation(ApiResource):
             "description": application.description,
             "uri": application.application_uri,
             "avatar": app_data,
-            "organization": org_view(application.organization, [], []),
+            "organization": org_view(application.organization, []),
         }
 
 
