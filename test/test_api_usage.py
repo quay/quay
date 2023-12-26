@@ -2,8 +2,6 @@
 
 import datetime
 import json as py_json
-import logging
-import re
 import time
 import unittest
 from calendar import timegm
@@ -12,13 +10,11 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from httmock import HTTMock, all_requests, urlmatch
+from httmock import HTTMock, urlmatch
 from mock import patch
-from playhouse.test_utils import _QueryLogHandler, assert_query_count
+from playhouse.test_utils import assert_query_count
 
-import features
 from app import (
-    all_queues,
     app,
     config_provider,
     docker_v2_signing_key,
@@ -31,6 +27,7 @@ from data import database, model
 from data.database import Repository as RepositoryTable
 from data.database import RepositoryActionCount
 from data.logs_model import logs_model
+from data.model import vulnerabilitysuppression
 from data.registry_model import registry_model
 from endpoints.api import api, api_bp
 from endpoints.api.billing import (
@@ -91,7 +88,7 @@ from endpoints.api.repositorynotification import (
     RepositoryNotificationList,
     TestRepositoryNotification,
 )
-from endpoints.api.repotoken import RepositoryToken, RepositoryTokenList
+from endpoints.api.repotoken import RepositoryTokenList
 from endpoints.api.robot import (
     OrgRobot,
     OrgRobotList,
@@ -101,7 +98,6 @@ from endpoints.api.robot import (
     UserRobotList,
 )
 from endpoints.api.search import ConductSearch, EntitySearch
-from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.superuser import (
     SuperUserLogs,
     SuperUserManagement,
@@ -149,7 +145,6 @@ from endpoints.webhooks import webhooks
 from initdb import finished_database_for_testing, setup_database_for_testing
 from test.helpers import assert_action_logged, check_transitive_modifications
 from util.morecollections import AttrDict
-from util.secscan.v4.fake import fake_security_scanner
 
 try:
     app.register_blueprint(api_bp, url_prefix="/api")
@@ -1323,12 +1318,25 @@ class TestGetOrganization(ApiTestCase):
         self.assertEqual(ORGANIZATION, json["name"])
         self.assertEqual(False, json["is_admin"])
 
+        with self.toggleFeature("SECURITY_VULNERABILITY_SUPPRESSION", True):
+            self.assertNotIn("suppressed_vulnerabilities", json)
+
     def test_getorganization_asadmin(self):
         self.login(ADMIN_ACCESS_USER)
         json = self.getJsonResponse(Organization, params=dict(orgname=ORGANIZATION))
 
         self.assertEqual(ORGANIZATION, json["name"])
         self.assertEqual(True, json["is_admin"])
+
+        with self.toggleFeature("SECURITY_VULNERABILITY_SUPPRESSION", True):
+            org = model.organization.get_organization(ORGANIZATION)
+            vulnerabilitysuppression.create_vulnerability_suppression_for_org(
+                org, ["CVE-2018-1234"]
+            )
+
+            json = self.getJsonResponse(Organization, params=dict(orgname=ORGANIZATION))
+            self.assertIn("suppressed_vulnerabilities", json)
+            self.assertEqual(["CVE-2018-1234"], json["suppressed_vulnerabilities"])
 
 
 class TestChangeOrganizationDetails(ApiTestCase):
@@ -2559,27 +2567,15 @@ class TestGetRepository(ApiTestCase):
     def test_get_largerepo(self):
         self.login(ADMIN_ACCESS_USER)
 
-        # base + repo + is_starred + tags
+        # base + repo + is_starred + tags + vuln suppressions
         with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
-        # base + repo + is_starred + tags
+        # base + repo + is_starred + tags + vuln suppressions
         with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
-        with patch("features.SECURITY_VULNERABILITY_SUPPRESSION", False):
-            # base + repo + is_starred + tags
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
-                self.getJsonResponse(
-                    Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
-                )
-
-            # base + repo + is_starred + tags
-            with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 3):
-                json = self.getJsonResponse(
-                    Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
-                )
 
             self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
             self.assertEqual("gargantuan", json["name"])
@@ -2673,6 +2669,18 @@ class TestGetRepository(ApiTestCase):
         self.assertEqual(True, json["can_admin"])
 
         self.assertEqual(True, json["is_organization"])
+
+        with self.toggleFeature("SECURITY_VULNERABILITY_SUPPRESSION", True):
+            repo = model.repository.get_repository(ORGANIZATION, ORG_REPO)
+            vulnerabilitysuppression.create_vulnerability_suppression_for_repo(
+                repo, ["CVE-2023-5678"]
+            )
+
+            json = self.getJsonResponse(
+                Repository, params=dict(repository=ORGANIZATION + "/" + ORG_REPO)
+            )
+            self.assertIn("suppressed_vulnerabilities", json)
+            self.assertEqual(["CVE-2023-5678"], json["suppressed_vulnerabilities"])
 
 
 class TestRepositoryBuildResource(ApiTestCase):
