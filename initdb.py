@@ -394,7 +394,6 @@ def initialize_database():
     LogEntryKind.create(name="org_change_tag_expiration")
     LogEntryKind.create(name="org_change_name")
     LogEntryKind.create(name="org_change_suppressed_vulnerabilities")
-    LogEntryKind.create(name="org_clear_suppressed_vulnerabilities")
     LogEntryKind.create(name="org_delete_suppressed_vulnerabilities")
 
     LogEntryKind.create(name="create_prototype_permission")

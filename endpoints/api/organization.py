@@ -381,7 +381,7 @@ class Organization(ApiResource):
 
                     try:
                         model.vulnerabilitysuppression.delete_vulnerability_suppression_for_org(org)
-                        log_action("org_clear_suppressed_vulnerabilities", orgname, {})
+                        log_action("org_delete_suppressed_vulnerabilities", orgname, {})
                     except model.InvalidVulnerabilitySuppression as e:
                         raise InvalidRequest(str(e))
                     except Exception as e:
