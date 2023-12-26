@@ -29,8 +29,8 @@ def test_repository_manifest(app):
             assert result["manifest_data"]
 
 
-def test_repository_manifest_vulnerability_suppression(client):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_manifest_vulnerability_suppression(app):
+    with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
         tag = registry_model.get_repo_tag(repo_ref, "latest")
         manifest = registry_model.lookup_manifest_by_digest(repo_ref, tag.manifest_digest)
@@ -104,8 +104,8 @@ def test_repository_manifest_vulnerability_suppression(client):
         ),
     ],
 )
-def test_repository_manifest_vulnerability_suppression_nonexistent(client, repo, manifestref):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_manifest_vulnerability_suppression_nonexistent(app, repo, manifestref):
+    with client_with_identity("devtable", app) as cl:
         # try to set suppressed vulnerabilities for a manifest that doesn't exist
 
         params = {
@@ -132,8 +132,8 @@ def test_repository_manifest_vulnerability_suppression_nonexistent(client, repo,
         ("",),
     ],
 )
-def test_repository_manifest_vulnerability_suppression_invalid(client, suppressed_vulns):
-    with client_with_identity("devtable", client) as cl:
+def test_repository_manifest_vulnerability_suppression_invalid(app, suppressed_vulns):
+    with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
         tag = registry_model.get_repo_tag(repo_ref, "latest")
         manifest = registry_model.lookup_manifest_by_digest(repo_ref, tag.manifest_digest)
