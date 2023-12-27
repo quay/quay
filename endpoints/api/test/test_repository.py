@@ -246,6 +246,15 @@ def test_repository_vulnerability_suppression(app):
             == new_vulnerability_suppression
         )
 
+        # check that we can clear suppressed vulnerabilities
+
+        body = {"suppressed_vulnerabilities": []}
+
+        result = conduct_api_call(cl, Repository, "PUT", params, body, 200)
+        assert result.status_code == 200
+        assert result.json["success"] == True
+        assert vulnerabilitysuppression.get_vulnerability_suppression_for_repo(repo_ref) == []
+
 
 def test_repository_vulnerability_suppression_nonexistent(app):
     with client_with_identity("devtable", app) as cl:
@@ -276,7 +285,7 @@ def test_repository_vulnerability_suppression_nonexistent(app):
         ("",),
     ],
 )
-def test_repository_vulnerability_suppression_invalid(app, suppressed_vulns):
+def test_repository_vulnerability_suppression_invalid_vulns(app, suppressed_vulns):
     with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
 

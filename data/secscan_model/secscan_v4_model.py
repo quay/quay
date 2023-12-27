@@ -715,6 +715,8 @@ def filtered_vulnerabilities_for(report, suppressions: List[Tuple[str, str]]):
 
         if not vuln_suppressed:
             filtered_vulnerabilities[vuln_id] = vuln_details
+        else:
+            logger.debug("Excluded suppressed vulnerability from report: %s", vuln_details["name"])
 
     return filtered_vulnerabilities
 
@@ -733,10 +735,17 @@ def filtered_features_for(
 
             if suppressed_vuln is None:  # vuln is not suppressed
                 vuln_list.append(vuln)
-            elif include_suppressions:  # vuln is suppressed but we want to include it
-                vuln_list.append(suppressed_vuln)
-            else:  # vuln is suppressed and we want to exclude it
-                continue
+            else:  # vuln is suppressed...
+                if include_suppressions:  # ... and we want to include it
+                    vuln_list.append(suppressed_vuln)
+                    logger.debug(
+                        "Included suppressed vulnerability in report: %s", suppressed_vuln.Name
+                    )
+                else:  # ... and we don't want to include it
+                    logger.debug(
+                        "Excluded suppressed vulnerability from report: %s", suppressed_vuln.Name
+                    )
+                    continue
 
         features_with_vuln_suppression.append(
             Feature(

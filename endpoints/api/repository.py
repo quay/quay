@@ -388,6 +388,10 @@ class Repository(RepositoryParamResource):
                         repo, values["suppressed_vulnerabilities"], raise_on_error=True
                     )
                 except InvalidVulnerabilitySuppression as e:
+                    logger.exception(
+                        "Error setting suppressed vulnerabilities for repo %s: %s"
+                        % (repository, str(e))
+                    )
                     return {"success": False}, 400
                 except Exception as e:
                     logger.exception(
@@ -411,8 +415,6 @@ class Repository(RepositoryParamResource):
 
                 try:
                     delete_vulnerability_suppression_for_repo(repo)
-                except InvalidVulnerabilitySuppression as e:
-                    return {"success": False}, 400
                 except Exception as e:
                     logger.exception(
                         "Error removing suppressed vulnerabilities for repo %s: %s"
