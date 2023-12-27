@@ -18,9 +18,9 @@ from endpoints.api import (
     parse_args,
     path_param,
     query_param,
+    require_repo_read,
     resource,
     show_if,
-    require_repo_read,
 )
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
 from endpoints.decorators import anon_allowed
