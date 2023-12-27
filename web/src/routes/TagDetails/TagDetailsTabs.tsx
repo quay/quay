@@ -1,14 +1,11 @@
-import {Tabs, Tab, TabTitleText} from '@patternfly/react-core';
-import {useSearchParams, useNavigate, useLocation} from 'react-router-dom';
+import {Tab, TabTitleText, Tabs} from '@patternfly/react-core';
 import {useState} from 'react';
-import Details from './Details/Details';
-import SecurityReport from './SecurityReport/SecurityReport';
+import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {Tag} from 'src/resources/TagResource';
-import {TabIndex} from './Types';
+import Details from './Details/Details';
 import {Packages} from './Packages/Packages';
-import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import {isErrorString} from 'src/resources/ErrorHandling';
-import RequestError from 'src/components/errors/RequestError';
+import SecurityReport from './SecurityReport/SecurityReport';
+import {TabIndex} from './Types';
 
 // Return the tab as an enum or null if it does not exist
 function getTabIndex(tab: string) {
@@ -51,7 +48,7 @@ export default function TagTabs(props: TagTabsProps) {
         eventKey={TabIndex.SecurityReport}
         title={<TabTitleText>Security Report</TabTitleText>}
       >
-        <SecurityReport 
+        <SecurityReport
           org={props.org}
           repo={props.repo}
           tag={props.tag}
