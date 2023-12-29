@@ -5,17 +5,17 @@ import {ITeamMember} from 'src/hooks/UseMembers';
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
     case VulnerabilitySeverity.Critical:
-      return '#7D1007';
+      return 'var(--pf-v5-global--palette--red-200)';
     case VulnerabilitySeverity.High:
-      return '#C9190B';
+      return 'var(--pf-v5-global--palette--red-100)';
     case VulnerabilitySeverity.Medium:
-      return '#EC7A08';
+      return 'var(--pf-v5-global--palette--orange-300)';
     case VulnerabilitySeverity.Low:
-      return '#F0AB00';
+      return 'var(--pf-v5-global--palette--gold-300)';
     case VulnerabilitySeverity.None:
-      return '#3E8635';
+      return 'var(--pf-v5-global--palette--green-400)';
     default:
-      return '#8A8D90';
+      return 'var(--pf-v5-global--palette--black-300)';
   }
 }
 
