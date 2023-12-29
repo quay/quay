@@ -1,4 +1,3 @@
-import React, {useState} from 'react';
 import {
   Button,
   Dropdown,
@@ -6,25 +5,35 @@ import {
   DropdownList,
   Flex,
   FlexItem,
+  Icon,
   MenuToggle,
   MenuToggleElement,
   Switch,
+  ToggleGroup,
+  ToggleGroupItem,
   Toolbar,
   ToolbarContent,
   ToolbarGroup,
   ToolbarItem,
+  Tooltip,
 } from '@patternfly/react-core';
-import {UserIcon} from '@patternfly/react-icons';
+import {UserIcon, WindowMaximizeIcon} from '@patternfly/react-icons';
+import React, {useState} from 'react';
 import {GlobalAuthState, logoutUser} from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from '../errors/ErrorModal';
 
-import 'src/components/header/HeaderToolbar.css';
 import {useQueryClient} from '@tanstack/react-query';
+import 'src/components/header/HeaderToolbar.css';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+
+import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
+import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
+import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 
 export function HeaderToolbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const {themePreference, setThemePreference} = useTheme();
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
@@ -35,7 +44,6 @@ export function HeaderToolbar() {
   };
 
   const onDropdownSelect = async (value) => {
-    setIsDropdownOpen(false);
     switch (value) {
       case 'logout':
         try {
@@ -52,8 +60,12 @@ export function HeaderToolbar() {
           console.error(err);
           setErr(addDisplayError('Unable to log out', err));
         }
+        setIsDropdownOpen(false);
+        break;
+      case 'theme-selector':
         break;
       default:
+        setIsDropdownOpen(false);
         break;
     }
   };
@@ -79,7 +91,91 @@ export function HeaderToolbar() {
         <DropdownItem value="logout" key="logout" component="button">
           Logout
         </DropdownItem>
+        <DropdownItem
+          value="theme-selector"
+          key="theme-selector"
+          component="object"
+        >
+          <ToggleGroup aria-label="Theme toggle group">
+            <ToggleGroupItem
+              icon={
+                <Icon size="sm">
+                  <SunIcon />
+                </Icon>
+              }
+              aria-label="light theme"
+              aria-describedby="tooltip-auto-theme"
+              buttonId="toggle-group-light-theme"
+              onChange={() => {
+                if (themePreference !== ThemePreference.LIGHT) {
+                  setThemePreference(ThemePreference.LIGHT);
+                }
+              }}
+              isSelected={themePreference === ThemePreference.LIGHT}
+            />
+            <ToggleGroupItem
+              icon={
+                <Icon size="sm">
+                  <MoonIcon />
+                </Icon>
+              }
+              aria-label="dark theme"
+              buttonId="toggle-group-dark-theme"
+              onChange={() => {
+                if (themePreference !== ThemePreference.DARK) {
+                  setThemePreference(ThemePreference.DARK);
+                }
+              }}
+              isSelected={themePreference === ThemePreference.DARK}
+            />
+            <ToggleGroupItem
+              icon={
+                <Icon size="sm">
+                  <WindowMaximizeIcon />
+                </Icon>
+              }
+              aria-label="auto theme"
+              buttonId="toggle-group-auto-theme"
+              onChange={() => {
+                if (themePreference !== ThemePreference.AUTO) {
+                  setThemePreference(ThemePreference.AUTO);
+                }
+              }}
+              isSelected={themePreference === ThemePreference.AUTO}
+            />
+          </ToggleGroup>
+        </DropdownItem>
       </DropdownList>
+      <Tooltip
+        id="tooltip-light-theme"
+        content="Light theme"
+        position="bottom"
+        triggerRef={() =>
+          document.getElementById(
+            'toggle-group-light-theme',
+          ) as HTMLButtonElement
+        }
+      />
+      <Tooltip
+        id="tooltip-dark-theme"
+        content="Dark theme"
+        position="bottom"
+        triggerRef={() =>
+          document.getElementById(
+            'toggle-group-dark-theme',
+          ) as HTMLButtonElement
+        }
+      />
+      <Tooltip
+        id="tooltip-auto-theme"
+        content="Browser-based theme"
+        position="bottom"
+        triggerRef={() =>
+          document.getElementById(
+            'toggle-group-auto-theme',
+          ) as HTMLButtonElement
+        }
+      />
     </Dropdown>
   );
 
