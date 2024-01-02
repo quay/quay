@@ -646,6 +646,12 @@ def populate_database(minimal=False):
     outside_org.verified = True
     outside_org.save()
 
+    subscriptionuser = model.user.create_user(
+        "subscription", "password", "subscriptions@devtable.com"
+    )
+    subscriptionuser.verified = True
+    subscriptionuser.save()
+
     model.notification.create_notification(
         "test_notification",
         new_user_1,
@@ -924,6 +930,11 @@ def populate_database(minimal=False):
         "sellnsmall", "quay+sell@devtable.com", new_user_1
     )
     thirdorg.save()
+
+    subscriptionsorg = model.organization.create_organization(
+        "subscriptionsorg", "quay+subscriptionsorg@devtable.com", subscriptionuser
+    )
+    subscriptionsorg.save()
 
     model.user.create_robot("coolrobot", org)
 

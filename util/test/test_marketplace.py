@@ -40,7 +40,7 @@ mocked_user_service_response = [
                 "startDate": "2022-09-20T14:31:09.974Z",
                 "id": "fakeid",
                 "account": {
-                    "id": "fakeid",
+                    "id": "000000000",
                     "cdhPartyNumber": "0000000",
                     "ebsAccountNumber": "1234567",
                     "name": "Test User",
@@ -119,7 +119,7 @@ class TestMarketplace:
         requests_mock.return_value.content = json.dumps(mocked_user_service_response)
 
         customer_id = user_api.lookup_customer_id("example@example.com")
-        assert customer_id == "1234567"
+        assert customer_id == "000000000"
 
         requests_mock.return_value.content = json.dumps(mocked_organization_only_response)
         customer_id = user_api.lookup_customer_id("example@example.com")
