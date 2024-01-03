@@ -85,7 +85,7 @@ def run_migrations_offline():
     """
     db_url = get_db_url()
     config.set_main_option("sqlalchemy.url", db_url)  # TODO: Is this required?
-    context.configure(url=db_url, target_metadata=target_metadata, transactional_ddl=True)
+    context.configure(url=db_url, target_metadata=target_metadata, transactional_ddl=True, render_as_batch=True)
 
     with context.begin_transaction():
         context.run_migrations(op=alembic_op, tables=tables, tester=get_tester())
@@ -97,9 +97,9 @@ def run_migrations_online():
 
     In this scenario we need to create an Engine and associate a connection with the context.
     """
-    if isinstance(db.obj, SqliteDatabase) and "DB_URI" not in os.environ:
-        logger.info("Skipping Sqlite migration!")
-        return
+    # if isinstance(db.obj, SqliteDatabase) and "DB_URI" not in os.environ:
+    #     logger.info("Skipping Sqlite migration!")
+    #     return
 
     engine = get_engine()
     connection = engine.connect()
@@ -107,6 +107,7 @@ def run_migrations_online():
         connection=connection,
         target_metadata=target_metadata,
         transactional_ddl=False,
+        render_as_batch=True,
     )
 
     try:

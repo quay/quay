@@ -14,20 +14,20 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
-    op.alter_column(
-        table_name="logentry",
-        column_name="id",
-        nullable=False,
-        autoincrement=True,
-        type_=sa.BigInteger(),
-    )
+    with op.batch_alter_table("logentry") as batch_op:
+        batch_op.alter_column(
+            column_name="id",
+            nullable=False,
+            autoincrement=True,
+            type_=sa.BigInteger(),
+        )
 
 
 def downgrade(op, tables, tester):
-    op.alter_column(
-        table_name="logentry",
-        column_name="id",
-        nullable=False,
-        autoincrement=True,
-        type_=sa.Integer(),
-    )
+    with op.batch_alter_table("logentry") as batch_op:
+        batch_op.alter_column(
+            column_name="id",
+            nullable=False,
+            autoincrement=True,
+            type_=sa.Integer(),
+        )
