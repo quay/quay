@@ -297,6 +297,7 @@ function FullCommitDescription({build}: {build: RepositoryBuild}) {
           <LinkOrPlainText
             href={build?.trigger_metadata?.commit_info?.author?.url}
           >
+            by{' '}
             <Conditional
               if={
                 !isNullOrUndefined(
@@ -305,10 +306,11 @@ function FullCommitDescription({build}: {build: RepositoryBuild}) {
               }
             >
               <img
+                style={{width: '1.5em', marginRight: '.2em'}}
                 src={build?.trigger_metadata?.commit_info?.author?.avatar_url}
               />
             </Conditional>
-            by {build?.trigger_metadata?.commit_info?.author?.username}{' '}
+            {build?.trigger_metadata?.commit_info?.author?.username}{' '}
           </LinkOrPlainText>
         </Conditional>
         <span style={{paddingRight: '.5em'}}>
