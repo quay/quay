@@ -28,7 +28,7 @@ html, body, #root,  .App {
 
 .disabled-link {
     pointer-events: none;
-    color: black;
+    color: var(--pf-v5-global--palette--black);
 }
 
 .no-padding {

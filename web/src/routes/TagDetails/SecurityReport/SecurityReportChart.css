@@ -1,0 +1,3 @@
+.pf-v5-theme-dark {
+    --pf-v5-chart-donut--label--title--Fill: var(--pf-v5-global--primary-color--400);
+}

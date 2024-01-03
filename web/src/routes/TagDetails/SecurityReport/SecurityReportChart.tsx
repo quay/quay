@@ -9,8 +9,9 @@ import {
   TitleSizes,
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
-import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
 import {getSeverityColor} from 'src/libs/utils';
+import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
+import './SecurityReportChart.css';
 
 function VulnerabilitySummary(props: VulnerabilityStatsProps) {
   let message = <Skeleton width="400px" />;
