@@ -11,7 +11,6 @@ import BuildTriggerActions from './BuildTriggerActions';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import BuildTriggerToggleModal from './BuildTriggerToggleModal';
 import {useState} from 'react';
-import {set} from 'core-js/core/dict';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import InactiveTrigger from './BuildTriggersInactiveTriggerRow';
 
