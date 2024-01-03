@@ -179,7 +179,7 @@ export function HeaderToolbar() {
         />
         <Tooltip
           id="tooltip-auto-theme"
-          content="Browser-based theme"
+          content="Device-based theme"
           position="bottom"
           triggerRef={() =>
             document.getElementById(
