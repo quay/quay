@@ -338,7 +338,8 @@
           "message": "custom-git build from branch",
           "date": "2023-11-28T10:42:17-05:00",
           "author": {
-            "username": "user1"
+            "username": "user1",
+            "avatar_url": "https://avatars.githubusercontent.com/u/38353654?s=200&v=4"
           },
           "committer": {
             "username": "web-flow"
