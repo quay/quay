@@ -141,13 +141,13 @@ def upgrade(op, tables, tester):
             repo_mirror.external_reference = repo
             repo_mirror.save()
 
-    op.drop_column("repomirrorconfig", "external_registry")
-    op.drop_column("repomirrorconfig", "external_namespace")
-    op.drop_column("repomirrorconfig", "external_repository")
+    with op.batch_alter_table("repomirrorconfig") as batch_op:
+        batch_op.drop_column("external_registry")
+        batch_op.drop_column("external_namespace")
+        batch_op.drop_column("external_repository")
 
-    op.alter_column(
-        "repomirrorconfig", "external_reference", nullable=False, existing_type=sa.Text()
-    )
+    with op.batch_alter_table("repomirrorconfig") as batch_op:
+        batch_op.alter_column("external_reference", nullable=False, existing_type=sa.Text())
 
     tester.populate_column("repomirrorconfig", "external_reference", tester.TestDataType.String)
 
@@ -182,20 +182,18 @@ def downgrade(op, tables, tester):
             repo_mirror.external_repository = parts[2] if len(parts) >= 3 else "DOWNGRADE-FAILED"
             repo_mirror.save()
 
-    op.drop_column("repomirrorconfig", "external_reference")
+    with op.batch_alter_table("repomirrorconfig") as batch_op:
+        batch_op.drop_column("external_reference")
 
-    op.alter_column(
-        "repomirrorconfig", "external_registry", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "repomirrorconfig",
-        "external_namespace",
-        nullable=False,
-        existing_type=sa.String(length=255),
-    )
-    op.alter_column(
-        "repomirrorconfig",
-        "external_repository",
-        nullable=False,
-        existing_type=sa.String(length=255),
-    )
+    with op.batch_alter_table("repomirrorconfig") as batch_op:
+        batch_op.alter_column("external_registry", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column(
+            "external_namespace",
+            nullable=False,
+            existing_type=sa.String(length=255),
+        )
+        batch_op.alter_column(
+            "external_repository",
+            nullable=False,
+            existing_type=sa.String(length=255),
+        )
