@@ -341,10 +341,13 @@ class MarketplaceUserApi(object):
 
     def init_app(self, app):
         marketplace_enabled = app.config.get("FEATURE_RH_MARKETPLACE", False)
+        reconciler_enabled = app.config.get("ENTITLEMENT_RECONCILIATION", False)
+
+        use_rh_api = marketplace_enabled or reconciler_enabled
 
         marketplace_user_api = FakeUserApi(app.config)
 
-        if marketplace_enabled and not app.config.get("TESTING"):
+        if use_rh_api and not app.config.get("TESTING"):
             marketplace_user_api = RedHatUserApi(app.config)
 
         app.extensions = getattr(app, "extensions", {})
@@ -364,11 +367,14 @@ class MarketplaceSubscriptionApi(object):
             self.state = None
 
     def init_app(self, app):
+        reconciler_enabled = app.config.get("ENTITLEMENT_RECONCILIATION", False)
         marketplace_enabled = app.config.get("FEATURE_RH_MARKETPLACE", False)
+
+        use_rh_api = marketplace_enabled or reconciler_enabled
 
         marketplace_subscription_api = FakeSubscriptionApi()
 
-        if marketplace_enabled and not app.config.get("TESTING"):
+        if use_rh_api and not app.config.get("TESTING"):
             marketplace_subscription_api = RedHatSubscriptionApi(app.config)
 
         app.extensions = getattr(app, "extensions", {})
