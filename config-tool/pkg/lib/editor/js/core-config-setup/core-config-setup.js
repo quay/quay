@@ -121,6 +121,16 @@ angular.module("quay-config")
             {'name': 'storage_path', 'title': 'Storage Directory', 'placeholder': '/path/inside/bucket', 'kind': 'text'}
           ],
 
+          'IBMCloudStorage': [
+            {'name': 'hostname', 'title': 'IBM Cloud Storage Hostname', 'placeholder': 'storage hostname', 'kind': 'text'},
+            {'name': 'port', 'title': 'Custom Port (optional)', 'placeholder': '443', 'kind': 'text', 'pattern': '^[0-9]+$', 'optional': true},
+            {'name': 'is_secure', 'title': 'Is Secure', 'placeholder': 'Require SSL', 'kind': 'bool'},
+            {'name': 'access_key', 'title': 'Access Key', 'placeholder': 'accesskeyhere', 'kind': 'text'},
+            {'name': 'secret_key', 'title': 'Secret Key', 'placeholder': 'secretkeyhere', 'kind': 'text'},
+            {'name': 'bucket_name', 'title': 'Bucket Name',  'placeholder': 'my-cool-bucket', 'kind': 'text'},
+            {'name': 'storage_path', 'title': 'Storage Directory', 'placeholder': '/path/inside/bucket', 'kind': 'text'}
+          ],
+
           'SwiftStorage': [
             {'name': 'auth_version', 'title': 'Swift Auth Version', 'kind': 'option', 'values': [1, 2, 3]},
             {'name': 'auth_url', 'title': 'Swift Auth URL', 'placeholder': 'http://swiftdomain/auth/v1.0', 'kind': 'text'},
@@ -319,10 +329,10 @@ angular.module("quay-config")
             delete $scope.config["DB_CONNECTION_ARGS"]["ssl"];
             $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"] = "conf/stack/database.pem";
             $scope.config["DB_CONNECTION_ARGS"]["sslmode"] = "verify-full"
-          } else if 
+          } else if
             ($scope.certs["database.pem"] && $scope.config["DB_URI"].startsWith("mysql")){
             delete $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"];
-            delete $scope.config["DB_CONNECTION_ARGS"]["sslmode"];    
+            delete $scope.config["DB_CONNECTION_ARGS"]["sslmode"];
             $scope.config["DB_CONNECTION_ARGS"]["ssl"] = {}
             $scope.config["DB_CONNECTION_ARGS"]["ssl"]["ca"] = "conf/stack/database.pem";
           }
@@ -365,7 +375,7 @@ angular.module("quay-config")
         }
 
         $scope.checkValidateAndSave = function() {
-          
+
           if ($scope.configform.$valid) {
             saveStorageConfig();
             $scope.validateAndSave();
@@ -375,7 +385,7 @@ angular.module("quay-config")
           var query = $.find(".ng-invalid");
 
           console.log(query)
-          if (query && query.length) {   
+          if (query && query.length) {
             query[1].scrollIntoView();
             query[1].focus();
           }
@@ -618,7 +628,7 @@ angular.module("quay-config")
           $scope.mapped['database'] = {}
           $scope.mapped['database'] = parseDbUri(getKey(config, "DB_URI"))
           console.log($scope.mapped['database'])
-          
+
         };
 
         var tlsSetter = function(value) {
@@ -693,7 +703,7 @@ angular.module("quay-config")
           }
 
           $scope.config['DB_URI'] = uri
-          
+
         };
 
         var logsModelSelector = function(keyname) {
@@ -1104,7 +1114,7 @@ angular.module("quay-config")
           }
         }
         $scope.$watch("certs", checkHasFile, true);
-        
+
         $scope.onFileSelect = function(files) {
           if (files.length < 1) {
             $scope.hasFile = false;
@@ -1146,9 +1156,9 @@ angular.module("quay-config")
               $scope.uploadProgress = null;
             });
           };
-        
-        
-  
+
+
+
         };
 
       }
@@ -1395,7 +1405,7 @@ angular.module("quay-config")
     };
     return directiveDefinitionObject;
   })
-  
+
   .directive('configStringField', function () {
     var directiveDefinitionObject = {
       priority: 0,
@@ -1542,7 +1552,7 @@ angular.module("quay-config")
                   const c = new X509();
                   c.readCertPEM(atob(contents));
                   const current = new Date();
-                  // This function returns a bad string, so we have to do some extra formatting to normalize it. 
+                  // This function returns a bad string, so we have to do some extra formatting to normalize it.
                   let originalDateString = "20"+c.getNotAfter()
                   let formattedDateString = originalDateString.replace(
                     /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/,
@@ -1585,7 +1595,7 @@ angular.module("quay-config")
               cn.push(attr.value)
             }
           })
-          return cn        
+          return cn
         }
 
         $scope.deleteCert = function (certPath) {
