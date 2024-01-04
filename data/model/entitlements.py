@@ -33,10 +33,10 @@ def update_web_customer_id(user, web_customer_id):
 
 def remove_web_customer_id(user, web_customer_id):
     try:
-        id = RedHatSubscriptions.get(
+        customer_id = RedHatSubscriptions.get(
             RedHatSubscriptions.user_id == user.id,
             RedHatSubscriptions.account_number == web_customer_id,
         )
-        return id.delete_instance()
+        return customer_id.delete_instance()
     except model.DataModelException as ex:
         logger.error("Problem removing customer id for %s: %s", user.username, ex)

@@ -53,9 +53,8 @@ class ReconciliationWorker(Worker):
             )
 
             # check against user api
-            logger.debug("Looking up webCustomerId for email %s", email)
             customer_id = user_api.lookup_customer_id(email)
-            logger.debug("Found %s number for %s", str(customer_id), user.username)
+            logger.debug("Found %s number for %s", str(customer_id), email)
 
             if model_customer_id is None and customer_id:
                 logger.debug("Saving new customer id %s for %s", customer_id, user.username)
