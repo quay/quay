@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 
 from data.database import DeletedNamespace, User
@@ -10,6 +8,7 @@ from endpoints.api.superuser import (
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -32,7 +31,7 @@ def test_list_all_users(disabled, app):
 def test_list_all_orgs(app):
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserOrganizationList, "GET", None, None, 200).json
-        assert len(result["organizations"]) == 5
+        assert len(result["organizations"]) == 6
 
 
 def test_paginate_orgs(app):
@@ -45,7 +44,7 @@ def test_paginate_orgs(app):
         secondResult = conduct_api_call(
             cl, SuperUserOrganizationList, "GET", params, None, 200
         ).json
-        assert len(secondResult["organizations"]) == 2
+        assert len(secondResult["organizations"]) == 3
         assert secondResult.get("next_page", None) is None
 
 
@@ -57,7 +56,7 @@ def test_paginate_test_list_all_users(app):
         assert firstResult["next_page"] is not None
         params["next_page"] = firstResult["next_page"]
         secondResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
-        assert len(secondResult["users"]) == 4
+        assert len(secondResult["users"]) == 5
         assert secondResult.get("next_page", None) is None
 
 
