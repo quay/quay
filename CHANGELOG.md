@@ -3,6 +3,11 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.2"></a>
+## [v3.10.2] - 2024-01-03
+### [Redhat-3.10] Configtool
+- [a5ec0422](https://github.com/quay/quay/commit/a5ec0422eab667d07d5053bf4d44f78129d663e2): Adding validation for IBM Cloud Storage (PROJQUAY-6549) ([#2581](https://github.com/quay/quay/issues/2581))
+
 <a name="v3.10.1"></a>
 ## [v3.10.1] - 2023-12-05
 ### [Redhat-3.10] Api
@@ -1898,7 +1903,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.1...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.2...HEAD
+[v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
 [v3.10.0]: https://github.com/quay/quay/compare/v3.9.5...v3.10.0
 [v3.9.5]: https://github.com/quay/quay/compare/v3.9.4...v3.9.5
