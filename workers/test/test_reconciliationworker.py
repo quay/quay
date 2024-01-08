@@ -60,3 +60,15 @@ def test_reconcile_different_ids(initialized_db):
         mock.return_value = None
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
     assert model.entitlements.get_web_customer_id(test_user.id) is None
+
+
+def test_update_same_id(initialized_db):
+    test_user = model.user.create_user("stripe_user", "password", "stripe_user@test.com")
+    test_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    test_user.save()
+    model.entitlements.save_web_customer_id(test_user, 11111)
+
+    with patch.object(model.entitlements, "update_web_customer_id") as mock:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    mock.assert_not_called()
