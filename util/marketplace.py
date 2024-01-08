@@ -72,7 +72,7 @@ class RedHatUserApi(object):
             if account["accountRelationships"][0]["account"]["type"] == "person":
                 customer_id = account["accountRelationships"][0]["account"].get("id")
                 # convert str response from api to int value
-                if str.isdigit(customer_id):
+                if customer_id.isdigit():
                     customer_id = int(customer_id)
                 return customer_id
         return None
