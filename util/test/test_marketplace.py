@@ -119,7 +119,7 @@ class TestMarketplace:
         requests_mock.return_value.content = json.dumps(mocked_user_service_response)
 
         customer_id = user_api.lookup_customer_id("example@example.com")
-        assert customer_id == "000000000"
+        assert customer_id == 000000000
 
         requests_mock.return_value.content = json.dumps(mocked_organization_only_response)
         customer_id = user_api.lookup_customer_id("example@example.com")
