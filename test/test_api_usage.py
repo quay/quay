@@ -37,9 +37,11 @@ from endpoints.api.billing import (
     OrganizationCard,
     OrganizationPlan,
     OrganizationRhSku,
+    OrganizationRhSkuBatchRemoval,
     OrganizationRhSkuSubscriptionField,
     UserCard,
     UserPlan,
+    UserSkuList,
 )
 from endpoints.api.build import (
     RepositoryBuildList,
@@ -5142,6 +5144,31 @@ class TestOrganizationRhSku(ApiTestCase):
         self.assertEqual(len(json), 2)
         json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
         self.assertEqual(True, json["privateAllowed"])
+
+    def test_batch_sku_remove(self):
+        self.login(SUBSCRIPTION_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}, {"subscription_id": 11223344}]},
+            expected_code=201,
+        )
+        self.postResponse(
+            resource_name=OrganizationRhSkuBatchRemoval,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 12345678}, {"subscription_id": 11223344}]},
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku, params=dict(orgname=SUBSCRIPTION_ORG)
+        )
+        self.assertEqual(len(json), 0)
+
+
+class TestUserSku(ApiTestCase):
+    def test_get_user_skus(self):
+        self.login(SUBSCRIPTION_USER)
+        json = self.getJsonResponse(UserSkuList)
+        self.assertEqual(len(json), 2)
 
 
 if __name__ == "__main__":
