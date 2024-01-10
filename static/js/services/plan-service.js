@@ -308,9 +308,14 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
 
   planService.listUserMarketplaceSubscriptions = function(callback) {
     if (!Features.BILLING || !Features.RH_MARKETPLACE) { return; }
-    ApiService.getUserMarketplaceSubscriptions().then(function(resp) {
-      callback(resp);
-    });
+
+    var errorHandler = function(resp) {
+        if (resp.status == 404) {
+            callback(null);
+        }
+    }
+
+    ApiService.getUserMarketplaceSubscriptions().then(callback, errorHandler);
   };
 
   planService.listOrgMarketplaceSubscriptions = function(orgname, callback) {
@@ -339,9 +344,7 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
     var params = {
         'orgname': orgname
     };
-    ApiService.batchRemoveSku(subscriptions, params).then(function(resp) {
-          callback(resp);
-    });
+    ApiService.batchRemoveSku(subscriptions, params).then(callback);
   };
 
   return planService;

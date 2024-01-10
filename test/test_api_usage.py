@@ -5120,7 +5120,7 @@ class TestOrganizationRhSku(ApiTestCase):
         self.deleteResponse(
             resource_name=OrganizationRhSkuSubscriptionField,
             params=dict(orgname=SUBSCRIPTION_ORG, subscription_id=12345678),
-            expected_code=200,
+            expected_code=204,
         )
         json = self.getJsonResponse(
             resource_name=OrganizationRhSku,
@@ -5157,6 +5157,7 @@ class TestOrganizationRhSku(ApiTestCase):
             resource_name=OrganizationRhSkuBatchRemoval,
             params=dict(orgname=SUBSCRIPTION_ORG),
             data={"subscriptions": [{"subscription_id": 12345678}, {"subscription_id": 11223344}]},
+            expected_code=204,
         )
         json = self.getJsonResponse(
             resource_name=OrganizationRhSku, params=dict(orgname=SUBSCRIPTION_ORG)

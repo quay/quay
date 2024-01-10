@@ -33,7 +33,6 @@ angular.module('quay').directive('orgBinding', function() {
 
         if ($scope.organization) {
           PlanService.listOrgMarketplaceSubscriptions($scope.organization, function(marketplaceSubscriptions){
-            // $scope.orgMarketplaceSubscriptions = marketplaceSubscriptions
             // group the list of subscriptions by their sku field
             $scope.orgMarketplaceSubscriptions = groupSubscriptionsBySku(marketplaceSubscriptions);
             for (var i = 0; i < marketplaceSubscriptions.length; i++) {
@@ -44,6 +43,10 @@ angular.module('quay').directive('orgBinding', function() {
         }
 
         PlanService.listUserMarketplaceSubscriptions(function(marketplaceSubscriptions){
+          if(!marketplaceSubscriptions) {
+            $scope.marketplaceLoading = false;
+            return;
+          }
           let notBound = [];
           $scope.userMarketplaceSubscriptions = groupSubscriptionsBySku(marketplaceSubscriptions);
 
@@ -70,10 +73,10 @@ angular.module('quay').directive('orgBinding', function() {
 
       $scope.bindSku = function(subscriptions, numSubscriptions) {
         let subscriptionArr = JSON.parse(subscriptions);
-        // if(numSubscriptions > subscriptionArr.length){
-        //   displayError("number of subscriptions exceeds total amount");
-        //   return;
-        // }
+        if(numSubscriptions > subscriptionArr.length){
+          displayError("number of subscriptions exceeds total amount");
+          return;
+        }
         $scope.marketplaceLoading = true;
         const requestData = {};
         requestData["subscriptions"] = [];
@@ -104,7 +107,7 @@ angular.module('quay').directive('orgBinding', function() {
           requestData["subscriptions"].push(subscriptionObject);
         }
         PlanService.batchRemoveSku(requestData, $scope.organization, function(resp){
-          if (resp === "Deleted") {
+          if (resp == "") {
             removeSkuSuccessMessage();
           }
           else {

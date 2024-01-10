@@ -1031,7 +1031,7 @@ class OrganizationRhSkuBatchRemoval(ApiResource):
                 model.organization_skus.remove_subscription_from_org(
                     organization.id, subscription_id
                 )
-            return ("Deleted", 200)
+            return ("Deleted", 204)
         abort(401)
 
 
@@ -1058,7 +1058,7 @@ class OrganizationRhSkuSubscriptionField(ApiResource):
                 return ("Organization not valid", 400)
 
             model.organization_skus.remove_subscription_from_org(organization.id, subscription_id)
-            return ("Deleted", 200)
+            return ("Deleted", 204)
         abort(401)
 
 
@@ -1079,7 +1079,7 @@ class UserSkuList(ApiResource):
         user = get_authenticated_user()
         account_number = marketplace_users.get_account_number(user)
         if not account_number:
-            return []
+            raise NotFound()
 
         user_subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
 
