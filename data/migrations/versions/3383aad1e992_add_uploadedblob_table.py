@@ -23,7 +23,7 @@ def upgrade(op, tables, tester):
     if "uploadedblob" not in table_names:
         op.create_table(
             "uploadedblob",
-            sa.Column("id", sa.BigInteger(), nullable=False),
+            sa.Column("id", sa.Integer() if op.get_context().dialect.name == 'sqlite' else sa.BigInteger(), nullable=False),
             sa.Column("repository_id", sa.Integer(), nullable=False),
             sa.Column("blob_id", sa.Integer(), nullable=False),
             sa.Column("uploaded_at", sa.DateTime(), nullable=False),

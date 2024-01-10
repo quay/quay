@@ -15,137 +15,126 @@ import sqlalchemy as sa
 
 def upgrade(op, tables, tester):
     # DerivedStorageForImage
-    op.drop_constraint(
-        op.f("fk_derivedstorageforimage_derivative_id_imagestorage"),
-        "derivedstorageforimage",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_derivedstorageforimage_source_image_id_image"),
-        "derivedstorageforimage",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_derivedstorageforimage_transformation_constraint"),
-        "derivedstorageforimage",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("derivedstorageforimage") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_derivedstorageforimage_derivative_id_imagestorage"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_derivedstorageforimage_source_image_id_image"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_derivedstorageforimage_transformation_constraint"),
+            type_="foreignkey",
+        )
 
     # RepositoryTag
-    op.drop_constraint(
-        op.f("fk_repositorytag_image_id_image"),
-        "repositorytag",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_repositorytag_repository_id_repository"),
-        "repositorytag",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("repositorytag") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_repositorytag_image_id_image"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_repositorytag_repository_id_repository"),
+            type_="foreignkey",
+        )
 
     # TorrentInfo
-    op.drop_constraint(
-        op.f("fk_torrentinfo_storage_id_imagestorage"),
-        "torrentinfo",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("torrentinfo") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_torrentinfo_storage_id_imagestorage"),
+            type_="foreignkey",
+        )
 
     # TagManifest
-    op.drop_constraint(
-        op.f("fk_tagmanifest_tag_id_repositorytag"),
-        "tagmanifest",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("tagmanifest") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifest_tag_id_repositorytag"),
+            type_="foreignkey",
+        )
 
     # TagManifestToManifest
-    op.drop_constraint(
-        op.f("fk_tagmanifesttomanifest_manifest_id_manifest"),
-        "tagmanifesttomanifest",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifesttomanifest_tag_manifest_id_tagmanifest"),
-        "tagmanifesttomanifest",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("tagmanifesttomanifest") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifesttomanifest_manifest_id_manifest"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifesttomanifest_tag_manifest_id_tagmanifest"),
+            type_="foreignkey",
+        )
 
     # TagManifestLabel
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabel_annotated_id_tagmanifest"),
-        "tagmanifestlabel",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabel_label_id_label"),
-        "tagmanifestlabel",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabel_repository_id_repository"),
-        "tagmanifestlabel",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("tagmanifestlabel") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabel_annotated_id_tagmanifest"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabel_label_id_label"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabel_repository_id_repository"),
+            type_="foreignkey",
+        )
 
     # TagManifestLabelMap
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabelmap_label_id_label"),
-        "tagmanifestlabelmap",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabelmap_manifest_id_manifest"),
-        "tagmanifestlabelmap",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabelmap_manifest_label_id_manifestlabel"),
-        "tagmanifestlabelmap",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabelmap_tag_manifest_id_tagmanifest"),
-        "tagmanifestlabelmap",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagmanifestlabelmap_tag_manifest_label_id_tagmanifestlabel"),
-        "tagmanifestlabelmap",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("tagmanifestlabelmap") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabelmap_label_id_label"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabelmap_manifest_id_manifest"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabelmap_manifest_label_id_manifestlabel"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabelmap_tag_manifest_id_tagmanifest"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagmanifestlabelmap_tag_manifest_label_id_tagmanifestlabel"),
+            type_="foreignkey",
+        )
 
     # TagToRepositoryTag
-    op.drop_constraint(
-        op.f("fk_tagtorepositorytag_repository_id_repository"),
-        "tagtorepositorytag",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagtorepositorytag_repository_tag_id_repositorytag"),
-        "tagtorepositorytag",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_tagtorepositorytag_tag_id_tag"), "tagtorepositorytag", type_="foreignkey"
-    )
+    with op.batch_alter_table("tagtorepositorytag") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_tagtorepositorytag_repository_id_repository"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagtorepositorytag_repository_tag_id_repositorytag"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_tagtorepositorytag_tag_id_tag"), type_="foreignkey"
+        )
 
     # Image
-    op.drop_constraint(op.f("fk_image_repository_id_repository"), "image", type_="foreignkey")
-    op.drop_constraint(op.f("fk_image_storage_id_imagestorage"), "image", type_="foreignkey")
+    with op.batch_alter_table("image") as batch_op:
+        batch_op.drop_constraint(op.f("fk_image_repository_id_repository"), type_="foreignkey")
+        batch_op.drop_constraint(op.f("fk_image_storage_id_imagestorage"), type_="foreignkey")
 
     # ManifestLegacyImage
-    op.drop_constraint(
-        op.f("fk_manifestlegacyimage_image_id_image"), "manifestlegacyimage", type_="foreignkey"
-    )
-    op.drop_constraint(
-        op.f("fk_manifestlegacyimage_manifest_id_manifest"),
-        "manifestlegacyimage",
-        type_="foreignkey",
-    )
-    op.drop_constraint(
-        op.f("fk_manifestlegacyimage_repository_id_repository"),
-        "manifestlegacyimage",
-        type_="foreignkey",
-    )
+    with op.batch_alter_table("manifestlegacyimage") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_manifestlegacyimage_image_id_image"), type_="foreignkey"
+        )
+        batch_op.drop_constraint(
+            op.f("fk_manifestlegacyimage_manifest_id_manifest"),
+            type_="foreignkey",
+        )
+        batch_op.drop_constraint(
+            op.f("fk_manifestlegacyimage_repository_id_repository"),
+            type_="foreignkey",
+        )
 
 
 def downgrade(op, tables, tester):
