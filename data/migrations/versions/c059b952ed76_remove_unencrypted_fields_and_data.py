@@ -26,17 +26,28 @@ def upgrade(op, tables, tester):
     with op.batch_alter_table("oauthaccesstoken") as batch_op:
         batch_op.drop_column("refresh_token")
 
+    op.drop_index("accesstoken_code", table_name="accesstoken")
     with op.batch_alter_table("accesstoken") as batch_op:
         batch_op.drop_column("code")
 
+    op.drop_index("appspecificauthtoken_token_code", table_name="appspecificauthtoken")
     with op.batch_alter_table("appspecificauthtoken") as batch_op:
         batch_op.drop_column("token_code")
 
+    op.drop_index("oauthaccesstoken_token_name", table_name="oauthaccesstoken")
+    op.drop_index("oauthaccesstoken_authorized_user_id", table_name="oauthaccesstoken")
+    op.drop_index("oauthaccesstoken_access_token", table_name="oauthaccesstoken")
+    op.drop_index("oauthaccesstoken_application_id", table_name="oauthaccesstoken")
+    op.drop_index("oauthaccesstoken_uuid", table_name="oauthaccesstoken")
     with op.batch_alter_table("oauthaccesstoken") as batch_op:
         batch_op.drop_column("access_token")
+
     with op.batch_alter_table("oauthapplication") as batch_op:
         batch_op.drop_column("client_secret")
 
+    op.drop_index("oauthauthorizationcode_code_name", table_name="oauthauthorizationcode")
+    op.drop_index("oauthauthorizationcode_code", table_name="oauthauthorizationcode")
+    op.drop_index("oauthauthorizationcode_application_id", table_name="oauthauthorizationcode")
     with op.batch_alter_table("oauthauthorizationcode") as batch_op:
         batch_op.drop_column("code")
 

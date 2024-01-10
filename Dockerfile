@@ -181,7 +181,7 @@ RUN set -ex\
 # symlink.
 	; ln -s $QUAYCONF /conf\
 # Make a grip of runtime directories.
-	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" "$QUAYDIR/sqlite/data" /datastorage\
+	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" "$QUAYDIR/sqlite" "$QUAYDIR/sqlite/data" /datastorage\
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
