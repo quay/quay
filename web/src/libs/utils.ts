@@ -15,7 +15,7 @@ export function getSeverityColor(severity: VulnerabilitySeverity) {
     case VulnerabilitySeverity.None:
       return 'var(--pf-v5-global--palette--green-400)';
     case VulnerabilitySeverity.Suppressed:
-      return 'var(--pf-v5-global--disabled-color--100)';
+      return 'var(--pf-v5-global--disabled-color--300)';
     default:
       return 'var(--pf-v5-global--palette--black-300)';
   }

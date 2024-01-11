@@ -19,7 +19,6 @@ import {
 import './SecurityReportChart.css';
 
 function VulnerabilitySummary(props: VulnerabilityStatsProps) {
-  const config = useQuayConfig();
   let message = <Skeleton width="400px" />;
   if (props.stats[VulnerabilitySeverity.None] > 0) {
     message = <> Quay Security Reporting has detected no vulnerabilities </>;
@@ -85,12 +84,8 @@ function VulnerabilitySummary(props: VulnerabilityStatsProps) {
         </Title>
         <Title headingLevel="h3" className="pf-v5-u-mb-lg">
           {patchesMessage}
-          {config?.features?.SECURITY_VULNERABILITY_SUPPRESSION && (
-            <>
-              <br />
-              {suppressionMessage}
-            </>
-          )}
+          <br />
+          {suppressionMessage}
         </Title>
         {Object.keys(props.stats).map((vulnLevel) => {
           if (
@@ -151,14 +146,6 @@ function VulnerabilityChart(props: VulnerabilityStatsProps) {
           ]}
           labels={({datum}) => `${datum.x}: ${datum.y}`}
           title={`${props.total}`}
-          style={{
-            data: {
-              stroke: ({datum}) =>
-                datum.x === `${VulnerabilitySeverity.Suppressed}`
-                  ? '#ccc'
-                  : null,
-            },
-          }}
         />
       )}
     </div>
