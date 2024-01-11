@@ -109,7 +109,7 @@ def get_current_tag(repository_id, tag_name):
         return None
 
 
-def get_child_manifests(repo_id, manifest_id):
+def get_child_manifests(repo_id: int, manifest_id: int):
     return ManifestChild.select(ManifestChild.child_manifest).where(
         ManifestChild.repository == repo_id,
         ManifestChild.manifest == manifest_id,
