@@ -16,8 +16,11 @@ import {formatDate} from 'src/libs/utils';
 import Labels from 'src/components/labels/Labels';
 import SecurityDetails from 'src/routes/RepositoryDetails/Tags/SecurityDetails';
 import {ImageSize} from 'src/components/Table/ImageSize';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import Conditional from 'src/components/empty/Conditional';
 
 export default function Details(props: DetailsProps) {
+  const config = useQuayConfig();
   return (
     <Page>
       <PageSection variant={PageSectionVariants.light}>
@@ -95,18 +98,20 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup data-testid="vulnerabilities">
-            <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
-            <DescriptionListDescription>
-              <SecurityDetails
-                org={props.org}
-                repo={props.repo}
-                digest={props.digest}
-                tag={props.tag.name}
-                cacheResults={true}
-              />
-            </DescriptionListDescription>
-          </DescriptionListGroup>
+          <Conditional if={config?.features.SECURITY_SCANNER}>
+            <DescriptionListGroup data-testid="vulnerabilities">
+              <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
+              <DescriptionListDescription>
+                <SecurityDetails
+                  org={props.org}
+                  repo={props.repo}
+                  digest={props.digest}
+                  tag={props.tag.name}
+                  cacheResults={true}
+                />
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </Conditional>
           <DescriptionListGroup data-testid="labels">
             <DescriptionListTerm>Labels</DescriptionListTerm>
             <DescriptionListDescription>

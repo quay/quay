@@ -17,7 +17,7 @@ import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
-import {useResetRecoilState, useSetRecoilState} from 'recoil';
+import {useSetRecoilState} from 'recoil';
 import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 
 enum Variant {
