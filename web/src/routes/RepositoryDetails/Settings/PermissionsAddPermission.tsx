@@ -21,7 +21,7 @@ import Conditional from 'src/components/empty/Conditional';
 import EntitySearch from 'src/components/EntitySearch';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
 import {RepoMember, RepoRole} from 'src/resources/RepositoryResource';
-import {Entity, getMemberType} from 'src/resources/UserResource';
+import {Entity, EntityKind, getEntityKind} from 'src/resources/UserResource';
 import {roles} from './Types';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import React from 'react';
@@ -59,7 +59,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
                 props.setSelectedEntity({
                   name,
                   is_robot: false,
-                  kind: 'team',
+                  kind: EntityKind.team,
                 });
               }}
             >
@@ -79,7 +79,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
               props.setSelectedEntity({
                 name,
                 is_robot: true,
-                kind: 'user',
+                kind: EntityKind.user,
                 is_org_member: true,
               });
             }}
@@ -119,7 +119,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
       org: props.org,
       repo: props.repo,
       name: props.selectedEntity.name,
-      type: getMemberType(props.selectedEntity),
+      type: getEntityKind(props.selectedEntity),
       role: null,
     };
     setPermissions({members: member, newRole: role});

@@ -7,6 +7,7 @@ import {
   throwIfError,
 } from './ErrorHandling';
 import {IAvatar} from './OrganizationResource';
+import {EntityKind} from './UserResource';
 
 export interface IRepository {
   namespace: string;
@@ -223,7 +224,7 @@ export interface RepoMember {
   org: string;
   repo: string;
   name: string;
-  type: MemberType;
+  type: EntityKind;
   role: RepoRole;
 }
 
@@ -233,14 +234,8 @@ export enum RepoRole {
   admin = 'admin',
 }
 
-export enum MemberType {
-  user = 'user',
-  robot = 'robot',
-  team = 'team',
-}
-
 export async function setRepoPermissions(role: RepoMember, newRole: RepoRole) {
-  const type = role.type == MemberType.robot ? MemberType.user : role.type;
+  const type = role.type == EntityKind.robot ? EntityKind.user : role.type;
   try {
     await axios.put(
       `/api/v1/repository/${role.org}/${role.repo}/permissions/${type}/${role.name}`,
@@ -273,7 +268,7 @@ export async function bulkDeleteRepoPermissions(roles: RepoMember[]) {
 }
 
 export async function deleteRepoPermissions(role: RepoMember) {
-  const roleType = role.type == MemberType.robot ? MemberType.user : role.type;
+  const roleType = role.type == EntityKind.robot ? EntityKind.user : role.type;
   try {
     await axios.delete(
       `/api/v1/repository/${role.org}/${role.repo}/permissions/${roleType}/${role.name}`,

@@ -24,6 +24,9 @@ describe('Repository Builds', () => {
     cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
       builds: [],
     }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
     cy.visit('/repository/testorg/testrepo?tab=builds');
     cy.contains('Build History');
     cy.contains(
@@ -35,6 +38,9 @@ describe('Repository Builds', () => {
     cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
       fixture: 'builds.json',
     }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
     cy.visit('/repository/testorg/testrepo?tab=builds');
     const expectedRowData = [
       {
@@ -306,6 +312,9 @@ describe('Repository Builds', () => {
     cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
       fixture: 'builds.json',
     }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
     cy.visit('/repository/testorg/testrepo?tab=builds');
     cy.contains('tr', 'random text to test long description').within(() => {
       cy.contains('success viewing long description').should('not.exist');
@@ -318,6 +327,9 @@ describe('Repository Builds', () => {
     cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
       fixture: 'builds.json',
     }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
     cy.intercept(
       'GET',
       '/api/v1/repository/testorg/testrepo/build/?limit=100&since=*',
@@ -337,6 +349,9 @@ describe('Repository Builds', () => {
     cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
       fixture: 'builds.json',
     }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
     cy.intercept(
       'GET',
       '/api/v1/repository/testorg/testrepo/build/?limit=100&since=*',
@@ -350,5 +365,350 @@ describe('Repository Builds', () => {
       const days = Math.round(moment.duration(end.diff(start)).asDays());
       expect(days).equal(30);
     });
+  });
+
+  it('displays build triggers', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+    const expectedRowData = [
+      {
+        name: 'push to GitHub repository testgitorg/testgitrepo',
+        dockerfilePath: '/Dockerfile',
+        context: '/',
+        branchtagRegex: '^newbranch$',
+        robot: '(None)',
+        taggingOptions: [
+          'Branch/tag name',
+          'latest if default branch',
+          '${commit_info.short_sha}',
+        ],
+      },
+      {
+        name: 'push to repository https://github.com/testgitorg/testgitrepo',
+        dockerfilePath: '/Dockerfile',
+        context: '/web',
+        branchtagRegex: 'All',
+        robot: '(None)',
+        taggingOptions: ['Branch/tag name', '${commit_info.short_sha}'],
+      },
+      {
+        name: 'push to GitLab repository testgitorg/testgitrepo',
+        dockerfilePath: '/application/Dockerfile',
+        context: '/',
+        branchtagRegex: 'All',
+        robot: '(None)',
+        taggingOptions: [],
+      },
+    ];
+    for (const expectedData of expectedRowData) {
+      cy.contains('tr', expectedData.name).within(() => {
+        cy.get('td[data-label="trigger name"]').contains(expectedData.name);
+        cy.get('td[data-label="dockerfile path"]').contains(
+          expectedData.dockerfilePath,
+        );
+        cy.get('td[data-label="context"]').contains(expectedData.context);
+        cy.get('td[data-label="branchtag regex"]').contains(
+          expectedData.branchtagRegex,
+        );
+        cy.get('td[data-label="pull robot"]').contains(expectedData.robot);
+        for (const option of expectedData.taggingOptions) {
+          cy.get('td[data-label="tagging options"]').contains(option);
+        }
+      });
+    }
+  });
+
+  it('Disables trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/testorg/testrepo/trigger/githubfe-70b5-4bf9-8eb9-8dccf9874aed',
+      {
+        statusCode: 200,
+      },
+    ).as('disableTrigger');
+
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+    cy.contains(
+      'tr',
+      'push to GitHub repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('Disable Trigger').click();
+    });
+    cy.contains('Disable Build Trigger');
+    cy.contains('Are you sure you want to disable this build trigger?');
+    cy.contains('button', 'Disable Build Trigger').click();
+    cy.get('@disableTrigger')
+      .its('request.body')
+      .should('deep.equal', {enabled: false});
+    cy.contains('Successfully disabled trigger');
+  });
+
+  it('Enables trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/testorg/testrepo/trigger/gitlab82-9fd5-4005-bc95-d3156855f0d5',
+      {
+        statusCode: 200,
+      },
+    ).as('enableTrigger');
+
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+    cy.contains(
+      'tr',
+      'push to GitLab repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('Enable Trigger').click();
+    });
+    cy.contains('Enable Build Trigger');
+    cy.contains('Are you sure you want to enable this build trigger?');
+    cy.contains('button', 'Enable Build Trigger').click();
+    cy.get('@enableTrigger')
+      .its('request.body')
+      .should('deep.equal', {enabled: true});
+    cy.contains('Successfully enabled trigger');
+  });
+
+  it('Views trigger credentials', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    // Viewing github credentials
+    cy.contains(
+      'tr',
+      'push to GitHub repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('View Credentials').click();
+    });
+    cy.contains('Trigger Credentials');
+    cy.contains(
+      'The following key has been automatically added to your source control repository.',
+    );
+    cy.get('[data-testid="SSH Public Key"').within(() => {
+      cy.get('input').should('have.value', 'fakekey');
+    });
+    cy.contains('Done').click();
+
+    // Viewing git credentials
+    cy.contains(
+      'tr',
+      'push to repository https://github.com/testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('View Credentials').click();
+    });
+    cy.contains('Trigger Credentials');
+    cy.contains(
+      'In order to use this trigger, the following first requires action:',
+    );
+    cy.contains(
+      'You must give the following public key read access to the git repository.',
+    );
+    cy.contains(
+      'You must set your repository to POST to the following URL to trigger a build.',
+    );
+    cy.contains(
+      'For more information, refer to the Custom Git Triggers documentation.',
+    );
+    cy.get('[data-testid="SSH Public Key"').within(() => {
+      cy.get('input').should('have.value', 'fakekey');
+    });
+    cy.get('[data-testid="Webhook Endpoint URL"').within(() => {
+      cy.get('input').should(
+        'have.value',
+        'https://$token:faketoken@localhost:8080/webhooks/push/trigger/67595ac0-5014-4962-81a0-9a8d336ca851',
+      );
+    });
+    cy.contains('Done').click();
+
+    // Viewing gitlab credentials
+    cy.contains(
+      'tr',
+      'push to GitLab repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('View Credentials').click();
+    });
+    cy.contains('Trigger Credentials');
+    cy.contains(
+      'The following key has been automatically added to your source control repository.',
+    );
+    cy.get('[data-testid="SSH Public Key"').within(() => {
+      cy.get('input').should('have.value', 'fakekey');
+    });
+  });
+
+  it('Delete trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'DELETE',
+      '/api/v1/repository/testorg/testrepo/trigger/githubfe-70b5-4bf9-8eb9-8dccf9874aed',
+      {
+        statusCode: 200,
+      },
+    ).as('deleteTrigger');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    cy.contains(
+      'tr',
+      'push to GitHub repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('Delete Trigger').click();
+    });
+    cy.contains('Delete Build Trigger');
+    cy.contains(
+      'Are you sure you want to delete this build trigger? No further builds will be automatically started.',
+    );
+    cy.contains('button', 'Delete Trigger').click();
+    cy.wait('@deleteTrigger');
+    cy.contains('Successfully deleted trigger');
+  });
+
+  it('Re-enable disabled trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.fixture('build-triggers.json').then((triggersFixture) => {
+      const githubTrigger = triggersFixture.triggers.filter(
+        (trigger) => trigger.id === 'githubfe-70b5-4bf9-8eb9-8dccf9874aed',
+      )[0];
+      const gitTrigger = triggersFixture.triggers.filter(
+        (trigger) => trigger.id === 'custom-git35014-4962-81a0-9a8d336ca851',
+      )[0];
+      const gitlabTrigger = triggersFixture.triggers.filter(
+        (trigger) => trigger.id === 'gitlab82-9fd5-4005-bc95-d3156855f0d5',
+      )[0];
+      githubTrigger.enabled = false;
+      githubTrigger.disabled_reason = 'user_toggled';
+      gitTrigger.enabled = false;
+      gitTrigger.disabled_reason = 'successive_build_failures';
+      gitlabTrigger.enabled = false;
+      gitlabTrigger.disabled_reason = 'successive_build_internal_errors';
+      cy.intercept(
+        'GET',
+        '/api/v1/repository/testorg/testrepo/trigger/',
+        triggersFixture,
+      ).as('getBuildTriggers');
+    });
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/testorg/testrepo/trigger/githubfe-70b5-4bf9-8eb9-8dccf9874aed',
+      {
+        statusCode: 200,
+      },
+    ).as('enableGithubTrigger');
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/testorg/testrepo/trigger/custom-git35014-4962-81a0-9a8d336ca851',
+      {
+        statusCode: 200,
+      },
+    ).as('enableGitTrigger');
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/testorg/testrepo/trigger/gitlab82-9fd5-4005-bc95-d3156855f0d5',
+      {
+        statusCode: 200,
+      },
+    ).as('enableGitlabTrigger');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+    cy.contains(
+      'tbody',
+      'push to GitHub repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.contains('This build trigger is user disabled and will not build.');
+      cy.contains('Re-enable this trigger').click();
+    });
+    cy.contains('Are you sure you want to enable this build trigger?');
+    cy.contains('button', 'Enable Build Trigger').click();
+    cy.wait('@enableGithubTrigger')
+      .its('request.body')
+      .should('deep.equal', {enabled: true});
+    cy.contains(
+      'tbody',
+      'push to repository https://github.com/testgitorg/testgitrepo',
+    ).within(() => {
+      cy.contains(
+        'This build trigger was automatically disabled due to successive failures.',
+      );
+      cy.contains('Re-enable this trigger').click();
+    });
+    cy.contains('Are you sure you want to enable this build trigger?');
+    cy.contains('button', 'Enable Build Trigger').click();
+    cy.wait('@enableGitTrigger')
+      .its('request.body')
+      .should('deep.equal', {enabled: true});
+    cy.contains(
+      'tbody',
+      'push to GitLab repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.contains(
+        'This build trigger was automatically disabled due to successive internal errors.',
+      );
+      cy.contains('Re-enable this trigger').click();
+    });
+    cy.contains('Are you sure you want to enable this build trigger?');
+    cy.contains('button', 'Enable Build Trigger').click();
+    cy.wait('@enableGitlabTrigger')
+      .its('request.body')
+      .should('deep.equal', {enabled: true});
+  });
+
+  it('Provides option to delete incomplete trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.fixture('build-triggers.json').then((triggersFixture) => {
+      const githubTrigger = triggersFixture.triggers.filter(
+        (trigger) => trigger.id === 'githubfe-70b5-4bf9-8eb9-8dccf9874aed',
+      )[0];
+      githubTrigger.is_active = false;
+      cy.intercept(
+        'GET',
+        '/api/v1/repository/testorg/testrepo/trigger/',
+        triggersFixture,
+      ).as('getBuildTriggers');
+    });
+    cy.intercept(
+      'DELETE',
+      '/api/v1/repository/testorg/testrepo/trigger/githubfe-70b5-4bf9-8eb9-8dccf9874aed',
+      {
+        statusCode: 200,
+      },
+    ).as('deleteTrigger');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+    cy.contains('This build trigger has not had its setup completed.');
+    cy.contains('Delete Trigger').click();
+    cy.wait('@deleteTrigger');
   });
 });

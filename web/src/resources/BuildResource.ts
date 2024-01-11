@@ -1,6 +1,7 @@
 import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {isNullOrUndefined} from 'src/libs/utils';
+import {Entity} from './UserResource';
 
 export enum RepositoryBuildPhase {
   ERROR = 'error',
@@ -36,7 +37,6 @@ export interface RepositoryBuild {
   };
   archive_url: string;
   // Additional parameters that aren't currently used
-  // pull_robot: any;
   // error: any;
   // status: any;
 }
@@ -68,6 +68,7 @@ export interface RepositoryBuildTrigger {
   can_invoke?: boolean;
   enabled?: boolean;
   disabled_reason?: string;
+  pull_robot?: Entity;
 }
 
 export interface RepositoryBuildTriggerMetadata {
@@ -112,4 +113,46 @@ export async function fetchBuilds(
     {params: params},
   );
   return response.data.builds;
+}
+
+interface RepositoryBuildTriggersResponse {
+  triggers: RepositoryBuildTrigger[];
+}
+
+export async function fetchBuildTriggers(
+  namespace: string,
+  repo: string,
+  signal: AbortSignal,
+) {
+  const response: AxiosResponse<RepositoryBuildTriggersResponse> =
+    await axios.get(`/api/v1/repository/${namespace}/${repo}/trigger/`, {
+      signal,
+    });
+  return response.data.triggers;
+}
+
+export async function toggleBuildTrigger(
+  org: string,
+  repo: string,
+  trigger_uuid: string,
+  enable: boolean,
+) {
+  const response: AxiosResponse<RepositoryBuildTriggersResponse> =
+    await axios.put(
+      `/api/v1/repository/${org}/${repo}/trigger/${trigger_uuid}`,
+      {enabled: enable},
+    );
+  return response.data.triggers;
+}
+
+export async function deleteBuildTrigger(
+  org: string,
+  repo: string,
+  trigger_uuid: string,
+) {
+  const response: AxiosResponse<RepositoryBuildTriggersResponse> =
+    await axios.delete(
+      `/api/v1/repository/${org}/${repo}/trigger/${trigger_uuid}`,
+    );
+  return response.data.triggers;
 }
