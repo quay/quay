@@ -5,13 +5,17 @@ export default function SetupBuildTriggerRedirect() {
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
-    const splitPath = location.pathname.split('/trigger/');
-    if (splitPath.length < 2) {
+    const splitBy = '/trigger/';
+    const lastIndexOfTrigger = location.pathname.lastIndexOf(splitBy);
+    if (lastIndexOfTrigger === -1) {
       // Never reached since the routing rule will always contain "/trigger/"
       return;
     }
-    const repoDetailsPath = splitPath[0];
-    const triggerUuid = splitPath[1];
+    const repoDetailsPath = location.pathname.substring(0, lastIndexOfTrigger);
+    const triggerUuid = location.pathname.substring(
+      lastIndexOfTrigger + splitBy.length,
+      location.pathname.length,
+    );
     const newPath = repoDetailsPath + '?tab=builds&setupTrigger=' + triggerUuid;
     navigate(newPath);
   });
