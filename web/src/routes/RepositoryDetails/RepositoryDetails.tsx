@@ -88,6 +88,7 @@ export default function RepositoryDetails() {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState<boolean>(false);
 
   const {teams} = useFetchTeams(organization);
+  const setupBuildTriggerUuid = searchParams.get('setupTrigger');
 
   const createRobotModal = (
     <CreateRobotAccountModal
@@ -279,7 +280,12 @@ export default function RepositoryDetails() {
                         !repoDetails?.can_write
                       }
                     >
-                      <Builds org={organization} repo={repository} />
+                      <Builds
+                        org={organization}
+                        repo={repository}
+                        setupTriggerUuid={setupBuildTriggerUuid}
+                        repoDetails={repoDetails}
+                      />
                     </Tab>
                   </Tabs>
                 </ErrorBoundary>

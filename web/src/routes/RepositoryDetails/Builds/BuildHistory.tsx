@@ -94,7 +94,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
 
   return (
     <>
-      <Title headingLevel="h3" style={{paddingLeft: '1em', paddingTop: '1em'}}>
+      <Title headingLevel="h2" style={{paddingLeft: '1em', paddingTop: '1em'}}>
         Build History
       </Title>
       <ToggleGroup

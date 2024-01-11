@@ -1,4 +1,11 @@
-import {List, ListItem, Title} from '@patternfly/react-core';
+import {
+  List,
+  ListItem,
+  Title,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+} from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {LoadingPage} from 'src/components/LoadingPage';
 import RequestError from 'src/components/errors/RequestError';
@@ -13,9 +20,15 @@ import BuildTriggerToggleModal from './BuildTriggerToggleModal';
 import {useState} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import InactiveTrigger from './BuildTriggersInactiveTriggerRow';
+import CreateBuildTriggerDropdown from './BuildCreateTriggerDropdown';
+import SetupBuildTriggerModal from './BuildTriggerSetupModal';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
 
 export default function BuildTriggers(props: BuildTriggersProps) {
   const config = useQuayConfig();
+  const [isSetupTriggerOpen, setIsSetupTriggerOpen] = useState(
+    !isNullOrUndefined(props.setupTriggerUuid),
+  );
   const {triggers, isLoading, isError, error} = useBuildTriggers(
     props.org,
     props.repo,
@@ -43,9 +56,19 @@ export default function BuildTriggers(props: BuildTriggersProps) {
 
   return (
     <>
-      <Title headingLevel="h3" style={{paddingLeft: '1em', paddingTop: '1em'}}>
-        Build triggers
-      </Title>
+      <Toolbar>
+        <ToolbarContent style={{paddingLeft: '1em', paddingTop: '1em'}}>
+          <ToolbarItem>
+            <Title headingLevel="h2">Build triggers</Title>
+          </ToolbarItem>
+          <ToolbarItem align={{default: 'alignRight'}}>
+            <CreateBuildTriggerDropdown
+              namespace={props.org}
+              repo={props.repo}
+            />
+          </ToolbarItem>
+        </ToolbarContent>
+      </Toolbar>
       <Conditional if={triggers.length > 0}>
         <Table aria-label="Repository build triggers table" variant="compact">
           <Thead>
@@ -60,12 +83,13 @@ export default function BuildTriggers(props: BuildTriggersProps) {
             </Tr>
           </Thead>
           {inActiveTriggers.map((trigger) => (
-            <InactiveTrigger
-              key={trigger.id}
-              org={props.org}
-              repo={props.repo}
-              trigger_uuid={trigger.id}
-            />
+            <Tbody key={trigger.id}>
+              <InactiveTrigger
+                org={props.org}
+                repo={props.repo}
+                trigger_uuid={trigger.id}
+              />
+            </Tbody>
           ))}
           {activeTriggers.map((trigger) => (
             <Tbody key={trigger.id}>
@@ -86,7 +110,6 @@ export default function BuildTriggers(props: BuildTriggersProps) {
                       type={trigger.pull_robot?.kind}
                       name={trigger.pull_robot?.name}
                       includeIcon
-                      includeLink
                     />
                   </Conditional>
                   <Conditional if={isNullOrUndefined(trigger.pull_robot)}>
@@ -200,6 +223,14 @@ export default function BuildTriggers(props: BuildTriggersProps) {
         }
         enabled={triggerToggleOptions.enabled}
       />
+      <SetupBuildTriggerModal
+        org={props.org}
+        repo={props.repo}
+        isOpen={isSetupTriggerOpen}
+        onClose={() => setIsSetupTriggerOpen(false)}
+        triggerUuid={props.setupTriggerUuid}
+        repoDetails={props.repoDetails}
+      />
     </>
   );
 }
@@ -207,4 +238,6 @@ export default function BuildTriggers(props: BuildTriggersProps) {
 interface BuildTriggersProps {
   org: string;
   repo: string;
+  setupTriggerUuid?: string;
+  repoDetails: RepositoryDetails;
 }

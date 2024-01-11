@@ -21,6 +21,7 @@ import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import Alerts from './Alerts';
 import OverviewList from './OverviewList/OverviewList';
+import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedirect';
 
 const NavigationRoutes = [
   {
@@ -42,6 +43,10 @@ const NavigationRoutes = [
   {
     path: NavigationPath.repositoriesList,
     Component: <RepositoriesList organizationName={null} />,
+  },
+  {
+    path: NavigationPath.setupBuildTrigger,
+    Component: <SetupBuildTriggerRedirect />,
   },
   {
     path: NavigationPath.repositoryDetail,

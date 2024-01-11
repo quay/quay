@@ -45,7 +45,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
 
   const {regenerateRobotToken} = useRobotToken({
     orgName: props.namespace,
-    robotAcct: props.robotAccount.name,
+    robotAcct: props.name,
     onSuccess: (result) => {
       setLoading(false);
       setTokenData(result);
@@ -129,7 +129,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
   const onClickRegenerateRobotToken = async () => {
     await regenerateRobotToken({
       namespace: props.namespace,
-      robotName: props.robotAccount.name,
+      robotName: props.name,
     });
   };
 
@@ -157,7 +157,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
     setSecretExpanded(isSecretExpanded);
   };
 
-  const kubesClusterCmd = `kubectl create -f ${props.robotAccount.name.replace(
+  const kubesClusterCmd = `kubectl create -f ${props.name.replace(
     '+',
     '-',
   )}-secret.yml --namespace=NAMESPACEHERE`;
@@ -181,7 +181,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             <TextContent>
               <Text component={TextVariants.h6}>Username & Robot account</Text>
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
-                {props.robotAccount.name}
+                {props.name}
               </ClipboardCopy>
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {tokenData.token}
@@ -370,5 +370,5 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
 
 interface RobotTokensModalProps {
   namespace: string;
-  robotAccount: IRobot;
+  name: string;
 }
