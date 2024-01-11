@@ -256,6 +256,11 @@ class ProxyModel(OCIModel):
             return wrapped_manifest
 
         db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
+        if db_tag is None:
+            oci.manifest.lookup_manifest(
+                repository_ref.id, manifest_digest, allow_dead=True, require_available=True
+            )
+            db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
         existing_tag = Tag.for_tag(
             db_tag, self._legacy_image_id_handler, manifest_row=db_tag.manifest
         )
