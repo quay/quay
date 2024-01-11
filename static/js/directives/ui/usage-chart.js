@@ -15,23 +15,29 @@ angular.module('quay').directive('usageChart', function () {
     scope: {
       'current': '=current',
       'total': '=total',
+      'marketplaceTotal': '=marketplaceTotal',
       'limit': '=limit',
       'usageTitle': '@usageTitle'
     },
     controller: function($scope, $element) {
+      if($scope.subscribedPlan !== undefined){
+        $scope.total = $scope.subscribedPlan.privateRepos || 0;
+      }
+      else {
+        $scope.total = 0;
+      }
       $scope.limit = "";
 
       var chart = null;
 
       var update = function() {
-        if ($scope.current == null || $scope.total == null) { return; }
         if (!chart) {
           chart = new UsageChart();
           chart.draw('usage-chart-element');
         }
 
         var current = $scope.current || 0;
-        var total = $scope.total || 0;
+        var total = $scope.total + $scope.marketplaceTotal;
         if (current > total) {
           $scope.limit = 'over';
         } else if (current == total) {
@@ -42,11 +48,13 @@ angular.module('quay').directive('usageChart', function () {
           $scope.limit = 'none';
         }
 
-        chart.update($scope.current, $scope.total);
+        var finalAmount = $scope.total + $scope.marketplaceTotal;
+        chart.update($scope.current, finalAmount);
       };
 
       $scope.$watch('current', update);
       $scope.$watch('total', update);
+      $scope.$watch('marketplaceTotal', update);
     }
   };
   return directiveDefinitionObject;

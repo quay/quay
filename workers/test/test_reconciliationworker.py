@@ -39,6 +39,8 @@ def test_create_for_stripe_user(initialized_db):
     with patch.object(marketplace_subscriptions, "create_entitlement") as mock:
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
+    # expect that entitlment is created with account number
+    mock.assert_called_with(11111, "FakeSKU")
     # expect that entitlment is created with customer id number
     mock.assert_called_with(model.entitlements.get_web_customer_id(test_user.id), "FakeSKU")
 

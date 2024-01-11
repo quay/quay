@@ -1,0 +1,11 @@
+.org-binding-settings-element .btn {
+    margin-top: 10px;
+}
+
+.org-binding-settings-element .form-control {
+    margin-top: 10px;
+}
+
+.org-binding-settings-element td.add-remove-section {
+  margin: 10px;
+}
