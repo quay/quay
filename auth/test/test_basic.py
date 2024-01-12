@@ -12,6 +12,7 @@ from auth.credentials import (
 )
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from test.fixtures import *
 
 
 def _token(username, password):
