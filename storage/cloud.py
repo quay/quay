@@ -1000,7 +1000,7 @@ class RadosGWStorage(_CloudStorage):
             access_key,
             secret_key,
         )
-        
+
         chunk_size = (
             maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 32
         )  # 32mb default, as used in Docker registry:2
@@ -1032,7 +1032,7 @@ class RHOCSStorage(RadosGWStorage):
     For now, this uses the same protocol as RadowsGW, but we create a distinct driver for future
     additional capabilities.
     """
-    
+
     pass
 
 
