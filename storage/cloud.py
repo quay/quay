@@ -983,6 +983,7 @@ class RadosGWStorage(_CloudStorage):
         secret_key,
         bucket_name,
         port=None,
+        maximum_chunk_size_mb=None,
     ):
         upload_params = {}
         connect_kwargs = {
@@ -999,6 +1000,11 @@ class RadosGWStorage(_CloudStorage):
             access_key,
             secret_key,
         )
+        
+        chunk_size = (
+            maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 32
+        )  # 32mb default, as used in Docker registry:2
+        self.maximum_chunk_size = chunk_size * 1024 * 1024
 
     # TODO remove when radosgw supports cors: http://tracker.ceph.com/issues/8718#change-38624
     def get_direct_download_url(
@@ -1018,15 +1024,6 @@ class RadosGWStorage(_CloudStorage):
 
         return super(RadosGWStorage, self).get_direct_upload_url(path, mime_type, requires_cors)
 
-    def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        self._initialize_cloud_conn()
-
-        # RadosGW does not support multipart copying from keys, so we are forced to join
-        # it all locally and then reupload.
-        # See https://github.com/ceph/ceph/pull/5139
-        chunk_list = self._chunk_list_from_metadata(storage_metadata)
-        self._client_side_chunk_join(final_path, chunk_list)
-
 
 class RHOCSStorage(RadosGWStorage):
     """
@@ -1035,7 +1032,7 @@ class RHOCSStorage(RadosGWStorage):
     For now, this uses the same protocol as RadowsGW, but we create a distinct driver for future
     additional capabilities.
     """
-
+    
     pass
 
 
