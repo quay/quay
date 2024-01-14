@@ -170,7 +170,7 @@ function TagsTableRow(props: RowProps) {
             loadTags={props.loadTags}
           />
         </Td>
-        <Td dataLabel={ColumnNames.manifest}>
+        <Td dataLabel={ColumnNames.digest}>
           {tag.manifest_digest.substring(0, 19)}
         </Td>
         <Td

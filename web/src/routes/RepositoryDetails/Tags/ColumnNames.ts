@@ -1,10 +1,10 @@
 const ColumnNames = {
-  name: 'Name',
+  name: 'Tag',
   security: 'Security',
   size: 'Size',
   expires: 'Expires',
   lastModified: 'Last Modified',
-  manifest: 'Manifest',
+  digest: 'Digest',
   pull: 'Pull',
 };
 

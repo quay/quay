@@ -10,7 +10,6 @@ import {searchTagsState, selectedTagsState} from 'src/atoms/TagListState';
 import {Tag} from 'src/resources/TagResource';
 import {DeleteModal, ModalOptions} from './DeleteModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {Kebab} from 'src/components/toolbar/Kebab';
 import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
@@ -19,6 +18,7 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import EditExpirationModal from './TagsActionsEditExpirationModal';
+import {FilterInput} from 'src/components/toolbar/FilterInput';
 
 export function TagsToolbar(props: ToolBarProps) {
   const quayConfig = useQuayConfig();
@@ -94,9 +94,9 @@ export function TagsToolbar(props: ToolBarProps) {
         <SearchDropdown
           searchState={search}
           setSearchState={setSearch}
-          items={[ColumnNames.name, ColumnNames.manifest]}
+          items={[ColumnNames.name, ColumnNames.digest]}
         />
-        <SearchInput
+        <FilterInput
           id="tagslist-search-input"
           searchState={search}
           onChange={setSearch}
