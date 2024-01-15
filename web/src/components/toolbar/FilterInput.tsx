@@ -18,13 +18,17 @@ export function FilterInput(props: FilterInputProps) {
   const advancedFilterMenuRef = React.useRef<HTMLElement>(null);
 
   const advancedFilterMenu = (
-    <Panel variant="raised" ref={advancedFilterMenuRef}>
+    <Panel
+      variant="raised"
+      ref={advancedFilterMenuRef}
+      id="filter-input-advanced-search"
+    >
       <PanelMain>
         <PanelMainBody>
           <Checkbox
             label="Use regular expressions"
-            id="regex-checker"
-            name="regex-checkbox"
+            id="filter-input-regex-checker"
+            name="filter-input-regex-checkbox"
             isChecked={props.searchState.isRegEx}
             onChange={(e, checked) =>
               props.onChange((prev: SearchState) => ({
@@ -38,15 +42,6 @@ export function FilterInput(props: FilterInputProps) {
     </Panel>
   );
 
-  function validateRegex(value: string): boolean {
-    try {
-      new RegExp(value);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
   const setSearchState = (
     _event:
       | React.FormEvent<HTMLInputElement>
@@ -56,7 +51,6 @@ export function FilterInput(props: FilterInputProps) {
     props.onChange((prev: SearchState) => ({
       ...prev,
       query: value.trim(),
-      isRegExValid: prev.isRegEx ? validateRegex(value) : true,
     }));
   };
 
@@ -93,6 +87,7 @@ export function FilterInput(props: FilterInputProps) {
   return (
     <ToolbarItem variant="search-filter" widths={widths}>
       <SearchInput
+        ref={searchInputRef}
         placeholder={`Search by ${props.searchState.field.toLowerCase()}${
           props.searchState.isRegEx ? ' expression' : ''
         }...`}
@@ -103,7 +98,8 @@ export function FilterInput(props: FilterInputProps) {
         onToggleAdvancedSearch={(e, isOpen) => {
           setAdvancedFilterMenuOpen(isOpen);
         }}
-        ref={searchInputRef}
+        openMenuButtonAriaLabel="Open advanced search"
+        resetButtonLabel="Reset search"
       />
       <Popper
         triggerRef={searchInputRef}
