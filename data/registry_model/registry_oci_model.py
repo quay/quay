@@ -6,7 +6,15 @@ from peewee import fn
 
 from data import database, model
 from data.cache import cache_key
-from data.database import db_disallow_replica_use, db_transaction
+from data.database import (
+    Repository,
+    RepositoryKind,
+    RepositoryState,
+    User,
+    Visibility,
+    db_disallow_replica_use,
+    db_transaction,
+)
 from data.model import DataModelException, QuotaExceededException, namespacequota, oci
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
@@ -732,19 +740,68 @@ class OCIModel(RegistryDataInterface):
 
         return RepositoryReference.for_repo_obj(repo)
 
+    @staticmethod
+    def get_repository_response_as_json(val):
+        return {
+            "id": val.id,
+            "visibility": {
+                "id": val.visibility.id,
+                "name": val.visibility.name,
+            },
+            "kind": {
+                "id": val.kind.id,
+                "name": val.kind.name,
+            },
+            "state": val.state,
+            "namespace_user": {
+                "stripe_id": val.namespace_user.stripe_id,
+            },
+        }
+
+    @staticmethod
+    def get_repository_response_to_object(val):
+        return Repository(
+            id=val["id"],
+            state=RepositoryState(val["state"]),
+            kind=RepositoryKind(id=val["kind"]["id"], name=val["kind"]["name"]),
+            visibility=Visibility(id=val["visibility"]["id"], name=val["visibility"]["name"]),
+            namespace_user=User(stripe_id=val["namespace_user"]["stripe_id"]),
+        )
+
     def lookup_repository(
-        self, namespace_name, repo_name, kind_filter=None, raise_on_error=False, manifest_ref=None
+        self,
+        namespace_name,
+        repo_name,
+        kind_filter=None,
+        raise_on_error=False,
+        manifest_ref=None,
+        model_cache=None,
     ):
         """
         Looks up and returns a reference to the repository with the given namespace and name, or
         None if none.
         """
-        repo = model.repository.get_repository(namespace_name, repo_name, kind_filter=kind_filter)
+
+        def get_repository_loader():
+            result = model.repository.get_repository(
+                namespace_name, repo_name, kind_filter=kind_filter
+            )
+            return OCIModel.get_repository_response_as_json(result) if result else None
+
+        if model_cache is not None:
+            repository_lookup_key = cache_key.for_repository_lookup(
+                namespace_name, repo_name, manifest_ref, kind_filter, model_cache.cache_config
+            )
+            repo = model_cache.retrieve(repository_lookup_key, get_repository_loader)
+        else:
+            repo = get_repository_loader()
+
         if repo is None:
             if raise_on_error:
                 raise model.RepositoryDoesNotExist()
             return None
 
+        repo = OCIModel.get_repository_response_to_object(repo)
         state = repo.state
         return RepositoryReference.for_repo_obj(
             repo,
