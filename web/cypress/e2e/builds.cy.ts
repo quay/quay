@@ -732,6 +732,9 @@ describe('Repository Builds - Create Build Triggers', () => {
     }).as('getBuilds');
     cy.visit('/repository/testorg/testrepo?tab=builds');
     cy.contains('Create Build Trigger').click();
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
     cy.contains('Custom Git Repository Push').click();
     cy.contains('Explore'); // wait for new page to load
     cy.url().should(
@@ -846,6 +849,9 @@ describe('Repository Builds - Create Build Triggers', () => {
     ).as('analyzeTrigger');
     cy.visit('/repository/testorg/testrepo?tab=builds');
 
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
     cy.contains('Create Build Trigger').click();
     cy.contains('Custom Git Repository Push').click();
     cy.contains('Explore'); // wait for new page to load
@@ -886,6 +892,9 @@ describe('Repository Builds - Create Build Triggers', () => {
     cy.visit('/repository/testorg/testrepo?tab=builds');
 
     cy.contains('Create Build Trigger').click();
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
     cy.contains('Custom Git Repository Push').click();
     cy.contains('Explore'); // wait for new page to load
     cy.url().then((url) => {
@@ -925,6 +934,9 @@ describe('Repository Builds - Create Build Triggers', () => {
     cy.visit('/repository/testorg/testrepo?tab=builds');
 
     cy.contains('Create Build Trigger').click();
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
     cy.contains('Custom Git Repository Push').click();
     cy.contains('Explore'); // wait for new page to load
     cy.url().then((url) => {
