@@ -19,7 +19,7 @@ describe('Repositories List Page', () => {
     cy.get('[data-testid="repository-list-table"]')
       .children()
       .should('have.length', 20);
-    cy.get('input[placeholder="Search by Name..."]').type('user1');
+    cy.get('#repositorylist-search-input').type('user1');
     cy.get('[data-testid="repository-list-table"]').within(() => {
       cy.contains('user1/hello-world').should('exist');
       cy.contains('user1/nested/repo').should('exist');
@@ -71,7 +71,7 @@ describe('Repositories List Page', () => {
     cy.get('[id="create-repository-modal"]').within(() =>
       cy.get('button:contains("Create")').click(),
     );
-    cy.get('input[placeholder="Search by Name..."]').type('user1');
+    cy.get('#repositorylist-search-input').type('user1');
     cy.contains('user1/new-repo').should('exist');
     cy.get('tr:contains("user1/new-repo")').within(() =>
       cy.contains('public').should('exist'),
@@ -92,7 +92,7 @@ describe('Repositories List Page', () => {
     cy.get('[id="create-repository-modal"]').within(() =>
       cy.get('button:contains("Create")').click(),
     );
-    cy.get('input[placeholder="Search by Name..."]').type('user1');
+    cy.get('#repositorylist-search-input').type('user1');
     cy.contains('new-repo').should('exist');
     cy.get('tr:contains("new-repo")').within(() =>
       cy.contains('private').should('exist'),
@@ -153,7 +153,7 @@ describe('Repositories List Page', () => {
 
   it('makes multiple repositories public', () => {
     cy.visit('/repository');
-    cy.get('input[placeholder="Search by Name..."]').type('user1');
+    cy.get('#repositorylist-search-input').type('user1');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (2)').click();
     cy.contains('Actions').click();
@@ -168,7 +168,7 @@ describe('Repositories List Page', () => {
 
   it('makes multiple repositories private', () => {
     cy.visit('/repository');
-    cy.get('input[placeholder="Search by Name..."]').type('projectquay');
+    cy.get('#repositorylist-search-input').type('projectquay');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
     cy.contains('Select page (20)').click();
     cy.contains('Actions').click();
@@ -183,15 +183,36 @@ describe('Repositories List Page', () => {
 
   it('searches by name', () => {
     cy.visit('/repository');
-    cy.get('input[placeholder="Search by Name..."]').type('hello');
+    cy.get('#repositorylist-search-input').type('hello');
     cy.get('td[data-label="Name"]')
       .filter(':contains("hello-world")')
       .should('have.length', 2);
   });
 
+  it('searches by name via regex', () => {
+    cy.visit('/repository');
+    cy.get('[id="filter-input-advanced-search"]').should('not.exist');
+    cy.get('[aria-label="Open advanced search"]').click();
+    cy.get('[id="filter-input-advanced-search"]').should('be.visible');
+    cy.get('[id="filter-input-regex-checker"]').click();
+    cy.get('#repositorylist-search-input').type('repo[0-9]$');
+    cy.get('td[data-label="Name"]')
+      .filter(':contains("repo1")')
+      .should('exist');
+    cy.get('td[data-label="Name"]')
+      .filter(':contains("repo10")')
+      .should('not.exist');
+    cy.contains('1 - 9 of 9').should('exist');
+    cy.get('[aria-label="Reset search"]').click();
+    cy.get('td[data-label="Name"]')
+      .filter(':contains("repo10")')
+      .should('exist');
+    cy.contains('1 - 20 of 156').should('exist');
+  });
+
   it('searches by name including organization', () => {
     cy.visit('/repository');
-    cy.get('input[placeholder="Search by Name..."]').type('user1');
+    cy.get('#repositorylist-search-input').type('user1');
     cy.get('td[data-label="Name"]')
       .filter(':contains("user1")')
       .should('have.length', 2);
