@@ -90,12 +90,12 @@ def test_move_tag(manifest_exists, test_tag, expected_status, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "simple", 4),
-        ("devtable", "history", 4),
-        ("devtable", "complex", 4),
-        ("devtable", "gargantuan", 4),
-        ("buynlarge", "orgrepo", 6),  # +2 for permissions checks.
-        ("buynlarge", "anotherorgrepo", 6),  # +2 for permissions checks.
+        ("devtable", "simple", 6),  # +2 for converting object to and from json
+        ("devtable", "history", 6),  # +2 for converting object to and from json
+        ("devtable", "complex", 6),  # +2 for converting object to and from json
+        ("devtable", "gargantuan", 6),  # +2 for converting object to and from json
+        ("buynlarge", "orgrepo", 8),  # +2 for permissions checks.
+        ("buynlarge", "anotherorgrepo", 8),  # +2 for permissions checks.
     ],
 )
 def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
@@ -115,7 +115,7 @@ def test_list_repo_tags(repo_namespace, repo_name, query_count, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "gargantuan", 4),
+        ("devtable", "gargantuan", 6),  # +2 for converting object to and from json
     ],
 )
 def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
@@ -129,7 +129,7 @@ def test_list_repo_tags_filter(repo_namespace, repo_name, query_count, app):
         assert len(tags) == 5
 
     with client_with_identity("devtable", app) as cl:
-        with assert_query_count(query_count - 1):
+        with assert_query_count(query_count):
             params["filter_tag_name"] = "eq:prod"
             tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
         assert len(tags) == 1
