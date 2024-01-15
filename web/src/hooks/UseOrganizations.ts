@@ -1,14 +1,20 @@
-import {fetchUsersAsSuperUser} from 'src/resources/UserResource';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {useState} from 'react';
+import {useRecoilState, useRecoilValue} from 'recoil';
+import {
+  searchOrgsFilterState,
+  searchOrgsState,
+} from 'src/atoms/OrganizationListState';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
   bulkDeleteOrganizations,
+  createOrg,
   fetchOrgsAsSuperUser,
 } from 'src/resources/OrganizationResource';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
+import {fetchUsersAsSuperUser} from 'src/resources/UserResource';
 import {useCurrentUser} from './UseCurrentUser';
-import {createOrg} from 'src/resources/OrganizationResource';
-import {useState} from 'react';
-import {SearchState} from 'src/components/toolbar/SearchTypes';
-import ColumnNames from 'src/routes/OrganizationsList/ColumnNames';
+
+export type OrganizationDetail = {name: string; isUser: boolean};
 
 export function useOrganizations() {
   // Get user and config data
@@ -17,10 +23,8 @@ export function useOrganizations() {
   // Keep state of current search in this hook
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
-  const [search, setSearch] = useState<SearchState>({
-    field: ColumnNames.name,
-    query: '',
-  });
+  const [search, setSearch] = useRecoilState<SearchState>(searchOrgsState);
+  const searchFilter = useRecoilValue(searchOrgsFilterState);
 
   // Get super user orgs
   const {data: superUserOrganizations} = useQuery(
@@ -57,7 +61,7 @@ export function useOrganizations() {
     usernames = [user.username];
   }
 
-  const organizationsTableDetails = [] as {name: string; isUser: boolean}[];
+  const organizationsTableDetails = [] as OrganizationDetail[];
   for (const orgname of orgnames) {
     organizationsTableDetails.push({
       name: orgname,
@@ -109,6 +113,7 @@ export function useOrganizations() {
     // Search Query State
     search,
     setSearch,
+    searchFilter,
     page,
     setPage,
     perPage,

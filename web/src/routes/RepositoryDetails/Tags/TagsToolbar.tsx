@@ -90,7 +90,6 @@ export function TagsToolbar(props: ToolBarProps) {
           itemsPerPageList={props.paginatedTags}
           onItemSelect={props.selectTag}
         />
-
         <SearchDropdown
           searchState={search}
           setSearchState={setSearch}

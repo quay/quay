@@ -74,6 +74,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     setPage,
     search,
     setSearch,
+    searchFilter,
     page,
     perPage,
     totalResults,
@@ -93,15 +94,14 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     } as RepoListTableItem;
   });
 
+  if (currentOrg !== null && search.currentOrganization !== currentOrg) {
+    setSearch({...search, currentOrganization: currentOrg});
+  }
+
   // Filtering Repositories after applied filter
-  const filteredRepos =
-    search.query !== ''
-      ? repositoryList.filter((repo) => {
-          const repoName =
-            currentOrg == null ? `${repo.namespace}/${repo.name}` : repo.name;
-          return repoName.includes(search.query);
-        })
-      : repositoryList;
+  const filteredRepos = searchFilter
+    ? repositoryList.filter(searchFilter)
+    : repositoryList;
 
   const paginatedRepositoryList = filteredRepos?.slice(
     page * perPage - perPage,
@@ -413,7 +413,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   );
 }
 
-interface RepoListTableItem {
+export interface RepoListTableItem {
   namespace: string;
   name: string;
   is_public: boolean;
