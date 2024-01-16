@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from playhouse.test_utils import assert_query_count
 
@@ -8,6 +6,7 @@ from data.registry_model import registry_model
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
