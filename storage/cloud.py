@@ -984,14 +984,14 @@ class RadosGWStorage(_CloudStorage):
         bucket_name,
         port=None,
         maximum_chunk_size_mb=None,
-        multipart_upload=True,
+        server_side_assembly=True,
     ):
         upload_params = {}
         connect_kwargs = {
             "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
             "config": Config(
-                connect_timeout=600 if multipart_upload == False else 60,
-                read_timeout=600 if multipart_upload == False else 60,
+                connect_timeout=600 if server_side_assembly == False else 60,
+                read_timeout=600 if server_side_assembly == False else 60,
             ),
         }
 
@@ -1011,7 +1011,7 @@ class RadosGWStorage(_CloudStorage):
         )  # 32mb default, as used in Docker registry:2
         self.maximum_chunk_size = chunk_size * 1024 * 1024
 
-        self.multipart_upload = multipart_upload
+        self.server_side_assembly = server_side_assembly
 
     # TODO remove when radosgw supports cors: http://tracker.ceph.com/issues/8718#change-38624
     def get_direct_download_url(
@@ -1032,8 +1032,8 @@ class RadosGWStorage(_CloudStorage):
         return super(RadosGWStorage, self).get_direct_upload_url(path, mime_type, requires_cors)
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        logger.debug("Multipart upload is set to {}.".format(self.multipart_upload))
-        if self.multipart_upload == True:
+        logger.debug("Multipart upload is set to {}.".format(self.server_side_assembly))
+        if self.server_side_assembly == True:
             logger.debug("Initiating multipart upload and server side assembly for final push.")
             return super(RadosGWStorage, self).complete_chunked_upload(
                 uuid, final_path, storage_metadata
