@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from test.fixtures import *
-
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -10,6 +8,8 @@ from auth.credential_consts import (
 from auth.credentials import CredentialKind, validate_credentials
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.database import RobotAccountToken
+from test.fixtures import *
 
 
 def test_valid_user(app):
@@ -27,14 +27,37 @@ def test_valid_robot(app):
 
 def test_valid_robot_for_disabled_user(app):
     user = model.user.get_user("devtable")
+
+    robot, password = model.user.create_robot("somerobot", user)
+
     user.enabled = False
     user.save()
 
-    robot, password = model.user.create_robot("somerobot", user)
     result, kind = validate_credentials(robot.username, password)
     assert kind == CredentialKind.robot
 
-    err = "This user has been disabled. Please contact your administrator."
+    err = "Robot %s owner %s is disabled" % (robot.username, user.username)
+    assert result == ValidateResult(AuthKind.credentials, error_message=err)
+
+
+def test_valid_robot_with_invalid_password(app):
+    robot, _ = model.user.create_robot("somerobot", model.user.get_user("devtable"))
+    result, kind = validate_credentials(robot.username, "wrongpassword")
+    assert kind == CredentialKind.robot
+
+    err = "Could not find robot with username: %s and supplied password." % robot.username
+    assert result == ValidateResult(AuthKind.credentials, error_message=err)
+
+
+def test_valid_robot_with_invalid_token(app):
+    robot, password = model.user.create_robot("somerobot", model.user.get_user("devtable"))
+    token = RobotAccountToken.get(robot_account=robot)
+    token.delete_instance()
+
+    result, kind = validate_credentials(robot.username, password)
+    assert kind == CredentialKind.robot
+
+    err = "Could not find robot with username: %s and supplied password." % robot.username
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
 
 

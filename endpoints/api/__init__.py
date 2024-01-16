@@ -32,6 +32,7 @@ from auth.permissions import (
 from data import model as data_model
 from data.database import RepositoryState
 from data.logs_model import logs_model
+from digest import digest_tools
 from endpoints.csrf import csrf_protect
 from endpoints.decorators import (
     check_anon_protection,
@@ -400,6 +401,87 @@ require_user_read = require_user_permission(UserReadPermission, scopes.READ_USER
 require_user_admin = require_user_permission(UserAdminPermission, scopes.ADMIN_USER)
 
 
+def log_unauthorized(audit_event):
+    def inner(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except endpoints.v2.errors.Unauthorized as e:
+
+                if (
+                    (
+                        app.config.get("ACTION_LOG_AUDIT_PUSH_FAILURES")
+                        and audit_event == "push_repo_failed"
+                    )
+                    or (
+                        app.config.get("ACTION_LOG_AUDIT_PULL_FAILURES")
+                        and audit_event == "pull_repo_failed"
+                    )
+                    or (
+                        app.config.get("ACTION_LOG_AUDIT_DELETE_FAILURES")
+                        and audit_event == "delete_tag_failed"
+                    )
+                ):
+                    if "namespace_name" in kwargs and "repo_name" in kwargs:
+                        metadata = {
+                            "namespace": kwargs["namespace_name"],
+                            "repo": kwargs["repo_name"],
+                        }
+
+                        if "manifest_ref" in kwargs:
+                            try:
+                                digest = digest_tools.Digest.parse_digest(kwargs["manifest_ref"])
+                                metadata["manifest_digest"] = str(digest)
+                            except digest_tools.InvalidDigestException:
+                                metadata["tag"] = kwargs["manifest_ref"]
+
+                        user_or_orgname = data_model.user.get_user_or_org(kwargs["namespace_name"])
+
+                        if user_or_orgname is not None:
+                            repo = data_model.repository.get_repository(
+                                user_or_orgname.username, kwargs["repo_name"]
+                            )
+                        else:
+                            repo = None
+
+                        if user_or_orgname is None:
+                            metadata["message"] = "Namespace does not exist"
+                            log_action(
+                                kind=audit_event,
+                                user_or_orgname=None,
+                                metadata=metadata,
+                            )
+                        elif repo is None:
+                            metadata["message"] = "Repository does not exist"
+                            log_action(
+                                kind=audit_event,
+                                user_or_orgname=user_or_orgname.username,
+                                metadata=metadata,
+                            )
+                        else:
+                            metadata["message"] = str(e)
+                            log_action(
+                                kind=audit_event,
+                                user_or_orgname=user_or_orgname.username,
+                                repo_name=repo.name,
+                                metadata=metadata,
+                            )
+
+                logger.debug("Unauthorized request: %s", e)
+
+                raise e
+
+        return wrapper
+
+    return inner
+
+
+log_unauthorized_pull = log_unauthorized("pull_repo_failed")
+log_unauthorized_push = log_unauthorized("push_repo_failed")
+log_unauthorized_delete = log_unauthorized("delete_tag_failed")
+
+
 def allow_if_superuser():
     return app.config.get("FEATURE_SUPERUSERS_FULL_ACCESS", False) and SuperUserPermission().can()
 
@@ -507,7 +589,7 @@ def request_error(exception=None, **kwargs):
     raise InvalidRequest(message, data)
 
 
-def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None):
+def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, performer=None):
     if not metadata:
         metadata = {}
 
@@ -517,7 +599,8 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None):
         metadata["oauth_token_application_id"] = oauth_token.application.client_id
         metadata["oauth_token_application"] = oauth_token.application.name
 
-    performer = get_authenticated_user()
+    if performer is None:
+        performer = get_authenticated_user()
 
     if repo_name is not None:
         repo = data_model.repository.get_repository(user_or_orgname, repo_name)

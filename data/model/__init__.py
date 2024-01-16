@@ -41,6 +41,18 @@ class InvalidRobotException(DataModelException):
     pass
 
 
+class DeactivatedRobotOwnerException(InvalidRobotException):
+    pass
+
+
+class InvalidRobotCredentialException(InvalidRobotException):
+    pass
+
+
+class InvalidRobotOwnerException(InvalidRobotException):
+    pass
+
+
 class InvalidUsernameException(DataModelException):
     pass
 

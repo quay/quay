@@ -45,10 +45,13 @@ from data.database import (
 from data.fields import Credential
 from data.model import (
     DataModelException,
+    DeactivatedRobotOwnerException,
     InvalidEmailAddressException,
     InvalidNamespaceException,
     InvalidPasswordException,
+    InvalidRobotCredentialException,
     InvalidRobotException,
+    InvalidRobotOwnerException,
     InvalidUsernameException,
     TooManyLoginAttemptsException,
     _basequery,
@@ -459,30 +462,27 @@ def verify_robot(robot_username, password):
     robot = lookup_robot(robot_username)
     assert robot.robot
 
+    # Find the owner user and ensure it is not disabled.
+    try:
+        owner = User.get(User.username == result[0])
+    except User.DoesNotExist:
+        raise InvalidRobotOwnerException("Robot %s owner does not exist" % robot_username)
+
+    if not owner.enabled:
+        raise DeactivatedRobotOwnerException(
+            "Robot %s owner %s is disabled" % (robot_username, owner.username)
+        )
     # Lookup the token for the robot.
     try:
         token_data = RobotAccountToken.get(robot_account=robot)
         if not token_data.token.matches(password):
             msg = "Could not find robot with username: %s and supplied password." % robot_username
-            raise InvalidRobotException(msg)
+            raise InvalidRobotCredentialException(msg)
     except RobotAccountToken.DoesNotExist:
         msg = "Could not find robot with username: %s and supplied password." % robot_username
-        raise InvalidRobotException(msg)
+        raise InvalidRobotCredentialException(msg)
 
-    # Find the owner user and ensure it is not disabled.
-    try:
-        owner = User.get(User.username == result[0])
-    except User.DoesNotExist:
-        raise InvalidRobotException("Robot %s owner does not exist" % robot_username)
-
-    if not owner.enabled:
-        raise InvalidRobotException(
-            "This user has been disabled. Please contact your administrator."
-        )
-
-    # Mark that the robot was accessed.
     _basequery.update_last_accessed(robot)
-
     return robot
 
 
@@ -790,6 +790,13 @@ def validate_reset_code(token):
 
 
 def find_user_by_email(email):
+    # Make sure we didn't get any unicode for the email.
+    try:
+        if email and isinstance(email, str):
+            email.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+
     try:
         return User.get(User.email == email)
     except User.DoesNotExist:
@@ -797,6 +804,13 @@ def find_user_by_email(email):
 
 
 def get_nonrobot_user(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        if username and isinstance(username, str):
+            username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+
     try:
         return User.get(User.username == username, User.organization == False, User.robot == False)
     except User.DoesNotExist:
@@ -804,6 +818,13 @@ def get_nonrobot_user(username):
 
 
 def get_user(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        if username and isinstance(username, str):
+            username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+
     try:
         return User.get(User.username == username, User.organization == False)
     except User.DoesNotExist:
@@ -811,6 +832,13 @@ def get_user(username):
 
 
 def get_namespace_user(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        if username and isinstance(username, str):
+            username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+
     try:
         return User.get(User.username == username)
     except User.DoesNotExist:
@@ -818,6 +846,13 @@ def get_namespace_user(username):
 
 
 def get_user_or_org(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        if username and isinstance(username, str):
+            username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+
     try:
         return User.get(User.username == username, User.robot == False)
     except User.DoesNotExist:
@@ -986,7 +1021,8 @@ def verify_user(username_or_email, password):
 
     # Make sure we didn't get any unicode for the username.
     try:
-        username_or_email.encode("ascii")
+        if username_or_email and isinstance(username_or_email, str):
+            username_or_email.encode("ascii")
     except UnicodeEncodeError:
         return None
 

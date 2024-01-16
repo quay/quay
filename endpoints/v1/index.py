@@ -5,7 +5,6 @@ from functools import wraps
 
 from flask import jsonify, make_response, request, session
 
-import features
 from app import app, docker_v2_signing_key, storage, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import CredentialKind, validate_credentials

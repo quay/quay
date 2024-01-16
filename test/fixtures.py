@@ -3,7 +3,6 @@ import inspect
 import os
 import shutil
 from collections import namedtuple
-from test.testconfig import FakeTransaction
 
 import pytest
 from flask import Flask, jsonify
@@ -34,6 +33,7 @@ from path_converters import (
     RepositoryPathRedirectConverter,
     V1CreateRepositoryPathConverter,
 )
+from test.testconfig import FakeTransaction
 
 INIT_DB_PATH = 0
 
@@ -182,6 +182,11 @@ def appconfig(database_uri):
         "MAIL_DEFAULT_SENDER": "admin@example.com",
         "DATABASE_SECRET_KEY": "anothercrazykey!",
         "FEATURE_PROXY_CACHE": True,
+        "ACTION_LOG_AUDIT_LOGINS": True,
+        "ACTION_LOG_AUDIT_LOGIN_FAILURES": True,
+        "ACTION_LOG_AUDIT_PULL_FAILURES": True,
+        "ACTION_LOG_AUDIT_PUSH_FAILURES": True,
+        "ACTION_LOG_AUDIT_DELETE_FAILURES": True,
     }
     return conf
 

@@ -5569,7 +5569,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-8d47693829a0
+3f8e3657bb67
 \.
 
 
@@ -6237,6 +6237,10 @@ COPY public.logentrykind (id, name) FROM stdin;
 101	create_namespace_autoprune_policy
 102	update_namespace_autoprune_policy
 103	delete_namespace_autoprune_policy
+104	login_failure
+105	push_repo_failed
+106	pull_repo_failed
+107	delete_tag_failed
 \.
 
 
@@ -8079,7 +8083,8 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 103, true);
+
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 107, true);
 
 
 --
@@ -8163,7 +8168,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
 
 
 --
@@ -8401,14 +8406,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 1, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false);
 
 
 --

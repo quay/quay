@@ -354,11 +354,14 @@ def initialize_database():
 
     LogEntryKind.create(name="create_repo")
     LogEntryKind.create(name="push_repo")
+    LogEntryKind.create(name="push_repo_failed")
     LogEntryKind.create(name="pull_repo")
+    LogEntryKind.create(name="pull_repo_failed")
     LogEntryKind.create(name="delete_repo")
     LogEntryKind.create(name="create_tag")
     LogEntryKind.create(name="move_tag")
     LogEntryKind.create(name="delete_tag")
+    LogEntryKind.create(name="delete_tag_failed")
     LogEntryKind.create(name="revert_tag")
     LogEntryKind.create(name="add_repo_permission")
     LogEntryKind.create(name="change_repo_permission")
@@ -451,6 +454,7 @@ def initialize_database():
     LogEntryKind.create(name="cancel_build")
 
     LogEntryKind.create(name="login_success")
+    LogEntryKind.create(name="login_failure")
     LogEntryKind.create(name="logout_success")
 
     LogEntryKind.create(name="permanently_delete_tag")
