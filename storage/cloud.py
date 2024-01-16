@@ -984,10 +984,15 @@ class RadosGWStorage(_CloudStorage):
         bucket_name,
         port=None,
         maximum_chunk_size_mb=None,
+        multipart_upload=True,
     ):
         upload_params = {}
         connect_kwargs = {
             "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
+            "config": Config(
+                connect_timeout=600 if multipart_upload == False else 60,
+                read_timeout=600 if multipart_upload == False else 60,
+            ),
         }
 
         super(RadosGWStorage, self).__init__(
@@ -1006,6 +1011,8 @@ class RadosGWStorage(_CloudStorage):
         )  # 32mb default, as used in Docker registry:2
         self.maximum_chunk_size = chunk_size * 1024 * 1024
 
+        self.multipart_upload = multipart_upload
+
     # TODO remove when radosgw supports cors: http://tracker.ceph.com/issues/8718#change-38624
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
@@ -1023,6 +1030,23 @@ class RadosGWStorage(_CloudStorage):
             return None
 
         return super(RadosGWStorage, self).get_direct_upload_url(path, mime_type, requires_cors)
+
+    def complete_chunked_upload(self, uuid, final_path, storage_metadata):
+        logger.debug("Multipart upload is set to {}.".format(self.multipart_upload))
+        if self.multipart_upload == True:
+            logger.debug("Initiating multipart upload and server side assembly for final push.")
+            return super(RadosGWStorage, self).complete_chunked_upload(
+                uuid, final_path, storage_metadata
+            )
+        else:
+            logger.debug("Initiating client side chunk join for final assembly and push.")
+            logger.debug("Setting Boto timeout to 600 seconds in case of a large layer push.")
+            self._initialize_cloud_conn()
+            # Certain implementations of RadosGW do not support multipart copying from keys,
+            # so we are forced to join it all locally and then reupload.
+            # See https://github.com/ceph/ceph/pull/5139
+            chunk_list = self._chunk_list_from_metadata(storage_metadata)
+            self._client_side_chunk_join(final_path, chunk_list)
 
 
 class RHOCSStorage(RadosGWStorage):
