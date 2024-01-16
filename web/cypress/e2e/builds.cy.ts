@@ -736,7 +736,7 @@ describe('Repository Builds - Create Build Triggers', () => {
       cy.on('uncaught:exception', (e) => false),
     );
     cy.contains('Custom Git Repository Push').click();
-    cy.contains('Explore'); // wait for new page to load
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().should(
       'include',
       `${Cypress.env(
@@ -854,7 +854,7 @@ describe('Repository Builds - Create Build Triggers', () => {
     );
     cy.contains('Create Build Trigger').click();
     cy.contains('Custom Git Repository Push').click();
-    cy.contains('Explore'); // wait for new page to load
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().then((url) => {
       const redirect = url.replace(
         Cypress.env('REACT_QUAY_APP_API_URL'),
@@ -896,7 +896,7 @@ describe('Repository Builds - Create Build Triggers', () => {
       cy.on('uncaught:exception', (e) => false),
     );
     cy.contains('Custom Git Repository Push').click();
-    cy.contains('Explore'); // wait for new page to load
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().then((url) => {
       const redirect = url.replace(
         Cypress.env('REACT_QUAY_APP_API_URL'),
@@ -938,7 +938,7 @@ describe('Repository Builds - Create Build Triggers', () => {
       cy.on('uncaught:exception', (e) => false),
     );
     cy.contains('Custom Git Repository Push').click();
-    cy.contains('Explore'); // wait for new page to load
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
     cy.url().then((url) => {
       const redirect = url.replace(
         Cypress.env('REACT_QUAY_APP_API_URL'),
