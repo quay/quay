@@ -990,8 +990,8 @@ class RadosGWStorage(_CloudStorage):
         connect_kwargs = {
             "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
             "config": Config(
-                connect_timeout=600 if server_side_assembly == False else 60,
-                read_timeout=600 if server_side_assembly == False else 60,
+                connect_timeout=600 if not server_side_assembly else 60,
+                read_timeout=600 if not server_side_assembly else 60,
             ),
         }
 
@@ -1032,8 +1032,8 @@ class RadosGWStorage(_CloudStorage):
         return super(RadosGWStorage, self).get_direct_upload_url(path, mime_type, requires_cors)
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        logger.debug("Multipart upload is set to {}.".format(self.server_side_assembly))
-        if self.server_side_assembly == True:
+        logger.debug("Server side assembly is set to {}.".format(self.server_side_assembly))
+        if self.server_side_assembly:
             logger.debug("Initiating multipart upload and server side assembly for final push.")
             return super(RadosGWStorage, self).complete_chunked_upload(
                 uuid, final_path, storage_metadata
