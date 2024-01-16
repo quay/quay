@@ -13,6 +13,7 @@ from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
 from data import model
+from data.cache import cache_key
 from data.cache.impl import InMemoryDataModelCache
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
@@ -110,6 +111,33 @@ def test_lookup_repository(repo_namespace, repo_name, expected, registry_model):
     repo_ref = registry_model.lookup_repository(repo_namespace, repo_name)
     if expected:
         assert repo_ref
+    else:
+        assert repo_ref is None
+
+
+@pytest.mark.parametrize(
+    "repo_namespace, repo_name, expected",
+    [
+        ("devtable", "simple", True),
+        ("buynlarge", "orgrepo", True),
+        ("buynlarge", "unknownrepo", False),
+    ],
+)
+def test_lookup_repository_with_cache(repo_namespace, repo_name, expected, registry_model):
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+    model_cache.empty_for_testing()
+
+    cache_key_for_repository_lookup = cache_key.for_repository_lookup(
+        repo_namespace, repo_name, None, None, {}
+    )
+    repo_ref = registry_model.lookup_repository(repo_namespace, repo_name, model_cache=model_cache)
+    cached_result = model_cache.cache.get(cache_key_for_repository_lookup.key)
+
+    if expected:
+        res_obj = OCIModel.get_repository_response_to_object(json.loads(cached_result))
+        assert repo_ref._db_id is res_obj.id
+        assert repo_ref.state == res_obj.state
+        assert repo_ref.namespace_name == repo_namespace
     else:
         assert repo_ref is None
 
