@@ -1,4 +1,7 @@
+import logging
 from collections import namedtuple
+
+logger = logging.getLogger(__name__)
 
 
 class CacheKey(namedtuple("CacheKey", ["key", "expiration"])):
@@ -80,4 +83,5 @@ def for_repository_lookup(namespace_name, repo_name, manifest_ref, kind_filter, 
     if kind_filter is not None:
         cache_key = f"{cache_key}_{kind_filter}"
 
+    logger.debug(f"Loading repository lookup from cache_key: {cache_key}")
     return CacheKey(cache_key, cache_ttl)
