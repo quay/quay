@@ -380,7 +380,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             return len(manifest_candidate.manifestsecuritystatus_set) > 0
 
         for candidate, abt, num_remaining in iterator:
-            manifest = ManifestDataType.for_manifest(candidate, None)
+            manifest = ManifestDataType.for_manifest(candidate)
             if manifest.is_manifest_list:
                 mark_manifest_unsupported(manifest)
                 continue

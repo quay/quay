@@ -2,13 +2,13 @@
 
 import random
 import string
-from test.registry.fixtures import data_model
-from test.registry.protocol_v1 import V1Protocol
-from test.registry.protocol_v2 import V2Protocol
-from test.registry.protocols import Image, layer_bytes_for_contents
 
 import pytest
 from authlib.jose import jwk as jwklib
+
+from test.registry.fixtures import data_model
+from test.registry.protocol_v2 import V2Protocol
+from test.registry.protocols import Image, layer_bytes_for_contents
 
 
 @pytest.fixture(scope="session")
@@ -262,21 +262,13 @@ def v22_protocol(request, jwk):
     return V2Protocol(jwk, schema="schema2")
 
 
-@pytest.fixture(params=[V1Protocol])
-def v1_protocol(request, jwk):
-    return request.param(jwk)
-
-
 @pytest.fixture(params=["schema1", "schema2", "oci"])
 def manifest_protocol(request, data_model, jwk):
     return V2Protocol(jwk, schema=request.param)
 
 
-@pytest.fixture(params=["v1", "v2_1", "v2_2", "oci"])
+@pytest.fixture(params=["v2_1", "v2_2", "oci"])
 def pusher(request, data_model, jwk):
-    if request.param == "v1":
-        return V1Protocol(jwk)
-
     if request.param == "v2_2":
         return V2Protocol(jwk, schema="schema2")
 
@@ -284,11 +276,6 @@ def pusher(request, data_model, jwk):
         return V2Protocol(jwk, schema="oci")
 
     return V2Protocol(jwk)
-
-
-@pytest.fixture()
-def v1_pusher(request, data_model, jwk):
-    return V1Protocol(jwk)
 
 
 @pytest.fixture(params=["v2_1", "v2_2", "oci"])
@@ -302,27 +289,18 @@ def v2_pusher(request, data_model, jwk):
     return V2Protocol(jwk)
 
 
-@pytest.fixture(params=["v1", "v2_1"])
+@pytest.fixture(params=["v2_1"])
 def legacy_puller(request, data_model, jwk):
-    if request.param == "v1":
-        return V1Protocol(jwk)
-
     return V2Protocol(jwk)
 
 
-@pytest.fixture(params=["v1", "v2_1"])
+@pytest.fixture(params=["v2_1"])
 def legacy_pusher(request, data_model, jwk):
-    if request.param == "v1":
-        return V1Protocol(jwk)
-
     return V2Protocol(jwk)
 
 
-@pytest.fixture(params=["v1", "v2_1", "v2_2", "oci"])
+@pytest.fixture(params=["v2_1", "v2_2", "oci"])
 def puller(request, data_model, jwk):
-    if request.param == "v1":
-        return V1Protocol(jwk)
-
     if request.param == "v2_2":
         return V2Protocol(jwk, schema="schema2")
 
@@ -330,11 +308,6 @@ def puller(request, data_model, jwk):
         return V2Protocol(jwk, schema="oci")
 
     return V2Protocol(jwk)
-
-
-@pytest.fixture()
-def v1_puller(request, data_model, jwk):
-    return V1Protocol(jwk)
 
 
 @pytest.fixture(params=["v2_1", "v2_2", "oci"])
@@ -348,7 +321,7 @@ def v2_puller(request, data_model, jwk):
     return V2Protocol(jwk)
 
 
-@pytest.fixture(params=[V1Protocol, V2Protocol])
+@pytest.fixture(params=[V2Protocol])
 def loginer(request, jwk):
     return request.param(jwk)
 

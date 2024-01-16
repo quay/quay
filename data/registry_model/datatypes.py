@@ -219,7 +219,7 @@ class Tag(
     """
 
     @classmethod
-    def for_tag(cls, tag, legacy_id_handler, manifest_row=None):
+    def for_tag(cls, tag, manifest_row=None):
         if tag is None:
             return None
 
@@ -233,7 +233,6 @@ class Tag(
             lifetime_end_ts=tag.lifetime_end_ms // 1000 if tag.lifetime_end_ms else None,
             manifest_digest=manifest_row.digest if manifest_row else tag.manifest.digest,
             inputs=dict(
-                legacy_id_handler=legacy_id_handler,
                 manifest_row=manifest_row or tag.manifest,
                 repository=RepositoryReference.for_id(tag.repository_id),
             ),
@@ -254,15 +253,11 @@ class Tag(
 
     @property
     @requiresinput("manifest_row")
-    @requiresinput("legacy_id_handler")
-    @optionalinput("legacy_image_row")
-    def manifest(self, manifest_row, legacy_id_handler, legacy_image_row):
+    def manifest(self, manifest_row):
         """
         Returns the manifest for this tag.
         """
-        return Manifest.for_manifest(
-            manifest_row, legacy_id_handler, legacy_image_row=legacy_image_row
-        )
+        return Manifest.for_manifest(manifest_row)
 
     @property
     @requiresinput("repository")
@@ -304,7 +299,7 @@ class Manifest(
     """
 
     @classmethod
-    def for_manifest(cls, manifest, legacy_id_handler, legacy_image_row=None):
+    def for_manifest(cls, manifest):
         if manifest is None:
             return None
 
@@ -322,8 +317,6 @@ class Manifest(
             _layers_compressed_size=manifest.layers_compressed_size,
             config_media_type=manifest.config_media_type,
             inputs=dict(
-                legacy_id_handler=legacy_id_handler,
-                legacy_image_row=legacy_image_row,
                 repository=RepositoryReference.for_id(manifest.repository_id),
             ),
         )
@@ -387,11 +380,6 @@ class Manifest(
         return repository
 
     @property
-    @optionalinput("legacy_image_row")
-    def _legacy_image_row(self, legacy_image_row):
-        return legacy_image_row
-
-    @property
     def layers_compressed_size(self):
         # TODO: Simplify once we've stopped writing Image rows and we've backfilled the
         # sizes.
@@ -401,151 +389,12 @@ class Manifest(
         if self._layers_compressed_size is not None:
             return self._layers_compressed_size
 
-        # Secondly, check for the size of the legacy Image row.
-        legacy_image_row = self._legacy_image_row
-        if legacy_image_row:
-            return legacy_image_row.aggregate_size
-
         # Otherwise, return None.
         return None
 
-    @property
-    @requiresinput("legacy_id_handler")
-    def legacy_image_root_id(self, legacy_id_handler):
-        """
-        Returns the legacy Docker V1-style image ID for this manifest. Note that an ID will
-        be returned even if the manifest does not support a legacy image.
-        """
-        return legacy_id_handler.encode(self._db_id)
-
     def as_manifest(self):
-        """Returns the manifest or legacy image as a manifest."""
+        """Returns the manifest as a manifest."""
         return self
-
-    @property
-    @requiresinput("legacy_id_handler")
-    def _legacy_id_handler(self, legacy_id_handler):
-        return legacy_id_handler
-
-    def lookup_legacy_image(self, layer_index, retriever):
-        """Looks up and returns the legacy image for index-th layer in this manifest
-        or None if none. The indexes here are from leaf to root, with index 0 being
-        the leaf.
-        """
-        # Retrieve the schema1 manifest. If none exists, legacy images are not supported.
-        parsed = self.get_parsed_manifest()
-        if parsed is None:
-            return None
-
-        schema1 = parsed.get_schema1_manifest("$namespace", "$repo", "$tag", retriever)
-        if schema1 is None:
-            return None
-
-        return LegacyImage.for_schema1_manifest_layer_index(
-            self, schema1, layer_index, self._legacy_id_handler
-        )
-
-
-class LegacyImage(
-    namedtuple(
-        "LegacyImage",
-        [
-            "docker_image_id",
-            "created",
-            "comment",
-            "command",
-            "image_size",
-            "aggregate_size",
-            "blob",
-            "blob_digest",
-            "v1_metadata_string",
-            # Internal fields.
-            "layer_index",
-            "manifest",
-            "parsed_manifest",
-            "id_handler",
-        ],
-    )
-):
-    """
-    LegacyImage represents a Docker V1-style image found in a repository.
-    """
-
-    @classmethod
-    def for_schema1_manifest_layer_index(
-        cls, manifest, parsed_manifest, layer_index, id_handler, blob=None
-    ):
-        assert parsed_manifest.schema_version == 1
-        layers = parsed_manifest.layers
-        if layer_index >= len(layers):
-            return None
-
-        # NOTE: Schema1 keeps its layers in the order from base to leaf, so we have
-        # to reverse our lookup order.
-        leaf_to_base = list(reversed(layers))
-
-        aggregated_size = sum(
-            [
-                l.compressed_size
-                for index, l in enumerate(leaf_to_base)
-                if index >= layer_index and l.compressed_size is not None
-            ]
-        )
-
-        layer = leaf_to_base[layer_index]
-        synthetic_layer_id = id_handler.encode(manifest._db_id, layer_index)
-
-        # Replace the image ID and parent ID with our synethetic IDs.
-        try:
-            parsed = json.loads(layer.raw_v1_metadata)
-            parsed["id"] = synthetic_layer_id
-            if layer_index < len(leaf_to_base) - 1:
-                parsed["parent"] = id_handler.encode(manifest._db_id, layer_index + 1)
-        except (ValueError, TypeError):
-            return None
-
-        return LegacyImage(
-            docker_image_id=synthetic_layer_id,
-            created=layer.v1_metadata.created,
-            comment=layer.v1_metadata.comment,
-            command=layer.v1_metadata.command,
-            image_size=layer.compressed_size,
-            aggregate_size=aggregated_size,
-            blob=blob,
-            blob_digest=layer.digest,
-            v1_metadata_string=json.dumps(parsed),
-            layer_index=layer_index,
-            manifest=manifest,
-            parsed_manifest=parsed_manifest,
-            id_handler=id_handler,
-        )
-
-    def with_blob(self, blob):
-        """Sets the blob for the legacy image."""
-        return self._replace(blob=blob)
-
-    @property
-    def parent_image_id(self):
-        ancestor_ids = self.ancestor_ids
-        if not ancestor_ids:
-            return None
-
-        return ancestor_ids[-1]
-
-    @property
-    def ancestor_ids(self):
-        ancestor_ids = []
-        for layer_index in range(self.layer_index + 1, len(self.parsed_manifest.layers)):
-            ancestor_ids.append(self.id_handler.encode(self.manifest._db_id, layer_index))
-        return ancestor_ids
-
-    @property
-    def full_image_id_chain(self):
-        return [self.docker_image_id] + self.ancestor_ids
-
-    def as_manifest(self):
-        """Returns the parent manifest for the legacy image."""
-        return self.manifest
 
 
 @unique

@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from test.fixtures import *  # noqa: F401,F403
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,6 +43,7 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
+from test.fixtures import *  # noqa: F401,F403
 from util.bytes import Bytes
 
 UBI8_8_5_DIGEST = "sha256:8ee9d7bbcfc19d383f9044316a5c5fbcbe2df6be3c97f6c7a5422527b29bdede"
@@ -245,7 +245,7 @@ class TestRegistryProxyModelGetSchema1ParsedManifest:
             self.upstream_repository,
             self.user,
         )
-        m = ManifestType.for_manifest(created_manifest.manifest, MagicMock())
+        m = ManifestType.for_manifest(created_manifest.manifest)
         with pytest.raises(ManifestException):
             proxy_model.get_schema1_parsed_manifest(
                 m,

@@ -1,7 +1,6 @@
 import pytest
 
 from app import app
-from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
 
 
@@ -9,7 +8,6 @@ from endpoints.v2 import v2_bp
     "blueprint",
     [
         v2_bp,
-        v1_bp,
     ],
 )
 def test_verify_blueprint(blueprint):

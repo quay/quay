@@ -3,16 +3,6 @@ import binascii
 import hashlib
 import tarfile
 from io import BytesIO
-from test.fixtures import *
-from test.registry.fixtures import *
-from test.registry.liveserverfixture import *
-from test.registry.protocol_fixtures import *
-from test.registry.protocols import (
-    Failures,
-    Image,
-    ProtocolOptions,
-    layer_bytes_for_contents,
-)
 
 import bencode
 import rehash
@@ -26,6 +16,16 @@ from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from test.fixtures import *
+from test.registry.fixtures import *
+from test.registry.liveserverfixture import *
+from test.registry.protocol_fixtures import *
+from test.registry.protocols import (
+    Failures,
+    Image,
+    ProtocolOptions,
+    layer_bytes_for_contents,
+)
 from util.security.registry_jwt import decode_bearer_header
 from util.timedeltastring import convert_to_timedelta
 
@@ -364,75 +364,6 @@ def test_application_repo(
         credentials=credentials,
         expected_failure=Failures.APP_REPOSITORY,
     )
-
-
-def test_middle_layer_different_sha(v2_protocol, v1_protocol, liveserver_session, app_reloader):
-    """Test: Pushing of a 3-layer image with the *same* V1 ID's, but the middle layer having
-    different bytes, must result in new IDs being generated for the leaf layer, as
-    they point to different "images".
-    """
-    credentials = ("devtable", "password")
-    first_images = [
-        Image(id="baseimage", parent_id=None, size=None, bytes=layer_bytes_for_contents(b"base")),
-        Image(
-            id="middleimage",
-            parent_id="baseimage",
-            size=None,
-            bytes=layer_bytes_for_contents(b"middle"),
-        ),
-        Image(
-            id="leafimage",
-            parent_id="middleimage",
-            size=None,
-            bytes=layer_bytes_for_contents(b"leaf"),
-        ),
-    ]
-
-    # First push and pull the images, to ensure we have the basics setup and working.
-    v2_protocol.push(
-        liveserver_session, "devtable", "newrepo", "latest", first_images, credentials=credentials
-    )
-    first_pull_result = v2_protocol.pull(
-        liveserver_session, "devtable", "newrepo", "latest", first_images, credentials=credentials
-    )
-    first_manifest = first_pull_result.manifests["latest"]
-    assert set([image.id for image in first_images]) == set(first_manifest.image_ids)
-    assert first_pull_result.image_ids["latest"] == "leafimage"
-
-    # Next, create an image list with the middle image's *bytes* changed.
-    second_images = list(first_images)
-    second_images[1] = Image(
-        id="middleimage",
-        parent_id="baseimage",
-        size=None,
-        bytes=layer_bytes_for_contents(b"different middle bytes"),
-    )
-
-    # Push and pull the image, ensuring that the produced ID for the middle and leaf layers
-    # are synthesized.
-    options = ProtocolOptions()
-    options.skip_head_checks = True
-
-    v2_protocol.push(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        second_images,
-        credentials=credentials,
-        options=options,
-    )
-    second_pull_result = v1_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        second_images,
-        credentials=credentials,
-        options=options,
-    )
-
-    assert second_pull_result.image_ids["latest"] != "leafimage"
 
 
 def add_robot(api_caller, _):
@@ -925,62 +856,6 @@ def test_push_reponame(
             basic_images,
             credentials=credentials,
         )
-
-
-@pytest.mark.parametrize(
-    "repo_name, extended_repo_names, expected_failure",
-    [
-        ("something", False, None),
-        ("something", True, None),
-        ("some/slash", False, Failures.SLASH_REPOSITORY),
-        ("some/slash", True, Failures.SLASH_REPOSITORY),
-        ("some/more/slash", False, Failures.SLASH_REPOSITORY),
-        ("some/more/slash", True, Failures.SLASH_REPOSITORY),
-        pytest.param("x" * 255, False, None, id="Valid long name"),
-        pytest.param("x" * 255, True, None, id="Valid long name"),
-        pytest.param("x" * 256, False, Failures.INVALID_REPOSITORY, id="Name too long"),
-        pytest.param("x" * 256, True, Failures.INVALID_REPOSITORY, id="Name too long"),
-    ],
-)
-def test_v1_push_extended_reponame(
-    repo_name,
-    extended_repo_names,
-    expected_failure,
-    v1_pusher,
-    v1_puller,
-    basic_images,
-    liveserver_session,
-    app_reloader,
-    liveserver,
-    registry_server_executor,
-):
-    """Test: Attempt to add a repository with various names."""
-    credentials = ("devtable", "password")
-
-    with FeatureFlagValue(
-        "EXTENDED_REPOSITORY_NAMES",
-        extended_repo_names,
-        registry_server_executor.on(liveserver),
-    ):
-        v1_pusher.push(
-            liveserver_session,
-            "devtable",
-            repo_name,
-            "latest",
-            basic_images,
-            credentials=credentials,
-            expected_failure=expected_failure,
-        )
-
-        if expected_failure is None:
-            v1_puller.pull(
-                liveserver_session,
-                "devtable",
-                repo_name,
-                "latest",
-                basic_images,
-                credentials=credentials,
-            )
 
 
 @pytest.mark.parametrize(
@@ -2151,47 +2026,6 @@ def test_push_pull_same_blobs(pusher, puller, liveserver_session, app_reloader):
     )
 
 
-def test_push_tag_existing_image(v1_protocol, basic_images, liveserver_session, app_reloader):
-    """Test: Push a new tag on an existing image."""
-    credentials = ("devtable", "password")
-
-    # Push a new repository.
-    v1_protocol.push(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
-    )
-
-    # Pull the repository to verify.
-    pulled = v1_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-    )
-    assert pulled.image_ids
-
-    # Push the same image to another tag in the repository.
-    v1_protocol.tag(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "anothertag",
-        pulled.image_ids["latest"],
-        credentials=credentials,
-    )
-
-    # Pull the repository to verify.
-    v1_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "anothertag",
-        basic_images,
-        credentials=credentials,
-    )
-
-
 @pytest.mark.parametrize(
     "schema_version",
     [
@@ -2665,31 +2499,6 @@ def test_push_pull_unicode_direct(pusher, puller, unicode_images, liveserver_ses
         unicode_images,
         credentials=credentials,
         options=options,
-    )
-
-
-def test_push_legacy_pull_not_allowed(
-    v22_protocol, v1_protocol, remote_images, liveserver_session, app_reloader, data_model
-):
-    """Test: Push a V2 Schema 2 manifest and attempt to pull via V1 when there is no assigned legacy
-    image.
-    """
-    credentials = ("devtable", "password")
-
-    # Push a new repository.
-    v22_protocol.push(
-        liveserver_session, "devtable", "newrepo", "latest", remote_images, credentials=credentials
-    )
-
-    # Attempt to pull. Should fail with a 404.
-    v1_protocol.pull(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        remote_images,
-        credentials=credentials,
-        expected_failure=Failures.UNKNOWN_TAG,
     )
 
 

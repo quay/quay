@@ -3,7 +3,6 @@ import inspect
 import os
 import shutil
 from collections import namedtuple
-from test.testconfig import FakeTransaction
 
 import pytest
 from flask import Flask, jsonify
@@ -22,7 +21,6 @@ from data.database import close_db_filter, configure, db
 from data.model.user import LoginWrappedDBUser
 from data.userfiles import Userfiles
 from endpoints.api import api_bp
-from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
 from endpoints.web import web
 from endpoints.webhooks import webhooks
@@ -34,6 +32,7 @@ from path_converters import (
     RepositoryPathRedirectConverter,
     V1CreateRepositoryPathConverter,
 )
+from test.testconfig import FakeTransaction
 
 INIT_DB_PATH = 0
 
@@ -352,7 +351,6 @@ def app(appconfig, initialized_db):
 
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(web, url_prefix="/")
-    app.register_blueprint(v1_bp, url_prefix="/v1")
     app.register_blueprint(v2_bp, url_prefix="/v2")
     app.register_blueprint(webhooks, url_prefix="/webhooks")
 
