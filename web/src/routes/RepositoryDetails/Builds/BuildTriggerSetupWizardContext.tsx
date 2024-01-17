@@ -8,7 +8,6 @@ import {
   Spinner,
   TextInput,
 } from '@patternfly/react-core';
-import {context} from 'raven-js';
 import {useEffect, useState} from 'react';
 import TypeAheadSelect from 'src/components/TypeAheadSelect';
 import Conditional from 'src/components/empty/Conditional';
