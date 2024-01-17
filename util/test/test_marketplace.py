@@ -94,6 +94,51 @@ mocked_organization_only_response = [
     },
 ]
 
+mocked_subscription_response = [
+    {
+        "id": 1,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1704721749000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1704721749000,
+        "installBaseStartDate": 1704672000000,
+        "installBaseEndDate": 1707350399000,
+        "webCustomerId": 12345,
+        "quantity": 1,
+        "effectiveStartDate": 1704672000000,
+        "effectiveEndDate": 1707350399000,
+    },
+    {
+        "id": 2,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1705494625000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1705494625000,
+        "installBaseStartDate": 1705467600000,
+        "installBaseEndDate": 1708145999000,
+        "webCustomerId": 12345,
+        "quantity": 1,
+        "effectiveStartDate": 1705467600000,
+        "effectiveEndDate": 1708145999000,
+    },
+    {
+        "id": 3,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1610888071,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1610888071,
+        "installBaseStartDate": 1610888071,
+        "installBaseEndDate": 1610888071,
+        "webCustomerId": 12345,
+        "quantity": 1,
+        "effectiveStartDate": 1610888071,
+        "effectiveEndDate": 1610888071,
+    },
+]
+
 
 class TestMarketplace:
     @patch("requests.request")
@@ -124,3 +169,11 @@ class TestMarketplace:
         requests_mock.return_value.content = json.dumps(mocked_organization_only_response)
         customer_id = user_api.lookup_customer_id("example@example.com")
         assert customer_id is None
+
+    @patch("requests.request")
+    def test_subscription_lookup(self, requests_mock):
+        subscription_api = RedHatSubscriptionApi(app_config)
+        requests_mock.return_value.content = json.dumps(mocked_subscription_response)
+
+        subscriptions = subscription_api.lookup_subscription(12345, "some_sku")
+        assert len(subscriptions) == 2
