@@ -1,6 +1,12 @@
 import {useQuery} from '@tanstack/react-query';
 import {isNullOrUndefined} from 'src/libs/utils';
-import {fetchBuilds} from 'src/resources/BuildResource';
+import {
+  fetchBuilds,
+  fetchNamespaces,
+  fetchRefs,
+  fetchSources,
+  fetchSubDirs,
+} from 'src/resources/BuildResource';
 
 export function useBuilds(
   org: string,

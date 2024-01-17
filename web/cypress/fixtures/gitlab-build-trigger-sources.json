@@ -1,0 +1,49 @@
+{
+  "sources": [
+    {
+      "name": "repo1",
+      "full_name": "gitlabgroup2/repo1",
+      "description": "repo1 description",
+      "last_updated": 1705069849,
+      "url": "https://gitlab.com/gitlabgroup2/repo1",
+      "has_admin_permissions": true,
+      "private": false
+    },
+    {
+      "name": "repo2",
+      "full_name": "gitlabgroup2/repo2",
+      "description": "repo2 description",
+      "last_updated": 1705059849,
+      "url": "https://gitlab.com/gitlabgroup2/repo2",
+      "has_admin_permissions": true,
+      "private": false
+    },
+    {
+      "name": "noadminpermissionsrepo3",
+      "full_name": "gitlabgroup2/noadminpermissionsrepo3",
+      "description": "noadminpermissionsrepo3 description",
+      "last_updated": 1705069849,
+      "url": "https://gitlab.com/gitlabgroup2/noadminpermissionsrepo3",
+      "has_admin_permissions": false,
+      "private": false
+    },
+    {
+      "name": "stalerepo4",
+      "full_name": "gitlabgroup2/stalerepo4",
+      "description": "stalerepo4 description",
+      "last_updated": 1697534936,
+      "url": "https://gitlab.com/gitlabgroup2/stalerepo4",
+      "has_admin_permissions": true,
+      "private": false
+    },
+    {
+      "name": "privaterepo5",
+      "full_name": "gitlabgroup2/privaterepo5",
+      "description": "",
+      "last_updated": 1705079849,
+      "url": "https://gitlab.com/gitlabgroup2/privaterepo5",
+      "has_admin_permissions": true,
+      "private": true
+    }
+  ]
+}

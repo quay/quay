@@ -9,6 +9,10 @@ import {
   activateBuildTrigger,
   TriggerConfig,
   RepositoryBuildTrigger,
+  fetchNamespaces,
+  fetchRefs,
+  fetchSources,
+  fetchSubDirs,
 } from 'src/resources/BuildResource';
 
 export function useBuildTriggers(org: string, repo: string) {
@@ -94,6 +98,7 @@ export function useAnalyzeBuildTrigger(
   buildSource: string,
   context: string,
   dockerfilePath: string,
+  enabled = true,
 ) {
   const {data, isError, error, isLoading, isSuccess} = useQuery(
     ['analyzebuildtrigger', namespace, repo],
@@ -106,6 +111,9 @@ export function useAnalyzeBuildTrigger(
         context,
         dockerfilePath,
       ),
+    {
+      enabled: enabled,
+    },
   );
 
   return {
@@ -137,4 +145,85 @@ export function useActivateBuildTrigger(
   );
 
   return {activateTrigger: mutate};
+}
+
+export function useGitNamespaces(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+) {
+  const {data, isError, error, isLoading} = useQuery(
+    ['gitnamespaces', org, repo, triggerUuid],
+    ({signal}) => fetchNamespaces(org, repo, triggerUuid, signal),
+  );
+
+  return {
+    gitNamespaces: data,
+    isError: isError,
+    error: error,
+    isLoading: isLoading,
+  };
+}
+
+export function useGitSources(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  gitNamespaceId: string,
+) {
+  console.log(gitNamespaceId);
+  const {data, isError, error, isLoading} = useQuery(
+    ['sources', org, repo, triggerUuid, gitNamespaceId],
+    () => fetchSources(org, repo, triggerUuid, gitNamespaceId),
+  );
+
+  return {
+    sources: data,
+    isError: isError,
+    error: error,
+    isLoading: isLoading,
+  };
+}
+
+export function useSourceRefs(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  sourceRef: string,
+) {
+  const {data, isError, error, isLoading} = useQuery(
+    ['sourcerefs', org, repo, triggerUuid, sourceRef],
+    () => fetchRefs(org, repo, triggerUuid, sourceRef),
+  );
+
+  return {
+    refs: data,
+    isError: isError,
+    error: error,
+    isLoading: isLoading,
+  };
+}
+
+export function useSourceDirs(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  sourceRef: string,
+  enabled = true,
+) {
+  const {data, isError, error, isLoading} = useQuery(
+    ['sourcedirs', org, repo, triggerUuid, sourceRef],
+    () => fetchSubDirs(org, repo, triggerUuid, sourceRef),
+    {
+      enabled: enabled,
+    },
+  );
+
+  return {
+    dockerfilePaths: data?.dockerfile_paths,
+    contexts: data?.contextMap,
+    isError: isError,
+    error: error,
+    isLoading: isLoading,
+  };
 }

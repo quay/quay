@@ -1,0 +1,20 @@
+{
+  "values": [
+    {
+      "kind": "branch",
+      "name": "master"
+    },
+    {
+      "kind": "branch",
+      "name": "development"
+    },
+    {
+      "kind": "tag",
+      "name": "1.0.0"
+    },
+    {
+      "kind": "tag",
+      "name": "1.0.1"
+    }
+  ]
+}

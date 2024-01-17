@@ -5,7 +5,6 @@ import {
   MenuToggle,
   MenuToggleElement,
 } from '@patternfly/react-core';
-import {EllipsisVIcon} from '@patternfly/react-icons';
 import {useState} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
@@ -28,20 +27,25 @@ export default function CreateBuildTriggerDropdown(
     </DropdownItem>,
   ];
 
-  // These will be implemented in the future
-  // if(quayConfig?.features?.GITHUB_BUILD){
-  //     dropdownItems.push(<DropdownItem
-  //         key="create-github-trigger"
-  //         onClick={() => {
-  //             setIsOpen(false);
-  //         }}
-  //     >
-  //         <a href={getRedirectUrl('github', props.namespace, props.repo)}>
-  //             GitHub Repository Push
-  //         </a>
-  //     </DropdownItem>)
-  // }
+  if (quayConfig?.features?.GITHUB_BUILD) {
+    dropdownItems.push(
+      <DropdownItem
+        key="create-github-trigger"
+        onClick={() => {
+          setIsOpen(false);
+        }}
+      >
+        <a
+          id="create-github-trigger-link"
+          href={getRedirectUrl('github', props.namespace, props.repo)}
+        >
+          GitHub Repository Push
+        </a>
+      </DropdownItem>,
+    );
+  }
 
+  // To be enabled later
   // if(quayConfig?.features?.BITBUCKET_BUILD){
   //     dropdownItems.push(<DropdownItem
   //         key="create-bitbucket-trigger"
@@ -55,18 +59,20 @@ export default function CreateBuildTriggerDropdown(
   //     </DropdownItem>)
   // }
 
-  // if(quayConfig?.features?.GITLAB_BUILD){
-  //     dropdownItems.push(<DropdownItem
-  //         key="create-gitlab-trigger"
-  //         onClick={() => {
-  //             setIsOpen(false);
-  //         }}
-  //     >
-  //         <a href={getRedirectUrl('gitlab', props.namespace, props.repo)}>
-  //             GitLab Repository Push
-  //         </a>
-  //     </DropdownItem>);
-  // }
+  if (quayConfig?.features?.GITLAB_BUILD) {
+    dropdownItems.push(
+      <DropdownItem
+        key="create-gitlab-trigger"
+        onClick={() => {
+          setIsOpen(false);
+        }}
+      >
+        <a href={getRedirectUrl('gitlab', props.namespace, props.repo)}>
+          GitLab Repository Push
+        </a>
+      </DropdownItem>,
+    );
+  }
 
   return (
     <Dropdown
@@ -130,7 +136,7 @@ function getRedirectUrl(service: string, namespace: string, repo: string) {
         clientId +
         '&redirect_uri=' +
         redirectUri +
-        '&scope=api write_repository openid&response_type=code&state=repo:' +
+        '&scope=api%20write_repository%20openid&response_type=code&state=repo:' +
         namespace +
         '/' +
         repo;

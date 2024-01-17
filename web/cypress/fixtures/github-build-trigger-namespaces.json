@@ -1,0 +1,28 @@
+{
+  "namespaces": [
+    {
+      "personal": true,
+      "id": "githuborg1",
+      "title": "Org 1",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1234567?v=3",
+      "url": "https://github.com/githuborg1",
+      "score": 0
+    },
+    {
+      "personal": true,
+      "id": "githuborg2",
+      "title": "Org 2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1234567?v=3",
+      "url": "https://github.com/githuborg2",
+      "score": 50
+    },
+    {
+      "personal": true,
+      "id": "githuborg3",
+      "title": "Org 3",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1234567?v=3",
+      "url": "https://github.com/githuborg3",
+      "score": 100
+    }
+  ]
+}
