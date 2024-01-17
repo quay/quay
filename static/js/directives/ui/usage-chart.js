@@ -49,6 +49,7 @@ angular.module('quay').directive('usageChart', function () {
         }
 
         var finalAmount = $scope.total + $scope.marketplaceTotal;
+        if(finalAmount >= 9223372036854775807) { finalAmount = "unlimited"; }
         chart.update($scope.current, finalAmount);
       };
 
