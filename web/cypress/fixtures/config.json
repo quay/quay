@@ -51,7 +51,7 @@
     "FEATURE_QUOTA_MANAGEMENT": false,
     "FEATURE_REPO_MIRROR": false,
     "LOCAL_OAUTH_HANDLER": "/oauth/localapp",
-    "PREFERRED_URL_SCHEME": "https",
+    "PREFERRED_URL_SCHEME": "http",
     "RECAPTCHA_SITE_KEY": null,
     "REGISTRY_TITLE": "Mock Quay",
     "REGISTRY_TITLE_SHORT": "Quay",

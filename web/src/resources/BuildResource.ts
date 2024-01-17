@@ -131,6 +131,21 @@ export async function fetchBuildTriggers(
   return response.data.triggers;
 }
 
+export async function fetchBuildTrigger(
+  namespace: string,
+  repo: string,
+  triggerUuid: string,
+  signal: AbortSignal,
+) {
+  const response: AxiosResponse<RepositoryBuildTrigger> = await axios.get(
+    `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}`,
+    {
+      signal,
+    },
+  );
+  return response.data;
+}
+
 export async function toggleBuildTrigger(
   org: string,
   repo: string,
@@ -155,4 +170,74 @@ export async function deleteBuildTrigger(
       `/api/v1/repository/${org}/${repo}/trigger/${trigger_uuid}`,
     );
   return response.data.triggers;
+}
+
+export interface RepositoryBuildTriggerAnalysis {
+  namespace: string;
+  name: string;
+  robots: Entity[];
+  status: string;
+  message: string;
+  is_admin: boolean;
+}
+
+export async function analyzeBuildTrigger(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  buildSource: string,
+  context: string,
+  dockerfilePath: string,
+) {
+  const body = {
+    config: {
+      build_source: buildSource,
+      context: context,
+      dockerfile_path: dockerfilePath,
+    },
+  };
+  const response: AxiosResponse<RepositoryBuildTriggerAnalysis> =
+    await axios.post(
+      `/api/v1/repository/${org}/${repo}/trigger/${triggerUuid}/analyze`,
+      body,
+    );
+  return response.data;
+}
+
+export interface TriggerConfig {
+  buildSource: string;
+  dockerfilePath?: string;
+  context?: string;
+  branchTagRegex?: string;
+  defaultTagFromRef?: boolean;
+  latestForDefaultBranch?: boolean;
+  tagTemplates?: string[];
+}
+
+export async function activateBuildTrigger(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  config: TriggerConfig,
+  robot?: string,
+) {
+  const body = {
+    config: {
+      build_source: config.buildSource,
+      dockerfile_path: config.dockerfilePath,
+      context: config.context,
+      branchtag_regex: config.branchTagRegex,
+      default_tag_from_ref: config.defaultTagFromRef,
+      latest_for_default_branch: config.latestForDefaultBranch,
+      tag_templates: config.tagTemplates,
+    },
+  };
+  if (!isNullOrUndefined(robot)) {
+    body['pull_robot'] = robot;
+  }
+  const response: AxiosResponse<RepositoryBuildTrigger> = await axios.post(
+    `/api/v1/repository/${org}/${repo}/trigger/${triggerUuid}/activate`,
+    body,
+  );
+  return response.data;
 }

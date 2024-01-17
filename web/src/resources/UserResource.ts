@@ -59,6 +59,7 @@ export interface Entity {
   name: string;
   kind?: EntityKind;
   is_robot?: boolean;
+  can_read?: boolean;
 }
 
 export enum EntityKind {

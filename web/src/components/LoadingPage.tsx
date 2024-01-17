@@ -25,7 +25,7 @@ export function LoadingPage(props: {
         <EmptyState>
           <EmptyStateHeader icon={<EmptyStateIcon icon={Spinner} />} />
           <EmptyStateFooter>
-            <div>
+            <div tabIndex="1">
               <Title size="lg" headingLevel="h4">
                 {props.title ?? 'Loading'}
               </Title>

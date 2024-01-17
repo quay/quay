@@ -580,7 +580,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           Component={
             <RobotTokensModal
               namespace={props.organizationName}
-              robotAccount={robotForModalView}
+              name={robotForModalView.name}
             />
           }
           showFooter={true}

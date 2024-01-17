@@ -712,3 +712,256 @@ describe('Repository Builds', () => {
     cy.wait('@deleteTrigger');
   });
 });
+
+describe('Repository Builds - Create Build Triggers', () => {
+  beforeEach(() => {
+    cy.exec('npm run quay:seed');
+    cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
+      .then((response) => response.body.csrf_token)
+      .then((token) => {
+        cy.loginByCSRF(token);
+      });
+  });
+
+  it('Creates build trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuilds');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+    cy.contains('Create Build Trigger').click();
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
+    cy.contains('Custom Git Repository Push').click();
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
+    cy.url().should(
+      'include',
+      `${Cypress.env(
+        'REACT_QUAY_APP_API_URL',
+      )}/repository/testorg/testrepo/trigger/`,
+    );
+    cy.url().then((url) => {
+      const redirect = url.replace(
+        Cypress.env('REACT_QUAY_APP_API_URL'),
+        Cypress.config().baseUrl as string,
+      );
+      cy.visit(redirect);
+    });
+    cy.contains('Setup Build Trigger:');
+
+    // Repo URL step
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#repo-url').type('notavalidurl');
+    cy.contains('Must be a valid URL');
+    cy.get('#repo-url').clear();
+    cy.get('#repo-url').type('https://github.com/quay/quay');
+    cy.contains('Next').click();
+
+    // Tagging Options step
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#tag-with-latest-checkbox').click();
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#tag-manifest-with-branch-or-tag-name-checkbox').click();
+    cy.contains('button', 'Next').should('be.enabled');
+    cy.contains('No tag templates defined.');
+    cy.get('#tag-template').type('template1');
+    cy.contains('Add template').click();
+    cy.contains('No tag templates defined.').should('not.exist');
+    cy.contains('template1');
+    cy.get('#template1').within(() => cy.get('a').click());
+    cy.contains('No tag templates defined.');
+    cy.get('#tag-template').type('template2');
+    cy.contains('Add template').click();
+    cy.contains('Next').click();
+
+    // Dockerfile path step
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#dockerfile-path').type('notavalidpath');
+    cy.contains(
+      'Path entered for folder containing Dockerfile is invalid: Must start with a "/".',
+    );
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#dockerfile-path').clear();
+    cy.get('#dockerfile-path').type('/Dockerfile/');
+    cy.contains('Dockerfile path must end with a file, e.g. "Dockerfile"');
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#dockerfile-path').clear();
+    cy.get('#dockerfile-path').type('/Dockerfile');
+    cy.contains('Next').click();
+
+    // Context path step
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#context-path').type('notavalidpath');
+    cy.contains('Path is an invalid context.');
+    cy.contains('button', 'Next').should('be.disabled');
+    cy.get('#context-path').clear();
+    cy.get('#context-path').type('/context');
+    cy.contains('Next').click();
+
+    // Robot account step
+    cy.contains('tr', 'testorg+testrobot').within(() => {
+      cy.contains('Read access will be added if selected');
+      cy.get('input').click();
+    });
+    cy.contains('tr', 'testorg+testrobot2').within(() => {
+      cy.contains('Read access will be added if selected');
+    });
+    cy.contains('Next').click();
+
+    // Review and submit step
+    cy.get('#repo-url').contains('https://github.com/quay/quay');
+    cy.get('#tag-templates').contains('template2');
+    cy.get('#tag-with-branch-or-tag').contains('enabled');
+    cy.get('#tag-with-latest').contains('enabled');
+    cy.get('#dockerfile-path').contains('/Dockerfile');
+    cy.get('#robot-account').contains('testorg+testrobot');
+    cy.get('button[type="submit"]').click();
+
+    // Confirmation
+    cy.contains('Trigger has been successfully activated');
+    cy.contains(
+      'Please note: If the trigger continuously fails to build, it will be automatically disabled. It can be re-enabled from the build trigger list.',
+    );
+    cy.contains(
+      'In order to use this trigger, the following first requires action:',
+    );
+    cy.contains('SSH Public Key:');
+    cy.contains('Webhook Endpoint URL:');
+    cy.contains('Close').click();
+  });
+
+  it('displays error when analyzing trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuilds');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/*/analyze',
+      {
+        statusCode: 500,
+      },
+    ).as('analyzeTrigger');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
+    cy.contains('Create Build Trigger').click();
+    cy.contains('Custom Git Repository Push').click();
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
+    cy.url().then((url) => {
+      const redirect = url.replace(
+        Cypress.env('REACT_QUAY_APP_API_URL'),
+        Cypress.config().baseUrl as string,
+      );
+      cy.visit(redirect);
+    });
+    cy.contains('Setup Build Trigger:');
+
+    cy.get('#repo-url').type('https://github.com/quay/quay');
+    cy.contains('Next').click();
+    cy.get('#tag-manifest-with-branch-or-tag-name-checkbox').click();
+    cy.contains('Next').click();
+    cy.get('#dockerfile-path').type('/Dockerfile');
+    cy.contains('Next').click();
+    cy.get('#context-path').type('/context');
+    cy.contains('Next').click();
+    cy.contains('Request failed with status code 500');
+  });
+
+  it('displays error when fetching robots', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuilds');
+    cy.intercept(
+      'GET',
+      'api/v1/organization/testorg/robots?permissions=true&token=false',
+      {
+        statusCode: 500,
+      },
+    ).as('getRobots');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    cy.contains('Create Build Trigger').click();
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
+    cy.contains('Custom Git Repository Push').click();
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
+    cy.url().then((url) => {
+      const redirect = url.replace(
+        Cypress.env('REACT_QUAY_APP_API_URL'),
+        Cypress.config().baseUrl as string,
+      );
+      cy.visit(redirect);
+    });
+    cy.contains('Setup Build Trigger:');
+
+    cy.get('#repo-url').type('https://github.com/quay/quay');
+    cy.contains('Next').click();
+    cy.get('#tag-manifest-with-branch-or-tag-name-checkbox').click();
+    cy.contains('Next').click();
+    cy.get('#dockerfile-path').type('/Dockerfile');
+    cy.contains('Next').click();
+    cy.get('#context-path').type('/context');
+    cy.contains('Next').click();
+    cy.contains('Request failed with status code 500');
+  });
+
+  it('displays error on activation', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuilds');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/*/activate',
+      {
+        statusCode: 500,
+      },
+    ).as('activateTrigger');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    cy.contains('Create Build Trigger').click();
+    cy.origin(Cypress.env('REACT_QUAY_APP_API_URL'), () =>
+      cy.on('uncaught:exception', (e) => false),
+    );
+    cy.contains('Custom Git Repository Push').click();
+    cy.url().should('contain', 'repository/testorg/testrepo/trigger/');
+    cy.url().then((url) => {
+      const redirect = url.replace(
+        Cypress.env('REACT_QUAY_APP_API_URL'),
+        Cypress.config().baseUrl as string,
+      );
+      cy.visit(redirect);
+    });
+    cy.contains('Setup Build Trigger:');
+
+    cy.get('#repo-url').type('https://github.com/quay/quay');
+    cy.contains('Next').click();
+    cy.get('#tag-manifest-with-branch-or-tag-name-checkbox').click();
+    cy.contains('Next').click();
+    cy.get('#dockerfile-path').type('/Dockerfile');
+    cy.contains('Next').click();
+    cy.get('#context-path').type('/context');
+    cy.contains('Next').click();
+    cy.contains('tr', 'testorg+testrobot2').within(() => {
+      cy.contains('Read access will be added if selected');
+    });
+    cy.contains('Next').click();
+    cy.get('#repo-url').contains('https://github.com/quay/quay');
+    cy.get('button[type="submit"]').click();
+    cy.contains('Error activating trigger');
+  });
+});

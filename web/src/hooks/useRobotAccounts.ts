@@ -19,16 +19,23 @@ import {
 import {updateTeamForRobot} from 'src/resources/TeamResources';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 
-export function useFetchRobotAccounts(orgName: string) {
+export function useFetchRobotAccounts(
+  orgName: string,
+  isUser = false,
+  enabled = true,
+) {
   const {
     data: robots,
     isLoading,
     error,
+    isError,
+    isSuccess,
   } = useQuery<IRobot[]>(
     ['robots'],
-    ({signal}) => fetchRobotsForNamespace(orgName, false, signal),
+    ({signal}) => fetchRobotsForNamespace(orgName, isUser, signal),
     {
       placeholderData: [],
+      enabled: enabled,
     },
   );
 
@@ -36,6 +43,8 @@ export function useFetchRobotAccounts(orgName: string) {
     error,
     isLoadingRobots: isLoading,
     robots,
+    isSuccess,
+    isError,
   };
 }
 

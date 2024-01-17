@@ -58,6 +58,9 @@ export enum NavigationPath {
 
   // Team Member
   teamMember = '/organization/:organizationName/teams/:teamName',
+
+  // Build trigger setup
+  setupBuildTrigger = '/repository/:organizationName/:repositoryName/trigger/:triggerUuid',
 }
 
 export function getRepoDetailPath(
