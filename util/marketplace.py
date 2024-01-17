@@ -111,19 +111,20 @@ class RedHatSubscriptionApi(object):
             return None
 
         try:
-            subscription = max(
-                json.loads(r.content), key=lambda i: (i["effectiveEndDate"]), default=None
-            )
+            subscriptions = json.loads(r.content)
         except json.decoder.JSONDecodeError:
             return None
 
-        if subscription:
-            end_date = subscription["effectiveEndDate"]
-            now_ms = time.time() * 1000
-            # Is subscription still valid?
-            if now_ms < end_date:
-                logger.debug("subscription found for %s", str(skuId))
-                return subscription
+        valid_subscriptions = []
+        if subscriptions:
+            for subscription in subscriptions:
+                end_date = subscription["effectiveEndDate"]
+                now_ms = time.time() * 1000
+                # Is subscription still valid?
+                if now_ms < end_date:
+                    logger.debug("subscription found for %s", str(skuId))
+                    valid_subscriptions.append(subscription)
+            return valid_subscriptions
         return None
 
     def extend_subscription(self, subscription_id, endDate):
