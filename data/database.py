@@ -1753,6 +1753,7 @@ class Tag(BaseModel):
     repository = ForeignKeyField(Repository)
     repository_id: int
     manifest = ForeignKeyField(Manifest, null=True)
+    manifest_id: int
     lifetime_start_ms = BigIntegerField(default=get_epoch_timestamp_ms)
     lifetime_end_ms = BigIntegerField(null=True, index=True)
     hidden = BooleanField(default=False)

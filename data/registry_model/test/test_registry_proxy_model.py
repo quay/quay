@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from test.fixtures import *  # noqa: F401,F403
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,6 +43,7 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
+from test.fixtures import *  # noqa: F401,F403
 from util.bytes import Bytes
 
 UBI8_8_5_DIGEST = "sha256:8ee9d7bbcfc19d383f9044316a5c5fbcbe2df6be3c97f6c7a5422527b29bdede"
@@ -535,6 +535,34 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert manifest is not None
         tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
         assert tag.lifetime_end_ms > first_tag.lifetime_end_ms
+
+    def test_recreate_tag_when_manifest_is_cached_and_exists_upstream(
+        self, create_repo, proxy_manifest_response
+    ):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        proxy_mock = proxy_manifest_response(
+            UBI8_8_4_DIGEST, UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        )
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
+        assert manifest is not None
+
+        Tag.delete().where(Tag.manifest_id == manifest.id).execute()
+        for child_manifest in oci.tag.get_child_manifests(repo_ref.id, manifest.id):
+            Tag.delete().where(Tag.manifest_id == child_manifest).execute()
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
+        assert manifest is not None
 
     def test_renew_manifest_and_parent_tags_when_manifest_has_multiple_parents(
         self, create_repo, proxy_manifest_response
