@@ -82,6 +82,8 @@ class CloudFlareS3Storage(S3Storage):
             "cf_expiry": "%d" % expiry_date.timestamp(),
             "region": self.region,
         }
+        # Additional params for usage calculation. They are removed
+        # from the URL before sending to S3 by the CloudFlare worker
         if kwargs.get("namespace"):
             params["namespace"] = kwargs.get("namespace")
         if kwargs.get("username"):
