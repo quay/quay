@@ -20,7 +20,9 @@ from data.model import (
 )
 
 
-def create_organization(name, email, creating_user, email_required=True, is_possible_abuser=False):
+def create_organization(
+    name, email, creating_user, email_required=True, is_possible_abuser=False
+) -> User:
     with db_transaction():
         try:
             # Create the org
@@ -41,14 +43,14 @@ def create_organization(name, email, creating_user, email_required=True, is_poss
             raise InvalidOrganizationException(str(iue))
 
 
-def get_organization(name):
+def get_organization(name) -> User:
     try:
         return User.get(username=name, organization=True)
     except User.DoesNotExist:
         raise InvalidOrganizationException("Organization does not exist: %s" % name)
 
 
-def convert_user_to_organization(user_obj, admin_user):
+def convert_user_to_organization(user_obj, admin_user) -> User:
     if user_obj.robot:
         raise DataModelException("Cannot convert a robot into an organization")
 

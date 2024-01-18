@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Optional
 
 from flask import Response
 from flask import abort as flask_abort
@@ -145,7 +146,7 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
         )
 
 
-def _try_to_mount_blob(repository_ref, mount_blob_digest):
+def _try_to_mount_blob(repository_ref, mount_blob_digest) -> Optional[Response]:
     """
     Attempts to mount a blob requested by the user from another repository.
     """
@@ -209,7 +210,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
             mount_blob_digest,
             from_repo,
         )
-        return
+        return None
 
     # Return the response for the blob indicating that it was mounted, and including its content
     # digest.

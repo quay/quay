@@ -1,5 +1,5 @@
 import unittest
-from test.fixtures import *  # noqa: F401, F403
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,6 +17,7 @@ from data.database import (
     ManifestChild,
     Repository,
     Tag,
+    User,
 )
 from data.model import oci
 from data.registry_model import datatypes, registry_model
@@ -38,6 +39,7 @@ from image.oci import (
 )
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import *  # noqa: F401, F403
+from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
@@ -326,7 +328,7 @@ class TestManifestPullThroughStorage:
     orgname = "cache-library"
     registry = "docker.io/library"
     config = None
-    org = None
+    org: Optional[User] = None
     ctx = None
     sub = None
 
@@ -352,9 +354,9 @@ class TestManifestPullThroughStorage:
 
     def test_creates_repo_on_first_pull(self, test_name, proxy_manifest_response):
         test_params = storage_test_cases[test_name]
-        repo = f"{self.orgname}/{test_params['image_name']}"
+        repo_name = f"{self.orgname}/{test_params['image_name']}"
         params = {
-            "repository": repo,
+            "repository": repo_name,
             "manifest_ref": test_params["manifest_ref"],
         }
         proxy_mock = proxy_manifest_response(
@@ -365,7 +367,7 @@ class TestManifestPullThroughStorage:
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
         ):
-            headers = _get_auth_headers(self.sub, self.ctx, repo)
+            headers = _get_auth_headers(self.sub, self.ctx, repo_name)
             headers["Accept"] = ", ".join(
                 DOCKER_SCHEMA2_CONTENT_TYPES.union(OCI_CONTENT_TYPES).union(
                     DOCKER_SCHEMA1_CONTENT_TYPES
@@ -412,6 +414,7 @@ class TestManifestPullThroughStorage:
                 expected_code=404,
                 headers=headers,
             )
+        assert self.org is not None
         count = Repository.filter(
             Repository.name == test_params["image_name"], Repository.namespace_user == self.org.id
         ).count()
@@ -450,6 +453,7 @@ class TestManifestPullThroughStorage:
                 headers=headers,
             )
 
+        assert self.org is not None
         count = Repository.filter(
             Repository.name == test_params["image_name"], Repository.namespace_user == self.org.id
         ).count()
@@ -890,13 +894,13 @@ class TestManifestPullThroughProxyDockerHub(unittest.TestCase):
         self.sub = subject
 
         try:
-            model.organization.get(self.org)
+            model.organization.get_organization(self.org)
         except Exception:
             org = model.organization.create_organization(self.org, "cache@devtable.com", self.user)
             org.save()
 
         try:
-            model.organization.get(self.org2)
+            model.organization.get_organization(self.org2)
         except Exception:
             org = model.organization.create_organization(
                 self.org2,
@@ -1084,13 +1088,13 @@ class TestManifestPullThroughProxy(unittest.TestCase):
         self.sub = sub
 
         try:
-            model.organization.get(self.org)
+            model.organization.get_organization(self.org)
         except Exception:
             org = model.organization.create_organization(self.org, "cache@devtable.com", self.user)
             org.save()
 
         try:
-            model.organization.get(self.org2)
+            model.organization.get_organization(self.org2)
         except Exception:
             org = model.organization.create_organization(
                 self.org2,
