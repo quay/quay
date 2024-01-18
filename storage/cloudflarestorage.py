@@ -55,7 +55,7 @@ class CloudFlareS3Storage(S3Storage):
         cf_url_parsed = s3_url_parsed._replace(netloc=self.cloudflare_domain)
 
         expire_date = datetime.now() + timedelta(seconds=expires_in)
-        signed_url = self._cf_sign_url(cf_url_parsed, date_less_than=expire_date)
+        signed_url = self._cf_sign_url(cf_url_parsed, date_less_than=expire_date, **kwargs)
         logger.debug(
             'Returning CloudFlare URL for path "%s" with IP "%s": %s',
             path,
@@ -64,7 +64,7 @@ class CloudFlareS3Storage(S3Storage):
         )
         return signed_url
 
-    def _cf_sign_url(self, cf_url_parsed, date_less_than):
+    def _cf_sign_url(self, cf_url_parsed, date_less_than, **kwargs):
         expiry_ts = date_less_than.timestamp()
         sign_data = "%s@%d" % (cf_url_parsed.path, expiry_ts)
         signature = self.cloudflare_privatekey.sign(
@@ -72,9 +72,9 @@ class CloudFlareS3Storage(S3Storage):
         )
         signature_b64 = base64.b64encode(signature)
 
-        return self._build_signed_url(cf_url_parsed, signature_b64, date_less_than)
+        return self._build_signed_url(cf_url_parsed, signature_b64, date_less_than, **kwargs)
 
-    def _build_signed_url(self, cf_url_parsed, signature, expiry_date):
+    def _build_signed_url(self, cf_url_parsed, signature, expiry_date, **kwargs):
         query = cf_url_parsed.query
         url_dict = dict(urllib.parse.parse_qsl(query))
         params = {
@@ -82,6 +82,13 @@ class CloudFlareS3Storage(S3Storage):
             "cf_expiry": "%d" % expiry_date.timestamp(),
             "region": self.region,
         }
+        # Additional params for usage calculation. They are removed
+        # from the URL before sending to S3 by the CloudFlare worker
+        if kwargs.get("namespace"):
+            params["namespace"] = kwargs.get("namespace")
+        if kwargs.get("username"):
+            params["username"] = kwargs.get("username")
+
         url_dict.update(params)
         url_new_query = urllib.parse.urlencode(url_dict)
         url_parse = cf_url_parsed._replace(query=url_new_query)
