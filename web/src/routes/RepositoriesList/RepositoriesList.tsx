@@ -88,7 +88,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     return {
       namespace: repo.namespace,
       name: repo.name,
-      is_public: repo.zis_public,
+      is_public: repo.is_public,
       last_modified: repo.last_modified,
       size: repo.quota_report?.quota_bytes,
     } as RepoListTableItem;
