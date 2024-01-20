@@ -31,10 +31,22 @@ export const searchTagsFilterState = selector({
     };
     const filterByDigest = (tag: Tag) =>
       tag.manifest_digest.includes(search.query);
+    const filterByDigestRegex = (tag: Tag) => {
+      try {
+        const regex = new RegExp(search.query, 'i');
+        return regex.test(tag.manifest_digest);
+      } catch (e) {
+        return false;
+      }
+    };
 
     switch (search.field) {
       case ColumnNames.digest:
-        return filterByDigest;
+        if (search.isRegEx) {
+          return filterByDigestRegex;
+        } else {
+          return filterByDigest;
+        }
       case ColumnNames.name:
       default:
         if (search.isRegEx) {

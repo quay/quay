@@ -96,7 +96,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   useEffect(() => {
     if (search.currentOrganization !== currentOrg) {
-      setSearch({...search, currentOrganization: currentOrg});
+      setSearch({...search, query: '', currentOrganization: currentOrg});
     }
   }, [currentOrg]);
 

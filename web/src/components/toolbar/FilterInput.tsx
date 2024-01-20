@@ -15,7 +15,7 @@ export function FilterInput(props: FilterInputProps) {
   const [isAdvancedFilterMenuOpen, setAdvancedFilterMenuOpen] = useState(false);
 
   const searchInputRef = React.useRef(null);
-  const advancedFilterMenuRef = React.useRef<HTMLElement>(null);
+  const advancedFilterMenuRef = React.useRef(null);
 
   const advancedFilterMenu = (
     <Panel
@@ -42,12 +42,7 @@ export function FilterInput(props: FilterInputProps) {
     </Panel>
   );
 
-  const setSearchState = (
-    _event:
-      | React.FormEvent<HTMLInputElement>
-      | React.SyntheticEvent<HTMLButtonElement>,
-    value: string,
-  ) => {
+  const setSearchState = (value: string) => {
     props.onChange((prev: SearchState) => ({
       ...prev,
       query: value.trim(),
@@ -55,6 +50,10 @@ export function FilterInput(props: FilterInputProps) {
   };
 
   useEffect(() => {
+    if (!isAdvancedFilterMenuOpen) {
+      return;
+    }
+
     const handleClickOutside = (event) => {
       if (
         advancedFilterMenuRef.current &&
@@ -64,14 +63,11 @@ export function FilterInput(props: FilterInputProps) {
       }
     };
 
-    // Attach the listeners on Component mount.
-    document.addEventListener('mousedown', handleClickOutside);
-
-    // Detach the listeners on Component unmount.
+    document.addEventListener('click', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
-  }, [advancedFilterMenuRef]);
+  }, [isAdvancedFilterMenuOpen]);
 
   const searchInputId = props.id ? props.id : 'toolbar-text-input';
 
@@ -92,11 +88,14 @@ export function FilterInput(props: FilterInputProps) {
           props.searchState.isRegEx ? ' expression' : ''
         }...`}
         value={props.searchState.query}
-        onChange={setSearchState}
-        onClear={(event) => setSearchState(event, '')}
+        onChange={(_, value) => {
+          setSearchState(value);
+          setAdvancedFilterMenuOpen(false);
+        }}
+        onClear={(_) => setSearchState('')}
         id={searchInputId}
-        onToggleAdvancedSearch={(e, isOpen) => {
-          setAdvancedFilterMenuOpen(isOpen);
+        onToggleAdvancedSearch={() => {
+          setAdvancedFilterMenuOpen(!isAdvancedFilterMenuOpen);
         }}
         openMenuButtonAriaLabel="Open advanced search"
         resetButtonLabel="Reset search"
