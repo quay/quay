@@ -1,4 +1,4 @@
-import {ReactElement, useState} from 'react';
+import {ReactElement, useEffect, useState} from 'react';
 import {
   PageSection,
   PageSectionVariants,
@@ -88,15 +88,17 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     return {
       namespace: repo.namespace,
       name: repo.name,
-      is_public: repo.is_public,
+      is_public: repo.zis_public,
       last_modified: repo.last_modified,
       size: repo.quota_report?.quota_bytes,
     } as RepoListTableItem;
   });
 
-  if (currentOrg !== null && search.currentOrganization !== currentOrg) {
-    setSearch({...search, currentOrganization: currentOrg});
-  }
+  useEffect(() => {
+    if (search.currentOrganization !== currentOrg) {
+      setSearch({...search, currentOrganization: currentOrg});
+    }
+  }, [currentOrg]);
 
   // Filtering Repositories after applied filter
   const filteredRepos = searchFilter
