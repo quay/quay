@@ -87,6 +87,9 @@ def _manifest_dict(manifest):
         "is_manifest_list": manifest.is_manifest_list,
         "manifest_data": manifest.internal_manifest_bytes.as_unicode(),
         "config_media_type": manifest.config_media_type,
+        "layers_compressed_size": manifest.layers_compressed_size
+        if not manifest.is_manifest_list
+        else 0,
         "layers": (
             [_layer_dict(lyr.layer_info, idx) for idx, lyr in enumerate(layers)] if layers else None
         ),
