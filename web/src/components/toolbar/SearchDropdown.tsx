@@ -9,6 +9,7 @@ import {
 } from '@patternfly/react-core';
 import {SetterOrUpdater} from 'recoil';
 import {SearchState} from './SearchTypes';
+import {FilterIcon} from '@patternfly/react-icons';
 
 export function SearchDropdown(props: SearchDropdownProps) {
   if (props.items.length === 0) {
@@ -34,6 +35,7 @@ export function SearchDropdown(props: SearchDropdownProps) {
         onSelect={onSelect}
         toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
           <MenuToggle
+            icon={<FilterIcon />}
             ref={toggleRef}
             id="toolbar-dropdown-filter"
             onClick={() => setIsOpen(!isOpen)}

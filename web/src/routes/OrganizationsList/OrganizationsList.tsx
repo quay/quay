@@ -1,33 +1,36 @@
-import {useEffect, useState} from 'react';
-import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {
+  DropdownItem,
   PageSection,
   PageSectionVariants,
-  Title,
   PanelFooter,
-  DropdownItem,
+  Title,
 } from '@patternfly/react-core';
-import './css/Organizations.scss';
-import {CreateOrganizationModal} from './CreateOrganizationModal';
-import {useRecoilState} from 'recoil';
-import {selectedOrgsState} from 'src/atoms/OrganizationListState';
-import {IOrganization} from 'src/resources/OrganizationResource';
-import OrgTableData from './OrganizationsListTableData';
-import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
-import RequestError from 'src/components/errors/RequestError';
-import {OrganizationToolBar} from './OrganizationToolBar';
 import {CubesIcon} from '@patternfly/react-icons';
-import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
-import Empty from 'src/components/empty/Empty';
-import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
+import {useEffect, useState} from 'react';
+import {useRecoilState, useRecoilValue} from 'recoil';
+import {
+  searchOrgsFilterState,
+  selectedOrgsState,
+} from 'src/atoms/OrganizationListState';
 import {LoadingPage} from 'src/components/LoadingPage';
-import {addDisplayError, BulkOperationError} from 'src/resources/ErrorHandling';
-import ErrorModal from 'src/components/errors/ErrorModal';
-import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import ColumnNames from './ColumnNames';
 import RepoCount from 'src/components/Table/RepoCount';
-import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import Empty from 'src/components/empty/Empty';
+import ErrorModal from 'src/components/errors/ErrorModal';
+import RequestError from 'src/components/errors/RequestError';
+import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
+import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
+import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useDeleteOrganizations} from 'src/hooks/UseDeleteOrganizations';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
+import {IOrganization} from 'src/resources/OrganizationResource';
+import ColumnNames from './ColumnNames';
+import {CreateOrganizationModal} from './CreateOrganizationModal';
+import {OrganizationToolBar} from './OrganizationToolBar';
+import OrgTableData from './OrganizationsListTableData';
+import './css/Organizations.scss';
 
 export interface OrganizationsTableItem {
   name: string;
@@ -66,12 +69,11 @@ export default function OrganizationsList() {
     setSearch,
   } = useOrganizations();
 
-  const filteredOrgs =
-    search.query !== ''
-      ? organizationsTableDetails?.filter((repo) =>
-          repo.name.includes(search.query),
-        )
-      : organizationsTableDetails;
+  const searchFilter = useRecoilValue(searchOrgsFilterState);
+
+  const filteredOrgs = searchFilter
+    ? organizationsTableDetails?.filter(searchFilter)
+    : organizationsTableDetails;
 
   const paginatedOrganizationsList = filteredOrgs?.slice(
     page * perPage - perPage,

@@ -1,13 +1,11 @@
 import {Toolbar, ToolbarContent, ToolbarItem} from '@patternfly/react-core';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
-import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
-import {SearchInput} from 'src/components/toolbar/SearchInput';
-import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {Kebab} from 'src/components/toolbar/Kebab';
+import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 import * as React from 'react';
-import ColumnNames from './ColumnNames';
+import {FilterInput} from 'src/components/toolbar/FilterInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 export function OrganizationToolBar(props: OrganizationToolBarProps) {
@@ -21,12 +19,11 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
           itemsPerPageList={props.paginatedOrganizationsList}
           onItemSelect={props.onSelectOrganization}
         />
-        <SearchDropdown
-          items={[ColumnNames.name]}
+        <FilterInput
+          id="orgslist-search-input"
           searchState={props.search}
-          setSearchState={props.setSearch}
+          onChange={props.setSearch}
         />
-        <SearchInput searchState={props.search} onChange={props.setSearch} />
         <ToolbarButton
           id="create-organization-button"
           buttonValue="Create Organization"

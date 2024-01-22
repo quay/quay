@@ -1,15 +1,12 @@
 import {Toolbar, ToolbarContent, ToolbarItem} from '@patternfly/react-core';
-import {useRecoilState} from 'recoil';
-import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
-import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
-import {SearchInput} from 'src/components/toolbar/SearchInput';
-import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
-import {Kebab} from 'src/components/toolbar/Kebab';
-import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
-import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ReactElement} from 'react';
-import {RepositoryListColumnNames as ColumnNames} from './ColumnNames';
+import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
+import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
+import {FilterInput} from 'src/components/toolbar/FilterInput';
+import {Kebab} from 'src/components/toolbar/Kebab';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
+import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 export function RepositoryToolBar(props: RepositoryToolBarProps) {
   const fetchConfirmationModalText = () => {
@@ -51,12 +48,11 @@ export function RepositoryToolBar(props: RepositoryToolBarProps) {
           itemsPerPageList={props.paginatedRepositoryList}
           onItemSelect={props.onSelectRepo}
         />
-        <SearchDropdown
-          items={[ColumnNames.name]}
+        <FilterInput
+          id="repositorylist-search-input"
           searchState={props.search}
-          setSearchState={props.setSearch}
+          onChange={props.setSearch}
         />
-        <SearchInput searchState={props.search} onChange={props.setSearch} />
         <ToolbarButton
           id="create-repository-button"
           buttonValue={props.buttonText}

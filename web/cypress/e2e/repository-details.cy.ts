@@ -2,7 +2,6 @@
 
 import moment from 'moment';
 import {formatDate} from '../../src/libs/utils';
-import moment from 'moment';
 
 describe('Repository Details Page', () => {
   beforeEach(() => {
@@ -24,7 +23,7 @@ describe('Repository Details Page', () => {
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
-      cy.get(`[data-label="Name"]`).should('have.text', 'latest');
+      cy.get(`[data-label="Tag"]`).should('have.text', 'latest');
       cy.get(`[data-label="Security"]`).should('have.text', '3 Critical');
       cy.get(`[data-label="Size"]`).should('have.text', '2.48 kB');
       cy.get(`[data-label="Last Modified"]`).should(
@@ -32,7 +31,7 @@ describe('Repository Details Page', () => {
         formatDate('Thu, 27 Jul 2023 17:31:10 -0000'),
       );
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
-      cy.get(`[data-label="Manifest"]`).should(
+      cy.get(`[data-label="Digest"]`).should(
         'have.text',
         'sha256:f54a58bc1aac',
       );
@@ -50,7 +49,7 @@ describe('Repository Details Page', () => {
     const manifestListRow = cy.get('tbody:contains("manifestlist")');
     manifestListRow.first().within(() => {
       // Assert values for top level row
-      cy.get(`[data-label="Name"]`).should('have.text', 'manifestlist');
+      cy.get(`[data-label="Tag"]`).should('have.text', 'manifestlist');
       cy.get(`[data-label="Security"]`).should(
         'have.text',
         'See Child Manifests',
@@ -61,7 +60,7 @@ describe('Repository Details Page', () => {
         formatDate('Thu, 04 Nov 2022 19:15:15 -0000'),
       );
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
-      cy.get(`[data-label="Manifest"]`).should(
+      cy.get(`[data-label="Digest"]`).should(
         'have.text',
         'sha256:7693efac53eb',
       );
@@ -343,10 +342,25 @@ describe('Repository Details Page', () => {
     cy.contains('manifestlist').should('not.exist');
   });
 
+  it('search by name via regex', () => {
+    cy.visit('/repository/user1/hello-world');
+    cy.get('[id="filter-input-advanced-search"]').should('not.exist');
+    cy.get('[aria-label="Open advanced search"]').click();
+    cy.get('[id="filter-input-advanced-search"]').should('be.visible');
+    cy.get('[id="filter-input-regex-checker"]').click();
+    cy.get('#tagslist-search-input').type('test$');
+    cy.contains('latest').should('exist');
+    cy.contains('manifestlist').should('not.exist');
+    cy.get('[aria-label="Reset search"]').click();
+    cy.get('#tagslist-search-input').type('^manifest');
+    cy.contains('latest').should('not.exist');
+    cy.contains('manifestlist').should('exist');
+  });
+
   it('search by manifest', () => {
     cy.visit('/repository/user1/hello-world');
     cy.get('#toolbar-dropdown-filter').click();
-    cy.get('span').contains('Manifest').click();
+    cy.get('span').contains('Digest').click();
     cy.get('#tagslist-search-input').type('f54a58bc1aac');
     cy.contains('latest').should('exist');
     cy.contains('manifestlist').should('not.exist');

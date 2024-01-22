@@ -1,4 +1,4 @@
-import {ReactElement, useState} from 'react';
+import {ReactElement, useEffect, useState} from 'react';
 import {
   PageSection,
   PageSectionVariants,
@@ -74,6 +74,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     setPage,
     search,
     setSearch,
+    searchFilter,
     page,
     perPage,
     totalResults,
@@ -93,15 +94,16 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     } as RepoListTableItem;
   });
 
+  useEffect(() => {
+    if (search.currentOrganization !== currentOrg) {
+      setSearch({...search, query: '', currentOrganization: currentOrg});
+    }
+  }, [currentOrg]);
+
   // Filtering Repositories after applied filter
-  const filteredRepos =
-    search.query !== ''
-      ? repositoryList.filter((repo) => {
-          const repoName =
-            currentOrg == null ? `${repo.namespace}/${repo.name}` : repo.name;
-          return repoName.includes(search.query);
-        })
-      : repositoryList;
+  const filteredRepos = searchFilter
+    ? repositoryList.filter(searchFilter)
+    : repositoryList;
 
   const paginatedRepositoryList = filteredRepos?.slice(
     page * perPage - perPage,
@@ -413,7 +415,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   );
 }
 
-interface RepoListTableItem {
+export interface RepoListTableItem {
   namespace: string;
   name: string;
   is_public: boolean;

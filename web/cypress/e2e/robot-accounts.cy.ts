@@ -95,7 +95,7 @@ describe('Robot Accounts Page', () => {
   it('Update Repo Permissions', () => {
     cy.visit('/organization/testorg?tab=Robotaccounts');
     cy.contains('1 repository').click();
-    cy.get('#add-repository-bulk-select').contains('1 selected');
+    cy.get('#add-repository-bulk-select').contains('1');
     cy.get('#toggle-descriptions').click();
     cy.get('[role="menuitem"]').contains('Admin').click();
     cy.get('footer')

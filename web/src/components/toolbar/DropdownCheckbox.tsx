@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {
+  Badge,
   Dropdown,
   DropdownItem,
   DropdownList,
@@ -83,9 +84,9 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
                     checked ? selectPageItems() : deSelectAll()
                   }
                 >
-                  {props.selectedItems?.length != 0
-                    ? props.selectedItems?.length + ' selected'
-                    : ''}
+                  {props.selectedItems?.length != 0 ? (
+                    <Badge>{props.selectedItems.length}</Badge>
+                  ) : null}
                 </MenuToggleCheckbox>,
               ],
             }}
