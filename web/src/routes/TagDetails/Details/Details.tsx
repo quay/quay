@@ -1,25 +1,24 @@
 import {
+  ClipboardCopy,
   DescriptionList,
-  DescriptionListTerm,
-  DescriptionListGroup,
   DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
   Divider,
   PageSection,
   PageSectionVariants,
-  ClipboardCopy,
   Skeleton,
-  Page,
 } from '@patternfly/react-core';
-import CopyTags from './DetailsCopyTags';
-import {Tag} from 'src/resources/TagResource';
-import {formatDate} from 'src/libs/utils';
-import Labels from 'src/components/labels/Labels';
-import SecurityDetails from 'src/routes/RepositoryDetails/Tags/SecurityDetails';
 import {ImageSize} from 'src/components/Table/ImageSize';
+import Labels from 'src/components/labels/Labels';
+import {formatDate} from 'src/libs/utils';
+import {Tag} from 'src/resources/TagResource';
+import SecurityDetails from 'src/routes/RepositoryDetails/Tags/SecurityDetails';
+import CopyTags from './DetailsCopyTags';
 
 export default function Details(props: DetailsProps) {
   return (
-    <Page>
+    <>
       <PageSection variant={PageSectionVariants.light}>
         <DescriptionList
           columnModifier={{
@@ -132,7 +131,7 @@ export default function Details(props: DetailsProps) {
           digest={props.digest}
         />
       </PageSection>
-    </Page>
+    </>
   );
 }
 

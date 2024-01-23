@@ -248,13 +248,15 @@ export default function PackagesTable({features}: PackagesProps) {
           </Tbody>
         )}
       </Table>
-      <ToolbarPagination
-        itemsList={filteredPackagesList}
-        perPage={perPage}
-        page={page}
-        setPage={setPage}
-        setPerPage={setPerPage}
-      />
+      <Toolbar>
+        <ToolbarPagination
+          itemsList={filteredPackagesList}
+          perPage={perPage}
+          page={page}
+          setPage={setPage}
+          setPerPage={setPerPage}
+        />
+      </Toolbar>
     </PageSection>
   );
 }

@@ -1,11 +1,4 @@
 import {
-  Page,
-  PageSection,
-  PageSectionVariants,
-  Title,
-  Tabs,
-  Tab,
-  TabTitleText,
   Drawer,
   DrawerActions,
   DrawerCloseButton,
@@ -13,35 +6,41 @@ import {
   DrawerContentBody,
   DrawerHead,
   DrawerPanelContent,
+  PageSection,
+  PageSectionVariants,
+  Tab,
+  TabTitleText,
+  Tabs,
+  Title,
 } from '@patternfly/react-core';
-import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
-import TagsList from './Tags/TagsList';
-import {useLocation, useSearchParams, useNavigate} from 'react-router-dom';
 import {useEffect, useRef, useState} from 'react';
-import Settings from './Settings/Settings';
-import {DrawerContentType} from './Types';
-import AddPermissions from './Settings/PermissionsAddPermission';
+import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
+import {AlertVariant} from 'src/atoms/AlertState';
+import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import Conditional from 'src/components/empty/Conditional';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
+import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
+import {useAlerts} from 'src/hooks/UseAlerts';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import CreateNotification from './Settings/NotificationsCreateNotification';
 import {useRepository} from 'src/hooks/UseRepository';
+import {useFetchTeams} from 'src/hooks/UseTeams';
 import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   validateTeamName,
 } from 'src/libs/utils';
-import TagHistory from './TagHistory/TagHistory';
-import Conditional from 'src/components/empty/Conditional';
-import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
-import {RepoPermissionDropdownItems} from '../RepositoriesList/RobotAccountsList';
+import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import {Entity} from 'src/resources/UserResource';
-import {useFetchTeams} from 'src/hooks/UseTeams';
 import {CreateTeamModal} from '../OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {RepoPermissionDropdownItems} from '../RepositoriesList/RobotAccountsList';
 import Builds from './Builds/Builds';
+import CreateNotification from './Settings/NotificationsCreateNotification';
+import AddPermissions from './Settings/PermissionsAddPermission';
+import Settings from './Settings/Settings';
+import TagHistory from './TagHistory/TagHistory';
+import TagsList from './Tags/TagsList';
+import {DrawerContentType} from './Types';
 
 enum TabIndex {
   Tags = 'tags',
@@ -211,86 +210,81 @@ export default function RepositoryDetails() {
           }
         >
           <DrawerContentBody>
-            <Page>
-              <QuayBreadcrumb />
-              <PageSection
-                variant={PageSectionVariants.light}
-                className="no-padding-bottom"
+            <QuayBreadcrumb />
+            <PageSection variant={PageSectionVariants.light}>
+              <Title data-testid="repo-title" headingLevel="h1">
+                {repository}
+              </Title>
+            </PageSection>
+            <PageSection
+              variant={PageSectionVariants.light}
+              style={{padding: 0}}
+            >
+              <ErrorBoundary
+                hasError={isErrorString(err)}
+                fallback={<RequestError message={err} />}
               >
-                <Title data-testid="repo-title" headingLevel="h1">
-                  {repository}
-                </Title>
-              </PageSection>
-              <PageSection
-                variant={PageSectionVariants.light}
-                className="no-padding-on-sides"
-                style={{padding: 0}}
-              >
-                <ErrorBoundary
-                  hasError={isErrorString(err)}
-                  fallback={<RequestError message={err} />}
+                <Tabs
+                  mountOnEnter
+                  unmountOnExit
+                  activeKey={activeTabKey}
+                  onSelect={tabsOnSelect}
+                  usePageInsets={true}
                 >
-                  <Tabs
-                    mountOnEnter
-                    unmountOnExit
-                    activeKey={activeTabKey}
-                    onSelect={tabsOnSelect}
+                  <Tab
+                    eventKey={TabIndex.Tags}
+                    title={<TabTitleText>Tags</TabTitleText>}
                   >
-                    <Tab
-                      eventKey={TabIndex.Tags}
-                      title={<TabTitleText>Tags</TabTitleText>}
-                    >
-                      <TagsList
-                        organization={organization}
-                        repository={repository}
-                        repoDetails={repoDetails}
-                      />
-                    </Tab>
-                    <Tab
-                      eventKey={TabIndex.TagHistory}
-                      title={<TabTitleText>Tag history</TabTitleText>}
-                    >
-                      <TagHistory
-                        org={organization}
-                        repo={repository}
-                        repoDetails={repoDetails}
-                      />
-                    </Tab>
-                    <Tab
-                      eventKey={TabIndex.Settings}
-                      title={<TabTitleText>Settings</TabTitleText>}
-                      isHidden={
-                        config?.features.UI_V2_REPO_SETTINGS != true ||
-                        !repoDetails?.can_admin
-                      }
-                    >
-                      <Settings
-                        org={organization}
-                        repo={repository}
-                        setDrawerContent={setDrawerContent}
-                        repoDetails={repoDetails}
-                      />
-                    </Tab>
-                    <Tab
-                      eventKey={TabIndex.Builds}
-                      title={<TabTitleText>Builds</TabTitleText>}
-                      isHidden={
-                        config?.features.UI_V2_BUILDS != true ||
-                        config?.features.BUILD_SUPPORT != true ||
-                        !repoDetails?.can_write
-                      }
-                    >
-                      <Builds
-                        org={organization}
-                        repo={repository}
-                        setupTriggerUuid={setupBuildTriggerUuid}
-                        repoDetails={repoDetails}
-                      />
-                    </Tab>
-                  </Tabs>
-                </ErrorBoundary>
-              </PageSection>
-            </Page>
+                    <TagsList
+                      organization={organization}
+                      repository={repository}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.TagHistory}
+                    title={<TabTitleText>Tag history</TabTitleText>}
+                  >
+                    <TagHistory
+                      org={organization}
+                      repo={repository}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.Settings}
+                    title={<TabTitleText>Settings</TabTitleText>}
+                    isHidden={
+                      config?.features.UI_V2_REPO_SETTINGS != true ||
+                      !repoDetails?.can_admin
+                    }
+                  >
+                    <Settings
+                      org={organization}
+                      repo={repository}
+                      setDrawerContent={setDrawerContent}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.Builds}
+                    title={<TabTitleText>Builds</TabTitleText>}
+                    isHidden={
+                      config?.features.UI_V2_BUILDS != true ||
+                      config?.features.BUILD_SUPPORT != true ||
+                      !repoDetails?.can_write
+                    }
+                  >
+                    <Builds
+                      org={organization}
+                      repo={repository}
+                      setupTriggerUuid={setupBuildTriggerUuid}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                </Tabs>
+              </ErrorBoundary>
+            </PageSection>
           </DrawerContentBody>
         </DrawerContent>
       </Drawer>

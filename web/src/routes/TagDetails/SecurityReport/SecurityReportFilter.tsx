@@ -37,7 +37,7 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
   };
 
   return (
-    <Flex className="pf-v5-u-mt-md">
+    <Flex>
       <FlexItem>
         <TextInput
           isRequired

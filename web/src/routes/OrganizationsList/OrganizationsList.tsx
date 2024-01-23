@@ -41,7 +41,7 @@ function OrgListHeader() {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Organizations</Title>
         </div>

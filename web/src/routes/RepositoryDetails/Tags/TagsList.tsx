@@ -1,32 +1,31 @@
-import {TagsToolbar} from './TagsToolbar';
-import TagsTable from './TagsTable';
-import {useState, useEffect} from 'react';
+import {
+  PageSection,
+  PageSectionVariants,
+  PanelFooter,
+} from '@patternfly/react-core';
+import {CubesIcon} from '@patternfly/react-icons';
+import {useEffect, useState} from 'react';
+import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
 import {
   searchTagsFilterState,
   searchTagsState,
   selectedTagsState,
 } from 'src/atoms/TagListState';
-import {
-  Page,
-  PageSection,
-  PageSectionVariants,
-  PanelFooter,
-} from '@patternfly/react-core';
-import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
-import {
-  Tag,
-  TagsResponse,
-  getTags,
-  getManifestByDigest,
-  ManifestByDigestResponse,
-} from 'src/resources/TagResource';
-import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
+import Empty from 'src/components/empty/Empty';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import RequestError from 'src/components/errors/RequestError';
-import Empty from 'src/components/empty/Empty';
-import {CubesIcon} from '@patternfly/react-icons';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {
+  ManifestByDigestResponse,
+  Tag,
+  TagsResponse,
+  getManifestByDigest,
+  getTags,
+} from 'src/resources/TagResource';
+import TagsTable from './TagsTable';
+import {TagsToolbar} from './TagsToolbar';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -115,53 +114,48 @@ export default function TagsList(props: TagsProps) {
   }
 
   return (
-    <Page>
-      <PageSection
-        variant={PageSectionVariants.light}
-        style={{paddingBottom: '8em'}}
+    <PageSection variant={PageSectionVariants.light}>
+      <ErrorBoundary
+        hasError={isErrorString(err)}
+        fallback={<RequestError message={err} />}
       >
-        <ErrorBoundary
-          hasError={isErrorString(err)}
-          fallback={<RequestError message={err} />}
-        >
-          <TagsToolbar
-            organization={props.organization}
-            repository={props.repository}
-            tagCount={filteredTags.length}
-            loadTags={loadTags}
-            TagList={filteredTags}
-            paginatedTags={paginatedTags}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
-            selectTag={selectTag}
-            repoDetails={props.repoDetails}
-          />
-          <TagsTable
-            org={props.organization}
-            repo={props.repository}
-            tags={paginatedTags}
-            loading={loading}
-            selectAllTags={selectAllTags}
-            selectedTags={selectedTags}
-            selectTag={selectTag}
-            loadTags={loadTags}
-            repoDetails={props.repoDetails}
-          />
-        </ErrorBoundary>
-        <PanelFooter>
-          <ToolbarPagination
-            itemsList={filteredTags}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
-            bottom={true}
-          />
-        </PanelFooter>
-      </PageSection>
-    </Page>
+        <TagsToolbar
+          organization={props.organization}
+          repository={props.repository}
+          tagCount={filteredTags.length}
+          loadTags={loadTags}
+          TagList={filteredTags}
+          paginatedTags={paginatedTags}
+          perPage={perPage}
+          page={page}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          selectTag={selectTag}
+          repoDetails={props.repoDetails}
+        />
+        <TagsTable
+          org={props.organization}
+          repo={props.repository}
+          tags={paginatedTags}
+          loading={loading}
+          selectAllTags={selectAllTags}
+          selectedTags={selectedTags}
+          selectTag={selectTag}
+          loadTags={loadTags}
+          repoDetails={props.repoDetails}
+        />
+      </ErrorBoundary>
+      <PanelFooter>
+        <ToolbarPagination
+          itemsList={filteredTags}
+          perPage={perPage}
+          page={page}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          bottom={true}
+        />
+      </PanelFooter>
+    </PageSection>
   );
 }
 
