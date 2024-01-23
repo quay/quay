@@ -3,8 +3,15 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.3"></a>
+## [v3.10.3] - 2024-01-18
+### [Redhat-3.10] Fix
+- [4dd833ad](https://github.com/quay/quay/commit/4dd833adf16cc3bcd2530028bfb60c5a8d80ac20): pull-through should tolerate missing tag (PROJQUAY-4849) ([#2617](https://github.com/quay/quay/issues/2617))
+### [Redhat-3.10] Ui
+- [5a9cabd0](https://github.com/quay/quay/commit/5a9cabd00cbe921f02af766d69bff46a0ab04ff1): fix broken update of repo description (PROJQUAY-6243) ([#2612](https://github.com/quay/quay/issues/2612))
+
 <a name="v3.10.2"></a>
-## [v3.10.2] - 2024-01-03
+## [v3.10.2] - 2024-01-08
 ### [Redhat-3.10] Configtool
 - [a5ec0422](https://github.com/quay/quay/commit/a5ec0422eab667d07d5053bf4d44f78129d663e2): Adding validation for IBM Cloud Storage (PROJQUAY-6549) ([#2581](https://github.com/quay/quay/issues/2581))
 
@@ -400,6 +407,11 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.6"></a>
+## [v3.9.6] - 2024-01-09
+### Reconfigure
+- [25516930](https://github.com/quay/quay/commit/255169303def620618ec410294d34637852d8821): Add auth to comit to operator endpoint
 
 <a name="v3.9.5"></a>
 ## [v3.9.5] - 2023-11-07
@@ -1903,10 +1915,12 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.3...HEAD
+[v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.5...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.6...v3.10.0
+[v3.9.6]: https://github.com/quay/quay/compare/v3.9.5...v3.9.6
 [v3.9.5]: https://github.com/quay/quay/compare/v3.9.4...v3.9.5
 [v3.9.4]: https://github.com/quay/quay/compare/v3.9.3...v3.9.4
 [v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
