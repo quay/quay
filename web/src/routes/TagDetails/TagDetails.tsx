@@ -121,7 +121,10 @@ export default function TagDetails() {
           style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
         />
       </PageSection>
-      <PageSection variant={PageSectionVariants.light} style={{padding: 0}}>
+      <PageSection
+        variant={PageSectionVariants.light}
+        padding={{default: 'noPadding'}}
+      >
         <ErrorBoundary
           hasError={isErrorString(err)}
           fallback={<RequestError message={err} />}

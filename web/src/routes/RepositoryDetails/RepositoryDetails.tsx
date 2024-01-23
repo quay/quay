@@ -218,7 +218,7 @@ export default function RepositoryDetails() {
             </PageSection>
             <PageSection
               variant={PageSectionVariants.light}
-              style={{padding: 0}}
+              padding={{default: 'noPadding'}}
             >
               <ErrorBoundary
                 hasError={isErrorString(err)}
