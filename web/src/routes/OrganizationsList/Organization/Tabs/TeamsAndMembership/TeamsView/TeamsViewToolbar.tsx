@@ -41,6 +41,16 @@ export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
           </FlexItem>
         </Flex>
         <ToolbarItem>
+          <Conditional if={props.isAdmin && !props.isReadOnly}>
+            <Button
+              onClick={() => props.handleModalToggle()}
+              data-testid="create-new-team-button"
+            >
+              Create new team
+            </Button>
+          </Conditional>
+        </ToolbarItem>
+        <ToolbarItem>
           <Conditional
             if={
               props.selectedTeams?.length !== 0 &&
@@ -60,16 +70,6 @@ export default function TeamsViewToolbar(props: TeamsViewToolbarProps) {
           </Conditional>
           <Conditional if={props.isSetRepoPermModalOpen}>
             {props.setRepoPermModal}
-          </Conditional>
-        </ToolbarItem>
-        <ToolbarItem>
-          <Conditional if={props.isAdmin && !props.isReadOnly}>
-            <Button
-              onClick={() => props.handleModalToggle()}
-              data-testid="create-new-team-button"
-            >
-              Create new team
-            </Button>
           </Conditional>
         </ToolbarItem>
         <ToolbarPagination
