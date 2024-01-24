@@ -50,7 +50,10 @@ angular.module('quay').directive('billingManagementPanel', function () {
         if ($scope.organization) {
           PlanService.listOrgMarketplaceSubscriptions($scope.organization.name, function(subscriptions){
             for (var i = 0; i < subscriptions.length; i++) {
-              total += subscriptions[i]["metadata"]["privateRepos"];
+              total += (
+                subscriptions[i]["quantity"] *
+                subscriptions[i]["metadata"]["privateRepos"]
+              );
             }
             $scope.currentMarketplace = total;
           })
@@ -58,7 +61,10 @@ angular.module('quay').directive('billingManagementPanel', function () {
           PlanService.listUserMarketplaceSubscriptions(function(subscriptions){
             for (var i = 0; i < subscriptions.length; i++) {
               if(subscriptions[i]["assigned_to_org"] === null) {
-                total += subscriptions[i]["metadata"]["privateRepos"];
+                total += (
+                  subscriptions[i]["quantity"] *
+                  subscriptions[i]["metadata"]["privateRepos"]
+                );
               }
             }
             $scope.currentMarketplace = total;

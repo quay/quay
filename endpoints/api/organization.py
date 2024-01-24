@@ -384,7 +384,11 @@ class OrgPrivateRepositories(ApiResource):
                     )
                     equivalent_stripe_plan = get_plan_using_rh_sku(subscription_sku)
                     if equivalent_stripe_plan:
-                        repos_allowed += equivalent_stripe_plan["privateRepos"]
+                        if subscription.get("quantity") is None:
+                            quantity = 1
+                        else:
+                            quantity = subscription["quantity"]
+                        repos_allowed += quantity * equivalent_stripe_plan["privateRepos"]
 
             data["privateAllowed"] = private_repos < repos_allowed
 

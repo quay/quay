@@ -239,7 +239,9 @@ class RedHatSubscriptionApi(object):
                             continue
 
                         if convert_to_stripe_plans:
-                            subscription_list.append(get_plan_using_rh_sku(sku))
+                            quantity = user_subscription["quantity"]
+                            for i in range(quantity):
+                                subscription_list.append(get_plan_using_rh_sku(sku))
                         else:
                             # add in sku field for convenience
                             user_subscription["sku"] = sku
@@ -263,7 +265,7 @@ TEST_USER = {
             "installBaseEndDate": 1707368399000,
             "webCustomerId": 123456,
             "subscriptionNumber": "12399889",
-            "quantity": 1,
+            "quantity": 2,
             "effectiveStartDate": 1707368400000,
             "effectiveEndDate": 3813177600,
         },

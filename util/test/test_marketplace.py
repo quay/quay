@@ -1,8 +1,11 @@
 import json
+import unittest
 
 import requests
 from mock import patch
 
+from app import app
+from initdb import finished_database_for_testing, setup_database_for_testing
 from util.marketplace import RedHatSubscriptionApi, RedHatUserApi
 
 app_config = {
@@ -119,7 +122,7 @@ mocked_subscription_response = [
         "installBaseStartDate": 1705467600000,
         "installBaseEndDate": 1708145999000,
         "webCustomerId": 12345,
-        "quantity": 1,
+        "quantity": 2,
         "effectiveStartDate": 1705467600000,
         "effectiveEndDate": 1708145999000,
     },
@@ -140,7 +143,13 @@ mocked_subscription_response = [
 ]
 
 
-class TestMarketplace:
+class TestMarketplace(unittest.TestCase):
+    def setUp(self):
+        setup_database_for_testing(self)
+
+    def tearDown(self):
+        finished_database_for_testing(self)
+
     @patch("requests.request")
     def test_timeout_exception(self, requests_mock):
         requests_mock.side_effect = requests.exceptions.ReadTimeout()
@@ -177,3 +186,14 @@ class TestMarketplace:
 
         subscriptions = subscription_api.lookup_subscription(12345, "some_sku")
         assert len(subscriptions) == 2
+
+    @patch("requests.request")
+    def test_list_subscriptions(self, requests_mock):
+        subscription_api = RedHatSubscriptionApi(app_config)
+        requests_mock.return_value.content = json.dumps(mocked_subscription_response)
+
+        subscriptions = subscription_api.get_list_of_subscriptions(
+            12345, convert_to_stripe_plans=True
+        )
+
+        assert len(subscriptions) == 6

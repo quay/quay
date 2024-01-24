@@ -53,9 +53,11 @@ def check_internal_api_for_subscription(namespace_user):
         query = organization_skus.get_org_subscriptions(namespace_user.id)
         org_subscriptions = list(query.dicts()) if query is not None else []
         for subscription in org_subscriptions:
+            quantity = 1 if subscription.get("quantity") is None else subscription["quantity"]
             subscription_id = subscription["subscription_id"]
             sku = marketplace_subscriptions.get_subscription_sku(subscription_id)
-            plans.append(get_plan_using_rh_sku(sku))
+            for x in range(quantity):
+                plans.append(get_plan_using_rh_sku(sku))
         pass
     else:
         user_account_number = marketplace_users.get_account_number(namespace_user)
@@ -960,6 +962,8 @@ class OrganizationRhSku(ApiResource):
                     )
                     subscription["sku"] = subscription_sku
                     subscription["metadata"] = get_plan_using_rh_sku(subscription_sku)
+                    if subscription.get("quantity") is None:
+                        subscription["quantity"] = 1
                 return subscriptions
             else:
                 return []
@@ -980,6 +984,9 @@ class OrganizationRhSku(ApiResource):
                 subscription_id = subscription.get("subscription_id")
                 if subscription_id is None:
                     break
+                quantity = subscription.get("quantity")
+                if quantity is None:
+                    quantity = 1
                 user = get_authenticated_user()
                 account_number = marketplace_users.get_account_number(user)
                 subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
@@ -991,7 +998,10 @@ class OrganizationRhSku(ApiResource):
                 if int(subscription_id) in user_subscription_ids:
                     try:
                         model.organization_skus.bind_subscription_to_org(
-                            user_id=user.id, subscription_id=subscription_id, org_id=organization.id
+                            user_id=user.id,
+                            subscription_id=subscription_id,
+                            org_id=organization.id,
+                            quantity=quantity,
                         )
                     except model.OrgSubscriptionBindingAlreadyExists:
                         abort(400, message="subscription is already bound to an org")
