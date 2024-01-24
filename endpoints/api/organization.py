@@ -41,7 +41,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.api.user import PrivateRepositories, User
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import NotFound, Unauthorized, InvalidRequest
 from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
@@ -721,32 +721,52 @@ class OrganizationApplications(ApiResource):
             logger.debug(
                 "Application will be created based on the following data: {}".format(app_data)
             )
-            application = model.oauth.create_application(
-                org,
-                app_data["name"],
-                app_data.get("application_uri", ""),
-                app_data.get("redirect_uri", ""),
-                description=app_data.get("description", ""),
-                avatar_email=app_data.get("avatar_email", None),
-            )
 
-            app_data.update(
-                {"application_name": application.name, "client_id": application.client_id}
-            )
-
-            log_action("create_application", orgname, app_data)
-
+            # Check if the app is considered local.
             if app_data.get("local", False):
-                scope = app_data.get("scope", "")
-                user = get_authenticated_user()
-                # Token expiry set to 10 years, in seconds
-                created, token = model.oauth.create_user_access_token(
-                    user, app_data["client_id"], scope, None, 60 * 60 * 24 * 365 * 10
+                # If a scope is added to the JSON request:
+                if app_data.get("scope") is not None:
+                    scope = app_data.get("scope")
+                    application = model.oauth.create_application(
+                        org,
+                        app_data["name"],
+                        app_data.get("application_uri", ""),
+                        app_data.get("redirect_uri", ""),
+                        description=app_data.get("description", ""),
+                        avatar_email=app_data.get("avatar_email", None),
+                    )
+                    app_data.update(
+                        {"application_name": application.name, "client_id": application.client_id}
+                    )
+                    user = get_authenticated_user()
+                    # Token expiry set to 10 years, in seconds
+                    created, token = model.oauth.create_user_access_token(
+                        user, app_data["client_id"], scope, None, 60 * 60 * 24 * 365 * 10
+                    )
+
+                    log_action("create_application", orgname, app_data)
+                    return app_view(application, token)
+                # If scopes are missing, raise exception
+                else:
+                    raise InvalidRequest("Could not create application: missing scopes in request.")
+            else:
+                # Application is not considered local, so just create it and return.
+                application = model.oauth.create_application(
+                    org,
+                    app_data["name"],
+                    app_data.get("application_uri", ""),
+                    app_data.get("redirect_uri", ""),
+                    description=app_data.get("description", ""),
+                    avatar_email=app_data.get("avatar_email", None),
                 )
 
-                return app_view(application, token)
+                app_data.update(
+                    {"application_name": application.name, "client_id": application.client_id}
+                )
 
-            return app_view(application, None)
+                log_action("create_application", orgname, app_data)
+
+                return app_view(application, None)
         raise Unauthorized()
 
 
