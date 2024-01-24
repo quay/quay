@@ -6,6 +6,7 @@ from storage.cloud import (
     RadosGWStorage,
     RHOCSStorage,
     S3Storage,
+    STSS3Storage,
 )
 from storage.cloudflarestorage import CloudFlareS3Storage
 from storage.distributedstorage import DistributedStorage
@@ -31,6 +32,7 @@ STORAGE_DRIVER_CLASSES = {
     "CloudFlareStorage": CloudFlareS3Storage,
     "MultiCDNStorage": MultiCDNStorage,
     "IBMCloudStorage": IBMCloudStorage,
+    "STSS3Storage": STSS3Storage,
 }
 
 

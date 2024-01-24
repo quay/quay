@@ -11,6 +11,8 @@ from uuid import uuid4
 import boto3.session
 import botocore.config
 import botocore.exceptions
+from botocore.credentials import create_assume_role_refresher
+from botocore.credentials import DeferredRefreshableCredentials
 from botocore.client import Config
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
@@ -113,6 +115,7 @@ class _CloudStorage(BaseStorageV2):
         bucket_name,
         access_key=None,
         secret_key=None,
+        deferred_refreshable_credentials=None,
     ):
         super(_CloudStorage, self).__init__()
 
@@ -135,7 +138,11 @@ class _CloudStorage(BaseStorageV2):
         self._session = self._connection_class(
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
+            aws_session_token=self._connect_kwargs.get("aws_session_token"),
         )
+
+        if deferred_refreshable_credentials:
+            self._session._session._credentials = deferred_refreshable_credentials
 
     def _initialize_cloud_conn(self):
         if not self._initialized:
@@ -741,9 +748,15 @@ class S3Storage(_CloudStorage):
         # Boto3 options (Full url including scheme anbd optionally port)
         endpoint_url=None,
         maximum_chunk_size_gb=None,
+        # STS Options
+        aws_session_token=None,
+        deferred_refreshable_credentials=None,
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
-        connect_kwargs = {"config": Config(signature_version="s3v4")}
+        connect_kwargs = {
+            "config": Config(signature_version="s3v4"),
+            "aws_session_token": aws_session_token,
+        }
         if s3_region is not None:
             connect_kwargs["region_name"] = s3_region
             connect_kwargs["endpoint_url"] = "https://s3.{region}.amazonaws.com".format(
@@ -766,6 +779,7 @@ class S3Storage(_CloudStorage):
             s3_bucket,
             access_key=s3_access_key or None,
             secret_key=s3_secret_key or None,
+            deferred_refreshable_credentials=deferred_refreshable_credentials or None,
         )
         chunk_size = (
             maximum_chunk_size_gb if maximum_chunk_size_gb is not None else 5
@@ -1169,3 +1183,41 @@ class CloudFrontedS3Storage(S3Storage):
             return serialization.load_pem_private_key(
                 key_file.read(), password=None, backend=default_backend()
             )
+
+
+class STSS3Storage(S3Storage):
+    def __init__(
+        self,
+        context,
+        storage_path,
+        s3_bucket,
+        sts_role_arn=None,
+        sts_user_access_key=None,
+        sts_user_secret_key=None,
+        s3_region=None,
+        endpoint_url=None,
+        maximum_chunk_size_gb=None,
+    ):
+        sts_client = boto3.client(
+            "sts", aws_access_key_id=sts_user_access_key, aws_secret_access_key=sts_user_secret_key
+        )
+        assumed_role = sts_client.assume_role(RoleArn=sts_role_arn, RoleSessionName="quay")
+        credentials = assumed_role["Credentials"]
+        deferred_refreshable_credentials = DeferredRefreshableCredentials(
+            refresh_using=create_assume_role_refresher(
+                sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": "quay"}
+            ),
+            method="sts-assume-role",
+        )
+
+        connect_kwargs = {
+            "s3_access_key": credentials["AccessKeyId"],
+            "s3_secret_key": credentials["SecretAccessKey"],
+            "aws_session_token": credentials["SessionToken"],
+            "s3_region": s3_region,
+            "endpoint_url": endpoint_url,
+            "maximum_chunk_size_gb": maximum_chunk_size_gb,
+            "deferred_refreshable_credentials": deferred_refreshable_credentials,
+        }
+
+        super().__init__(context, storage_path, s3_bucket, **connect_kwargs)

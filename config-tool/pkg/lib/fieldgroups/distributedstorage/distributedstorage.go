@@ -358,6 +358,27 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
+	if value, ok := storageArgs["sts_role_arn"]; ok {
+		newDistributedStorageArgs.STSRoleArn, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("sts_role_arn must be a string")
+		}
+	}
+
+	if value, ok := storageArgs["sts_user_access_key"]; ok {
+		newDistributedStorageArgs.STSUserAccessKey, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("sts_user_access_key must be a string")
+		}
+	}
+
+	if value, ok := storageArgs["sts_user_secret_key"]; ok {
+		newDistributedStorageArgs.STSUserSecretKey, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("sts_user_secret_key must be a string")
+		}
+	}
+
 	return newDistributedStorageArgs, nil
 }
 

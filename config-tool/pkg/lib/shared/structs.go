@@ -56,4 +56,8 @@ type DistributedStorageArgs struct {
 	DefaultProvider string                 `default:"" validate:"" json:"default_provider,omitempty" yaml:"default_provider,omitempty"`
 	Providers       map[string]interface{} `default:"" validate:"" json:"providers,omitempty" yaml:"providers,omitempty"`
 	StorageConfig   map[string]interface{} `default:"" validate:"" json:"storage_config,omitempty" yaml:"storage_config,omitempty"`
+	// Args for STSS3Storage
+	STSUserAccessKey string `default:"" validate:"" json:"sts_user_access_key,omitempty" yaml:"sts_user_access_key,omitempty"`
+	STSUserSecretKey string `default:"" validate:"" json:"sts_user_secret_key,omitempty" yaml:"sts_user_secret_key,omitempty"`
+	STSRoleArn       string `default:"" validate:"" json:"sts_role_arn,omitempty" yaml:"sts_role_arn,omitempty"`
 }
