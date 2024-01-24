@@ -618,7 +618,7 @@ class ApplicationInformation(ApiResource):
         }
 
 
-def app_view(application):
+def app_view(application, access_token):
     is_admin = AdministerOrganizationPermission(application.organization.username).can()
     client_secret = None
     if is_admin:
@@ -634,6 +634,7 @@ def app_view(application):
         "client_secret": client_secret,
         "redirect_uri": application.redirect_uri if is_admin else None,
         "avatar_email": application.avatar_email if is_admin else None,
+        "access_token": access_token if is_admin else None,
     }
 
 
@@ -672,6 +673,14 @@ class OrganizationApplications(ApiResource):
                     "type": "string",
                     "description": "The e-mail address of the avatar to use for the application",
                 },
+                "local": {
+                    "type": "boolean",
+                    "description": "Checks whether we should treat the created application as a local app.",
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "The list of scopes that will be applied to the application.",
+                },
             },
         },
     }
@@ -690,7 +699,7 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             applications = model.oauth.list_applications_for_org(org)
-            return {"applications": [app_view(application) for application in applications]}
+            return {"applications": [app_view(application, None) for application in applications]}
 
         raise Unauthorized()
 
@@ -709,6 +718,9 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
+            logger.debug(
+                "Application will be created based on the following data: {}".format(app_data)
+            )
             application = model.oauth.create_application(
                 org,
                 app_data["name"],
@@ -724,7 +736,17 @@ class OrganizationApplications(ApiResource):
 
             log_action("create_application", orgname, app_data)
 
-            return app_view(application)
+            if app_data.get("local", False):
+                scope = app_data.get("scope", "")
+                user = get_authenticated_user()
+                # Token expiry set to 10 years, in seconds
+                created, token = model.oauth.create_user_access_token(
+                    user, app_data["client_id"], scope, None, 60 * 60 * 24 * 365 * 10
+                )
+
+                return app_view(application, token)
+
+            return app_view(application, None)
         raise Unauthorized()
 
 
@@ -783,7 +805,7 @@ class OrganizationApplicationResource(ApiResource):
             if not application:
                 raise NotFound()
 
-            return app_view(application)
+            return app_view(application, None)
 
         raise Unauthorized()
 
@@ -819,7 +841,7 @@ class OrganizationApplicationResource(ApiResource):
 
             log_action("update_application", orgname, app_data)
 
-            return app_view(application)
+            return app_view(application, None)
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
@@ -881,7 +903,7 @@ class OrganizationApplicationResetClientSecret(ApiResource):
                 {"application_name": application.name, "client_id": client_id},
             )
 
-            return app_view(application)
+            return app_view(application, None)
         raise Unauthorized()
 
 
