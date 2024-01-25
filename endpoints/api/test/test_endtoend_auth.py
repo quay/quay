@@ -41,6 +41,12 @@ def test_entity_search(auth_engine, requires_email, client):
             assert len(results) == 0
 
             # Try a known prefix.
+            # For federationuser(ldap): avoid doing LDAP lookups for Robot accounts (PROJQUAY-5137) #2505
+            # we need to ensure, the user is federate before we can check it
+            link_response = conduct_api_call(
+                cl, LinkExternalEntity, "POST", params=dict(username="cool.user")
+            )
+
             response = conduct_api_call(client, EntitySearch, "GET", params=dict(prefix="cool"))
             results = response.json["results"]
             entity = results[0]
