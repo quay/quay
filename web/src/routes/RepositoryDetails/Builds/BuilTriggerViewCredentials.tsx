@@ -23,16 +23,14 @@ function Message({service}: {service: string}) {
     case 'bitbucket':
     case 'gitlab':
       return (
-        <Alert variant="info" truncateTitle={1} title="">
-          <p>
-            The following key has been automatically added to your source
-            control repository.
-          </p>
-        </Alert>
+        <Alert
+          variant="info"
+          title="The following key has been automatically added to your source control repository."
+        />
       );
     case 'custom-git':
       return (
-        <Alert variant="info" truncateTitle={1} title="">
+        <Alert variant="info" title="Note:">
           <p>
             In order to use this trigger, the following first requires action:
             <List>

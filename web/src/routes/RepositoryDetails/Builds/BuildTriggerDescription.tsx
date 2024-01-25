@@ -1,4 +1,5 @@
 import {GithubIcon, GitlabIcon} from '@patternfly/react-icons';
+import LinkOrPlainText from 'src/components/LinkOrPlainText';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {RepositoryBuild} from 'src/resources/BuildResource';
@@ -23,28 +24,32 @@ export default function BuildTriggerDescription({
           >
             Enterprise
           </Conditional>{' '}
-          repository <a>{trigger?.config?.build_source}</a>
+          repository{' '}
+          <LinkOrPlainText href={trigger.repository_url}>
+            {trigger?.config?.build_source}
+          </LinkOrPlainText>
         </>
       );
     case 'bitbucket':
       return (
         <>
-          push to BitBucket repository <a>{trigger?.config?.build_source}</a>
+          push to BitBucket repository{' '}
+          <LinkOrPlainText href={trigger.repository_url}>
+            {trigger?.config?.build_source}
+          </LinkOrPlainText>
         </>
       );
     case 'gitlab':
       return (
         <>
           <GitlabIcon /> push to GitLab repository{' '}
-          <a>{trigger?.config?.build_source}</a>
+          <LinkOrPlainText href={trigger.repository_url}>
+            {trigger?.config?.build_source}
+          </LinkOrPlainText>
         </>
       );
     case 'custom-git':
-      return (
-        <>
-          push to repository <a>{trigger?.config?.build_source}</a>
-        </>
-      );
+      return <>push to repository {trigger?.config?.build_source}</>;
     default:
       return <></>;
   }

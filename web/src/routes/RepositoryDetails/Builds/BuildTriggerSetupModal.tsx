@@ -38,6 +38,8 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
           title="Trigger setup has already been completed"
           ouiaId="InfoAlert"
         />
+        <br />
+        <Button onClick={props.onClose}>Close</Button>
       </div>
     );
   } else if (!isNullOrUndefined(updatedTrigger) && updatedTrigger.is_active) {
@@ -57,6 +59,8 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
         />
         <br />
         <ViewCredentials trigger={updatedTrigger} />
+        <br />
+        <Button onClick={props.onClose}>Close</Button>
       </div>
     );
   } else {
@@ -80,12 +84,7 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
       variant={ModalVariant.large}
       isOpen={props.isOpen}
       onClose={props.onClose}
-      showClose={false}
-      actions={[
-        <Button key="cancel" variant="primary" onClick={props.onClose}>
-          Close
-        </Button>,
-      ]}
+      showClose={true}
       hasNoBodyWrapper
     >
       {modalContent}
