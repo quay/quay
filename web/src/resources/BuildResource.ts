@@ -241,3 +241,108 @@ export async function activateBuildTrigger(
   );
   return response.data;
 }
+
+export interface GitNamespace {
+  peronal: boolean;
+  id: string;
+  title: string;
+  avatar_url: string;
+  url: string;
+  score: number;
+}
+
+export interface FetchNamespaceResponse {
+  namespaces: GitNamespace[];
+}
+
+export async function fetchNamespaces(
+  namespace: string,
+  repo: string,
+  triggerUuid: string,
+  signal: AbortSignal,
+) {
+  const response: AxiosResponse<FetchNamespaceResponse> = await axios.get(
+    `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/namespaces`,
+    {
+      signal,
+    },
+  );
+  return response.data?.namespaces;
+}
+
+export interface GitResource {
+  name: string;
+  full_name: string;
+  description: string;
+  last_updated: number;
+  url: string;
+  has_admin_permissions: boolean;
+  private: boolean;
+}
+
+interface FetchSourcesResponse {
+  sources: GitResource[];
+}
+
+export async function fetchSources(
+  namespace: string,
+  repo: string,
+  triggerUuid: string,
+  gitNamespaceId: string,
+) {
+  console.log(gitNamespaceId);
+  const response: AxiosResponse<FetchSourcesResponse> = await axios.post(
+    `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/sources`,
+    {
+      namespace: gitNamespaceId,
+    },
+  );
+  return response.data?.sources;
+}
+
+export interface SourceRef {
+  kind: string;
+  name: string;
+}
+
+interface FetchRefsResponse {
+  values: SourceRef[];
+}
+
+export async function fetchRefs(
+  namespace: string,
+  repo: string,
+  triggerUuid: string,
+  source: string,
+) {
+  const response: AxiosResponse<FetchRefsResponse> = await axios.post(
+    `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/fields/refs`,
+    {
+      build_source: source,
+    },
+  );
+  return response.data?.values;
+}
+
+interface SourceSubDirs {
+  dockerfile_paths: string[];
+  contextMap: Map<string, string[]>;
+  status: string;
+}
+
+export async function fetchSubDirs(
+  namespace: string,
+  repo: string,
+  triggerUuid: string,
+  source: string,
+) {
+  const response: AxiosResponse<SourceSubDirs> = await axios.post(
+    `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/subdir`,
+    {
+      build_source: source,
+    },
+  );
+  // Convert contextMap from object to Map
+  response.data.contextMap = new Map(Object.entries(response.data.contextMap));
+  return response.data;
+}

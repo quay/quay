@@ -117,8 +117,8 @@ export default function RobotAccounts(props: RobotAccountsProps) {
         <strong>
           <Conditional if={triggerAnalysis.is_admin}>
             <span>
-              Choose an optional robot account below or click
-              &quot;Continue&quot; to complete setup of this build trigger.
+              Choose an optional robot account below or click &#34;Continue&#34;
+              to complete setup of this build trigger.
             </span>
           </Conditional>
         </strong>
@@ -221,6 +221,13 @@ export default function RobotAccounts(props: RobotAccountsProps) {
                 </Td>
               </Tr>
             ))}
+            <Conditional if={paginatedRobots.length === 0}>
+              <Tr>
+                <Td colSpan={3}>
+                  <p>No robots found.</p>
+                </Td>
+              </Tr>
+            </Conditional>
           </Tbody>
         </Table>
       </Conditional>

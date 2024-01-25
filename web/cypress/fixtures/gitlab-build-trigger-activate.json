@@ -1,0 +1,27 @@
+{
+  "id": "gitlab01-0001-4c69-a5cc-ec372d0117cd",
+  "service": "gitlab",
+  "is_active": true,
+  "build_source": "gitlabgroup2/repo1",
+  "repository_url": "https://gitlab.com/gitlabgroup2/repo1",
+  "config": {
+    "build_source": "gitlabgroup2/repo1",
+    "dockerfile_path": "/dir2/subdir2/nesteddir1/Dockerfile",
+    "context": "/",
+    "default_tag_from_ref": true,
+    "latest_for_default_branch": false,
+    "tag_templates": [],
+    "credentials": [
+      {
+        "name": "SSH Public Key",
+        "value": "ssh-rsa testkey"
+      }
+    ],
+    "deploy_key_id": 12345678,
+    "hook_id": 12345678,
+    "master_branch": "main"
+  },
+  "can_invoke": true,
+  "enabled": true,
+  "disabled_reason": null
+}

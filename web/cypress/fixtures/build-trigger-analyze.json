@@ -1,0 +1,21 @@
+{
+  "namespace": "githuborg1",
+  "name": null,
+  "robots": [
+    {
+      "name": "githuborg1+robot1",
+      "kind": "user",
+      "is_robot": true,
+      "can_read": false
+    },
+    {
+      "name": "githuborg1+robot2",
+      "kind": "user",
+      "is_robot": true,
+      "can_read": false
+    }
+  ],
+  "status": "publicbase",
+  "message": null,
+  "is_admin": true
+}

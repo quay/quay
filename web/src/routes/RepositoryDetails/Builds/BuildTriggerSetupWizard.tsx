@@ -1,6 +1,7 @@
 import {Wizard, WizardHeader, WizardStep} from '@patternfly/react-core';
 import {useState} from 'react';
 import {
+  GitNamespace,
   RepositoryBuildTrigger,
   TriggerConfig,
 } from 'src/resources/BuildResource';
@@ -13,12 +14,20 @@ import ReviewAndFinishProps from './BuildTriggerSetupWizardReviewAndFinish';
 import {useActivateBuildTrigger} from 'src/hooks/UseBuildTriggers';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import SelectOrganization from './BuildTriggerSetupWizardOrganization';
+import {isNullOrUndefined} from 'src/libs/utils';
+import HostedRepository from './BuildTriggerSetupWizardHostedRepository';
+import TriggerOptions from './BuildTriggerSetupWizardTriggerOptions';
+import {useSourceDirs} from 'src/hooks/UseBuildTriggers';
 
 export default function BuildTriggerSetupWizard(
   props: BuildTriggerSetupWizardProps,
 ) {
+  const [gitNamespace, setGitNamespace] = useState<GitNamespace>(null);
   const [repoUrl, setRepoUrl] = useState<string>('');
   const [repoUrlValid, setRepoUrlValid] = useState<boolean>(false);
+  const [branchTagFilter, setBranchTagFilter] = useState<string>(null);
+  const [hasBranchTagFilter, setHasBranchTagFilter] = useState<boolean>(false);
   const [tagTemplates, setTagTemplates] = useState<string[]>([]);
   const [tagWithBranchOrTag, setTagWithBranchOrTag] = useState(false);
   const [addLatestTag, setAddLatestTag] = useState(false);
@@ -28,6 +37,14 @@ export default function BuildTriggerSetupWizard(
   const [contextPathValid, setContextPathValid] = useState<boolean>(false);
   const [selectedRobot, setSelectedRobot] = useState<string>(null);
   const [robotAccountValid, setRobotAccountValid] = useState<boolean>(false);
+  const isCustomGit = props.trigger.service === 'custom-git';
+  const sourceDirsRequest = useSourceDirs(
+    props.org,
+    props.repo,
+    props.trigger.id,
+    repoUrl,
+    !isNullOrUndefined(repoUrl) && repoUrl !== '' && !isCustomGit,
+  );
   const {addAlert} = useAlerts();
   const {activateTrigger} = useActivateBuildTrigger(
     props.org,
@@ -38,15 +55,16 @@ export default function BuildTriggerSetupWizard(
         props.setUpdatedTrigger(data);
       },
       onError: (error) => {
+        const message =
+          error?.response?.data?.error_message || error.toString();
         addAlert({
           title: 'Error activating trigger',
-          message: error.toString(),
+          message: message,
           variant: AlertVariant.Failure,
         });
       },
     },
   );
-  const isCustomGit = props.trigger.service === 'custom-git';
 
   const activate = () => {
     const config: TriggerConfig = {
@@ -60,6 +78,80 @@ export default function BuildTriggerSetupWizard(
     activateTrigger({config: config, robot: selectedRobot});
   };
 
+  const customGitSteps = [
+    <WizardStep
+      name="Enter Repository"
+      id="enter-repository"
+      key="enter-repository"
+      isHidden={!isCustomGit}
+      footer={{isNextDisabled: !repoUrlValid, cancelButtonText: ''}}
+    >
+      <RepositoryStep
+        repoUrl={repoUrl}
+        setRepoUrl={setRepoUrl}
+        setRepoUrlValid={setRepoUrlValid}
+        repoUrlValid={repoUrlValid}
+      />
+    </WizardStep>,
+  ];
+
+  const hostedGitSteps = [
+    <WizardStep
+      name="Select Organization"
+      id="select-organization"
+      key="select-organization"
+      isHidden={isCustomGit}
+      footer={{isNextDisabled: isNullOrUndefined(gitNamespace)}}
+    >
+      <SelectOrganization
+        org={props.org}
+        repo={props.repo}
+        triggerUuid={props.trigger.id}
+        gitNamespace={gitNamespace}
+        setGitNamespace={setGitNamespace}
+        service={props.trigger.service}
+      />
+    </WizardStep>,
+    <WizardStep
+      name="Select Repository"
+      id="enter-hosted-repository"
+      key="enter-hosted-repository"
+      isHidden={isCustomGit}
+      footer={{
+        isNextDisabled: repoUrl === '' || isNullOrUndefined(repoUrl),
+        cancelButtonText: '',
+      }}
+    >
+      <HostedRepository
+        org={props.org}
+        repo={props.repo}
+        triggerUuid={props.trigger.id}
+        repoUrl={repoUrl}
+        setRepoUrl={setRepoUrl}
+        gitNamespace={gitNamespace}
+        service={props.trigger.service}
+      />
+    </WizardStep>,
+    <WizardStep
+      name="Configure Trigger"
+      id="configure-trigger"
+      key="configure-trigger"
+      isHidden={isCustomGit}
+    >
+      <TriggerOptions
+        org={props.org}
+        repo={props.repo}
+        triggerUuid={props.trigger.id}
+        repoUrl={repoUrl}
+        gitNamespace={gitNamespace}
+        branchTagFilter={branchTagFilter}
+        setBranchTagFilter={setBranchTagFilter}
+        hasBranchTagFilter={hasBranchTagFilter}
+        setHasBranchTagFilter={setHasBranchTagFilter}
+      />
+    </WizardStep>,
+  ];
+
   return (
     <Wizard
       height={600}
@@ -72,20 +164,7 @@ export default function BuildTriggerSetupWizard(
         />
       }
     >
-      <WizardStep
-        name="Enter Repository"
-        id="enter-repository"
-        key="enter-repository"
-        isHidden={!isCustomGit}
-        footer={{isNextDisabled: !repoUrlValid, cancelButtonText: ''}}
-      >
-        <RepositoryStep
-          repoUrl={repoUrl}
-          setRepoUrl={setRepoUrl}
-          setRepoUrlValid={setRepoUrlValid}
-          repoUrlValid={repoUrlValid}
-        />
-      </WizardStep>
+      {isCustomGit ? customGitSteps : hostedGitSteps}
       <WizardStep
         name="Tagging Options"
         id="tagging-options"
@@ -111,10 +190,15 @@ export default function BuildTriggerSetupWizard(
         footer={{isNextDisabled: !dockerPathValid, cancelButtonText: ''}}
       >
         <DockerfileStep
+          org={props.org}
+          repo={props.repo}
+          triggerUuid={props.trigger.id}
+          buildSource={repoUrl}
           dockerfilePath={dockerfilePath}
           setDockerfilePath={setDockerfilePath}
           isCustomGit={isCustomGit}
           setDockerPathValid={setDockerPathValid}
+          {...sourceDirsRequest}
         />
       </WizardStep>
       <WizardStep
@@ -124,10 +208,16 @@ export default function BuildTriggerSetupWizard(
         footer={{isNextDisabled: !contextPathValid, cancelButtonText: ''}}
       >
         <ContextStep
+          org={props.org}
+          repo={props.repo}
+          triggerUuid={props.trigger.id}
+          buildSource={repoUrl}
+          dockerfilePath={dockerfilePath}
           contextPath={contextPath}
           setContextPath={setContextPath}
           isCustomGit={isCustomGit}
           setContextPathValid={setContextPathValid}
+          {...sourceDirsRequest}
         />
       </WizardStep>
       <WizardStep

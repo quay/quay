@@ -1,0 +1,20 @@
+{
+  "dockerfile_paths": [
+    "/Dockerfile",
+    "/dir1/Dockerfile",
+    "/dir2/subdir2/nesteddir1/Dockerfile",
+    "/dir2/subrdir1/Dockerfile"
+  ],
+  "contextMap": {
+    "/dir2/subrdir1/Dockerfile": ["/dir2", "/", "/dir2/subrdir1"],
+    "/dir2/subdir2/nesteddir1/Dockerfile": [
+      "/dir2/subdir2",
+      "/",
+      "/dir2/subdir2/nesteddir1",
+      "/dir2"
+    ],
+    "/dir1/Dockerfile": ["/", "/dir1"],
+    "/Dockerfile": ["/"]
+  },
+  "status": "success"
+}

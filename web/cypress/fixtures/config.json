@@ -74,7 +74,7 @@
     "APP_REGISTRY": false,
     "APP_SPECIFIC_TOKENS": true,
     "BILLING": true,
-    "BITBUCKET_BUILD": false,
+    "BITBUCKET_BUILD": true,
     "BLACKLISTED_EMAILS": false,
     "BUILD_SUPPORT": true,
     "CHANGE_TAG_EXPIRATION": true,
@@ -86,9 +86,9 @@
     "FIPS": false,
     "GARBAGE_COLLECTION": true,
     "GENERAL_OCI_SUPPORT": true,
-    "GITHUB_BUILD": false,
+    "GITHUB_BUILD": true,
     "GITHUB_LOGIN": false,
-    "GITLAB_BUILD": false,
+    "GITLAB_BUILD": true,
     "GOOGLE_LOGIN": false,
     "HELM_OCI_SUPPORT": true,
     "INVITE_ONLY_USER_CREATION": false,
@@ -133,14 +133,14 @@
   "oauth": {
     "GITHUB_TRIGGER_CONFIG": {
       "AUTHORIZE_ENDPOINT": "https://github.com/login/oauth/authorize",
-      "CLIENT_ID": null,
-      "GITHUB_ENDPOINT": "https://github.com",
+      "CLIENT_ID": "testclientid",
+      "GITHUB_ENDPOINT": "https://github.com/",
       "ORG_RESTRICT": false
     },
     "GITLAB_TRIGGER_CONFIG": {
       "AUTHORIZE_ENDPOINT": "https://gitlab.com/oauth/authorize",
-      "CLIENT_ID": null,
-      "GITLAB_ENDPOINT": "https://gitlab.com"
+      "CLIENT_ID": "testclientid",
+      "GITLAB_ENDPOINT": "https://gitlab.com/"
     }
   },
   "registry_state": "normal"
