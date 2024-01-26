@@ -1,14 +1,13 @@
-from test.fixtures import *
-from test.test_external_jwt_authn import fake_jwt
-from test.test_keystone_auth import fake_keystone
-from test.test_ldap import mock_ldap
-
 import pytest
 from mock import patch
 
 from endpoints.api.search import EntitySearch, LinkExternalEntity
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
+from test.test_external_jwt_authn import fake_jwt
+from test.test_keystone_auth import fake_keystone
+from test.test_ldap import mock_ldap
 
 
 @pytest.fixture(
@@ -51,7 +50,7 @@ def test_entity_search(auth_engine, requires_email, client):
             results = response.json["results"]
             entity = results[0]
             assert entity["name"] == "cool_user"
-            assert entity["kind"] == "external"
+            assert entity["kind"] == "user"
 
 
 def test_link_external_entity(auth_engine, requires_email, app):
