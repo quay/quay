@@ -309,3 +309,30 @@ export async function deleteRepository(ns: string, name: string) {
     );
   }
 }
+
+interface EntityTransitivePermission {
+  role: string;
+}
+
+interface EntityTransitivePermissionResponse {
+  permissions: EntityTransitivePermission[];
+}
+
+export async function fetchEntityTransitivePermission(
+  org: string,
+  repo: string,
+  entity: string,
+) {
+  try {
+    const response: AxiosResponse<EntityTransitivePermissionResponse> =
+      await axios.get(
+        `/api/v1/repository/${org}/${repo}/permissions/user/${entity}/transitive`,
+      );
+    return response.data.permissions;
+  } catch (error) {
+    // The backend returns a 404 if the entity exists but has no permissions
+    if (error instanceof AxiosError && error.response?.status == 404) {
+      return [];
+    }
+  }
+}

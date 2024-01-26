@@ -1,0 +1,4 @@
+FROM localhost:8080/testorg/privaterepo
+LABEL org=Redhat
+LABEL version=1.0
+LABEL description="testimage"

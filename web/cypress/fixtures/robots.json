@@ -1,0 +1,30 @@
+{
+  "robots": [
+    {
+      "name": "testorg+testrobot",
+      "created": "Tue, 29 Nov 2022 13:48:38 -0000",
+      "last_accessed": null,
+      "teams": [
+        {
+          "name": "chelsea",
+          "avatar": {
+            "name": "chelsea",
+            "hash": "hash41c03ef78bd6daeaa6bb008896607a8413bf8ba6266be80327554b370a9e",
+            "color": "#e7ba52",
+            "kind": "team"
+          }
+        }
+      ],
+      "repositories": ["testrepo"],
+      "description": ""
+    },
+    {
+      "name": "testorg+testrobot2",
+      "created": "Wed, 30 Nov 2022 21:23:53 -0000",
+      "last_accessed": null,
+      "teams": [],
+      "repositories": [],
+      "description": ""
+    }
+  ]
+}

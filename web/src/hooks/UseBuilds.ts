@@ -1,11 +1,13 @@
-import {useQuery} from '@tanstack/react-query';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {isNullOrUndefined} from 'src/libs/utils';
 import {
+  FileDropResponse,
+  SourceRef,
   fetchBuilds,
-  fetchNamespaces,
-  fetchRefs,
-  fetchSources,
-  fetchSubDirs,
+  fileDrop,
+  startBuild,
+  startDockerfileBuild,
+  uploadFile,
 } from 'src/resources/BuildResource';
 
 export function useBuilds(
@@ -29,5 +31,60 @@ export function useBuilds(
     isError: isError,
     error: error,
     isLoading: isLoading,
+  };
+}
+
+export function useStartBuild(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  {onSuccess, onError},
+) {
+  const queryClient = useQueryClient();
+  const {mutate} = useMutation(
+    async (ref: string | SourceRef) => startBuild(org, repo, triggerUuid, ref),
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['repobuilds', org, repo]);
+        onSuccess(data);
+      },
+      onError: onError,
+    },
+  );
+
+  return {
+    startBuild: mutate,
+  };
+}
+
+export function useStartDockerfileBuild(
+  org: string,
+  repo: string,
+  {onSuccess, onError},
+) {
+  const queryClient = useQueryClient();
+  const {mutate} = useMutation(
+    async ({
+      dockerfileContent,
+      robot,
+    }: {
+      dockerfileContent: string;
+      robot: string;
+    }) => {
+      const fileDropData: FileDropResponse = await fileDrop();
+      await uploadFile(fileDropData.url, dockerfileContent);
+      return await startDockerfileBuild(org, repo, fileDropData.file_id, robot);
+    },
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['repobuilds', org, repo]);
+        onSuccess(data);
+      },
+      onError: onError,
+    },
+  );
+
+  return {
+    startBuild: mutate,
   };
 }

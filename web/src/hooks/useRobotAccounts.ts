@@ -18,6 +18,7 @@ import {
 } from 'src/resources/RobotsResource';
 import {updateTeamForRobot} from 'src/resources/TeamResources';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {isNullOrUndefined} from 'src/libs/utils';
 
 export function useFetchRobotAccounts(
   orgName: string,
@@ -188,7 +189,7 @@ interface addDefaultPermsParams {
   robotDefaultPerm: string;
 }
 
-export function useRobotAccounts({name, onSuccess, onError}) {
+export function useRobotAccounts({name, onSuccess, onError, enabled}) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const [namespace, setNamespace] = useState(name);
@@ -199,6 +200,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
   const {
     data: robotAccountsForOrg,
     isLoading: loading,
+    isError,
     error,
   } = useQuery(
     ['Namespace', namespace, 'robots'],
@@ -211,6 +213,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
       onError: (err) => {
         onError(err);
       },
+      enabled: isNullOrUndefined(enabled) ? true : enabled,
     },
   );
 
@@ -218,6 +221,7 @@ export function useRobotAccounts({name, onSuccess, onError}) {
     robotAccountsForOrg: robotAccountsForOrg,
     loading: loading,
     error,
+    isError,
     setPage,
     setPerPage,
     page,

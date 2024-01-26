@@ -189,11 +189,14 @@ export function useSourceRefs(
   org: string,
   repo: string,
   triggerUuid: string,
-  sourceRef: string,
+  sourceRef?: string,
+  enabled = true,
 ) {
+  console.log(enabled);
   const {data, isError, error, isLoading} = useQuery(
     ['sourcerefs', org, repo, triggerUuid, sourceRef],
     () => fetchRefs(org, repo, triggerUuid, sourceRef),
+    {enabled: enabled},
   );
 
   return {
