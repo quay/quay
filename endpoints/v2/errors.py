@@ -87,9 +87,9 @@ class TagExpired(V2RegistryException):
 
 
 class ManifestUnverified(V2RegistryException):
-    def __init__(self, detail=None):
+    def __init__(self, detail=None, message=None):
         super(ManifestUnverified, self).__init__(
-            "MANIFEST_UNVERIFIED", "manifest failed signature verification", detail
+            "MANIFEST_UNVERIFIED", message or "manifest failed signature verification", detail
         )
 
 

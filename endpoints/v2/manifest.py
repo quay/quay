@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import wraps
 
@@ -14,8 +15,9 @@ from data.model import (
     TagDoesNotExist,
     namespacequota,
 )
-from data.model.oci.manifest import CreateManifestException
+from data.model.oci.manifest import CreateManifestException, is_signed_manifest
 from data.model.oci.tag import RetargetTagException
+from data.model.policy import block_unsigned_images_enabled
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -35,6 +37,7 @@ from endpoints.v2 import require_repo_read, require_repo_write, v2_bp
 from endpoints.v2.errors import (
     ManifestInvalid,
     ManifestUnknown,
+    ManifestUnverified,
     NameInvalid,
     NameUnknown,
     QuotaExceeded,
@@ -116,6 +119,14 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
     if manifest_bytes is None:
         image_pulls.labels("v2", "tag", 404).inc()
         raise ManifestUnknown()
+
+    # TODO: need to add the same to the get manifest by digest endpoint
+    if (
+        block_unsigned_images_enabled(repository_ref)
+        and not _skip_block_unsigned_image(request, manifest_bytes)
+        and not is_signed_manifest(manifest)
+    ):
+        raise ManifestUnverified(message="no cosign signature found")
 
     track_and_log(
         "pull_repo",
@@ -498,3 +509,21 @@ def _validate_schema1_manifest(namespace: str, repo: str, manifest: DockerSchema
             raise ManifestInvalid(detail={"message": "manifest does not reference any layers"})
     except ManifestException as me:
         raise ManifestInvalid(detail={"message": str(me)})
+
+
+def _skip_block_unsigned_image(request, manifest_bytes):
+    # Cosign needs to pull the manifest in order to sign it
+    if "cosign" in request.user_agent.string:
+        return True
+
+    # Allow the signature to be pulled
+    try:
+        manifest = json.loads(manifest_bytes.as_unicode())
+    except json.JSONDecodeError as e:
+        return False
+
+    for layer in manifest.get("layers", []):
+        if layer.get("mediaType", "") == "application/vnd.dev.cosign.simplesigning.v1+json":
+            return True
+
+    return False

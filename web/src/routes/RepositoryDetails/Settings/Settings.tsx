@@ -8,6 +8,7 @@ import Visibility from './Visibility';
 import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import Policies from './Policies';
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -60,6 +61,11 @@ export default function Settings(props: SettingsProps) {
           repoDetails={props.repoDetails}
         />
       ),
+    },
+    {
+      name: 'Policies',
+      id: 'policies',
+      content: <Policies org={props.org} repo={props.repo} />,
     },
     {
       name: <div style={{color: 'red'}}>Delete Repository</div>,

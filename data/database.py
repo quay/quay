@@ -2020,6 +2020,12 @@ class AutoPruneTaskStatus(BaseModel):
     status = TextField(null=True)
 
 
+# TODO: need to add this to the repository clean up logic
+class RepositoryPolicy(BaseModel):
+    repository = ForeignKeyField(Repository, index=True, unique=True)
+    policy = JSONField(null=False)
+
+
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {

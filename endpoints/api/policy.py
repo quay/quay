@@ -1,3 +1,4 @@
+import json
 import logging
 
 from flask import request
@@ -7,13 +8,19 @@ from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data import model
+from data.model.policy import (
+    get_or_create_repository_policy,
+    update_or_create_repository_policy,
+)
 from endpoints.api import (
     ApiResource,
+    RepositoryParamResource,
     allow_if_superuser,
     log_action,
     nickname,
     path_param,
     request_error,
+    require_repo_admin,
     require_scope,
     require_user_admin,
     resource,
@@ -422,3 +429,65 @@ class UserAutoPrunePolicy(ApiResource):
         )
 
         return {"uuid": policy_uuid}, 200
+
+
+def _get_repository_policy_view(policy_json):
+    policy = json.loads(policy_json)
+    return {
+        "blockUnsignedImages": policy.get("blockUnsignedImages", False),
+    }
+
+
+@resource("/v1/repository/<apirepopath:repository>/policy/")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+class RepositoryPolicy(RepositoryParamResource):
+    """
+    Resource for listing and creating repository policies
+    """
+
+    schemas = {
+        "PolicyConfig": {
+            "type": "object",
+            "description": "The policy configuration that is to be applied to the repository",
+            "required": ["blockUnsignedImages"],
+            "properties": {
+                "blockUnsignedImages": {
+                    "type": "boolean",
+                    "description": "Block the pull of images that do not have a cosign signature",
+                },
+            },
+        },
+    }
+
+    @require_repo_admin(allow_for_superuser=True)
+    @nickname("fetchRepositoryPolicy")
+    def get(self, namespace_name, repository_name):
+        """
+        Fetches the repository policy
+        """
+        repo = model.repository.get_repository(namespace_name, repository_name)
+        if not repo:
+            raise NotFound()
+
+        repository_policy = get_or_create_repository_policy(repo)
+        return _get_repository_policy_view(repository_policy.policy)
+
+    @require_repo_admin(allow_for_superuser=True)
+    @validate_json_request("PolicyConfig")
+    @nickname("updateRepositoryPolicy")
+    def put(self, namespace_name, repository_name):
+        """
+        Updates the repository policy
+        """
+        repo = model.repository.get_repository(namespace_name, repository_name)
+        if not repo:
+            raise NotFound()
+
+        app_data = request.get_json()
+        block_unsigned_images = app_data.get("blockUnsignedImages", False)
+        policy = {
+            "blockUnsignedImages": block_unsigned_images,
+        }
+
+        updated_policy = update_or_create_repository_policy(repo, policy)
+        return _get_repository_policy_view(updated_policy.policy), 204
