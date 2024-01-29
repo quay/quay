@@ -42,6 +42,7 @@ from endpoints.api.billing import (
     UserCard,
     UserPlan,
     UserSkuList,
+    check_internal_api_for_subscription,
 )
 from endpoints.api.build import (
     RepositoryBuildList,
@@ -5078,7 +5079,7 @@ class TestOrganizationRhSku(ApiTestCase):
         self.postResponse(
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
-            data={"subscriptions": [{"subscription_id": 12345678}]},
+            data={"subscriptions": [{"subscription_id": 12345678, "quantity": 2}]},
             expected_code=201,
         )
         json = self.getJsonResponse(
@@ -5164,12 +5165,31 @@ class TestOrganizationRhSku(ApiTestCase):
         )
         self.assertEqual(len(json), 0)
 
+    def test_none_quantity(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(12345678, org.id, user.id, None)
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku, params=dict(orgname=SUBSCRIPTION_ORG)
+        )
+        self.assertEqual(json[0]["quantity"], 1)
+
+        plans = check_internal_api_for_subscription(org)
+        assert len(plans) == 1
+
 
 class TestUserSku(ApiTestCase):
     def test_get_user_skus(self):
         self.login(SUBSCRIPTION_USER)
         json = self.getJsonResponse(UserSkuList)
         self.assertEqual(len(json), 2)
+
+    def test_quantity(self):
+        self.login(SUBSCRIPTION_USER)
+        subscription_user = model.user.get_user(SUBSCRIPTION_USER)
+        plans = check_internal_api_for_subscription(subscription_user)
+        assert len(plans) == 3
 
 
 if __name__ == "__main__":

@@ -2869,7 +2869,8 @@ CREATE TABLE public.organizationrhskus (
     id integer NOT NULL,
     subscription_id integer NOT NULL,
     org_id integer NOT NULL,
-    user_id integer NOT NULL
+    user_id integer NOT NULL,
+    quantity integer
 );
 
 
@@ -5569,7 +5570,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-3f8e3657bb67
+41d15c93c299
 \.
 
 
@@ -6465,7 +6466,7 @@ COPY public.oauthauthorizationcode (id, application_id, scope, data, code_creden
 -- Data for Name: organizationrhskus; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.organizationrhskus (id, subscription_id, org_id, user_id) FROM stdin;
+COPY public.organizationrhskus (id, subscription_id, org_id, user_id, quantity) FROM stdin;
 \.
 
 
@@ -8082,7 +8083,6 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 --
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
-
 
 SELECT pg_catalog.setval('public.logentrykind_id_seq', 107, true);
 

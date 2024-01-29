@@ -2001,6 +2001,7 @@ class OrganizationRhSkus(BaseModel):
     subscription_id = IntegerField(index=True, unique=True)
     user_id = ForeignKeyField(User, backref="org_bound_subscription")
     org_id = ForeignKeyField(User, backref="subscription")
+    quantity = IntegerField(index=True, null=True)
 
     indexes = (
         (("subscription_id", "org_id"), True),

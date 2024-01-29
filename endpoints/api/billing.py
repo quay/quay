@@ -53,9 +53,11 @@ def check_internal_api_for_subscription(namespace_user):
         query = organization_skus.get_org_subscriptions(namespace_user.id)
         org_subscriptions = list(query.dicts()) if query is not None else []
         for subscription in org_subscriptions:
+            quantity = 1 if subscription.get("quantity") is None else subscription["quantity"]
             subscription_id = subscription["subscription_id"]
             sku = marketplace_subscriptions.get_subscription_sku(subscription_id)
-            plans.append(get_plan_using_rh_sku(sku))
+            for x in range(quantity):
+                plans.append(get_plan_using_rh_sku(sku))
         pass
     else:
         user_account_number = marketplace_users.get_account_number(namespace_user)
@@ -960,6 +962,8 @@ class OrganizationRhSku(ApiResource):
                     )
                     subscription["sku"] = subscription_sku
                     subscription["metadata"] = get_plan_using_rh_sku(subscription_sku)
+                    if subscription.get("quantity") is None:
+                        subscription["quantity"] = 1
                 return subscriptions
             else:
                 return []
@@ -989,9 +993,17 @@ class OrganizationRhSku(ApiResource):
 
                 user_subscription_ids = [int(subscription["id"]) for subscription in subscriptions]
                 if int(subscription_id) in user_subscription_ids:
+                    quantity = 1
+                    for subscription in subscriptions:
+                        if subscription["id"] == subscription_id:
+                            quantity = subscription["quantity"]
+                            break
                     try:
                         model.organization_skus.bind_subscription_to_org(
-                            user_id=user.id, subscription_id=subscription_id, org_id=organization.id
+                            user_id=user.id,
+                            subscription_id=subscription_id,
+                            org_id=organization.id,
+                            quantity=quantity,
                         )
                     except model.OrgSubscriptionBindingAlreadyExists:
                         abort(400, message="subscription is already bound to an org")

@@ -8,9 +8,9 @@ angular.module('quay').directive('orgBinding', function() {
       'organization': '=organization',
     },
     controller: function($scope, $timeout, PlanService, ApiService) {
-      $scope.userMarketplaceSubscriptions = {};
-      $scope.orgMarketplaceSubscriptions = {};
-      $scope.availableSubscriptions = {};
+      $scope.userMarketplaceSubscriptions = [];
+      $scope.orgMarketplaceSubscriptions = [];
+      $scope.availableSubscriptions = [];
       $scope.marketplaceLoading = true;
       $scope.bindOrgSuccess = false;
       $scope.removeSkuSuccess = false;
@@ -34,9 +34,12 @@ angular.module('quay').directive('orgBinding', function() {
         if ($scope.organization) {
           PlanService.listOrgMarketplaceSubscriptions($scope.organization, function(marketplaceSubscriptions){
             // group the list of subscriptions by their sku field
-            $scope.orgMarketplaceSubscriptions = groupSubscriptionsBySku(marketplaceSubscriptions);
+            $scope.orgMarketplaceSubscriptions = marketplaceSubscriptions;
             for (var i = 0; i < marketplaceSubscriptions.length; i++) {
-              total += marketplaceSubscriptions[i]["metadata"]["privateRepos"];
+              total += (
+                marketplaceSubscriptions[i]["quantity"] *
+                marketplaceSubscriptions[i]["metadata"]["privateRepos"]
+              );
             }
             $scope.marketplaceTotal = total;
           });
@@ -48,12 +51,15 @@ angular.module('quay').directive('orgBinding', function() {
             return;
           }
           let notBound = [];
-          $scope.userMarketplaceSubscriptions = groupSubscriptionsBySku(marketplaceSubscriptions);
+          $scope.userMarketplaceSubscriptions = marketplaceSubscriptions;
 
           for (var i = 0; i < marketplaceSubscriptions.length; i++) {
             if (marketplaceSubscriptions[i]["assigned_to_org"] === null) {
               if(!($scope.organization)){
-                total += marketplaceSubscriptions[i]["metadata"]["privateRepos"];
+                total += (
+                  marketplaceSubscriptions[i]["quantity"] *
+                  marketplaceSubscriptions[i]["metadata"]["privateRepos"]
+                );
               }
               notBound.push(marketplaceSubscriptions[i]);
             }
@@ -61,7 +67,7 @@ angular.module('quay').directive('orgBinding', function() {
           if(!($scope.organization)){
             $scope.marketplaceTotal = total;
           }
-          $scope.availableSubscriptions = groupSubscriptionsBySku(notBound);
+          $scope.availableSubscriptions = notBound;
           $scope.marketplaceLoading = false;
         });
       }
@@ -71,21 +77,14 @@ angular.module('quay').directive('orgBinding', function() {
         loadSubscriptions();
       }
 
-      $scope.bindSku = function(subscriptions, numSubscriptions) {
-        let subscriptionArr = JSON.parse(subscriptions);
-        if(numSubscriptions > subscriptionArr.length){
-          displayError("number of subscriptions exceeds total amount");
-          return;
-        }
+      $scope.bindSku = function(subscriptionToBind) {
+        let subscription = JSON.parse(subscriptionToBind);
         $scope.marketplaceLoading = true;
         const requestData = {};
         requestData["subscriptions"] = [];
-        for(var i = 0; i < numSubscriptions; ++i) {
-          var subscriptionObject = {};
-          var subscriptionId = subscriptionArr[i].id;
-          subscriptionObject.subscription_id = subscriptionId;
-          requestData["subscriptions"].push(subscriptionObject);
-        }
+        requestData["subscriptions"].push({
+          "subscription_id": subscription["id"],
+        });
         PlanService.bindSkuToOrg(requestData, $scope.organization, function(resp){
           if (resp === "Okay"){
             bindSkuSuccessMessage();
@@ -96,16 +95,11 @@ angular.module('quay').directive('orgBinding', function() {
         });
       };
 
-      $scope.batchRemoveSku = function(removals, numRemovals) {
-        let removalArr = JSON.parse(removals);
+      $scope.batchRemoveSku = function(subscriptionToRemove) {
+        let subscription = JSON.parse(subscriptionToRemove);
         const requestData = {};
         requestData["subscriptions"] = [];
-        for(var i = 0; i < numRemovals; ++i){
-          var subscriptionObject = {};
-          var subscriptionId = removalArr[i].subscription_id;
-          subscriptionObject.subscription_id = subscriptionId;
-          requestData["subscriptions"].push(subscriptionObject);
-        }
+        requestData["subscriptions"].push({"subscription_id": subscription["subscription_id"]});
         PlanService.batchRemoveSku(requestData, $scope.organization, function(resp){
           if (resp == "") {
             removeSkuSuccessMessage();
