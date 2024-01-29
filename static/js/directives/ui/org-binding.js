@@ -84,9 +84,7 @@ angular.module('quay').directive('orgBinding', function() {
         requestData["subscriptions"] = [];
         requestData["subscriptions"].push({
           "subscription_id": subscription["id"],
-          "quantity": subscription["quantity"]
         });
-        console.log(JSON.stringify(requestData));
         PlanService.bindSkuToOrg(requestData, $scope.organization, function(resp){
           if (resp === "Okay"){
             bindSkuSuccessMessage();

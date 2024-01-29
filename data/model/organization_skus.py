@@ -3,7 +3,7 @@ import logging
 import peewee
 
 from data import model
-from data.database import OrganizationRhSkus
+from data.database import OrganizationRhSkus, db_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +18,10 @@ def get_org_subscriptions(org_id):
 
 def bind_subscription_to_org(subscription_id, org_id, user_id, quantity=1):
     try:
-        return OrganizationRhSkus.create(
-            subscription_id=subscription_id, org_id=org_id, user_id=user_id, quantity=quantity
-        )
+        with db_transaction():
+            return OrganizationRhSkus.create(
+                subscription_id=subscription_id, org_id=org_id, user_id=user_id, quantity=quantity
+            )
     except model.DataModelException as ex:
         logger.error("Problem binding subscription to org %s: %s", org_id, ex)
     except peewee.IntegrityError:
