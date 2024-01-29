@@ -24,7 +24,6 @@ from data import model
 from data.billing import get_plan, get_plan_using_rh_sku
 from data.database import ProxyCacheConfig
 from data.model import organization_skus
-from auth.scopes import validate_scope_string
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
@@ -730,7 +729,12 @@ class OrganizationApplications(ApiResource):
                     scope = app_data.get("scope")
                     # We need to validate the scope string.
                     # If the decoded string is 0, raise exception.
-                    if not validate_scope_string(scope):
+                    if not scopes.validate_scope_string(scope):
+                        logger.debug(
+                            "Failed to create appllication: invalid scope requested: '{}'.".format(
+                                scope
+                            )
+                        )
                         raise InvalidRequest(
                             "Could not create application: Invalid or empty scope provided."
                         )
@@ -755,6 +759,7 @@ class OrganizationApplications(ApiResource):
                     return app_view(application, token)
                 # If scopes are missing, raise exception
                 else:
+                    logger.debug("Failed to create application: missing scopes.")
                     raise InvalidRequest("Could not create application: missing scopes in request.")
             else:
                 # Application is not considered local, so just create it and return.
