@@ -24,6 +24,7 @@ from data import model
 from data.billing import get_plan, get_plan_using_rh_sku
 from data.database import ProxyCacheConfig
 from data.model import organization_skus
+from auth.scopes import validate_scope_string
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
@@ -727,6 +728,12 @@ class OrganizationApplications(ApiResource):
                 # If a scope is added to the JSON request:
                 if app_data.get("scope") is not None:
                     scope = app_data.get("scope")
+                    # We need to validate the scope string.
+                    # If the decoded string is 0, raise exception.
+                    if not validate_scope_string(scope):
+                        raise InvalidRequest(
+                            "Could not create application: Invalid or empty scope provided."
+                        )
                     application = model.oauth.create_application(
                         org,
                         app_data["name"],
