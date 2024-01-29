@@ -984,9 +984,6 @@ class OrganizationRhSku(ApiResource):
                 subscription_id = subscription.get("subscription_id")
                 if subscription_id is None:
                     break
-                # quantity = subscription.get("quantity")
-                # if quantity is None:
-                #     quantity = 1
                 user = get_authenticated_user()
                 account_number = marketplace_users.get_account_number(user)
                 subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
@@ -1000,6 +997,7 @@ class OrganizationRhSku(ApiResource):
                     for subscription in subscriptions:
                         if subscription["id"] == subscription_id:
                             quantity = subscription["quantity"]
+                            break
                     try:
                         model.organization_skus.bind_subscription_to_org(
                             user_id=user.id,

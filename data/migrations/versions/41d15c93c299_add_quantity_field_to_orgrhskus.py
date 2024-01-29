@@ -15,9 +15,7 @@ import sqlalchemy as sa
 
 def upgrade(op, tables, tester):
     op.add_column("organizationrhskus", sa.Column("quantity", sa.Integer(), nullable=True))
-    pass
 
 
 def downgrade(op, tables, tester):
     op.drop_column("organizationrhskus", "quantity")
-    pass
