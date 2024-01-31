@@ -26,7 +26,7 @@ angular.module('quay').directive('repoPanelTags', function () {
       });
 
       $scope.Features = Features;
-      
+
       $scope.maxTrackCount = 5;
 
       $scope.checkedTags = UIService.createCheckStateController([], 'name');
@@ -88,7 +88,7 @@ angular.module('quay').directive('repoPanelTags', function () {
 
           var cosignSignatureTag = matchCosignSignature(tag);
 
-          if (cosignSignatureTag) { 
+          if (cosignSignatureTag) {
             signedManifestDigest = cosignSignatureTag[1]; // cosign signature tags contain the signature of the signed manifest
             $scope.cosignedManifests["sha256:" + signedManifestDigest] = { // map signed manifests to their cosign signature artifact
               'signatureTagName': tag,
@@ -290,6 +290,21 @@ angular.module('quay').directive('repoPanelTags', function () {
 
       $scope.$watch('repositoryTags', function(newTags, oldTags) {
         if (newTags === oldTags) { return; }
+
+        // Filter out properties that should not cause the tag list to be reset,
+        // specifically loading sub-manifests
+        let filteredOldTags = {};
+        for (const [key, value] of Object.entries(oldTags)) {
+          let {manifest_list_loading, manifest_list, $$hashKey, _mapped_manifests, ...properties} = value;
+          filteredOldTags[key] = properties;
+        }
+        let filteredNewTags = {};
+        for (const [key, value] of Object.entries(newTags)) {
+          let {manifest_list_loading, manifest_list, $$hashKey, _mapped_manifests, ...properties} = value;
+          filteredNewTags[key] = properties;
+        }
+        if(JSON.stringify(filteredOldTags) === JSON.stringify(filteredNewTags)){return;}
+
         // Process each of the tags.
         getCosignSignatures();
         setTagState();
@@ -562,7 +577,9 @@ angular.module('quay').directive('repoPanelTags', function () {
         })
         if (!childrenLayers) {
           tag.manifest_list.manifests.forEach(function(child_manifest) {
-            $scope.loadManifestLayers(child_manifest);
+            if(!child_manifest.layers){
+              $scope.loadManifestLayers(child_manifest);
+            }
           });
           return tag.manifest_list.manifests;
         }
