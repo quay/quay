@@ -70,7 +70,7 @@ function($rootScope, $interval, UserService, ApiService, StringBuilderService, P
       'level': 'warning',
       'message': 'We will be down for schedule maintenance from {from_date} to {to_date} ' +
         'for {reason}. We are sorry about any inconvenience.',
-      'page': 'http://status.quay.io/'
+      'page': 'https://status.redhat.com'
     },
     'repo_push': {
       'level': 'info',
