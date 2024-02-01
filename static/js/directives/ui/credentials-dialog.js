@@ -129,12 +129,7 @@ angular.module('quay').directive('credentialsDialog', function () {
           return '';
         }
 
-        var escape = function(v) {
-          if (!v) { return v; }
-          return v.replace('$', '\\$');
-        };
-
-        return 'docker login -u="' + escape(credentials.username) + '" -p="' + credentials.password + '" ' + Config['SERVER_HOSTNAME'];
+        return 'docker login -u=\'' + credentials.username + '\' -p=\'' + credentials.password + '\' ' + Config['SERVER_HOSTNAME'];
       };
 
       $scope.getPodmanLogin = function(credentials) {
@@ -142,12 +137,7 @@ angular.module('quay').directive('credentialsDialog', function () {
           return '';
         }
 
-        var escape = function(v) {
-          if (!v) { return v; }
-          return v.replace('$', '\\$');
-        };
-
-        return 'podman login -u="' + escape(credentials.username) + '" -p="' + credentials.password + '" ' + Config['SERVER_HOSTNAME'];
+        return 'podman login -u=\'' + credentials.username + '\' -p=\'' + credentials.password + '\' ' + Config['SERVER_HOSTNAME'];
       };
 
       $scope.getDockerFilename = function(credentials) {
