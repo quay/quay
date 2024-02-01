@@ -53,6 +53,21 @@ class NamespaceAutoPrunePolicy:
         return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
 
 
+class RepositoryAutoPrunePolicy:
+    def __init__(self, db_row):
+        config = json.loads(db_row.policy)
+        self._db_row = db_row
+        self.uuid = db_row.uuid
+        self.method = config.get("method")
+        self.config = config
+
+    def get_row(self):
+        return self._db_row
+
+    def get_view(self):
+        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+
+
 def valid_value(method, value):
     """
     Method for validating the value provided for the policy method.
@@ -260,16 +275,22 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
                 AutoPruneTaskStatus.select(AutoPruneTaskStatus)
                 .where(
                     AutoPruneTaskStatus.namespace.not_in(
+                        # this basically skips ns if user is not enabled
                         User.select(User.id).where(
                             User.enabled == False, User.id == AutoPruneTaskStatus.namespace
                         )
                     ),
+                    # the next two is an OR condition where:
+                    # 1. only pick those task if it has been more than 1 hour (task_run_interval_ms time) since the last_ran_ms. 
+                    # Eg: if last_ran_ms = 10am, epoc = 10.30am, then (10.30am - 60min = 9.30am). But 10am is not < 9.30am so skip the 10am task and only pick older task that ran before 9.30am
+                    # 2. pick a null last_ran_ms indicates that the task was never ran
                     (
                         AutoPruneTaskStatus.last_ran_ms
                         < get_epoch_timestamp_ms() - task_run_interval_ms
                     )
                     | (AutoPruneTaskStatus.last_ran_ms.is_null(True)),
                 )
+                # here asc bcoz we want 8.30am tasks to run before 9.30am task
                 .order_by(AutoPruneTaskStatus.last_ran_ms.asc(nulls="first"))
             )
             task = db_for_update(query, skip_locked=SKIP_LOCKED).get()

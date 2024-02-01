@@ -172,6 +172,24 @@ class InvalidNamespaceAutoPruneMethod(DataModelException):
 class InvalidNamespaceException(DataModelException):
     pass
 
+class RepositoryAutoPrunePolicyAlreadyExists(DataModelException):
+    pass
+
+
+class RepositoryAutoPrunePolicyDoesNotExist(DataModelException):
+    pass
+
+
+class InvalidRepositoryAutoPrunePolicy(DataModelException):
+    pass
+
+
+class InvalidRepositoryAutoPruneMethod(DataModelException):
+    pass
+
+
+class InvalidRepositoryException(DataModelException):
+    pass
 
 class TooManyLoginAttemptsException(Exception):
     def __init__(self, message, retry_after):

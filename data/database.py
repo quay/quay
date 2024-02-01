@@ -2021,6 +2021,11 @@ class AutoPruneTaskStatus(BaseModel):
     status = TextField(null=True)
 
 
+class RepositoryAutoPrunePolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, null=False)
+    repository = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
+
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {
