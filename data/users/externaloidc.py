@@ -29,12 +29,18 @@ class OIDCUsers(FederatedUsers):
 
     def verify_credentials(self, username_or_email, password):
         """
-        Verify the credentials with OIDC
+        Verify the credentials with OIDC: To Implement
         """
         pass
 
     def check_group_lookup_args(self, group_lookup_args, disable_pagination=False):
         """
-        No way to verify if the group is valid.
+        No way to verify if the group is valid, so assuming the group is valid
         """
         return (True, None)
+
+    def query_users(self, query, limit):
+        """
+        No way to query users so returning empty list
+        """
+        return ([], self.federated_service, None)

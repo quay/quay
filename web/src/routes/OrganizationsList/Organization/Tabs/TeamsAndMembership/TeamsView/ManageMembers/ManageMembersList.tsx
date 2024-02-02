@@ -19,6 +19,15 @@ import {
   ButtonVariant,
   Divider,
   Tooltip,
+  Alert,
+  Accordion,
+  AccordionItem,
+  AccordionContent,
+  AccordionToggle,
+  TextList,
+  TextListVariants,
+  TextListItem,
+  TextListItemVariants,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
@@ -47,8 +56,9 @@ import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTe
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {useTeamSync} from 'src/hooks/UseTeamSync';
+import {useTeamSync, useRemoveTeamSync} from 'src/hooks/UseTeamSync';
 import OIDCTeamSyncModal from 'src/components/modals/OIDCTeamSyncModal';
+import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 
 export enum TableModeType {
   AllMembers = 'All Members',
@@ -108,7 +118,15 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const [teamDescr, setTeamDescr] = useState<string>();
   const [isDeleteModalForRowOpen, setIsDeleteModalForRowOpen] = useState(false);
   const [memberToBeDeleted, setMemberToBeDeleted] = useState<IMemberInfo>();
+
+  // Team Sync states
   const [isOIDCTeamSyncModalOpen, setIsOIDCTeamSyncModalOpen] = useState(false);
+  const [OIDCGroupName, setOIDCGroupName] = useState<string>('');
+  const [pageInReadOnlyMode, setPageInReadOnlyMode] = useState<boolean>(false);
+  const [isRemoveTeamSyncModalOpen, setRemoveTeamSyncModalOpen] =
+    useState<boolean>(false);
+  const [teamSyncConfigExpanded, setTeamSyncConfigExpanded] =
+    useState('oidc-config-toggle');
 
   useEffect(() => {
     switch (tableMode) {
@@ -238,14 +256,48 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const {enableTeamSync} = useTeamSync({
     orgName: organizationName,
     teamName: teamName,
-    onSuccess: () => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen),
+    onSuccess: (response) => {
+      setIsOIDCTeamSyncModalOpen(false);
+      setPageInReadOnlyMode(true);
+      addAlert({
+        variant: AlertVariant.Success,
+        title: response,
+      });
+    },
     onError: (err) => {
       addAlert({
         variant: AlertVariant.Failure,
-        title: `Error updating team sync config: ${err}`,
+        title: err,
       });
     },
   });
+
+  const {removeTeamSync} = useRemoveTeamSync({
+    orgName: organizationName,
+    teamName: teamName,
+    onSuccess: (response) => {
+      setRemoveTeamSyncModalOpen(false);
+      setPageInReadOnlyMode(false);
+      addAlert({
+        variant: AlertVariant.Success,
+        title: response,
+      });
+    },
+    onError: (err) => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: err,
+      });
+    },
+  });
+
+  const onAccordionToggle = (id: string) => {
+    if (id === teamSyncConfigExpanded) {
+      setTeamSyncConfigExpanded('');
+    } else {
+      setTeamSyncConfigExpanded(id);
+    }
+  };
 
   useEffect(() => {
     if (successUpdateTeamDetails) {
@@ -264,6 +316,14 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       });
     }
   }, [errorUpdateTeamDetails]);
+
+  useEffect(() => {
+    if (teamSyncInfo != null) {
+      if (teamSyncInfo.service == 'oidc') {
+        setOIDCGroupName(teamSyncInfo.config?.group_config.split(':')[1]);
+      }
+    }
+  }, [teamSyncInfo]);
 
   const updateTeamDescriptionHandler = () => {
     setIsEditing(!isEditing);
@@ -350,25 +410,91 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     return <Spinner />;
   }
 
+  const removeTeamSyncModalHolder = (
+    <ConfirmationModal
+      title="Remove Synchronization"
+      description="Are you sure you want to disable group syncing on this team? The team will once again become editable."
+      buttonText="Confirm"
+      modalOpen={isRemoveTeamSyncModalOpen}
+      toggleModal={() => setRemoveTeamSyncModalOpen(!isRemoveTeamSyncModalOpen)}
+      handleModalConfirm={() => removeTeamSync()}
+    />
+  );
+
   const displaySyncDirectory =
     teamCanSync != null &&
     !teamSyncInfo &&
     config?.registry_state !== 'readonly';
 
   const fetchSyncBtn = () => {
-    if (displaySyncDirectory && teamCanSync?.service == 'oidc') {
-      return [
+    const result = [];
+    if (displaySyncDirectory) {
+      result.push(
         <Button
           variant="link"
           onClick={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
-          key="sync-btn"
+          key="team-sync-btn"
         >
           Enable Directory synchronization
         </Button>,
-      ];
+      );
     }
-    return [];
+    if (pageInReadOnlyMode) {
+      result.push(
+        <Button
+          onClick={() => setRemoveTeamSyncModalOpen(!isRemoveTeamSyncModalOpen)}
+          key="remove-team-sync-btn"
+        >
+          Remove synchronization
+        </Button>,
+      );
+    }
+    return result;
   };
+
+  const teamSyncedConfig = (
+    <>
+      <Alert
+        isInline
+        variant="info"
+        title={`This team is synchronized with a group in ${teamCanSync?.service} and its user membership is therefore read-only.`}
+      />
+      <Accordion>
+        <AccordionItem>
+          <AccordionToggle
+            onClick={() => {
+              onAccordionToggle('oidc-config-toggle');
+            }}
+            isExpanded={teamSyncConfigExpanded === 'oidc-config-toggle'}
+            id="oidc-config-toggle"
+          >
+            Directory Synchronization Config
+          </AccordionToggle>
+          <AccordionContent
+            id="oidc-config-toggle"
+            isHidden={teamSyncConfigExpanded !== 'oidc-config-toggle'}
+          >
+            <TextContent>
+              <TextList component={TextListVariants.dl}>
+                <TextListItem component={TextListItemVariants.dt}>
+                  Bound to group
+                </TextListItem>
+                <TextListItem component={TextListItemVariants.dd}>
+                  {OIDCGroupName}
+                </TextListItem>
+                <TextListItem component={TextListItemVariants.dt}>
+                  Last Updated
+                </TextListItem>
+                <TextListItem component={TextListItemVariants.dd}>
+                  Never
+                </TextListItem>
+              </TextList>
+            </TextContent>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </>
+  );
 
   const OIDCTeamSyncModalHolder = (
     <OIDCTeamSyncModal
@@ -387,123 +513,149 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   if (allMembers?.length === 0) {
     return (
       <>
+        <Conditional if={pageInReadOnlyMode}>{teamSyncedConfig}</Conditional>
         <Empty
           title="There are no viewable members for this team"
           icon={CubesIcon}
           body="Either no team members exist yet or you may not have permission to view any."
           button={
-            <Button
-              variant="primary"
-              data-testid="add-new-member-button"
-              onClick={() =>
-                props.setDrawerContent(
-                  OrganizationDrawerContentType.AddNewTeamMemberDrawer,
-                )
+            <Conditional
+              if={
+                config?.registry_state !== 'readonly' &&
+                organization.is_admin &&
+                !pageInReadOnlyMode
               }
             >
-              Add new member
-            </Button>
+              <Button
+                variant="primary"
+                data-testid="add-new-member-button"
+                onClick={() =>
+                  props.setDrawerContent(
+                    OrganizationDrawerContentType.AddNewTeamMemberDrawer,
+                  )
+                }
+              >
+                Add new member
+              </Button>
+            </Conditional>
           }
           secondaryActions={fetchSyncBtn()}
         />
         <Conditional if={isOIDCTeamSyncModalOpen}>
           {OIDCTeamSyncModalHolder}
         </Conditional>
+        <Conditional if={isRemoveTeamSyncModalOpen}>
+          {removeTeamSyncModalHolder}
+        </Conditional>
       </>
     );
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
-      <ManageMembersToolbar
-        selectedTeams={selectedTeamMembers}
-        deSelectAll={() => setSelectedTeamMembers([])}
-        allItems={allMembersList}
-        paginatedItems={tableMembersList}
-        onItemSelect={onSelectTeamMember}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
-        search={search}
-        setSearch={setSearch}
-        searchOptions={[manageMemberColumnNames.teamMember]}
-        setDrawerContent={props.setDrawerContent}
-        isReadOnly={config?.registry_state === 'readonly'}
-        isAdmin={organization.is_admin}
-        displaySyncDirectory={displaySyncDirectory}
-        isOIDCTeamSyncModalOpen={isOIDCTeamSyncModalOpen}
-        toggleOIDCTeamSyncModal={() =>
-          setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)
-        }
-        teamCanSync={teamCanSync}
-      >
-        {viewToggle}
-        {teamDescriptionComponent}
-        <Conditional if={isDeleteModalForRowOpen}>{deleteRowModal}</Conditional>
-        <Conditional
-          if={isOIDCTeamSyncModalOpen && teamCanSync?.service == 'oidc'}
+    <>
+      <Conditional if={pageInReadOnlyMode}>{teamSyncedConfig}</Conditional>
+      <PageSection variant={PageSectionVariants.light}>
+        <ManageMembersToolbar
+          selectedTeams={selectedTeamMembers}
+          deSelectAll={() => setSelectedTeamMembers([])}
+          allItems={allMembersList}
+          paginatedItems={tableMembersList}
+          onItemSelect={onSelectTeamMember}
+          page={page}
+          setPage={setPage}
+          perPage={perPage}
+          setPerPage={setPerPage}
+          search={search}
+          setSearch={setSearch}
+          searchOptions={[manageMemberColumnNames.teamMember]}
+          setDrawerContent={props.setDrawerContent}
+          isReadOnly={config?.registry_state === 'readonly'}
+          isAdmin={organization.is_admin}
+          displaySyncDirectory={displaySyncDirectory}
+          isOIDCTeamSyncModalOpen={isOIDCTeamSyncModalOpen}
+          toggleOIDCTeamSyncModal={() =>
+            setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)
+          }
+          teamCanSync={teamCanSync}
+          pageInReadOnlyMode={pageInReadOnlyMode}
+          isRemoveTeamSyncModalOpen={isRemoveTeamSyncModalOpen}
+          toggleRemoveTeamSyncModal={() =>
+            setRemoveTeamSyncModalOpen(!isRemoveTeamSyncModalOpen)
+          }
         >
-          {OIDCTeamSyncModalHolder}
-        </Conditional>
-        <Table aria-label="Selectable table" variant="compact">
-          <Thead>
-            <Tr>
-              <Th />
-              <Th>{manageMemberColumnNames.teamMember}</Th>
-              <Th>{manageMemberColumnNames.account}</Th>
-              <Th />
-            </Tr>
-          </Thead>
-          <Tbody>
-            {tableMembersList?.map((teamMember, rowIndex) => (
-              <Tr key={rowIndex}>
-                <Td
-                  select={{
-                    rowIndex,
-                    onSelect: (_event, isSelecting) =>
-                      onSelectTeamMember(teamMember, rowIndex, isSelecting),
-                    isSelected: selectedTeamMembers.some(
-                      (t) => t.name === teamMember.name,
-                    ),
-                  }}
-                />
-                <Td
-                  dataLabel={manageMemberColumnNames.teamMember}
-                  data-testid={teamMember.name}
-                >
-                  {teamMember.name}
-                </Td>
-                <Td dataLabel={manageMemberColumnNames.account}>
-                  {getAccountTypeForMember(teamMember)}
-                </Td>
-                <Conditional
-                  if={
-                    config?.registry_state !== 'readonly' &&
-                    organization.is_admin
-                  }
-                >
-                  <Td>
-                    <Button
-                      icon={<TrashIcon />}
-                      variant="plain"
-                      onClick={() => {
-                        setMemberToBeDeleted({
-                          teamName: teamName,
-                          memberName: teamMember.name,
-                        });
-                        setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
-                      }}
-                      data-testid={`${teamMember.name}-delete-icon`}
-                    />
-                  </Td>
-                </Conditional>
+          {viewToggle}
+          {teamDescriptionComponent}
+          <Conditional if={isDeleteModalForRowOpen}>
+            {deleteRowModal}
+          </Conditional>
+          <Conditional
+            if={isOIDCTeamSyncModalOpen && teamCanSync?.service == 'oidc'}
+          >
+            {OIDCTeamSyncModalHolder}
+          </Conditional>
+          <Conditional if={isRemoveTeamSyncModalOpen}>
+            {removeTeamSyncModalHolder}
+          </Conditional>
+          <Table aria-label="Selectable table" variant="compact">
+            <Thead>
+              <Tr>
+                <Th />
+                <Th>{manageMemberColumnNames.teamMember}</Th>
+                <Th>{manageMemberColumnNames.account}</Th>
+                <Th />
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </ManageMembersToolbar>
-    </PageSection>
+            </Thead>
+            <Tbody>
+              {tableMembersList?.map((teamMember, rowIndex) => (
+                <Tr key={rowIndex}>
+                  <Td
+                    select={{
+                      rowIndex,
+                      onSelect: (_event, isSelecting) =>
+                        onSelectTeamMember(teamMember, rowIndex, isSelecting),
+                      isSelected: selectedTeamMembers.some(
+                        (t) => t.name === teamMember.name,
+                      ),
+                    }}
+                  />
+                  <Td
+                    dataLabel={manageMemberColumnNames.teamMember}
+                    data-testid={teamMember.name}
+                  >
+                    {teamMember.name}
+                  </Td>
+                  <Td dataLabel={manageMemberColumnNames.account}>
+                    {getAccountTypeForMember(teamMember)}
+                  </Td>
+                  <Conditional
+                    if={
+                      config?.registry_state !== 'readonly' &&
+                      organization.is_admin &&
+                      !pageInReadOnlyMode
+                    }
+                  >
+                    <Td>
+                      <Button
+                        icon={<TrashIcon />}
+                        variant="plain"
+                        onClick={() => {
+                          setMemberToBeDeleted({
+                            teamName: teamName,
+                            memberName: teamMember.name,
+                          });
+                          setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
+                        }}
+                        data-testid={`${teamMember.name}-delete-icon`}
+                      />
+                    </Td>
+                  </Conditional>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </ManageMembersToolbar>
+      </PageSection>
+    </>
   );
 }
 interface ManageMembersListProps {

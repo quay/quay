@@ -19,3 +19,10 @@ export async function enableTeamSyncForOrg(
   assertHttpCode(response.status, 200);
   return response.data;
 }
+
+export async function removeTeamSyncForOrg(orgName: string, teamName: string) {
+  const enableSyncUrl = `/api/v1/organization/${orgName}/team/${teamName}/syncing`;
+  const response: AxiosResponse = await axios.delete(enableSyncUrl);
+  assertHttpCode(response.status, 200);
+  return response.data;
+}

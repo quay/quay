@@ -161,8 +161,11 @@
         case 'jwtauthn':
           return 'External JWT Auth';
 
+        case 'oidc':
+          return 'OIDC';
+
         default:
-          return synced.service;
+          return service;
       }
     };
 

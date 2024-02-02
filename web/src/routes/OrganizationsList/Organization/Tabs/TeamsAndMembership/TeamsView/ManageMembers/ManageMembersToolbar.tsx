@@ -42,8 +42,12 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </FlexItem>
           </Flex>
           <Flex>
-            <FlexItem>
-              <Conditional if={props.isAdmin && !props.isReadOnly}>
+            <Conditional
+              if={
+                props.isAdmin && !props.isReadOnly && !props.pageInReadOnlyMode
+              }
+            >
+              <FlexItem>
                 <Button
                   onClick={() =>
                     props.setDrawerContent(
@@ -54,21 +58,29 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
                 >
                   Add new member
                 </Button>
-              </Conditional>
-            </FlexItem>
+              </FlexItem>
+            </Conditional>
 
-            <FlexItem>
-              <Conditional
-                if={
-                  props.displaySyncDirectory &&
-                  props.teamCanSync?.service == 'oidc'
-                }
-              >
+            <Conditional
+              if={
+                props.displaySyncDirectory &&
+                props.teamCanSync?.service == 'oidc'
+              }
+            >
+              <FlexItem>
                 <Button onClick={props.toggleOIDCTeamSyncModal}>
                   Enable Directory Sync
                 </Button>
-              </Conditional>
-            </FlexItem>
+              </FlexItem>
+            </Conditional>
+
+            <Conditional if={props.pageInReadOnlyMode}>
+              <FlexItem>
+                <Button onClick={props.toggleRemoveTeamSyncModal}>
+                  Remove synchronization
+                </Button>
+              </FlexItem>
+            </Conditional>
           </Flex>
           <ToolbarPagination
             itemsList={props.paginatedItems}
@@ -119,4 +131,7 @@ interface ManageMembersToolbarProps {
   isOIDCTeamSyncModalOpen: boolean;
   toggleOIDCTeamSyncModal: () => void;
   teamCanSync?: object;
+  pageInReadOnlyMode: boolean;
+  isRemoveTeamSyncModalOpen: boolean;
+  toggleRemoveTeamSyncModal: () => void;
 }

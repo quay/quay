@@ -31,6 +31,10 @@ export function ConfirmationModal(props: ConfirmationModalProps) {
   };
 
   const handleModalConfirm = async () => {
+    if (props.handleModalConfirm) {
+      props.handleModalConfirm();
+      return;
+    }
     // This modal should never render if no items have been selected,
     // that should be handled by the parent component. Leaving this check
     // in anyway.
@@ -67,8 +71,9 @@ type ConfirmationModalProps = {
   description: string;
   modalOpen: boolean;
   buttonText: string;
-  selectedItems: string[];
-  makePublic: boolean;
   toggleModal: () => void;
-  selectAllRepos: (isSelecting) => void;
+  selectedItems?: string[];
+  makePublic?: boolean;
+  selectAllRepos?: (isSelecting) => void;
+  handleModalConfirm?: () => void;
 };
