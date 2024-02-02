@@ -48,7 +48,7 @@ export async function fetchTeamMembersForOrg(
   const teamMemberUrl = `/api/v1/organization/${org}/team/${teamName}/members?includePending=true`;
   const teamMembersResponse = await axios.get(teamMemberUrl, {signal});
   assertHttpCode(teamMembersResponse.status, 200);
-  return teamMembersResponse.data?.members;
+  return teamMembersResponse?.data;
 }
 
 export async function deleteTeamMemberForOrg(

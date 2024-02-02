@@ -10,6 +10,7 @@ from data.users.apptoken import AppTokenInternalAuth
 from data.users.database import DatabaseUsers
 from data.users.externaljwt import ExternalJWTAuthN
 from data.users.externalldap import LDAPUsers
+from data.users.externaloidc import OIDCUsers
 from data.users.federated import FederatedUsers
 from data.users.keystone import get_keystone_users
 from util.config.superusermanager import ConfigUserManager
@@ -34,6 +35,9 @@ def get_federated_service_name(authentication_type):
 
     if authentication_type == "Database":
         return None
+
+    if authentication_type == "OIDC":
+        return "oidc"
 
     raise Exception("Unknown auth type: %s" % authentication_type)
 
@@ -134,6 +138,23 @@ def get_users_handler(config, _, override_config_dir):
             )
 
         return AppTokenInternalAuth()
+
+    if authentication_type == "OIDC":
+        client_id = config.get("CLIENT_ID")
+        client_secret = config.get("CLIENT_SECRET")
+        oidc_server = config.get("OIDC_SERVER")
+        service_name = config.get("SERVICE_NAME")
+        login_scopes = config.get("LOGIN_SCOPES")
+        preferred_group_claim_name = config.get("PREFERRED_GROUP_CLAIM_NAME")
+
+        return OIDCUsers(
+            client_id,
+            client_secret,
+            oidc_server,
+            service_name,
+            login_scopes,
+            preferred_group_claim_name,
+        )
 
     raise RuntimeError("Unknown authentication type: %s" % authentication_type)
 

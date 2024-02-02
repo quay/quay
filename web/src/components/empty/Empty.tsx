@@ -6,6 +6,7 @@ import {
   PageSection,
   EmptyStateHeader,
   EmptyStateFooter,
+  EmptyStateActions,
 } from '@patternfly/react-core';
 import {SVGIconProps} from '@patternfly/react-icons/dist/js/createIcon';
 
@@ -21,7 +22,12 @@ export default function Empty(props: EmptyProps) {
         <EmptyStateBody style={{paddingBottom: 20}}>
           {props.body}
         </EmptyStateBody>
-        <EmptyStateFooter>{props.button}</EmptyStateFooter>
+        <EmptyStateFooter>
+          <EmptyStateActions variant="primary">
+            {props.button}
+          </EmptyStateActions>
+          {props.secondaryActions?.map((ele) => ele)}
+        </EmptyStateFooter>
       </EmptyState>
     </PageSection>
   );
@@ -32,4 +38,5 @@ interface EmptyProps {
   title: string;
   body: string;
   button?: JSX.Element;
+  secondaryActions?: JSX.Element[];
 }

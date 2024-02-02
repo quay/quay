@@ -47,6 +47,8 @@ import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTe
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import {useTeamSync} from 'src/hooks/UseTeamSync';
+import OIDCTeamSyncModal from 'src/components/modals/OIDCTeamSyncModal';
 
 export enum TableModeType {
   AllMembers = 'All Members',
@@ -79,6 +81,8 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     paginatedTeamMembers,
     paginatedRobotAccounts,
     paginatedInvited,
+    teamCanSync,
+    teamSyncInfo,
     loading,
     page,
     setPage,
@@ -104,6 +108,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const [teamDescr, setTeamDescr] = useState<string>();
   const [isDeleteModalForRowOpen, setIsDeleteModalForRowOpen] = useState(false);
   const [memberToBeDeleted, setMemberToBeDeleted] = useState<IMemberInfo>();
+  const [isOIDCTeamSyncModalOpen, setIsOIDCTeamSyncModalOpen] = useState(false);
 
   useEffect(() => {
     switch (tableMode) {
@@ -230,6 +235,18 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const {updateTeamDetails, errorUpdateTeamDetails, successUpdateTeamDetails} =
     useUpdateTeamDetails(organizationName);
 
+  const {enableTeamSync} = useTeamSync({
+    orgName: organizationName,
+    teamName: teamName,
+    onSuccess: () => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen),
+    onError: (err) => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: `Error updating team sync config: ${err}`,
+      });
+    },
+  });
+
   useEffect(() => {
     if (successUpdateTeamDetails) {
       addAlert({
@@ -333,26 +350,66 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     return <Spinner />;
   }
 
+  const displaySyncDirectory =
+    teamCanSync != null &&
+    !teamSyncInfo &&
+    config?.registry_state !== 'readonly';
+
+  const fetchSyncBtn = () => {
+    if (displaySyncDirectory && teamCanSync?.service == 'oidc') {
+      return [
+        <Button
+          variant="link"
+          onClick={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
+          key="sync-btn"
+        >
+          Enable Directory synchronization
+        </Button>,
+      ];
+    }
+    return [];
+  };
+
+  const OIDCTeamSyncModalHolder = (
+    <OIDCTeamSyncModal
+      isModalOpen={isOIDCTeamSyncModalOpen}
+      toggleModal={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
+      titleText="Enable OIDC Directory Syncing"
+      primaryText="Directory synchronization allows this team's user membership to be backed by a group in OIDC."
+      onConfirmSync={(groupName) =>
+        enableTeamSync(groupName, teamCanSync?.service)
+      }
+      secondaryText="Enter the name of the group you'd like sync membership with:"
+      alertText="Please note that once team syncing is enabled, the team's user membership from within Red Hat Quay will be read-only."
+    />
+  );
+
   if (allMembers?.length === 0) {
     return (
-      <Empty
-        title="There are no viewable members for this team"
-        icon={CubesIcon}
-        body="Either no team members exist yet or you may not have permission to view any."
-        button={
-          <Button
-            variant="primary"
-            data-testid="add-new-member-button"
-            onClick={() =>
-              props.setDrawerContent(
-                OrganizationDrawerContentType.AddNewTeamMemberDrawer,
-              )
-            }
-          >
-            Add new member
-          </Button>
-        }
-      />
+      <>
+        <Empty
+          title="There are no viewable members for this team"
+          icon={CubesIcon}
+          body="Either no team members exist yet or you may not have permission to view any."
+          button={
+            <Button
+              variant="primary"
+              data-testid="add-new-member-button"
+              onClick={() =>
+                props.setDrawerContent(
+                  OrganizationDrawerContentType.AddNewTeamMemberDrawer,
+                )
+              }
+            >
+              Add new member
+            </Button>
+          }
+          secondaryActions={fetchSyncBtn()}
+        />
+        <Conditional if={isOIDCTeamSyncModalOpen}>
+          {OIDCTeamSyncModalHolder}
+        </Conditional>
+      </>
     );
   }
 
@@ -374,10 +431,21 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         setDrawerContent={props.setDrawerContent}
         isReadOnly={config?.registry_state === 'readonly'}
         isAdmin={organization.is_admin}
+        displaySyncDirectory={displaySyncDirectory}
+        isOIDCTeamSyncModalOpen={isOIDCTeamSyncModalOpen}
+        toggleOIDCTeamSyncModal={() =>
+          setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)
+        }
+        teamCanSync={teamCanSync}
       >
         {viewToggle}
         {teamDescriptionComponent}
         <Conditional if={isDeleteModalForRowOpen}>{deleteRowModal}</Conditional>
+        <Conditional
+          if={isOIDCTeamSyncModalOpen && teamCanSync?.service == 'oidc'}
+        >
+          {OIDCTeamSyncModalHolder}
+        </Conditional>
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
             <Tr>

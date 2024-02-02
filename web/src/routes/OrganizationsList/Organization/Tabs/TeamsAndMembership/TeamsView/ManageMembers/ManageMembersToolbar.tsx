@@ -41,18 +41,35 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
               />
             </FlexItem>
           </Flex>
-          <Conditional if={props.isAdmin && !props.isReadOnly}>
-            <Button
-              onClick={() =>
-                props.setDrawerContent(
-                  OrganizationDrawerContentType.AddNewTeamMemberDrawer,
-                )
-              }
-              data-testid="add-new-member-btn"
-            >
-              Add new member
-            </Button>
-          </Conditional>
+          <Flex>
+            <FlexItem>
+              <Conditional if={props.isAdmin && !props.isReadOnly}>
+                <Button
+                  onClick={() =>
+                    props.setDrawerContent(
+                      OrganizationDrawerContentType.AddNewTeamMemberDrawer,
+                    )
+                  }
+                  data-testid="add-new-member-btn"
+                >
+                  Add new member
+                </Button>
+              </Conditional>
+            </FlexItem>
+
+            <FlexItem>
+              <Conditional
+                if={
+                  props.displaySyncDirectory &&
+                  props.teamCanSync?.service == 'oidc'
+                }
+              >
+                <Button onClick={props.toggleOIDCTeamSyncModal}>
+                  Enable Directory Sync
+                </Button>
+              </Conditional>
+            </FlexItem>
+          </Flex>
           <ToolbarPagination
             itemsList={props.paginatedItems}
             perPage={props.perPage}
@@ -98,4 +115,8 @@ interface ManageMembersToolbarProps {
   setDrawerContent: (content: OrganizationDrawerContentType) => void;
   isReadOnly: boolean;
   isAdmin: boolean;
+  displaySyncDirectory: boolean;
+  isOIDCTeamSyncModalOpen: boolean;
+  toggleOIDCTeamSyncModal: () => void;
+  teamCanSync?: object;
 }
