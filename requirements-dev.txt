@@ -35,7 +35,7 @@ types-cryptography==3.3.23.2
 types-Deprecated==1.2.9.3
 types-beautifulsoup4==4.12.0.6
 types-docutils==0.20.0.3
-types-enum34==1.1.1
+types-enum34==1.1.8
 types-freezegun==1.1.10
 types-futures==3.3.1
 types-geoip2==3.0.0
