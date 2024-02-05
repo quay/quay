@@ -153,7 +153,6 @@ class OCIIndex(ManifestListInterface):
                             ],
                         },
                     },
-                    additional_required=[INDEX_PLATFORM_KEY],
                 ),
             },
             INDEX_ANNOTATIONS_KEY: {
