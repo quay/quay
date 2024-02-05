@@ -1,5 +1,6 @@
 import datetime
 import json
+from contextlib import nullcontext as does_not_raise
 
 import pytest
 from dateutil.tz import tzutc
@@ -120,7 +121,7 @@ def test_config_missing_required():
 
 def test_invalid_config():
     with pytest.raises(MalformedConfig):
-        OCIConfig(Bytes.for_string_or_unicode("{}"))
+        OCIConfig(Bytes.for_string_or_unicode('{"config": "invalid"}'))
 
 
 def test_artifact_registratioon():
@@ -149,3 +150,8 @@ def test_artifact_registratioon():
         "application/tar+gzip" in ADDITIONAL_LAYER_CONTENT_TYPES
         and ADDITIONAL_LAYER_CONTENT_TYPES.count("application/tar+gzip") == 1
     )
+
+
+def test_empty_config():
+    with does_not_raise(MalformedConfig):
+        OCIConfig(Bytes.for_string_or_unicode("{}"))

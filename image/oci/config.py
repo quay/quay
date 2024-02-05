@@ -205,6 +205,12 @@ class OCIConfig(object):
         except ValueError as ve:
             raise MalformedConfig("malformed config data: %s" % ve)
 
+        # If the config is empty, we don't need to parse it
+        # this is possible if the user is pushing an artifact that is not an image
+        # where `config.mediaType` defines the type of artifact
+        if self._parsed == {}:
+            return
+
         try:
             validate_schema(self._parsed, OCIConfig.METASCHEMA)
         except ValidationError as ve:
