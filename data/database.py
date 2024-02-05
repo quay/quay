@@ -748,6 +748,7 @@ class User(BaseModel):
                     OrganizationRhSkus,
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
+                    RepositoryAutoPrunePolicy,
                 }
                 | appr_classes
                 | v22_classes

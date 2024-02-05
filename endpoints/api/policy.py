@@ -7,6 +7,7 @@ from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data import model
+from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     allow_if_superuser,
@@ -15,6 +16,7 @@ from endpoints.api import (
     path_param,
     request_error,
     require_scope,
+    require_repo_admin,
     require_user_admin,
     resource,
     show_if,
@@ -229,6 +231,92 @@ class OrgAutoPrunePolicy(ApiResource):
         )
 
         return {"uuid": policy_uuid}, 200
+
+
+@resource("/v1/repository/<apirepopath:repository>/autoprunepolicy/")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@show_if(features.AUTO_PRUNE)
+class RepositoryAutoPrunePolicies(ApiResource):
+    """
+    Resource for listing and creating repository auto-prune policies
+    """
+
+    schemas = {
+        "AutoPrunePolicyConfig": {
+            "type": "object",
+            "description": "The policy configuration that is to be applied to the repository",
+            "required": ["method", "value"],
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "The method to use for pruning tags (number_of_tags, creation_date)",
+                },
+                "value": {
+                    "type": ["integer", "string"],
+                    "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
+                },
+            },
+        },
+    }
+
+    @require_repo_admin(allow_for_superuser=True)
+    # @require_scope(scopes.ORG_ADMIN)
+    @nickname("listRepositoryAutoPrunePolicies")
+    def get(self, namespace, repository):
+        """
+        Lists the auto-prune policies for the repository
+        """         
+
+        policies = model.autoprune.get_namespace_autoprune_policies_by_reponame(repository)
+
+        return {"policies": [policy.get_view() for policy in policies]}
+
+    @require_scope(scopes.ORG_ADMIN)
+    @validate_json_request("AutoPrunePolicyConfig")
+    @nickname("createRepositoryAutoPrunePolicy")
+    def post(self, namespace, repository,):
+        """
+        Creates an auto-prune policy for the repository
+        """
+        if registry_model.lookup_repository(namespace, repository) is None:
+            raise NotFound()
+
+        app_data = request.get_json()
+        method = app_data.get("method", None)
+        value = app_data.get("value", None)
+
+        if method is None or value is None:
+            request_error(message="Missing the following parameters: method, value")
+
+        policy_config = {
+            "method": method,
+            "value": value,
+        }
+
+        try:
+            policy = model.autoprune.create_repository_autoprune_policy(
+                namespace, repository, policy_config, create_task=True
+            )
+        except model.InvalidRepositoryException:
+            raise NotFound()
+        except model.InvalidRepositoryAutoPrunePolicy as ex:
+            request_error(ex)
+        except model.RepositoryAutoPrunePolicyAlreadyExists as ex:
+            request_error(ex)
+
+        log_action(
+            "create_repository_autoprune_policy",
+            namespace,
+            {
+                "method": policy_config["method"],
+                "value": policy_config["value"],
+                "namespace": namespace,
+                "repo": repository,
+            },
+             repo_name=repository,
+        )
+
+        return {"uuid": policy.uuid}, 201
 
 
 @resource("/v1/user/autoprunepolicy/")

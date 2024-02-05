@@ -37,14 +37,14 @@ class AutoPruneWorker(Worker):
             )
 
             try:
-                policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
-                if not policies:
+                ns_policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
+                if not ns_policies:
                     # When implementing repo policies, fetch repo policies before deleting the task
                     delete_autoprune_task(autoprune_task)
                     continue
 
                 execute_namespace_polices(
-                    policies,
+                    ns_policies,
                     autoprune_task.namespace,
                     FETCH_REPOSITORIES_PAGE_LIMIT,
                     FETCH_TAGS_PAGE_LIMIT,

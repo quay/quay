@@ -116,10 +116,25 @@ def get_namespace_autoprune_policies_by_orgname(orgname):
     )
     return [NamespaceAutoPrunePolicy(row) for row in query]
 
+def get_namespace_autoprune_policies_by_reponame(repository):
+    """
+    Get the autopruning policies for the specified repository.
+    """
+    pass
+
 
 def get_namespace_autoprune_policies_by_id(namespace_id):
     """
     Get the autopruning policies for the namespace by id.
+    """
+    query = NamespaceAutoPrunePolicyTable.select().where(
+        NamespaceAutoPrunePolicyTable.namespace == namespace_id,
+    )
+    return [NamespaceAutoPrunePolicy(row) for row in query]
+
+def get_repository_autoprune_policies_by_namespaceid(namespace_id):
+    """
+    Get repository autopruning policies for the namespace by id.
     """
     query = NamespaceAutoPrunePolicyTable.select().where(
         NamespaceAutoPrunePolicyTable.namespace == namespace_id,
@@ -147,6 +162,34 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
     """
     Creates the namespace auto-prune policy. If create_task is True, then it will also create
     the auto-prune task for the namespace. This will be used to run the auto-prune task. Deletion
+    of the task will be handled by the autoprune worker.
+    """
+
+    with db_transaction():
+        namespace = get_active_namespace_user_by_username(orgname)
+        namespace_id = namespace.id
+
+        if namespace_has_autoprune_policy(namespace_id):
+            raise NamespaceAutoPrunePolicyAlreadyExists(
+                "Policy for this namespace already exists, delete existing to create new policy"
+            )
+
+        assert_valid_namespace_autoprune_policy(policy_config)
+
+        new_policy = NamespaceAutoPrunePolicyTable.create(
+            namespace=namespace_id, policy=json.dumps(policy_config)
+        )
+
+        if create_task and not namespace_has_autoprune_task(namespace_id):
+            create_autoprune_task(namespace_id)
+
+        return new_policy
+    
+
+def create_repository_autoprune_policy(namespace, repository, policy_config, create_task=False):
+    """
+    Creates the repository auto-prune policy. If create_task is True, then it will also create
+    the auto-prune task for the repository. This will be used to run the auto-prune task. Deletion
     of the task will be handled by the autoprune worker.
     """
 
