@@ -72,7 +72,7 @@
     "copy-webpack-plugin": "^10.2.4",
     "css-loader": "^6.8.1",
     "css-minimizer-webpack-plugin": "^5.0.1",
-    "dotenv-webpack": "^7.1.0",
+    "dotenv-webpack": "^8.0.1",
     "eslint": "^8.56.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^9.0.0",
