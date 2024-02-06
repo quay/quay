@@ -17,7 +17,7 @@ export default function Builds(props: BuildsProps) {
   }
 
   if (isError) {
-    return <RequestError message={error as string} />;
+    return <RequestError message={error.toString()} />;
   }
 
   return (

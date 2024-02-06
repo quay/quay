@@ -171,7 +171,6 @@ export function useGitSources(
   triggerUuid: string,
   gitNamespaceId: string,
 ) {
-  console.log(gitNamespaceId);
   const {data, isError, error, isLoading} = useQuery(
     ['sources', org, repo, triggerUuid, gitNamespaceId],
     () => fetchSources(org, repo, triggerUuid, gitNamespaceId),

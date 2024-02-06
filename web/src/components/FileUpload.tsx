@@ -16,6 +16,9 @@ export default function FileUpload(props: FileUploadProps) {
   const handleClear = () => {
     setFilename('');
     props.onValueChange('');
+    if (!isNullOrUndefined(props.onClear)) {
+      props.onClear();
+    }
   };
 
   const handleFileReadStarted = (_event: DropEvent, _fileHandle: File) => {
@@ -49,4 +52,5 @@ interface FileUploadProps {
   id?: string;
   value: string | File;
   onValueChange: (value: string | File) => void;
+  onClear?: () => void;
 }

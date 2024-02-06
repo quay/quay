@@ -68,7 +68,6 @@ export default function DockerfileUploadBuild(
       addAlert({
         variant: AlertVariant.Failure,
         title: `Failed to start build`,
-        message: error.toString(),
       });
     },
   });
@@ -78,7 +77,7 @@ export default function DockerfileUploadBuild(
     return (
       <Alert
         variant={PFAlertVariant.danger}
-        title={`Failed to verify robot account permissions: ${errorLoadingTransitivePermissions.toString()}`}
+        title="Failed to verify robot account permissions"
       />
     );
   }
@@ -86,7 +85,7 @@ export default function DockerfileUploadBuild(
     return (
       <Alert
         variant={PFAlertVariant.danger}
-        title={`Failed to load robot accounts for private base image: ${error.toString()}`}
+        title="Failed to load robot accounts for private base image"
       />
     );
   }
@@ -101,13 +100,17 @@ export default function DockerfileUploadBuild(
     }
     setValue(value);
   };
-
   return (
     <>
       <FileUpload
         id="dockerfile-upload"
         value={value}
         onValueChange={onFileUpload}
+        onClear={() => {
+          setValue('');
+          setPrivatRepo(null);
+          setSelectedRobot(null);
+        }}
       />
       <p>Please select a Dockerfile</p>
       <Conditional
@@ -201,7 +204,14 @@ export default function DockerfileUploadBuild(
       <br />
       <br />
       <Button
-        isDisabled={isNullOrUndefined(value)}
+        isDisabled={
+          isNullOrUndefined(value) ||
+          value === '' ||
+          (isNullOrUndefined(selectedRobot) &&
+            !isNullOrUndefined(privateRepo) &&
+            !isNullOrUndefined(repoDetails) &&
+            !repoDetails.is_public)
+        }
         onClick={() =>
           startBuild({dockerfileContent: value, robot: selectedRobot})
         }

@@ -37,15 +37,16 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
     >
       View Credentials
     </DropdownItem>,
-    <DropdownItem
-      key="run-trigger-action"
-      onClick={() => {
-        setIsOpen(false);
-        setIsManuallyStartTriggerOpen(true);
-      }}
-    >
-      Run Trigger Now
-    </DropdownItem>,
+    <Conditional key="run-trigger-action" if={props.trigger?.enabled}>
+      <DropdownItem
+        onClick={() => {
+          setIsOpen(false);
+          setIsManuallyStartTriggerOpen(true);
+        }}
+      >
+        Run Trigger Now
+      </DropdownItem>
+    </Conditional>,
     <DropdownItem
       key="toggle-trigger-action"
       onClick={() => {

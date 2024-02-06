@@ -70,6 +70,7 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
     <Modal
       id="manually-start-build-modal"
       isOpen={props.isOpen}
+      aria-label="Manually Start Build"
       onClose={() => props.onClose()}
       variant={ModalVariant.medium}
       actions={[

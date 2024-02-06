@@ -17,9 +17,11 @@ import DockerfileUploadBuild from './BuildHistoryStartBuildModalUploadDockerfile
 
 export default function StartBuildModal(props: StartNewBuildModalProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
+  const activteTriggers = props.triggers.filter((trigger) => trigger.is_active);
   return (
     <Modal
       id="start-build-modal"
+      aria-label="Start a new build modal"
       isOpen={props.isOpen}
       onClose={() => props.onClose()}
       variant={ModalVariant.medium}
@@ -54,21 +56,21 @@ export default function StartBuildModal(props: StartNewBuildModalProps) {
               </Tr>
             </Thead>
             <Tbody>
-              <Conditional if={props.triggers?.length === 0}>
+              <Conditional if={activteTriggers?.length === 0}>
                 <Tr>
                   <Td colSpan={3}>
                     <p>No build triggers available for this repository.</p>
                   </Td>
                 </Tr>
               </Conditional>
-              {props.triggers.map((trigger) => (
+              {activteTriggers.map((trigger) => (
                 <Tr key={trigger.id}>
                   <Td>
                     <BuildTriggerDescription trigger={trigger} />
                   </Td>
                   <Td>{trigger?.config?.branchtag_regex || 'All'}</Td>
                   <Td>
-                    <Conditional if={trigger.can_invoke}>
+                    <Conditional if={trigger.can_invoke && trigger.enabled}>
                       <a onClick={() => props.onSelectTrigger(trigger)}>
                         Run Trigger Now
                       </a>
@@ -77,6 +79,9 @@ export default function StartBuildModal(props: StartNewBuildModalProps) {
                       <Tooltip content="You do not have permission to run this trigger">
                         <span>No permission to run</span>
                       </Tooltip>
+                    </Conditional>
+                    <Conditional if={!trigger.enabled}>
+                      <span>Trigger Disabled</span>
                     </Conditional>
                   </Td>
                 </Tr>

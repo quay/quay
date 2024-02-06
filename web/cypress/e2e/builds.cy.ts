@@ -464,7 +464,7 @@ describe('Repository Builds', () => {
     }).as('getBuildTriggers');
     cy.intercept(
       'PUT',
-      '/api/v1/repository/testorg/testrepo/trigger/gitlab82-9fd5-4005-bc95-d3156855f0d5',
+      '/api/v1/repository/testorg/testrepo/trigger/disabled-9fd5-4005-bc95-d3156855f0d5',
       {
         statusCode: 200,
       },
@@ -473,7 +473,7 @@ describe('Repository Builds', () => {
     cy.visit('/repository/testorg/testrepo?tab=builds');
     cy.contains(
       'tr',
-      'push to GitLab repository testgitorg/testgitrepo',
+      'push to GitLab repository testgitorg/disabledrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
       cy.contains('Enable Trigger').click();

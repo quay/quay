@@ -79,6 +79,32 @@
         "hook_id": 12345496
       },
       "can_invoke": true,
+      "enabled": true,
+      "disabled_reason": "user_toggled"
+    },
+    {
+      "id": "disabled-9fd5-4005-bc95-d3156855f0d5",
+      "service": "gitlab",
+      "is_active": true,
+      "build_source": "testgitorg/disabledrepo",
+      "repository_url": "https://gitlab.com/testgitorg/disabledrepo",
+      "config": {
+        "build_source": "testgitorg/disabledrepo",
+        "dockerfile_path": "/application/Dockerfile",
+        "context": "/",
+        "default_tag_from_ref": false,
+        "latest_for_default_branch": false,
+        "tag_templates": [],
+        "credentials": [
+          {
+            "name": "SSH Public Key",
+            "value": "fakekey"
+          }
+        ],
+        "key_id": 12349342,
+        "hook_id": 12345496
+      },
+      "can_invoke": true,
       "enabled": false,
       "disabled_reason": "user_toggled"
     }

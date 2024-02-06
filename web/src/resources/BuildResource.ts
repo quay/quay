@@ -290,7 +290,6 @@ export async function fetchSources(
   triggerUuid: string,
   gitNamespaceId: string,
 ) {
-  console.log(gitNamespaceId);
   const response: AxiosResponse<FetchSourcesResponse> = await axios.post(
     `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/sources`,
     {
