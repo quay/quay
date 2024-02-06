@@ -72,6 +72,9 @@ class ListRepositoryTags(RepositoryParamResource):
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
     @query_param(
+        "manifestDigest", "Fetch tag details specific to manifest digest.", type=str, default=""
+    )
+    @query_param(
         "filter_tag_name",
         "Syntax: <op>:<name> Filters the tag names based on the operation."
         "<op> can be 'like' or 'eq'.",
@@ -90,10 +93,17 @@ class ListRepositoryTags(RepositoryParamResource):
         page = max(1, parsed_args.get("page", 1))
         limit = min(100, max(1, parsed_args.get("limit", 50)))
         active_tags_only = parsed_args.get("onlyActiveTags")
+        manifest_digest = parsed_args.get("manifestDigest", None)
 
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
+
+        if manifest_digest and not specific_tag:
+            specific_tag = registry_model.fetch_tag_name_for_manifest_digest(
+                namespace, repository, manifest_digest
+            )
+
         try:
             history, has_more = registry_model.list_repository_tag_history(
                 repo_ref,

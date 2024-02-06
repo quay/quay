@@ -1078,6 +1078,12 @@ class OCIModel(RegistryDataInterface):
             repo_ref.id, tag_name, manifest_ref.id, include_submanifests, is_alive
         )
 
+    def fetch_tag_name_for_manifest_digest(self, namespace, repository, manifest_digest):
+        """
+        Returns corresponding tag name for a namespace/repository manifest digest
+        """
+        return oci.tag.fetch_tag_name_for_manifest_digest(namespace, repository, manifest_digest)
+
     def _get_manifest_local_blobs(self, manifest, repo_id, storage, include_placements=False):
         parsed = manifest.get_parsed_manifest()
         if parsed is None:

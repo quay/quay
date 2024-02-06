@@ -145,6 +145,7 @@ export async function getTags(
   page: number,
   limit = 100,
   specificTag = null,
+  manifestDigest = null,
   onlyActiveTags = true,
 ) {
   let path = `/api/v1/repository/${org}/${repo}/tag/?limit=${limit}&page=${page}`;
@@ -154,7 +155,9 @@ export async function getTags(
   if (specificTag) {
     path = path.concat(`&specificTag=${specificTag}`);
   }
-
+  if (manifestDigest) {
+    path = path.concat(`&manifestDigest=${manifestDigest}`);
+  }
   const urlSearchParams = new URLSearchParams(window.location.search);
   const urlParams = Object.fromEntries(urlSearchParams.entries());
   if (urlParams['filter_tag_name']) {
