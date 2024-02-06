@@ -201,6 +201,14 @@ class DockerSchema2ManifestList(ManifestListInterface):
         return self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY]
 
     @property
+    def artifact_type(self):
+        return None
+
+    @property
+    def subject(self):
+        return None
+
+    @property
     def manifest_dict(self):
         """
         Returns the manifest as a dictionary ready to be serialized to JSON.

@@ -47,7 +47,7 @@ def parse_manifest_from_bytes(
         return OCIManifest(manifest_bytes, ignore_unknown_mediatypes=ignore_unknown_mediatypes)
 
     if media_type == OCI_IMAGE_INDEX_CONTENT_TYPE:
-        return OCIIndex(manifest_bytes)
+        return OCIIndex(manifest_bytes, ignore_unknown_mediatypes=ignore_unknown_mediatypes)
 
     if media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
         return DockerSchema1Manifest(manifest_bytes, validate=validate)

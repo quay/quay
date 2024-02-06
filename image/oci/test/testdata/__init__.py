@@ -28,3 +28,5 @@ OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD = """{
     "com.example.key2": "value2"
   }
 }"""
+
+OCI_IMAGE_INDEX_MANIFEST_WITH_ARTIFACT_TYPE_AND_SUBJECT = '{"schemaVersion":2,"artifactType":"application/some.thing","manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:31dd947a0acb5d8b840dc0de40a74f336e08cb0e17ba951c2faaea6374c1a0f3","size":1334,"artifactType":"application/some.other.thing","platform":{"architecture":"amd64","os":"linux"}},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:4eca3b97fcd88a47c6454d0cb9ff59aeb4baeca332387e87421b2302bfc724e6","size":1334,"platform":{"architecture":"arm64","os":"linux"}},{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:dacec655f2712b6f5eabc007b154959bba7add6aafdcab883e314f16e491f9d3","size":1334,"platform":{"architecture":"ppc64le","os":"linux"}}],"subject":{"mediaType":"application/vnd.oci.image.config.v1+json","size":1334,"digest":"sha256:6416299892584b515393076863b75f192ca6cf98583d83b8e583ec3b6f2a8a5e"}}'
