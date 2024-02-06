@@ -14,6 +14,97 @@ describe('Usage Logs Export', () => {
     ],
   };
 
+  const logsResp = {
+    start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
+    end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
+    logs: [
+      {
+        kind: 'change_repo_visibility',
+        metadata: {
+          repo: 'testrepo',
+          namespace: 'projectquay',
+          visibility: 'public',
+        },
+        ip: '192.168.228.1',
+        datetime: 'Wed, 21 Feb 2024 17:33:07 -0000',
+        performer: {
+          kind: 'user',
+          name: 'mkok',
+          is_robot: false,
+          avatar: {
+            name: 'mkok',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+      {
+        kind: 'change_repo_visibility',
+        metadata: {
+          repo: 'testrepo',
+          namespace: 'projectquay',
+          visibility: 'private',
+        },
+        ip: '192.168.228.1',
+        datetime: 'Wed, 21 Feb 2024 17:33:04 -0000',
+        performer: {
+          kind: 'user',
+          name: 'mkok',
+          is_robot: false,
+          avatar: {
+            name: 'mkok',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+      {
+        kind: 'create_repo',
+        metadata: {
+          repo: 'testrepo',
+          namespace: 'projectquay',
+        },
+        ip: '192.168.228.1',
+        datetime: 'Wed, 21 Feb 2024 17:32:57 -0000',
+        performer: {
+          kind: 'user',
+          name: 'mkok',
+          is_robot: false,
+          avatar: {
+            name: 'mkok',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+      {
+        kind: 'org_create',
+        metadata: {
+          email: null,
+          namespace: 'projectquay',
+        },
+        ip: '192.168.228.1',
+        datetime: 'Wed, 21 Feb 2024 17:32:46 -0000',
+        performer: {
+          kind: 'user',
+          name: 'mkok',
+          is_robot: false,
+          avatar: {
+            name: 'mkok',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+    ],
+    next_page:
+      'gAAAAABl1jP3IfVFJNPZRJSB9YWXx0D8QXLXYmf8-0zZeqwV2dIM5gAsxdfaxGHUdS5FUsrm_8N1RIqm71EoagF1D9uwXh2agg==',
+  };
+
   beforeEach(() => {
     cy.exec('npm run quay:seed');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
@@ -62,5 +153,33 @@ describe('Usage Logs Export', () => {
       });
     cy.contains('Create Application').should('be.visible');
     cy.contains('Create organization').should('be.visible');
+  });
+
+  it('shows usage logs  table', () => {
+    cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
+    cy.visit('/organization/projectquay');
+    cy.contains('Logs').click();
+    cy.get('table')
+      .contains(
+        'td',
+        'Change visibility for repository projectquay/testrepo to public',
+      )
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains(
+        'td',
+        'Change visibility for repository projectquay/testrepo to private',
+      )
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains('td', 'Create Repository projectquay/testrepo')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains('td', 'Organization projectquay created')
+      .scrollIntoView()
+      .should('be.visible');
   });
 });

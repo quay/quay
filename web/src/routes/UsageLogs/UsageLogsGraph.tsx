@@ -10,7 +10,7 @@ import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
 import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
-import {logDescriptions} from './UsageLogs';
+import {logKinds} from './UsageLogs';
 
 interface UsageLogsGraphProps {
   starttime: string;
@@ -25,14 +25,22 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     data: aggregateLogs,
     isError: errorFetchingLogs,
     isLoading: loadingAggregateLogs,
-  } = useQuery(['aggregateLogs', props.org, props.repo], () => {
-    return getAggregateLogs(
-      props.org,
-      props.repo,
+  } = useQuery(
+    [
+      'usageLogs',
       props.starttime,
       props.endtime,
-    );
-  });
+      {org: props.org, repo: props.repo ? props.repo : 'isOrg', type: 'chart'},
+    ],
+    () => {
+      return getAggregateLogs(
+        props.org,
+        props.repo,
+        props.starttime,
+        props.endtime,
+      );
+    },
+  );
 
   if (loadingAggregateLogs) return <Spinner />;
   if (errorFetchingLogs) return <RequestError message="Unable to get logs" />;
@@ -45,7 +53,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
       aggregateLogs.forEach((log) => {
         logData[log.kind] = logData[log.kind] || [];
         logData[log.kind].push({
-          name: logDescriptions[log.kind],
+          name: logKinds[log.kind],
           x: new Date(log.datetime),
           y: log.count,
         });
@@ -61,8 +69,8 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     const legends = [];
     const logKeys = Object.keys(logData);
     logKeys.forEach((key) => {
-      if (logDescriptions[key]) {
-        legends.push({name: logDescriptions[key]});
+      if (logKinds[key]) {
+        legends.push({name: logKinds[key]});
       }
     });
     return legends;
