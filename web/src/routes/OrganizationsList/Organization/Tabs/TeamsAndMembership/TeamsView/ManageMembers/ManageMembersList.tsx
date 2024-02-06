@@ -322,6 +322,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       if (teamSyncInfo.service == 'oidc') {
         setOIDCGroupName(teamSyncInfo.config?.group_config.split(':')[1]);
       }
+      setPageInReadOnlyMode(true);
     }
   }, [teamSyncInfo]);
 
