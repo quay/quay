@@ -6,6 +6,8 @@ import {
   HelperText,
   HelperTextItem,
   FormSelect,
+  Flex,
+  FlexItem,
 } from '@patternfly/react-core';
 import ExportLogsModal from './UsageLogsExportModal';
 import './css/UsageLogs.scss';
@@ -80,18 +82,15 @@ export default function UsageLogs(props: UsageLogsProps) {
           value={'Start'}
           onChange={(_event, str, date) => {
             setLogStartDate(formatDate(str));
-            console.log('start date updated to ' + logStartDate);
-            useEffect(() => {
-              console.log('updated logStartDate: ', logStartDate);
-            }, [logStartDate]);
           }}
           validators={[rangeValidator]}
         />
+      </SplitItem>
+      <SplitItem>
         <DatePicker
           value={'End'}
           onChange={(_event, str, date) => {
             setLogEndDate(formatDate(str));
-            console.log('end date updated to ' + logEndDate);
           }}
           validators={[rangeValidator]}
         />

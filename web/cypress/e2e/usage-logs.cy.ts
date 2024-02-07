@@ -18,7 +18,7 @@ describe('Usage Logs Export', () => {
     cy.contains('Export').click();
     cy.get('[id="export-logs-callback"]').type('example@example.com');
     cy.contains('Confirm').click();
-    cy.get('[id="export-logs-success"]').should('be.visible');
+    cy.contains('Logs exported with id').should('be.visible');
   });
   it('exports repository logs failure', () => {
     cy.intercept(
@@ -30,6 +30,6 @@ describe('Usage Logs Export', () => {
     cy.contains('Export').click();
     cy.get('[id="export-logs-callback"]').type('blahblah');
     cy.contains('Confirm').click();
-    cy.get('[id="export-logs-error"]').should('be.visible');
+    cy.contains('Problem exporting logs').should('be.visible');
   });
 });

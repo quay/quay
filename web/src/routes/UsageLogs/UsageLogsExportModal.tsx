@@ -11,10 +11,9 @@ import {
   AlertGroup,
 } from '@patternfly/react-core';
 
-import {
-  exportLogsForOrg,
-  exportLogsForRepository,
-} from 'src/hooks/UseExportLogs';
+import {exportLogs} from 'src/hooks/UseExportLogs';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 export default function ExportLogsModal(props: ExportLogsModalProps) {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -22,29 +21,16 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
   const handleModalToggle = (_event: KeyboardEvent | React.MouseEvent) => {
     setIsModalOpen(!isModalOpen);
   };
-  const timeout = 8000;
-  const [alerts, setAlerts] = React.useState<React.ReactNode[]>([]);
+  const {addAlert} = useAlerts();
 
-  const exportLogs = (callback: string) => {
-    switch (props.type) {
-      case 'repository':
-        return exportLogsForRepository(
-          props.organization,
-          props.repository,
-          props.starttime,
-          props.endtime,
-          callback,
-        );
-      case 'org':
-        return exportLogsForOrg(
-          props.organization,
-          props.starttime,
-          props.endtime,
-          callback,
-        );
-      default:
-        break;
-    }
+  const exportLogsClick = (callback: string) => {
+    return exportLogs(
+      props.organization,
+      props.repository,
+      props.starttime,
+      props.endtime,
+      callback,
+    );
   };
 
   return (
@@ -62,35 +48,19 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
             key="confirm"
             variant="primary"
             onClick={() =>
-              exportLogs(callbackEmailOrUrl).then((response) => {
+              exportLogsClick(callbackEmailOrUrl).then((response) => {
                 if (response['export_id']) {
-                  setAlerts(() => {
-                    return [
-                      <Alert
-                        key={response['export_id']}
-                        variant="success"
-                        title="Success"
-                        id="export-logs-success"
-                        timeout={timeout}
-                      >
-                        exported with id {response['export_id']}
-                      </Alert>,
-                    ];
+                  addAlert({
+                    variant: AlertVariant.Success,
+                    title: `Logs exported with id ${response['export_id']}`,
                   });
+                  setIsModalOpen(false);
                 } else {
-                  setAlerts(() => {
-                    return [
-                      <Alert
-                        key={response['error_type']}
-                        variant="danger"
-                        title="Error"
-                        id="export-logs-error"
-                        timeout={timeout}
-                      >
-                        problem exporting logs: {response['error_message']}
-                      </Alert>,
-                    ];
+                  addAlert({
+                    variant: AlertVariant.Failure,
+                    title: `Problem exporting logs: ${response['error_message']}`,
                   });
+                  setIsModalOpen(false);
                 }
               })
             }
@@ -124,9 +94,6 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
             time for each namespace. Additional export requests will be queued.{' '}
           </HelperTextItem>
         </HelperText>
-        <AlertGroup isToast isLiveRegion>
-          {alerts}
-        </AlertGroup>
       </Modal>
     </React.Fragment>
   );
