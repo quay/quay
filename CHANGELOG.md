@@ -3,8 +3,11 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.4"></a>
+## [v3.10.4] - 0001-01-01
+
 <a name="v3.10.3"></a>
-## [v3.10.3] - 2024-01-18
+## [v3.10.3] - 2024-01-23
 ### [Redhat-3.10] Fix
 - [4dd833ad](https://github.com/quay/quay/commit/4dd833adf16cc3bcd2530028bfb60c5a8d80ac20): pull-through should tolerate missing tag (PROJQUAY-4849) ([#2617](https://github.com/quay/quay/issues/2617))
 ### [Redhat-3.10] Ui
@@ -750,6 +753,16 @@
 ### Pull Requests
 - Merge pull request [#2069](https://github.com/quay/quay/issues/2069) from dmage/merge-config-tool-3.9
 
+
+<a name="v3.8.15"></a>
+## [v3.8.15] - 2024-01-24
+### Reconfigure
+- [2d351213](https://github.com/quay/quay/commit/2d35121397f1b369fc2dde79f7631f79527cbfaa): Add auth to comit to operator endpoint (PROJQUAY-6598) ([#2631](https://github.com/quay/quay/issues/2631))
+
+<a name="v3.8.14"></a>
+## [v3.8.14] - 2023-11-02
+### [Redhat-3.8] Build(Deps)
+- [d4df6b53](https://github.com/quay/quay/commit/d4df6b532238371107f2a05e34adb6c39e078cb2): bump golang.org/x/net from 0.13.0 to 0.17.0 (PROJQUAY-6208) ([#2447](https://github.com/quay/quay/issues/2447))
 
 <a name="v3.8.13"></a>
 ## [v3.8.13] - 2023-10-10
@@ -1915,7 +1928,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.3...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.4...HEAD
+[v3.10.4]: https://github.com/quay/quay/compare/v3.10.3...v3.10.4
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
@@ -1926,7 +1940,9 @@
 [v3.9.3]: https://github.com/quay/quay/compare/v3.9.2...v3.9.3
 [v3.9.2]: https://github.com/quay/quay/compare/v3.9.1...v3.9.2
 [v3.9.1]: https://github.com/quay/quay/compare/v3.9.0...v3.9.1
-[v3.9.0]: https://github.com/quay/quay/compare/v3.8.13...v3.9.0
+[v3.9.0]: https://github.com/quay/quay/compare/v3.8.15...v3.9.0
+[v3.8.15]: https://github.com/quay/quay/compare/v3.8.14...v3.8.15
+[v3.8.14]: https://github.com/quay/quay/compare/v3.8.13...v3.8.14
 [v3.8.13]: https://github.com/quay/quay/compare/v3.8.12...v3.8.13
 [v3.8.12]: https://github.com/quay/quay/compare/v3.8.11...v3.8.12
 [v3.8.11]: https://github.com/quay/quay/compare/v3.8.10...v3.8.11
