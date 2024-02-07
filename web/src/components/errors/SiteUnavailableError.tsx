@@ -23,7 +23,8 @@ export default function SiteUnavailableError() {
           <EmptyStateBody>
             Try refreshing the page. If the problem persists, contact your
             organization administrator or visit our{' '}
-            <a href="https://status.quay.io/">status page</a> for known outages.
+            <a href="https://status.redhat.com">status page</a> for known
+            outages.
           </EmptyStateBody>
           <EmptyStateFooter>
             <Button title="Home" onClick={() => window.location.reload()}>

@@ -22,6 +22,8 @@ import axiosIns from 'src/libs/axios';
 import Alerts from './Alerts';
 import OverviewList from './OverviewList/OverviewList';
 import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedirect';
+import Conditional from 'src/components/empty/Conditional';
+import RegistryStatus from './RegistryStatus';
 
 const NavigationRoutes = [
   {
@@ -102,6 +104,11 @@ export function StandaloneMain() {
             </FlexItem>
           </Flex>
         </Banner>
+        <Conditional if={quayConfig?.features?.BILLING}>
+          <ErrorBoundary fallback={<>Error loading registry status</>}>
+            <RegistryStatus />
+          </ErrorBoundary>
+        </Conditional>
         <Alerts />
         <Routes>
           <Route index element={<Navigate to="/organization" replace />} />

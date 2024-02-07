@@ -1,0 +1,168 @@
+{
+  "page": {
+    "id": "dn6mqn7xvzz3",
+    "name": "Red Hat",
+    "url": "https://status.redhat.com",
+    "time_zone": "America/New_York",
+    "updated_at": "2024-02-06T12:27:50.519-05:00"
+  },
+  "components": [
+    {
+      "id": "cllr1k2dzsf7",
+      "name": "Quay.io",
+      "status": "major_outage",
+      "created_at": "2024-01-16T15:36:01.802-05:00",
+      "updated_at": "2024-01-16T16:57:38.322-05:00",
+      "position": 16,
+      "description": null,
+      "showcase": false,
+      "start_date": null,
+      "group_id": null,
+      "page_id": "dn6mqn7xvzz3",
+      "group": true,
+      "only_show_if_degraded": false,
+      "components": [
+        "m65lxn2nf6l0",
+        "6fb8zflt4fbt",
+        "fvnvxz75h3m2",
+        "02hhmtl31chv",
+        "4y37q0jspj5n"
+      ]
+    },
+    {
+      "id": "m65lxn2nf6l0",
+      "name": "API",
+      "status": "major_outage",
+      "created_at": "2024-01-16T15:36:01.876-05:00",
+      "updated_at": "2024-01-16T15:36:01.876-05:00",
+      "position": 1,
+      "description": null,
+      "showcase": false,
+      "start_date": "2024-01-16",
+      "group_id": "cllr1k2dzsf7",
+      "page_id": "dn6mqn7xvzz3",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "6fb8zflt4fbt",
+      "name": "Build System",
+      "status": "partial_outage",
+      "created_at": "2024-01-16T15:38:09.519-05:00",
+      "updated_at": "2024-01-16T15:38:09.519-05:00",
+      "position": 2,
+      "description": null,
+      "showcase": false,
+      "start_date": "2024-01-16",
+      "group_id": "cllr1k2dzsf7",
+      "page_id": "dn6mqn7xvzz3",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "fvnvxz75h3m2",
+      "name": "Registry",
+      "status": "operational",
+      "created_at": "2024-01-16T15:38:30.060-05:00",
+      "updated_at": "2024-01-16T15:38:30.060-05:00",
+      "position": 3,
+      "description": null,
+      "showcase": false,
+      "start_date": "2024-01-16",
+      "group_id": "cllr1k2dzsf7",
+      "page_id": "dn6mqn7xvzz3",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "02hhmtl31chv",
+      "name": "Frontend",
+      "status": "operational",
+      "created_at": "2024-01-16T15:38:44.726-05:00",
+      "updated_at": "2024-01-16T15:38:44.726-05:00",
+      "position": 4,
+      "description": null,
+      "showcase": false,
+      "start_date": "2024-01-16",
+      "group_id": "cllr1k2dzsf7",
+      "page_id": "dn6mqn7xvzz3",
+      "group": false,
+      "only_show_if_degraded": false
+    },
+    {
+      "id": "4y37q0jspj5n",
+      "name": "Security Scanning",
+      "status": "operational",
+      "created_at": "2024-01-16T15:38:59.314-05:00",
+      "updated_at": "2024-01-16T15:38:59.314-05:00",
+      "position": 5,
+      "description": null,
+      "showcase": false,
+      "start_date": "2024-01-16",
+      "group_id": "cllr1k2dzsf7",
+      "page_id": "dn6mqn7xvzz3",
+      "group": false,
+      "only_show_if_degraded": false
+    }
+  ],
+  "incidents": [
+    {
+      "name": "incident1",
+      "shortlink": "https://stspg.io/incident1",
+      "components": [
+        {
+          "id": "m65lxn2nf6l0"
+        },
+        {
+          "id": "6fb8zflt4fbt"
+        }
+      ]
+    },
+    {
+      "name": "incident2",
+      "shortlink": "https://stspg.io/incident2",
+      "components": [
+        {
+          "id": "m65lxn2nf6l0"
+        },
+        {
+          "id": "6fb8zflt4fbt"
+        }
+      ]
+    }
+  ],
+  "scheduled_maintenances": [
+    {
+      "status": "scheduled",
+      "name": "maintenance1",
+      "shortlink": "https://stspg.io/maintenance1",
+      "components": [
+        {
+          "id": "m65lxn2nf6l0"
+        },
+        {
+          "id": "6fb8zflt4fbt"
+        }
+      ],
+      "scheduled_for": "2024-02-09T10:00:00.000-05:00"
+    },
+    {
+      "name": "maintenance2",
+      "status": "in_progress",
+      "shortlink": "https://stspg.io/maintenance2",
+      "components": [
+        {
+          "id": "m65lxn2nf6l0"
+        },
+        {
+          "id": "6fb8zflt4fbt"
+        }
+      ],
+      "scheduled_for": "2024-02-09T10:00:00.000-05:00"
+    }
+  ],
+  "status": {
+    "indicator": "none",
+    "description": "All Systems Operational"
+  }
+}
