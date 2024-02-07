@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+import {formatDate} from '../../src/libs/utils';
 
 describe('Default permissions page', () => {
   beforeEach(() => {
@@ -28,7 +29,7 @@ describe('Default permissions page', () => {
       'href',
       'https://stspg.io/incident2',
     );
-    cy.contains('Scheduled for Feb 9, 2024, 10:00 AM:');
+    cy.contains(`Scheduled for ${formatDate('2024-02-09T10:00:00.000-05:00')}`);
     cy.contains('maintenance1').should(
       'have.attr',
       'href',
