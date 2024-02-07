@@ -142,7 +142,7 @@ export default function Organization() {
           type="org"
         />
       ),
-      visible: organization?.is_admin || isUserOrganization,
+      visible: organization?.is_admin || !isUserOrganization,
     },
     {
       name: 'Settings',
