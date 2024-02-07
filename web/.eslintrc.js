@@ -18,7 +18,7 @@ module.exports = {
     },
   },
   plugins: ['import', 'react', '@typescript-eslint', 'prettier'],
-  ignorePatterns: ['*.md', '**/*.css', '**/*.scss', '*.svg', '*.png'],
+  ignorePatterns: ['*.md', '**/*.css', '**/*.scss', '*.svg', '*.png', '*.html'],
   rules: {
     'react/react-in-jsx-scope': 'off',
     'prettier/prettier': ['error'],
