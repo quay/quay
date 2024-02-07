@@ -1,34 +1,29 @@
-import {
-  Page,
-  PageSection,
-  PageSectionVariants,
-  Title,
-} from '@patternfly/react-core';
-import {useSearchParams, useLocation} from 'react-router-dom';
-import {useState, useEffect} from 'react';
-import TagArchSelect from './TagDetailsArchSelect';
-import TagTabs from './TagDetailsTabs';
-import {
-  TagsResponse,
-  getTags,
-  getManifestByDigest,
-  Tag,
-  ManifestByDigestResponse,
-} from 'src/resources/TagResource';
-import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
-import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
-import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import RequestError from 'src/components/errors/RequestError';
+import {PageSection, PageSectionVariants, Title} from '@patternfly/react-core';
+import {useEffect, useState} from 'react';
+import {useLocation, useSearchParams} from 'react-router-dom';
 import {useResetRecoilState} from 'recoil';
 import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
+import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import ErrorBoundary from 'src/components/errors/ErrorBoundary';
+import RequestError from 'src/components/errors/RequestError';
+import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
+import {
+  ManifestByDigestResponse,
+  Tag,
+  TagsResponse,
+  getManifestByDigest,
+  getTags,
+} from 'src/resources/TagResource';
 import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
 } from '../../libs/utils';
+import TagArchSelect from './TagDetailsArchSelect';
+import TagTabs from './TagDetailsTabs';
 
 export default function TagDetails() {
   const [searchParams] = useSearchParams();
@@ -112,23 +107,23 @@ export default function TagDetails() {
   }, []);
 
   return (
-    <Page>
+    <>
       <QuayBreadcrumb />
-      <PageSection
-        variant={PageSectionVariants.light}
-        className="no-padding-bottom"
-      >
-        <Title headingLevel="h1">{tag}</Title>
+      <PageSection variant={PageSectionVariants.light}>
+        <Title headingLevel="h1">
+          {repo}:{tag}
+        </Title>
         <TagArchSelect
           digest={digest}
           options={tagDetails.manifest_list?.manifests}
           setDigest={setDigest}
           render={tagDetails.is_manifest_list}
+          style={{marginTop: 'var(--pf-v5-global--spacer--md)'}}
         />
       </PageSection>
       <PageSection
         variant={PageSectionVariants.light}
-        className="no-padding-on-sides"
+        padding={{default: 'noPadding'}}
       >
         <ErrorBoundary
           hasError={isErrorString(err)}
@@ -143,6 +138,6 @@ export default function TagDetails() {
           />
         </ErrorBoundary>
       </PageSection>
-    </Page>
+    </>
   );
 }

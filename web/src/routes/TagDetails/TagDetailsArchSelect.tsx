@@ -23,7 +23,7 @@ export default function ArchSelect(props: ArchSelectProps) {
   if (!props.render) return null;
 
   return (
-    <Flex>
+    <Flex style={props.style ? props.style : undefined}>
       <FlexItem>Architecture</FlexItem>
       <FlexItem>
         <Select
@@ -67,4 +67,5 @@ type ArchSelectProps = {
   options: Manifest[];
   setDigest: (digest: string) => void;
   render: boolean;
+  style?: React.CSSProperties;
 };

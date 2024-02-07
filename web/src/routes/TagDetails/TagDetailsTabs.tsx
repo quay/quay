@@ -34,6 +34,7 @@ export default function TagTabs(props: TagTabsProps) {
       onSelect={(e, tabIndex) => {
         navigate(`${location.pathname}?tab=${tabIndex}`);
       }}
+      usePageInsets={true}
     >
       <Tab
         eventKey={TabIndex.Details}

@@ -1,14 +1,8 @@
-import {
-  Page,
-  PageSection,
-  PageSectionVariants,
-  Title,
-} from '@patternfly/react-core';
-import * as React from 'react';
+import {PageSection, PageSectionVariants, Title} from '@patternfly/react-core';
 
 export default function Search() {
   return (
-    <Page>
+    <>
       <PageSection variant={PageSectionVariants.light} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Search</Title>
@@ -18,6 +12,6 @@ export default function Search() {
       <PageSection>
         <PageSection variant={PageSectionVariants.light}></PageSection>
       </PageSection>
-    </Page>
+    </>
   );
 }

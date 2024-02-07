@@ -2,7 +2,6 @@ import {
   Drawer,
   DrawerContent,
   DrawerContentBody,
-  Page,
   PageSection,
   PageSectionVariants,
   Tab,
@@ -10,19 +9,19 @@ import {
   TabTitleText,
   Title,
 } from '@patternfly/react-core';
-import {useParams, useSearchParams} from 'react-router-dom';
 import {useCallback, useRef, useState} from 'react';
-import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
-import Settings from './Tabs/Settings/Settings';
+import {useParams, useSearchParams} from 'react-router-dom';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
-import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
+import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
+import Settings from './Tabs/Settings/Settings';
+import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
+import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 
 export enum OrganizationDrawerContentType {
   None,
@@ -155,35 +154,37 @@ export default function Organization() {
     >
       <DrawerContent panelContent={drawerContentOptions[drawerContent]}>
         <DrawerContentBody>
-          <Page>
-            <QuayBreadcrumb />
-            <PageSection
-              variant={PageSectionVariants.light}
-              className="no-padding-bottom"
+          <QuayBreadcrumb />
+          <PageSection
+            variant={PageSectionVariants.light}
+            className="no-padding-bottom"
+          >
+            <Title data-testid="repo-title" headingLevel="h1">
+              {organizationName}
+            </Title>
+          </PageSection>
+          <PageSection
+            variant={PageSectionVariants.light}
+            padding={{default: 'noPadding'}}
+          >
+            <Tabs
+              activeKey={activeTabKey}
+              onSelect={onTabSelect}
+              usePageInsets={true}
             >
-              <Title data-testid="repo-title" headingLevel="h1">
-                {organizationName}
-              </Title>
-            </PageSection>
-            <PageSection
-              variant={PageSectionVariants.light}
-              padding={{default: 'noPadding'}}
-            >
-              <Tabs activeKey={activeTabKey} onSelect={onTabSelect}>
-                {repositoriesSubNav
-                  .filter((nav) => nav.visible)
-                  .map((nav) => (
-                    <Tab
-                      key={nav.name}
-                      eventKey={nav.name.replace(/ /g, '')}
-                      title={<TabTitleText>{nav.name}</TabTitleText>}
-                    >
-                      {nav.component}
-                    </Tab>
-                  ))}
-              </Tabs>
-            </PageSection>
-          </Page>
+              {repositoriesSubNav
+                .filter((nav) => nav.visible)
+                .map((nav) => (
+                  <Tab
+                    key={nav.name}
+                    eventKey={nav.name.replace(/ /g, '')}
+                    title={<TabTitleText>{nav.name}</TabTitleText>}
+                  >
+                    {nav.component}
+                  </Tab>
+                ))}
+            </Tabs>
+          </PageSection>
         </DrawerContentBody>
       </DrawerContent>
     </Drawer>
