@@ -7,8 +7,6 @@ import {
   TextInput,
   HelperText,
   HelperTextItem,
-  Alert,
-  AlertGroup,
 } from '@patternfly/react-core';
 
 import {exportLogs} from 'src/hooks/UseExportLogs';
@@ -18,6 +16,9 @@ import {AlertVariant} from 'src/atoms/AlertState';
 export default function ExportLogsModal(props: ExportLogsModalProps) {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [callbackEmailOrUrl, setCallbackEmailOrUrl] = React.useState('');
+  const [userInputValidated, setUserInputValidated] = React.useState<
+    'success' | 'warning' | 'error' | 'default'
+  >('default');
   const handleModalToggle = (_event: KeyboardEvent | React.MouseEvent) => {
     setIsModalOpen(!isModalOpen);
   };
@@ -33,9 +34,22 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
     );
   };
 
+  const validateUserInput = (userInput: string) => {
+    return /(http(s)?:.+)|.+@.+/.test(userInput);
+  };
+
+  const validateDate = () => {
+    if (new Date(props.endtime) < new Date(props.starttime)) return false;
+    return true;
+  };
+
   return (
     <React.Fragment>
-      <Button variant="primary" onClick={handleModalToggle}>
+      <Button
+        variant="primary"
+        onClick={handleModalToggle}
+        isDisabled={!validateDate()}
+      >
         Export
       </Button>
       <Modal
@@ -64,6 +78,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
                 }
               })
             }
+            isDisabled={userInputValidated === 'error'}
           >
             {' '}
             Confirm
@@ -82,10 +97,14 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
           id="export-logs-callback"
           value={callbackEmailOrUrl}
           type="text"
-          onChange={(_event, callbackEmailOrUrl) =>
-            setCallbackEmailOrUrl(callbackEmailOrUrl)
-          }
-        ></TextInput>
+          onChange={(_event, callbackEmailOrUrl) => {
+            if (validateUserInput(callbackEmailOrUrl))
+              setUserInputValidated('success');
+            else setUserInputValidated('error');
+            setCallbackEmailOrUrl(callbackEmailOrUrl);
+          }}
+          validated={userInputValidated}
+        />
         <HelperText>
           <HelperTextItem variant="indeterminate">
             {' '}

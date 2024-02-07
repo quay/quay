@@ -16,6 +16,7 @@ import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
+import UsageLogs from 'src/routes/UsageLogs/UsageLogs';
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
 import Settings from './Tabs/Settings/Settings';

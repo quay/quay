@@ -268,6 +268,16 @@ export default function RepositoryDetails() {
                     />
                   </Tab>
                   <Tab
+                    eventKey={TabIndex.Logs}
+                    title={<TabTitleText>Logs</TabTitleText>}
+                  >
+                    <UsageLogs
+                      organization={organization}
+                      repository={repository}
+                      type="repository"
+                    />
+                  </Tab>
+                  <Tab
                     eventKey={TabIndex.Builds}
                     title={<TabTitleText>Builds</TabTitleText>}
                     isHidden={

@@ -1,14 +1,5 @@
-import React, {useEffect} from 'react';
-import {
-  DatePicker,
-  Split,
-  SplitItem,
-  HelperText,
-  HelperTextItem,
-  FormSelect,
-  Flex,
-  FlexItem,
-} from '@patternfly/react-core';
+import React from 'react';
+import {DatePicker, Split, SplitItem} from '@patternfly/react-core';
 import ExportLogsModal from './UsageLogsExportModal';
 import './css/UsageLogs.scss';
 
@@ -47,10 +38,10 @@ function formatDate(date: string) {
   /**
    * change date string from y-m-d to m%d%y for api
    */
-  const dateObject = new Date(date);
-  const month = String(dateObject.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObject.getDate() + 1).padStart(2, '0');
-  const year = String(dateObject.getFullYear());
+  const dates = date.split('-');
+  const year = dates[0];
+  const month = dates[1];
+  const day = dates[2];
 
   return `${month}/${day}/${year}`;
 }
@@ -70,7 +61,6 @@ export default function UsageLogs(props: UsageLogsProps) {
     } else if (date > maxDate) {
       return 'Date is after the allowable range';
     }
-
     return '';
   };
 
@@ -79,7 +69,7 @@ export default function UsageLogs(props: UsageLogsProps) {
       <SplitItem isFilled></SplitItem>
       <SplitItem>
         <DatePicker
-          value={'Start'}
+          value={logStartDate}
           onChange={(_event, str, date) => {
             setLogStartDate(formatDate(str));
           }}
@@ -88,7 +78,7 @@ export default function UsageLogs(props: UsageLogsProps) {
       </SplitItem>
       <SplitItem>
         <DatePicker
-          value={'End'}
+          value={logEndDate}
           onChange={(_event, str, date) => {
             setLogEndDate(formatDate(str));
           }}

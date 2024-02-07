@@ -29,7 +29,6 @@ describe('Usage Logs Export', () => {
     cy.contains('Logs').click();
     cy.contains('Export').click();
     cy.get('[id="export-logs-callback"]').type('blahblah');
-    cy.contains('Confirm').click();
-    cy.contains('Problem exporting logs').should('be.visible');
+    cy.contains('Confirm').should('be.disabled');
   });
 });
