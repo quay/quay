@@ -1,14 +1,14 @@
 """add tag immutability column
 
 Revision ID: 5b8dc452f5c3
-Revises: 8d47693829a0
+Revises: 41d15c93c299
 Create Date: 2023-05-21 13:13:10.565161
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "5b8dc452f5c3"
-down_revision = "8d47693829a0"
+down_revision = "41d15c93c299"
 
 import sqlalchemy as sa
 
