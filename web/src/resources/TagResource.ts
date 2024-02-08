@@ -290,11 +290,10 @@ export async function bulkDeleteTags(
   }
 }
 
-export class TagOperationError extends Error {
-  error: Error;
+export class TagOperationError extends ResourceError {
   tag: string;
   constructor(message: string, tag: string, error: AxiosError) {
-    super(message);
+    super(message, tag, error);
     this.tag = tag;
     this.error = error;
     Object.setPrototypeOf(this, TagOperationError.prototype);
