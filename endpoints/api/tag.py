@@ -522,6 +522,10 @@ class TagTimeMachineDelete(RepositoryParamResource):
             existing_tag = registry_model.get_repo_tag(repo_ref, tag)
             if existing_tag is None:
                 raise NotFound()
+
+            if existing_tag.immutable:
+                raise PreconditionFailed("Cannot delete tag %s because it is immutable" % tag)
+
             manifest_ref = existing_tag.manifest
         else:
             manifest_ref = registry_model.lookup_manifest_by_digest(

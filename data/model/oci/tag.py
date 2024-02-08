@@ -848,6 +848,9 @@ def remove_tag_from_timemachine(
         if alive_tag is None:
             return False
 
+        if alive_tag.immutable:
+            return False
+
         # Expire the tag past the time machine window and set hidden=true to
         # prevent it from appearing in tag history
         updated = (

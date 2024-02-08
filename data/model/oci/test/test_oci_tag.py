@@ -751,6 +751,25 @@ def test_remove_tag_from_timemachine_alive(initialized_db):
     assert not tag.hidden
 
 
+def test_remove_immutable_tag_from_timemachine_alive(initialized_db):
+    org = get_user("devtable")
+    repo = get_repository("devtable", "history")
+    tag = get_tag(repo, "latest")
+    assert tag.lifetime_end_ms is None or tag.lifetime_end_ms > get_epoch_timestamp_ms()
+    assert tag is not None
+    assert org.removed_tag_expiration_s > 0
+    assert set_tag_immmutable(repo, tag.name) == tag
+
+    tag_lifetime_end_ms = tag.lifetime_end_ms
+
+    updated = remove_tag_from_timemachine(repo.id, "latest", tag.manifest, is_alive=True)
+    assert not updated
+
+    tag = Tag.select().where(Tag.id == tag.id).get()
+    assert tag.lifetime_end_ms == tag_lifetime_end_ms
+    assert not tag.hidden
+
+
 def test_remove_tag_from_timemachine_submanifests(initialized_db):
     org = get_user("devtable")
     assert org.removed_tag_expiration_s > 0
