@@ -14,6 +14,7 @@ import {useDeleteTag} from 'src/hooks/UseTags';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
 import {Tag} from 'src/resources/TagResource';
+import {getDisplayError} from 'src/resources/ErrorHandling';
 
 export interface DeleteModalOptions {
   isOpen: boolean;
@@ -46,10 +47,10 @@ export function DeleteModal(props: DeleteModalProps) {
       };
       switch (true) {
         case props.tags.length === 1 && props.modalOptions.force:
-          alert.title = `Permanently deleted tag ${props.tags[0]} successfully`;
+          alert.title = `Permanently deleted tag ${props.tags[0].name} successfully`;
           break;
         case props.tags.length === 1 && !props.modalOptions.force:
-          alert.title = `Deleted tag ${props.tags[0]} successfully`;
+          alert.title = `Deleted tag ${props.tags[0].name} successfully`;
           break;
         case props.tags.length > 1 && props.modalOptions.force:
           alert.title = 'Permanently deleted tags successfully';
@@ -73,10 +74,10 @@ export function DeleteModal(props: DeleteModalProps) {
       };
       switch (true) {
         case props.tags.length === 1 && props.modalOptions.force:
-          alert.title = `Could not permanently delete tag ${props.tags[0]}`;
+          alert.title = `Could not permanently delete tag ${props.tags[0].name}`;
           break;
         case props.tags.length === 1 && !props.modalOptions.force:
-          alert.title = `Could not delete tag ${props.tags[0]}`;
+          alert.title = `Could not delete tag ${props.tags[0].name}`;
           break;
         case props.tags.length > 1 && props.modalOptions.force:
           alert.title = 'Could not permanently delete tags';
@@ -88,9 +89,7 @@ export function DeleteModal(props: DeleteModalProps) {
       alert.message = (
         <>
           {Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (
-            <p key={tag}>
-              Could not delete tag {tag}: {error.error.message}
-            </p>
+            <p key={tag}>{getDisplayError(error)}</p>
           ))}
         </>
       );
