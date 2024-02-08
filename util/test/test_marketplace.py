@@ -108,7 +108,7 @@ mocked_subscription_response = [
         "webCustomerId": 12345,
         "quantity": 1,
         "effectiveStartDate": 1704672000000,
-        "effectiveEndDate": 1707350399000,
+        "effectiveEndDate": 1807350399000,
     },
     {
         "id": 2,
@@ -122,7 +122,7 @@ mocked_subscription_response = [
         "webCustomerId": 12345,
         "quantity": 2,
         "effectiveStartDate": 1705467600000,
-        "effectiveEndDate": 1708145999000,
+        "effectiveEndDate": 1807350399000,
     },
     {
         "id": 3,
