@@ -120,7 +120,7 @@
     "SIGNING": false,
     "STORAGE_REPLICATION": false,
     "SUPER_USERS": true,
-    "TEAM_SYNCING": false,
+    "TEAM_SYNCING": true,
     "USERNAME_CONFIRMATION": true,
     "USER_CREATION": true,
     "USER_INITIALIZE": false,

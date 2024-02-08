@@ -1,0 +1,22 @@
+{
+  "robots": [
+    {
+      "name": "teamsyncorg+robotacct",
+      "created": "Tue, 06 Feb 2024 20:20:40 -0000",
+      "last_accessed": null,
+      "teams": [
+        {
+          "name": "testteam",
+          "avatar": {
+            "name": "testteam",
+            "hash": "827f8c5762148d7e85402495b126e0a18b9b168170416ed04b49aae551099dc8",
+            "color": "#ff7f0e",
+            "kind": "team"
+          }
+        }
+      ],
+      "repositories": [],
+      "description": ""
+    }
+  ]
+}

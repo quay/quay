@@ -22,6 +22,7 @@ export default function OIDCTeamSyncModal(props: OIDCTeamSyncModalProps) {
       title={props.titleText}
       isOpen={props.isModalOpen}
       onClose={props.toggleModal}
+      id="directory-sync-modal"
       actions={[
         <Button
           key="confirm"

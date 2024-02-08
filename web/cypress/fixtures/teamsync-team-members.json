@@ -1,0 +1,21 @@
+{
+  "name": "testteam",
+  "members": [
+    {
+      "name": "teamsyncorg+robotacct",
+      "kind": "user",
+      "is_robot": true,
+      "avatar": {
+        "name": "teamsyncorg+robotacct",
+        "hash": "347156783f6c1d2fa46f5dfd2a05923f47d51571f82f321cd7a4ef54815cf502",
+        "color": "#393b79",
+        "kind": "robot"
+      },
+      "invited": false
+    }
+  ],
+  "can_edit": true,
+  "can_sync": {
+    "service": "oidc"
+  }
+}

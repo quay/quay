@@ -18,7 +18,7 @@ import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organi
 export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
   return (
     <>
-      <Toolbar>
+      <Toolbar id="team-members-toolbar">
         <ToolbarContent>
           <DropdownCheckbox
             selectedItems={props.selectedTeams}

@@ -436,7 +436,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           onClick={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
           key="team-sync-btn"
         >
-          Enable Directory synchronization
+          Enable Directory Sync
         </Button>,
       );
     }
@@ -459,41 +459,44 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         isInline
         variant="info"
         title={`This team is synchronized with a group in ${teamCanSync?.service} and its user membership is therefore read-only.`}
+        id="teamsync-readonly-alert"
       />
-      <Accordion>
-        <AccordionItem>
-          <AccordionToggle
-            onClick={() => {
-              onAccordionToggle('oidc-config-toggle');
-            }}
-            isExpanded={teamSyncConfigExpanded === 'oidc-config-toggle'}
-            id="oidc-config-toggle"
-          >
-            Directory Synchronization Config
-          </AccordionToggle>
-          <AccordionContent
-            id="oidc-config-toggle"
-            isHidden={teamSyncConfigExpanded !== 'oidc-config-toggle'}
-          >
-            <TextContent>
-              <TextList component={TextListVariants.dl}>
-                <TextListItem component={TextListItemVariants.dt}>
-                  Bound to group
-                </TextListItem>
-                <TextListItem component={TextListItemVariants.dd}>
-                  {OIDCGroupName}
-                </TextListItem>
-                <TextListItem component={TextListItemVariants.dt}>
-                  Last Updated
-                </TextListItem>
-                <TextListItem component={TextListItemVariants.dd}>
-                  Never
-                </TextListItem>
-              </TextList>
-            </TextContent>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <Conditional if={OIDCGroupName != null}>
+        <Accordion>
+          <AccordionItem>
+            <AccordionToggle
+              onClick={() => {
+                onAccordionToggle('oidc-config-toggle');
+              }}
+              isExpanded={teamSyncConfigExpanded === 'oidc-config-toggle'}
+              id="oidc-config-toggle"
+            >
+              Directory Synchronization Config
+            </AccordionToggle>
+            <AccordionContent
+              id="oidc-config-toggle"
+              isHidden={teamSyncConfigExpanded !== 'oidc-config-toggle'}
+            >
+              <TextContent>
+                <TextList component={TextListVariants.dl}>
+                  <TextListItem component={TextListItemVariants.dt}>
+                    Bound to group
+                  </TextListItem>
+                  <TextListItem component={TextListItemVariants.dd}>
+                    {OIDCGroupName}
+                  </TextListItem>
+                  <TextListItem component={TextListItemVariants.dt}>
+                    Last Updated
+                  </TextListItem>
+                  <TextListItem component={TextListItemVariants.dd}>
+                    Never
+                  </TextListItem>
+                </TextList>
+              </TextContent>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </Conditional>
     </>
   );
 
