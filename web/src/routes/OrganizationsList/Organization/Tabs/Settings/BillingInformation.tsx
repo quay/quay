@@ -16,6 +16,10 @@ import {
   HelperText,
   AlertGroup,
   FormHelperText,
+  NumberInput,
+  Select,
+  MenuToggleElement,
+  MenuToggle,
 } from '@patternfly/react-core';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
@@ -28,6 +32,7 @@ import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 import Alerts from 'src/routes/Alerts';
+import MarketplaceDetails from './MarketplaceDetails';
 
 type BillingInformationProps = {
   organizationName: string;
@@ -57,6 +62,8 @@ export const BillingInformation = (props: BillingInformationProps) => {
       });
     },
   });
+
+  const maxPrivate = BigInt(Number.MAX_SAFE_INTEGER);
 
   const [touched, setTouched] = useState(false);
   const [invoiceEmail, setInvoiceEmail] = useState(false);
@@ -101,6 +108,16 @@ export const BillingInformation = (props: BillingInformationProps) => {
     organizationName,
     accountType == 'organization',
   );
+
+  // total number of private repos allowed (stripe subscription + RH subscription watch)
+  const [totalPrivate, setTotalPrivate] = useState(
+    currentPlan?.privateRepos || 0,
+  );
+
+  const addMarketplacePrivate = (marketplacePrivate: number) => {
+    const sum = marketplacePrivate + (currentPlan?.privateRepos || 0);
+    setTotalPrivate(sum);
+  };
 
   const {
     convert,
@@ -175,7 +192,9 @@ export const BillingInformation = (props: BillingInformationProps) => {
           </Title>
         </FlexItem>
         {privateAllowed ? (
-          <FlexItem>{`${privateCount} of ${privateAllowed} private repositories used`}</FlexItem>
+          <FlexItem>{`${privateCount} of ${
+            totalPrivate >= maxPrivate ? 'unlimited' : totalPrivate
+          } private repositories used`}</FlexItem>
         ) : null}
         <FlexItem>{`${totalResults} of unlimited public repositories used`}</FlexItem>
       </Flex>
@@ -233,6 +252,11 @@ export const BillingInformation = (props: BillingInformationProps) => {
       >
         View Invoices
       </Button>
+
+      <MarketplaceDetails
+        organizationName={props.organizationName}
+        updateTotalPrivate={addMarketplacePrivate}
+      />
 
       {isUserOrganization && (
         <>

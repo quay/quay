@@ -114,6 +114,7 @@
     "REQUIRE_ENCRYPTED_BASIC_AUTH": false,
     "REQUIRE_TEAM_INVITE": true,
     "RESTRICTED_V1_PUSH": false,
+    "RH_MARKETPLACE": true,
     "SECURITY_NOTIFICATIONS": true,
     "SECURITY_SCANNER": true,
     "SIGNING": false,

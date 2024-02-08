@@ -1,5 +1,6 @@
 import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
+import {ResourceError} from './ErrorHandling';
 
 export interface Subscription {
   hasSubscription: boolean;
@@ -47,9 +48,8 @@ export interface Plan {
 }
 
 export async function fetchPlans() {
-  const response: AxiosResponse<PlansResponse> = await axios.get(
-    '/api/v1/plans/',
-  );
+  const response: AxiosResponse<PlansResponse> =
+    await axios.get('/api/v1/plans/');
   return response.data.plans;
 }
 
@@ -84,4 +84,49 @@ export async function fetchCard(org: string = null) {
     org != null ? `/api/v1/organization/${org}/card` : '/api/v1/user/card';
   const response: AxiosResponse<BillingCardResponse> = await axios.get(url);
   return response.data.card;
+}
+
+export async function fetchMarketplaceSubscriptions(org: string = null) {
+  const url: string =
+    org != null
+      ? `/api/v1/organization/${org}/marketplace`
+      : '/api/v1/user/marketplace';
+  const response: AxiosResponse = await axios.get(url);
+  return response.data;
+}
+
+export async function setMarketplaceOrgAttachment(
+  org: string,
+  subscriptions: Array<any>,
+) {
+  try {
+    await axios.post(`/api/v1/organization/${org}/marketplace`, {
+      subscriptions: subscriptions,
+    });
+  } catch (error) {
+    throw new ResourceError(
+      'Unable to bind subscriptions to org',
+      `${org}`,
+      error,
+    );
+  }
+  return;
+}
+
+export async function setMarketplaceOrgRemoval(
+  org: string,
+  subscriptions: Array<any>,
+) {
+  try {
+    await axios.post(`/api/v1/organization/${org}/marketplace/batchremove`, {
+      subscriptions: subscriptions,
+    });
+  } catch (error) {
+    throw new ResourceError(
+      'Unable to remove subscriptions from org',
+      `${org}`,
+      error,
+    );
+  }
+  return;
 }
