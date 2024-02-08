@@ -2,11 +2,12 @@ import {
   Alert,
   Button,
   Divider,
-  DropEvent,
   SelectGroup,
   SelectOption,
   Spinner,
   AlertVariant as PFAlertVariant,
+  HelperText,
+  HelperTextItem,
 } from '@patternfly/react-core';
 import {DesktopIcon} from '@patternfly/react-icons';
 import React from 'react';
@@ -31,6 +32,7 @@ import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAcco
 export default function DockerfileUploadBuild(
   props: DockerfileUploadBuildProps,
 ) {
+  const [rejected, setRejected] = useState<boolean>(false);
   const [value, setValue] = useState('');
   const [privateRepo, setPrivatRepo] = useState<string>();
   const [selectedRobot, setSelectedRobot] = useState<string>(null);
@@ -91,14 +93,20 @@ export default function DockerfileUploadBuild(
   }
 
   const onFileUpload = (value: string) => {
-    const baseImage = getRegistryBaseImage(
-      value,
-      config?.config?.SERVER_HOSTNAME,
-    );
-    if (!isNullOrUndefined(baseImage)) {
-      setPrivatRepo(baseImage);
+    if (value.includes('FROM')) {
+      const baseImage = getRegistryBaseImage(
+        value,
+        config?.config?.SERVER_HOSTNAME,
+      );
+      if (!isNullOrUndefined(baseImage)) {
+        setPrivatRepo(baseImage);
+      }
+      setValue(value);
+      setRejected(false);
+    } else {
+      setRejected(true);
+      setValue('');
     }
-    setValue(value);
   };
   return (
     <>
@@ -110,8 +118,16 @@ export default function DockerfileUploadBuild(
           setValue('');
           setPrivatRepo(null);
           setSelectedRobot(null);
+          setRejected(false);
         }}
       />
+      <Conditional if={rejected}>
+        <HelperText>
+          <HelperTextItem variant={rejected ? 'error' : 'default'}>
+            Invalid Dockerfile format
+          </HelperTextItem>
+        </HelperText>
+      </Conditional>
       <p>Please select a Dockerfile</p>
       <Conditional
         if={
