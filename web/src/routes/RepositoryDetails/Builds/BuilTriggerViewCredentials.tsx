@@ -31,28 +31,26 @@ function Message({service}: {service: string}) {
     case 'custom-git':
       return (
         <Alert variant="info" title="Note:">
-          <p>
-            In order to use this trigger, the following first requires action:
-            <List>
-              <ListItem style={{marginTop: '0'}}>
-                You must give the following public key read access to the git
-                repository.
-              </ListItem>
-              <ListItem style={{marginTop: '0'}}>
-                You must set your repository to POST to the following URL to
-                trigger a build.
-              </ListItem>
-            </List>
-            For more information, refer to the{' '}
-            <a
-              href="https://docs.projectquay.io/use_quay.html#setting-up-custom-git-trigger"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Custom Git Triggers documentation
-            </a>
-            .
-          </p>
+          In order to use this trigger, the following first requires action:
+          <List>
+            <ListItem style={{marginTop: '0'}}>
+              You must give the following public key read access to the git
+              repository.
+            </ListItem>
+            <ListItem style={{marginTop: '0'}}>
+              You must set your repository to POST to the following URL to
+              trigger a build.
+            </ListItem>
+          </List>
+          For more information, refer to the{' '}
+          <a
+            href="https://docs.projectquay.io/use_quay.html#setting-up-custom-git-trigger"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Custom Git Triggers documentation
+          </a>
+          .
         </Alert>
       );
   }
