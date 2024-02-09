@@ -58,7 +58,7 @@ def _create_manifest(namespace, repo):
     return get_or_create_manifest(repo, v2_manifest, storage)
 
 
-def _create_tag(repo, manifest, start=None):
+def _create_tag(repo, manifest, start=None, immutable=False):
     name = "tag-%s" % str(uuid.uuid4())
     now_ms = int(time.time() * 1000) if start is None else start
     created = Tag.create(
@@ -66,6 +66,7 @@ def _create_tag(repo, manifest, start=None):
         repository=repo,
         lifetime_start_ms=now_ms,
         lifetime_end_ms=None,
+        immutable=immutable,
         reversion=False,
         manifest=manifest,
         tag_kind=Tag.tag_kind.get_id("tag"),
@@ -73,14 +74,14 @@ def _create_tag(repo, manifest, start=None):
     return created
 
 
-def _create_tags(repo, manifest, count, start_time_before=None):
+def _create_tags(repo, manifest, count, start_time_before=None, immutable=False):
     for _ in range(count):
         start_time = (
             _past_timestamp_ms(start_time_before) - random.randint(0, 1000000)
             if start_time_before is not None
             else None
         )
-        _create_tag(repo, manifest, start_time)
+        _create_tag(repo, manifest, start_time, immutable)
 
 
 def _assert_repo_tag_count(repo, count, assert_start_after=None):
@@ -112,22 +113,24 @@ def test_namespace_prune_multiple_repos_by_tag_count(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest1_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest2_repo1 = _create_manifest("sellnsmall", repo1)
     manifest_repo2 = _create_manifest("sellnsmall", repo2)
     manifest_repo3 = _create_manifest("sellnsmall", repo3)
 
-    _create_tags(repo1, manifest_repo1.manifest, 10)
+    _create_tags(repo1, manifest1_repo1.manifest, 10)
+    _create_tags(repo1, manifest2_repo1.manifest, 2, immutable=True)
     _create_tags(repo2, manifest_repo2.manifest, 3)
     _create_tags(repo3, manifest_repo3.manifest, 5)
 
-    _assert_repo_tag_count(repo1, 10)
+    _assert_repo_tag_count(repo1, (10 + 2))
     _assert_repo_tag_count(repo2, 3)
     _assert_repo_tag_count(repo3, 5)
 
     worker = AutoPruneWorker()
     worker.prune()
 
-    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo1, (5 + 2))
     _assert_repo_tag_count(repo2, 3)
     _assert_repo_tag_count(repo3, 5)
 
@@ -151,23 +154,25 @@ def test_namespace_prune_multiple_repos_by_creation_date(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest1_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest2_repo1 = _create_manifest("sellnsmall", repo1)
     manifest_repo2 = _create_manifest("sellnsmall", repo2)
     manifest_repo3 = _create_manifest("sellnsmall", repo3)
 
-    _create_tags(repo1, manifest_repo1.manifest, 5)
-    _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
+    _create_tags(repo1, manifest1_repo1.manifest, 5)
+    _create_tags(repo1, manifest1_repo1.manifest, 5, start_time_before="7d")
+    _create_tags(repo1, manifest2_repo1.manifest, 2, immutable=True)
     _create_tags(repo2, manifest_repo2.manifest, 5, start_time_before="7d")
     _create_tags(repo3, manifest_repo3.manifest, 10)
 
-    _assert_repo_tag_count(repo1, 10)
+    _assert_repo_tag_count(repo1, (10 + 2))
     _assert_repo_tag_count(repo2, 5)
     _assert_repo_tag_count(repo3, 10)
 
     worker = AutoPruneWorker()
     worker.prune()
 
-    _assert_repo_tag_count(repo1, 5, assert_start_after="7d")
+    _assert_repo_tag_count(repo1, (5 + 2), assert_start_after="7d")
     _assert_repo_tag_count(repo2, 0, assert_start_after="7d")
     _assert_repo_tag_count(repo3, 10, assert_start_after="7d")
 

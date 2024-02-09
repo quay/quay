@@ -917,6 +917,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 Tag.hidden == False,
+                Tag.immutable == False,
             )
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
@@ -941,12 +942,13 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
         tags_offset = items_per_page * (page - 1)
         now_ms = get_epoch_timestamp_ms()
         query = (
-            Tag.select(Tag.name)
+            Tag.select(Tag.name, Tag.immutable)
             .where(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
                 Tag.hidden == False,
+                Tag.immutable == False,
             )
             .offset(tags_offset)  # type: ignore[func-returns-value]
             .limit(items_per_page)
