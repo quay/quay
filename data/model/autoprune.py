@@ -2,7 +2,7 @@ import json
 import logging.config
 from enum import Enum
 
-from data.database import AutoPruneTaskStatus
+from data.database import AutoPruneTaskStatus, DeletedNamespace
 from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
 from data.database import Repository
 from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
@@ -517,24 +517,25 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit)
             break
 
         for tag in tags:
-            try:
-                tag = oci.tag.delete_tag(repo.id, tag.name)
-                if tag is not None:
-                    log.log_action(
-                        "autoprune_tag_delete",
-                        namespace.username,
-                        repository=repo,
-                        metadata={
-                            "performer": "autoprune worker",
-                            "namespace": namespace.username,
-                            "repo": repo.name,
-                            "tag": tag.name,
-                        },
+            if not tag.immutable:
+                try:
+                    tag = oci.tag.delete_tag(repo.id, tag.name)
+                    if tag is not None:
+                        log.log_action(
+                            "autoprune_tag_delete",
+                            namespace.username,
+                            repository=repo,
+                            metadata={
+                                "performer": "autoprune worker",
+                                "namespace": namespace.username,
+                                "repo": repo.name,
+                                "tag": tag.name,
+                            },
+                        )
+                except Exception as err:
+                    raise Exception(
+                        f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
                     )
-            except Exception as err:
-                raise Exception(
-                    f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
-                )
 
 
 def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=100):
@@ -562,24 +563,25 @@ def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=1
             break
 
         for tag in tags:
-            try:
-                tag = oci.tag.delete_tag(repo.id, tag.name)
-                if tag is not None:
-                    log.log_action(
-                        "autoprune_tag_delete",
-                        namespace.username,
-                        repository=repo,
-                        metadata={
-                            "performer": "autoprune worker",
-                            "namespace": namespace.username,
-                            "repo": repo.name,
-                            "tag": tag.name,
-                        },
+            if not tag.immutable:
+                try:
+                    tag = oci.tag.delete_tag(repo.id, tag.name)
+                    if tag is not None:
+                        log.log_action(
+                            "autoprune_tag_delete",
+                            namespace.username,
+                            repository=repo,
+                            metadata={
+                                "performer": "autoprune worker",
+                                "namespace": namespace.username,
+                                "repo": repo.name,
+                                "tag": tag.name,
+                            },
+                        )
+                except Exception as err:
+                    raise Exception(
+                        f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
                     )
-            except Exception as err:
-                raise Exception(
-                    f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
-                )
 
 
 def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
