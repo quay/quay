@@ -41,6 +41,7 @@ import Settings from './Settings/Settings';
 import TagHistory from './TagHistory/TagHistory';
 import TagsList from './Tags/TagsList';
 import {DrawerContentType} from './Types';
+import UsageLogs from '../UsageLogs/UsageLogs';
 
 enum TabIndex {
   Tags = 'tags',
@@ -264,6 +265,16 @@ export default function RepositoryDetails() {
                       repo={repository}
                       setDrawerContent={setDrawerContent}
                       repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.Logs}
+                    title={<TabTitleText>Logs</TabTitleText>}
+                  >
+                    <UsageLogs
+                      organization={organization}
+                      repository={repository}
+                      type="repository"
                     />
                   </Tab>
                   <Tab

@@ -16,6 +16,7 @@ import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
+import UsageLogs from 'src/routes/UsageLogs/UsageLogs';
 import CreatePermissionDrawer from './Tabs/DefaultPermissions/createPermissionDrawer/CreatePermissionDrawer';
 import DefaultPermissionsList from './Tabs/DefaultPermissions/DefaultPermissionsList';
 import Settings from './Tabs/Settings/Settings';
@@ -132,6 +133,17 @@ export default function Organization() {
         />
       ),
       visible: !isUserOrganization && organization?.is_admin,
+    },
+    {
+      name: 'Logs',
+      component: (
+        <UsageLogs
+          organization={organizationName}
+          repository={null}
+          type="org"
+        />
+      ),
+      visible: organization?.is_admin || !isUserOrganization,
     },
     {
       name: 'Settings',
