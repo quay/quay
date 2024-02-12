@@ -43,7 +43,7 @@ location / {
     # Show new UI if patternfly cookie is set
     if ($cookie_patternfly) {
         # catch new static paths and direct to /index.html
-        rewrite ^(/organization|/repository|/tag) /index.html break;
+        rewrite ^(/overview|/organization|/repository|/tag) /index.html break;
     }
 
     # Show old UI if patternfly cookie is not set
