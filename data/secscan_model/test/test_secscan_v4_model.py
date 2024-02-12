@@ -2,7 +2,6 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import mock
 import pytest
@@ -34,6 +33,7 @@ from data.secscan_model.secscan_v4_model import (
     features_for,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
 
@@ -149,6 +149,43 @@ def test_load_security_information_success(initialized_db, set_secscan_config):
 
     assert result.status == ScanLookupStatus.SUCCESS
     assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
+
+
+def test_load_security_information_success_proxy_clair_result(initialized_db, set_secscan_config):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    ManifestSecurityStatus.create(
+        manifest=manifest._db_id,
+        repository=repository_ref._db_id,
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    mock_response = {
+        "manifest_hash": manifest.digest,
+        "state": "IndexFinished",
+        "packages": {},
+        "distributions": {},
+        "repository": {},
+        "environments": {},
+        "package_vulnerabilities": {},
+        "success": True,
+        "err": "",
+    }
+    secscan._secscan_api.vulnerability_report.return_value = mock_response
+
+    result = secscan.load_security_information(
+        manifest, include_vulnerabilities=True, proxy_clair_response=True
+    )
+    assert result == mock_response
 
 
 def test_load_security_information_success_with_cache(initialized_db, set_secscan_config):
