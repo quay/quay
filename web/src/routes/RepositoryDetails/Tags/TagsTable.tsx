@@ -165,7 +165,7 @@ function TagsTableRow(props: RowProps) {
           <TagExpiration
             org={props.org}
             repo={props.repo}
-            tag={tag.name}
+            tag={tag}
             expiration={tag.expiration}
             loadTags={props.loadTags}
           />
