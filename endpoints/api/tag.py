@@ -67,11 +67,14 @@ def _tag_dict(tag):
 
 
 def _set_tag_immutable(tag_ref, repository, namespace):
+    if not AdministerRepositoryPermission(namespace, repository).can():
+        raise Unauthorized()
+
     if tag_ref.immutable:
         return True
 
     try:
-        immutable_tag = registry_model.set_tag_immutable(tag_ref, raise_on_error=True)
+        registry_model.set_tag_immutable(tag_ref, raise_on_error=True)
     except TagImmutableException as e:
         raise PreconditionFailed(str(e))
 
@@ -99,7 +102,7 @@ def _set_tag_mutable(tag_ref, repository, namespace):
         return True
 
     try:
-        mutable_tag = registry_model.set_tag_mutable(tag_ref, raise_on_error=True)
+        registry_model.set_tag_mutable(tag_ref, raise_on_error=True)
     except TagImmutableException as e:
         raise PreconditionFailed(str(e))
 
