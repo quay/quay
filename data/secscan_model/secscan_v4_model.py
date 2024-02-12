@@ -80,7 +80,11 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     """
 
     def load_security_information(
-        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+        self,
+        manifest_or_legacy_image,
+        include_vulnerabilities=False,
+        proxy_clair_response=False,
+        model_cache=None,
     ):
         return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
 
@@ -157,7 +161,11 @@ class V4SecurityScanner(SecurityScannerInterface):
         )
 
     def load_security_information(
-        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+        self,
+        manifest_or_legacy_image,
+        include_vulnerabilities=False,
+        proxy_clair_response=False,
+        model_cache=None,
     ):
         if not isinstance(manifest_or_legacy_image, ManifestDataType):
             return SecurityInformationLookupResult.with_status(
@@ -194,7 +202,8 @@ class V4SecurityScanner(SecurityScannerInterface):
         try:
             if model_cache:
                 security_report_key = cache_key.for_security_report(
-                    manifest_or_legacy_image.digest, model_cache.cache_config
+                    manifest_or_legacy_image.digest,
+                    model_cache.cache_config,
                 )
                 report = model_cache.retrieve(security_report_key, security_report_loader)
             else:
@@ -206,6 +215,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         # TODO(alecmerdler): Provide a way to indicate the current scan is outdated (`report.state != status.indexer_hash`)
+
+        if proxy_clair_response:
+            return report
 
         return SecurityInformationLookupResult.for_data(
             SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))

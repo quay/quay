@@ -34,6 +34,7 @@ from data.secscan_model.datatypes import (
     link_to_cves,
     vulns_to_base_scores,
     vulns_to_cves,
+    SecurityInformationLookupResult,
 )
 from data.secscan_model.secscan_v4_model import (
     IndexReportState,
@@ -158,6 +159,50 @@ def test_load_security_information_success(initialized_db, set_secscan_config):
 
     assert result.status == ScanLookupStatus.SUCCESS
     assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
+
+
+@pytest.mark.parametrize("proxy_clair_response", [True, False])
+def test_load_security_information_success_proxy_clair_result(
+    initialized_db, set_secscan_config, proxy_clair_response
+):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    ManifestSecurityStatus.create(
+        manifest=manifest._db_id,
+        repository=repository_ref._db_id,
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    mock_response = {
+        "manifest_hash": manifest.digest,
+        "state": "IndexFinished",
+        "packages": {},
+        "distributions": {},
+        "repository": {},
+        "environments": {},
+        "package_vulnerabilities": {},
+        "success": True,
+        "err": "",
+    }
+    secscan._secscan_api.vulnerability_report.return_value = mock_response
+
+    result = secscan.load_security_information(
+        manifest, include_vulnerabilities=True, proxy_clair_response=True
+    )
+    if proxy_clair_response:
+        assert result == mock_response
+    else:
+        assert result.status == ScanLookupStatus.SUCCESS
+        assert isinstance(result, SecurityInformationLookupResult)
 
 
 def test_load_security_information_success_with_cache(initialized_db, set_secscan_config):
