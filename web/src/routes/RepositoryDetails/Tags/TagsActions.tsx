@@ -87,6 +87,7 @@ export default function TagActions(props: TagActionsProps) {
   dropdownItems.push(
     <DropdownItem
       key="delete-tag-action"
+      isDisabled={props.tags.some((tag: Tag) => tag.immutable)}
       onClick={() => {
         setIsOpen(false);
         setDeleteModalOptions({
@@ -107,6 +108,7 @@ export default function TagActions(props: TagActionsProps) {
     dropdownItems.push(
       <DropdownItem
         key="permanentlydelete"
+        isDisabled={props.tags.some((tag: Tag) => tag.immutable)}
         onClick={() => {
           setIsOpen(false);
           setDeleteModalOptions({
