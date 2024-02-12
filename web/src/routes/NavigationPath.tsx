@@ -26,6 +26,7 @@ const teamMemberBreadcrumb = (match) => {
 };
 
 const Breadcrumb = {
+  overviewListBreadcrumb: 'Overview',
   organizationsListBreadcrumb: 'Organization',
   repositoriesListBreadcrumb: 'Repository',
   organizationDetailBreadcrumb: organizationNameBreadcrumb,
@@ -136,7 +137,7 @@ export const getNavigationRoutes = () => {
     {
       path: domainRoute(currentRoute, NavigationPath.overviewList),
       element: <OverviewList />,
-      breadcrumb: Breadcrumb.organizationsListBreadcrumb,
+      breadcrumb: Breadcrumb.overviewListBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.organizationsList),
