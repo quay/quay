@@ -65,6 +65,7 @@ class LazyManifestLoader(object):
         digest_key,
         size_key,
         media_type_key,
+        ignore_unknown_mediatypes=False,
     ):
         self._manifest_data = manifest_data
         self._content_retriever = content_retriever
@@ -73,6 +74,7 @@ class LazyManifestLoader(object):
         self._size_key = size_key
         self._media_type_key = media_type_key
         self._supported_types = supported_types
+        self._ignore_unknown_mediatypes = ignore_unknown_mediatypes
 
     @property
     def manifest_obj(self):
@@ -104,5 +106,7 @@ class LazyManifestLoader(object):
             )
 
         return self._supported_types[content_type](
-            Bytes.for_string_or_unicode(manifest_bytes), validate=False
+            Bytes.for_string_or_unicode(manifest_bytes),
+            validate=False,
+            ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
         )

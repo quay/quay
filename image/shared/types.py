@@ -82,6 +82,20 @@ class ManifestReference(ManifestInterface):
         return self._parsed["mediaType"]
 
     @property
+    def artifact_type(self):
+        """
+        The artifact type of the manifest.
+        """
+        return self._parsed.get("artifactType")
+
+    @property
+    def subject(self):
+        """
+        The subject of the manifest.
+        """
+        return self._parsed.get("subject")
+
+    @property
     def manifest_dict(self):
         """
         Returns the manifest as a dictionary ready to be serialized to JSON.
@@ -287,6 +301,20 @@ class SparseManifestList(ManifestListInterface):
         The media type of the schema.
         """
         return self._media_type
+
+    @property
+    def artifact_type(self):
+        """
+        The artifact type of the manifest.
+        """
+        return self._parsed.get("artifactType")
+
+    @property
+    def subject(self):
+        """
+        The subject of the manifest.
+        """
+        return self._parsed.get("subject")
 
     @property
     def is_manifest_list(self):

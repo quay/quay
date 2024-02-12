@@ -201,6 +201,40 @@ def test_validate_manifest_invalid_config_type(ignore_unknown_mediatypes):
             OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
 
 
+@pytest.mark.parametrize("ignore_unknown_mediatypes", [True, False])
+def test_validate_manifest_with_subject_artifact_type(ignore_unknown_mediatypes):
+    manifest_bytes = """{
+      "schemaVersion": 2,
+      "artifactType": "application/some.thing",
+      "config": {
+        "mediaType": "application/some.other.thing",
+        "digest": "sha256:6bd578ec7d1e7381f63184dfe5fbe7f2f15805ecc4bfd485e286b76b1e796524",
+        "size": 145
+      },
+      "layers": [
+        {
+          "mediaType": "application/tar+gzip",
+          "digest": "sha256:ce879e86a8f71031c0f1ab149a26b000b3b5b8810d8d047f240ef69a6b2516ee",
+          "size": 2807
+        }
+      ],
+      "subject": {
+        "mediaType": "application/vnd.oci.image.config.v1+json",
+        "size": 7023,
+        "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
+      }
+    }"""
+
+    if ignore_unknown_mediatypes:
+        OCIManifest(
+            Bytes.for_string_or_unicode(manifest_bytes),
+            ignore_unknown_mediatypes=ignore_unknown_mediatypes,
+        )
+    else:
+        with pytest.raises(MalformedOCIManifest):
+            OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
+
+
 def test_get_schema1_manifest_missing_history():
     retriever = ContentRetrieverForTesting.for_config(
         {

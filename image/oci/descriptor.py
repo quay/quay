@@ -3,6 +3,7 @@ DESCRIPTOR_SIZE_KEY = "size"
 DESCRIPTOR_DIGEST_KEY = "digest"
 DESCRIPTOR_URLS_KEY = "urls"
 DESCRIPTOR_ANNOTATIONS_KEY = "annotations"
+DESCRIPTOR_ARTIFACT_KEY = "artifactType"
 
 
 def get_descriptor_schema(
@@ -39,6 +40,10 @@ def get_descriptor_schema(
             "items": {
                 "type": "string",
             },
+        },
+        DESCRIPTOR_ARTIFACT_KEY: {
+            "type": "string",
+            "description": "This OPTIONAL property contains the type of an artifact when the descriptor points to an artifact. This is the value of the config descriptor mediaType when the descriptor references an image manifest",
         },
     }
 

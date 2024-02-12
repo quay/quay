@@ -74,9 +74,13 @@ OCI_MANIFEST_DIGEST_KEY = "digest"
 OCI_MANIFEST_LAYERS_KEY = "layers"
 OCI_MANIFEST_URLS_KEY = "urls"
 OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
+OCI_MANIFEST_SUBJECT_KEY = "subject"
+OCI_MANIFEST_ARTIFACT_TYPE_KEY = "artifactType"
+OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
 
 # Named tuples.
 OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
+OCIManifestDescriptor = namedtuple("OCIManifestDescriptor", ["mediatype", "size", "digest"])
 OCIManifestLayer = namedtuple(
     "OCIManifestLayer", ["index", "digest", "is_remote", "urls", "compressed_size"]
 )
@@ -99,7 +103,7 @@ class MalformedOCIManifest(ManifestException):
 
 
 class OCIManifest(ManifestInterface):
-    def get_meta_schema(self, ignore_unknown_mediatypes=False):
+    def get_meta_schema(self):
         """
         Since the layers are dynamic based on config, populate them here before using
         """
@@ -117,17 +121,30 @@ class OCIManifest(ManifestInterface):
                     "description": "The media type of the schema.",
                     "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
                 },
+                OCI_MANIFEST_ARTIFACT_TYPE_KEY: {
+                    "type": "string",
+                    "description": "Type of an artifact when the manifest is used for an artifact.",
+                },
                 OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(
                     ALLOWED_ARTIFACT_TYPES,
-                    ignore_unknown_mediatypes=ignore_unknown_mediatypes,
+                    ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
                 ),
                 OCI_MANIFEST_LAYERS_KEY: {
                     "type": "array",
                     "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
                     "items": get_descriptor_schema(
                         OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES,
-                        ignore_unknown_mediatypes=ignore_unknown_mediatypes,
+                        ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
                     ),
+                },
+                OCI_MANIFEST_SUBJECT_KEY: get_descriptor_schema(
+                    [],
+                    ignore_unknown_mediatypes=True,
+                ),
+                OCI_MANIFEST_ANNOTATIONS_KEY: {
+                    "type": "object",
+                    "description": "The annotations, if any, on this manifest",
+                    "additionalProperties": True,
                 },
             },
             "required": [
@@ -146,6 +163,7 @@ class OCIManifest(ManifestInterface):
 
         self._filesystem_layers = None
         self._cached_built_config = None
+        self._ignore_unknown_mediatypes = ignore_unknown_mediatypes
 
         try:
             self._parsed = json.loads(self._payload.as_unicode())
@@ -153,7 +171,7 @@ class OCIManifest(ManifestInterface):
             raise MalformedOCIManifest("malformed manifest data: %s" % ve)
 
         try:
-            validate_schema(self._parsed, self.get_meta_schema(ignore_unknown_mediatypes))
+            validate_schema(self._parsed, self.get_meta_schema())
         except ValidationError as ve:
             raise MalformedOCIManifest("manifest data does not match schema: %s" % ve)
 
@@ -186,13 +204,30 @@ class OCIManifest(ManifestInterface):
         return OCI_IMAGE_MANIFEST_CONTENT_TYPE
 
     @property
+    def artifact_type(self):
+        return self._parsed.get((OCI_MANIFEST_ARTIFACT_TYPE_KEY), None)
+
+    @property
+    def subject(self):
+        subject = self._parsed.get((OCI_MANIFEST_SUBJECT_KEY), None)
+        if subject is None:
+            return None
+
+        return OCIManifestDescriptor(
+            mediatype=subject[OCI_MANIFEST_MEDIATYPE_KEY],
+            size=subject[OCI_MANIFEST_SIZE_KEY],
+            digest=subject[OCI_MANIFEST_DIGEST_KEY],
+        )
+
+    @property
     def digest(self):
         return digest_tools.sha256_digest(self._payload.as_encoded_str())
 
     @property
     def config(self):
         config = self._parsed[OCI_MANIFEST_CONFIG_KEY]
-        return OCIManifestConfig(
+        return OCIManifestDescriptor(
+            mediatype=config[OCI_MANIFEST_MEDIATYPE_KEY],
             size=config[OCI_MANIFEST_SIZE_KEY],
             digest=config[OCI_MANIFEST_DIGEST_KEY],
         )

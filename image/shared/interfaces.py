@@ -36,6 +36,20 @@ class ManifestInterface(object):
         pass
 
     @abstractproperty
+    def artifact_type(self):
+        """
+        The artifact type of the manifest.
+        """
+        pass
+
+    @abstractproperty
+    def subject(self):
+        """
+        The subject of the manifest.
+        """
+        pass
+
+    @abstractproperty
     def manifest_dict(self):
         """
         Returns the manifest as a dictionary ready to be serialized to JSON.
