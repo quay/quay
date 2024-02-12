@@ -9,7 +9,7 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.20 \
+	; microdnf -y module enable nginx:1.22 \
 	; microdnf -y module enable python39:3.9 \
 	; microdnf update -y \
 	; microdnf -y --setopt=tsflags=nodocs install \
