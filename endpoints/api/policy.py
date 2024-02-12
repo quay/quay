@@ -5,7 +5,7 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import AdministerOrganizationPermission
+from auth.permissions import AdministerOrganizationPermission, AdministerRepositoryPermission
 from data import model
 from data.registry_model import registry_model
 from endpoints.api import (
@@ -260,26 +260,34 @@ class RepositoryAutoPrunePolicies(ApiResource):
     }
 
     @require_repo_admin(allow_for_superuser=True)
-    # @require_scope(scopes.ORG_ADMIN)
     @nickname("listRepositoryAutoPrunePolicies")
     def get(self, namespace, repository):
         """
         Lists the auto-prune policies for the repository
-        """         
+        """
+        permission = AdministerRepositoryPermission(namespace, repository)
+        if not permission.can():
+            raise Unauthorized()
 
-        policies = model.autoprune.get_namespace_autoprune_policies_by_reponame(repository)
+        policies = model.autoprune.get_repository_autoprune_policies_by_repo_name(namespace, repository)
 
         return {"policies": [policy.get_view() for policy in policies]}
 
-    @require_scope(scopes.ORG_ADMIN)
+
+    @require_scope(scopes.ADMIN_REPO)
     @validate_json_request("AutoPrunePolicyConfig")
     @nickname("createRepositoryAutoPrunePolicy")
-    def post(self, namespace, repository,):
+    def post(self, namespace, repository):
         """
         Creates an auto-prune policy for the repository
         """
-        if registry_model.lookup_repository(namespace, repository) is None:
-            raise NotFound()
+        permission = AdministerRepositoryPermission(namespace, repository)
+        if not permission.can():
+            raise Unauthorized()
+
+        # test create api for non existent repo before adding this
+        # if registry_model.lookup_repository(namespace, repository) is None:
+        #     raise NotFound()
 
         app_data = request.get_json()
         method = app_data.get("method", None)
@@ -317,6 +325,128 @@ class RepositoryAutoPrunePolicies(ApiResource):
         )
 
         return {"uuid": policy.uuid}, 201
+
+
+@resource("/v1/repository/<apirepopath:repository>/autoprunepolicy/<policy_uuid>")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("policy_uuid", "The unique ID of the policy")
+@show_if(features.AUTO_PRUNE)
+class RepositoryAutoPrunePolicy(ApiResource):
+    """
+    Resource for fetching, updating, and deleting repository specific auto-prune policies
+    """
+
+    schemas = {
+        "AutoPrunePolicyConfig": {
+            "type": "object",
+            "description": "The policy configuration that is to be applied to the repository",
+            "required": ["method", "value"],
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "The method to use for pruning tags (number_of_tags, creation_date)",
+                },
+                "value": {
+                    "type": ["integer", "string"],
+                    "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
+                },
+            },
+        },
+    }
+
+    @require_scope(scopes.ADMIN_REPO)
+    @nickname("getRepositoryAutoPrunePolicy")
+    def get(self, namespace, repository, policy_uuid):
+        """
+        Fetches the auto-prune policy for the repository
+        """
+        permission = AdministerRepositoryPermission(namespace, repository)
+        if not permission.can():
+            raise Unauthorized()
+
+        policy = model.autoprune.get_repository_autoprune_policy_by_uuid(policy_uuid)
+        if policy is None:
+            raise NotFound()
+
+        return policy.get_view()
+
+    @require_scope(scopes.ADMIN_REPO)
+    @validate_json_request("AutoPrunePolicyConfig")
+    @nickname("updateRepositoryAutoPrunePolicy")
+    def put(self, namespace, repository, policy_uuid):
+        """
+        Updates the auto-prune policy for the repository
+        """
+        permission = AdministerRepositoryPermission(namespace, repository)
+        if not permission.can():
+            raise Unauthorized()
+
+        app_data = request.get_json()
+        method = app_data.get("method", None)
+        value = app_data.get("value", None)
+
+        if method is None or value is None:
+            request_error(message="Missing the following parameters: method, value")
+
+        policy_config = {
+            "method": method,
+            "value": value,
+        }
+
+        try:
+            updated = model.autoprune.update_repository_autoprune_policy(
+                namespace, repository, policy_uuid, policy_config
+            )
+            if not updated:
+                request_error(message="could not update policy")
+        except model.InvalidRepositoryException:
+            raise NotFound()
+        except model.InvalidRepositoryAutoPrunePolicy as ex:
+            request_error(ex)
+        except model.RepositoryAutoPrunePolicyDoesNotExist as ex:
+            raise NotFound()
+
+        log_action(
+            "update_repository_autoprune_policy",
+            namespace,
+            {
+                "method": policy_config["method"],
+                "value": policy_config["value"],
+                "namespace": namespace,
+                "repo": repository,
+            },
+            repo_name=repository,
+        )
+
+        return {"uuid": policy_uuid}, 204
+
+    @require_scope(scopes.ADMIN_REPO)
+    @nickname("deleteRepositoryAutoPrunePolicy")
+    def delete(self, namespace, repository, policy_uuid):
+        """
+        Deletes the auto-prune policy for the repository
+        """
+        permission = AdministerRepositoryPermission(namespace, repository)
+        if not permission.can():
+            raise Unauthorized()
+
+        try:
+            updated = model.autoprune.delete_repository_autoprune_policy(namespace, repository, policy_uuid)
+            if not updated:
+                raise InvalidRequest("could not delete policy")
+        except model.InvalidRepositoryException as ex:
+            raise NotFound()
+        except model.RepositoryAutoPrunePolicyDoesNotExist as ex:
+            raise NotFound()
+
+        log_action(
+            "delete_repository_autoprune_policy",
+            namespace,
+            {"policy_uuid": policy_uuid, "namespace": namespace, "repo": repository},
+            repo_name=repository,
+        )
+
+        return {"uuid": policy_uuid}, 200
 
 
 @resource("/v1/user/autoprunepolicy/")

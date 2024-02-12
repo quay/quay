@@ -2,8 +2,9 @@ import json
 import logging.config
 from enum import Enum
 
-from data.database import AutoPruneTaskStatus, DeletedNamespace
+from data.database import AutoPruneTaskStatus
 from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
+from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
 from data.database import (
     Repository,
     RepositoryState,
@@ -15,8 +16,11 @@ from data.model import (
     InvalidNamespaceAutoPruneMethod,
     InvalidNamespaceAutoPrunePolicy,
     InvalidNamespaceException,
+    InvalidRepositoryAutoPrunePolicy,
     NamespaceAutoPrunePolicyAlreadyExists,
     NamespaceAutoPrunePolicyDoesNotExist,
+    RepositoryAutoPrunePolicyAlreadyExists,
+    RepositoryAutoPrunePolicyDoesNotExist,
     db_transaction,
     log,
     modelutil,
@@ -103,6 +107,19 @@ def assert_valid_namespace_autoprune_policy(policy_config):
         raise InvalidNamespaceAutoPrunePolicy("Invalid value given for method type")
 
 
+def assert_valid_repository_autoprune_policy(policy_config):
+    """
+    Asserts that the policy config is valid.
+    """
+    try:
+        method = AutoPruneMethod(policy_config.get("method"))
+    except ValueError:
+        raise InvalidRepositoryAutoPrunePolicy("Invalid method provided")
+
+    if not valid_value(method, policy_config.get("value")):
+        raise InvalidRepositoryAutoPrunePolicy("Invalid value given for method type")
+
+
 def get_namespace_autoprune_policies_by_orgname(orgname):
     """
     Get the autopruning policies for the specified namespace.
@@ -116,25 +133,21 @@ def get_namespace_autoprune_policies_by_orgname(orgname):
     )
     return [NamespaceAutoPrunePolicy(row) for row in query]
 
-def get_namespace_autoprune_policies_by_reponame(repository):
+def get_repository_autoprune_policies_by_repo_name(orgname, repo_name):
     """
     Get the autopruning policies for the specified repository.
     """
-    pass
+    repo = repository.get_repository(orgname, repo_name)
+
+    query = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.repository == repo.id,
+    )
+    return [RepositoryAutoPrunePolicy(row) for row in query]
 
 
 def get_namespace_autoprune_policies_by_id(namespace_id):
     """
     Get the autopruning policies for the namespace by id.
-    """
-    query = NamespaceAutoPrunePolicyTable.select().where(
-        NamespaceAutoPrunePolicyTable.namespace == namespace_id,
-    )
-    return [NamespaceAutoPrunePolicy(row) for row in query]
-
-def get_repository_autoprune_policies_by_namespaceid(namespace_id):
-    """
-    Get repository autopruning policies for the namespace by id.
     """
     query = NamespaceAutoPrunePolicyTable.select().where(
         NamespaceAutoPrunePolicyTable.namespace == namespace_id,
@@ -155,6 +168,20 @@ def get_namespace_autoprune_policy(orgname, uuid):
         )
         return NamespaceAutoPrunePolicy(row)
     except NamespaceAutoPrunePolicyTable.DoesNotExist:
+        return None
+
+def get_repository_autoprune_policy_by_uuid(uuid):
+    """
+    Get the specific autopruning policy for the specified repository by uuid.
+    """
+    try:
+        row = (
+            RepositoryAutoPrunePolicyTable.select(RepositoryAutoPrunePolicyTable)
+            .where(RepositoryAutoPrunePolicyTable.uuid == uuid)
+            .get()
+        )
+        return RepositoryAutoPrunePolicy(row)
+    except RepositoryAutoPrunePolicyTable.DoesNotExist:
         return None
 
 
@@ -186,26 +213,27 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
         return new_policy
     
 
-def create_repository_autoprune_policy(namespace, repository, policy_config, create_task=False):
+def create_repository_autoprune_policy(orgname, repo_name, policy_config, create_task=False):
     """
-    Creates the repository auto-prune policy. If create_task is True, then it will also create
-    the auto-prune task for the repository. This will be used to run the auto-prune task. Deletion
-    of the task will be handled by the autoprune worker.
+    Creates the repository auto-prune policy. If create_task is True, it will check if auto-prune task is not already present,
+    and only then it will create the auto-prune task. Deletion of the task will be handled by the autoprune worker.
     """
 
     with db_transaction():
         namespace = get_active_namespace_user_by_username(orgname)
         namespace_id = namespace.id
 
-        if namespace_has_autoprune_policy(namespace_id):
-            raise NamespaceAutoPrunePolicyAlreadyExists(
-                "Policy for this namespace already exists, delete existing to create new policy"
+        repo = repository.get_repository(orgname, repo_name)
+
+        if repository_has_autoprune_policy(repo.id):
+            raise RepositoryAutoPrunePolicyAlreadyExists(
+                "Policy for this repository already exists, delete existing to create new policy"
             )
 
-        assert_valid_namespace_autoprune_policy(policy_config)
+        assert_valid_repository_autoprune_policy(policy_config)
 
-        new_policy = NamespaceAutoPrunePolicyTable.create(
-            namespace=namespace_id, policy=json.dumps(policy_config)
+        new_policy = RepositoryAutoPrunePolicyTable.create(
+            namespace=namespace_id, repository=repo.id, policy=json.dumps(policy_config)
         )
 
         if create_task and not namespace_has_autoprune_task(namespace_id):
@@ -242,9 +270,37 @@ def update_namespace_autoprune_policy(orgname, uuid, policy_config):
     return True
 
 
+def update_repository_autoprune_policy(orgname, repo_name, uuid, policy_config):
+    """
+    Updates the repository auto-prune policy with the provided policy config
+    for the specified uuid.
+    """
+
+    namespace = get_active_namespace_user_by_username(orgname)
+    namespace_id = namespace.id
+
+    policy = get_repository_autoprune_policy_by_uuid(uuid)
+    if policy is None:
+        raise RepositoryAutoPrunePolicyDoesNotExist(
+            f"Policy not found for repository: {repo_name} with uuid: {uuid}"
+        )
+
+    assert_valid_repository_autoprune_policy(policy_config)
+
+    (
+        RepositoryAutoPrunePolicyTable.update(policy=json.dumps(policy_config))
+        .where(
+            RepositoryAutoPrunePolicyTable.uuid == uuid,
+            RepositoryAutoPrunePolicyTable.namespace == namespace_id,
+        )
+        .execute()
+    )
+    return True
+
+
 def delete_namespace_autoprune_policy(orgname, uuid):
     """
-    Deletes the policy specified by the uuid
+    Deletes the namespace policy specified by the uuid
     """
 
     with db_transaction():
@@ -275,10 +331,51 @@ def delete_namespace_autoprune_policy(orgname, uuid):
         return True
 
 
+def delete_repository_autoprune_policy(orgname, repo_name, uuid):
+    """
+    Deletes the repository policy specified by the uuid
+    """
+
+    with db_transaction():
+        try:
+            namespace_id = User.select().where(User.username == orgname).get().id
+        except User.DoesNotExist:
+            raise InvalidNamespaceException("Invalid namespace provided: %s" % (orgname))
+
+        policy = get_repository_autoprune_policy_by_uuid(orgname, uuid)
+        if policy is None:
+            raise RepositoryAutoPrunePolicyDoesNotExist(
+                f"Policy not found for repository: {repo_name} with uuid: {uuid}"
+            )
+
+        response = (
+            RepositoryAutoPrunePolicyTable.delete()
+            .where(
+                RepositoryAutoPrunePolicyTable.uuid == uuid,
+                RepositoryAutoPrunePolicyTable.namespace == namespace_id,
+            )
+            .execute()
+        )
+
+        if not response:
+            raise RepositoryAutoPrunePolicyTable.DoesNotExist(
+                f"Policy not found for repository: {repo_name} with uuid: {uuid}"
+            )
+        return True
+
+
 def namespace_has_autoprune_policy(namespace_id):
     return (
         NamespaceAutoPrunePolicyTable.select(1)
         .where(NamespaceAutoPrunePolicyTable.namespace == namespace_id)
+        .exists()
+    )
+
+
+def repository_has_autoprune_policy(repository_id):
+    return (
+        RepositoryAutoPrunePolicyTable.select(1)
+        .where(RepositoryAutoPrunePolicyTable.repository == repository_id)
         .exists()
     )
 

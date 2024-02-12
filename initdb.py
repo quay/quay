@@ -464,6 +464,10 @@ def initialize_database():
     LogEntryKind.create(name="update_namespace_autoprune_policy")
     LogEntryKind.create(name="delete_namespace_autoprune_policy")
 
+    LogEntryKind.create(name="create_repository_autoprune_policy")
+    LogEntryKind.create(name="update_repository_autoprune_policy")
+    LogEntryKind.create(name="delete_repository_autoprune_policy")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
