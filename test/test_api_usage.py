@@ -12,12 +12,11 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from httmock import HTTMock, all_requests, urlmatch
+from httmock import HTTMock, urlmatch
 from mock import patch
-from playhouse.test_utils import _QueryLogHandler, assert_query_count
+from playhouse.test_utils import assert_query_count
 
 from app import (
-    all_queues,
     app,
     config_provider,
     docker_v2_signing_key,
@@ -103,7 +102,6 @@ from endpoints.api.robot import (
     UserRobotList,
 )
 from endpoints.api.search import ConductSearch, EntitySearch
-from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.superuser import (
     SuperUserLogs,
     SuperUserManagement,
@@ -153,7 +151,6 @@ from endpoints.webhooks import webhooks
 from initdb import finished_database_for_testing, setup_database_for_testing
 from test.helpers import assert_action_logged, check_transitive_modifications
 from util.morecollections import AttrDict
-from util.secscan.v4.fake import fake_security_scanner
 
 try:
     app.register_blueprint(api_bp, url_prefix="/api")
