@@ -125,8 +125,10 @@ function domainRoute(currentRoute, definedRoute) {
    So, the function returns /settings/quay/<route> .
    ***/
   return (
-    currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
-    definedRoute
+    currentRoute.replace(
+      /\/(overview|organization|repository|signin)(?!.*\1).*/,
+      '',
+    ) + definedRoute
   );
 }
 
