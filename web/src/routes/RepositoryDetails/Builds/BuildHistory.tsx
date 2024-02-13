@@ -1,4 +1,12 @@
-import {Title, ToggleGroup, ToggleGroupItem} from '@patternfly/react-core';
+import {
+  Button,
+  Title,
+  ToggleGroup,
+  ToggleGroupItem,
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+} from '@patternfly/react-core';
 import {
   BanIcon,
   CheckCircleIcon,
@@ -17,7 +25,6 @@ import {LoadingPage} from 'src/components/LoadingPage';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
 import {useBuilds} from 'src/hooks/UseBuilds';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {
   formatDate,
   humanizeTimeForExpiry,
@@ -26,8 +33,13 @@ import {
 import {
   RepositoryBuild,
   RepositoryBuildPhase,
+  RepositoryBuildTrigger,
 } from 'src/resources/BuildResource';
 import BuildTriggerDescription from './BuildTriggerDescription';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import StartBuildModal from './BuildHistoryStartBuildModal';
+import ManuallyStartTrigger from './BuildHistoryManuallyStartTriggerModal';
 
 const ONE_DAY_IN_SECONDS = 24 * 3600;
 const RESOURCE_URLS = {
@@ -54,10 +66,17 @@ enum Filters {
 }
 
 export default function BuildHistory(props: BuildHistoryProps) {
+  const config = useQuayConfig();
   const [buildsSinceInSeconds, setBuildsSinceInSeconds] = useState<number>();
   const [dateStartedFilter, setDateStartedFilter] = useState<Filters>(
     Filters.RECENT_BUILDS,
   );
+  const [isRunBuildModalOpen, setIsRunBuildModalOpen] =
+    useState<boolean>(false);
+  const [isManuallyStartTriggerOpen, setIsManuallyStartTriggerOpen] =
+    useState<boolean>(false);
+  const [manualTrigger, setManualTrigger] =
+    useState<RepositoryBuildTrigger>(null);
   const {builds, isError, error, isLoading} = useBuilds(
     props.org,
     props.repo,
@@ -94,9 +113,26 @@ export default function BuildHistory(props: BuildHistoryProps) {
 
   return (
     <>
-      <Title headingLevel="h2" style={{paddingLeft: '1em', paddingTop: '1em'}}>
-        Build History
-      </Title>
+      <Toolbar>
+        <ToolbarContent style={{paddingLeft: '1em', paddingTop: '1em'}}>
+          <ToolbarItem>
+            <Title headingLevel="h2">Build History</Title>
+          </ToolbarItem>
+          <Conditional
+            if={
+              props.repoDetails.can_write &&
+              config?.features.BUILD_SUPPORT &&
+              config?.config?.REGISTRY_STATE !== 'readonly'
+            }
+          >
+            <ToolbarItem align={{default: 'alignRight'}}>
+              <Button onClick={() => setIsRunBuildModalOpen(true)}>
+                Start New Build
+              </Button>
+            </ToolbarItem>
+          </Conditional>
+        </ToolbarContent>
+      </Toolbar>
       <ToggleGroup
         aria-label="filter build list by date"
         style={{padding: '1em'}}
@@ -162,6 +198,29 @@ export default function BuildHistory(props: BuildHistoryProps) {
             ))}
           </Tbody>
         </Table>
+      </Conditional>
+      <StartBuildModal
+        org={props.org}
+        repo={props.repo}
+        isOpen={isRunBuildModalOpen}
+        onClose={() => setIsRunBuildModalOpen(false)}
+        triggers={props.triggers}
+        onSelectTrigger={(trigger) => {
+          setIsRunBuildModalOpen(false);
+          setManualTrigger(trigger);
+          setIsManuallyStartTriggerOpen(true);
+        }}
+      />
+      <Conditional
+        if={isManuallyStartTriggerOpen && !isNullOrUndefined(manualTrigger)}
+      >
+        <ManuallyStartTrigger
+          org={props.org}
+          repo={props.repo}
+          trigger={manualTrigger}
+          isOpen={isManuallyStartTriggerOpen}
+          onClose={() => setIsManuallyStartTriggerOpen(false)}
+        />
       </Conditional>
     </>
   );
@@ -451,4 +510,6 @@ function getLongDescription(message: string) {
 interface BuildHistoryProps {
   org: string;
   repo: string;
+  repoDetails: RepositoryDetails;
+  triggers: RepositoryBuildTrigger[];
 }

@@ -1,7 +1,7 @@
 export interface SearchState {
   query: string;
   field: string;
-  isRegEx: boolean;
+  isRegEx?: boolean;
 }
 
 export interface OrgSearchState extends SearchState {

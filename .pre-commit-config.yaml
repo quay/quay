@@ -23,7 +23,7 @@ repos:
         entry: web/node_modules/.bin/eslint --fix
         language: system
         files: ^web/
-        exclude: ^web/cypress/test/
+        exclude: ^web/cypress/test/|^web/cypress/fixtures
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:

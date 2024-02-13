@@ -11,6 +11,10 @@ import BuildTriggerToggleModal from './BuildTriggerToggleModal';
 import BuildTriggerViewCredentialsModal from './BuildTriggerViewCredentialsModal';
 import {RepositoryBuildTrigger} from 'src/resources/BuildResource';
 import BuildTriggerDeleteModal from './BuildTriggerDeleteModal';
+import {triggerAsyncId} from 'async_hooks';
+import {isNullOrUndefined} from 'src/libs/utils';
+import Conditional from 'src/components/empty/Conditional';
+import ManuallyStartTrigger from './BuildHistoryManuallyStartTriggerModal';
 
 export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,6 +23,8 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
   const [isToggleTriggerModalOpen, setIsToggleTriggerModalOpen] =
     useState(false);
   const [isDeleteTriggerModalOpen, setIsDeleteTriggerModalOpen] =
+    useState(false);
+  const [isManuallyStartTriggerOpen, setIsManuallyStartTriggerOpen] =
     useState(false);
 
   const dropdownItems = [
@@ -30,6 +36,16 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
       }}
     >
       View Credentials
+    </DropdownItem>,
+    <DropdownItem
+      key="run-trigger-action"
+      onClick={() => {
+        setIsOpen(false);
+        setIsManuallyStartTriggerOpen(true);
+      }}
+      isDisabled={!props.trigger?.enabled}
+    >
+      Run Trigger Now
     </DropdownItem>,
     <DropdownItem
       key="toggle-trigger-action"
@@ -95,6 +111,17 @@ export default function BuildTriggerActions(props: BuildTriggerActionsProps) {
         isOpen={isDeleteTriggerModalOpen}
         onClose={() => setIsDeleteTriggerModalOpen(false)}
       />
+      <Conditional
+        if={isManuallyStartTriggerOpen && !isNullOrUndefined(props.trigger)}
+      >
+        <ManuallyStartTrigger
+          org={props.org}
+          repo={props.repo}
+          trigger={props.trigger}
+          isOpen={isManuallyStartTriggerOpen}
+          onClose={() => setIsManuallyStartTriggerOpen(false)}
+        />
+      </Conditional>
     </>
   );
 }

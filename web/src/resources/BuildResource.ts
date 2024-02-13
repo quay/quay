@@ -290,7 +290,6 @@ export async function fetchSources(
   triggerUuid: string,
   gitNamespaceId: string,
 ) {
-  console.log(gitNamespaceId);
   const response: AxiosResponse<FetchSourcesResponse> = await axios.post(
     `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/sources`,
     {
@@ -313,13 +312,12 @@ export async function fetchRefs(
   namespace: string,
   repo: string,
   triggerUuid: string,
-  source: string,
+  source?: string,
 ) {
+  const body = isNullOrUndefined(source) ? {} : {build_source: source};
   const response: AxiosResponse<FetchRefsResponse> = await axios.post(
     `/api/v1/repository/${namespace}/${repo}/trigger/${triggerUuid}/fields/refs`,
-    {
-      build_source: source,
-    },
+    body,
   );
   return response.data?.values;
 }
@@ -345,4 +343,78 @@ export async function fetchSubDirs(
   // Convert contextMap from object to Map
   response.data.contextMap = new Map(Object.entries(response.data.contextMap));
   return response.data;
+}
+
+export async function startBuild(
+  org: string,
+  repo: string,
+  triggerUuid: string,
+  ref: string | SourceRef,
+) {
+  const body =
+    typeof ref === 'string' || ref instanceof String
+      ? {commit_sha: ref}
+      : {refs: ref};
+  const response = await axios.post<RepositoryBuild>(
+    `/api/v1/repository/${org}/${repo}/trigger/${triggerUuid}/start`,
+    body,
+  );
+  return response.data;
+}
+
+export async function startDockerfileBuild(
+  org: string,
+  repo: string,
+  fileId: string,
+  pull_robot?: string,
+) {
+  const body: {file_id: string; pull_robot?: string} = {
+    file_id: fileId,
+  };
+  if (!isNullOrUndefined(pull_robot)) {
+    body.pull_robot = pull_robot;
+  }
+  const response = await axios.post<RepositoryBuild>(
+    `/api/v1/repository/${org}/${repo}/build/`,
+    body,
+  );
+  return response.data;
+}
+
+export interface FileDropResponse {
+  file_id: string;
+  url: string;
+}
+
+export async function fileDrop() {
+  const response = await axios.post<FileDropResponse>('/api/v1/filedrop/', {
+    mimeType: 'application/octet-stream',
+  });
+  return response.data;
+}
+
+export function uploadFile(url: string, dockerfileContent: string) {
+  // axios has trouble uploading files with binary content, so we use XMLHttpRequest instead
+  return new Promise(function (resolve, reject) {
+    const request = new XMLHttpRequest();
+    request.open('PUT', url, true);
+    request.setRequestHeader('Content-Type', 'application/octet-stream');
+    request.onload = function () {
+      if (this.status >= 200 && this.status < 300) {
+        resolve(request.response);
+      } else {
+        reject({
+          status: this.status,
+          statusText: request.statusText,
+        });
+      }
+    };
+    request.onerror = function () {
+      reject({
+        status: this.status,
+        statusText: request.statusText,
+      });
+    };
+    request.send(dockerfileContent);
+  });
 }

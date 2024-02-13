@@ -171,7 +171,6 @@ export function useGitSources(
   triggerUuid: string,
   gitNamespaceId: string,
 ) {
-  console.log(gitNamespaceId);
   const {data, isError, error, isLoading} = useQuery(
     ['sources', org, repo, triggerUuid, gitNamespaceId],
     () => fetchSources(org, repo, triggerUuid, gitNamespaceId),
@@ -189,11 +188,13 @@ export function useSourceRefs(
   org: string,
   repo: string,
   triggerUuid: string,
-  sourceRef: string,
+  sourceRef?: string,
+  enabled = true,
 ) {
   const {data, isError, error, isLoading} = useQuery(
     ['sourcerefs', org, repo, triggerUuid, sourceRef],
     () => fetchRefs(org, repo, triggerUuid, sourceRef),
+    {enabled: enabled},
   );
 
   return {

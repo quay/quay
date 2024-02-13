@@ -464,7 +464,7 @@ describe('Repository Builds', () => {
     }).as('getBuildTriggers');
     cy.intercept(
       'PUT',
-      '/api/v1/repository/testorg/testrepo/trigger/gitlab82-9fd5-4005-bc95-d3156855f0d5',
+      '/api/v1/repository/testorg/testrepo/trigger/disabled-9fd5-4005-bc95-d3156855f0d5',
       {
         statusCode: 200,
       },
@@ -473,7 +473,7 @@ describe('Repository Builds', () => {
     cy.visit('/repository/testorg/testrepo?tab=builds');
     cy.contains(
       'tr',
-      'push to GitLab repository testgitorg/testgitrepo',
+      'push to GitLab repository testgitorg/disabledrepo',
     ).within(() => {
       cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
       cy.contains('Enable Trigger').click();
@@ -540,7 +540,12 @@ describe('Repository Builds', () => {
     cy.get('[data-testid="Webhook Endpoint URL"').within(() => {
       cy.get('input').should(
         'have.value',
-        'https://$token:faketoken@localhost:8080/webhooks/push/trigger/67595ac0-5014-4962-81a0-9a8d336ca851',
+        `https://$token:faketoken@${Cypress.env(
+          'REACT_QUAY_APP_API_URL',
+        ).replace(
+          'http://',
+          '',
+        )}/webhooks/push/trigger/67595ac0-5014-4962-81a0-9a8d336ca851`,
       );
     });
     cy.contains('Done').click();
@@ -710,6 +715,248 @@ describe('Repository Builds', () => {
     cy.contains('This build trigger has not had its setup completed.');
     cy.contains('Delete Trigger').click();
     cy.wait('@deleteTrigger');
+  });
+
+  it('manually runs github trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/githubfe-70b5-4bf9-8eb9-8dccf9874aed/fields/refs',
+      {fixture: 'build-trigger-refs.json'},
+    ).as('getBuildTriggerRefs');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/githubfe-70b5-4bf9-8eb9-8dccf9874aed/start',
+      {statusCode: 200, body: {id: 'build001'}},
+    ).as('startBuild');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    const submitBuild = (cy) => {
+      cy.get('#manually-start-build-modal').within(() => {
+        cy.contains('button', 'Start Build').should('be.disabled');
+        cy.contains('Manually Start Build Trigger');
+        cy.contains('push to GitHub repository testgitorg/testgitrepo');
+        cy.contains('Branch/Tag:');
+        cy.get('button[aria-label="Menu toggle"]').click();
+        cy.contains('master');
+        cy.contains('development');
+        cy.contains('1.0.0');
+        cy.contains('1.0.1').click();
+        cy.contains('button', 'Start Build').click();
+        cy.get('@startBuild')
+          .its('request.body')
+          .should('deep.equal', {refs: {kind: 'tag', name: '1.0.1'}});
+      });
+      cy.contains('Build started successfully with ID build001');
+    };
+
+    // Test with build history button
+    cy.contains('Start New Build').click();
+    cy.get('#start-build-modal').within(() => {
+      cy.contains(
+        'tr',
+        'push to GitHub repository testgitorg/testgitrepo',
+      ).within(() => {
+        cy.contains('^newbranch$');
+        cy.contains('Run Trigger Now').click();
+      });
+    });
+    submitBuild(cy);
+
+    // Test run within row
+    cy.contains(
+      'tr',
+      'push to GitHub repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('Run Trigger').click();
+    });
+    submitBuild(cy);
+  });
+
+  it('manually runs gitlab trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/gitlab82-9fd5-4005-bc95-d3156855f0d5/fields/refs',
+      {fixture: 'build-trigger-refs.json'},
+    ).as('getBuildTriggerRefs');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/gitlab82-9fd5-4005-bc95-d3156855f0d5/start',
+      {statusCode: 200, body: {id: 'build001'}},
+    ).as('startBuild');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    const submitBuild = (cy) => {
+      cy.get('#manually-start-build-modal').within(() => {
+        cy.contains('button', 'Start Build').should('be.disabled');
+        cy.contains('Manually Start Build Trigger');
+        cy.contains('push to GitLab repository testgitorg/testgitrepo');
+        cy.contains('Branch/Tag:');
+        cy.get('button[aria-label="Menu toggle"]').click();
+        cy.contains('master');
+        cy.contains('development');
+        cy.contains('1.0.0');
+        cy.contains('1.0.1').click();
+        cy.contains('button', 'Start Build').click();
+        cy.get('@startBuild')
+          .its('request.body')
+          .should('deep.equal', {refs: {kind: 'tag', name: '1.0.1'}});
+      });
+      cy.contains('Build started successfully with ID build001');
+    };
+
+    // Test with build history button
+    cy.contains('Start New Build').click();
+    cy.get('#start-build-modal').within(() => {
+      cy.contains(
+        'tr',
+        'push to GitLab repository testgitorg/testgitrepo',
+      ).within(() => {
+        cy.contains('All');
+        cy.contains('Run Trigger Now').click();
+      });
+    });
+    submitBuild(cy);
+
+    // Test run within row
+    cy.contains(
+      'tr',
+      'push to GitLab repository testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('Run Trigger').click();
+    });
+    submitBuild(cy);
+  });
+
+  it('manually runs custom trigger', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'POST',
+      '/api/v1/repository/testorg/testrepo/trigger/custom-git35014-4962-81a0-9a8d336ca851/start',
+      {statusCode: 200, body: {id: 'build001'}},
+    ).as('startBuild');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    const submitBuild = (cy) => {
+      cy.get('#manually-start-build-modal').within(() => {
+        cy.contains('button', 'Start Build').should('be.disabled');
+        cy.contains('Manually Start Build Trigger');
+        cy.contains(
+          'push to repository https://github.com/testgitorg/testgitrepo',
+        );
+        cy.contains('Commit:');
+        cy.get('#manual-build-commit-input').type('invalidcommit');
+        cy.contains('Invalid commit pattern');
+        cy.get('#manual-build-commit-input').clear();
+        cy.get('#manual-build-commit-input').type(
+          'adadadf141dd4141a4ecbb3cb21282053a678203',
+        );
+        cy.contains('button', 'Start Build').click();
+        cy.get('@startBuild').its('request.body').should('deep.equal', {
+          commit_sha: 'adadadf141dd4141a4ecbb3cb21282053a678203',
+        });
+      });
+      cy.contains('Build started successfully with ID build001');
+    };
+
+    // Test with build history button
+    cy.contains('Start New Build').click();
+    cy.get('#start-build-modal').within(() => {
+      cy.contains(
+        'tr',
+        'push to repository https://github.com/testgitorg/testgitrepo',
+      ).within(() => {
+        cy.contains('All');
+        cy.contains('Run Trigger Now').click();
+      });
+    });
+    submitBuild(cy);
+
+    // Test run within row
+    cy.contains(
+      'tr',
+      'push to repository https://github.com/testgitorg/testgitrepo',
+    ).within(() => {
+      cy.get('button[data-testid="build-trigger-actions-kebab"]').click();
+      cy.contains('Run Trigger').click();
+    });
+    submitBuild(cy);
+  });
+
+  it('runs trigger with dockerfile', () => {
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
+      fixture: 'builds.json',
+    }).as('getBuilds');
+    cy.intercept('GET', '/api/v1/repository/testorg/testrepo/trigger/', {
+      fixture: 'build-triggers.json',
+    }).as('getBuildTriggers');
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/testorg/privaterepo?includeStats=false&includeTags=false',
+      {statusCode: 200, body: {is_public: false}},
+    ).as('getRepoDetails');
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/testorg/robots?permissions=true&token=false',
+      {fixture: 'robots.json'},
+    ).as('getRobots');
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/testorg/testrepo/permissions/user/testorg+testrobot/transitive',
+      {statusCode: 200, body: {permissions: [{role: 'read'}]}},
+    ).as('getTransitivePermissions');
+    cy.intercept('POST', '/api/v1/filedrop/', {
+      statusCode: 200,
+      body: {
+        url: `${Cypress.env(
+          'REACT_QUAY_APP_API_URL',
+        )}/userfiles/a1599e3f-aa56-4f90-8b1a-ec5f9e63ffe7`,
+        file_id: 'a1599e3f-aa56-4f90-8b1a-ec5f9e63ffe7',
+      },
+    }).as('getFileDrop');
+    cy.intercept('POST', '/api/v1/repository/testorg/testrepo/build/', {
+      statusCode: 201,
+      body: {id: 'build001'},
+    }).as('startBuild');
+    cy.visit('/repository/testorg/testrepo?tab=builds');
+
+    cy.contains('Start New Build').click();
+    cy.get('#start-build-modal').within(() => {
+      cy.contains('Upload Dockerfile').click();
+      cy.fixture('TestDockerfile', null).as('dockerfile');
+      cy.get('#dockerfile-upload').selectFile('@dockerfile', {
+        action: 'drag-drop',
+      });
+      cy.contains(
+        'The selected Dockerfile contains a FROM that refers to private repository testorg/privaterepo.',
+      );
+      cy.contains(
+        'A robot account with read access to that repository is required for the build:',
+      );
+      cy.get('#repository-creator-dropdown').click();
+      cy.contains('testorg+testrobot2');
+      cy.contains('testorg+testrobot').click();
+      cy.contains('button', 'Start Build').click();
+    });
+    cy.contains('Build started with ID build001');
   });
 });
 
@@ -996,7 +1243,9 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     cy.contains('GitHub Repository Push').should(
       'have.attr',
       'href',
-      'https://github.com/login/oauth/authorize?client_id=testclientid&redirect_uri=http://localhost:8080/oauth2/github/callback/trigger/testorg/testrepo&scope=repo,user:email',
+      `https://github.com/login/oauth/authorize?client_id=testclientid&redirect_uri=${Cypress.env(
+        'REACT_QUAY_APP_API_URL',
+      )}/oauth2/github/callback/trigger/testorg/testrepo&scope=repo,user:email`,
     );
 
     cy.intercept(
@@ -1225,7 +1474,9 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     cy.contains('GitLab Repository Push').should(
       'have.attr',
       'href',
-      'https://gitlab.com/oauth/authorize?client_id=testclientid&redirect_uri=http://localhost:8080/oauth2/gitlab/callback/trigger&scope=api%20write_repository%20openid&response_type=code&state=repo:testorg/testrepo',
+      `https://gitlab.com/oauth/authorize?client_id=testclientid&redirect_uri=${Cypress.env(
+        'REACT_QUAY_APP_API_URL',
+      )}/oauth2/gitlab/callback/trigger&scope=api%20write_repository%20openid&response_type=code&state=repo:testorg/testrepo`,
     );
 
     cy.intercept(

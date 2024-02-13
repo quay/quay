@@ -7,9 +7,6 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import {LoadingPage} from 'src/components/LoadingPage';
-import RequestError from 'src/components/errors/RequestError';
-import {useBuildTriggers} from 'src/hooks/UseBuildTriggers';
 import BuildTriggerDescription from './BuildTriggerDescription';
 import Conditional from 'src/components/empty/Conditional';
 import {isNullOrUndefined} from 'src/libs/utils';
@@ -23,15 +20,12 @@ import InactiveTrigger from './BuildTriggersInactiveTriggerRow';
 import CreateBuildTriggerDropdown from './BuildCreateTriggerDropdown';
 import SetupBuildTriggerModal from './BuildTriggerSetupModal';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {RepositoryBuildTrigger} from 'src/resources/BuildResource';
 
 export default function BuildTriggers(props: BuildTriggersProps) {
   const config = useQuayConfig();
   const [isSetupTriggerOpen, setIsSetupTriggerOpen] = useState(
     !isNullOrUndefined(props.setupTriggerUuid),
-  );
-  const {triggers, isLoading, isError, error} = useBuildTriggers(
-    props.org,
-    props.repo,
   );
   const [triggerToggleOptions, setTriggerToggleOptions] = useState<{
     trigger_uuid: string;
@@ -39,18 +33,10 @@ export default function BuildTriggers(props: BuildTriggersProps) {
     isOpen: boolean;
   }>({trigger_uuid: null, enabled: null, isOpen: false});
 
-  if (isLoading) {
-    return <LoadingPage />;
-  }
-
-  if (isError) {
-    return <RequestError message={error as string} />;
-  }
-
-  const activeTriggers = triggers.filter(
+  const activeTriggers = props.triggers.filter(
     (trigger) => trigger.is_active === true,
   );
-  const inActiveTriggers = triggers.filter(
+  const inActiveTriggers = props.triggers.filter(
     (trigger) => trigger.is_active == false,
   );
 
@@ -59,7 +45,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
       <Toolbar>
         <ToolbarContent style={{paddingLeft: '1em', paddingTop: '1em'}}>
           <ToolbarItem>
-            <Title headingLevel="h2">Build triggers</Title>
+            <Title headingLevel="h2">Build Triggers</Title>
           </ToolbarItem>
           <ToolbarItem align={{default: 'alignRight'}}>
             <CreateBuildTriggerDropdown
@@ -69,7 +55,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
           </ToolbarItem>
         </ToolbarContent>
       </Toolbar>
-      <Conditional if={triggers.length > 0}>
+      <Conditional if={props.triggers.length > 0}>
         <Table aria-label="Repository build triggers table" variant="compact">
           <Thead>
             <Tr>
@@ -203,7 +189,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
           ))}
         </Table>
       </Conditional>
-      <Conditional if={triggers.length === 0}>
+      <Conditional if={props.triggers.length === 0}>
         <p style={{padding: '1em'}}>
           No build triggers defined. Build triggers invoke builds whenever the
           triggered condition is met (source control push, webhook, etc)
@@ -240,4 +226,5 @@ interface BuildTriggersProps {
   repo: string;
   setupTriggerUuid?: string;
   repoDetails: RepositoryDetails;
+  triggers: RepositoryBuildTrigger[];
 }
