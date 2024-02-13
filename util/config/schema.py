@@ -1268,6 +1268,11 @@ CONFIG_SCHEMA = {
                 ],
             },
         },
+        "IGNORE_UNKNOWN_MEDIATYPES": {
+            "type": "boolean",
+            "description": "If set to true, ignore ALLOWED_OCI_ARTIFACT_TYPES",
+            "x-example": False,
+        },
         # Clean partial uploads during S3 multipart upload
         "CLEAN_BLOB_UPLOAD_FOLDER": {
             "type": "boolean",

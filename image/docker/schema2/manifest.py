@@ -145,7 +145,7 @@ class DockerSchema2Manifest(ManifestInterface):
         ],
     }
 
-    def __init__(self, manifest_bytes, validate=False):
+    def __init__(self, manifest_bytes, validate=False, ignore_unknown_mediatypes=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._payload = manifest_bytes
@@ -190,6 +190,14 @@ class DockerSchema2Manifest(ManifestInterface):
     @property
     def media_type(self):
         return self._parsed[DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY]
+
+    @property
+    def artifact_type(self):
+        return None
+
+    @property
+    def subject(self):
+        return None
 
     @property
     def digest(self):

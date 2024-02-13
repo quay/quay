@@ -764,6 +764,8 @@ class DefaultConfig(ImmutableConfig):
         ],
     }
 
+    IGNORE_UNKNOWN_MEDIATYPES = False
+
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_HELM_OCI_SUPPORT = True

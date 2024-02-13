@@ -26,6 +26,7 @@ const teamMemberBreadcrumb = (match) => {
 };
 
 const Breadcrumb = {
+  overviewListBreadcrumb: 'Overview',
   organizationsListBreadcrumb: 'Organization',
   repositoriesListBreadcrumb: 'Repository',
   organizationDetailBreadcrumb: organizationNameBreadcrumb,
@@ -124,8 +125,10 @@ function domainRoute(currentRoute, definedRoute) {
    So, the function returns /settings/quay/<route> .
    ***/
   return (
-    currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
-    definedRoute
+    currentRoute.replace(
+      /\/(overview|organization|repository|signin)(?!.*\1).*/,
+      '',
+    ) + definedRoute
   );
 }
 
@@ -136,7 +139,7 @@ export const getNavigationRoutes = () => {
     {
       path: domainRoute(currentRoute, NavigationPath.overviewList),
       element: <OverviewList />,
-      breadcrumb: Breadcrumb.organizationsListBreadcrumb,
+      breadcrumb: Breadcrumb.overviewListBreadcrumb,
     },
     {
       path: domainRoute(currentRoute, NavigationPath.organizationsList),

@@ -182,7 +182,7 @@ class DockerSchema1Manifest(ManifestInterface):
         ],
     }
 
-    def __init__(self, manifest_bytes, validate=True):
+    def __init__(self, manifest_bytes, validate=True, ignore_unknown_mediatypes=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._layers = None
@@ -294,6 +294,14 @@ class DockerSchema1Manifest(ManifestInterface):
     @property
     def media_type(self):
         return self.content_type
+
+    @property
+    def artifact_type(self):
+        return None
+
+    @property
+    def subject(self):
+        return None
 
     @property
     def signatures(self):
