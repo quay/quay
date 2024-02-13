@@ -33,12 +33,16 @@ import ErrorModal from '../errors/ErrorModal';
 import {useQueryClient} from '@tanstack/react-query';
 import 'src/components/header/HeaderToolbar.css';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useLocation, useNavigate} from 'react-router-dom';
+import {getSignInPath} from 'src/routes/NavigationPath';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 
 export function HeaderToolbar() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
@@ -63,11 +67,7 @@ export function HeaderToolbar() {
           GlobalAuthState.csrfToken = undefined;
           queryClient.invalidateQueries(['user']);
 
-          // Ignore client side auth page and use old UI if present
-          // TODO: replace this with navigate('/signin') once new ui supports all auth methods
-          const protocol = window.location.protocol;
-          const host = window.location.host;
-          window.location.replace(`${protocol}//${host}/signin/`);
+          navigate(getSignInPath(location.pathname));
         } catch (err) {
           console.error(err);
           setErr(addDisplayError('Unable to log out', err));

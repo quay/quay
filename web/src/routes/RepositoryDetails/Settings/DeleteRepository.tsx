@@ -7,18 +7,20 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import {useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import Conditional from 'src/components/empty/Conditional';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
+import {getRepositoryListPath} from 'src/routes/NavigationPath';
 
 export default function DeleteRepository({org, repo}: DeleteRepositoryProps) {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [repoNameInput, setRepoNameInput] = useState<string>('');
   const [isError, setIsError] = useState<boolean>(false);
+  const location = useLocation();
   const navigate = useNavigate();
   const {deleteRepositories} = useDeleteRepositories({
     onSuccess: () => {
-      navigate('/repository');
+      navigate(getRepositoryListPath(location.pathname));
     },
     onError: () => {
       setIsError(true);

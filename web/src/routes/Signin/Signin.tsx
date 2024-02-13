@@ -7,7 +7,7 @@ import {
 } from '@patternfly/react-core';
 import logo from 'src/assets/quay.svg';
 import {GlobalAuthState, loginUser} from 'src/resources/AuthResource';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import {useRecoilState} from 'recoil';
 import {AuthState} from 'src/atoms/AuthState';
 import axios, {getCsrfToken} from 'src/libs/axios';
@@ -15,6 +15,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {AxiosError} from 'axios';
 import './Signin.css';
 import {addDisplayError} from 'src/resources/ErrorHandling';
+import {getOrganizationListPath} from '../NavigationPath';
 
 export function Signin() {
   const [username, setUsername] = useState('');
@@ -23,6 +24,7 @@ export function Signin() {
   const [err, setErr] = useState<string>();
   const [, setAuthState] = useRecoilState(AuthState);
 
+  const location = useLocation();
   const navigate = useNavigate();
   const quayConfig = useQuayConfig();
 
@@ -41,7 +43,7 @@ export function Signin() {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
         GlobalAuthState.isLoggedIn = true;
-        navigate('/organization');
+        navigate(getOrganizationListPath(location.pathname));
       } else {
         setErr('Invalid login credentials');
       }
