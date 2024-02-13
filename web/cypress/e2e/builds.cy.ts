@@ -1009,11 +1009,19 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
       '/api/v1/repository/testorg/testrepo/trigger/github01-0001-4c69-a5cc-ec372d0117cd/namespaces',
       {fixture: 'github-build-trigger-namespaces.json'},
     ).as('getBuildTriggerNamespaces');
-    cy.intercept(
-      'POST',
-      '/api/v1/repository/testorg/testrepo/trigger/github01-0001-4c69-a5cc-ec372d0117cd/sources',
-      {fixture: 'github-build-trigger-sources.json'},
-    ).as('getBuildTriggerSources');
+    cy.fixture('github-build-trigger-sources.json').then((fixture) => {
+      for (const repo of fixture.sources) {
+        repo.last_updated =
+          repo.name === 'stalerepo4'
+            ? 1705069849
+            : Math.floor(Date.now() / 1000);
+      }
+      cy.intercept(
+        'POST',
+        '/api/v1/repository/testorg/testrepo/trigger/github01-0001-4c69-a5cc-ec372d0117cd/sources',
+        fixture,
+      ).as('getBuildTriggerSources');
+    });
     cy.intercept(
       'POST',
       '/api/v1/repository/testorg/testrepo/trigger/github01-0001-4c69-a5cc-ec372d0117cd/fields/refs',
@@ -1230,11 +1238,19 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
       '/api/v1/repository/testorg/testrepo/trigger/gitlab01-0001-4c69-a5cc-ec372d0117cd/namespaces',
       {fixture: 'gitlab-build-trigger-namespaces.json'},
     ).as('getBuildTriggerNamespaces');
-    cy.intercept(
-      'POST',
-      '/api/v1/repository/testorg/testrepo/trigger/gitlab01-0001-4c69-a5cc-ec372d0117cd/sources',
-      {fixture: 'gitlab-build-trigger-sources.json'},
-    ).as('getBuildTriggerSources');
+    cy.fixture('gitlab-build-trigger-sources.json').then((fixture) => {
+      for (const repo of fixture.sources) {
+        repo.last_updated =
+          repo.name === 'stalerepo4'
+            ? 1705069849
+            : Math.floor(Date.now() / 1000);
+      }
+      cy.intercept(
+        'POST',
+        '/api/v1/repository/testorg/testrepo/trigger/gitlab01-0001-4c69-a5cc-ec372d0117cd/sources',
+        fixture,
+      ).as('getBuildTriggerSources');
+    });
     cy.intercept(
       'POST',
       '/api/v1/repository/testorg/testrepo/trigger/gitlab01-0001-4c69-a5cc-ec372d0117cd/fields/refs',
