@@ -75,7 +75,7 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive;
         apt-get -y update;
         apt-get -y install libgpgme-dev libldap2-dev libsasl2-dev swig python3.9-dev python3-pip findutils git;
-        apt-get -y install libffi-dev libssl-dev libjpeg-dev libxml2-dev libxslt-dev;
+        apt-get -y install libffi-dev libssl-dev libjpeg-dev libpq-dev libxml2-dev libxslt-dev;
         apt-get -y install rustc cargo pkg-config;
         git clone ${GH_REPOSITORY} build;
         cd build && git checkout ${GH_REF};
