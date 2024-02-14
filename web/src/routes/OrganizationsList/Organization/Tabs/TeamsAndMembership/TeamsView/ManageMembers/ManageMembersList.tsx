@@ -320,7 +320,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   useEffect(() => {
     if (teamSyncInfo != null) {
       if (teamSyncInfo.service == 'oidc') {
-        setOIDCGroupName(teamSyncInfo.config?.group_config.split(':')[1]);
+        setOIDCGroupName(teamSyncInfo.config?.group_config);
       }
       setPageInReadOnlyMode(true);
     }
@@ -510,7 +510,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         enableTeamSync(groupName, teamCanSync?.service)
       }
       secondaryText="Enter the name of the group you'd like sync membership with:"
-      alertText="Please note that once team syncing is enabled, the team's user membership from within Red Hat Quay will be read-only."
+      alertText="Please note that once team syncing is enabled, the membership of users who are already part of the team will be revoked. OIDC group will be the single source of truth. This is a non-reversible action. Team's user membership from within Red Hat Quay will be read-only."
     />
   );
 

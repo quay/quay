@@ -12,7 +12,7 @@ export async function enableTeamSyncForOrg(
   let data = {};
   if (service == 'oidc') {
     data = {
-      group_config: `${orgName}:${groupName}`,
+      group_config: groupName,
     };
   }
   const response: AxiosResponse = await axios.post(enableSyncUrl, data);
