@@ -10,7 +10,6 @@ describe('Repository Settings - Repo State', () => {
       });
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
         res.body.features['REPO_MIRROR'] = true;
         return res;
       }),
@@ -20,7 +19,6 @@ describe('Repository Settings - Repo State', () => {
   it('Should not be visible without FEATURE_REPO_MIRROR', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
         res.body.features['REPO_MIRROR'] = false;
         return res;
       }),
@@ -32,7 +30,6 @@ describe('Repository Settings - Repo State', () => {
   it.skip('Can switch between states', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
         res.body.features['REPO_MIRROR'] = true;
         return res;
       }),

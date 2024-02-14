@@ -825,12 +825,6 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables user to try the beta UI Environment
     FEATURE_UI_V2 = False
 
-    # Feature Flag: Enables repository settings in the beta UI Environment
-    FEATURE_UI_V2_REPO_SETTINGS = False
-
-    # Feature Flag: Enables repository builds in the beta UI Environment
-    FEATURE_UI_V2_BUILDS = False
-
     # User feedback form for UI-V2
     UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
 
