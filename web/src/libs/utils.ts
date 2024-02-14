@@ -61,9 +61,13 @@ export function parseRepoNameFromUrl(url: string): string {
   //or <prefix>/repository/<org>/<repo>/tag/<tag>
   const urlParts = url.split('/');
   const repoKeywordIndex = urlParts.indexOf('repository');
-  let endIndex = urlParts.indexOf('tag');
   if (repoKeywordIndex === -1) {
     return '';
+  }
+
+  let endIndex = urlParts.lastIndexOf('tag');
+  if (endIndex === -1) {
+    endIndex = urlParts.lastIndexOf('build');
   }
 
   if (endIndex === -1) {
@@ -148,4 +152,16 @@ export const getAccountTypeForMember = (member: ITeamMember): string => {
 
 export const titleCase = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+export const escapeHtmlString = function (text) {
+  const textStr = (text || '').toString();
+  const adjusted = textStr
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+  return adjusted;
 };

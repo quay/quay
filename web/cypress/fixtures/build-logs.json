@@ -1,0 +1,203 @@
+{
+    "start": 0,
+    "total": 31,
+    "logs": [
+        {
+            "message": "build-scheduled",
+            "type": "phase",
+            "data": {
+                "datetime": "2022-05-12 17:24:09.462406"
+            }
+        },
+        {
+            "message": "unpacking",
+            "type": "phase",
+            "data": {
+                "datetime": "2022-05-12 17:25:30.618740"
+            }
+        },
+        {
+            "message": "pulling",
+            "type": "phase",
+            "data": {
+                "registry_url": "quay.io",
+                "base_image": "registry.access.redhat.com/ubi8/ubi",
+                "base_image_tag": "8.0",
+                "datetime": "2022-05-12 17:25:31.200962"
+            }
+        },
+        {
+            "message": "Pulling from ubi8/ubi",
+            "data": {
+                "datetime": "2022-05-12 17:25:31.546185"
+            }
+        },
+        {
+            "message": "Pull complete",
+            "data": {
+                "datetime": "2022-05-12 17:25:36.944178"
+            }
+        },
+        {
+            "message": "Digest: sha256:f3d42effb75ef738fbb89b26f6c971de4049626eddc367c4332fbc6a3a168d83",
+            "data": {
+                "datetime": "2022-05-12 17:25:36.955543"
+            }
+        },
+        {
+            "message": "Status: Downloaded newer image for registry.access.redhat.com/ubi8/ubi:8.0",
+            "data": {
+                "datetime": "2022-05-12 17:25:36.966917"
+            }
+        },
+        {
+            "message": "Pulling from testorg/testrepo",
+            "data": {
+                "datetime": "2022-05-12 17:25:37.180450"
+            }
+        },
+        {
+            "message": "Digest: sha256:d0735ffb77f8c90d1766be2e00356bfb8a233c217f75c56d9c30e68f93d32af6",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.360175"
+            }
+        },
+        {
+            "message": "Status: Downloaded newer image for quay.io/testorg/testrepo:latest",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.371991"
+            }
+        },
+        {
+            "message": "building",
+            "type": "phase",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.419458"
+            }
+        },
+        {
+            "message": "Step 1/2 : FROM registry.access.redhat.com/ubi8/ubi:8.0",
+            "type": "command",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.501879"
+            }
+        },
+        {
+            "message": "\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.514098"
+            }
+        },
+        {
+            "message": " ---> 11f9dba4d1bc\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.526100"
+            }
+        },
+        {
+            "message": "Step 2/2 : RUN curl -v https://www.google.com",
+            "type": "command",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.537785"
+            }
+        },
+        {
+            "message": "\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:40.550026"
+            }
+        },
+        {
+            "message": " ---> Running in 066db333e3b2\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:42.625636"
+            }
+        },
+        {
+            "message": "\u001b[91m* Rebuilt URL to: https://www.google.com/\n\u001b[0m",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.134785"
+            }
+        },
+        {
+            "message": "Removing intermediate container 066db333e3b2\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.713076"
+            }
+        },
+        {
+            "message": " ---> a7c0b350e3e8\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.724992"
+            }
+        },
+        {
+            "message": "Successfully built a7c0b350e3e8\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.736732"
+            }
+        },
+        {
+            "message": "Successfully tagged 648b039e-8922-4167-4031-955a1ba7f701:latest\n",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.748077"
+            }
+        },
+        {
+            "message": "pushing",
+            "type": "phase",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.791233"
+            }
+        },
+        {
+            "message": "The push refers to repository [quay.io/testorg/testrepo]",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.816005"
+            }
+        },
+        {
+            "message": "Preparing",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.838263"
+            }
+        },
+        {
+            "message": "Pushing",
+            "data": {
+                "datetime": "2022-05-12 17:25:43.943390"
+            }
+        },
+        {
+            "message": "Layer already exists",
+            "data": {
+                "datetime": "2022-05-12 17:25:57.662185"
+            }
+        },
+        {
+            "message": "Layer already exists",
+            "data": {
+                "datetime": "2022-05-12 17:25:57.675817"
+            }
+        },
+        {
+            "message": "master: digest: sha256:d85a25b170694321983c23c1377289a18fca89950e4dc59b4bf138d428ca4659 size: 737",
+            "data": {
+                "datetime": "2022-05-12 17:25:57.755515"
+            }
+        },
+        {
+            "message": "",
+            "data": {
+                "datetime": "2022-05-12 17:25:57.768566"
+            }
+        },
+        {
+            "message": "complete",
+            "type": "phase",
+            "data": {
+                "datetime": "2022-05-12 17:25:57.811599"
+            }
+        }
+    ]
+}

@@ -22,7 +22,7 @@ export default function RegistryStatus() {
       <div id="registry-status" className="announcement inline">
         {statusData.incidents.map((incident) => {
           return (
-            <div key={incident.name} className="message">
+            <div key={incident.name} className="quay-service-status-message">
               <Conditional if={statusData.indicator != 'loading'}>
                 <span
                   className={`quay-service-status-indicator ${statusData.indicator}`}
@@ -41,7 +41,7 @@ export default function RegistryStatus() {
         {statusData.scheduled_maintenances.map((scheduled) => {
           return (
             <div key={scheduled.name}>
-              <span className="message">
+              <span className="quay-service-status-message">
                 <Conditional if={scheduled.status == 'scheduled'}>
                   <OutlinedCalendarAltIcon style={{marginRight: '6px'}} />{' '}
                   Scheduled for {formatDate(scheduled.scheduled_for)}:{' '}
