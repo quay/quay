@@ -1880,6 +1880,7 @@ describe('Repository Builds - View build logs', () => {
       cy.contains('a', 'Download').should('have.attr', 'target', `_blank`);
 
       // Timestamps
+      cy.window().focus();
       cy.get('.build-log-timestamp').should('not.exist');
       cy.contains('Show timestamps').click();
       cy.get('.build-log-timestamp').should('exist');
