@@ -1848,6 +1848,13 @@ describe('Repository Builds - View build logs', () => {
         'master: digest: sha256:d85a25b170694321983c23c1377289a18fca89950e4dc59b4bf138d428ca4659 size: 737',
       );
 
+      // Timestamps
+      cy.get('.build-log-timestamp').should('not.exist');
+      cy.contains('Show timestamps').click();
+      cy.get('.build-log-timestamp').should('exist');
+      cy.contains('Hide timestamps').click();
+      cy.get('.build-log-timestamp').should('not.exist');
+
       // Copy
       cy.contains('Copy')
         .click()
@@ -1878,14 +1885,6 @@ describe('Repository Builds - View build logs', () => {
         `/buildlogs/${build.id}`,
       );
       cy.contains('a', 'Download').should('have.attr', 'target', `_blank`);
-
-      // Timestamps
-      cy.window().focus();
-      cy.get('.build-log-timestamp').should('not.exist');
-      cy.contains('Show timestamps').click();
-      cy.get('.build-log-timestamp').should('exist');
-      cy.contains('Hide timestamps').click();
-      cy.get('.build-log-timestamp').should('not.exist');
     });
   });
 
