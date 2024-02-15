@@ -10,6 +10,7 @@ from data import model
 from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
+    RepositoryParamResource,
     allow_if_superuser,
     log_action,
     nickname,
@@ -236,7 +237,7 @@ class OrgAutoPrunePolicy(ApiResource):
 @resource("/v1/repository/<apirepopath:repository>/autoprunepolicy/")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @show_if(features.AUTO_PRUNE)
-class RepositoryAutoPrunePolicies(ApiResource):
+class RepositoryAutoPrunePolicies(RepositoryParamResource):
     """
     Resource for listing and creating repository auto-prune policies
     """
@@ -331,7 +332,7 @@ class RepositoryAutoPrunePolicies(ApiResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("policy_uuid", "The unique ID of the policy")
 @show_if(features.AUTO_PRUNE)
-class RepositoryAutoPrunePolicy(ApiResource):
+class RepositoryAutoPrunePolicy(RepositoryParamResource):
     """
     Resource for fetching, updating, and deleting repository specific auto-prune policies
     """

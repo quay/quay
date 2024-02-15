@@ -8,10 +8,14 @@ import Visibility from './Visibility';
 import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import RepositoryAutoPruning from './RepositoryAutopruning';
+import { useOrganization } from 'src/hooks/UseOrganization';
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const config = useQuayConfig();
+  const {isUserOrganization} = useOrganization(props.org);
+
   const tabs = [
     {
       name: 'User and robot permissions',
@@ -21,6 +25,17 @@ export default function Settings(props: SettingsProps) {
           org={props.org}
           repo={props.repo}
           setDrawerContent={props.setDrawerContent}
+        />
+      ),
+    },
+    {
+      name: 'Repository Auto-prune policies',
+      id: 'repositoryautoprunepolicies',
+      content: (
+        <RepositoryAutoPruning
+          organizationName={props.org}
+          repoName={props.repo}
+          isUser={isUserOrganization}
         />
       ),
     },

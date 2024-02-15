@@ -235,7 +235,6 @@ def create_repository_autoprune_policy(orgname, repo_name, policy_config, create
         new_policy = RepositoryAutoPrunePolicyTable.create(
             namespace=namespace_id, repository=repo.id, policy=json.dumps(policy_config)
         )
-
         if create_task and not namespace_has_autoprune_task(namespace_id):
             create_autoprune_task(namespace_id)
 
@@ -342,7 +341,7 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
         except User.DoesNotExist:
             raise InvalidNamespaceException("Invalid namespace provided: %s" % (orgname))
 
-        policy = get_repository_autoprune_policy_by_uuid(orgname, uuid)
+        policy = get_repository_autoprune_policy_by_uuid(uuid)
         if policy is None:
             raise RepositoryAutoPrunePolicyDoesNotExist(
                 f"Policy not found for repository: {repo_name} with uuid: {uuid}"
