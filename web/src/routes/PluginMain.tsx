@@ -23,8 +23,13 @@ import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import OverviewList from './OverviewList/OverviewList';
 
 const NavigationRoutes = [
+  {
+    path: NavigationPath.overviewList,
+    Component: <OverviewList />,
+  },
   {
     path: NavigationPath.organizationsList,
     Component: <OrganizationsList />,
