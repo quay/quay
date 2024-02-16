@@ -83,7 +83,6 @@ import { shorthandTimeUnits } from 'src/routes/OrganizationsList/Organization/Ta
                 setTagCreationDateValue(Number(tagAgeValue[0]));
                 setTagCreationDateUnit(tagAgeUnit[0]);
               } else {
-                // Shouldn't ever happen but leave it here just in case
                 console.error('Invalid tag age value');
               }
               break;

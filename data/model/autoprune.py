@@ -64,6 +64,7 @@ class RepositoryAutoPrunePolicy:
         self.uuid = db_row.uuid
         self.method = config.get("method")
         self.config = config
+        self.repository_id = db_row.repository_id
 
     def get_row(self):
         return self._db_row
@@ -133,6 +134,7 @@ def get_namespace_autoprune_policies_by_orgname(orgname):
     )
     return [NamespaceAutoPrunePolicy(row) for row in query]
 
+
 def get_repository_autoprune_policies_by_repo_name(orgname, repo_name):
     """
     Get the autopruning policies for the specified repository.
@@ -155,6 +157,16 @@ def get_namespace_autoprune_policies_by_id(namespace_id):
     return [NamespaceAutoPrunePolicy(row) for row in query]
 
 
+def get_repository_autoprune_policies_by_namespace_id(namespace_id):
+    """
+    Get all repository autopruning policies for a namespace by id.
+    """
+    query = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.namespace == namespace_id,
+    )
+    return [RepositoryAutoPrunePolicy(row) for row in query]
+
+
 def get_namespace_autoprune_policy(orgname, uuid):
     """
     Get the specific autopruning policy for the specified namespace by uuid.
@@ -169,6 +181,7 @@ def get_namespace_autoprune_policy(orgname, uuid):
         return NamespaceAutoPrunePolicy(row)
     except NamespaceAutoPrunePolicyTable.DoesNotExist:
         return None
+
 
 def get_repository_autoprune_policy_by_uuid(uuid):
     """
@@ -211,7 +224,7 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
             create_autoprune_task(namespace_id)
 
         return new_policy
-    
+
 
 def create_repository_autoprune_policy(orgname, repo_name, policy_config, create_task=False):
     """
@@ -411,8 +424,7 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
         try:
             # We have to check for enabled User as a sub query since a join would lock the User row too
             query = (
-                AutoPruneTaskStatus.select(AutoPruneTaskStatus)
-                .where(
+                AutoPruneTaskStatus.select(AutoPruneTaskStatus).where(
                     AutoPruneTaskStatus.namespace.not_in(
                         # this basically skips ns if user is not enabled
                         User.select(User.id).where(
@@ -420,7 +432,7 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
                         )
                     ),
                     # the next two is an OR condition where:
-                    # 1. only pick those task if it has been more than 1 hour (task_run_interval_ms time) since the last_ran_ms. 
+                    # 1. only pick those task if it has been more than 1 hour (task_run_interval_ms time) since the last_ran_ms.
                     # Eg: if last_ran_ms = 10am, epoc = 10.30am, then (10.30am - 60min = 9.30am). But 10am is not < 9.30am so skip the 10am task and only pick older task that ran before 9.30am
                     # 2. pick a null last_ran_ms indicates that the task was never ran
                     (
@@ -598,12 +610,28 @@ def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page
         )
 
 
-def execute_namespace_polices(policies, namespace_id, repository_page_limit=50, tag_page_limit=100):
+def get_repository_by_policy_repo_id(policy_repo_id):
+    try:
+        return (
+            Repository.select(Repository.name)
+            .where(
+                Repository.id == policy_repo_id,
+                Repository.state == RepositoryState.NORMAL,
+            )
+            .get()
+        )
+    except Repository.DoesNotExist:
+        return None
+
+
+def execute_namespace_polices(
+    ns_policies, namespace_id, repository_page_limit=50, tag_page_limit=100
+):
     """
     Executes the given policies for the repositories in the provided namespace.
     """
 
-    if not policies:
+    if not ns_policies:
         return
     page_token = None
 
@@ -613,7 +641,7 @@ def execute_namespace_polices(policies, namespace_id, repository_page_limit=50, 
         )
 
         for repo in repos:
-            execute_policies_for_repo(policies, repo, namespace_id, tag_page_limit)
+            execute_policies_for_repo(ns_policies, repo, namespace_id, tag_page_limit)
 
         if page_token is None:
             break
