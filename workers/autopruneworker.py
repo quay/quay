@@ -58,12 +58,11 @@ class AutoPruneWorker(Worker):
                 # case: only repo policies exists & no namespace policy
                 for policy in repo_policies:
                     repo_id = policy.repository_id
-                    # repo = get_repository_by_policy_repo_id(repo_id)
-                    # logger.info(
-                    #     "prune: repoid: %s, repo obj: %s",
-                    #     repo_id,
-                    #     repo.name,
-                    # )
+                    repo = get_repository_by_policy_repo_id(repo_id)
+                    logger.info(
+                        "processing autoprune task %s for repository %s",
+                        repo.name,
+                    )
                     execute_policy_on_repo(
                         policy, repo_id, autoprune_task.namespace, tag_page_limit=100
                     )
@@ -73,7 +72,7 @@ class AutoPruneWorker(Worker):
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 logger.info("prune: %s, %s, %s" ,exc_type, fname, exc_tb.tb_lineno)
-                
+
                 update_autoprune_task(autoprune_task, task_status=f"failure: {str(err)}")
 
 

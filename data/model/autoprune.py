@@ -147,6 +147,17 @@ def get_repository_autoprune_policies_by_repo_name(orgname, repo_name):
     return [RepositoryAutoPrunePolicy(row) for row in query]
 
 
+def get_repository_autoprune_policies_by_repo_id(repo_id):
+    """
+    Get the autopruning policies for the specified repository.
+    """
+
+    query = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.repository == repo_id,
+    )
+    return [RepositoryAutoPrunePolicy(row) for row in query]
+
+
 def get_namespace_autoprune_policies_by_id(namespace_id):
     """
     Get the autopruning policies for the namespace by id.
@@ -583,12 +594,18 @@ def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
     policy_to_func_map[policy.method](repo, policy.config, namespace, tag_page_limit)
 
 
-def execute_policies_for_repo(policies, repo, namespace_id, tag_page_limit=100):
+def execute_policies_for_repo(ns_policies, repo, namespace_id, tag_page_limit=100):
     """
-    Executes the policies for the given repository.
+    Executes both repository and namespace level policies for the given repository. The policies 
+    are applied in a serial fashion and are run asynchronosly in the background.
     """
-    for policy in policies:
-        execute_policy_on_repo(policy, repo, namespace_id, tag_page_limit)
+    for ns_policy in ns_policies:
+        repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
+        # note: currently only one policy is configured per repo
+        for repo_policy in repo_policies:
+            execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+        # execute associated namespace policy    
+        execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
 
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
