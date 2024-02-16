@@ -40,6 +40,8 @@ import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import StartBuildModal from './BuildHistoryStartBuildModal';
 import ManuallyStartTrigger from './BuildHistoryManuallyStartTriggerModal';
+import {Link, useLocation} from 'react-router-dom';
+import {getBuildInfoPath} from 'src/routes/NavigationPath';
 
 const ONE_DAY_IN_SECONDS = 24 * 3600;
 const RESOURCE_URLS = {
@@ -67,6 +69,7 @@ enum Filters {
 
 export default function BuildHistory(props: BuildHistoryProps) {
   const config = useQuayConfig();
+  const location = useLocation();
   const [buildsSinceInSeconds, setBuildsSinceInSeconds] = useState<number>();
   const [dateStartedFilter, setDateStartedFilter] = useState<Filters>(
     Filters.RECENT_BUILDS,
@@ -120,7 +123,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
           </ToolbarItem>
           <Conditional
             if={
-              props.repoDetails.can_write &&
+              (props.repoDetails.can_write || props.repoDetails.can_admin) &&
               config?.features.BUILD_SUPPORT &&
               config?.config?.REGISTRY_STATE !== 'readonly'
             }
@@ -179,7 +182,18 @@ export default function BuildHistory(props: BuildHistoryProps) {
           <Tbody>
             {builds.map((build) => (
               <Tr key={build.id} data-testid={`row-${build.id}`}>
-                <Td data-label="Build ID">{build.id.substring(0, 8)}</Td>
+                <Td data-label="Build ID">
+                  <Link
+                    to={getBuildInfoPath(
+                      location.pathname,
+                      props.org,
+                      props.repo,
+                      build.id,
+                    )}
+                  >
+                    {build.id.substring(0, 8)}
+                  </Link>
+                </Td>
                 <Td data-label="Status">
                   <BuildPhase phase={build.phase} />
                 </Td>
@@ -226,48 +240,58 @@ export default function BuildHistory(props: BuildHistoryProps) {
   );
 }
 
-function BuildPhase({phase}: {phase: RepositoryBuildPhase}) {
+export function BuildPhase({
+  phase,
+  hideText = false,
+}: {
+  phase: RepositoryBuildPhase;
+  hideText?: boolean;
+}) {
   switch (phase) {
     case RepositoryBuildPhase.ERROR:
       return (
         <span>
-          <TimesCircleIcon style={{color: 'red'}} /> error
+          <TimesCircleIcon style={{color: 'red'}} />
+          <Conditional if={!hideText}>error</Conditional>
         </span>
       );
     case RepositoryBuildPhase.COMPLETE:
       return (
         <span>
-          <CheckCircleIcon style={{color: 'green'}} /> complete
+          <CheckCircleIcon style={{color: 'green'}} />{' '}
+          <Conditional if={!hideText}>complete</Conditional>
         </span>
       );
     case RepositoryBuildPhase.EXPIRED:
       return (
         <span>
-          <ExclamationTriangleIcon style={{color: 'orange'}} /> expired
+          <ExclamationTriangleIcon style={{color: 'orange'}} />{' '}
+          <Conditional if={!hideText}>expired</Conditional>
         </span>
       );
     case RepositoryBuildPhase.INTERNAL_ERROR:
       return (
         <span>
-          <ExclamationTriangleIcon style={{color: 'red'}} /> internal error
+          <ExclamationTriangleIcon style={{color: 'red'}} />{' '}
+          <Conditional if={!hideText}>internal error</Conditional>
         </span>
       );
     case RepositoryBuildPhase.CANCELLED:
       return (
         <span>
-          <BanIcon /> cancelled
+          <BanIcon /> <Conditional if={!hideText}>cancelled</Conditional>
         </span>
       );
     default:
       return (
         <span>
-          <SyncAltIcon /> {phase}
+          <SyncAltIcon /> <Conditional if={!hideText}>{phase}</Conditional>
         </span>
       );
   }
 }
 
-function TriggeredBuildDescription({build}: {build: RepositoryBuild}) {
+export function TriggeredBuildDescription({build}: {build: RepositoryBuild}) {
   const commitSha = getCommitSha(build);
   if (!isNullOrUndefined(build.trigger_metadata?.commit_info)) {
     return <FullCommitDescription build={build} />;

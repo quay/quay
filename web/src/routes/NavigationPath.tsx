@@ -62,6 +62,9 @@ export enum NavigationPath {
 
   // Build trigger setup
   setupBuildTrigger = '/repository/:organizationName/:repositoryName/trigger/:triggerUuid',
+
+  // Build info
+  buildInfo = '/repository/:organizationName/:repositoryName/build/:buildId',
 }
 
 export function getRepoDetailPath(
@@ -110,6 +113,19 @@ export function getTeamMemberPath(
     teamMemberPath = teamMemberPath + '?tab' + '=' + queryParams;
   }
   return domainRoute(currentRoute, teamMemberPath);
+}
+
+export function getBuildInfoPath(
+  currentRoute: string,
+  org: string,
+  repo: string,
+  buildId: string,
+) {
+  let buildInfoPath = NavigationPath.buildInfo.toString();
+  buildInfoPath = buildInfoPath.replace(':organizationName', org);
+  buildInfoPath = buildInfoPath.replace(':repositoryName', repo);
+  buildInfoPath = buildInfoPath.replace(':buildId', buildId);
+  return domainRoute(currentRoute, buildInfoPath);
 }
 
 export function getDomain() {

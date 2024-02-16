@@ -35,7 +35,7 @@
     background: #e74c3c;
   }
 
-  .message {
+  .quay-service-status-message {
     display: flex;
     align-items: center;
     justify-content: center;

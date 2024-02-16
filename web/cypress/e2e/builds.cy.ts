@@ -2,6 +2,241 @@
 
 import moment from 'moment';
 import {formatDate, humanizeTimeForExpiry} from '../../src/libs/utils';
+import {
+  getBuildMessage,
+  getCompletedBuildPhases,
+} from '../../src/routes/Build/Utils';
+
+const buildData = [
+  {
+    id: 'build001',
+    status: 'error',
+    trigger: {
+      message: 'Triggered by commit commit1',
+    },
+    started: 'Tue, 28 Nov 2023 15:37:33 -0000',
+    tags: ['commit1'],
+  },
+  {
+    id: 'build002',
+    status: 'internal error',
+    trigger: {
+      message: 'user1',
+    },
+    started: 'Mon, 27 Nov 2023 20:21:19 -0000',
+    tags: ['latest'],
+  },
+  {
+    id: 'build003',
+    status: 'build-scheduled',
+    trigger: {
+      message: '(Manually Triggered Build)',
+    },
+    started: 'Mon, 27 Nov 2023 20:21:19 -0000',
+    tags: ['latest'],
+  },
+  {
+    id: 'build004',
+    status: 'unpacking',
+    trigger: {
+      message: 'Triggered by push to repository https://github.com/quay/quay',
+    },
+    started: 'Sun, 12 Nov 2023 16:24:50 -0000',
+    tags: [],
+  },
+  {
+    id: 'build005',
+    status: 'pulling',
+    trigger: {
+      message:
+        'Triggered by push to GitHub repository https://github.com/quay/quay',
+    },
+    started: 'Sun, 12 Nov 2023 16:24:50 -0000',
+    tags: [],
+  },
+  {
+    id: 'build006',
+    status: 'building',
+    trigger: {
+      message:
+        'Triggered by push to BitBucket repository https://github.com/quay/quay',
+    },
+    started: 'Sun, 12 Nov 2023 16:24:50 -0000',
+    tags: [],
+  },
+  {
+    id: 'build007',
+    status: 'pushing',
+    trigger: {
+      message:
+        'Triggered by push to GitLab repository https://github.com/quay/quay',
+    },
+    started: 'Sun, 12 Nov 2023 16:24:50 -0000',
+    tags: [],
+  },
+  {
+    id: 'build008',
+    status: 'waiting',
+    trigger: {
+      message: 'custom-git build from branch',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'master',
+      refLink: '',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build009',
+    status: 'complete',
+    trigger: {
+      message: 'github build from branch',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'master',
+      refLink: 'https://github.com/quay/quay/tree/master',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build010',
+    status: 'cancelled',
+    trigger: {
+      message: 'gitlab build from branch',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'master',
+      refLink: 'https://github.com/quay/quay/tree/master',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build011',
+    status: 'expired',
+    trigger: {
+      message: 'bitbucket build from branch',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'master',
+      refLink: 'https://github.com/quay/quay/branch/master',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build012',
+    status: 'waiting',
+    trigger: {
+      message: 'custom git build from tag',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'newtag',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build013',
+    status: 'waiting',
+    trigger: {
+      message: 'github build from tag',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'newtag',
+      refLink: 'https://github.com/quay/quay/releases/tag/newtag',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build014',
+    status: 'waiting',
+    trigger: {
+      message: 'gitlab build from tag',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'newtag',
+      refLink: 'https://github.com/quay/quay/commits/newtag',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build015',
+    status: 'waiting',
+    trigger: {
+      message: 'bitbucket build from tag',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'newtag',
+      refLink: 'https://github.com/quay/quay/commits/tag/newtag',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+  {
+    id: 'build016',
+    status: 'waiting',
+    trigger: {
+      message:
+        'random text to test long description, random text to test long description, ran',
+      messageLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      authoredDate: '2023-11-28T10:42:17-05:00',
+      author: 'user1',
+      commit: 'commit2',
+      commitLink:
+        'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
+      ref: 'newtag',
+      refLink: 'https://github.com/quay/quay/commits/tag/newtag',
+    },
+    started: 'Thu, 28 Sep 2023 16:52:29 -0000',
+    tags: ['latest', 'master'],
+  },
+];
 
 describe('Repository Builds', () => {
   beforeEach(() => {
@@ -42,219 +277,8 @@ describe('Repository Builds', () => {
       fixture: 'build-triggers.json',
     }).as('getBuildTriggers');
     cy.visit('/repository/testorg/testrepo?tab=builds');
-    const expectedRowData = [
-      {
-        id: 'build001',
-        status: 'error',
-        trigger: {
-          message: 'Triggered by commit commit1',
-        },
-        started: 'Tue, 28 Nov 2023 15:37:33 -0000',
-        tags: ['commit1'],
-      },
-      {
-        id: 'build002',
-        status: 'internal error',
-        trigger: {
-          message: 'user1',
-        },
-        started: 'Mon, 27 Nov 2023 20:21:19 -0000',
-        tags: ['latest'],
-      },
-      {
-        id: 'build003',
-        status: 'build-scheduled',
-        trigger: {
-          message: '(Manually Triggered Build)',
-        },
-        started: 'Mon, 27 Nov 2023 20:21:19 -0000',
-        tags: ['latest'],
-      },
-      {
-        id: 'build004',
-        status: 'unpacking',
-        trigger: {
-          message:
-            'Triggered by push to repository https://github.com/quay/quay',
-        },
-        started: 'Sun, 12 Nov 2023 16:24:50 -0000',
-        tags: [],
-      },
-      {
-        id: 'build005',
-        status: 'pulling',
-        trigger: {
-          message:
-            'Triggered by push to GitHub repository https://github.com/quay/quay',
-        },
-        started: 'Sun, 12 Nov 2023 16:24:50 -0000',
-        tags: [],
-      },
-      {
-        id: 'build006',
-        status: 'building',
-        trigger: {
-          message:
-            'Triggered by push to BitBucket repository https://github.com/quay/quay',
-        },
-        started: 'Sun, 12 Nov 2023 16:24:50 -0000',
-        tags: [],
-      },
-      {
-        id: 'build007',
-        status: 'pushing',
-        trigger: {
-          message:
-            'Triggered by push to GitLab repository https://github.com/quay/quay',
-        },
-        started: 'Sun, 12 Nov 2023 16:24:50 -0000',
-        tags: [],
-      },
-      {
-        id: 'build008',
-        status: 'waiting',
-        trigger: {
-          message: 'custom-git build from branch',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'master',
-          refLink: '',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build009',
-        status: 'complete',
-        trigger: {
-          message: 'github build from branch',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'master',
-          refLink: 'https://github.com/quay/quay/tree/master',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build010',
-        status: 'cancelled',
-        trigger: {
-          message: 'gitlab build from branch',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'master',
-          refLink: 'https://github.com/quay/quay/tree/master',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build011',
-        status: 'expired',
-        trigger: {
-          message: 'bitbucket build from branch',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'master',
-          refLink: 'https://github.com/quay/quay/branch/master',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build012',
-        status: 'waiting',
-        trigger: {
-          message: 'custom git build from tag',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'newtag',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build013',
-        status: 'waiting',
-        trigger: {
-          message: 'github build from tag',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'newtag',
-          refLink: 'https://github.com/quay/quay/releases/tag/newtag',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build014',
-        status: 'waiting',
-        trigger: {
-          message: 'gitlab build from tag',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'newtag',
-          refLink: 'https://github.com/quay/quay/commits/newtag',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-      {
-        id: 'build015',
-        status: 'waiting',
-        trigger: {
-          message: 'bitbucket build from tag',
-          messageLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          authoredDate: '2023-11-28T10:42:17-05:00',
-          author: 'user1',
-          commit: 'commit2',
-          commitLink:
-            'https://github.com/quay/quay/commit/commit2b46cf9a7510fd9ef3bcc7191834c5abda',
-          ref: 'newtag',
-          refLink: 'https://github.com/quay/quay/commits/tag/newtag',
-        },
-        started: 'Thu, 28 Sep 2023 16:52:29 -0000',
-        tags: ['latest', 'master'],
-      },
-    ];
-    for (const expectedData of expectedRowData) {
+
+    for (const expectedData of buildData) {
       cy.contains('tr', expectedData.id).within(() => {
         cy.get('td[data-label="Status"]').contains(expectedData.status);
         cy.get('td[data-label="Triggered by"]').within(() => {
@@ -1683,5 +1707,215 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     );
     cy.contains('SSH Public Key:');
     cy.contains('Close').click();
+  });
+});
+
+describe('Repository Builds - View build logs', () => {
+  beforeEach(() => {
+    cy.intercept('GET', '/api/v1/user/', {fixture: 'user.json'}).as('getUser');
+    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
+    cy.intercept('GET', '/csrf_token', {fixture: 'csrfToken.json'}).as(
+      'getCsrfToken',
+    );
+    cy.fixture('testrepo.json').then((fixture) => {
+      fixture.can_write = true;
+      cy.intercept(
+        'GET',
+        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        fixture,
+      ).as('getrepo');
+    });
+  });
+
+  it('View Build Info', () => {
+    cy.fixture('builds.json').then((fixture) => {
+      for (const [index, build] of fixture.builds.entries()) {
+        const expectedData = buildData[index];
+        cy.intercept(
+          'GET',
+          `/api/v1/repository/testorg/testrepo/build/${build.id}`,
+          build,
+        ).as(`getBuild${build.id}`);
+        cy.intercept(
+          'GET',
+          `/api/v1/repository/testorg/testrepo/build/${build.id}/logs?start=*`,
+          {fixture: 'build-logs.json'},
+        ).as('getBuildLogs');
+        cy.visit(`/repository/testorg/testrepo/build/${build.id}`);
+        cy.get('#build-id').contains(build.id);
+        cy.get('#started').contains(formatDate(build.started));
+        cy.get('#status').contains(getBuildMessage(build.phase));
+        cy.get('#triggered-by').within(() => {
+          const messageElement = cy.contains(expectedData.trigger.message);
+          if (expectedData.trigger.messageLink) {
+            messageElement.should(
+              'have.attr',
+              'href',
+              expectedData.trigger.messageLink,
+            );
+          }
+          if (expectedData.trigger.authoredDate) {
+            // Time difference between now and author date in seconds
+            const authorDate =
+              (new Date().getTime() -
+                new Date(expectedData.trigger.authoredDate).getTime()) /
+              1000;
+            cy.contains(humanizeTimeForExpiry(authorDate));
+          }
+          if (expectedData.trigger.author) {
+            cy.contains(expectedData.trigger.author);
+          }
+          if (expectedData.trigger.commit) {
+            const commitElement = cy.contains(expectedData.trigger.commit);
+            if (expectedData.trigger.commitLink) {
+              commitElement.should(
+                'have.attr',
+                'href',
+                expectedData.trigger.commitLink,
+              );
+            }
+          }
+          if (expectedData.trigger.ref) {
+            const refElement = cy.contains(expectedData.trigger.ref);
+            if (expectedData.trigger.refLink) {
+              refElement.should(
+                'have.attr',
+                'href',
+                expectedData.trigger.refLink,
+              );
+            }
+          }
+        });
+        if (getCompletedBuildPhases().includes(build.phase)) {
+          cy.contains('Cancel build').should('not.exist');
+        } else {
+          cy.contains('Cancel build');
+        }
+      }
+    });
+  });
+
+  it('View build logs', () => {
+    cy.fixture('builds.json').then((fixture) => {
+      const build = fixture.builds[0];
+      cy.intercept(
+        'GET',
+        `/api/v1/repository/testorg/testrepo/build/${build.id}`,
+        build,
+      ).as(`getBuild${build.id}`);
+      cy.intercept(
+        'GET',
+        `/api/v1/repository/testorg/testrepo/build/${build.id}/logs?start=*`,
+        {fixture: 'build-logs.json'},
+      ).as('getBuildLogs');
+      cy.visit(`/repository/testorg/testrepo/build/${build.id}`);
+
+      // Default content
+      cy.contains('build-scheduled');
+      cy.contains('unpacking');
+      cy.contains('pulling');
+      cy.contains('building');
+      cy.contains('FROM');
+      cy.contains('registry.access.redhat.com/ubi8/ubi:8.0');
+      cy.contains('RUN');
+      cy.contains('curl -v https://www.google.com');
+      cy.contains('pushing');
+      cy.contains('complete');
+
+      // Expanded content
+      cy.contains(
+        'Status: Downloaded newer image for quay.io/testorg/testrepo:latest',
+      ).should('not.exist');
+      cy.contains('---> 11f9dba4d1bc').should('not.exist');
+      cy.contains(
+        'Successfully tagged 648b039e-8922-4167-4031-955a1ba7f701:latest',
+      ).should('not.exist');
+      cy.contains(
+        'master: digest: sha256:d85a25b170694321983c23c1377289a18fca89950e4dc59b4bf138d428ca4659 size: 737',
+      ).should('not.exist');
+      cy.contains('pulling').click();
+      cy.contains('FROM').click();
+      cy.contains('RUN').click();
+      cy.contains('pushing').click();
+      cy.contains(
+        'Status: Downloaded newer image for quay.io/testorg/testrepo:latest',
+      );
+      cy.contains('---> 11f9dba4d1bc');
+      cy.contains(
+        'Successfully tagged 648b039e-8922-4167-4031-955a1ba7f701:latest',
+      );
+      cy.contains(
+        'master: digest: sha256:d85a25b170694321983c23c1377289a18fca89950e4dc59b4bf138d428ca4659 size: 737',
+      );
+
+      // Timestamps
+      cy.get('.build-log-timestamp').should('not.exist');
+      cy.contains('Show timestamps').click();
+      cy.get('.build-log-timestamp').should('exist');
+      cy.contains('Hide timestamps').click();
+      cy.get('.build-log-timestamp').should('not.exist');
+
+      // Copy
+      cy.contains('Copy')
+        .click()
+        .then(() => {
+          cy.window().then((win) => {
+            win.navigator.clipboard.readText().then((text) => {
+              text.includes('build-scheduled');
+              text.includes('unpacking');
+              text.includes('curl -v https://www.google.com');
+              text.includes(
+                'Status: Downloaded newer image for quay.io/testorg/testrepo:latest',
+              );
+              text.includes('---> 11f9dba4d1bc');
+              text.includes(
+                'Successfully tagged 648b039e-8922-4167-4031-955a1ba7f701:latest',
+              );
+              text.includes(
+                'master: digest: sha256:d85a25b170694321983c23c1377289a18fca89950e4dc59b4bf138d428ca4659 size: 737',
+              );
+            });
+          });
+        });
+
+      // Download
+      cy.contains('a', 'Download').should(
+        'have.attr',
+        'href',
+        `/buildlogs/${build.id}`,
+      );
+      cy.contains('a', 'Download').should('have.attr', 'target', `_blank`);
+    });
+  });
+
+  it('View archived build logs', () => {
+    cy.fixture('builds.json').then((fixture) => {
+      const build = fixture.builds[0];
+      cy.intercept(
+        'GET',
+        `/api/v1/repository/testorg/testrepo/build/${build.id}`,
+        build,
+      ).as(`getBuild${build.id}`);
+      cy.intercept(
+        'GET',
+        `/api/v1/repository/testorg/testrepo/build/${build.id}/logs?start=*`,
+        {logs_url: '/redirected/logs'},
+      ).as('getBuildLogs');
+      cy.intercept('GET', `/redirected/logs`, {fixture: 'build-logs.json'}).as(
+        'getArchivedLogs',
+      );
+      cy.visit(`/repository/testorg/testrepo/build/${build.id}`);
+
+      cy.contains('build-scheduled');
+      cy.contains('unpacking');
+      cy.contains('pulling');
+      cy.contains('building');
+      cy.contains('FROM');
+      cy.contains('registry.access.redhat.com/ubi8/ubi:8.0');
+      cy.contains('RUN');
+      cy.contains('curl -v https://www.google.com');
+      cy.contains('pushing');
+      cy.contains('complete');
+    });
   });
 });

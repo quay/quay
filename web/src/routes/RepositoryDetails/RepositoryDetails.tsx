@@ -283,7 +283,7 @@ export default function RepositoryDetails() {
                     isHidden={
                       config?.features.UI_V2_BUILDS != true ||
                       config?.features.BUILD_SUPPORT != true ||
-                      !repoDetails?.can_write
+                      (!repoDetails?.can_write && !repoDetails?.can_admin)
                     }
                   >
                     <Builds

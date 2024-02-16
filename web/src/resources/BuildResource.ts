@@ -15,6 +15,12 @@ export enum RepositoryBuildPhase {
   COMPLETE = 'complete',
   CANCELLED = 'cancelled',
   EXPIRED = 'expired',
+  CANNOT_LOAD = 'cannot_load',
+  STARTING = 'starting',
+  INITIALIZING = 'initializing',
+  CHECKING_CACHE = 'checking-cache',
+  PRIMING_CACHE = 'priming-cache',
+  INCOMPLETE = 'incomplete',
 }
 
 export interface RepositoryBuild {
@@ -113,6 +119,13 @@ export async function fetchBuilds(
     {params: params},
   );
   return response.data.builds;
+}
+
+export async function fetchBuild(org: string, repo: string, buildId: string) {
+  const response: AxiosResponse<RepositoryBuild> = await axios.get(
+    `/api/v1/repository/${org}/${repo}/build/${buildId}`,
+  );
+  return response.data;
 }
 
 interface RepositoryBuildTriggersResponse {
@@ -378,6 +391,35 @@ export async function startDockerfileBuild(
     `/api/v1/repository/${org}/${repo}/build/`,
     body,
   );
+  return response.data;
+}
+
+export async function cancelBuild(org: string, repo: string, buildId: string) {
+  await axios.delete(`/api/v1/repository/${org}/${repo}/build/${buildId}`);
+}
+
+export async function fetchBuildLogs(
+  org: string,
+  repo: string,
+  buildId: string,
+  start = 0,
+) {
+  const response = await axios.get(
+    `/api/v1/repository/${org}/${repo}/build/${buildId}/logs?start=${start}`,
+  );
+  return !isNullOrUndefined(response.data.logs_url)
+    ? await fetchArchivedBuildLogs(response.data.logs_url)
+    : (response.data as BuildLogsResponse);
+}
+
+interface BuildLogsResponse {
+  logs: any[];
+  start: number;
+  total: number;
+}
+
+export async function fetchArchivedBuildLogs(url: string) {
+  const response = await axios.get<BuildLogsResponse>(url);
   return response.data;
 }
 
