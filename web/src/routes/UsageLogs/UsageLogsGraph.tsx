@@ -9,7 +9,7 @@ import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
 
 import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
-import {Spinner} from '@patternfly/react-core';
+import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logDescriptions} from './UsageLogs';
 
 interface UsageLogsGraphProps {
@@ -37,18 +37,21 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   if (loadingAggregateLogs) return <Spinner />;
   if (errorFetchingLogs) return <RequestError message="Unable to get logs" />;
 
+  let maxRange = 0;
+
   function createDataSet() {
-    const logTypes = {};
+    const logData = {};
     if (aggregateLogs) {
       aggregateLogs.forEach((log) => {
-        logTypes[log.kind] = logTypes[log.kind] || [];
-        logTypes[log.kind].push({
+        logData[log.kind] = logData[log.kind] || [];
+        logData[log.kind].push({
           name: logDescriptions[log.kind],
           x: new Date(log.datetime),
           y: log.count,
         });
+        if (log.count > maxRange) maxRange = log.count;
       });
-      return logTypes;
+      return logData;
     }
   }
 
@@ -66,42 +69,45 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   }
 
   return (
-    <div style={{height: '300px', width: '700px'}}>
-      <Chart
-        key={props.starttime + props.endtime}
-        containerComponent={
-          <ChartVoronoiContainer
-            labels={({datum}) => `${datum.name}: ${datum.y}`}
-            constrainToVisibleArea
-          />
-        }
-        domain={{
-          x: [new Date(props.starttime), new Date(props.endtime)],
-          y: [0, 9],
-        }}
-        legendOrientation="vertical"
-        legendPosition="right"
-        legendData={getLegendData()}
-        height={250}
-        name="usage-logs-graph"
-        padding={{
-          bottom: 50,
-          left: 50,
-          right: 200, // Adjusted to accommodate legend
-          top: 50,
-        }}
-        width={600}
-        domainPadding={{x: 40}}
-        scale={{x: 'time', y: 'linear'}}
-      >
-        <ChartAxis fixLabelOverlap />
-        <ChartAxis dependentAxis showGrid />
-        <ChartGroup offset={11}>
-          {Object.keys(logData).map((logKind, index) => (
-            <ChartBar data={logData[logKind]} key={index}></ChartBar>
-          ))}
-        </ChartGroup>
-      </Chart>
-    </div>
+    <Flex grow={{default: 'grow'}}>
+      <FlexItem>
+        <Chart
+          key={props.starttime + props.endtime}
+          containerComponent={
+            <ChartVoronoiContainer
+              labels={({datum}) => `${datum.name}: ${datum.y}`}
+              constrainToVisibleArea
+            />
+          }
+          domain={{
+            x: [new Date(props.starttime), new Date(props.endtime)],
+            y: [0, maxRange],
+          }}
+          legendOrientation="vertical"
+          legendPosition="right"
+          legendData={getLegendData()}
+          legendAllowWrap
+          name="usage-logs-graph"
+          padding={{
+            bottom: 50,
+            left: 80,
+            right: 500, // Adjusted to accommodate legend
+            top: 50,
+          }}
+          height={400}
+          width={1250}
+          domainPadding={{x: 40}}
+          scale={{x: 'time', y: 'linear'}}
+        >
+          <ChartAxis fixLabelOverlap />
+          <ChartAxis dependentAxis showGrid />
+          <ChartGroup offset={11}>
+            {Object.keys(logData).map((logKind, index) => (
+              <ChartBar data={logData[logKind]} key={index} />
+            ))}
+          </ChartGroup>
+        </Chart>
+      </FlexItem>
+    </Flex>
   );
 }
