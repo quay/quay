@@ -1,5 +1,25 @@
+import re
 from collections import namedtuple
 from enum import IntEnum, unique
+
+
+def link_to_cves(input_string):
+    cve_pattern = r"CVE-\d{4}-\d{4,7}"
+    return re.findall(cve_pattern, input_string)
+
+
+def vulns_to_cves(vulnerabilities):
+    return [cve for v in vulnerabilities for cve in link_to_cves(v.Link)]
+
+
+def vulns_to_base_scores(vulnerabilities):
+    return [
+        vulnerability.Metadata.NVD.CVSSv3.Score
+        for vulnerability in vulnerabilities
+        if vulnerability.Metadata.NVD
+        and vulnerability.Metadata.NVD.CVSSv3
+        and vulnerability.Metadata.NVD.CVSSv3.Score
+    ]
 
 
 @unique
@@ -39,7 +59,17 @@ Metadata = namedtuple(
 NVD = namedtuple("NVD", ["CVSSv3"])
 CVSSv3 = namedtuple("CVSSv3", ["Vectors", "Score"], defaults=(None, None))
 Feature = namedtuple(
-    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
+    "Feature",
+    [
+        "Name",
+        "VersionFormat",
+        "NamespaceName",
+        "AddedBy",
+        "Version",
+        "BaseScores",
+        "CVEIds",
+        "Vulnerabilities",
+    ],
 )
 Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
@@ -64,6 +94,8 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                         NamespaceName=f["NamespaceName"],
                         AddedBy=f["AddedBy"],
                         Version=f["Version"],
+                        BaseScores=f["BaseScores"],
+                        CVEIds=f["CVEIds"],
                         Vulnerabilities=[
                             Vulnerability(
                                 Severity=vuln.get("Severity", None),
@@ -111,6 +143,8 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                         "NamespaceName": f.NamespaceName,
                         "AddedBy": f.AddedBy,
                         "Version": f.Version,
+                        "BaseScores": vulns_to_base_scores(f.Vulnerabilities),
+                        "CVEIds": vulns_to_cves(f.Vulnerabilities),
                         "Vulnerabilities": [
                             {
                                 "Severity": v.Severity,
