@@ -4,15 +4,27 @@ from enum import IntEnum, unique
 
 
 def link_to_cves(input_string):
+    """
+    link_to_cves takes an input string, typically the link field from a clair response
+    parses the string and finds all unique CVEs within the string.
+    """
     cve_pattern = r"CVE-\d{4}-\d{4,7}"
     return re.findall(cve_pattern, input_string)
 
 
 def vulns_to_cves(vulnerabilities):
+    """
+    vulns_to_cves takes a list of Vulnerabilities and returns
+    a list of CVE Ids
+    """
     return [cve for v in vulnerabilities for cve in link_to_cves(v.Link)]
 
 
 def vulns_to_base_scores(vulnerabilities):
+    """
+    vulns_to_base_scores takes a list of Vulnerabilities and returns a list of
+    CVE BaseScores for the given Vulnerabilities
+    """
     return [
         vulnerability.Metadata.NVD.CVSSv3.Score
         for vulnerability in vulnerabilities
