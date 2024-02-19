@@ -70,7 +70,7 @@ from data.decorators import is_deprecated_model
 from data.encryption import FieldEncrypter
 from data.fields import Credential
 from data.logs_model import logs_model
-from data.model.autoprune import create_namespace_autoprune_policy
+from data.model.autoprune import create_namespace_autoprune_policy, create_repository_autoprune_policy
 from data.queue import WorkQueue
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -924,6 +924,23 @@ def populate_database(minimal=False):
     )
     create_namespace_autoprune_policy(
         "buynlarge", {"method": "creation_date", "value": "5d"}, create_task=True
+    )
+
+    org_for_autoprune= model.organization.create_organization("testorgforautoprune", "autoprune@devtable.com", new_user_1)
+    org_repo = __generate_repository(
+        org_for_autoprune,
+        "autoprunerepo",
+        "Repository owned by an org.",
+        False,
+        [],
+        (4, [], ["latest", "prod"]),
+    )    
+
+    create_repository_autoprune_policy(
+        "devtable", simple_repo.name, {"method": "number_of_tags", "value": 10}, create_task=True
+    )
+    create_repository_autoprune_policy(
+        "public", publicrepo.name, {"method": "creation_date", "value": "5d"}, create_task=True
     )
 
     liborg = model.organization.create_organization(

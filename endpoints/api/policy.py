@@ -269,13 +269,16 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         permission = AdministerRepositoryPermission(namespace, repository)
         if not permission.can():
             raise Unauthorized()
+        
+        if registry_model.lookup_repository(namespace, repository) is None:
+            raise NotFound()        
 
         policies = model.autoprune.get_repository_autoprune_policies_by_repo_name(namespace, repository)
 
         return {"policies": [policy.get_view() for policy in policies]}
 
 
-    @require_scope(scopes.ADMIN_REPO)
+    @require_repo_admin(allow_for_superuser=True)
     @validate_json_request("AutoPrunePolicyConfig")
     @nickname("createRepositoryAutoPrunePolicy")
     def post(self, namespace, repository):
@@ -286,9 +289,8 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         if not permission.can():
             raise Unauthorized()
 
-        # test create api for non existent repo before adding this
-        # if registry_model.lookup_repository(namespace, repository) is None:
-        #     raise NotFound()
+        if registry_model.lookup_repository(namespace, repository) is None:
+            raise NotFound()
 
         app_data = request.get_json()
         method = app_data.get("method", None)
@@ -355,7 +357,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         },
     }
 
-    @require_scope(scopes.ADMIN_REPO)
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("getRepositoryAutoPrunePolicy")
     def get(self, namespace, repository, policy_uuid):
         """
@@ -371,7 +373,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
 
         return policy.get_view()
 
-    @require_scope(scopes.ADMIN_REPO)
+    @require_repo_admin(allow_for_superuser=True)
     @validate_json_request("AutoPrunePolicyConfig")
     @nickname("updateRepositoryAutoPrunePolicy")
     def put(self, namespace, repository, policy_uuid):
@@ -421,7 +423,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
 
         return {"uuid": policy_uuid}, 204
 
-    @require_scope(scopes.ADMIN_REPO)
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("deleteRepositoryAutoPrunePolicy")
     def delete(self, namespace, repository, policy_uuid):
         """

@@ -8,7 +8,7 @@ import Visibility from './Visibility';
 import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import RepositoryAutoPruning from './RepositoryAutopruning';
+import RepositoryAutoPruning from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruning';
 import { useOrganization } from 'src/hooks/UseOrganization';
 
 export default function Settings(props: SettingsProps) {
