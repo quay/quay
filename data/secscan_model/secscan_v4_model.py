@@ -607,23 +607,18 @@ def features_for(report):
         )
 
         base_scores = []
-        enrichments = report.get("enrichments", {})
-        for enrichment_list in enrichments.values():
-            for vuln_id_dict in enrichment_list:
-                for key, vuln_description_list in vuln_id_dict.items():
-                    if not isinstance(vuln_description_list, list):
-                        logger.error(
-                            f"Unexpected type for value of key '{key}': {type(vuln_description_list)}"
-                        )
-                        continue
-
-                    for item in vuln_description_list:
-                        if not isinstance(item, dict) or "baseScore" not in item:
-                            logger.error(f"Invalid item format or missing 'baseScore': {item}")
+        if report.get("enrichments", {}):
+            for enrichment_list in report["enrichments"].values():
+                for pkg_vuln in enrichment_list:
+                    for k, v in pkg_vuln.items():
+                        if not isinstance(v, list):
+                            logger.error(f"Unexpected type for value of key '{k}': {type(v)}")
                             continue
-
-                        base_score = item.get("baseScore")
-                        base_scores.append(base_score)
+                        for item in v:
+                            if not isinstance(item, dict) or "baseScore" not in item:
+                                logger.error(f"Invalid item format or missing 'baseScore': {item}")
+                                continue
+                            base_scores.append(item["baseScore"])
 
         cve_ids = [link_to_cves(v["links"]) for v in pkg_vulns]
 
