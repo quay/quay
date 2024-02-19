@@ -1,5 +1,6 @@
 import axios from 'src/libs/axios';
-import {ResourceError} from 'src/resources/ErrorHandling';
+import {AxiosResponse} from 'axios';
+import {assertHttpCode, ResourceError} from 'src/resources/ErrorHandling';
 
 export async function exportLogs(
   org: string,
@@ -33,4 +34,21 @@ export async function exportLogs(
       );
     }
   }
+}
+
+export async function getAggregateLogs(
+  org: string,
+  repo: string = null,
+  starttime: string,
+  endtime: string,
+) {
+  const url =
+    repo != null
+      ? `/api/v1/repository/${org}/${repo}/aggregatelogs`
+      : `/api/v1/organization/${org}/aggregatelogs`;
+  const response: AxiosResponse = await axios.get(url, {
+    params: {starttime: `${starttime}`, endtime: `${endtime}`},
+  });
+  assertHttpCode(response.status, 200);
+  return response.data.aggregated;
 }
