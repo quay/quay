@@ -39,6 +39,12 @@ class OIDCUsers(FederatedUsers):
         """
         return (True, None)
 
+    def get_user(self, username_or_email):
+        """
+        No way to look up a username or email in OIDC so returning None
+        """
+        return (None, "Currently user lookup is not supported with OIDC")
+
     def query_users(self, query, limit):
         """
         No way to query users so returning empty list
