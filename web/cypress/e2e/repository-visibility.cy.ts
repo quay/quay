@@ -10,7 +10,6 @@ describe('Repository Settings - Visibility', () => {
       });
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
         res.body.features['BILLING'] = true;
         res.body.config['STRIPE_PUBLISHABLE_KEY'] =
           'pk_test_notrealHI2qtSU2DTTO1YZ5qsXlfeGNguyaMCsceSOJmHUxdICvRN5LfNJLah4fTqzlrng3wrXiTeCucQwrf3L6Hd007iruRjQ3';
@@ -23,7 +22,6 @@ describe('Repository Settings - Visibility', () => {
   it.skip('Sets public', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
         res.body.features['BILLING'] = false;
         return res;
       }),
@@ -43,7 +41,6 @@ describe('Repository Settings - Visibility', () => {
   it('Sets private', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
-        res.body.features['UI_V2_REPO_SETTINGS'] = true;
         res.body.features['BILLING'] = false;
         return res;
       }),

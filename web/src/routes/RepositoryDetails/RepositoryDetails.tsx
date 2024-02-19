@@ -255,10 +255,7 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Settings}
                     title={<TabTitleText>Settings</TabTitleText>}
-                    isHidden={
-                      config?.features.UI_V2_REPO_SETTINGS != true ||
-                      !repoDetails?.can_admin
-                    }
+                    isHidden={!repoDetails?.can_admin}
                   >
                     <Settings
                       org={organization}
@@ -281,7 +278,6 @@ export default function RepositoryDetails() {
                     eventKey={TabIndex.Builds}
                     title={<TabTitleText>Builds</TabTitleText>}
                     isHidden={
-                      config?.features.UI_V2_BUILDS != true ||
                       config?.features.BUILD_SUPPORT != true ||
                       (!repoDetails?.can_write && !repoDetails?.can_admin)
                     }
