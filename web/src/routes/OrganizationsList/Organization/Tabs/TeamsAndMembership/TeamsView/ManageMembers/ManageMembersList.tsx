@@ -122,11 +122,12 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   // Team Sync states
   const [isOIDCTeamSyncModalOpen, setIsOIDCTeamSyncModalOpen] = useState(false);
   const [OIDCGroupName, setOIDCGroupName] = useState<string>('');
+  const [teamSyncLastUpdated, setTeamSyncLastUpdated] =
+    useState<string>('Never');
   const [pageInReadOnlyMode, setPageInReadOnlyMode] = useState<boolean>(false);
   const [isRemoveTeamSyncModalOpen, setRemoveTeamSyncModalOpen] =
     useState<boolean>(false);
-  const [teamSyncConfigExpanded, setTeamSyncConfigExpanded] =
-    useState('oidc-config-toggle');
+  const [teamSyncConfigExpanded, setTeamSyncConfigExpanded] = useState(true);
 
   useEffect(() => {
     switch (tableMode) {
@@ -291,12 +292,8 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     },
   });
 
-  const onAccordionToggle = (id: string) => {
-    if (id === teamSyncConfigExpanded) {
-      setTeamSyncConfigExpanded('');
-    } else {
-      setTeamSyncConfigExpanded(id);
-    }
+  const onAccordionToggle = () => {
+    setTeamSyncConfigExpanded(!teamSyncConfigExpanded);
   };
 
   useEffect(() => {
@@ -320,7 +317,10 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   useEffect(() => {
     if (teamSyncInfo != null) {
       if (teamSyncInfo.service == 'oidc') {
-        setOIDCGroupName(teamSyncInfo.config?.group_config);
+        setOIDCGroupName(teamSyncInfo.config?.group_name);
+        if (teamSyncInfo.last_updated != null) {
+          setTeamSyncLastUpdated(teamSyncInfo.last_updated);
+        }
       }
       setPageInReadOnlyMode(true);
     }
@@ -465,17 +465,15 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         <Accordion>
           <AccordionItem>
             <AccordionToggle
-              onClick={() => {
-                onAccordionToggle('oidc-config-toggle');
-              }}
-              isExpanded={teamSyncConfigExpanded === 'oidc-config-toggle'}
-              id="oidc-config-toggle"
+              onClick={() => onAccordionToggle()}
+              isExpanded={!teamSyncConfigExpanded}
+              id="team-sync-config-toggle"
             >
               Directory Synchronization Config
             </AccordionToggle>
             <AccordionContent
-              id="oidc-config-toggle"
-              isHidden={teamSyncConfigExpanded !== 'oidc-config-toggle'}
+              id="team-sync-config-toggle"
+              isHidden={!teamSyncConfigExpanded}
             >
               <TextContent>
                 <TextList component={TextListVariants.dl}>
@@ -489,7 +487,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                     Last Updated
                   </TextListItem>
                   <TextListItem component={TextListItemVariants.dd}>
-                    Never
+                    {teamSyncLastUpdated}
                   </TextListItem>
                 </TextList>
               </TextContent>
@@ -510,7 +508,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         enableTeamSync(groupName, teamCanSync?.service)
       }
       secondaryText="Enter the name of the group you'd like sync membership with:"
-      alertText="Please note that once team syncing is enabled, the membership of users who are already part of the team will be revoked. OIDC group will be the single source of truth. This is a non-reversible action. Team's user membership from within Red Hat Quay will be read-only."
+      alertText={`Please note that once team syncing is enabled, the membership of users who are already part of the team will be revoked. OIDC group will be the single source of truth. This is a non-reversible action. Team's user membership from within ${config?.config.REGISTRY_TITLE_SHORT} will be read-only.`}
     />
   );
 

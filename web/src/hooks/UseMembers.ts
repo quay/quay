@@ -100,11 +100,22 @@ export interface ITeamMember {
   invited?: boolean;
 }
 
+export interface ITeamMembersCanSyncResponse {
+  service: string;
+}
+
+export interface ITeamMembersSyncedResponse {
+  service: string;
+  // config is a variable, different auth systems have different config
+  config: object;
+  last_updated: string;
+}
+
 export interface ITeamMembersResponse {
   name: string;
   members: ITeamMember[];
-  can_sync: object;
-  synced: object;
+  can_sync: ITeamMembersCanSyncResponse;
+  synced: ITeamMembersSyncedResponse;
   can_edit: boolean;
 }
 

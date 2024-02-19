@@ -21,6 +21,9 @@ describe('OIDC Team Sync', () => {
     cy.intercept('GET', '/api/v1/organization/teamsyncorg/prototypes', {
       prototypes: [],
     }).as('getPrototypes');
+    cy.intercept('GET', '/api/v1/organization/teamsyncorg/aggregatelogs?*', {
+      aggregated: [],
+    }).as('getLogs');
     cy.intercept(
       'GET',
       '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',

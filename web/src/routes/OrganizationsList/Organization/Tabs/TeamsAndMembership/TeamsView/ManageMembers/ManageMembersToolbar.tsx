@@ -12,7 +12,7 @@ import {SearchDropdown} from 'src/components/toolbar/SearchDropdown';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {ITeamMember} from 'src/hooks/UseMembers';
+import {ITeamMember, ITeamMembersCanSyncResponse} from 'src/hooks/UseMembers';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 
 export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
@@ -130,7 +130,7 @@ interface ManageMembersToolbarProps {
   displaySyncDirectory: boolean;
   isOIDCTeamSyncModalOpen: boolean;
   toggleOIDCTeamSyncModal: () => void;
-  teamCanSync?: object;
+  teamCanSync?: ITeamMembersCanSyncResponse;
   pageInReadOnlyMode: boolean;
   isRemoveTeamSyncModalOpen: boolean;
   toggleRemoveTeamSyncModal: () => void;

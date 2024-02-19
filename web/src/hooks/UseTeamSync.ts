@@ -12,9 +12,9 @@ export function useTeamSync({orgName, teamName, onSuccess, onError}) {
       return enableTeamSyncForOrg(orgName, teamName, groupName, service);
     },
     {
-      onSuccess: () => {
+      onSuccess: (response) => {
         onSuccess(`Successfully updated team sync config`);
-        queryClient.invalidateQueries([orgName, teamName, 'teamSync']);
+        queryClient.setQueriesData([orgName, teamName, 'teamSync'], response);
         queryClient.invalidateQueries(['teamMembers']);
       },
       onError: (err) => {
