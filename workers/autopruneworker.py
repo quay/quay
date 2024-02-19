@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 POLL_PERIOD = app.config.get("AUTO_PRUNING_POLL_PERIOD", 30)
 BATCH_SIZE = app.config.get("AUTO_PRUNING_BATCH_SIZE", 10)
 TASK_RUN_MINIMUM_INTERVAL_MS = (
-    app.config.get("AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES", .3) * 60 * 1000
+    app.config.get("AUTOPRUNE_TASK_RUN_MINIMUM_INTERVAL_MINUTES", 60) * 60 * 1000
 )  # Convert to ms, this should never be under 30min
 FETCH_TAGS_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_TAGS_PAGE_LIMIT", 100)
 FETCH_REPOSITORIES_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_REPOSITORIES_PAGE_LIMIT", 50)
