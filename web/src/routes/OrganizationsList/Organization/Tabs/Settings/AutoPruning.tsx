@@ -50,7 +50,7 @@ export default function AutoPruning(props: AutoPruning) {
     error,
     isSuccess: successFetchingPolicies,
     isLoading,
-    policies,
+    nsPolicies,
     dataUpdatedAt,
   } = useNamespaceAutoPrunePolicies(props.org, props.isUser);
   const {
@@ -76,8 +76,8 @@ export default function AutoPruning(props: AutoPruning) {
     if (successFetchingPolicies) {
       // Currently we only support one policy per namespace but
       // this will change in the future.
-      if (policies.length > 0) {
-        const policy: NamespaceAutoPrunePolicy = policies[0];
+      if (nsPolicies.length > 0) {
+        const policy: NamespaceAutoPrunePolicy = nsPolicies[0];
         setMethod(policy.method);
         setUuid(policy.uuid);
         switch (policy.method) {

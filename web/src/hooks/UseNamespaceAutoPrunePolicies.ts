@@ -12,7 +12,7 @@ export function useNamespaceAutoPrunePolicies(
   isUser: boolean,
 ) {
   const {
-    data: policies,
+    data: nsPolicies,
     isLoading,
     error,
     isSuccess,
@@ -26,7 +26,7 @@ export function useNamespaceAutoPrunePolicies(
     isSuccess,
     isLoading,
     dataUpdatedAt,
-    policies,
+    nsPolicies,
   };
 }
 

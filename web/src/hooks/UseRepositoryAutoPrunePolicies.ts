@@ -13,19 +13,19 @@ export function useFetchRepositoryAutoPrunePolicies(
 ) {
   const {
     data: repoPolicies,
-    isLoading,
-    error,
+    isLoading: isLoadingRepoPolicies,
+    error: errorFetchingRepoPolicies,
     isSuccess: successFetchingRepoPolicies,
-    dataUpdatedAt,
+    dataUpdatedAt: repoPoliciesDataUpdatedAt,
   } = useQuery(['autoprunepolicies', organizationName, repoName], ({signal}) =>
     fetchRepositoryAutoPrunePolicies(organizationName, repoName, signal),
   );
 
   return {
-    error,
+    errorFetchingRepoPolicies,
     successFetchingRepoPolicies,
-    isLoading,
-    dataUpdatedAt,
+    isLoadingRepoPolicies,
+    repoPoliciesDataUpdatedAt,
     repoPolicies,
   };
 }

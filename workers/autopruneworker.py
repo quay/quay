@@ -69,10 +69,6 @@ class AutoPruneWorker(Worker):
 
                 update_autoprune_task(autoprune_task, task_status="success")
             except Exception as err:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                logger.info("prune: %s, %s, %s" ,exc_type, fname, exc_tb.tb_lineno)
-
                 update_autoprune_task(autoprune_task, task_status=f"failure: {str(err)}")
 
 
