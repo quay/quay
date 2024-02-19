@@ -10,7 +10,7 @@ describe('Tag Details Page', () => {
   beforeEach(() => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
+      'http://localhost:8080/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
@@ -40,6 +40,9 @@ describe('Tag Details Page', () => {
     cy.get('[data-testid="size"]').contains('2.51 kB').should('exist');
     cy.get('[data-testid="vulnerabilities"]')
       .contains('12 High')
+      .should('exist');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('2 Suppressed')
       .should('exist');
     cy.get('[data-testid="labels"]')
       .contains('version = 1.0.0')
@@ -87,7 +90,39 @@ describe('Tag Details Page', () => {
       'include',
       '/repository/user1/hello-world/tag/latest?tab=securityreport',
     );
-    cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
+    cy.contains('Quay Security Reporting has detected 39 vulnerabilities');
+    cy.contains(
+      '2 vulnerabilities are suppressed by the repository and manifest settings',
+    );
+    cy.get('[id="toolbar-pagination"]').contains('39').should('exist');
+    cy.get('[id="suppressed-checkbox"]').click();
+    cy.get('[id="toolbar-pagination"]').contains('41').should('exist');
+  });
+
+  it('switch to security report tab via vulnerabilities field', () => {
+    cy.visit('/repository/user1/hello-world/tag/latest');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('3 Critical')
+      .should('exist');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('12 High')
+      .should('exist');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('22 Medium')
+      .should('exist');
+    cy.get('[data-testid="vulnerabilities"]').contains('1 Low').should('exist');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('1 Unknown')
+      .should('exist');
+    cy.get('[data-testid="vulnerabilities"]')
+      .contains('2 Suppressed')
+      .should('exist');
+    cy.contains('12 High').click();
+    cy.url().should(
+      'include',
+      '/repository/user1/hello-world/tag/latest?tab=securityreport',
+    );
+    cy.contains('Quay Security Reporting has detected 39 vulnerabilities');
   });
 
   it('switch to packages tab', () => {
@@ -98,16 +133,6 @@ describe('Tag Details Page', () => {
       '/repository/user1/hello-world/tag/latest?tab=packages',
     );
     cy.contains('Quay Security Reporting has recognized 49 packages');
-  });
-
-  it('switch to security report tab via vulnerabilities field', () => {
-    cy.visit('/repository/user1/hello-world/tag/latest');
-    cy.contains('12 High').click();
-    cy.url().should(
-      'include',
-      '/repository/user1/hello-world/tag/latest?tab=securityreport',
-    );
-    cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
   });
 
   it('switch between architectures', () => {

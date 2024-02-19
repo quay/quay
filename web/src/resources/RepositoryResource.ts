@@ -1,9 +1,9 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {
-  assertHttpCode,
   BulkOperationError,
   ResourceError,
+  assertHttpCode,
   throwIfError,
 } from './ErrorHandling';
 import {IAvatar} from './OrganizationResource';
@@ -108,6 +108,7 @@ export interface RepositoryDetails {
   status_token: string | null;
   tag_expiration_s: number | null;
   trust_enabled: boolean;
+  suppressed_vulnerabilities: string[] | null;
 }
 
 export async function fetchRepositoryDetails(org: string, repo: string) {
@@ -163,6 +164,16 @@ export async function setRepositoryState(
   const api = `/api/v1/repository/${namespace}/${repositoryName}/changestate`;
   const response: AxiosResponse = await axios.put(api, {
     state,
+  });
+}
+export async function setRepositoryVulnerabilitySuppressions(
+  namespace: string,
+  repositoryName: string,
+  suppressions: string[],
+): Promise<Response> {
+  const api = `/api/v1/repository/${namespace}/${repositoryName}`;
+  const response: AxiosResponse<Response> = await axios.put(api, {
+    suppressed_vulnerabilities: suppressions,
   });
   assertHttpCode(response.status, 200);
   return response.data;

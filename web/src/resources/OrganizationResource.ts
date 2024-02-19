@@ -1,6 +1,6 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
-import {assertHttpCode, BulkOperationError} from './ErrorHandling';
+import {BulkOperationError, assertHttpCode} from './ErrorHandling';
 
 export interface IAvatar {
   name: string;
@@ -23,6 +23,7 @@ export interface IOrganization {
   teams?: string[];
   tag_expiration_s: number;
   email: string;
+  suppressed_vulnerabilities?: string[];
 }
 
 export async function fetchOrg(orgname: string, signal: AbortSignal) {
@@ -135,5 +136,17 @@ export async function updateOrgSettings(
       (params[key] == null || params[key] == undefined) && delete params[key],
   );
   const response = await axios.put(updateSettingsUrl, params);
+  return response.data;
+}
+
+export async function setOrganizationVulnerabilitySuppressions(
+  namespace: string,
+  suppressions: string[],
+): Promise<Response> {
+  const api = `/api/v1/organization/${namespace}`;
+  const response: AxiosResponse<Response> = await axios.put(api, {
+    suppressed_vulnerabilities: suppressions,
+  });
+  assertHttpCode(response.status, 200);
   return response.data;
 }

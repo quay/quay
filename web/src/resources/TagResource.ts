@@ -75,6 +75,12 @@ export interface ManifestByDigestResponse {
 export interface SecurityDetailsResponse {
   status: string;
   data: Data;
+  suppressed_vulnerabilities: string[];
+}
+
+export interface ManifestVulnerabilitySuppressionsResponse {
+  status: string;
+  suppressed_vulnerabilities: string[];
 }
 export interface Data {
   Layer: Layer;
@@ -103,6 +109,7 @@ export interface Vulnerability {
   Description: string;
   Name: string;
   Metadata: VulnerabilityMetadata;
+  SuppressedBy?: string;
 }
 
 export interface VulnerabilityMetadata {
@@ -127,6 +134,7 @@ export enum VulnerabilitySeverity {
   Negligible = 'Negligible',
   None = 'None',
   Unknown = 'Unknown',
+  Suppressed = 'Suppressed',
 }
 
 export const VulnerabilityOrder = {
@@ -137,6 +145,12 @@ export const VulnerabilityOrder = {
   [VulnerabilitySeverity.Negligible]: 4,
   [VulnerabilitySeverity.Unknown]: 5,
 };
+
+export enum VulnerabilitySuppressionSource {
+  Manifest = 'manifest',
+  Organization = 'organization',
+  Repository = 'repository',
+}
 
 // TODO: Support cancelation signal here
 export async function getTags(
@@ -340,7 +354,7 @@ export async function getSecurityDetails(
   digest: string,
 ) {
   const response: AxiosResponse<SecurityDetailsResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}/security?vulnerabilities=true`,
+    `/api/v1/repository/${org}/${repo}/manifest/${digest}/security?vulnerabilities=true&suppressions=true`,
   );
   assertHttpCode(response.status, 200);
   return response.data;
@@ -412,4 +426,34 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
+}
+
+export async function getManifestVulnerabilitySuppressions(
+  org: string,
+  repo: string,
+  digest: string,
+) {
+  const response: AxiosResponse<ManifestVulnerabilitySuppressionsResponse> =
+    await axios.get(
+      `/api/v1/repository/${org}/${repo}/manifest/${digest}/suppressed_vulnerabilities`,
+    );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function setManifestVulnerabilitySuppressions(
+  org: string,
+  repo: string,
+  digest: string,
+  suppressions: string[],
+) {
+  const data = {
+    suppressed_vulnerabilities: suppressions,
+  };
+
+  const response: AxiosResponse = await axios.put(
+    `/api/v1/repository/${org}/${repo}/manifest/${digest}/suppressed_vulnerabilities`,
+    data,
+  );
+  assertHttpCode(response.status, 204);
 }

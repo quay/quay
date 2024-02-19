@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 import pytest
 
 from app import instance_keys, notification_queue, secscan_notification_queue, storage
-from data import database, model
+from data import model
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
 from test.fixtures import *
@@ -95,3 +95,69 @@ def test_notification(issue, initialized_db):
         assert body["event_data"]["vulnerability"]["id"] == "BarBaz"
         assert body["event_data"]["vulnerability"]["description"] == "Some description"
         assert body["event_data"]["vulnerability"]["priority"] == "High"
+
+
+# test if security notifications with suppressed vulnerabilities on manifests, repository and organization level are not sent
+@pytest.mark.skipif(
+    os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0, reason="Flaky on MySQL"
+)
+def test_notification_suppressed(initialized_db):
+    worker = SecurityScanningNotificationWorker(secscan_notification_queue)
+    secscan_model.configure(app, instance_keys, storage)
+    worker._secscan_model = secscan_model
+
+    hostname = urlparse(app.config["SECURITY_SCANNER_V4_ENDPOINT"]).netloc
+    with fake_security_scanner(hostname=hostname) as fake:
+        repository_ref = registry_model.lookup_repository("devtable", "simple")
+
+        # Add a security notification event to the repository.
+        model.notification.create_repo_notification(
+            repository_ref.id,
+            "vulnerability_found",
+            "webhook",
+            {},
+            {
+                "vulnerability": {
+                    "priority": "Low",
+                },
+            },
+        )
+
+        tag = registry_model.get_repo_tag(repository_ref, "latest")
+        manifest = registry_model.get_manifest_for_tag(tag)
+
+        model.vulnerabilitysuppression.create_vulnerability_suppression_for_manifest(
+            manifest, ["CVE-2019-0001"]
+        )
+        # Add the notification to the scanner, that matches the manifest suppression
+        suppressed_vuln_notification_id1 = "somenotificationid1"
+        fake.add_notification(
+            suppressed_vuln_notification_id1,
+            manifest.digest,
+            "added",
+            {
+                "normalized_severity": "Low",
+                "description": "Some description",
+                "package": {
+                    "id": "42",
+                    "name": "FooBar",
+                    "version": "v0.0.1",
+                },
+                "name": "CVE-2019-0001",
+                "links": "http://example.com",
+            },
+        )
+        # Add the notification to the queue.
+        name = ["with_id", suppressed_vuln_notification_id1]
+        secscan_notification_queue.put(
+            name,
+            json.dumps({"notification_id": suppressed_vuln_notification_id1}),
+        )
+
+        # Process the notification via the worker.
+        worker.poll_queue()
+
+        # Ensure the repository notification was enqueued.
+        found = notification_queue.get()
+
+        assert found is None

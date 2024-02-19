@@ -27,6 +27,7 @@ from playhouse.pool import (
 )
 from sqlalchemy.engine.url import make_url
 
+from active_migration import ActiveDataMigration
 from data.decorators import deprecated_model
 from data.encryption import FieldEncrypter
 from data.estimate import mysql_estimate_row_count, normal_row_count
@@ -748,6 +749,7 @@ class User(BaseModel):
                     OrganizationRhSkus,
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
+                    VulnerabilitySuppression,
                 }
                 | appr_classes
                 | v22_classes
@@ -968,6 +970,7 @@ class Repository(BaseModel):
                 UploadedBlob,
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
+                VulnerabilitySuppression,
             }
             | appr_classes
             | v22_classes
@@ -2019,6 +2022,22 @@ class AutoPruneTaskStatus(BaseModel):
     namespace = QuayUserField(index=True, null=False)
     last_ran_ms = BigIntegerField(null=True, index=True)
     status = TextField(null=True)
+
+
+class VulnerabilitySuppression(BaseModel):
+    manifest = ForeignKeyField(Manifest, null=True, unique=True)
+    repository = ForeignKeyField(Repository, null=True, unique=True)
+    organization = ForeignKeyField(User, null=True, unique=True)
+    vulnerability_names = JSONField(null=False)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            (("manifest",), True),
+            (("repository",), True),
+            (("organization",), True),
+        )
 
 
 # Defines a map from full-length index names to the legacy names used in our code

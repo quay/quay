@@ -255,6 +255,7 @@ class PreOCIModel(RepositoryDataInterface):
             repo.badge_token,
             repo.trust_enabled,
             repo.state,
+            repo.id,
         )
 
     def add_quota_view(self, repos):

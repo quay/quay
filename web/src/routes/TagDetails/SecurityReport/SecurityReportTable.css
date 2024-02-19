@@ -5,3 +5,11 @@
 .security-table-row > td > a > * {
     vertical-align: middle;
 }
+
+.security-table-row-suppressed > td {
+    color: var(--pf-v5-global--disabled-color--200);
+}
+
+.security-table-row-suppressed td svg {
+    opacity: 0.5;
+  }

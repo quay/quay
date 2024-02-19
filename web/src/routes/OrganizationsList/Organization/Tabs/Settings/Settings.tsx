@@ -1,15 +1,17 @@
+import {Flex, FlexItem, Tab, TabTitleText, Tabs} from '@patternfly/react-core';
 import {useState} from 'react';
-import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
+import OrganizationVulnerabilitySuppression from './OrganizationVulnerabilitySuppression';
 
 export default function Settings(props: SettingsProps) {
   const organizationName = location.pathname.split('/')[2];
-  const {isUserOrganization} = useOrganization(organizationName);
+  const {isUserOrganization, loading, organization} =
+    useOrganization(organizationName);
 
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const quayConfig = useQuayConfig();
@@ -48,6 +50,19 @@ export default function Settings(props: SettingsProps) {
       ),
       visible: quayConfig?.features?.AUTO_PRUNE,
     },
+    {
+      name: 'Vulnerability Reporting',
+      id: 'vulnerabilityreporting',
+      content: (
+        <OrganizationVulnerabilitySuppression
+          organization={organization}
+          loading={loading}
+        />
+      ),
+      visible:
+        quayConfig?.features?.SECURITY_VULNERABILITY_SUPPRESSION &&
+        !isUserOrganization,
+    },
   ];
 
   return (
@@ -75,7 +90,7 @@ export default function Settings(props: SettingsProps) {
 
       <FlexItem
         alignSelf={{default: 'alignSelfCenter'}}
-        style={{padding: '20px'}}
+        style={{padding: '20px', width: '100%'}}
       >
         {tabs.filter((tab) => tab.visible === true).at(activeTabIndex).content}
       </FlexItem>

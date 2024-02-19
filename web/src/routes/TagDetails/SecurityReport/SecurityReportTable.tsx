@@ -1,36 +1,38 @@
-import {useEffect, useState} from 'react';
-import {Vulnerability, Feature} from 'src/resources/TagResource';
-import React from 'react';
 import {
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-  ExpandableRowContent,
-  ThProps,
-} from '@patternfly/react-table';
-import {SecurityReportMetadataTable} from './SecurityReportMetadataTable';
-import {
+  Button,
   PageSection,
   PageSectionVariants,
   Spinner,
   Title,
   Toolbar,
   ToolbarContent,
+  ToolbarItem,
 } from '@patternfly/react-core';
-import {SecurityReportFilter} from './SecurityReportFilter';
-import sha1 from 'js-sha1';
 import {
   ArrowRightIcon,
   ExclamationTriangleIcon,
   ExternalLinkAltIcon,
 } from '@patternfly/react-icons';
+import {
+  ExpandableRowContent,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  ThProps,
+  Thead,
+  Tr,
+} from '@patternfly/react-table';
+import sha1 from 'js-sha1';
+import React, {useEffect, useState} from 'react';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {getSeverityColor} from 'src/libs/utils';
+import {Feature, Vulnerability} from 'src/resources/TagResource';
+import {SecurityReportFilter} from './SecurityReportFilter';
+import {SecurityReportMetadataTable} from './SecurityReportMetadataTable';
 
-import './SecurityReportTable.css';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import './SecurityReportTable.css';
 import {VulnerabilityListItem} from './Types';
 
 const columnNames = {
@@ -62,7 +64,8 @@ function TableTitle() {
   return <Title headingLevel={'h1'}> Vulnerabilities </Title>;
 }
 
-export default function SecurityReportTable({features}: SecurityDetailsProps) {
+export default function SecurityReportTable(props: SecurityDetailsProps) {
+  const config = useQuayConfig();
   const [vulnList, setVulnList] = useState<VulnerabilityListItem[]>([]);
   const [filteredVulnList, setFilteredVulnList] = useState<
     VulnerabilityListItem[]
@@ -161,11 +164,11 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
   const isRepoExpanded = (key: string) => expandedVulnKeys.includes(key);
 
   useEffect(() => {
-    if (features) {
-      const vulnList: VulnerabilityListItem[] = [];
-      features.map((feature: Feature) => {
+    if (props.features) {
+      const localVulnList: VulnerabilityListItem[] = [];
+      props.features.map((feature: Feature) => {
         feature.Vulnerabilities.map((vulnerability: Vulnerability) => {
-          vulnList.push({
+          localVulnList.push({
             PackageName: feature.Name,
             CurrentVersion: feature.Version,
             Description: vulnerability.Description,
@@ -175,28 +178,46 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
             FixedInVersion: vulnerability.FixedBy,
             Metadata: vulnerability.Metadata,
             Link: vulnerability.Link,
+            SuppressedBy: vulnerability.SuppressedBy
+              ? vulnerability.SuppressedBy
+              : undefined,
           } as VulnerabilityListItem);
         });
       });
-      setVulnList(vulnList);
-      setFilteredVulnList(vulnList);
+      setVulnList(localVulnList);
+
+      if (vulnList.length > 0) {
+        setFilteredVulnList(localVulnList);
+      } else {
+        // align with default filter state
+        setFilteredVulnList(localVulnList.filter((vuln) => !vuln.SuppressedBy));
+      }
       sortVulnerabilities(activeSortIndex, activeSortDirection);
     } else {
       setVulnList([]);
       setFilteredVulnList([]);
     }
-  }, [features]);
+  }, [props.features]);
 
   return (
     <PageSection variant={PageSectionVariants.light}>
       <TableTitle />
       <Toolbar>
         <ToolbarContent>
-          <SecurityReportFilter
-            setPage={setPage}
-            vulnList={vulnList}
-            setFilteredVulnList={setFilteredVulnList}
-          />
+          <ToolbarItem>
+            <SecurityReportFilter
+              setPage={setPage}
+              vulnList={vulnList}
+              setFilteredVulnList={setFilteredVulnList}
+            />
+          </ToolbarItem>
+          {config?.features?.SECURITY_VULNERABILITY_SUPPRESSION && (
+            <ToolbarItem>
+              <Button onClick={() => props.setSuppressionModalOpen(true)}>
+                Set Suppressions
+              </Button>
+            </ToolbarItem>
+          )}
           <ToolbarPagination
             itemsList={filteredVulnList}
             perPage={perPage}
@@ -218,7 +239,13 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
               const uniqueKey = generateUniqueKey(vulnerability);
               return (
                 <Tbody key={uniqueKey} isExpanded={isRepoExpanded(uniqueKey)}>
-                  <Tr className="security-table-row">
+                  <Tr
+                    className={
+                      vulnerability.SuppressedBy
+                        ? 'security-table-row-suppressed'
+                        : 'security-table-row'
+                    }
+                  >
                     <Td
                       expand={{
                         rowIndex,
@@ -296,7 +323,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           <Tbody>
             <Tr>
               <Td>
-                {!features ? (
+                {!props.features ? (
                   <Spinner size="lg" />
                 ) : (
                   <div>No Vulnerabilities Found</div>
@@ -323,4 +350,5 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
 
 export interface SecurityDetailsProps {
   features: Feature[];
+  setSuppressionModalOpen: (isOpen: boolean) => void;
 }

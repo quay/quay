@@ -2,8 +2,9 @@ import {Flex, FlexItem, Tab, Tabs, TabTitleText} from '@patternfly/react-core';
 import {useState} from 'react';
 import {DrawerContentType} from 'src/routes/RepositoryDetails/Types';
 import DeleteRepository from './DeleteRepository';
-import Permissions from './Permissions';
 import Notifications from './Notifications';
+import Permissions from './Permissions';
+import RepositoryVulnerabilitySuppression from './RepositoryVulnerabilitySuppression';
 import Visibility from './Visibility';
 import {RepositoryStateForm} from './RepositoryState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
@@ -61,6 +62,17 @@ export default function Settings(props: SettingsProps) {
         />
       ),
     },
+    config?.features.SECURITY_VULNERABILITY_SUPPRESSION && {
+      name: 'Vulnerability Reporting',
+      id: 'vulnerabiltyreporting',
+      content: (
+        <RepositoryVulnerabilitySuppression
+          org={props.org}
+          repo={props.repo}
+          repoDetails={props.repoDetails}
+        />
+      ),
+    },
     {
       name: <div style={{color: 'red'}}>Delete Repository</div>,
       id: 'deleterepository',
@@ -78,13 +90,19 @@ export default function Settings(props: SettingsProps) {
           aria-label="Repository Settings Tabs"
           role="region"
         >
-          {tabs.map((tab, tabIndex) => (
-            <Tab
-              key={tab.id}
-              eventKey={tabIndex}
-              title={<TabTitleText>{tab.name}</TabTitleText>}
-            />
-          ))}
+          {tabs.map((tab, tabIndex) => {
+            if (!tab) {
+              return null;
+            }
+
+            return (
+              <Tab
+                key={tab.id}
+                eventKey={tabIndex}
+                title={<TabTitleText>{tab.name}</TabTitleText>}
+              />
+            );
+          })}
         </Tabs>
       </FlexItem>
       <FlexItem

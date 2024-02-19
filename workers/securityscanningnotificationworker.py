@@ -2,7 +2,8 @@ import logging
 import time
 
 import features
-from app import app, registry_model, secscan_model, secscan_notification_queue, storage
+from app import app, registry_model, secscan_model, secscan_notification_queue
+from data.model import vulnerabilitysuppression
 from data.secscan_model.datatypes import PaginatedNotificationStatus
 from notifications import notification_batch
 from util.log import logfile_path
@@ -76,6 +77,22 @@ class SecurityScanningNotificationWorker(QueueWorker):
                     for manifest in registry_model.find_manifests_for_sec_notification(
                         updated_vuln_info.manifest_digest
                     ):
+                        if features.SECURITY_VULNERABILITY_SUPPRESSION:
+                            # filter for suppressed vulnerabilities
+                            suppressions = (
+                                vulnerabilitysuppression.derive_vulnerability_suppressions(manifest)
+                            )
+
+                            if vulnerabilitysuppression.is_suppressed(
+                                vulnerability.Name, suppressions
+                            ):
+                                logger.debug(
+                                    "Vulnerability %s suppressed for manifest %s",
+                                    vulnerability.Name,
+                                    manifest.digest,
+                                )
+                                continue
+
                         # Filter any repositories where the notification level is below that of
                         # the vulnerability.
                         found_severity = PRIORITY_LEVELS.get(

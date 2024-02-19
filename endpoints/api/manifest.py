@@ -3,13 +3,22 @@ Manage the manifests of a repository.
 """
 import json
 import logging
-from datetime import datetime
 from typing import List, Optional
 
 from flask import request
 
+import features
 from app import label_validator, storage
-from data.model import InvalidLabelKeyException, InvalidMediaTypeException
+from data.model import (
+    InvalidLabelKeyException,
+    InvalidMediaTypeException,
+    InvalidVulnerabilitySuppression,
+)
+from data.model.vulnerabilitysuppression import (
+    create_vulnerability_suppression_for_manifest,
+    delete_vulnerability_suppression_for_manifest,
+    get_vulnerability_suppression_for_manifest,
+)
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -28,9 +37,15 @@ from endpoints.api import (
     require_repo_read,
     require_repo_write,
     resource,
+    show_if,
     validate_json_request,
 )
-from endpoints.exception import NotFound
+from endpoints.exception import (
+    InvalidRequest,
+    ManifestNotFound,
+    NotFound,
+    RepositoryNotFound,
+)
 from util.validation import VALID_LABEL_KEY_REGEX
 
 BASE_MANIFEST_ROUTE = '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>'
@@ -313,4 +328,123 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
         }
 
         log_action("manifest_label_delete", namespace_name, metadata, repo_name=repository_name)
+        return "", 204
+
+
+@resource(MANIFEST_DIGEST_ROUTE + "/suppressed_vulnerabilities")
+@show_if(features.SECURITY_VULNERABILITY_SUPPRESSION)
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("manifestref", "The digest of the manifest")
+class RepositoryManifestSuppressedVulnerabilities(RepositoryParamResource):
+    """
+    Resource for managing the suppressed vulnerabilities on a specific repository manifest.
+    """
+
+    schemas = {
+        "SetSuppressedVulns": {
+            "type": "object",
+            "description": "Sets the list of vulnerabilities to be suppressed for a manifest",
+            "required": [
+                "suppressed_vulnerabilities",
+            ],
+            "properties": {
+                "suppressed_vulnerabilities": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1, "pattern": "^[^\\s].*[^\\s]$"},
+                    "minItems": 0,
+                    "uniqueItems": True,
+                    "description": "A list of vulnerability identifiers to suppress in this organization. Has to be at least item of type string with a non-zero length and no leading or trailing whitespace.",
+                },
+            },
+        },
+    }
+
+    @require_repo_read(allow_for_superuser=True)
+    @nickname("listManifestSuppressedVulnerabilities")
+    @disallow_for_app_repositories
+    def get(self, namespace_name, repository_name, manifestref):
+        repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
+        if repo_ref is None:
+            raise RepositoryNotFound(repository_name)
+
+        manifest = registry_model.lookup_manifest_by_digest(repo_ref, manifestref)
+        if manifest is None:
+            raise ManifestNotFound(repository_name, manifestref)
+
+        suppressed_vulns = get_vulnerability_suppression_for_manifest(manifest)
+
+        return {"suppressed_vulnerabilities": suppressed_vulns}
+
+    @require_repo_write(allow_for_superuser=True)
+    @nickname("setManifestSuppressedVulnerabilities")
+    @disallow_for_app_repositories
+    @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
+    @validate_json_request("SetSuppressedVulns")
+    def put(self, namespace_name, repository_name, manifestref):
+        """
+        Set the suppressed vulnerabilities for a given tag manifest.
+        """
+        suppressed_vulns = request.get_json()["suppressed_vulnerabilities"]
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
+        if repo_ref is None:
+            raise RepositoryNotFound(repository_name)
+
+        manifest = registry_model.lookup_manifest_by_digest(repo_ref, manifestref)
+        if manifest is None:
+            raise ManifestNotFound(repository_name, manifestref)
+
+        if len(suppressed_vulns) == 0:
+            try:
+                delete_vulnerability_suppression_for_manifest(manifest)
+
+                log_action(
+                    "manifest_vulnerability_suppression_delete",
+                    namespace_name,
+                    {"manifest_digest": manifest.digest},
+                    repo_name=repository_name,
+                )
+            except InvalidVulnerabilitySuppression as e:
+                raise InvalidRequest(str(e))
+            except Exception as e:
+                logger.exception(
+                    "Error deleting vulnerability suppression for manifest %s: %s",
+                    (manifest.digest, str(e)),
+                )
+
+                abort(
+                    500,
+                    message="Error deleting vulnerability suppression for manifest %s"
+                    % manifest.digest,
+                )
+        elif len(suppressed_vulns) > 0:
+            try:
+                create_vulnerability_suppression_for_manifest(
+                    manifest, suppressed_vulns, raise_on_error=True
+                )
+
+                log_action(
+                    "manifest_vulnerability_suppression_add",
+                    namespace_name,
+                    {
+                        "manifest_digest": manifest.digest,
+                        "suppressed_vulnerabilities": suppressed_vulns,
+                    },
+                    repo_name=repository_name,
+                )
+            except InvalidVulnerabilitySuppression as e:
+                raise InvalidRequest(str(e))
+            except Exception as e:
+                logger.exception(
+                    "Error creating vulnerability suppression for manifest %s: %s",
+                    (manifest.digest, str(e)),
+                )
+
+                abort(
+                    500,
+                    message="Error creating vulnerability suppression for manifest %s"
+                    % manifest.digest,
+                )
+
         return "", 204

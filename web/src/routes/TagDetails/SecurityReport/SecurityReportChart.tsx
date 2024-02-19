@@ -9,8 +9,13 @@ import {
   TitleSizes,
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {getSeverityColor} from 'src/libs/utils';
-import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
+import {
+  Feature,
+  VulnerabilitySeverity,
+  VulnerabilitySuppressionSource,
+} from 'src/resources/TagResource';
 import './SecurityReportChart.css';
 
 function VulnerabilitySummary(props: VulnerabilityStatsProps) {
@@ -32,6 +37,41 @@ function VulnerabilitySummary(props: VulnerabilityStatsProps) {
     );
   }
 
+  let suppressionMessage = <Skeleton width="300px" />;
+  let suppressionMessageString = '';
+
+  const suppressionSources = [];
+  if (props.suppressed === 0) {
+    suppressionMessage = <> </>;
+  } else {
+    if (props.suppressionStats.Repository > 0) {
+      suppressionSources.push('repository');
+    }
+    if (props.suppressionStats.Organization > 0) {
+      suppressionSources.push('organization');
+    }
+    if (props.suppressionStats.Manifest > 0) {
+      suppressionSources.push('manifest');
+    }
+
+    if (props.suppressed === 1) {
+      suppressionMessageString = `${props.suppressed} vulnerability is suppressed by the `;
+    } else {
+      suppressionMessageString = `${props.suppressed} vulnerabilities are suppressed by the `;
+    }
+
+    const suppressionSourcesString = suppressionSources.join(', ');
+    const suppressionSourcesStringWithAnd = suppressionSourcesString.replace(
+      /,([^,]*)$/,
+      ' and$1',
+    );
+    suppressionMessage = (
+      <>
+        {suppressionMessageString} {suppressionSourcesStringWithAnd} settings{' '}
+      </>
+    );
+  }
+
   return (
     <div>
       <div className="pf-v5-u-mt-xl pf-v5-u-ml-2xl">
@@ -44,6 +84,8 @@ function VulnerabilitySummary(props: VulnerabilityStatsProps) {
         </Title>
         <Title headingLevel="h3" className="pf-v5-u-mb-lg">
           {patchesMessage}
+          <br />
+          {suppressionMessage}
         </Title>
         {Object.keys(props.stats).map((vulnLevel) => {
           if (
@@ -90,6 +132,7 @@ function VulnerabilityChart(props: VulnerabilityStatsProps) {
             {x: VulnerabilitySeverity.Negligible, y: props.stats.Negligible},
             {x: VulnerabilitySeverity.Unknown, y: props.stats.Unknown},
             {x: VulnerabilitySeverity.None, y: props.stats.None},
+            {x: VulnerabilitySeverity.Suppressed, y: props.suppressed},
           ]}
           colorScale={[
             getSeverityColor(VulnerabilitySeverity.Critical),
@@ -99,6 +142,7 @@ function VulnerabilityChart(props: VulnerabilityStatsProps) {
             getSeverityColor(VulnerabilitySeverity.Negligible),
             getSeverityColor(VulnerabilitySeverity.Unknown),
             getSeverityColor(VulnerabilitySeverity.None),
+            getSeverityColor(VulnerabilitySeverity.Suppressed),
           ]}
           labels={({datum}) => `${datum.x}: ${datum.y}`}
           title={`${props.total}`}
@@ -109,6 +153,7 @@ function VulnerabilityChart(props: VulnerabilityStatsProps) {
 }
 
 export function SecurityReportChart(props: SecurityDetailsChartProps) {
+  const config = useQuayConfig();
   const stats: VulnerabilityStats = {
     Critical: 0,
     High: 0,
@@ -120,6 +165,13 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
     Pending: 0,
   };
 
+  const suppressionStats: VulnerabilitySuppressionStats = {
+    Manifest: 0,
+    Organization: 0,
+    Repository: 0,
+  };
+
+  let suppressed = 0;
   let patchesAvailable = 0;
   let total = 0;
 
@@ -127,8 +179,28 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
   if (props.features) {
     props.features.map((feature) => {
       feature.Vulnerabilities.map((vulnerability) => {
-        stats[vulnerability.Severity] += 1;
-        total += 1;
+        if (
+          config?.features.SECURITY_VULNERABILITY_SUPPRESSION &&
+          'SuppressedBy' in vulnerability
+        ) {
+          suppressed += 1;
+
+          switch (vulnerability.SuppressedBy) {
+            case VulnerabilitySuppressionSource.Manifest:
+              suppressionStats.Manifest += 1;
+              break;
+            case VulnerabilitySuppressionSource.Organization:
+              suppressionStats.Organization += 1;
+              break;
+            case VulnerabilitySuppressionSource.Repository:
+              suppressionStats.Repository += 1;
+              break;
+          }
+        } else {
+          stats[vulnerability.Severity] += 1;
+          total += 1;
+        }
+
         if (vulnerability.FixedBy.length > 0) {
           patchesAvailable += 1;
         }
@@ -152,6 +224,8 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
             stats={stats}
             total={total}
             patchesAvailable={patchesAvailable}
+            suppressed={suppressed}
+            suppressionStats={suppressionStats}
           />
         </SplitItem>
         <SplitItem>
@@ -159,6 +233,8 @@ export function SecurityReportChart(props: SecurityDetailsChartProps) {
             stats={stats}
             total={total}
             patchesAvailable={patchesAvailable}
+            suppressed={suppressed}
+            suppressionStats={suppressionStats}
           />
         </SplitItem>
       </Split>
@@ -177,10 +253,18 @@ export interface VulnerabilityStats {
   Pending: number;
 }
 
+export interface VulnerabilitySuppressionStats {
+  Manifest: number;
+  Organization: number;
+  Repository: number;
+}
+
 interface VulnerabilityStatsProps {
   stats: VulnerabilityStats;
   total: number;
   patchesAvailable: number;
+  suppressed: number;
+  suppressionStats: VulnerabilitySuppressionStats;
 }
 
 interface SecurityDetailsChartProps {

@@ -29,9 +29,10 @@ from data.database import (
     Star,
     Tag,
     UploadedBlob,
+    VulnerabilitySuppression,
     db_for_update,
 )
-from data.model import _basequery, blob, config, db_transaction, storage
+from data.model import blob, config, db_transaction, storage
 from data.model.oci import tag as oci_tag
 from data.model.quota import reset_backfill, subtract_blob_size
 from data.secscan_model import secscan_model
@@ -118,6 +119,7 @@ def purge_repository(repo, force=False):
     _chunk_delete_all(repo, BlobUpload, force=force)
     _chunk_delete_all(repo, RepoMirrorConfig, force=force)
     _chunk_delete_all(repo, RepositoryAuthorizedEmail, force=force)
+    _chunk_delete_all(repo, VulnerabilitySuppression, force=force)
 
     # Delete any marker rows for the repository.
     DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
@@ -438,6 +440,11 @@ def _garbage_collect_manifest(manifest_id, context):
             )
             .execute()
         )
+
+        for vuln_suppression in VulnerabilitySuppression.select().where(
+            VulnerabilitySuppression.manifest_id == manifest_id
+        ):
+            vuln_suppression.delete_instance(recursive=True)
 
         # Delete the manifest.
         manifest.delete_instance()

@@ -1,3 +1,46 @@
 .delete-modal-readonly-alert {
     padding-bottom: 5px;
 }
+
+.tags-input {
+    min-width: 100%;
+    border-width: var(--pf-v5-global--BorderWidth--sm);
+    border-style: solid;
+    border-top-color: var(--pf-v5-global--BorderColor--300);
+    border-right-color: var(--pf-v5-global--BorderColor--300);
+    border-left-color: var(--pf-v5-global--BorderColor--300);
+    border-bottom-color: var(--pf-v5-global--BorderColor--200);
+    padding-top: var(--pf-v5-global--spacer--xs);
+    padding-right: var(--pf-v5-global--spacer--xs);
+    padding-bottom: var(--pf-v5-global--spacer--xs);
+    padding-left: var(--pf-v5-global--spacer--xs);
+    min-height: calc(var(--pf-v5-global--FontSize--md) * var(--pf-v5-global--LineHeight--md) * 3);
+}
+
+.tags-input .tags {
+    align-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pf-v5-global--spacer--xs);
+    min-height: calc(var(--pf-v5-global--FontSize--md) * var(--pf-v5-global--LineHeight--md));
+}
+
+.tags-input .tags > span {
+    display: contents;
+}
+
+.tags-input .tags .input {
+    background: transparent;
+    border: 1px solid transparent;
+    flex-grow: 1;
+    outline: none;
+}
+
+.tags-input .tags .input.invalid-tag {
+    color: var(--pf-v5-global--danger-color--100);
+}
+
+.invalid-input {
+    border-color: var(--pf-v5-global--danger-color--100);
+    background-color:  var(--pf-v5-global--danger-color--200);
+}

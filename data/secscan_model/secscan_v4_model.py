@@ -4,6 +4,7 @@ import urllib
 from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
+from typing import Dict, List, Tuple, Union
 
 from peewee import JOIN, fn
 
@@ -17,6 +18,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
+from data.model import vulnerabilitysuppression
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.secscan_model.datatypes import (
@@ -30,6 +32,7 @@ from data.secscan_model.datatypes import (
     ScanLookupStatus,
     SecurityInformation,
     SecurityInformationLookupResult,
+    SuppressedVulnerability,
     UpdatedVulnerability,
     Vulnerability,
 )
@@ -78,7 +81,11 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     """
 
     def load_security_information(
-        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+        self,
+        manifest_or_legacy_image,
+        include_vulnerabilities=False,
+        include_suppressions=False,
+        model_cache=None,
     ):
         return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
 
@@ -155,7 +162,11 @@ class V4SecurityScanner(SecurityScannerInterface):
         )
 
     def load_security_information(
-        self, manifest_or_legacy_image, include_vulnerabilities=False, model_cache=None
+        self,
+        manifest_or_legacy_image,
+        include_vulnerabilities=False,
+        include_suppressions=False,
+        model_cache=None,
     ):
         if not isinstance(manifest_or_legacy_image, ManifestDataType):
             return SecurityInformationLookupResult.with_status(
@@ -205,9 +216,25 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         # TODO(alecmerdler): Provide a way to indicate the current scan is outdated (`report.state != status.indexer_hash`)
 
-        return SecurityInformationLookupResult.for_data(
-            SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))
-        )
+        if features.SECURITY_VULNERABILITY_SUPPRESSION:
+            suppressions = vulnerabilitysuppression.derive_vulnerability_suppressions(
+                manifest_or_legacy_image
+            )
+            return SecurityInformationLookupResult.for_data(
+                SecurityInformation(
+                    Layer(
+                        report["manifest_hash"],
+                        "",
+                        "",
+                        4,
+                        filtered_features_for(report, suppressions, include_suppressions),
+                    )
+                )
+            )
+        else:
+            return SecurityInformationLookupResult.for_data(
+                SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))
+            )
 
     def _get_manifest_iterator(
         self, indexer_state, min_id, max_id, batch_size=None, reindex_threshold=None
@@ -306,6 +333,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         try:
             indexer_state = self._secscan_api.state()
         except APIRequestFailure:
+            logger.debug("Failed to get indexer state")
             return None
 
         if not batch_size:
@@ -448,9 +476,17 @@ class V4SecurityScanner(SecurityScannerInterface):
 
                         found_vulnerabilities = None
                         if vulnerability_report is not None:
-                            found_vulnerabilities = vulnerability_report.get("vulnerabilities")
+                            if features.SECURITY_VULNERABILITY_SUPPRESSION:
+                                found_vulnerabilities = filtered_vulnerabilities_for(
+                                    vulnerability_report,
+                                    vulnerabilitysuppression.derive_vulnerability_suppressions(
+                                        manifest
+                                    ),
+                                )
+                            else:
+                                found_vulnerabilities = vulnerability_report.get("vulnerabilities")
 
-                        if found_vulnerabilities is not None:
+                        if found_vulnerabilities:
                             import notifications
 
                             keys = list(found_vulnerabilities)
@@ -642,3 +678,84 @@ def features_for(report):
         )
 
     return features
+
+
+def _get_suppressed(
+    vuln: Vulnerability, suppressions: List[Tuple[str, str]]
+) -> Union[SuppressedVulnerability, None]:
+    """
+    Returns a suppressed vulnerability if the given vulnerability is suppressed by the given list
+    or None
+    """
+    for suppressed_vulnerability, suppression_source in suppressions:
+        if suppressed_vulnerability in vuln.Name:
+            return SuppressedVulnerability(
+                vuln.Severity,
+                vuln.NamespaceName,
+                vuln.Link,
+                vuln.FixedBy,
+                vuln.Description,
+                vuln.Name,
+                vuln.Metadata,
+                suppression_source,
+            )
+
+    return None
+
+
+def filtered_vulnerabilities_for(report, suppressions: List[Tuple[str, str]]):
+    filtered_vulnerabilities: Dict[str, str] = {}
+
+    if report.get("vulnerabilities") is None:
+        return filtered_vulnerabilities
+
+    # filter out any vulnerabilities found in the report that are suppressed
+    for vuln_id, vuln_details in report["vulnerabilities"].items():
+        vuln_suppressed = vulnerabilitysuppression.is_suppressed(vuln_details["name"], suppressions)
+
+        if not vuln_suppressed:
+            filtered_vulnerabilities[vuln_id] = vuln_details
+        else:
+            logger.debug("Excluded suppressed vulnerability from report: %s", vuln_details["name"])
+
+    return filtered_vulnerabilities
+
+
+def filtered_features_for(
+    report, suppressions: List[Tuple[str, str]], include_suppressions: bool = False
+):
+    features_with_all_vulns = features_for(report)
+    features_with_vuln_suppression = []
+
+    # Filter out any vulnerabilities that are suppressed or replace them with SuppressedVulnerability
+    for feature in features_with_all_vulns:
+        vuln_list = []
+        for vuln in feature.Vulnerabilities:
+            suppressed_vuln = _get_suppressed(vuln, suppressions)
+
+            if suppressed_vuln is None:  # vuln is not suppressed
+                vuln_list.append(vuln)
+            else:  # vuln is suppressed...
+                if include_suppressions:  # ... and we want to include it
+                    vuln_list.append(suppressed_vuln)
+                    logger.debug(
+                        "Included suppressed vulnerability in report: %s", suppressed_vuln.Name
+                    )
+                else:  # ... and we don't want to include it
+                    logger.debug(
+                        "Excluded suppressed vulnerability from report: %s", suppressed_vuln.Name
+                    )
+                    continue
+
+        features_with_vuln_suppression.append(
+            Feature(
+                feature.Name,
+                feature.VersionFormat,
+                feature.NamespaceName,
+                feature.AddedBy,
+                feature.Version,
+                vuln_list,
+            )
+        )
+
+    return features_with_vuln_suppression

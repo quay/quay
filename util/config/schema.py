@@ -738,6 +738,11 @@ CONFIG_SCHEMA = {
             "description": "The endpoint for the V4 security scanner",
             "x-example": "http://192.168.99.101:6060",
         },
+        "FEATURE_SECURITY_VULNERABILITY_SUPPRESSION": {
+            "type": "boolean",
+            "description": "If the security scanner is enabled, whether to turn of/off the ability to suppress security vulnerabilites reported by the scanner. Defaults to True",
+            "x-example": True,
+        },
         "SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE": {
             "type": ["string", "null"],
             "description": "Maxmum size for a layer to be indexed",

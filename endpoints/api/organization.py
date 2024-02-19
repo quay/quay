@@ -26,6 +26,7 @@ from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from endpoints.api import (
     ApiResource,
+    abort,
     allow_if_superuser,
     internal_only,
     log_action,
@@ -41,7 +42,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.api.user import PrivateRepositories, User
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
@@ -103,6 +104,10 @@ def org_view(o, teams):
         view["invoice_email_address"] = o.invoice_email_address
         view["tag_expiration_s"] = o.removed_tag_expiration_s
         view["is_free_account"] = o.stripe_id is None
+
+        if features.SECURITY_VULNERABILITY_SUPPRESSION:
+            suppressions = model.vulnerabilitysuppression.get_vulnerability_suppression_for_org(o)
+            view["suppressed_vulnerabilities"] = suppressions
 
         if features.QUOTA_MANAGEMENT:
             quotas = model.namespacequota.get_namespace_quota_list(o.username)
@@ -234,6 +239,13 @@ class Organization(ApiResource):
                     "minimum": 0,
                     "description": "The number of seconds for tag expiration",
                 },
+                "suppressed_vulnerabilities": {
+                    "type": "array",
+                    "items": {"type": "string", "minLength": 1, "pattern": "^[^\\s].*[^\\s]$"},
+                    "minItems": 0,
+                    "uniqueItems": True,
+                    "description": "A list of vulnerability identifiers to suppress in this organization. Has to be at least item of type string with a non-zero length and no leading or trailing whitespace.",
+                },
             },
         },
     }
@@ -317,6 +329,67 @@ class Organization(ApiResource):
                     orgname,
                     {"tag_expiration": org_data["tag_expiration_s"], "namespace": orgname},
                 )
+
+            if (
+                features.SECURITY_VULNERABILITY_SUPPRESSION
+                and "suppressed_vulnerabilities" in org_data
+            ):
+                suppressed_vulns = org_data["suppressed_vulnerabilities"]
+
+                if len(suppressed_vulns) > 0:
+                    logger.debug(
+                        "Changing organization suppressed vulnerabilities for org %s to: %s",
+                        (org.username, org_data["suppressed_vulnerabilities"]),
+                    )
+
+                    try:
+                        model.vulnerabilitysuppression.create_vulnerability_suppression_for_org(
+                            org, org_data["suppressed_vulnerabilities"], raise_on_error=True
+                        )
+                        log_action(
+                            "org_change_suppressed_vulnerabilities",
+                            orgname,
+                            {
+                                "suppressed_vulnerabilities": org_data[
+                                    "suppressed_vulnerabilities"
+                                ],
+                            },
+                        )
+                    except model.InvalidVulnerabilitySuppression as e:
+                        raise InvalidRequest(str(e))
+                    except Exception as e:
+                        logger.exception(
+                            "Error setting suppressed vulnerabilities for org %s: %s", org, str(e)
+                        )
+
+                        abort(
+                            500,
+                            message="Failed to set vulnerability suppression for organization %s"
+                            % org.username,
+                        )
+
+                elif len(suppressed_vulns) == 0:
+                    logger.debug(
+                        "Removing organization suppressed vulnerabilities for org %s" % org.username
+                    )
+
+                    try:
+                        model.vulnerabilitysuppression.delete_vulnerability_suppression_for_org(org)
+                        log_action("org_delete_suppressed_vulnerabilities", orgname, {})
+                    except model.InvalidVulnerabilitySuppression as e:
+                        raise InvalidRequest(str(e))
+                    except Exception as e:
+                        logger.exception(
+                            "Error clearing suppressed vulnerabilities for org %s: %s",
+                            org,
+                            str(e),
+                        )
+
+                        abort(
+                            500,
+                            message="Failed to delete vulnerability suppression for organization %s"
+                            % org.username,
+                        )
 
             teams = model.team.get_teams_within_org(org)
             return org_view(org, teams)

@@ -1,8 +1,8 @@
 import json
-import logging
 import os
+from collections import defaultdict
 from datetime import datetime, timedelta
-from test.fixtures import *
+from unittest.mock import patch
 
 import mock
 import pytest
@@ -10,6 +10,7 @@ from peewee import fn
 
 from app import app as application
 from app import instance_keys, storage
+from data import model
 from data.cache import InMemoryDataModelCache, cache_key
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
@@ -21,6 +22,7 @@ from data.database import (
     MediaType,
     db_transaction,
 )
+from data.model import vulnerabilitysuppression
 from data.registry_model import registry_model
 from data.secscan_model.datatypes import (
     Layer,
@@ -32,14 +34,17 @@ from data.secscan_model.secscan_v4_model import (
     IndexReportState,
     V4SecurityScanner,
     features_for,
+    filtered_features_for,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
 
 @pytest.fixture()
 def set_secscan_config():
     application.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
+    application.config["SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX"] = True
 
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
@@ -151,6 +156,147 @@ def test_load_security_information_success(initialized_db, set_secscan_config):
     assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
 
 
+@pytest.mark.parametrize(
+    "suppressed_vulnerabilities",
+    [
+        [
+            ("CVE-2010-0002", "manifest"),
+            ("CVE-2007-0003", "repository"),
+            ("CVE-2019-9893", "organization"),
+        ],
+        [
+            ("CVE-2010-0002", "manifest"),
+            ("CVE-2010-0002", "repository"),
+            ("CVE-2007-0003", "repository"),
+            ("CVE-2019-9893", "organization"),
+        ],
+        [
+            ("CVE-2010-0002", "manifest"),
+            ("CVE-2019-9893", "manifest"),
+            ("CVE-2007-0003", "repository"),
+            ("CVE-2019-9893", "organization"),
+            ("CVE-2019-9893", "repository"),
+        ],
+        [],
+    ],
+)
+@pytest.mark.parametrize("suppression_enabled", [True, False])
+def test_load_security_information_filtered(
+    initialized_db, set_secscan_config, suppressed_vulnerabilities, suppression_enabled
+):
+    org = model.user.get_user_or_org("buynlarge")
+    repository_ref = registry_model.lookup_repository(org.username, "orgrepo")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+
+    ManifestSecurityStatus.create(
+        manifest=manifest._db_id,
+        repository=repository_ref._db_id,
+        error_json={},
+        index_status=IndexStatus.COMPLETED,
+        indexer_hash="abc",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    grouped_suppressed_vulnerabilities = _group_by_suppression_source(suppressed_vulnerabilities)
+
+    for source, list in grouped_suppressed_vulnerabilities.items():
+        if source == "manifest":
+            vulnerabilitysuppression.create_vulnerability_suppression_for_manifest(
+                manifest, list, raise_on_error=True
+            )
+        if source == "repository":
+            vulnerabilitysuppression.create_vulnerability_suppression_for_repo(
+                repository_ref, list, raise_on_error=True
+            )
+        if source == "organization":
+            vulnerabilitysuppression.create_vulnerability_suppression_for_org(
+                org, list, raise_on_error=True
+            )
+
+    vuln_report_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "vulnerabilityreport.json"
+    )
+    with open(vuln_report_filename) as f:
+        report = json.load(f)
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.vulnerability_report.return_value = report
+
+    with patch("features.SECURITY_VULNERABILITY_SUPPRESSION", suppression_enabled):
+        result = secscan.load_security_information(
+            manifest, include_vulnerabilities=True, include_suppressions=False
+        )
+
+        assert result.status == ScanLookupStatus.SUCCESS
+
+        security_information = result.security_information.to_dict()
+
+        for vulnerability, _ in suppressed_vulnerabilities:
+            if suppression_enabled:
+                # check that there is no element in Features that has the suppressed vulnerability
+                assert not any(
+                    vulnerability in v.get("Name")
+                    for f in security_information["Layer"]["Features"]
+                    for v in f.get("Vulnerabilities", [])
+                )
+            else:
+                # check that there is an element in Features that has the suppressed vulnerability
+                assert any(
+                    vulnerability in v.get("Name")
+                    for f in security_information["Layer"]["Features"]
+                    for v in f.get("Vulnerabilities", [])
+                )
+
+        result = secscan.load_security_information(
+            manifest, include_vulnerabilities=True, include_suppressions=True
+        )
+
+        assert result.status == ScanLookupStatus.SUCCESS
+
+        security_information = result.security_information.to_dict()
+
+        if _has_duplicates(suppressed_vulnerabilities):
+            suppressed_vulnerabilities = _remove_duplicates(suppressed_vulnerabilities)
+
+        if suppression_enabled:
+            for vulnerability, suppressed_by in suppressed_vulnerabilities:
+                # ensure that the suppressed vulnerability is still present in the features
+                assert any(
+                    vulnerability in v.get("Name")
+                    for f in security_information["Layer"]["Features"]
+                    for v in f.get("Vulnerabilities", [])
+                )
+
+                # ensure that any occurrence of the vulnerability is suppressed by the correct source
+                assert not any(
+                    vulnerability in v.get("Name") and v.get("SuppressedBy") != suppressed_by
+                    for f in security_information["Layer"]["Features"]
+                    for v in f.get("Vulnerabilities", [])
+                )
+        else:
+            for vulnerability, _ in suppressed_vulnerabilities:
+                # ensure that the suppressed vulnerability is still present in the features and has no suppression source
+                assert any(
+                    vulnerability in v.get("Name") and v.get("SuppressedBy") is None
+                    for f in security_information["Layer"]["Features"]
+                    for v in f.get("Vulnerabilities", [])
+                )
+
+
+def _group_by_suppression_source(suppressed_vulnerabilities):
+    """
+    Returns a dictionary that groups tuples in suppressed_vulnerabilities by their second value.
+    """
+    groups = defaultdict(list)
+    for tup in suppressed_vulnerabilities:
+        groups[tup[1]].append(tup[0])
+
+    return groups
+
+
 def test_load_security_information_success_with_cache(initialized_db, set_secscan_config):
     model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
     model_cache.empty_for_testing()
@@ -201,7 +347,7 @@ def test_load_security_information_success_with_cache(initialized_db, set_secsca
 def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
     secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.return_value = (
         {"err": None, "state": IndexReportState.Index_Finished},
@@ -217,6 +363,78 @@ def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.COMPLETED
+
+
+@pytest.mark.parametrize("suppression_enabled", [True, False])
+def test_perform_indexing_notificaton_with_suppression(
+    initialized_db, set_secscan_config, suppression_enabled
+):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    vulnerable_manifest = registry_model.get_manifest_for_tag(tag)
+
+    for manifest in Manifest.select():
+        if manifest.digest != vulnerable_manifest.digest:
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                error_json={},
+                index_status=IndexStatus.COMPLETED,
+                indexer_hash="abc",
+                indexer_version=IndexerVersion.V4,
+                last_indexed=datetime.utcnow(),
+                metadata_json={},
+            )
+
+    secscan = V4SecurityScanner(application, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.vulnerability_report.return_value = {
+        "manifest_hash": vulnerable_manifest.digest,
+        "vulnerabilities": {
+            "someid": {
+                "id": "someid",
+                "name": "CVE-9999-0101",
+                "description": "some description",
+                "severity": "Low",
+                "normalized_severity": "Low",
+                "links": "",
+                "fixed_in_version": "",
+            },
+            "someotherid": {
+                "id": "someotherid",
+                "name": "CVE-9999-111",
+                "description": "some description",
+                "severity": "Low",
+                "normalized_severity": "Low",
+                "links": "",
+                "fixed_in_version": "",
+            },
+        },
+    }
+
+    vulnerabilitysuppression.create_vulnerability_suppression_for_manifest(
+        vulnerable_manifest,
+        ["CVE-9999-0101"],
+    )
+
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+
+    with patch("features.SECURITY_VULNERABILITY_SUPPRESSION", suppression_enabled):
+        with patch("notifications.spawn_notification") as mock_spawn_notification:
+            secscan.perform_indexing()
+
+            # Assert that the notification is sent only for the non-suppressed vulnerability
+            if suppression_enabled:
+                assert mock_spawn_notification.call_count == 1
+
+                notified_vuln = mock_spawn_notification.call_args.args[2]["vulnerability"]
+                assert notified_vuln.get("id") == "someotherid"
+            else:
+                assert mock_spawn_notification.call_count == 2
 
 
 def test_perform_indexing_failed(initialized_db, set_secscan_config):
@@ -465,7 +683,7 @@ def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.side_effect = APIRequestFailure()
-    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
 
     secscan.perform_indexing_recent_manifests()
     next_token = secscan.perform_indexing()
@@ -511,7 +729,7 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.side_effect = APIRequestFailure()
-    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": []}
+    secscan._secscan_api.vulnerability_report.return_value = {"vulnerabilities": {}}
 
     secscan.perform_indexing_recent_manifests()
     next_token = secscan.perform_indexing()
@@ -565,6 +783,115 @@ def test_features_for():
     generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
 
     assert generated == expected
+
+
+def _has_duplicates(suppressed_vulnerabilities):
+    """
+    Returns True if suppressed_vulnerabilities contains duplicates, False otherwise.
+    """
+    return len(set(tup[0] for tup in suppressed_vulnerabilities)) != len(suppressed_vulnerabilities)
+
+
+def _remove_duplicates(suppressed_vulnerabilities):
+    """
+    Returns a list of tuples in suppressed_vulnerabilities with duplicates removed except for the first occurrence.
+    """
+    first_occurrence = {}
+    filtered = []
+    for tup in suppressed_vulnerabilities:
+        key = tup[0]
+        if key not in first_occurrence:
+            first_occurrence[key] = tup
+            filtered.append(tup)
+
+    return filtered
+
+
+@pytest.mark.parametrize(
+    "suppressed_vulnerabilities",
+    [
+        [
+            ("CVE-2010-0002", "manifest"),
+            ("CVE-2007-0003", "repository"),
+            ("CVE-2019-9893", "organization"),
+        ],
+        [
+            ("CVE-2010-0002", "manifest"),
+            ("CVE-2010-0002", "repository"),
+            ("CVE-2007-0003", "repository"),
+            ("CVE-2019-9893", "organization"),
+        ],
+        [
+            ("CVE-2010-0002", "manifest"),
+            ("CVE-2019-9893", "manifest"),
+            ("CVE-2007-0003", "repository"),
+            ("CVE-2019-9893", "organization"),
+            ("CVE-2019-9893", "repository"),
+        ],
+        [],
+    ],
+)
+def test_filtered_features_for(suppressed_vulnerabilities):
+    vuln_report_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "vulnerabilityreport.json"
+    )
+
+    with open(vuln_report_filename) as vuln_report_file:
+        vuln_report = json.load(vuln_report_file)
+
+    generated = SecurityInformation(
+        Layer(
+            "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+            "",
+            "",
+            4,
+            filtered_features_for(
+                vuln_report,
+                suppressions=suppressed_vulnerabilities,
+                include_suppressions=False,
+            ),
+        )
+    ).to_dict()
+
+    for vulnerability, _ in suppressed_vulnerabilities:
+        # check that there is no element in Features that has the suppressed vulnerability
+        assert not any(
+            vulnerability in v.get("Name")
+            for f in generated["Layer"]["Features"]
+            for v in f.get("Vulnerabilities", [])
+        )
+
+    generated = SecurityInformation(
+        Layer(
+            "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+            "",
+            "",
+            4,
+            filtered_features_for(
+                vuln_report,
+                suppressions=suppressed_vulnerabilities,
+                include_suppressions=True,
+            ),
+        )
+    ).to_dict()
+
+    if _has_duplicates(suppressed_vulnerabilities):
+        suppressed_vulnerabilities = _remove_duplicates(suppressed_vulnerabilities)
+
+    for vulnerability, suppressed_by in suppressed_vulnerabilities:
+        # ensure that the suppressed vulnerability is still present in the features
+        assert any(
+            vulnerability in v.get("Name")
+            for f in generated["Layer"]["Features"]
+            for v in f.get("Vulnerabilities", [])
+        )
+
+        # ensure that any occurrence of the vulnerability is suppressed by the correct source
+        assert not any(
+            vulnerability in v.get("Name") and v.get("SuppressedBy") != suppressed_by
+            for f in generated["Layer"]["Features"]
+            for v in f.get("Vulnerabilities", [])
+        )
 
 
 def test_features_for_duplicates():

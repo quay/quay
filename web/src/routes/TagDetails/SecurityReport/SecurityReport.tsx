@@ -1,19 +1,23 @@
-import SecurityReportTable from './SecurityReportTable';
-import {SecurityReportChart} from './SecurityReportChart';
+import {useState} from 'react';
 import {useRecoilValue} from 'recoil';
 import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
-import {isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
+import {isErrorString} from 'src/resources/ErrorHandling';
+import {Tag} from 'src/resources/TagResource';
+import {VulnerabilitySuppressionsModal} from 'src/components/modals/VulnerabilitySuppressionsModal';
+import {SecurityReportChart} from './SecurityReportChart';
 import {
-  QueuedState,
   FailedState,
+  QueuedState,
   UnsupportedState,
 } from './SecurityReportScanStates';
+import SecurityReportTable from './SecurityReportTable';
 
-export default function SecurityReport() {
+export default function SecurityReport(props: SecurityReportProps) {
+  const [isSuppressionModalOpen, setIsSuppressionModalOpen] = useState(false);
   const data = useRecoilValue(SecurityDetailsState);
   const error = useRecoilValue(SecurityDetailsErrorState);
 
@@ -36,7 +40,28 @@ export default function SecurityReport() {
     <>
       <SecurityReportChart features={features} />
       <hr />
-      <SecurityReportTable features={features} />
+      <SecurityReportTable
+        features={features}
+        setSuppressionModalOpen={setIsSuppressionModalOpen}
+      />
+
+      {isSuppressionModalOpen && (
+        <VulnerabilitySuppressionsModal
+          isOpen={isSuppressionModalOpen}
+          setIsOpen={setIsSuppressionModalOpen}
+          org={props.org}
+          repo={props.repo}
+          digest={props.digest}
+          tag={props.tag}
+        />
+      )}
     </>
   );
 }
+
+type SecurityReportProps = {
+  tag: Tag;
+  org: string;
+  repo: string;
+  digest: string;
+};

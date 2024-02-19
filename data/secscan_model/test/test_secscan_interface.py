@@ -11,7 +11,6 @@ from data.secscan_model.datatypes import (
 )
 from data.secscan_model.secscan_v4_model import IndexReportState
 from data.secscan_model.secscan_v4_model import ScanToken as V4ScanToken
-from data.secscan_model.secscan_v4_model import V4SecurityScanner
 from test.fixtures import *
 
 from app import app  # isort: skip
@@ -43,7 +42,7 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
             metadata_json={},
         )
 
-    result = secscan_model.load_security_information(manifest, True)
+    result = secscan_model.load_security_information(manifest, True, True)
 
     assert isinstance(result, SecurityInformationLookupResult)
     assert result.status == expected_status
@@ -58,11 +57,12 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
     ],
 )
 def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):
+    app.config["FEATURE_SECURITY_SCANNER"] = True
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
 
     def secscan_api(*args, **kwargs):
         api = Mock()
-        api.vulnerability_report.return_value = {"vulnerabilities": []}
+        api.vulnerability_report.return_value = {"vulnerabilities": {}}
         api.state.return_value = {"state": "abc"}
         api.index.return_value = ({"err": None, "state": IndexReportState.Index_Finished}, "abc")
 

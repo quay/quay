@@ -1,17 +1,26 @@
 import {useState} from 'react';
 import {Checkbox, Flex, FlexItem, TextInput} from '@patternfly/react-core';
 import {VulnerabilityListItem} from './Types';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export function SecurityReportFilter(props: SecurityReportFilterProps) {
+  const config = useQuayConfig();
   const [isFixedOnlyChecked, setIsFixedOnlyChecked] = useState<boolean>(false);
+  const [isShowSuppressedChecked, setShowSuppressedChecked] =
+    useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const filterVulnList = (searchTerm: string, fixedOnlyChecked: boolean) => {
+  const filterVulnList = (
+    searchTerm: string,
+    fixedOnlyChecked: boolean,
+    showSuppressedChecked: boolean,
+  ) => {
     return props.vulnList.filter((item: VulnerabilityListItem) => {
       const searchStr = item.PackageName + item.Advisory;
       return (
         searchStr.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (!fixedOnlyChecked || item.FixedInVersion)
+        (!fixedOnlyChecked || item.FixedInVersion) &&
+        (showSuppressedChecked || !item.SuppressedBy)
       );
     });
   };
@@ -23,7 +32,11 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
     props.setPage(1);
     setSearchTerm(newSearchTerm);
     props.setFilteredVulnList(
-      filterVulnList(newSearchTerm, isFixedOnlyChecked),
+      filterVulnList(
+        newSearchTerm,
+        isFixedOnlyChecked,
+        isShowSuppressedChecked,
+      ),
     );
   };
 
@@ -33,7 +46,17 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
   ) => {
     props.setPage(1);
     setIsFixedOnlyChecked(checked);
-    props.setFilteredVulnList(filterVulnList(searchTerm, checked));
+    props.setFilteredVulnList(
+      filterVulnList(searchTerm, checked, isShowSuppressedChecked),
+    );
+  };
+
+  const onShowSuppressedChanged = (checked: boolean) => {
+    props.setPage(1);
+    setShowSuppressedChecked(checked);
+    props.setFilteredVulnList(
+      filterVulnList(searchTerm, isFixedOnlyChecked, checked),
+    );
   };
 
   return (
@@ -59,6 +82,22 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
           onChange={onShowOnlyFixableChanged}
         />
       </FlexItem>
+      {config?.features.SECURITY_VULNERABILITY_SUPPRESSION ? (
+        <FlexItem>
+          <Checkbox
+            label="Show suppressed"
+            aria-label="suppressed"
+            id="suppressed-checkbox"
+            isChecked={isShowSuppressedChecked}
+            onChange={(
+              _event: React.FormEvent<HTMLInputElement>,
+              checked: boolean,
+            ) => {
+              onShowSuppressedChanged(checked);
+            }}
+          />
+        </FlexItem>
+      ) : null}
     </Flex>
   );
 }

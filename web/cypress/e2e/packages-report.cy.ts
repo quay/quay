@@ -27,7 +27,7 @@ describe('Packages Report Page', () => {
   it('render packages', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
@@ -40,7 +40,7 @@ describe('Packages Report Page', () => {
   it('render no packages', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/noPackages.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
@@ -53,7 +53,7 @@ describe('Packages Report Page', () => {
   it('filter by name', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
@@ -68,7 +68,7 @@ describe('Packages Report Page', () => {
   it('render unsupported state', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/unsupported.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
@@ -79,7 +79,7 @@ describe('Packages Report Page', () => {
   it('render failed state', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/failed.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
@@ -90,7 +90,7 @@ describe('Packages Report Page', () => {
   it('render queued state', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/queued.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
@@ -102,7 +102,7 @@ describe('Packages Report Page', () => {
   it('paginate values', () => {
     cy.intercept(
       'GET',
-      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true&suppressions=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');

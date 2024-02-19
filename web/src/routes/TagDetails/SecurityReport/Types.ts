@@ -15,4 +15,5 @@ export interface VulnerabilityListItem {
   FixedInVersion: string;
   Metadata: VulnerabilityMetadata;
   Link: string;
+  SuppressedBy?: string;
 }
