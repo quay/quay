@@ -1,0 +1,64 @@
+{
+  "name": "teamsyncorg",
+  "email": "ddc489d5-babc-4432-ad58-73a12919dd8c",
+  "avatar": {
+    "name": "teamsyncorg",
+    "hash": "1888cddc86198e07bb96a73bd4308ebc4c1c640847f10582a52d3203c07f2146",
+    "color": "#9ecae1",
+    "kind": "user"
+  },
+  "is_admin": true,
+  "is_member": true,
+  "teams": {
+    "owners": {
+      "name": "owners",
+      "description": "",
+      "role": "admin",
+      "avatar": {
+        "name": "owners",
+        "hash": "6f0e3a8c0eb46e8834b43b03374ece43a030621d92a7437beb48f871e90f8d90",
+        "color": "#c7c7c7",
+        "kind": "team"
+      },
+      "can_view": true,
+      "repo_count": 0,
+      "member_count": 1,
+      "is_synced": false
+    },
+    "testteam": {
+      "name": "testteam",
+      "description": "",
+      "role": "member",
+      "avatar": {
+        "name": "testteam",
+        "hash": "827f8c5762148d7e85402495b126e0a18b9b168170416ed04b49aae551099dc8",
+        "color": "#ff7f0e",
+        "kind": "team"
+      },
+      "can_view": true,
+      "repo_count": 0,
+      "member_count": 1,
+      "is_synced": false
+    },
+    "testempty": {
+      "name": "testempty",
+      "description": "",
+      "role": "member",
+      "avatar": {
+        "name": "testempty",
+        "hash": "912ece9805316923dfbfbf86fd3f1251b317b0190c56da4a832c7e2eb32ee0b4",
+        "color": "#1f77b4",
+        "kind": "team"
+      },
+      "can_view": true,
+      "repo_count": 0,
+      "member_count": 0,
+      "is_synced": false
+    }
+  },
+  "ordered_teams": ["owners", "testteam"],
+  "invoice_email": false,
+  "invoice_email_address": null,
+  "tag_expiration_s": 1209600,
+  "is_free_account": true
+}

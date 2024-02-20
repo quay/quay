@@ -100,6 +100,25 @@ export interface ITeamMember {
   invited?: boolean;
 }
 
+export interface ITeamMembersCanSyncResponse {
+  service: string;
+}
+
+export interface ITeamMembersSyncedResponse {
+  service: string;
+  // config is a variable, different auth systems have different config
+  config: object;
+  last_updated: string;
+}
+
+export interface ITeamMembersResponse {
+  name: string;
+  members: ITeamMember[];
+  can_sync: ITeamMembersCanSyncResponse;
+  synced: ITeamMembersSyncedResponse;
+  can_edit: boolean;
+}
+
 export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
@@ -113,15 +132,17 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
     isLoading,
     isPlaceholderData,
     isError: errorLoadingTeamMembers,
-  } = useQuery<ITeamMember[]>(
+  } = useQuery<ITeamMembersResponse>(
     ['teamMembers'],
     ({signal}) => fetchTeamMembersForOrg(orgName, teamName, signal),
     {
-      placeholderData: [],
+      placeholderData: <ITeamMembersResponse>{},
     },
   );
+  const allMembers: ITeamMember[] = data?.members;
 
-  const allMembers: ITeamMember[] = data;
+  const teamCanSync = data?.can_sync;
+  const teamSyncInfo = data?.synced;
 
   const filteredAllMembers =
     search.query !== ''
@@ -176,6 +197,8 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
     paginatedTeamMembers,
     paginatedRobotAccounts,
     paginatedInvited,
+    teamCanSync,
+    teamSyncInfo,
     loading: isLoading || isPlaceholderData,
     error: errorLoadingTeamMembers,
     page,

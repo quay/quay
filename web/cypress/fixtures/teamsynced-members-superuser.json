@@ -1,0 +1,28 @@
+{
+  "name": "testteam",
+  "members": [
+    {
+      "name": "teamsyncorg+robotacct",
+      "kind": "user",
+      "is_robot": true,
+      "avatar": {
+        "name": "teamsyncorg+robotacct",
+        "hash": "e3d2d714a9fef2d247a3dc885bc6c9ed2bc8d443161fe427db3565d23dbb7e9a",
+        "color": "#ffbb78",
+        "kind": "robot"
+      },
+      "invited": false
+    }
+  ],
+  "can_edit": true,
+  "can_sync": {
+    "service": "oidc"
+  },
+  "synced": {
+    "service": "oidc",
+    "config": {
+      "group_name": "teamsyncorg:groupname"
+    },
+    "last_updated": ""
+  }
+}

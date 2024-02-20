@@ -1,0 +1,50 @@
+{
+  "anonymous": false,
+  "username": "admin",
+  "avatar": {
+    "name": "admin",
+    "hash": "b2e8857a3056328e44dae028df2fce79108f75cb",
+    "color": "#17becf",
+    "kind": "user"
+  },
+  "can_create_repo": true,
+  "is_me": true,
+  "verified": true,
+  "email": "admin@redhat.com",
+  "logins": [
+    {
+      "service": "oidc",
+      "service_identifier": "4d305a87-dc2g-43a6-8d0f-c5afd372e86c",
+      "metadata": {
+        "service_username": "admin"
+      }
+    }
+  ],
+  "invoice_email": false,
+  "invoice_email_address": null,
+  "preferred_namespace": false,
+  "tag_expiration_s": 1209600,
+  "prompts": [],
+  "super_user": false,
+  "company": "",
+  "family_name": null,
+  "given_name": null,
+  "location": null,
+  "is_free_account": true,
+  "has_password_set": true,
+  "organizations": [
+    {
+      "name": "teamsyncorg",
+      "avatar": {
+        "name": "teamsyncorg",
+        "hash": "69efc9e2d56f21cc44bdf76cd9f1e0e4f14afa7f0dc0ba1e8d07213b6bdd3d42",
+        "color": "#c5b0d5",
+        "kind": "org"
+      },
+      "can_create_repo": true,
+      "public": false,
+      "is_org_admin": true,
+      "preferred_namespace": true
+    }
+  ]
+}

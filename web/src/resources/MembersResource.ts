@@ -1,3 +1,4 @@
+import {ITeamMembersResponse} from 'src/hooks/UseMembers';
 import {IAvatar} from './OrganizationResource';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
@@ -44,11 +45,11 @@ export async function fetchTeamMembersForOrg(
   org: string,
   teamName: string,
   signal?: AbortSignal,
-) {
+): Promise<ITeamMembersResponse> {
   const teamMemberUrl = `/api/v1/organization/${org}/team/${teamName}/members?includePending=true`;
   const teamMembersResponse = await axios.get(teamMemberUrl, {signal});
   assertHttpCode(teamMembersResponse.status, 200);
-  return teamMembersResponse.data?.members;
+  return teamMembersResponse?.data;
 }
 
 export async function deleteTeamMemberForOrg(

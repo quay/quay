@@ -1,0 +1,8 @@
+{
+  "name": "testempty",
+  "members": [],
+  "can_edit": true,
+  "can_sync": {
+    "service": "oidc"
+  }
+}
