@@ -17,7 +17,7 @@ export function useFetchRepositoryAutoPrunePolicies(
     error: errorFetchingRepoPolicies,
     isSuccess: successFetchingRepoPolicies,
     dataUpdatedAt: repoPoliciesDataUpdatedAt,
-  } = useQuery(['autoprunepolicies', organizationName, repoName], ({signal}) =>
+  } = useQuery(['repositoryautoprunepolicies', organizationName, repoName], ({signal}) =>
     fetchRepositoryAutoPrunePolicies(organizationName, repoName, signal),
   );
 
@@ -46,7 +46,7 @@ export function useCreateRepositoryAutoPrunePolicy(
     {
       onSuccess: () => {
         queryClient.invalidateQueries([
-          'autoprunepolicies',
+          'repositoryautoprunepolicies',
           organizationName,
           repoName,
         ]);
@@ -78,7 +78,7 @@ export function useUpdateRepositoryAutoPrunePolicy(
     {
       onSuccess: () => {
         queryClient.invalidateQueries([
-          'autoprunepolicies',
+          'repositoryautoprunepolicies',
           organizationName,
           repoName,
         ]);
@@ -110,7 +110,7 @@ export function useDeleteRepositoryAutoPrunePolicy(
     {
       onSuccess: () => {
         queryClient.invalidateQueries([
-          'autoprunepolicies',
+          'repositoryautoprunepolicies',
           organizationName,
           repoName,
         ]);

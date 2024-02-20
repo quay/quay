@@ -139,10 +139,12 @@ def get_repository_autoprune_policies_by_repo_name(orgname, repo_name):
     """
     Get the autopruning policies for the specified repository.
     """
-    repo = repository.get_repository(orgname, repo_name)
-
-    query = RepositoryAutoPrunePolicyTable.select().where(
-        RepositoryAutoPrunePolicyTable.repository == repo.id,
+    query = (
+        RepositoryAutoPrunePolicyTable.select(RepositoryAutoPrunePolicyTable)
+        .join(Repository)
+        .where(
+            RepositoryAutoPrunePolicyTable.repository == Repository.id, Repository.name == repo_name
+        )
     )
     return [RepositoryAutoPrunePolicy(row) for row in query]
 
@@ -435,7 +437,8 @@ def fetch_autoprune_task(task_run_interval_ms=60 * 60 * 1000):
         try:
             # We have to check for enabled User as a sub query since a join would lock the User row too
             query = (
-                AutoPruneTaskStatus.select(AutoPruneTaskStatus).where(
+                AutoPruneTaskStatus.select(AutoPruneTaskStatus)
+                .where(
                     AutoPruneTaskStatus.namespace.not_in(
                         # this basically skips ns if user is not enabled
                         User.select(User.id).where(
@@ -591,7 +594,7 @@ def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
 
 def execute_policies_for_repo(ns_policies, repo, namespace_id, tag_page_limit=100):
     """
-    Executes both repository and namespace level policies for the given repository. The policies 
+    Executes both repository and namespace level policies for the given repository. The policies
     are applied in a serial fashion and are run asynchronosly in the background.
     """
     for ns_policy in ns_policies:
@@ -599,7 +602,7 @@ def execute_policies_for_repo(ns_policies, repo, namespace_id, tag_page_limit=10
         # note: currently only one policy is configured per repo
         for repo_policy in repo_policies:
             execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
-        # execute associated namespace policy    
+        # execute associated namespace policy
         execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
 
 

@@ -25,6 +25,7 @@ import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useNamespaceAutoPrunePolicies} from 'src/hooks/UseNamespaceAutoPrunePolicies';
+import { useOrganization } from 'src/hooks/UseOrganization';
 import {
   useCreateRepositoryAutoPrunePolicy,
   useDeleteRepositoryAutoPrunePolicy,
@@ -34,7 +35,6 @@ import {
 import {isNullOrUndefined} from 'src/libs/utils';
 import {
   AutoPruneMethod,
-  NamespaceAutoPrunePolicy,
 } from 'src/resources/NamespaceAutoPruneResource';
 import {RepositoryAutoPrunePolicy} from 'src/resources/RepositoryAutoPruneResource';
 import {shorthandTimeUnits} from 'src/routes/OrganizationsList/Organization/Tabs/Settings/AutoPruning';
@@ -46,7 +46,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
   const {addAlert} = useAlerts();
-  const [nsPolicy, setNsPolicy] = useState<NamespaceAutoPrunePolicy>();
+  const {organization} = useOrganization(props.organizationName);
 
   const {
     error,
@@ -131,11 +131,6 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
         setTagCount(20);
         setTagCreationDateUnit('d');
         setTagCreationDateValue(7);
-      }
-    }
-    if (successFetchingPolicies) {
-      if (nsPolicies.length > 0) {
-        setNsPolicy(nsPolicies[0]);
       }
     }
   }, [
@@ -238,7 +233,9 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
 
   return (
     <>
-      <Conditional if={nsPolicy !== null && nsPolicy !== undefined}>
+      {/* <Conditional if={nsPolicy !== null && nsPolicy !== undefined && organization.is_org_admin}> */}
+      <Conditional if={nsPolicies.length >0}>
+
         <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
           Namespace Auto-Pruning Policies
         </Title>
@@ -253,10 +250,10 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
                 <DataListItemCells
                   dataListCells={[
                     <DataListCell key="policy-method">
-                      <span id="simple-item1">{nsPolicy?.method}:</span>
+                      <span id="simple-item1">{nsPolicies[0]?.method}:</span>
                     </DataListCell>,
                     <DataListCell key="policy-value">
-                      <span id="simple-item1">{nsPolicy?.value}</span>
+                      <span id="simple-item1">{nsPolicies[0]?.value}</span>
                     </DataListCell>,
                   ]}
                 />
