@@ -42,9 +42,10 @@ def test_entity_search(auth_engine, requires_email, client):
             # Try a known prefix.
             # For federationuser(ldap): avoid doing LDAP lookups for Robot accounts (PROJQUAY-5137) #2505
             # we need to ensure, the user is federate before we can check it
-            with mock_ldap() as ldap:
-                # Verify that the user is logged in and their username was adjusted.
-                (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
+            if auth_engine == "mock_ldap":
+                with mock_ldap() as ldap:
+                    # Verify that the user is logged in and their username was adjusted.
+                    (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
 
             response = conduct_api_call(client, EntitySearch, "GET", params=dict(prefix="cool"))
             results = response.json["results"]
