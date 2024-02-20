@@ -14,7 +14,6 @@ export function useTeamSync({orgName, teamName, onSuccess, onError}) {
     {
       onSuccess: (response) => {
         onSuccess(`Successfully updated team sync config`);
-        queryClient.setQueriesData([orgName, teamName, 'teamSync'], response);
         queryClient.invalidateQueries(['teamMembers']);
       },
       onError: (err) => {
@@ -39,7 +38,6 @@ export function useRemoveTeamSync({orgName, teamName, onSuccess, onError}) {
     {
       onSuccess: () => {
         onSuccess(`Successfully removed team synchronization`);
-        queryClient.invalidateQueries([orgName, teamName, 'teamSync']);
         queryClient.invalidateQueries(['teamMembers']);
       },
       onError: (err) => {

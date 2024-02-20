@@ -136,7 +136,7 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
     ['teamMembers'],
     ({signal}) => fetchTeamMembersForOrg(orgName, teamName, signal),
     {
-      placeholderData: {},
+      placeholderData: <ITeamMembersResponse>{},
     },
   );
   const allMembers: ITeamMember[] = data?.members;

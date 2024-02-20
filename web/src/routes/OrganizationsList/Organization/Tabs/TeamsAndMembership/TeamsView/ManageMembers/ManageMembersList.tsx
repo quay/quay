@@ -318,9 +318,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     if (teamSyncInfo != null) {
       if (teamSyncInfo.service == 'oidc') {
         setOIDCGroupName(teamSyncInfo.config?.group_name);
-        if (teamSyncInfo.last_updated != null) {
-          setTeamSyncLastUpdated(teamSyncInfo.last_updated);
-        }
+      }
+      if (teamSyncInfo.last_updated != null) {
+        setTeamSyncLastUpdated(teamSyncInfo.last_updated);
       }
       setPageInReadOnlyMode(true);
     }
