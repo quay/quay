@@ -60,6 +60,8 @@ ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_r
 ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_pull_robot_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS fk_repositorybuild_access_token_id_accesstoken;
+ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS fk_repositoryautoprunepolicy_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS fk_repositoryautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS fk_repositoryauthorizedemail_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS fk_repositoryactioncount_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_visibility_id_visibility;
@@ -259,6 +261,9 @@ DROP INDEX IF EXISTS public.repositorybuild_queue_id;
 DROP INDEX IF EXISTS public.repositorybuild_pull_robot_id;
 DROP INDEX IF EXISTS public.repositorybuild_logs_archived;
 DROP INDEX IF EXISTS public.repositorybuild_access_token_id;
+DROP INDEX IF EXISTS public.repositoryautoprunepolicy_uuid;
+DROP INDEX IF EXISTS public.repositoryautoprunepolicy_repository_id;
+DROP INDEX IF EXISTS public.repositoryautoprunepolicy_namespace_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_repository_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_email_repository_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_code;
@@ -512,6 +517,7 @@ ALTER TABLE IF EXISTS ONLY public.repositorynotification DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.repositorykind DROP CONSTRAINT IF EXISTS pk_repositorykind;
 ALTER TABLE IF EXISTS ONLY public.repositorybuildtrigger DROP CONSTRAINT IF EXISTS pk_repositorybuildtrigger;
 ALTER TABLE IF EXISTS ONLY public.repositorybuild DROP CONSTRAINT IF EXISTS pk_repositorybuild;
+ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS pk_repositoryautoprunepolicyid;
 ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS pk_repositoryauthorizedemail;
 ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS pk_repositoryactioncount;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS pk_repository;
@@ -617,6 +623,7 @@ ALTER TABLE IF EXISTS public.repositorynotification ALTER COLUMN id DROP DEFAULT
 ALTER TABLE IF EXISTS public.repositorykind ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorybuildtrigger ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositorybuild ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.repositoryautoprunepolicy ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositoryauthorizedemail ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repositoryactioncount ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repository ALTER COLUMN id DROP DEFAULT;
@@ -755,6 +762,8 @@ DROP SEQUENCE IF EXISTS public.repositorybuildtrigger_id_seq;
 DROP TABLE IF EXISTS public.repositorybuildtrigger;
 DROP SEQUENCE IF EXISTS public.repositorybuild_id_seq;
 DROP TABLE IF EXISTS public.repositorybuild;
+DROP SEQUENCE IF EXISTS public.repositoryautoprunepolicy_id_seq;
+DROP TABLE IF EXISTS public.repositoryautoprunepolicy;
 DROP SEQUENCE IF EXISTS public.repositoryauthorizedemail_id_seq;
 DROP TABLE IF EXISTS public.repositoryauthorizedemail;
 DROP SEQUENCE IF EXISTS public.repositoryactioncount_id_seq;
@@ -3543,6 +3552,43 @@ ALTER SEQUENCE public.repositoryauthorizedemail_id_seq OWNED BY public.repositor
 
 
 --
+-- Name: repositoryautoprunepolicy; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.repositoryautoprunepolicy (
+    id integer NOT NULL,
+    uuid character varying(36) NOT NULL,
+    repository_id integer NOT NULL,
+    namespace_id integer NOT NULL,
+    policy text NOT NULL
+);
+
+
+ALTER TABLE public.repositoryautoprunepolicy OWNER TO quay;
+
+--
+-- Name: repositoryautoprunepolicy_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.repositoryautoprunepolicy_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.repositoryautoprunepolicy_id_seq OWNER TO quay;
+
+--
+-- Name: repositoryautoprunepolicy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.repositoryautoprunepolicy_id_seq OWNED BY public.repositoryautoprunepolicy.id;
+
+
+--
 -- Name: repositorybuild; Type: TABLE; Schema: public; Owner: quay
 --
 
@@ -5310,6 +5356,13 @@ ALTER TABLE ONLY public.repositoryauthorizedemail ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Name: repositoryautoprunepolicy id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryautoprunepolicy ALTER COLUMN id SET DEFAULT nextval('public.repositoryautoprunepolicy_id_seq'::regclass);
+
+
+--
 -- Name: repositorybuild id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5570,7 +5623,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-41d15c93c299
+b4da5b09c8df
 \.
 
 
@@ -6242,6 +6295,9 @@ COPY public.logentrykind (id, name) FROM stdin;
 105	push_repo_failed
 106	pull_repo_failed
 107	delete_tag_failed
+108	create_repository_autoprune_policy
+109	update_repository_autoprune_policy
+110	delete_repository_autoprune_policy
 \.
 
 
@@ -6518,8 +6574,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-11-07 19:57:36.102126	t	2023-11-07 22:52:36.037751	5	e90498e4-d92b-487a-90a3-1ab34388af7c
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-11-07 19:57:37.766105	t	2023-11-07 22:52:37.740851	5	9ccfcc76-8277-4dc0-8a14-b37440753124
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2024-02-20 14:01:29.891875	t	2024-02-20 16:56:29.836048	5	ff6a0b72-d8cc-4efe-ad83-70225ac325e1
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2024-02-20 14:01:34.91615	t	2024-02-20 16:56:34.901017	5	6e996e00-e92b-45a9-962f-7e7f3cdb9e63
 \.
 
 
@@ -6925,6 +6981,14 @@ COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 
 COPY public.repositoryauthorizedemail (id, repository_id, email, code, confirmed) FROM stdin;
 1	5	user1@redhat.com	J9VE21W29UAZ8UU0	t
+\.
+
+
+--
+-- Data for Name: repositoryautoprunepolicy; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.repositoryautoprunepolicy (id, uuid, repository_id, namespace_id, policy) FROM stdin;
 \.
 
 
@@ -8084,7 +8148,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 107, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 110, true);
 
 
 --
@@ -8168,7 +8232,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
 
 
 --
@@ -8326,6 +8390,13 @@ SELECT pg_catalog.setval('public.repositoryauthorizedemail_id_seq', 1, true);
 
 
 --
+-- Name: repositoryautoprunepolicy_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.repositoryautoprunepolicy_id_seq', 1, false);
+
+
+--
 -- Name: repositorybuild_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -8406,14 +8477,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 1, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, true);
 
 
 --
@@ -9129,6 +9200,14 @@ ALTER TABLE ONLY public.repositoryactioncount
 
 ALTER TABLE ONLY public.repositoryauthorizedemail
     ADD CONSTRAINT pk_repositoryauthorizedemail PRIMARY KEY (id);
+
+
+--
+-- Name: repositoryautoprunepolicy pk_repositoryautoprunepolicyid; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryautoprunepolicy
+    ADD CONSTRAINT pk_repositoryautoprunepolicyid PRIMARY KEY (id);
 
 
 --
@@ -10937,6 +11016,27 @@ CREATE INDEX repositoryauthorizedemail_repository_id ON public.repositoryauthori
 
 
 --
+-- Name: repositoryautoprunepolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX repositoryautoprunepolicy_namespace_id ON public.repositoryautoprunepolicy USING btree (namespace_id);
+
+
+--
+-- Name: repositoryautoprunepolicy_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
+
+
+--
+-- Name: repositoryautoprunepolicy_uuid; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX repositoryautoprunepolicy_uuid ON public.repositoryautoprunepolicy USING btree (uuid);
+
+
+--
 -- Name: repositorybuild_access_token_id; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -12409,6 +12509,22 @@ ALTER TABLE ONLY public.repositoryactioncount
 
 ALTER TABLE ONLY public.repositoryauthorizedemail
     ADD CONSTRAINT fk_repositoryauthorizedemail_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
+-- Name: repositoryautoprunepolicy fk_repositoryautoprunepolicy_namespace_id_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryautoprunepolicy
+    ADD CONSTRAINT fk_repositoryautoprunepolicy_namespace_id_user FOREIGN KEY (namespace_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: repositoryautoprunepolicy fk_repositoryautoprunepolicy_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositoryautoprunepolicy
+    ADD CONSTRAINT fk_repositoryautoprunepolicy_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
 
 
 --

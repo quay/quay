@@ -37,7 +37,7 @@ describe('Repository settings - Repository autoprune policies', () => {
   };
 
   it('creates repo policy based on number of tags', () => {
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
 
@@ -48,7 +48,7 @@ describe('Repository settings - Repository autoprune policies', () => {
   });
 
   it('creates repo policy based on creation date', () => {
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
 
@@ -63,7 +63,7 @@ describe('Repository settings - Repository autoprune policies', () => {
   });
 
   it('updates repo policy', () => {
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
 
@@ -83,7 +83,7 @@ describe('Repository settings - Repository autoprune policies', () => {
   });
 
   it('deletes repo policy', () => {
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
 
@@ -102,7 +102,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.intercept('GET', '**/autoprunepolicy/**', {statusCode: 500}).as(
       'getServerFailure',
     );
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.contains('Unable to complete request');
     cy.contains('AxiosError: Request failed with status code 500');
@@ -112,7 +112,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.intercept('POST', '**/autoprunepolicy/**', {statusCode: 500}).as(
       'getServerFailure',
     );
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
 
     attemptCreateTagNumberRepoPolicy(cy);
@@ -125,7 +125,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.intercept('PUT', '**/autoprunepolicy/**', {statusCode: 500}).as(
       'getServerFailure',
     );
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
 
@@ -140,7 +140,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.intercept('DELETE', '**/autoprunepolicy/**', {statusCode: 500}).as(
       'getServerFailure',
     );
-    cy.visit('/organization/projectquay/repo1?tab=Settings');
+    cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
 
