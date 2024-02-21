@@ -9,15 +9,23 @@ def link_to_cves(input_string):
     parses the string and finds all unique CVEs within the string.
     """
     cve_pattern = r"CVE-\d{4}-\d{4,7}"
-    return re.findall(cve_pattern, input_string)
+    return sorted(list(set(re.findall(cve_pattern, input_string))))
 
 
 def vulns_to_cves(vulnerabilities):
     """
     vulns_to_cves takes a list of Vulnerabilities and returns
-    a list of CVE Ids
+    a unique list of CVE Ids sorted alphabetically
     """
-    return [cve for v in vulnerabilities for cve in link_to_cves(v.Link)]
+    seen = set()
+    return sorted(
+        [
+            cve
+            for v in vulnerabilities
+            for cve in link_to_cves(v.Link)
+            if not (cve in seen or seen.add(cve))
+        ]
+    )
 
 
 def vulns_to_base_scores(vulnerabilities):
