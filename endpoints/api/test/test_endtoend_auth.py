@@ -44,17 +44,19 @@ def test_entity_search(auth_engine, requires_email, client):
             # we need to ensure, the user is federate before we can check it
             # the assertname will ensure we do not modify the assert check for none federated checks
             assertname = "cool.user"
+            asserttype = "external"
             if auth_engine == "mock_ldap":
                 with mock_ldap() as ldap:
                     # Verify that the user is logged in and their username was adjusted.
                     (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
-                    assertname = "cool_user"
+                    asserttname = "cool_user"
+                    asserttype = "user"
 
             response = conduct_api_call(client, EntitySearch, "GET", params=dict(prefix="cool"))
             results = response.json["results"]
             entity = results[0]
-            assert entity["name"] == assertname 
-            assert entity["kind"] == "user"
+            assert entity["name"] == asserttname 
+            assert entity["kind"] == asserttype
 
 
 def test_link_external_entity(auth_engine, requires_email, app):
