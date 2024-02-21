@@ -106,7 +106,7 @@
     "webpack-merge": "^5.10.0"
   },
   "optionalDependencies": {
-    "cypress": "^12.17.4"
+    "cypress": "^13.6.3"
   },
   "overrides": {
     "react": "^17.0.2",
