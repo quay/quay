@@ -40,10 +40,13 @@ def get_jwt_issuer(token):
     return decoded.get("iss", None)
 
 
-def get_sub_username_email_from_token(decoded_id_token, user_info=None, config={}, mailing=False):
+def get_sub_username_email_from_token(
+    decoded_id_token, user_info=None, config={}, mailing=False, fetch_groups=False
+):
     if not user_info:
         user_info = decoded_id_token
 
+    additional_info = {}
     # Verify for impersonation
     if user_info.get("impersonated", False):
         logger.debug("Requests from impersonated principals are not supported")
@@ -88,7 +91,17 @@ def get_sub_username_email_from_token(decoded_id_token, user_info=None, config={
     if lusername.find("@") >= 0:
         lusername = lusername[0 : lusername.find("@")]
 
-    return decoded_id_token["sub"], lusername, email_address
+    if fetch_groups:
+        if config.get("PREFERRED_GROUP_CLAIM_NAME", None) is None:
+            logger.exception(
+                "PREFERRED_GROUP_CLAIM_NAME needs to be added in the config for teamsync via OIDC"
+            )
+        else:
+            additional_info["groups"] = user_info.get(
+                config.get("PREFERRED_GROUP_CLAIM_NAME", None)
+            )
+
+    return decoded_id_token["sub"], lusername, email_address, additional_info
 
 
 def _oauthresult(
@@ -126,6 +139,16 @@ def _attach_service(config, login_service, user_obj, lid, lusername):
         return _oauthresult(service_name=login_service.service_name(), error_message=err)
 
 
+def sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config):
+    if (
+        config.get("AUTHENTICATION_TYPE", "oidc")
+        and config.get("FEATURE_TEAM_SYNCING", False)
+        and additional_login_info
+    ):
+        auth_system.sync_user_groups(additional_login_info.get("groups"), user_obj, login_service)
+    return
+
+
 def _conduct_oauth_login(
     config,
     analytics,
@@ -136,6 +159,7 @@ def _conduct_oauth_login(
     lemail,
     metadata=None,
     captcha_verified=False,
+    additional_login_info=None,
 ):
     """
     Conducts login from the result of an OAuth service's login flow and returns the status of the
@@ -148,6 +172,7 @@ def _conduct_oauth_login(
     # and redirect.
     user_obj = model.user.verify_federated_login(service_id, lid)
     if user_obj is not None:
+        sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config)
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     # If the login service has a bound field name, and we have a defined internal auth type that is
@@ -182,6 +207,7 @@ def _conduct_oauth_login(
         if result.error_message is not None:
             return result
 
+        sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config)
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     # Otherwise, we need to create a new user account.
@@ -220,6 +246,7 @@ def _conduct_oauth_login(
 
         # Success, tell analytics
         analytics.track(user_obj.username, "register", {"service": service_name.lower()})
+        sync_oidc_groups(additional_login_info, user_obj, auth_system, login_service, config)
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     except model.InvalidEmailAddressException:

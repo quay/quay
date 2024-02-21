@@ -99,7 +99,7 @@ class OAuthLoginService(OAuthService):
         login or attach their account.
 
         Raises a OAuthLoginService exception on failure. Returns a tuple consisting of (service_id,
-        service_username, email)
+        service_username, email, additional_info)
         """
 
         # Retrieve the token for the OAuth code.
@@ -136,6 +136,7 @@ class OAuthLoginService(OAuthService):
 
         service_user_id = self.get_login_service_id(user_info)
         service_username = self.get_login_service_username(user_info)
+        additional_info = {}
 
         logger.debug(
             "Completed successful exchange for service %s: %s, %s, %s",
@@ -144,4 +145,4 @@ class OAuthLoginService(OAuthService):
             service_username,
             email_address,
         )
-        return (service_user_id, service_username, email_address)
+        return (service_user_id, service_username, email_address, additional_info)

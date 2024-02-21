@@ -1,7 +1,6 @@
-from test.fixtures import *
-
 import pytest
 
+from data.database import TeamMember
 from data.model import DataModelException
 from data.model.organization import create_organization
 from data.model.team import (
@@ -10,12 +9,16 @@ from data.model.team import (
     add_user_to_team,
     confirm_team_invite,
     create_team,
+    delete_all_team_members,
+    get_federated_user_teams,
     list_team_users,
     remove_team,
     remove_user_from_team,
+    set_team_syncing,
     validate_team_name,
 )
 from data.model.user import create_user_noverify, get_user
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -115,3 +118,51 @@ def test_remove_user_from_team(initialized_db):
 
     # Another admin should be able to
     remove_user_from_team("testorg", "testteam", "randomuser", "devtable")
+
+
+def test_delete_all_team_members(initialized_db):
+    dev_user = get_user("devtable")
+    random_user = get_user("randomuser")
+    public_user = get_user("public")
+    fresh_user = get_user("freshuser")
+    reader_user = get_user("reader")
+
+    new_org = create_organization("testorg", "testorg" + "@example.com", dev_user)
+
+    team_1 = create_team("team_1", new_org, "member")
+    assert add_user_to_team(dev_user, team_1)
+    assert add_user_to_team(random_user, team_1)
+    assert add_user_to_team(public_user, team_1)
+    assert add_user_to_team(fresh_user, team_1)
+    assert add_user_to_team(reader_user, team_1)
+
+    before_deletion_count = TeamMember.select().where(TeamMember.team == team_1).count()
+    assert before_deletion_count == 5
+    delete_all_team_members(team_1)
+
+    after_deletion_count = TeamMember.select().where(TeamMember.team == team_1).count()
+    assert after_deletion_count == 0
+
+
+@pytest.mark.parametrize("login_service_name", ["oidc", "ldap"])
+def test_get_federated_user_teams(login_service_name, initialized_db):
+    dev_user = get_user("devtable")
+    new_org = create_organization("testorg", "testorg" + "@example.com", dev_user)
+
+    team_1 = create_team("team_1", new_org, "member")
+    assert add_user_to_team(dev_user, team_1)
+    assert set_team_syncing(team_1, "oidc", None)
+
+    team_2 = create_team("team_2", new_org, "member")
+    assert add_user_to_team(dev_user, team_2)
+    assert set_team_syncing(team_2, "oidc", None)
+
+    team_3 = create_team("team_3", new_org, "member")
+    assert add_user_to_team(dev_user, team_3)
+    assert set_team_syncing(team_3, "ldap", None)
+
+    user_teams = get_federated_user_teams(dev_user, login_service_name)
+    if login_service_name == "oidc":
+        assert len(user_teams) == 2
+    elif login_service_name == "ldap":
+        assert len(user_teams) == 1

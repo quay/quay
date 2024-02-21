@@ -183,7 +183,7 @@ class OIDCLoginService(OAuthService):
             user_info = decoded_id_token
 
         return get_sub_username_email_from_token(
-            decoded_id_token, user_info, self.config, self._mailing
+            decoded_id_token, user_info, self.config, self._mailing, fetch_groups=True
         )
 
     @property

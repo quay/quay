@@ -8,7 +8,7 @@ from functools import wraps
 from flask import request
 
 import features
-from app import authentication, avatar
+from app import app, authentication, avatar
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
@@ -307,6 +307,10 @@ class OrganizationTeamSyncing(ApiResource):
 
             # Set the team's syncing config.
             model.team.set_team_syncing(team, authentication.federated_service, config)
+
+            if app.config["AUTHENTICATION_TYPE"] == "OIDC":
+                # delete existing team members, team membership will be synced with OIDC group
+                model.team.delete_all_team_members(team)
 
             return team_view(orgname, team)
 

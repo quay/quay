@@ -388,7 +388,7 @@ def test_exchange_code_validcode(
                 oidc_service.exchange_code_for_login(app_config, http_client, valid_code, "")
         else:
             # Should succeed.
-            lid, lusername, lemail = oidc_service.exchange_code_for_login(
+            lid, lusername, lemail, additional_info = oidc_service.exchange_code_for_login(
                 app_config, http_client, valid_code, ""
             )
 

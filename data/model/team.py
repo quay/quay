@@ -569,3 +569,31 @@ def delete_members_not_present(team, member_id_set):
             return query.execute()
 
     return 0
+
+
+def get_federated_user_teams(user_obj, login_service_name):
+    """
+    Return all user's teams that are synced with the login service
+    """
+    query = (
+        Team.select(Team, TeamSync)
+        .join(TeamMember)
+        .switch(Team)
+        .join(TeamSync)
+        .join(LoginService)
+        .where(TeamMember.user == user_obj, LoginService.name == login_service_name)
+    )
+    return query
+
+
+def delete_all_team_members(team):
+    """
+    Delete all users that are a member of the given team
+    """
+    with db_transaction():
+        user_ids = set([u.id for u in list_team_users(team)])
+        if user_ids:
+            query = TeamMember.delete().where(TeamMember.team == team, TeamMember.user << user_ids)
+            return query.execute()
+
+    return 0
