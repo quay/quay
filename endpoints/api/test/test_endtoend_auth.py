@@ -43,7 +43,7 @@ def test_entity_search(auth_engine, requires_email, client):
             # For federationuser(ldap): avoid doing LDAP lookups for Robot accounts (PROJQUAY-5137) #2505
             # we need to ensure, the user is federate before we can check it
             # the assertname will ensure we do not modify the assert check for none federated checks
-            assertname = "cool.user"
+            asserttname = "cool.user"
             asserttype = "external"
             if auth_engine == "mock_ldap":
                 with mock_ldap() as ldap:
