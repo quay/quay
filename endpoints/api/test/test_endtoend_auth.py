@@ -42,15 +42,18 @@ def test_entity_search(auth_engine, requires_email, client):
             # Try a known prefix.
             # For federationuser(ldap): avoid doing LDAP lookups for Robot accounts (PROJQUAY-5137) #2505
             # we need to ensure, the user is federate before we can check it
+            # the assertname will ensure we do not modify the assert check for none federated checks
+            assertname = "cool.user"
             if auth_engine == "mock_ldap":
                 with mock_ldap() as ldap:
                     # Verify that the user is logged in and their username was adjusted.
                     (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
+                    assertname = "cool_user"
 
             response = conduct_api_call(client, EntitySearch, "GET", params=dict(prefix="cool"))
             results = response.json["results"]
             entity = results[0]
-            assert entity["name"] == "cool_user"
+            assert entity["name"] == assertname 
             assert entity["kind"] == "user"
 
 
