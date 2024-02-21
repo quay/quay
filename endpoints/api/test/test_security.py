@@ -6071,7 +6071,7 @@ SECURITY_TESTS: List[
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
     (OrgAutoPrunePolicies, "GET", {"orgname": "unknown"}, None, "devtable", 403),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
-    (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "reader", 403),   
+    (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (
         OrgAutoPrunePolicies,
         "POST",
@@ -6270,11 +6270,46 @@ SECURITY_TESTS: List[
     (UserAutoPrunePolicy, "DELETE", {"policy_uuid": "some_uuid"}, None, "devtable", 404),
     (UserAutoPrunePolicy, "DELETE", {"policy_uuid": "some_uuid"}, None, "freshuser", 404),
     (UserAutoPrunePolicy, "DELETE", {"policy_uuid": "some_uuid"}, None, "reader", 404),
-    (RepositoryAutoPrunePolicies, "GET", {"repository": "testorgforautoprune/autoprunerepo"}, None, None, 401),
-    (RepositoryAutoPrunePolicies, "GET", {"repository": "testorgforautoprune/autoprunerepo"}, None, "devtable", 200),
-    (RepositoryAutoPrunePolicies, "GET", {"repository": "testorgforautoprune/unknown"}, None, "devtable", 404),
-    (RepositoryAutoPrunePolicies, "GET", {"repository": "testorgforautoprune/autoprunerepo"}, None, "freshuser", 403),
-    (RepositoryAutoPrunePolicies, "GET", {"repository": "testorgforautoprune/autoprunerepo"}, None, "reader", 403),
+    (
+        RepositoryAutoPrunePolicies,
+        "GET",
+        {"repository": "testorgforautoprune/autoprunerepo"},
+        None,
+        None,
+        401,
+    ),
+    (
+        RepositoryAutoPrunePolicies,
+        "GET",
+        {"repository": "testorgforautoprune/autoprunerepo"},
+        None,
+        "devtable",
+        200,
+    ),
+    (
+        RepositoryAutoPrunePolicies,
+        "GET",
+        {"repository": "testorgforautoprune/unknown"},
+        None,
+        "devtable",
+        404,
+    ),
+    (
+        RepositoryAutoPrunePolicies,
+        "GET",
+        {"repository": "testorgforautoprune/autoprunerepo"},
+        None,
+        "freshuser",
+        403,
+    ),
+    (
+        RepositoryAutoPrunePolicies,
+        "GET",
+        {"repository": "testorgforautoprune/autoprunerepo"},
+        None,
+        "reader",
+        403,
+    ),
     (
         RepositoryAutoPrunePolicies,
         "POST",
@@ -6322,7 +6357,7 @@ SECURITY_TESTS: List[
         None,
         None,
         401,
-    ),   
+    ),
     (
         RepositoryAutoPrunePolicy,
         "GET",
@@ -6347,7 +6382,7 @@ SECURITY_TESTS: List[
         "reader",
         403,
     ),
-        (
+    (
         RepositoryAutoPrunePolicy,
         "PUT",
         {"repository": "testorgforautoprune/autoprunerepo", "policy_uuid": "some_uuid"},
@@ -6379,7 +6414,7 @@ SECURITY_TESTS: List[
         "reader",
         403,
     ),
-        (
+    (
         RepositoryAutoPrunePolicy,
         "DELETE",
         {"repository": "testorgforautoprune/autoprunerepo", "policy_uuid": "some_uuid"},

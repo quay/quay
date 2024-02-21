@@ -131,7 +131,7 @@ describe('Repository settings - Repository autoprune policies', () => {
 
     attemptCreateTagNumberRepoPolicy(cy);
     attemptCreateCreationDateRepoPolicy(cy);
-    cy.contains('Could not update auto-prune policy');
+    cy.contains('Could not update repository auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
     cy.contains('AxiosError: Request failed with status code 500');
   });
@@ -150,9 +150,8 @@ describe('Repository settings - Repository autoprune policies', () => {
 
     cy.get('[data-testid="repository-auto-prune-method"]').select('None');
     cy.contains('Save').click();
-    cy.contains('Could not delete auto-prune policy');
+    cy.contains('Could not delete repository auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
     cy.contains('AxiosError: Request failed with status code 500');
   });
-
 });

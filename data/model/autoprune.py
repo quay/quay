@@ -4,19 +4,15 @@ from enum import Enum
 
 from data.database import AutoPruneTaskStatus
 from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
+from data.database import Repository
 from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
-from data.database import (
-    Repository,
-    RepositoryState,
-    User,
-    db_for_update,
-    get_epoch_timestamp_ms,
-)
+from data.database import RepositoryState, User, db_for_update, get_epoch_timestamp_ms
 from data.model import (
     InvalidNamespaceAutoPruneMethod,
     InvalidNamespaceAutoPrunePolicy,
     InvalidNamespaceException,
     InvalidRepositoryAutoPrunePolicy,
+    InvalidRepositoryException,
     NamespaceAutoPrunePolicyAlreadyExists,
     NamespaceAutoPrunePolicyDoesNotExist,
     RepositoryAutoPrunePolicyAlreadyExists,
@@ -142,8 +138,11 @@ def get_repository_autoprune_policies_by_repo_name(orgname, repo_name):
     query = (
         RepositoryAutoPrunePolicyTable.select(RepositoryAutoPrunePolicyTable)
         .join(Repository)
+        .join(User)
         .where(
-            RepositoryAutoPrunePolicyTable.repository == Repository.id, Repository.name == repo_name
+            User.username == orgname,
+            RepositoryAutoPrunePolicyTable.repository == Repository.id,
+            Repository.name == repo_name,
         )
     )
     return [RepositoryAutoPrunePolicy(row) for row in query]
@@ -196,14 +195,15 @@ def get_namespace_autoprune_policy(orgname, uuid):
         return None
 
 
-def get_repository_autoprune_policy_by_uuid(uuid):
+def get_repository_autoprune_policy_by_uuid(repo_name, uuid):
     """
     Get the specific autopruning policy for the specified repository by uuid.
     """
     try:
         row = (
             RepositoryAutoPrunePolicyTable.select(RepositoryAutoPrunePolicyTable)
-            .where(RepositoryAutoPrunePolicyTable.uuid == uuid)
+            .join(Repository)
+            .where(Repository.name == repo_name, RepositoryAutoPrunePolicyTable.uuid == uuid)
             .get()
         )
         return RepositoryAutoPrunePolicy(row)
@@ -250,6 +250,9 @@ def create_repository_autoprune_policy(orgname, repo_name, policy_config, create
         namespace_id = namespace.id
 
         repo = repository.get_repository(orgname, repo_name)
+
+        if repo is None:
+            raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
 
         if repository_has_autoprune_policy(repo.id):
             raise RepositoryAutoPrunePolicyAlreadyExists(
@@ -304,7 +307,11 @@ def update_repository_autoprune_policy(orgname, repo_name, uuid, policy_config):
     namespace = get_active_namespace_user_by_username(orgname)
     namespace_id = namespace.id
 
-    policy = get_repository_autoprune_policy_by_uuid(uuid)
+    repo = repository.get_repository(orgname, repo_name)
+    if repo is None:
+        raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
+
+    policy = get_repository_autoprune_policy_by_uuid(repo_name, uuid)
     if policy is None:
         raise RepositoryAutoPrunePolicyDoesNotExist(
             f"Policy not found for repository: {repo_name} with uuid: {uuid}"
@@ -367,7 +374,11 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
         except User.DoesNotExist:
             raise InvalidNamespaceException("Invalid namespace provided: %s" % (orgname))
 
-        policy = get_repository_autoprune_policy_by_uuid(uuid)
+        repo = repository.get_repository(orgname, repo_name)
+        if repo is None:
+            raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
+
+        policy = get_repository_autoprune_policy_by_uuid(repo_name, uuid)
         if policy is None:
             raise RepositoryAutoPrunePolicyDoesNotExist(
                 f"Policy not found for repository: {repo_name} with uuid: {uuid}"

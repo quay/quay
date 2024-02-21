@@ -17,8 +17,10 @@ export function useFetchRepositoryAutoPrunePolicies(
     error: errorFetchingRepoPolicies,
     isSuccess: successFetchingRepoPolicies,
     dataUpdatedAt: repoPoliciesDataUpdatedAt,
-  } = useQuery(['repositoryautoprunepolicies', organizationName, repoName], ({signal}) =>
-    fetchRepositoryAutoPrunePolicies(organizationName, repoName, signal),
+  } = useQuery(
+    ['repositoryautoprunepolicies', organizationName, repoName],
+    ({signal}) =>
+      fetchRepositoryAutoPrunePolicies(organizationName, repoName, signal),
   );
 
   return {

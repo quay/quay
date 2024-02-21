@@ -371,7 +371,9 @@ def test_create_repo_policy(initialized_db, app):
         ).json
         assert response["uuid"] is not None
         assert (
-            model.autoprune.get_repository_autoprune_policy_by_uuid(response["uuid"])
+            model.autoprune.get_repository_autoprune_policy_by_uuid(
+                "autoprunerepo", response["uuid"]
+            )
             is not None
         )
         org = model.organization.get_organization("testorgforautoprune")
@@ -393,7 +395,7 @@ def test_create_repo_policy(initialized_db, app):
 
 def test_create_repo_policy_already_existing(initialized_db, app):
     with client_with_identity("devtable", app) as cl:
-        params = {"repository": "devtable/simple"}        
+        params = {"repository": "devtable/simple"}
         response = conduct_api_call(
             cl,
             RepositoryAutoPrunePolicies,
@@ -423,20 +425,18 @@ def test_create_repo_policy_nonexistent_method(initialized_db, app):
 
 
 def test_get_repo_policy(initialized_db, app):
-    policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable","simple")
+    policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable", "simple")
     assert len(policies) == 1
     policy_uuid = policies[0].uuid
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple", "policy_uuid": policy_uuid}
-        response = conduct_api_call(
-            cl, RepositoryAutoPrunePolicy, "GET", params
-        ).json
+        response = conduct_api_call(cl, RepositoryAutoPrunePolicy, "GET", params).json
         assert response["method"] == "number_of_tags"
         assert response["value"] == 10
 
 
 def test_update_repo_policy(initialized_db, app):
-    policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable","simple")
+    policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable", "simple")
     assert len(policies) == 1
     policy_uuid = policies[0].uuid
     with client_with_identity("devtable", app) as cl:
@@ -452,9 +452,7 @@ def test_update_repo_policy(initialized_db, app):
 
         # Make another request asserting it was updated
         params = {"repository": "devtable/simple", "policy_uuid": policy_uuid}
-        get_response = conduct_api_call(
-            cl, RepositoryAutoPrunePolicy, "GET", params
-        ).json
+        get_response = conduct_api_call(cl, RepositoryAutoPrunePolicy, "GET", params).json
         assert get_response["method"] == "creation_date"
         assert get_response["value"] == "2w"
 
@@ -486,7 +484,7 @@ def test_update_repo_policy_nonexistent_policy(initialized_db, app):
 
 
 def test_delete_repo_policy(initialized_db, app):
-    policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable","simple")
+    policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable", "simple")
     assert len(policies) == 1
     policy_uuid = policies[0].uuid
     with client_with_identity("devtable", app) as cl:
@@ -522,7 +520,10 @@ def test_delete_repo_policy(initialized_db, app):
 
 def test_delete_repo_policy_nonexistent_policy(initialized_db, app):
     with client_with_identity("devtable", app) as cl:
-        params_for_delete = {"repository": "testorgforautoprune/autoprunerepo", "policy_uuid": "doesnotexist"}
+        params_for_delete = {
+            "repository": "testorgforautoprune/autoprunerepo",
+            "policy_uuid": "doesnotexist",
+        }
         conduct_api_call(
             cl,
             RepositoryAutoPrunePolicy,

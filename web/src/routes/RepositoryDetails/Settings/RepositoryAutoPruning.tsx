@@ -25,7 +25,7 @@ import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useNamespaceAutoPrunePolicies} from 'src/hooks/UseNamespaceAutoPrunePolicies';
-import { useOrganization } from 'src/hooks/UseOrganization';
+import {useOrganization} from 'src/hooks/UseOrganization';
 import {
   useCreateRepositoryAutoPrunePolicy,
   useDeleteRepositoryAutoPrunePolicy,
@@ -33,9 +33,7 @@ import {
   useUpdateRepositoryAutoPrunePolicy,
 } from 'src/hooks/UseRepositoryAutoPrunePolicies';
 import {isNullOrUndefined} from 'src/libs/utils';
-import {
-  AutoPruneMethod,
-} from 'src/resources/NamespaceAutoPruneResource';
+import {AutoPruneMethod} from 'src/resources/NamespaceAutoPruneResource';
 import {RepositoryAutoPrunePolicy} from 'src/resources/RepositoryAutoPruneResource';
 import {shorthandTimeUnits} from 'src/routes/OrganizationsList/Organization/Tabs/Settings/AutoPruning';
 
@@ -171,7 +169,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
       addAlert({
         title: 'Could not create repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorRepoPolicyDeletion.toString(),
+        message: errorDetailsRepoPolicyCreation.toString(),
       });
     }
   }, [errorRepoPolicyCreation]);
@@ -233,9 +231,8 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
 
   return (
     <>
-      {/* <Conditional if={nsPolicy !== null && nsPolicy !== undefined && organization.is_org_admin}> */}
-      <Conditional if={nsPolicies.length >0}>
-
+      {/* todo(harish): check if organization.is_org_admin is needed */}
+      <Conditional if={nsPolicies.length > 0}>
         <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
           Namespace Auto-Pruning Policies
         </Title>
@@ -269,7 +266,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
         Auto-pruning policies automatically delete tags under this repository by
         a given method.
       </p>
-      <Form id="autopruning-form" maxWidth="70%">
+      <Form id="autopruning-form" maxWidth="40%">
         <FormGroup
           isInline
           label="Prune Policy - select a method to prune tags"

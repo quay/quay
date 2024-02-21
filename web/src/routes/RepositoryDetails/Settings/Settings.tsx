@@ -31,7 +31,7 @@ export default function Settings(props: SettingsProps) {
     ...(config?.features?.AUTO_PRUNE
       ? [
           {
-            name: 'Repository Auto-prune policies',
+            name: 'Repository Auto-Prune Policies',
             id: 'repositoryautoprunepolicies',
             content: (
               <RepositoryAutoPruning

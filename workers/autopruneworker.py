@@ -45,7 +45,11 @@ class AutoPruneWorker(Worker):
                         autoprune_task.namespace
                     )
                     if not repo_policies:
-                        logger.info("deleting autoprune task %s for namespace %s", autoprune_task.id, autoprune_task.namespace)
+                        logger.info(
+                            "deleting autoprune task %s for namespace %s",
+                            autoprune_task.id,
+                            autoprune_task.namespace,
+                        )
                         delete_autoprune_task(autoprune_task)
                         continue
 

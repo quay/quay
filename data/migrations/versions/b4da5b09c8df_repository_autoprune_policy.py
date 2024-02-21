@@ -7,8 +7,8 @@ Create Date: 2024-02-05 10:47:32.172623
 """
 
 # revision identifiers, used by Alembic.
-revision = 'b4da5b09c8df'
-down_revision = '41d15c93c299'
+revision = "b4da5b09c8df"
+down_revision = "41d15c93c299"
 
 import sqlalchemy as sa
 
@@ -30,7 +30,7 @@ def upgrade(op, tables, tester):
             ["namespace_id"],
             ["user.id"],
             name=op.f("fk_repositoryautoprunepolicy_namespace_id_user"),
-        ),        
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_repositoryautoprunepolicyid")),
     )
 
@@ -46,7 +46,7 @@ def upgrade(op, tables, tester):
         "repositoryautoprunepolicy",
         ["namespace_id"],
         unique=True,
-    )    
+    )
 
     op.create_index(
         "repositoryautoprunepolicy_uuid",
@@ -62,7 +62,7 @@ def upgrade(op, tables, tester):
             {"name": "update_repository_autoprune_policy"},
             {"name": "delete_repository_autoprune_policy"},
         ],
-    )    
+    )
 
 
 def downgrade(op, tables, tester):
@@ -75,4 +75,4 @@ def downgrade(op, tables, tester):
             == op.inline_literal("update_repository_autoprune_policy") | tables.logentrykind.c.name
             == op.inline_literal("delete_repository_autoprune_policy")
         )
-    )        
+    )

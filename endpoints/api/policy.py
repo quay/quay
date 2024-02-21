@@ -5,7 +5,10 @@ from flask import request
 import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import AdministerOrganizationPermission, AdministerRepositoryPermission
+from auth.permissions import (
+    AdministerOrganizationPermission,
+    AdministerRepositoryPermission,
+)
 from data import model
 from data.registry_model import registry_model
 from endpoints.api import (
@@ -16,8 +19,8 @@ from endpoints.api import (
     nickname,
     path_param,
     request_error,
-    require_scope,
     require_repo_admin,
+    require_scope,
     require_user_admin,
     resource,
     show_if,
@@ -269,14 +272,15 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         permission = AdministerRepositoryPermission(namespace, repository)
         if not permission.can():
             raise Unauthorized()
-        
-        if registry_model.lookup_repository(namespace, repository) is None:
-            raise NotFound()        
 
-        policies = model.autoprune.get_repository_autoprune_policies_by_repo_name(namespace, repository)
+        if registry_model.lookup_repository(namespace, repository) is None:
+            raise NotFound()
+
+        policies = model.autoprune.get_repository_autoprune_policies_by_repo_name(
+            namespace, repository
+        )
 
         return {"policies": [policy.get_view() for policy in policies]}
-
 
     @require_repo_admin(allow_for_superuser=True)
     @validate_json_request("AutoPrunePolicyConfig")
@@ -308,6 +312,8 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
             policy = model.autoprune.create_repository_autoprune_policy(
                 namespace, repository, policy_config, create_task=True
             )
+        except model.InvalidNamespaceException:
+            raise NotFound()
         except model.InvalidRepositoryException:
             raise NotFound()
         except model.InvalidRepositoryAutoPrunePolicy as ex:
@@ -324,7 +330,7 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
                 "namespace": namespace,
                 "repo": repository,
             },
-             repo_name=repository,
+            repo_name=repository,
         )
 
         return {"uuid": policy.uuid}, 201
@@ -367,7 +373,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         if not permission.can():
             raise Unauthorized()
 
-        policy = model.autoprune.get_repository_autoprune_policy_by_uuid(policy_uuid)
+        policy = model.autoprune.get_repository_autoprune_policy_by_uuid(repository, policy_uuid)
         if policy is None:
             raise NotFound()
 
@@ -402,6 +408,8 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
             )
             if not updated:
                 request_error(message="could not update policy")
+        except model.InvalidNamespaceException:
+            raise NotFound()
         except model.InvalidRepositoryException:
             raise NotFound()
         except model.InvalidRepositoryAutoPrunePolicy as ex:
@@ -434,9 +442,13 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
             raise Unauthorized()
 
         try:
-            updated = model.autoprune.delete_repository_autoprune_policy(namespace, repository, policy_uuid)
+            updated = model.autoprune.delete_repository_autoprune_policy(
+                namespace, repository, policy_uuid
+            )
             if not updated:
                 raise InvalidRequest("could not delete policy")
+        except model.InvalidNamespaceException:
+            raise NotFound()
         except model.InvalidRepositoryException as ex:
             raise NotFound()
         except model.RepositoryAutoPrunePolicyDoesNotExist as ex:
