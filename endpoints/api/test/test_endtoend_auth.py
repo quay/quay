@@ -55,7 +55,7 @@ def test_entity_search(auth_engine, requires_email, client):
             response = conduct_api_call(client, EntitySearch, "GET", params=dict(prefix="cool"))
             results = response.json["results"]
             entity = results[0]
-            assert entity["name"] == asserttname 
+            assert entity["name"] == asserttname
             assert entity["kind"] == asserttype
 
 
