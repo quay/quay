@@ -5,8 +5,8 @@ import pytest
 from data import model
 from data.database import TeamMember
 from data.users.externaloidc import OIDCUsers
-from test.fixtures import *
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.fixtures import *
 
 
 class OIDCAuthTests(unittest.TestCase):

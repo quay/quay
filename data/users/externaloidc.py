@@ -106,6 +106,12 @@ class OIDCUsers(FederatedUsers):
                 pass
         return
 
+    def ping(self):
+        """
+        TODO: get the OIDC connection here
+        """
+        return (True, None)
+
     def resync_quay_teams(self, user_groups, user_obj, login_service_name):
         """
         Fetch quay teams that user is a member of.
