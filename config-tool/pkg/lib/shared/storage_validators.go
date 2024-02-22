@@ -12,6 +12,7 @@ import (
 	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/ncw/swift"
@@ -139,6 +140,58 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			token = value.SessionToken
 
 		}
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+			errors = append(errors, err)
+		}
+
+	case "STSS3Storage":
+
+		// Check bucket name
+		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		roleArn := args.STSRoleArn
+		sess := session.Must(session.NewSession(&aws.Config{
+			Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
+		}))
+		svc := sts.New(sess)
+		roleToAssumeArn := roleArn
+		durationSeconds := int64(3600)
+		assumeRoleInput := &sts.AssumeRoleInput{
+			RoleArn:         aws.String(roleToAssumeArn),
+			RoleSessionName: aws.String("quay"),
+			DurationSeconds: aws.Int64(durationSeconds),
+		}
+		assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)
+		if err != nil {
+			errors = append(errors, ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Could not fetch credentials from STS. Error: " + err.Error(),
+			})
+			break
+		}
+
+		accessKey := *assumeRoleOutput.Credentials.AccessKeyId
+		secretKey := *assumeRoleOutput.Credentials.SecretAccessKey
+		token = *assumeRoleOutput.Credentials.SessionToken
+		bucketName = args.S3Bucket
+		isSecure = true
+
+		if len(args.Host) == 0 {
+			endpoint = "s3.amazonaws.com"
+		} else {
+			endpoint = args.Host
+		}
+		if args.Port != 0 {
+			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
+		}
+
+		if len(errors) > 0 {
+			return false, errors
+		}
+
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
