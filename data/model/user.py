@@ -155,26 +155,26 @@ def create_user_noverify(
         logger.debug("Email and username are unique!")
 
     # Create the user.
-    # try:
-    default_expr_s = _convert_to_s(config.app_config["DEFAULT_TAG_EXPIRATION"])
-    default_max_builds = config.app_config.get("DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT")
-    threat_max_builds = config.app_config.get("THREAT_NAMESPACE_MAXIMUM_BUILD_COUNT")
+    try:
+        default_expr_s = _convert_to_s(config.app_config["DEFAULT_TAG_EXPIRATION"])
+        default_max_builds = config.app_config.get("DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT")
+        threat_max_builds = config.app_config.get("THREAT_NAMESPACE_MAXIMUM_BUILD_COUNT")
 
-    if is_possible_abuser and threat_max_builds is not None:
-        default_max_builds = threat_max_builds
+        if is_possible_abuser and threat_max_builds is not None:
+            default_max_builds = threat_max_builds
 
-    new_user = User.create(
-        username=username,
-        email=email,
-        removed_tag_expiration_s=default_expr_s,
-        maximum_queued_builds_count=default_max_builds,
-    )
-    for prompt in prompts:
-        create_user_prompt(new_user, prompt)
+        new_user = User.create(
+            username=username,
+            email=email,
+            removed_tag_expiration_s=default_expr_s,
+            maximum_queued_builds_count=default_max_builds,
+        )
+        for prompt in prompts:
+            create_user_prompt(new_user, prompt)
 
-    return new_user
-    # except Exception as ex:
-    #     raise DataModelException(ex)
+        return new_user
+    except Exception as ex:
+        raise DataModelException(ex)
 
 
 def increase_maximum_build_count(user, maximum_queued_builds_count):
