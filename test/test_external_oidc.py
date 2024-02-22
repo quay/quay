@@ -6,6 +6,7 @@ from data import model
 from data.database import TeamMember
 from data.users.externaloidc import OIDCUsers
 from test.fixtures import *
+from initdb import finished_database_for_testing, setup_database_for_testing
 
 
 class OIDCAuthTests(unittest.TestCase):
@@ -30,27 +31,14 @@ class OIDCAuthTests(unittest.TestCase):
         )
         return oidc_instance
 
-    @pytest.mark.parametrize(
-        "name, expected_org_name, expected_group_name",
-        [
-            ("", None, None),
-            ("f", None, None),
-            ("foobar", None, None),
-            (1, None, None),
-            (256, None, None),
-            (" ", None, None),
-            ("foo:bar", "foo", "bar"),
-            ("foooooo:baaaaar", "foooooo", "baaaaar"),
-        ],
-    )
-    def test_fetch_org_team_from_oidc_group(self, name, expected_org_name, expected_group_name):
-        oidc_instance = self.fake_oidc()
-        org_name, group_name = oidc_instance.fetch_org_team_from_oidc_group(name)
-        assert expected_org_name == org_name
-        assert expected_group_name == group_name
+    def setUp(self):
+        setup_database_for_testing(self)
+        self.oidc_instance = self.fake_oidc()
 
-    def test_sync_for_empty_oidc_groups(self, initialized_db):
-        oidc_instance = self.fake_oidc()
+    def tearDown(self):
+        finished_database_for_testing(self)
+
+    def test_sync_for_empty_oidc_groups(self):
         user_obj = model.user.get_user("devtable")
 
         test_org = model.organization.create_organization(
@@ -63,12 +51,11 @@ class OIDCAuthTests(unittest.TestCase):
         assert model.team.add_user_to_team(user_obj, team_2)
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        oidc_instance.sync_oidc_groups([], user_obj, "oidc")
+        self.oidc_instance.sync_oidc_groups([], user_obj, "oidc")
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
-    def test_sync_for_non_empty_oidc_groups(self, initialized_db):
-        oidc_instance = self.fake_oidc()
+    def test_sync_for_non_empty_oidc_groups(self):
         user_obj = model.user.get_user("devtable")
         fresh_user = model.user.get_user("freshuser")
         random_user = model.user.get_user("randomuser")
@@ -99,18 +86,17 @@ class OIDCAuthTests(unittest.TestCase):
             "wrong_group_name",
         ]
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        oidc_instance.sync_oidc_groups(user_groups, user_obj, "oidc")
+        self.oidc_instance.sync_oidc_groups(user_groups, user_obj, "oidc")
 
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
 
         assert user_teams_before_sync + 2 == user_teams_after_sync
 
-    def test_resync_for_empty_quay_teams(self, initialized_db):
-        oidc_instance = self.fake_oidc()
+    def test_resync_for_empty_quay_teams(self):
         user_obj = model.user.get_user("devtable")
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        oidc_instance.resync_quay_teams([], user_obj, "oidc")
+        self.oidc_instance.resync_quay_teams([], user_obj, "oidc")
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
@@ -127,12 +113,11 @@ class OIDCAuthTests(unittest.TestCase):
         assert model.team.add_user_to_team(user_obj, team_2)
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        oidc_instance.resync_quay_teams([], user_obj, "oidc")
+        self.oidc_instance.resync_quay_teams([], user_obj, "oidc")
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
-    def test_resync_for_non_empty_quay_teams(self, initialized_db):
-        oidc_instance = self.fake_oidc()
+    def test_resync_for_non_empty_quay_teams(self):
         user_obj = model.user.get_user("devtable")
         fresh_user = model.user.get_user("freshuser")
 
@@ -155,10 +140,30 @@ class OIDCAuthTests(unittest.TestCase):
 
         user_groups = ["test_org_1:team_1", "another:group"]
         # user should be removed from team_2
-        oidc_instance.resync_quay_teams(user_groups, user_obj, "oidc")
+        self.oidc_instance.resync_quay_teams(user_groups, user_obj, "oidc")
         assert (
             TeamMember.select()
             .where(TeamMember.user == user_obj, TeamMember.team == team_2)
             .count()
             == 0
         )
+
+
+@pytest.mark.parametrize(
+    ("name, expected_org_name, expected_group_name"),
+    [
+        ("", None, None),
+        ("f", None, None),
+        ("foobar", None, None),
+        (1, None, None),
+        (256, None, None),
+        (" ", None, None),
+        ("foo:bar", "foo", "bar"),
+        ("foooooo:baaaaar", "foooooo", "baaaaar"),
+    ],
+)
+def test_fetch_org_team_from_oidc_group(name, expected_org_name, expected_group_name):
+    obj = OIDCAuthTests()
+    org_name, group_name = obj.fake_oidc().fetch_org_team_from_oidc_group(name)
+    assert expected_org_name == org_name
+    assert expected_group_name == group_name
