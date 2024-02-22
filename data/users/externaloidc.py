@@ -77,6 +77,9 @@ class OIDCUsers(FederatedUsers):
         """
         Adds user to quay teams that have team sync enabled with an OIDC group
         """
+        if user_groups is None:
+            return
+
         for oidc_group in user_groups:
             org_name, group_name = self.fetch_org_team_from_oidc_group(oidc_group)
             if not org_name or not group_name:
