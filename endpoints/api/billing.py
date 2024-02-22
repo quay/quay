@@ -3,6 +3,7 @@ Billing information, subscriptions, and plan information.
 """
 import datetime
 import json
+import time
 import uuid
 
 import stripe
@@ -55,7 +56,15 @@ def check_internal_api_for_subscription(namespace_user):
         for subscription in org_subscriptions:
             quantity = 1 if subscription.get("quantity") is None else subscription["quantity"]
             subscription_id = subscription["subscription_id"]
-            sku = marketplace_subscriptions.get_subscription_sku(subscription_id)
+            subscription_details = marketplace_subscriptions.get_subscription_details(
+                subscription_id
+            )
+            sku = subscription_details["sku"]
+            expiration = subscription_details["expiration_date"]
+            now_ms = time.time() * 1000
+            if expiration < now_ms:
+                organization_skus.remove_subscription_from_org(namespace_user.id, subscription_id)
+                continue
             for x in range(quantity):
                 plans.append(get_plan_using_rh_sku(sku))
         pass
@@ -957,11 +966,17 @@ class OrganizationRhSku(ApiResource):
             if query:
                 subscriptions = list(query.dicts())
                 for subscription in subscriptions:
-                    subscription_sku = marketplace_subscriptions.get_subscription_sku(
+                    subscription_details = marketplace_subscriptions.get_subscription_details(
                         subscription["subscription_id"]
                     )
-                    subscription["sku"] = subscription_sku
-                    subscription["metadata"] = get_plan_using_rh_sku(subscription_sku)
+                    now_ms = time.time() * 1000
+                    if subscription_details["expiration_date"] < now_ms:
+                        model.organization_skus.remove_subscription_from_org(
+                            organization.id, subscription["subscription_id"]
+                        )
+                        continue
+                    subscription["sku"] = subscription_details["sku"]
+                    subscription["metadata"] = get_plan_using_rh_sku(subscription_details["sku"])
                     if subscription.get("quantity") is None:
                         subscription["quantity"] = 1
                 return subscriptions

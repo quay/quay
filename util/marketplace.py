@@ -191,9 +191,9 @@ class RedHatSubscriptionApi(object):
 
         return r.status_code
 
-    def get_subscription_sku(self, subscription_id):
+    def get_subscription_details(self, subscription_id):
         """
-        Return the sku for a specific subscription
+        Return the sku and expiration date for a specific subscription
         """
         request_url = f"{self.marketplace_endpoint}/subscription/v5/products/subscription_id={subscription_id}"
         request_headers = {"Content-Type": "application/json"}
@@ -210,8 +210,9 @@ class RedHatSubscriptionApi(object):
 
             info = json.loads(r.content)
 
-            SubscriptionSKU = info[0]["sku"]
-            return SubscriptionSKU
+            subscription_sku = info[0]["sku"]
+            expiration_date = info[1]["activeEndDate"]
+            return {"sku": subscription_sku, "expiration_date": expiration_date}
         except requests.exceptions.SSLError:
             raise requests.exceptions.SSLError
         except requests.exceptions.ReadTimeout:
@@ -267,7 +268,7 @@ TEST_USER = {
             "subscriptionNumber": "12399889",
             "quantity": 2,
             "effectiveStartDate": 1707368400000,
-            "effectiveEndDate": 3813177600,
+            "effectiveEndDate": 3813177600000,
         },
         {
             "id": 11223344,
@@ -282,7 +283,7 @@ TEST_USER = {
             "subscriptionNumber": "12399889",
             "quantity": 1,
             "effectiveStartDate": 1707368400000,
-            "effectiveEndDate": 3813177600,
+            "effectiveEndDate": 3813177600000,
         },
     ],
 }
@@ -329,10 +330,12 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
     def extend_subscription(self, subscription_id, end_date):
         self.subscription_extended = True
 
-    def get_subscription_sku(self, subscription_id):
+    def get_subscription_details(self, subscription_id):
         valid_ids = [subscription["id"] for subscription in TEST_USER["subscriptions"]]
         if subscription_id in valid_ids:
-            return "MW02701"
+            return {"sku": "MW02701", "expiration_date": 3813177600000}
+        elif subscription_id == 80808080:
+            return {"sku": "MW02701", "expiration_date": 1645544830000}
         else:
             return None
 
