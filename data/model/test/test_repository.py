@@ -1,15 +1,17 @@
 import os
 from datetime import timedelta
-from test.fixtures import *
 
 import pytest
 
-from data.database import Repository
+from data.database import BlobUpload, Repository
 from data.model.repository import (
     create_repository,
     get_estimated_repository_count,
     get_filtered_matching_repositories,
+    get_size_during_upload,
 )
+from data.model.storage import get_image_location_for_name
+from test.fixtures import *
 
 
 def test_duplicate_repository_different_kinds(initialized_db):
@@ -62,3 +64,20 @@ def test_search_pagination(query, authed_username, initialized_db):
 
 def test_get_estimated_repository_count(initialized_db):
     assert get_estimated_repository_count() >= Repository.select().count()
+
+
+def test_get_size_during_upload(initialized_db):
+    upload_size = 100
+    repo1 = create_repository(
+        "devtable", "somenewrepo", None, repo_kind="image", visibility="public"
+    )
+    location = get_image_location_for_name("local_us")
+    BlobUpload.create(
+        repository=repo1.id,
+        uuid="123",
+        storage_metadata="{}",
+        byte_count=upload_size,
+        location=location.id,
+    )
+    size = get_size_during_upload(repo1.id)
+    assert size == upload_size
