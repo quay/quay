@@ -25,10 +25,17 @@ export async function fetchMembersForOrg(
   orgname: string,
   signal: AbortSignal,
 ): Promise<IMembers[]> {
-  const getMembersUrl = `/api/v1/organization/${orgname}/members`;
-  const response = await axios.get(getMembersUrl, {signal});
-  assertHttpCode(response.status, 200);
-  return response.data?.members;
+  try {
+    const getMembersUrl = `/api/v1/organization/${orgname}/members`;
+    const response = await axios.get(getMembersUrl, {signal});
+    assertHttpCode(response.status, 200);
+    return response.data?.members;
+  } catch (error) {
+    if (error.response?.status === 403) {
+      return [];
+    }
+    throw new Error(`could not get members for org ${orgname}`);
+  }
 }
 
 export async function fetchCollaboratorsForOrg(

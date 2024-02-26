@@ -14,6 +14,7 @@ import {IAvatar} from 'src/resources/OrganizationResource';
 import {collaboratorViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/CollaboratorsView/CollaboratorsViewList';
 import {memberViewColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/MembersView/MembersViewList';
 import {manageMemberColumnNames} from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import {useCurrentUser} from './UseCurrentUser';
 
 export function useAddMembersToTeam(org: string, {onSuccess, onError}) {
   const queryClient = useQueryClient();
@@ -54,6 +55,9 @@ export function useFetchMembers(orgName: string) {
     field: memberViewColumnNames.username,
   });
 
+  const {user} = useCurrentUser();
+  const username = user.username;
+
   const {
     data: members,
     isLoading: isLoadingMembers,
@@ -64,6 +68,7 @@ export function useFetchMembers(orgName: string) {
     ({signal}) => fetchMembersForOrg(orgName, signal),
     {
       placeholderData: [],
+      enabled: username != orgName,
     },
   );
 
