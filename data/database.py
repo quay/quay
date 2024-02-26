@@ -26,7 +26,6 @@ from playhouse.pool import (
     PooledPostgresqlDatabase,
     PooledSqliteDatabase,
 )
-from playhouse.postgres_ext import BinaryJSONField
 from sqlalchemy.engine.url import make_url
 
 from data.decorators import deprecated_model

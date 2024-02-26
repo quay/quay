@@ -349,6 +349,26 @@ def _check_manifest_used(manifest_id):
         except ManifestChild.DoesNotExist:
             pass
 
+        Referrer = Manifest.alias()
+        # Check if the manifest is the subject of another manifest.
+        # TODO(kleesc): Also need to check if a tag is also attached?
+        try:
+            Manifest.select().join(Referrer, on=(Manifest.digest == Referrer.subject)).where(
+                Manifest.id == manifest_id
+            ).get()
+            return True
+        except Manifest.DoesNotExist:
+            pass
+
+        # Check if the manifest is a referrer to another manifest.
+        try:
+            Referrer.select().join(Manifest, on=(Manifest.digest == Referrer.subject)).where(
+                Referrer.id == manifest_id
+            ).get()
+            return True
+        except Manifest.DoesNotExist:
+            pass
+
     return False
 
 

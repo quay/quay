@@ -7,8 +7,8 @@ Create Date: 2023-11-17 12:06:16.662150
 """
 
 # revision identifiers, used by Alembic.
-revision = '946f0e90f9c9'
-down_revision = '41d15c93c299'
+revision = "946f0e90f9c9"
+down_revision = "36cd2b747a08"
 
 import sqlalchemy as sa
 from sqlalchemy.engine.reflection import Inspector
@@ -22,14 +22,10 @@ def upgrade(op, tables, tester):
     manifest_indexes = inspector.get_indexes("manifest")
 
     if not "subject" in [c["name"] for c in manifest_columns]:
-        op.add_column(
-            "manifest", sa.Column("subject", sa.String(length=255), nullable=True)
-        )
+        op.add_column("manifest", sa.Column("subject", sa.String(length=255), nullable=True))
 
     if not "subject_backfilled" in [c["name"] for c in manifest_columns]:
-        op.add_column(
-            "manifest", sa.Column("subject_backfilled", sa.Boolean(), nullable=False)
-        )
+        op.add_column("manifest", sa.Column("subject_backfilled", sa.Boolean(), nullable=False))
 
     if not "manifest_repository_id_subject" in [i["name"] for i in manifest_indexes]:
         op.create_index(
@@ -41,7 +37,6 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    bind = op.get_bind()
     op.drop_index("manifest_repository_id_subject", table_name="manifest")
     op.drop_column("manifest", "subject")
     op.drop_column("manifest", "subject_backfilled")

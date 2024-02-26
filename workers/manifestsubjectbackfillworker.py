@@ -50,7 +50,6 @@ class ManifestSubjectBackfillWorker(Worker):
                 continue
 
             logger.debug("Setting manifest subject for manifest %s", manifest_row.id)
-            manifest_subject = None
             manifest_bytes = Bytes.for_string_or_unicode(manifest_row.manifest_bytes)
 
             try:
@@ -89,7 +88,7 @@ def create_gunicorn_worker():
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     worker = GunicornWorker(
-        __name__, app, ManifestBackfillWorker(), features.MANIFEST_SIZE_BACKFILL
+        __name__, app, ManifestSubjectBackfillWorker(), features.MANIFEST_SUBJECT_BACKFILL
     )
     return worker
 

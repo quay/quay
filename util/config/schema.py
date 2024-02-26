@@ -1330,11 +1330,6 @@ CONFIG_SCHEMA = {
                 ],
             },
         },
-        "IGNORE_UNKNOWN_MEDIATYPES": {
-            "type": "boolean",
-            "description": "If set to true, ignore ALLOWED_OCI_ARTIFACT_TYPES",
-            "x-example": False,
-        },
         "FEATURE_REFERRERS_API": {
             "type": "boolean",
             "description": "Enables OCI 1.1's referrers API",
@@ -1406,6 +1401,11 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
             "x-example": False,
+        },
+        "FEATURE_MANIFEST_SUBJECT_BACKFILL": {
+            "type": "boolean",
+            "description": "Enable the backfill worker to index existing manifest subjects",
+            "x-example": True,
         },
         "UI_V2_FEEDBACK_FORM": {
             "type": "string",

@@ -114,7 +114,6 @@ class OCIIndex(ManifestListInterface):
                     "description": "The manifests field contains a list of manifests for specific platforms",
                     "items": get_descriptor_schema(
                         allowed_media_types=ALLOWED_MEDIA_TYPES,
-                        ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
                         additional_properties={
                             INDEX_PLATFORM_KEY: {
                                 "type": "object",
@@ -164,10 +163,7 @@ class OCIIndex(ManifestListInterface):
                         additional_required=[],
                     ),
                 },
-                INDEX_SUBJECT_KEY: get_descriptor_schema(
-                    [],
-                    ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
-                ),
+                INDEX_SUBJECT_KEY: get_descriptor_schema([]),
                 INDEX_ANNOTATIONS_KEY: {
                     "type": "object",
                     "description": "The annotations, if any, on this index",
@@ -181,12 +177,11 @@ class OCIIndex(ManifestListInterface):
         }
         return METASCHEMA
 
-    def __init__(self, manifest_bytes, ignore_unknown_mediatypes=False):
+    def __init__(self, manifest_bytes):
         assert isinstance(manifest_bytes, Bytes)
 
         self._layers = None
         self._manifest_bytes = manifest_bytes
-        self._ignore_unknown_mediatypes = ignore_unknown_mediatypes
 
         try:
             self._parsed = json.loads(manifest_bytes.as_unicode())
@@ -302,7 +297,6 @@ class OCIIndex(ManifestListInterface):
                 INDEX_DIGEST_KEY,
                 INDEX_SIZE_KEY,
                 INDEX_MEDIATYPE_KEY,
-                ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
             )
             for m in manifests
         ]
@@ -415,7 +409,7 @@ class OCIIndexBuilder(object):
         self.manifests = []
         self.annotations = {}
 
-    def add_manifest(self, manifest, architecture, os):
+    def add_manifest(self, manifest, architecture=None, os=None):
         """
         Adds a manifest to the list.
         """
@@ -438,17 +432,24 @@ class OCIIndexBuilder(object):
         """
         Adds a manifest to the list.
         """
+        platform_dict = {}
+        if architecture:
+            platform_dict[INDEX_ARCHITECTURE_KEY] = architecture
+
+        if os:
+            platform_dict[INDEX_OS_KEY] = os
+
         self.manifests.append(
             (
                 manifest_digest,
                 manifest_size,
                 media_type,
-                {
-                    INDEX_ARCHITECTURE_KEY: architecture,
-                    INDEX_OS_KEY: os,
-                },
+                platform_dict,
             )
         )
+
+    def set_subject(self, digest, size, mediatype):
+        self.subject = OCIManifestDescriptor(digest=digest, size=size, mediatype=mediatype)
 
     def build(self):
         """
@@ -459,16 +460,19 @@ class OCIIndexBuilder(object):
         manifest_list_dict = {
             INDEX_VERSION_KEY: 2,
             INDEX_MEDIATYPE_KEY: OCI_IMAGE_INDEX_CONTENT_TYPE,
-            INDEX_MANIFESTS_KEY: [
-                {
-                    INDEX_MEDIATYPE_KEY: manifest[2],
-                    INDEX_DIGEST_KEY: manifest[0],
-                    INDEX_SIZE_KEY: manifest[1],
-                    INDEX_PLATFORM_KEY: manifest[3],
-                }
-                for manifest in self.manifests
-            ],
+            INDEX_MANIFESTS_KEY: [],
         }
+
+        for manifest in self.manifests:
+            manifest_dict = {
+                INDEX_MEDIATYPE_KEY: manifest[2],
+                INDEX_DIGEST_KEY: manifest[0],
+                INDEX_SIZE_KEY: manifest[1],
+            }
+            if manifest[3]:
+                manifest_dict[INDEX_PLATFORM_KEY] = manifest[3]
+
+            manifest_list_dict[INDEX_MANIFESTS_KEY].append(manifest_dict)
 
         if self.annotations:
             manifest_list_dict[INDEX_ANNOTATIONS_KEY] = self.annotations

@@ -26,6 +26,7 @@ from data.registry_model.datatypes import (
     LegacyImage,
     LikelyVulnerableTag,
     Manifest,
+    ManifestIndex,
     ManifestLayer,
     RepositoryReference,
     SecurityScanStatus,
@@ -42,7 +43,6 @@ from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.shared import ManifestException
 from util.bytes import Bytes
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
-from image.oci.index import OCIIndexBuilder
 
 from util.timedeltastring import convert_to_timedelta
 
@@ -174,55 +174,65 @@ class OCIModel(RegistryDataInterface):
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler)
 
-    def lookup_referrers_for_manifest(self, manifest, artifact_type=None):
+    def lookup_cached_referrers_for_manifest(self, model_cache, repository_ref, manifest, artifact_type=None):
+        def load_referrers():
+            return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
+
+        referrers_cache_key = cache_key.for_manifest_referrers(repository_ref, manifest.digest, model_cache.cache_config)
+        result = model_cache.retrieve(referrers_cache_key, load_referrers)
+        try:
+            return [Manifest.from_dict(referrer_dict) for referrer_dict in result]
+        except FromDictionaryException:
+            return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
+
+    def lookup_referrers_for_manifest(self, repository_ref, manifest, artifact_type=None):
         """
         Looks up the referrers of a manifest under a repository.
         Returns a manifest index.
         """
 
         referrers = oci.manifest.lookup_manifest_referrers(
-            manifest.repository._db_id,
-            manifest.digest,
-            artifact_type
+            manifest.repository._db_id, manifest.digest, artifact_type
         )
 
-        referrers_manifests = [Manifest.for_manifest(referrer, self._legacy_image_id_handler) for referrer in referrers]
+        referrers_manifests = [
+            Manifest.for_manifest(referrer, self._legacy_image_id_handler) for referrer in referrers
+        ]
+        referrers_digests = {r.digest for r in referrers}
 
         # Check for existing image indices with referrers tag schema
-        referrers_tag_schema_manifests = []
-        referrers_digests = [r.digest for r in referrers]
-        retriever = RepositoryContentRetriever(manifest.repository._db_id, None)
         referrers_tag_schema_index = self.lookup_referrers_for_tag_schema(manifest)
         if referrers_tag_schema_index:
-            try:
-                parsed_index = referrers_tag_schema_index.get_parsed_manifest()
-            except ManifestException:
-                logger.exception(
-                    "Could not parse manifest `%s` in retarget_tag",
-                    manifest._db_id,
-                )
-                return None
-
-            for m in parsed_index.manifests(retriever):
-                manifest_obj = m.manifest_obj
-                if manifest_obj.artifact_type == artifact_type and manifest_obj.digest not in referrers_digests:
-                    referrers_tag_schema_manifests.append(manifest_obj)
-
-        # Perform union of referrers_manifests and referrers_tag_schema_manifests
+            for m in referrers_tag_schema_index:
+                if (
+                    m.digest in referrers_digests
+                    or artifact_type is not None
+                    and artifact_type != m.artifact_type
+                ):
+                    continue
+                referrers_manifests.append(m)
 
         return referrers_manifests
 
     def lookup_referrers_for_tag_schema(self, manifest):
+        retriever = RepositoryContentRetriever(manifest.repository._db_id, None)
+
         referrers_tag_schema_tag = oci.tag.get_tag(
             manifest.repository._db_id,
             "-".join(manifest.digest.split(":", 1)),
         )
 
-        if referrers_tag_schema_tag and referrers_tag_schema_tag.manifest.media_type.name == OCI_IMAGE_INDEX_CONTENT_TYPE:
-            tag_schema_index = Manifest.for_manifest(referrers_tag_schema_tag.manifest, self._legacy_image_id_handler)
-            return tag_schema_index
+        if (
+            referrers_tag_schema_tag
+            and referrers_tag_schema_tag.manifest.media_type.name == OCI_IMAGE_INDEX_CONTENT_TYPE
+        ):
+            tag_schema_index = ManifestIndex.for_manifest_index(
+                referrers_tag_schema_tag.manifest, self._legacy_image_id_handler
+            )
+            if tag_schema_index:
+                return tag_schema_index.manifests(retriever, self._legacy_image_id_handler)
 
-        return None
+        return []
 
     def create_manifest_label(self, manifest, key, value, source_type_name, media_type_name=None):
         """

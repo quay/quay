@@ -765,13 +765,11 @@ class DefaultConfig(ImmutableConfig):
         ],
     }
 
-    IGNORE_UNKNOWN_MEDIATYPES = False
-
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_HELM_OCI_SUPPORT = True
 
-    FEATURE_REFERRERS_API = False
+    FEATURE_REFERRERS_API = True
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
