@@ -61,7 +61,7 @@ services:
       - "./conf:/quay-registry/conf"
       - "./local-dev/stack:/quay-registry/conf/stack"
     ports:
-      - "8080:8080" 
+      - "8080:8080"
       - "8443:8443"
     environment:
       QUAY_VERSION: local-dev
@@ -72,13 +72,13 @@ services:
       WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
       WORKER_COUNT: "1"
 
-  # clair is configured to share it's network 
+  # clair is configured to share it's network
   # namespace with quay. this allows quay to serve
   # layers to clair over localhost.
   clair:
     user: nobody
     container_name: quay-clair
-    image: quay.io/projectquay/clair:4.4.0
+    image: quay.io/projectquay/clair:4.7.2
     volumes:
       - "./local-dev/clair:/src/clair/"
     environment:
@@ -90,4 +90,3 @@ services:
       ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
     depends_on:
       - quay
-
