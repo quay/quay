@@ -6,6 +6,7 @@ from data import model
 from data.database import TeamMember
 from data.users.externaloidc import OIDCUsers
 from initdb import finished_database_for_testing, setup_database_for_testing
+from oauth.oidc import OIDCLoginService
 from test.fixtures import *
 
 
@@ -31,9 +32,21 @@ class OIDCAuthTests(unittest.TestCase):
         )
         return oidc_instance
 
+    def fake_oidc_login_service(self):
+        config = {
+            "CLIENT_ID": "foo",
+            "CLIENT_SECRET": "bar",
+            "SERVICE_NAME": "Some Cool Service",
+            "SERVICE_ICON": "http://some/icon",
+            "OIDC_SERVER": "http://fakeoidc",
+            "DEBUGGING": True,
+        }
+        return OIDCLoginService(config, "OIDC_LOGIN_CONFIG")
+
     def setUp(self):
         setup_database_for_testing(self)
         self.oidc_instance = self.fake_oidc()
+        self.oidc_login_service = self.fake_oidc_login_service()
 
     def tearDown(self):
         finished_database_for_testing(self)
@@ -52,6 +65,10 @@ class OIDCAuthTests(unittest.TestCase):
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         self.oidc_instance.sync_oidc_groups([], user_obj, "oidc")
+        user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
+        assert user_teams_before_sync == user_teams_after_sync
+
+        self.oidc_instance.sync_oidc_groups(None, user_obj, "oidc")
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
@@ -147,3 +164,44 @@ class OIDCAuthTests(unittest.TestCase):
             .count()
             == 0
         )
+
+    def test_sync_user_groups_for_empty_user_obj(self):
+        assert self.oidc_instance.sync_user_groups([], None, self.oidc_login_service) is None
+        assert self.oidc_instance.sync_user_groups(None, None, self.oidc_login_service) is None
+
+        user_groups = ["test_org_1_team_1", "another_group"]
+        assert (
+            self.oidc_instance.sync_user_groups(user_groups, None, self.oidc_login_service) is None
+        )
+
+        user_obj = model.user.get_user("devtable")
+        fresh_user = model.user.get_user("freshuser")
+        test_org_1 = model.organization.create_organization(
+            "test_org_1", "testorg1@example.com", user_obj
+        )
+        # team set to sync but user is not added to team
+        team_1 = model.team.create_team("team_1", test_org_1, "member")
+        assert model.team.set_team_syncing(
+            team_1, self.oidc_login_service.service_id(), {"group_name": "test_org_1_team_1"}
+        )
+
+        test_org_2 = model.organization.create_organization(
+            "test_org_2", "testorg2@example.com", fresh_user
+        )
+        # team set to sync and user is added to team
+        team_2 = model.team.create_team("team_1", test_org_2, "member")
+        assert model.team.set_team_syncing(
+            team_2, self.oidc_login_service.service_id(), {"group_name": "test_org_2_team_1"}
+        )
+        assert model.team.add_user_to_team(user_obj, team_2)
+
+        user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
+        # user will be removed from team_2
+        self.oidc_instance.sync_user_groups([], user_obj, self.oidc_login_service)
+        user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
+        assert user_teams_before_sync == user_teams_after_sync + 1
+
+        # user will be removed from team_1
+        self.oidc_instance.sync_user_groups(user_groups, user_obj, self.oidc_login_service)
+        user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
+        assert user_teams_before_sync == user_teams_after_sync
