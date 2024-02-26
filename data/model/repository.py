@@ -708,7 +708,4 @@ def get_size_during_upload(repo_id: int):
         )
     ).get()
 
-    repo_size = get_repository_size(repo_id)
-    size_bytes = query.size_bytes if query.size_bytes is not None else 0
-
-    return repo_size + size_bytes
+    return query.size_bytes if query.size_bytes is not None else 0
