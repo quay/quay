@@ -52,7 +52,11 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
     isLoading,
     nsPolicies,
     dataUpdatedAt,
-  } = useNamespaceAutoPrunePolicies(props.organizationName, props.isUser);
+  } = useNamespaceAutoPrunePolicies(
+    props.organizationName,
+    props.isUser,
+    organization?.is_org_admin || false,
+  );
 
   const {
     errorFetchingRepoPolicies,
@@ -221,7 +225,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
     }
   };
 
-  if (isLoadingRepoPolicies || isLoading) {
+  if (isLoadingRepoPolicies) {
     return <Spinner />;
   }
 
@@ -231,8 +235,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
 
   return (
     <>
-      {/* todo(harish): check if organization.is_org_admin is needed */}
-      <Conditional if={nsPolicies.length > 0}>
+      <Conditional if={nsPolicies !== null && nsPolicies !== undefined}>
         <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
           Namespace Auto-Pruning Policies
         </Title>
@@ -245,14 +248,22 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
             <DataListItem aria-labelledby="simple-item1">
               <DataListItemRow>
                 <DataListItemCells
-                  dataListCells={[
-                    <DataListCell key="policy-method">
-                      <span id="simple-item1">{nsPolicies[0]?.method}:</span>
-                    </DataListCell>,
-                    <DataListCell key="policy-value">
-                      <span id="simple-item1">{nsPolicies[0]?.value}</span>
-                    </DataListCell>,
-                  ]}
+                  dataListCells={
+                    nsPolicies
+                      ? [
+                          <DataListCell key="policy-method">
+                            <span id="simple-item1">
+                              {nsPolicies[0]?.method}:
+                            </span>
+                          </DataListCell>,
+                          <DataListCell key="policy-value">
+                            <span id="simple-item1">
+                              {nsPolicies[0]?.value}
+                            </span>
+                          </DataListCell>,
+                        ]
+                      : []
+                  }
                 />
               </DataListItemRow>
             </DataListItem>

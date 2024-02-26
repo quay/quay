@@ -969,6 +969,7 @@ class Repository(BaseModel):
                 UploadedBlob,
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
+                RepositoryAutoPrunePolicy,
             }
             | appr_classes
             | v22_classes

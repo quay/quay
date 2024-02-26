@@ -10,6 +10,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 export function useNamespaceAutoPrunePolicies(
   namespace: string,
   isUser: boolean,
+  isEnabled: boolean = true,
 ) {
   const {
     data: nsPolicies,
@@ -17,8 +18,12 @@ export function useNamespaceAutoPrunePolicies(
     error,
     isSuccess,
     dataUpdatedAt,
-  } = useQuery(['namespace', 'autoprunepolicies', namespace], ({signal}) =>
-    fetchNamespaceAutoPrunePolicies(namespace, isUser, signal),
+  } = useQuery(
+    ['namespace', 'autoprunepolicies', namespace],
+    ({signal}) => fetchNamespaceAutoPrunePolicies(namespace, isUser, signal),
+    {
+      enabled: isEnabled,
+    },
   );
 
   return {
