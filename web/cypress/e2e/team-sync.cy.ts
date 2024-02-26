@@ -43,12 +43,19 @@ describe('OIDC Team Sync', () => {
     cy.get('#team-members-toolbar').within(() =>
       cy.get('button:contains("Enable Directory Sync")').click(),
     );
-    cy.get('#oidc-team-sync-helper-text').contains(
-      'The expected OIDC group name format is - org_name:team_name. Must match ^[a-z0-9][a-z0-9]+:[a-z0-9]+$',
-    );
+    cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
       .type('random');
+    cy.get('button:contains("Enable Sync")').should('not.be.disabled');
+
+    cy.get('#directory-sync-modal')
+      .find('input[id="team-sync-group-name"]')
+      .clear();
+
+    cy.get('#directory-sync-modal')
+      .find('input[id="team-sync-group-name"]')
+      .type(' ');
     cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
@@ -56,15 +63,7 @@ describe('OIDC Team Sync', () => {
 
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
-      .type('1:1');
-    cy.get('button:contains("Enable Sync")').should('be.disabled');
-    cy.get('#directory-sync-modal')
-      .find('input[id="team-sync-group-name"]')
-      .clear();
-
-    cy.get('#directory-sync-modal')
-      .find('input[id="team-sync-group-name"]')
-      .type('org:team');
+      .type('team_name');
     cy.get('button:contains("Enable Sync")').should('not.be.disabled');
   });
 
@@ -82,7 +81,7 @@ describe('OIDC Team Sync', () => {
     );
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
-      .type('org:team');
+      .type('org_team_group');
     cy.get('button:contains("Enable Sync")').click();
     cy.wait('@getTeamSyncSuccess');
     cy.contains('Successfully updated team sync config');
@@ -104,7 +103,7 @@ describe('OIDC Team Sync', () => {
     ).should('exist');
     cy.contains('Directory Synchronization Config').should('exist');
     cy.contains('Bound to group').should('exist');
-    cy.contains('teamsyncorg:groupname').should('exist');
+    cy.contains('testteam_teamsync_group').should('exist');
     cy.contains('Last Updated').should('exist');
     cy.contains('Never').should('exist');
     cy.contains('tr', 'teamsyncorg+robotacct');
@@ -186,7 +185,7 @@ describe('OIDC Team Sync', () => {
     cy.contains('button', 'Enable Directory Sync').click();
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
-      .type('org:team');
+      .type('org_team_group');
     cy.get('button:contains("Enable Sync")').click();
     cy.wait('@getTeamSyncSuccess');
     cy.contains('Successfully updated team sync config');

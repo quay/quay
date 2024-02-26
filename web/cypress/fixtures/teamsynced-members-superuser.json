@@ -21,7 +21,7 @@
   "synced": {
     "service": "oidc",
     "config": {
-      "group_name": "teamsyncorg:groupname"
+      "group_name": "testteam_teamsync_group"
     },
     "last_updated": ""
   }

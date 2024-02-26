@@ -71,18 +71,18 @@ class OIDCAuthTests(unittest.TestCase):
         )
 
         team_1 = model.team.create_team("team_1", test_org_1, "member")
-        assert model.team.set_team_syncing(team_1, "oidc", None)
+        assert model.team.set_team_syncing(team_1, "oidc", {"group_name": "test_org_1_team_1"})
 
         team_2 = model.team.create_team("team_2", test_org_2, "member")
-        assert model.team.set_team_syncing(team_2, "oidc", None)
+        assert model.team.set_team_syncing(team_2, "oidc", {"group_name": "test_org_2_team_2"})
 
         team_3 = model.team.create_team("team_3", test_org_3, "member")
-        assert model.team.set_team_syncing(team_3, "ldap", None)
+        assert model.team.set_team_syncing(team_3, "ldap", {"group_name": "test_org_3_team_3"})
 
         user_groups = [
-            "test_org_1:team_1",
-            "test_org_2:team_2",
-            "test_org_3:team_3",
+            "test_org_1_team_1",
+            "test_org_2_team_2",
+            "test_org_3_team_3",
             "wrong_group_name",
         ]
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
@@ -130,15 +130,15 @@ class OIDCAuthTests(unittest.TestCase):
 
         # add user to team that has team sync enabled with oidc login service
         team_1 = model.team.create_team("team_1", test_org_1, "member")
-        assert model.team.set_team_syncing(team_1, "oidc", {"group_name": "test_org_1:team_1"})
+        assert model.team.set_team_syncing(team_1, "oidc", {"group_name": "test_org_1_team_1"})
         assert model.team.add_user_to_team(user_obj, team_1)
 
         # add user to another team that has team sync enabled with oidc login service
         team_2 = model.team.create_team("team_1", test_org_2, "member")
-        assert model.team.set_team_syncing(team_2, "oidc", {"group_name": "test_org_2:team_1"})
+        assert model.team.set_team_syncing(team_2, "oidc", {"group_name": "test_org_2_team_1"})
         assert model.team.add_user_to_team(user_obj, team_2)
 
-        user_groups = ["test_org_1:team_1", "another:group"]
+        user_groups = ["test_org_1_team_1", "another_group"]
         # user should be removed from team_2
         self.oidc_instance.resync_quay_teams(user_groups, user_obj, "oidc")
         assert (
@@ -147,23 +147,3 @@ class OIDCAuthTests(unittest.TestCase):
             .count()
             == 0
         )
-
-
-@pytest.mark.parametrize(
-    ("name, expected_org_name, expected_group_name"),
-    [
-        ("", None, None),
-        ("f", None, None),
-        ("foobar", None, None),
-        (1, None, None),
-        (256, None, None),
-        (" ", None, None),
-        ("foo:bar", "foo", "bar"),
-        ("foooooo:baaaaar", "foooooo", "baaaaar"),
-    ],
-)
-def test_fetch_org_team_from_oidc_group(name, expected_org_name, expected_group_name):
-    obj = OIDCAuthTests()
-    org_name, group_name = obj.fake_oidc().fetch_org_team_from_oidc_group(name)
-    assert expected_org_name == org_name
-    assert expected_group_name == group_name

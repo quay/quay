@@ -57,22 +57,6 @@ class OIDCUsers(FederatedUsers):
         """
         return ([], self.federated_service, None)
 
-    def fetch_org_team_from_oidc_group(self, oidc_group):
-        """
-        OIDC group name is in the format - <org_name>:<group_name>
-        Extract and return org name and group name
-        """
-        try:
-            org_name, group_name = oidc_group.split(":")
-            # TODO: verify that org_name and group_name exist here
-            return org_name, group_name
-        except (ValueError, AttributeError):
-            logger.exception(
-                f'Incorrect OIDC group name: {oidc_group}. The expected format is : "<org_name>:<team_name> "'
-            )
-
-        return None, None
-
     def sync_oidc_groups(self, user_groups, user_obj, service_name):
         """
         Adds user to quay teams that have team sync enabled with an OIDC group
@@ -81,26 +65,23 @@ class OIDCUsers(FederatedUsers):
             return
 
         for oidc_group in user_groups:
-            org_name, group_name = self.fetch_org_team_from_oidc_group(oidc_group)
-            if not org_name or not group_name:
-                continue
-
-            # verify if team is in TeamSync table
-            team_synced = team.get_team_sync_information(org_name, group_name)
+            # fetch TeamSync row if exists, for the oidc_group synced with the login service
+            team_synced = team.get_oidc_team_from_groupname(oidc_group, service_name)
             if not team_synced:
-                logger.debug(f"OIDC group: {oidc_group} is not synced with a team in quay")
-                continue
-
-            # verify if team is synced with login service
-            if team_synced.service.name != service_name:
                 logger.debug(
-                    f"OIDC group: {oidc_group} is not synced with the {service_name} service"
+                    f"OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {service_name} service"
                 )
                 continue
 
+            # fetch team name and organization name for the Teamsync row
+            team_name = team_synced.team.name
+            org_name = team_synced.team.organization.username
+            if not team_name or not org_name:
+                logger.debug(f"Cannot retrieve team for the oidc group: {oidc_group}")
+
             # add user to team
             try:
-                team_obj = team.get_organization_team(org_name, group_name)
+                team_obj = team.get_organization_team(org_name, team_name)
                 team.add_user_to_team(user_obj, team_obj)
             except InvalidTeamException as err:
                 logger.exception(err)
@@ -123,7 +104,6 @@ class OIDCUsers(FederatedUsers):
         # fetch user's quay teams that have team sync enabled
         existing_user_teams = team.get_federated_user_teams(user_obj, login_service_name)
         user_groups = user_groups or []
-
         for user_team in existing_user_teams:
             try:
                 sync_group_info = json.loads(user_team.teamsync.config)
@@ -132,9 +112,7 @@ class OIDCUsers(FederatedUsers):
                     sync_group_info.get("group_name", None)
                     and sync_group_info["group_name"] not in user_groups
                 ):
-                    org_name, group_name = self.fetch_org_team_from_oidc_group(
-                        sync_group_info["group_name"]
-                    )
+                    org_name = user_team.teamsync.team.organization.username
                     team.remove_user_from_team(org_name, user_team.name, user_obj.username, None)
                     logger.debug(
                         f"Successfully removed user: {user_obj.username} from team: {user_team.name} in organization: {org_name}"
