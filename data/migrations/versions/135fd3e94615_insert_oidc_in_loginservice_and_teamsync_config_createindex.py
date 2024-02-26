@@ -27,6 +27,7 @@ def upgrade(op, tables, tester):
         unique=False,
         postgresql_using="gin",
         postgresql_ops={"config": "gin_trgm_ops"},
+        mysql_prefix="FULLTEXT",
     )
 
 
