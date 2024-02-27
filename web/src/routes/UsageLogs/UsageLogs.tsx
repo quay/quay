@@ -1,9 +1,16 @@
-import React from 'react';
-import {DatePicker, Split, SplitItem} from '@patternfly/react-core';
+import React, {useEffect} from 'react';
+import {
+  DatePicker,
+  Flex,
+  FlexItem,
+  Split,
+  SplitItem,
+} from '@patternfly/react-core';
 import ExportLogsModal from './UsageLogsExportModal';
 import './css/UsageLogs.scss';
 import UsageLogsGraph from './UsageLogsGraph';
 import {useQueryClient} from '@tanstack/react-query';
+import {UsageLogsTable} from './UsageLogsTable';
 
 interface UsageLogsProps {
   organization: string;
@@ -37,6 +44,20 @@ export default function UsageLogs(props: UsageLogsProps) {
   const [logEndDate, setLogEndDate] = React.useState<string>(
     formatDate(maxDate.toISOString().split('T')[0]),
   );
+
+  useEffect(() => {
+    queryClient.invalidateQueries({
+      queryKey: [
+        'usageLogs',
+        'table',
+        {
+          org: props.organization,
+          repo: props.repository ? props.repository : 'isOrg',
+        },
+      ],
+    });
+  }, [logStartDate, logEndDate]);
+
   const rangeValidator = (date: Date) => {
     if (date < minDate) {
       return 'Date is before the allowable range';
@@ -48,58 +69,63 @@ export default function UsageLogs(props: UsageLogsProps) {
 
   return (
     <>
-      <Split hasGutter className="usage-logs-header">
-        <SplitItem isFilled></SplitItem>
-        <SplitItem>
-          <DatePicker
-            value={logStartDate}
-            onChange={(_event, str, date) => {
-              setLogStartDate(formatDate(str));
-              queryClient.invalidateQueries([
-                'aggregateLogs',
-                props.organization,
-                props.type,
-              ]);
-            }}
-            validators={[rangeValidator]}
-          />
-        </SplitItem>
-        <SplitItem>
-          <DatePicker
-            value={logEndDate}
-            onChange={(_event, str, date) => {
-              setLogEndDate(formatDate(str));
-              queryClient.invalidateQueries([
-                'aggregateLogs',
-                props.organization,
-                props.type,
-              ]);
-            }}
-            validators={[rangeValidator]}
-          />
-        </SplitItem>
-        <SplitItem>
-          <ExportLogsModal
-            organization={props.organization}
-            repository={props.repository}
+      <Flex direction={{default: 'column'}}>
+        <FlexItem>
+          <Split hasGutter className="usage-logs-header">
+            <SplitItem isFilled></SplitItem>
+            <SplitItem>
+              <DatePicker
+                value={logStartDate}
+                onChange={(_event, str, date) => {
+                  setLogStartDate(formatDate(str));
+                }}
+                validators={[rangeValidator]}
+              />
+            </SplitItem>
+            <SplitItem>
+              <DatePicker
+                value={logEndDate}
+                onChange={(_event, str, date) => {
+                  setLogEndDate(formatDate(str));
+                }}
+                validators={[rangeValidator]}
+              />
+            </SplitItem>
+            <SplitItem>
+              <ExportLogsModal
+                organization={props.organization}
+                repository={props.repository}
+                starttime={logStartDate}
+                endtime={logEndDate}
+                type={props.type}
+              />
+            </SplitItem>
+          </Split>
+        </FlexItem>
+        <FlexItem>
+          <UsageLogsGraph
             starttime={logStartDate}
             endtime={logEndDate}
+            repo={props.repository}
+            org={props.organization}
             type={props.type}
           />
-        </SplitItem>
-      </Split>
-      <UsageLogsGraph
-        starttime={logStartDate}
-        endtime={logEndDate}
-        repo={props.repository}
-        org={props.organization}
-        type={props.type}
-      />
+        </FlexItem>
+        <FlexItem>
+          <UsageLogsTable
+            starttime={logStartDate}
+            endtime={logEndDate}
+            repo={props.repository}
+            org={props.organization}
+            type={props.type}
+          />
+        </FlexItem>
+      </Flex>
     </>
   );
 }
 
-export const logDescriptions = {
+export const logKinds = {
   user_create: 'Create user',
   user_delete: 'Delete user',
   user_disable: 'Disable user',

@@ -52,3 +52,27 @@ export async function getAggregateLogs(
   assertHttpCode(response.status, 200);
   return response.data.aggregated;
 }
+
+export async function getLogs(
+  org: string,
+  repo: string = null,
+  starttime: string,
+  endtime: string,
+  next_page: string = null,
+) {
+  const url =
+    repo != null
+      ? `/api/v1/repository/${org}/${repo}/logs`
+      : `/api/v1/organization/${org}/logs`;
+  const response = await axios.get(url, {
+    params: {
+      starttime: `${starttime}`,
+      endtime: `${endtime}`,
+      next_page: next_page ? next_page : '',
+    },
+  });
+  return {
+    logs: response.data.logs,
+    nextPage: response.data.next_page,
+  };
+}
