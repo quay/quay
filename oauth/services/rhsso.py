@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class RHSSOOAuthService(OIDCLoginService):
     def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix):
 
-        sub, lusername, email_address = super().exchange_code_for_login(
+        sub, lusername, email_address, additional_info = super().exchange_code_for_login(
             app_config, http_client, code, redirect_suffix
         )
 
@@ -73,4 +73,4 @@ class RHSSOOAuthService(OIDCLoginService):
                     exc_info=True,
                 )
 
-        return sub, lusername, email_address
+        return sub, lusername, email_address, additional_info

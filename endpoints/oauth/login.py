@@ -118,7 +118,7 @@ def _register_service(login_service):
         # Exchange the OAuth code for login information.
         code = request.values.get("code")
         try:
-            lid, lusername, lemail = login_service.exchange_code_for_login(
+            lid, lusername, lemail, additional_info = login_service.exchange_code_for_login(
                 app.config, client, code, ""
             )
         except OAuthLoginException as ole:
@@ -149,6 +149,7 @@ def _register_service(login_service):
             lemail,
             metadata=metadata,
             captcha_verified=captcha_verified,
+            additional_login_info=additional_info,
         )
         if result.requires_verification:
             return render_page_template_with_routedata(
@@ -170,7 +171,7 @@ def _register_service(login_service):
         # Exchange the OAuth code for login information.
         code = request.values.get("code")
         try:
-            lid, lusername, _ = login_service.exchange_code_for_login(
+            lid, lusername, _, _ = login_service.exchange_code_for_login(
                 app.config, client, code, "/attach"
             )
         except OAuthLoginException as ole:

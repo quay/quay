@@ -65,7 +65,7 @@ def validate_sso_oauth_token(token):
             options["verify_signature"] = False
 
         decoded_id_token = service.decode_user_jwt(token, options=options)
-        sub, lusername, lemail = get_sub_username_email_from_token(
+        sub, lusername, lemail, additional_info = get_sub_username_email_from_token(
             decoded_id_token, None, service.config, False
         )
 
