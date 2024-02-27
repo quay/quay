@@ -388,7 +388,7 @@ class TeamMemberList(ApiResource):
                         "service": sync_info.service.name,
                     }
 
-                    if SuperUserPermission().can():
+                    if features.NONSUPERUSER_TEAM_SYNCING_SETUP or SuperUserPermission().can():
                         data["synced"].update(
                             {
                                 "last_updated": format_date(sync_info.last_updated),

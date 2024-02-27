@@ -66,28 +66,29 @@ class OIDCUsers(FederatedUsers):
 
         for oidc_group in user_groups:
             # fetch TeamSync row if exists, for the oidc_group synced with the login service
-            team_synced = team.get_oidc_team_from_groupname(oidc_group, service_name)
-            if not team_synced:
+            synced_teams = team.get_oidc_team_from_groupname(oidc_group, service_name)
+            if len(synced_teams) == 0:
                 logger.debug(
                     f"OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {service_name} service"
                 )
                 continue
 
             # fetch team name and organization name for the Teamsync row
-            team_name = team_synced.team.name
-            org_name = team_synced.team.organization.username
-            if not team_name or not org_name:
-                logger.debug(f"Cannot retrieve team for the oidc group: {oidc_group}")
+            for team_synced in synced_teams:
+                team_name = team_synced.team.name
+                org_name = team_synced.team.organization.username
+                if not team_name or not org_name:
+                    logger.debug(f"Cannot retrieve team for the oidc group: {oidc_group}")
 
-            # add user to team
-            try:
-                team_obj = team.get_organization_team(org_name, team_name)
-                team.add_user_to_team(user_obj, team_obj)
-            except InvalidTeamException as err:
-                logger.exception(err)
-            except UserAlreadyInTeam:
-                # Ignore
-                pass
+                # add user to team
+                try:
+                    # team_obj = team.get_organization_team(org_name, team_name)
+                    team.add_user_to_team(user_obj, team_synced.team)
+                except InvalidTeamException as err:
+                    logger.exception(err)
+                except UserAlreadyInTeam:
+                    # Ignore
+                    pass
         return
 
     def ping(self):
