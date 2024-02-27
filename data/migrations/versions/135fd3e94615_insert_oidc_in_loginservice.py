@@ -20,19 +20,9 @@ def upgrade(op, tables, tester):
             {"name": "oidc"},
         ],
     )
-    op.create_index(
-        "teamsync_config",
-        "teamsync",
-        ["config"],
-        unique=False,
-        postgresql_using="gin",
-        postgresql_ops={"config": "gin_trgm_ops"},
-        mysql_prefix="FULLTEXT",
-    )
 
 
 def downgrade(op, tables, tester):
     op.execute(
         tables.loginservice.delete().where(tables.loginservice.name == op.inline_literal("oidc"))
     )
-    op.drop_index("teamsync_config", table_name="teamsync")
