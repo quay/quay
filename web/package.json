@@ -33,6 +33,7 @@
     "ts-jest": "^29.1.1",
     "typescript": "^4.6.3",
     "use-react-router-breadcrumbs": "^4.0.1",
+    "victory-core": "36.8.1",
     "web-vitals": "^3.4.0"
   },
   "scripts": {
