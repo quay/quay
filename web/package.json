@@ -112,6 +112,7 @@
   "overrides": {
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
+    "victory-core": "36.8.1",
     "@types/react": "^17.0.2",
     "@patternfly/patternfly": "^5.0.4",
     "@patternfly/react-core": "^5.1.0",
