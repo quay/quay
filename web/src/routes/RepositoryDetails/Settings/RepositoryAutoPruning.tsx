@@ -12,72 +12,99 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  DataList,
+  DataListItem,
+  DataListItemRow,
+  DataListItemCells,
+  DataListCell,
+  Gallery,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
 import {useAlerts} from 'src/hooks/UseAlerts';
+import {useNamespaceAutoPrunePolicies} from 'src/hooks/UseNamespaceAutoPrunePolicies';
+import {useOrganization} from 'src/hooks/UseOrganization';
 import {
-  useCreateNamespaceAutoPrunePolicy,
-  useDeleteNamespaceAutoPrunePolicy,
-  useNamespaceAutoPrunePolicies,
-  useUpdateNamespaceAutoPrunePolicy,
-} from 'src/hooks/UseNamespaceAutoPrunePolicies';
+  useCreateRepositoryAutoPrunePolicy,
+  useDeleteRepositoryAutoPrunePolicy,
+  useFetchRepositoryAutoPrunePolicies,
+  useUpdateRepositoryAutoPrunePolicy,
+} from 'src/hooks/UseRepositoryAutoPrunePolicies';
 import {isNullOrUndefined} from 'src/libs/utils';
-import {
-  AutoPruneMethod,
-  NamespaceAutoPrunePolicy,
-} from 'src/resources/NamespaceAutoPruneResource';
+import {AutoPruneMethod} from 'src/resources/NamespaceAutoPruneResource';
+import {RepositoryAutoPrunePolicy} from 'src/resources/RepositoryAutoPruneResource';
+import {shorthandTimeUnits} from 'src/routes/OrganizationsList/Organization/Tabs/Settings/AutoPruning';
 
-// Must match convert_to_timedelta from backend
-export const shorthandTimeUnits = {
-  s: 'seconds',
-  m: 'minutes',
-  h: 'hours',
-  d: 'days',
-  w: 'weeks',
-};
-
-export default function AutoPruning(props: AutoPruning) {
+export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [uuid, setUuid] = useState<string>(null);
   const [method, setMethod] = useState<AutoPruneMethod>(AutoPruneMethod.NONE);
   const [tagCount, setTagCount] = useState<number>(20);
   const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
   const {addAlert} = useAlerts();
+  const {organization} = useOrganization(props.organizationName);
+
   const {
     error,
     isSuccess: successFetchingPolicies,
     isLoading,
     nsPolicies,
     dataUpdatedAt,
-  } = useNamespaceAutoPrunePolicies(props.org, props.isUser);
+  } = useNamespaceAutoPrunePolicies(
+    props.organizationName,
+    props.isUser,
+    organization?.is_org_admin || false,
+  );
+
   const {
-    createPolicy,
-    successCreatePolicy,
-    errorCreatePolicy,
-    errorCreatePolicyDetails,
-  } = useCreateNamespaceAutoPrunePolicy(props.org, props.isUser);
+    errorFetchingRepoPolicies,
+    successFetchingRepoPolicies,
+    isLoadingRepoPolicies,
+    repoPolicies,
+    repoPoliciesDataUpdatedAt,
+  } = useFetchRepositoryAutoPrunePolicies(
+    props.organizationName,
+    props.repoName,
+  );
+
   const {
-    updatePolicy,
-    successUpdatePolicy,
-    errorUpdatePolicy,
-    errorUpdatePolicyDetails,
-  } = useUpdateNamespaceAutoPrunePolicy(props.org, props.isUser);
+    createRepoPolicy,
+    successRepoPolicyCreation,
+    errorRepoPolicyCreation,
+    errorDetailsRepoPolicyCreation,
+  } = useCreateRepositoryAutoPrunePolicy(
+    props.organizationName,
+    props.repoName,
+  );
+
   const {
-    deletePolicy,
-    successDeletePolicy,
-    errorDeletePolicy,
-    errorDeletePolicyDetails,
-  } = useDeleteNamespaceAutoPrunePolicy(props.org, props.isUser);
+    updateRepoPolicy,
+    successRepoPolicyUpdation,
+    errorRepoPolicyUpdation,
+    errorDetailsRepoPolicyUpdation,
+  } = useUpdateRepositoryAutoPrunePolicy(
+    props.organizationName,
+    props.repoName,
+  );
+
+  const {
+    deleteRepoPolicy,
+    successRepoPolicyDeletion,
+    errorRepoPolicyDeletion,
+    errorDetailsRepoPolicyDeletion,
+  } = useDeleteRepositoryAutoPrunePolicy(
+    props.organizationName,
+    props.repoName,
+  );
 
   useEffect(() => {
-    if (successFetchingPolicies) {
-      // Currently we only support one policy per namespace but
+    if (successFetchingRepoPolicies) {
+      // Currently we only support one policy per repository but
       // this will change in the future.
-      if (nsPolicies.length > 0) {
-        const policy: NamespaceAutoPrunePolicy = nsPolicies[0];
+      if (repoPolicies.length > 0) {
+        const policy: RepositoryAutoPrunePolicy = repoPolicies[0];
         setMethod(policy.method);
         setUuid(policy.uuid);
         switch (policy.method) {
@@ -92,7 +119,6 @@ export default function AutoPruning(props: AutoPruning) {
               setTagCreationDateValue(Number(tagAgeValue[0]));
               setTagCreationDateUnit(tagAgeUnit[0]);
             } else {
-              // Shouldn't ever happen but leave it here just in case
               console.error('Invalid tag age value');
             }
             break;
@@ -109,64 +135,68 @@ export default function AutoPruning(props: AutoPruning) {
         setTagCreationDateValue(7);
       }
     }
-  }, [successFetchingPolicies, dataUpdatedAt]);
+  }, [
+    successFetchingRepoPolicies,
+    successFetchingPolicies,
+    repoPoliciesDataUpdatedAt,
+  ]);
 
   useEffect(() => {
-    if (successCreatePolicy) {
+    if (successRepoPolicyCreation) {
       addAlert({
-        title: 'Successfully created auto-prune policy',
+        title: 'Successfully created repository auto-prune policy',
         variant: AlertVariant.Success,
       });
     }
-  }, [successCreatePolicy]);
+  }, [successRepoPolicyCreation]);
 
   useEffect(() => {
-    if (successUpdatePolicy) {
+    if (successRepoPolicyUpdation) {
       addAlert({
-        title: 'Successfully updated auto-prune policy',
+        title: 'Successfully updated repository auto-prune policy',
         variant: AlertVariant.Success,
       });
     }
-  }, [successUpdatePolicy]);
+  }, [successRepoPolicyUpdation]);
 
   useEffect(() => {
-    if (successDeletePolicy) {
+    if (successRepoPolicyDeletion) {
       addAlert({
-        title: 'Successfully deleted auto-prune policy',
+        title: 'Successfully deleted repository auto-prune policy',
         variant: AlertVariant.Success,
       });
     }
-  }, [successDeletePolicy]);
+  }, [successRepoPolicyDeletion]);
 
   useEffect(() => {
-    if (errorCreatePolicy) {
+    if (errorRepoPolicyCreation) {
       addAlert({
-        title: 'Could not create auto-prune policy',
+        title: 'Could not create repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorCreatePolicyDetails.toString(),
+        message: errorDetailsRepoPolicyCreation.toString(),
       });
     }
-  }, [errorCreatePolicy]);
+  }, [errorRepoPolicyCreation]);
 
   useEffect(() => {
-    if (errorUpdatePolicy) {
+    if (errorRepoPolicyUpdation) {
       addAlert({
-        title: 'Could not update auto-prune policy',
+        title: 'Could not update repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorUpdatePolicyDetails.toString(),
+        message: errorDetailsRepoPolicyUpdation.toString(),
       });
     }
-  }, [errorUpdatePolicy]);
+  }, [errorRepoPolicyUpdation]);
 
   useEffect(() => {
-    if (errorDeletePolicy) {
+    if (errorRepoPolicyDeletion) {
       addAlert({
-        title: 'Could not delete auto-prune policy',
+        title: 'Could not delete repository auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorDeletePolicyDetails.toString(),
+        message: errorDetailsRepoPolicyDeletion.toString(),
       });
     }
-  }, [errorDeletePolicy]);
+  }, [errorRepoPolicyDeletion]);
 
   const onSave = (e) => {
     e.preventDefault();
@@ -181,7 +211,7 @@ export default function AutoPruning(props: AutoPruning) {
       case AutoPruneMethod.NONE:
         // Delete the policy is done by setting the method to none
         if (!isNullOrUndefined(uuid)) {
-          deletePolicy(uuid);
+          deleteRepoPolicy(uuid);
         }
         return;
       default:
@@ -189,30 +219,65 @@ export default function AutoPruning(props: AutoPruning) {
         return;
     }
     if (isNullOrUndefined(uuid)) {
-      createPolicy({method: method, value: value});
+      createRepoPolicy({method: method, value: value});
     } else {
-      updatePolicy({uuid: uuid, method: method, value: value});
+      updateRepoPolicy({uuid: uuid, method: method, value: value});
     }
   };
 
-  if (isLoading) {
+  if (isLoadingRepoPolicies) {
     return <Spinner />;
   }
 
-  if (!isNullOrUndefined(error)) {
-    return <RequestError message={error.toString()} />;
+  if (!isNullOrUndefined(errorFetchingRepoPolicies)) {
+    return <RequestError message={errorFetchingRepoPolicies.toString()} />;
   }
 
   return (
     <>
+      <Conditional if={nsPolicies !== null && nsPolicies !== undefined}>
+        <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
+          Namespace Auto-Pruning Policies
+        </Title>
+        <Gallery>
+          <DataList
+            className="pf-v5-u-mb-lg"
+            aria-label="Simple data list example"
+            isCompact
+          >
+            <DataListItem aria-labelledby="simple-item1">
+              <DataListItemRow>
+                <DataListItemCells
+                  dataListCells={
+                    nsPolicies
+                      ? [
+                          <DataListCell key="policy-method">
+                            <span id="simple-item1">
+                              {nsPolicies[0]?.method}:
+                            </span>
+                          </DataListCell>,
+                          <DataListCell key="policy-value">
+                            <span id="simple-item1">
+                              {nsPolicies[0]?.value}
+                            </span>
+                          </DataListCell>,
+                        ]
+                      : []
+                  }
+                />
+              </DataListItemRow>
+            </DataListItem>
+          </DataList>
+        </Gallery>
+      </Conditional>
       <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
-        Auto-Pruning Policies
+        Repository Auto-Pruning Policies
       </Title>
       <p style={{paddingBottom: '1em'}}>
-        Auto-pruning policies automatically delete tags across all repositories
-        within this organization by a given method.
+        Auto-pruning policies automatically delete tags under this repository by
+        a given method.
       </p>
-      <Form id="autpruning-form" maxWidth="70%">
+      <Form id="autopruning-form" maxWidth="40%">
         <FormGroup
           isInline
           label="Prune Policy - select a method to prune tags"
@@ -221,8 +286,8 @@ export default function AutoPruning(props: AutoPruning) {
         >
           <FormSelect
             placeholder=""
-            aria-label="namespace-auto-prune-method"
-            data-testid="namespace-auto-prune-method"
+            aria-label="repository-auto-prune-method"
+            data-testid="repository-auto-prune-method"
             value={method}
             onChange={(_, val) => setMethod(val as AutoPruneMethod)}
           >
@@ -268,7 +333,7 @@ export default function AutoPruning(props: AutoPruning) {
               inputAriaLabel="number of tags"
               minusBtnAriaLabel="minus"
               plusBtnAriaLabel="plus"
-              data-testid="namespace-auto-prune-tag-count"
+              data-testid="repository-auto-prune-tag-count"
             />
             <FormHelperText>
               <HelperText>
@@ -308,7 +373,7 @@ export default function AutoPruning(props: AutoPruning) {
                 inputAriaLabel="tag creation date value"
                 minusBtnAriaLabel="minus"
                 plusBtnAriaLabel="plus"
-                data-testid="namespace-auto-prune-tag-creation-date-value"
+                data-testid="repository-auto-prune-tag-creation-date-value"
                 style={{paddingRight: '1em'}}
               />
               <FormSelect
@@ -354,7 +419,8 @@ export default function AutoPruning(props: AutoPruning) {
   );
 }
 
-interface AutoPruning {
-  org: string;
+interface RepositoryAutoPruning {
+  organizationName: string;
+  repoName: string;
   isUser: boolean;
 }

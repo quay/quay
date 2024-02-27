@@ -31,14 +31,14 @@ def test_list_all_users(disabled, app):
 def test_list_all_orgs(app):
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserOrganizationList, "GET", None, None, 200).json
-        assert len(result["organizations"]) == 6
+        assert len(result["organizations"]) == 7
 
 
 def test_paginate_orgs(app):
     with client_with_identity("devtable", app) as cl:
-        params = {"limit": 3}
+        params = {"limit": 4}
         firstResult = conduct_api_call(cl, SuperUserOrganizationList, "GET", params, None, 200).json
-        assert len(firstResult["organizations"]) == 3
+        assert len(firstResult["organizations"]) == 4
         assert firstResult["next_page"] is not None
         params["next_page"] = firstResult["next_page"]
         secondResult = conduct_api_call(
@@ -50,13 +50,13 @@ def test_paginate_orgs(app):
 
 def test_paginate_test_list_all_users(app):
     with client_with_identity("devtable", app) as cl:
-        params = {"limit": 6}
+        params = {"limit": 7}
         firstResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
-        assert len(firstResult["users"]) == 6
+        assert len(firstResult["users"]) == 7
         assert firstResult["next_page"] is not None
         params["next_page"] = firstResult["next_page"]
         secondResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
-        assert len(secondResult["users"]) == 5
+        assert len(secondResult["users"]) == 4
         assert secondResult.get("next_page", None) is None
 
 

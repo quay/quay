@@ -748,6 +748,7 @@ class User(BaseModel):
                     OrganizationRhSkus,
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
+                    RepositoryAutoPrunePolicy,
                 }
                 | appr_classes
                 | v22_classes
@@ -968,6 +969,7 @@ class Repository(BaseModel):
                 UploadedBlob,
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
+                RepositoryAutoPrunePolicy,
             }
             | appr_classes
             | v22_classes
@@ -2019,6 +2021,13 @@ class AutoPruneTaskStatus(BaseModel):
     namespace = QuayUserField(index=True, null=False)
     last_ran_ms = BigIntegerField(null=True, index=True)
     status = TextField(null=True)
+
+
+class RepositoryAutoPrunePolicy(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, null=False)
+    repository = ForeignKeyField(Repository, index=True, null=False)
+    namespace = QuayUserField(index=True, null=False)
+    policy = JSONField(null=False, default={})
 
 
 # Defines a map from full-length index names to the legacy names used in our code

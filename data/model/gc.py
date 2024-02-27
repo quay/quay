@@ -21,6 +21,7 @@ from data.database import (
     Repository,
     RepositoryActionCount,
     RepositoryAuthorizedEmail,
+    RepositoryAutoPrunePolicy,
     RepositoryBuild,
     RepositoryBuildTrigger,
     RepositoryNotification,
@@ -105,6 +106,8 @@ def purge_repository(repo, force=False):
         ManifestSecurityStatus.select().where(ManifestSecurityStatus.repository == repo).count()
         == 0
     )
+    # Delete auto-prune policy associated with the repository
+    RepositoryAutoPrunePolicy.delete().where(RepositoryAutoPrunePolicy.repository == repo).execute()
 
     # Delete any repository build triggers, builds, and any other large-ish reference tables for
     # the repository.

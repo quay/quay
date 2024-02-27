@@ -1,4 +1,6 @@
 import logging.config
+import os
+import sys
 import time
 
 import features
@@ -35,20 +37,41 @@ class AutoPruneWorker(Worker):
                 autoprune_task.id,
                 autoprune_task.namespace,
             )
-
+            repo_policies = []
             try:
-                policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
-                if not policies:
-                    # When implementing repo policies, fetch repo policies before deleting the task
-                    delete_autoprune_task(autoprune_task)
-                    continue
+                ns_policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
+                if not ns_policies:
+                    repo_policies = get_repository_autoprune_policies_by_namespace_id(
+                        autoprune_task.namespace
+                    )
+                    if not repo_policies:
+                        logger.info(
+                            "deleting autoprune task %s for namespace %s",
+                            autoprune_task.id,
+                            autoprune_task.namespace,
+                        )
+                        delete_autoprune_task(autoprune_task)
+                        continue
 
                 execute_namespace_polices(
-                    policies,
+                    ns_policies,
                     autoprune_task.namespace,
                     FETCH_REPOSITORIES_PAGE_LIMIT,
                     FETCH_TAGS_PAGE_LIMIT,
                 )
+
+                # case: only repo policies exists & no namespace policy
+                for policy in repo_policies:
+                    repo_id = policy.repository_id
+                    repo = get_repository_by_policy_repo_id(repo_id)
+                    logger.info(
+                        "processing autoprune task %s for repository %s",
+                        autoprune_task.id,
+                        repo.name,
+                    )
+                    execute_policy_on_repo(
+                        policy, repo_id, autoprune_task.namespace, tag_page_limit=100
+                    )
 
                 update_autoprune_task(autoprune_task, task_status="success")
             except Exception as err:

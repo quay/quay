@@ -970,11 +970,11 @@ class TestDeleteNamespace(ApiTestCase):
     def test_deletenamespaces(self):
         self.login(ADMIN_ACCESS_USER)
 
-        # Try to first delete the user. Since they are the sole admin of three orgs, it should fail.
+        # Try to first delete the user. Since they are the sole admin of five orgs, it should fail.
         with check_transitive_modifications():
             self.deleteResponse(User, expected_code=400)
 
-        # Delete the three orgs, checking in between.
+        # Delete the five orgs, checking in between.
         with check_transitive_modifications():
             self.deleteEmptyResponse(
                 Organization, params=dict(orgname=ORGANIZATION), expected_code=204
@@ -985,8 +985,13 @@ class TestDeleteNamespace(ApiTestCase):
             )
             self.deleteResponse(User, expected_code=400)  # Should still fail.
             self.deleteEmptyResponse(Organization, params=dict(orgname="titi"), expected_code=204)
+            self.deleteResponse(User, expected_code=400)  # Should still fail.
             self.deleteEmptyResponse(
                 Organization, params=dict(orgname="proxyorg"), expected_code=204
+            )
+            self.deleteResponse(User, expected_code=400)  # Should still fail.
+            self.deleteEmptyResponse(
+                Organization, params=dict(orgname="testorgforautoprune"), expected_code=204
             )
 
         # Add some queue items for the user.
