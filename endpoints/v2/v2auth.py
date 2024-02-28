@@ -29,6 +29,7 @@ from endpoints.v2.errors import (
     InvalidRequest,
     NameInvalid,
     NamespaceDisabled,
+    NameUnknown,
     Unauthorized,
     Unsupported,
 )
@@ -247,7 +248,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     # Ensure the repository is not marked for deletion.
     if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
-        raise Unknown(message="Unknown repository")
+        raise NameUnknown(message="Unknown repository")
 
     if "push" in requested_actions:
         # Check if there is a valid user or token, as otherwise the repository cannot be

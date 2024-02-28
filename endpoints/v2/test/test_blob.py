@@ -1,7 +1,6 @@
 import hashlib
 import json
 import unittest
-from test.fixtures import *
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,6 +22,7 @@ from endpoints.test.shared import conduct_call
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from proxy.fixtures import *  # noqa: F401, F403
+from test.fixtures import *
 from util.bytes import Bytes
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
@@ -223,7 +223,7 @@ class TestBlobPullThroughProxy(unittest.TestCase):
         }
 
         try:
-            model.organization.get(self.org)
+            model.organization.get_organization(self.org)
         except Exception:
             org = model.organization.create_organization(self.org, "cache@devtable.com", self.user)
             org.save()

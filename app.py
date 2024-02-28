@@ -46,7 +46,7 @@ from path_converters import (
     V1CreateRepositoryPathConverter,
 )
 from storage import Storage
-from util import get_app_url
+from util import get_app_url as util_get_app_url
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
 from util.greenlet_tracing import enable_tracing
@@ -348,4 +348,4 @@ def load_user(user_uuid):
     return LoginWrappedDBUser(user_uuid)
 
 
-get_app_url = partial(get_app_url, app.config)
+get_app_url = partial(util_get_app_url, app.config)

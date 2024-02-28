@@ -107,6 +107,8 @@ def paginate(
 
                 next_page_token = encrypt_page_token({"start_id": max([obj.id for obj in results])})
 
+                assert request.endpoint is not None
+                assert request.view_args is not None
                 link_url = os.path.join(
                     get_app_url(), url_for(request.endpoint, **request.view_args)
                 )
