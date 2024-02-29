@@ -195,7 +195,11 @@ export function useLogDescriptions() {
           return `Mirror ${metadata.changed} changed to ${metadata.to}`;
       }
     },
-    change_repo_state: 'Repository state changed to {state_changed}',
+    change_repo_state: function (metadata: Metadata) {
+      return `Repository state changed to ${metadata.state_changed
+        .toLowerCase()
+        .replace('_', ' ')}`;
+    },
     push_repo: function (metadata: Metadata) {
       if (metadata.tag) {
         return `Push of ${metadata.tag} to repository ${metadata.namespace}/${metadata.repo}`;
