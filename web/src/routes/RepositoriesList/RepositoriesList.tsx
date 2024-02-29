@@ -329,7 +329,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
               <Th />
               <Th>{RepositoryListColumnNames.name}</Th>
               <Th>{RepositoryListColumnNames.visibility}</Th>
-              {quayConfig?.features.QUOTA_MANAGEMENT ? (
+              {quayConfig?.features.QUOTA_MANAGEMENT &&
+              quayConfig?.features.EDIT_QUOTA ? (
                 <Th>{RepositoryListColumnNames.size}</Th>
               ) : (
                 <></>
@@ -383,7 +384,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                   <Td dataLabel={RepositoryListColumnNames.visibility}>
                     {repo.is_public ? 'public' : 'private'}
                   </Td>
-                  {quayConfig?.features.QUOTA_MANAGEMENT ? (
+                  {quayConfig?.features.QUOTA_MANAGEMENT &&
+                  quayConfig?.features.EDIT_QUOTA ? (
                     <Td dataLabel={RepositoryListColumnNames.size}>
                       {' '}
                       {formatSize(repo.size)}

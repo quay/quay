@@ -23,7 +23,7 @@
     $scope.showTeamsCounter = 0;
     $scope.changeEmailInfo = null;
     $scope.context = {};
-    $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT
+    $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT && Config.FEATURE_EDIT_QUOTA;
 
     $scope.Config = Config;
     $scope.Features = Features;

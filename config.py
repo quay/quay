@@ -44,6 +44,7 @@ CLIENT_WHITELIST = [
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
+    "FEATURE_EDIT_QUOTA",
     "FEATURE_PROXY_CACHE",
     "QUOTA_BACKFILL",
     "PERMANENTLY_DELETE_TAGS",
@@ -806,6 +807,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Add quota management configuration, caching, and validation
     FEATURE_QUOTA_MANAGEMENT = False
+
+    FEATURE_EDIT_QUOTA = True
+
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     # Time delay for starting the quota backfill. Rolling deployments can cause incorrect

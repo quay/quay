@@ -124,7 +124,7 @@
       };
 
     var caclulateRegistryStorage = function () {
-      if (!Features.QUOTA_MANAGEMENT || !$scope.organizations) {
+      if (!Features.QUOTA_MANAGEMENT || !$scope.organizations || !Features.EDIT_QUOTA) {
         return;
       }
       let total = 0;

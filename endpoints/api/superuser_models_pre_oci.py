@@ -22,7 +22,7 @@ from util.request import get_request_ip
 
 
 def _get_namespace_quotas(namespace_user):
-    if not features.QUOTA_MANAGEMENT:
+    if not features.QUOTA_MANAGEMENT or not features.EDIT_QUOTA:
         return None
 
     return model.namespacequota.get_namespace_quota_list(namespace_user.username)

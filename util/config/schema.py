@@ -1320,6 +1320,11 @@ CONFIG_SCHEMA = {
             "description": "The amount of time between runs of the quota registry size worker in seconds",
             "x-example": 30,
         },
+        "FEATURE_EDIT_QUOTA": {
+            "type": "boolean",
+            "description": "Allow editing of quota configurations",
+            "x-example": True,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",

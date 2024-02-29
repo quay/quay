@@ -58,7 +58,7 @@
           <div class="repo-list-view" namespaces="[organization]" in-read-only-mode="inReadOnlyMode"
                quota-management-enabled="quotaManagementEnabled">
             <h3>Repositories</h3>
-            <span ng-show="Features.QUOTA_MANAGEMENT">
+            <span ng-show="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA">
               <h4>
                 Total Quota Consumed:
                 <span>
@@ -72,10 +72,10 @@
                   {{ " of " + bytesToHumanReadableString(organization.quota_report.configured_quota) }}
                 </span>
               </h4>
-              <span ng-if="Features.QUOTA_MANAGEMENT && Config.QUOTA_BACKFILL && organization.repositories.value.length > 0 && organization.quota_report.backfill_status == 'waiting'">
+              <span ng-if="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA && Config.QUOTA_BACKFILL && organization.repositories.value.length > 0 && organization.quota_report.backfill_status == 'waiting'">
                 Backfill Queued <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently queued." bs-tooltip></i>
               </span>
-              <span ng-if="Features.QUOTA_MANAGEMENT && Config.QUOTA_BACKFILL && organization.repositories.value.length > 0 && organization.quota_report.backfill_status == 'running'">
+              <span ng-if="Features.QUOTA_MANAGEMENT  && Features.EDIT_QUOTA && Config.QUOTA_BACKFILL && organization.repositories.value.length > 0 && organization.quota_report.backfill_status == 'running'">
                 Backfill Running <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently running." bs-tooltip></i>
               </span>
             </span>
@@ -149,7 +149,7 @@
 
               <time-machine-settings organization="organization"></time-machine-settings>
 
-              <div quay-show="Features.QUOTA_MANAGEMENT">
+              <div quay-show="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA">
                 <table class="co-list-table">
                   <tr>
                     <td>Quota Management:</td>

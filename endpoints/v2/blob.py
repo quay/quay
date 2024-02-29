@@ -251,7 +251,9 @@ def start_blob_upload(namespace_name, repo_name):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_EDIT_QUOTA", True
+    ):
         quota = namespacequota.verify_namespace_quota(repository_ref)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
@@ -349,7 +351,9 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_EDIT_QUOTA", True
+    ):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(
@@ -395,7 +399,9 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
+        "FEATURE_EDIT_QUOTA", True
+    ):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
         if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(

@@ -68,7 +68,7 @@ def get_quota(namespace_name, quota_id):
 
 @resource("/v1/organization/<orgname>/quota")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class OrganizationQuotaList(ApiResource):
     schemas = {
         "NewOrgQuota": {
@@ -137,7 +137,7 @@ class OrganizationQuotaList(ApiResource):
 
 @resource("/v1/organization/<orgname>/quota/<quota_id>")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class OrganizationQuota(ApiResource):
     schemas = {
         "UpdateOrgQuota": {
@@ -197,7 +197,7 @@ class OrganizationQuota(ApiResource):
 
 @resource("/v1/organization/<orgname>/quota/<quota_id>/limit")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class OrganizationQuotaLimitList(ApiResource):
     schemas = {
         "NewOrgQuotaLimit": {
@@ -268,7 +268,7 @@ class OrganizationQuotaLimitList(ApiResource):
 
 @resource("/v1/organization/<orgname>/quota/<quota_id>/limit/<limit_id>")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class OrganizationQuotaLimit(ApiResource):
     schemas = {
         "UpdateOrgQuotaLimit": {
@@ -344,7 +344,7 @@ class OrganizationQuotaLimit(ApiResource):
 
 @resource("/v1/user/quota")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class UserQuotaList(ApiResource):
     @require_user_admin()
     @nickname("listUserQuota")
@@ -357,7 +357,7 @@ class UserQuotaList(ApiResource):
 
 @resource("/v1/user/quota/<quota_id>")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class UserQuota(ApiResource):
     @require_user_admin()
     @nickname("getUserQuota")
@@ -370,7 +370,7 @@ class UserQuota(ApiResource):
 
 @resource("/v1/user/quota/<quota_id>/limit")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class UserQuotaLimitList(ApiResource):
     @require_user_admin()
     @nickname("listUserQuotaLimit")
@@ -386,7 +386,7 @@ class UserQuotaLimitList(ApiResource):
 
 @resource("/v1/user/quota/<quota_id>/limit/<limit_id>")
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class UserQuotaLimit(ApiResource):
     @require_user_admin()
     @nickname("getUserQuotaLimit")
