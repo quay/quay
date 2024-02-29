@@ -85,3 +85,11 @@ def for_repository_lookup(namespace_name, repo_name, manifest_ref, kind_filter, 
 
     logger.debug(f"Loading repository lookup from cache_key: {cache_key}")
     return CacheKey(cache_key, cache_ttl)
+
+
+def for_manifest_referrers(repository_id, manifest_digest):
+    """
+    Returns a cache key for listing a manifest's referrers
+    """
+    cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "300s")
+    return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
