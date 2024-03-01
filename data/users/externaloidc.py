@@ -39,7 +39,7 @@ class OIDCUsers(FederatedUsers):
         """
         return (
             None,
-            f"Unsupport login option. Please sign in with the configured {self._federated_service} provider",
+            f"Unsupported login option. Please sign in with the configured {self._federated_service} provider",
         )
 
     def check_group_lookup_args(self, group_lookup_args, disable_pagination=False):
