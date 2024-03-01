@@ -35,9 +35,12 @@ class OIDCUsers(FederatedUsers):
 
     def verify_credentials(self, username_or_email, password):
         """
-        Verify the credentials with OIDC: To Implement
+        Unsupported to login via username/email and password
         """
-        pass
+        return (
+            None,
+            f"Unsupported login option. Please sign in with the configured {self._federated_service} provider",
+        )
 
     def check_group_lookup_args(self, group_lookup_args, disable_pagination=False):
         """

@@ -205,3 +205,11 @@ class OIDCAuthTests(unittest.TestCase):
         self.oidc_instance.sync_user_groups(user_groups, user_obj, self.oidc_login_service)
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
+
+    def test_verify_credentials(self):
+        result, error_msg = self.oidc_instance.verify_credentials("username", "password")
+        assert result is None
+        assert (
+            error_msg
+            == "Unsupported login option. Please sign in with the configured oidc provider"
+        )
