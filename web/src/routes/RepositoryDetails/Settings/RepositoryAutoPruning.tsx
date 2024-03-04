@@ -55,7 +55,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   } = useNamespaceAutoPrunePolicies(
     props.organizationName,
     props.isUser,
-    organization?.is_org_admin || false,
+    organization?.is_admin || false,
   );
 
   const {
@@ -235,8 +235,12 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
 
   return (
     <>
-      <Conditional if={nsPolicies !== null && nsPolicies !== undefined}>
-        <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
+      <Conditional if={nsPolicies?.length > 0 && organization?.is_admin}>
+        <Title
+          headingLevel="h2"
+          style={{paddingBottom: '.5em'}}
+          data-testid="namespace-auto-prune-policy-heading"
+        >
           Namespace Auto-Pruning Policies
         </Title>
         <Gallery>
@@ -251,12 +255,18 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
                   dataListCells={
                     nsPolicies
                       ? [
-                          <DataListCell key="policy-method">
+                          <DataListCell
+                            key="policy-method"
+                            data-testid={'namespace-autoprune-policy-method'}
+                          >
                             <span id="simple-item1">
                               {nsPolicies[0]?.method}:
                             </span>
                           </DataListCell>,
-                          <DataListCell key="policy-value">
+                          <DataListCell
+                            key="policy-value"
+                            data-testid={'namespace-autoprune-policy-value'}
+                          >
                             <span id="simple-item1">
                               {nsPolicies[0]?.value}
                             </span>

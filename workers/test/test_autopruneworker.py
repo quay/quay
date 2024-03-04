@@ -19,18 +19,18 @@ from util.timedeltastring import convert_to_timedelta
 from workers.autopruneworker import AutoPruneWorker
 
 
-def _populate_blob(content, repo):
+def _populate_blob(content, namespace, repo):
     content = Bytes.for_string_or_unicode(content).as_encoded_str()
     digest = str(sha256_digest(content))
     location = ImageStorageLocation.get(name="local_us")
     blob = model.blob.store_blob_record_and_temp_link(
-        "sellnsmall", repo.name, digest, location, len(content), 120
+        namespace, repo.name, digest, location, len(content), 120
     )
     storage.put_content(["local_us"], model.storage.get_layer_path(blob), content)
     return blob, digest
 
 
-def _create_manifest(repo):
+def _create_manifest(namespace, repo):
     layer_json = json.dumps(
         {
             "id": "somelegacyid",
@@ -48,7 +48,7 @@ def _create_manifest(repo):
     )
 
     # Add a blob containing the config.
-    _, config_digest = _populate_blob(layer_json, repo)
+    _, config_digest = _populate_blob(layer_json, namespace, repo)
 
     v2_builder = DockerSchema2ManifestBuilder()
     v2_builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
@@ -94,7 +94,8 @@ def _past_timestamp_ms(time_delta):
     return int(time.time() * 1000) - convert_to_timedelta(time_delta).total_seconds() * 1000
 
 
-def test_prune_multiple_repos_by_tag_count(initialized_db):
+# Tests for namespace autoprune policy
+def test_namespace_prune_multiple_repos_by_tag_count(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
@@ -110,9 +111,9 @@ def test_prune_multiple_repos_by_tag_count(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
-    manifest_repo1 = _create_manifest(repo1)
-    manifest_repo2 = _create_manifest(repo2)
-    manifest_repo3 = _create_manifest(repo3)
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo3 = _create_manifest("sellnsmall", repo3)
 
     _create_tags(repo1, manifest_repo1.manifest, 10)
     _create_tags(repo2, manifest_repo2.manifest, 3)
@@ -133,7 +134,7 @@ def test_prune_multiple_repos_by_tag_count(initialized_db):
     assert task.status == "success"
 
 
-def test_prune_multiple_repos_by_creation_date(initialized_db):
+def test_namespace_prune_multiple_repos_by_creation_date(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
@@ -149,9 +150,9 @@ def test_prune_multiple_repos_by_creation_date(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
-    manifest_repo1 = _create_manifest(repo1)
-    manifest_repo2 = _create_manifest(repo2)
-    manifest_repo3 = _create_manifest(repo3)
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo3 = _create_manifest("sellnsmall", repo3)
 
     _create_tags(repo1, manifest_repo1.manifest, 5)
     _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
@@ -173,7 +174,7 @@ def test_prune_multiple_repos_by_creation_date(initialized_db):
     assert task.status == "success"
 
 
-def test_delete_autoprune_task_if_no_policy_exists(initialized_db):
+def test_delete_autoprune_task_if_no_namespace_policy_exists(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
@@ -238,3 +239,388 @@ def test_fetch_tasks_in_correct_order(initialized_db):
         worker.prune()
 
         assert len(expected_calls) == 0
+
+
+# Tests for repository autoprune policy
+def test_repository_prune_multiple_repos_by_tag_count(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+    repo2 = model.repository.create_repository(
+        "buynlarge", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    new_repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 5}, create_task=True
+    )
+    new_repo2_policy = model.autoprune.create_repository_autoprune_policy(
+        "buynlarge", "repo2", {"method": "number_of_tags", "value": 4}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("buynlarge", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 10)
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+
+    _assert_repo_tag_count(repo1, 10)
+    _assert_repo_tag_count(repo2, 3)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 3)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo2_policy.namespace_id)
+    assert task2.status == "success"
+
+
+def test_repository_prune_multiple_repos_by_creation_date(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+    repo2 = model.repository.create_repository(
+        "buynlarge", "repo2", None, repo_kind="image", visibility="public"
+    )
+    repo3 = model.repository.create_repository(
+        "library", "repo3", None, repo_kind="image", visibility="public"
+    )
+
+    new_repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "creation_date", "value": "1w"}, create_task=True
+    )
+    new_repo2_policy = model.autoprune.create_repository_autoprune_policy(
+        "buynlarge", "repo2", {"method": "creation_date", "value": "5d"}, create_task=True
+    )
+    new_repo3_policy = model.autoprune.create_repository_autoprune_policy(
+        "library", "repo3", {"method": "creation_date", "value": "24h"}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("buynlarge", repo2)
+    manifest_repo3 = _create_manifest("library", repo3)
+
+    _create_tags(repo1, manifest_repo1.manifest, 5)
+    _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
+    _create_tags(repo2, manifest_repo2.manifest, 3, start_time_before="3d")
+    _create_tags(repo2, manifest_repo2.manifest, 5, start_time_before="5d")
+    _create_tags(repo3, manifest_repo3.manifest, 10)
+    _create_tags(repo3, manifest_repo3.manifest, 5, start_time_before="24h")
+
+    _assert_repo_tag_count(repo1, 10)
+    _assert_repo_tag_count(repo2, 8)
+    _assert_repo_tag_count(repo3, 15)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 5, assert_start_after="7d")
+    _assert_repo_tag_count(repo2, 3, assert_start_after="5d")
+    _assert_repo_tag_count(repo3, 10, assert_start_after="24h")
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo2_policy.namespace_id)
+    assert task2.status == "success"
+
+    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo3_policy.namespace_id)
+    assert task3.status == "success"
+
+
+def test_delete_autoprune_task_if_no_repository_policy_exists(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    org = model.organization.get_organization("sellnsmall")
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+    model.autoprune.create_autoprune_task(org.id)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    assert not model.autoprune.namespace_has_autoprune_task(org.id)
+    assert not model.autoprune.repository_has_autoprune_policy(repo1.id)
+
+
+def test_nspolicy_tagcount_less_than_repopolicy_tagcount(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "number_of_tags", "value": 2}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 4}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 5)
+    _create_tags(repo2, manifest_repo2.manifest, 8)
+
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 8)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 2)
+    _assert_repo_tag_count(repo2, 2)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy.namespace_id)
+    assert task2.status == "success"
+
+
+def test_repopolicy_tagcount_less_than_nspolicy_tagcount(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "number_of_tags", "value": 4}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 2}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 5)
+    _create_tags(repo2, manifest_repo2.manifest, 8)
+
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 8)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 2)
+    _assert_repo_tag_count(repo2, 4)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo_policy.namespace_id)
+    assert task2.status == "success"
+
+
+def test_nspolicy_timespan_older_than_repopolicy_timespan(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "creation_date", "value": "5d"}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 3)
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="5d")
+    _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="2d")
+    _create_tags(repo1, manifest_repo1.manifest, 4, start_time_before="1d")
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="5d")
+    _create_tags(repo2, manifest_repo2.manifest, 3, start_time_before="2d")
+    _create_tags(repo2, manifest_repo2.manifest, 4, start_time_before="1d")
+
+    _assert_repo_tag_count(repo1, 12)
+    _assert_repo_tag_count(repo2, 12)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 7)
+    _assert_repo_tag_count(repo2, 10)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy.namespace_id)
+    assert task2.status == "success"
+
+
+def test_repopolicy_timespan_older_than_nspolicy_timespan(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "creation_date", "value": "2d"}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "creation_date", "value": "5d"}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 3)
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="5d")
+    _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="2d")
+    _create_tags(repo1, manifest_repo1.manifest, 4, start_time_before="1d")
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="5d")
+    _create_tags(repo2, manifest_repo2.manifest, 3, start_time_before="2d")
+    _create_tags(repo2, manifest_repo2.manifest, 4, start_time_before="1d")
+
+    _assert_repo_tag_count(repo1, 12)
+    _assert_repo_tag_count(repo2, 12)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 7)
+    _assert_repo_tag_count(repo2, 7)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy.namespace_id)
+    assert task2.status == "success"
+
+
+def test_nspolicy_tagcount_repopolicy_creation_date_reconcile(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "number_of_tags", "value": 6}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "creation_date", "value": "3d"}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 1)
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="3d")
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="1d")
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="3d")
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="1d")
+
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 7)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 3)
+    _assert_repo_tag_count(repo2, 6)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy.namespace_id)
+    assert task2.status == "success"
+
+
+def test_nspolicy_creation_date_repopolicy_tagcount_reconcile(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "creation_date", "value": "3d"}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+    )
+
+    repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 6}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 2)
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="3d")
+    _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="1d")
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="3d")
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="1d")
+
+    _assert_repo_tag_count(repo1, 7)
+    _assert_repo_tag_count(repo2, 7)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 5)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy.namespace_id)
+    assert task2.status == "success"
