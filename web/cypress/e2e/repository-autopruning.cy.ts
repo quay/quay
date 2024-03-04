@@ -154,4 +154,37 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.get('button[aria-label="Danger alert details"]').click();
     cy.contains('AxiosError: Request failed with status code 500');
   });
+
+  it('shows corresponding namespace policy under repository auto-prune policies section', () => {
+    cy.visit('/organization/testorg?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+
+    // Create namespace policy
+    cy.get('[data-testid="namespace-auto-prune-method"]').select(
+      'By number of tags',
+    );
+    cy.get('input[aria-label="number of tags"]').should('have.value', '20');
+    // Since we're using an older version of numberinput, the field can never be empty and will
+    // always include a 0. Here we backspace to remove that 0.
+    cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
+    cy.contains('Save').click();
+
+    cy.contains('Successfully created auto-prune policy');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
+
+    // Navigate to repository auto-prune policy under repository settings
+    cy.visit('/repository/testorg/testrepo?tab=settings');
+    cy.contains('Repository Auto-Prune Policies').click();
+    cy.get('[data-testid="repository-auto-prune-method"]').contains('None');
+
+    // Verify that namespace policy is shown
+    cy.get('[data-testid="namespace-auto-prune-policy-heading"]').contains(
+      'Namespace Auto-Pruning Policies',
+    );
+    cy.get('[data-testid="namespace-autoprune-policy-method"]').contains(
+      'number_of_tags:',
+    );
+    cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
+  });
 });
