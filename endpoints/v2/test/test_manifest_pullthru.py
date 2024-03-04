@@ -1,12 +1,11 @@
 import unittest
-from test.fixtures import *  # noqa: F401, F403
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import url_for
 
 from app import app as realapp
-from app import instance_keys
+from app import instance_keys, model_cache
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
 from data.database import (
@@ -38,6 +37,7 @@ from image.oci import (
 )
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import *  # noqa: F401, F403
+from test.fixtures import *  # noqa: F401, F403
 from util.bytes import Bytes
 from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
@@ -332,6 +332,8 @@ class TestManifestPullThroughStorage:
 
     @pytest.fixture(autouse=True)
     def setup(self, client, app):
+        model_cache.empty_for_testing()
+
         self.client = client
 
         self.user = model.user.get_user("devtable")

@@ -51,6 +51,10 @@ class DataModelCache(object):
         """
         pass
 
+    @abstractmethod
+    def invalidate(self, cache_key):
+        pass
+
 
 class DisconnectWrapper(DataModelCache):
     """
@@ -67,6 +71,10 @@ class DisconnectWrapper(DataModelCache):
         with CloseForLongOperation(self.app_config):
             return self.cache.retrieve(cache_key, loader, should_cache)
 
+    def invalidate(self, cache_key):
+        with CloseForLongOperation(self.app_config):
+            return self.cache.invalidate(cache_key)
+
 
 class NoopDataModelCache(DataModelCache):
     """
@@ -75,6 +83,9 @@ class NoopDataModelCache(DataModelCache):
 
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         return loader()
+
+    def invalidate(self, cache_key):
+        return
 
 
 class InMemoryDataModelCache(DataModelCache):
@@ -123,6 +134,12 @@ class InMemoryDataModelCache(DataModelCache):
             logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
 
         return result
+
+    def invalidate(self, cache_key):
+        try:
+            del self.cache[cache_key.key]
+        except KeyError:
+            pass
 
 
 _DEFAULT_MEMCACHE_TIMEOUT = 1  # second
@@ -238,6 +255,14 @@ class MemcachedModelCache(DataModelCache):
 
         return result
 
+    def invalidate(self, cache_key):
+        client = self.client_pool
+        if client is not None:
+            try:
+                client.delete(cache_key.key, True)
+            except:
+                pass
+
 
 class RedisDataModelCache(DataModelCache):
     """
@@ -315,3 +340,7 @@ class RedisDataModelCache(DataModelCache):
             logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
 
         return result
+
+    def invalidate(self, cache_key):
+        if self.client is not None:
+            self.client.delete(cache_key.key)

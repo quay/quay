@@ -41,6 +41,7 @@ from image.docker.schema1 import (
 )
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.shared import ManifestException
+from util.bytes import Bytes
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,7 @@ class OCIModel(RegistryDataInterface):
             allow_hidden=allow_hidden,
             require_available=require_available,
         )
+
         if manifest is None:
             if raise_on_error:
                 raise model.ManifestDoesNotExist()
@@ -528,7 +530,7 @@ class OCIModel(RegistryDataInterface):
 
             return Tag.for_tag(tag, self._legacy_image_id_handler)
 
-    def delete_tag(self, repository_ref, tag_name):
+    def delete_tag(self, model_cache, repository_ref, tag_name):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """
@@ -537,9 +539,14 @@ class OCIModel(RegistryDataInterface):
             if deleted_tag is None:
                 return None
 
+            manifest_cache_key = cache_key.for_repository_manifest(
+                deleted_tag.repository.id, deleted_tag.manifest.digest, model_cache.cache_config
+            )
+            model_cache.invalidate(manifest_cache_key)
+
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
-    def delete_tags_for_manifest(self, manifest):
+    def delete_tags_for_manifest(self, model_cache, manifest):
         """
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
@@ -547,6 +554,11 @@ class OCIModel(RegistryDataInterface):
         Returns the tags (ShallowTag) deleted. Returns None on error.
         """
         with db_disallow_replica_use():
+            manifest_cache_key = cache_key.for_repository_manifest(
+                manifest.repository.id, manifest.digest, model_cache.cache_config
+            )
+            model_cache.invalidate(manifest_cache_key)
+
             deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
@@ -824,6 +836,51 @@ class OCIModel(RegistryDataInterface):
         """
         namespace = model.user.get_namespace_user(namespace_name)
         return namespace is not None and namespace.enabled
+
+    def lookup_cached_manifest_by_digest(
+        self,
+        model_cache,
+        repository_ref,
+        manifest_digest,
+        allow_dead=False,
+        allow_hidden=False,
+        require_available=False,
+        raise_on_error=False,
+    ):
+        def load_manifest():
+            manifest = self.lookup_manifest_by_digest(
+                repository_ref,
+                manifest_digest,
+                allow_dead,
+                allow_hidden,
+                require_available,
+                raise_on_error,
+            )
+
+            if manifest:
+                manifest_dict = manifest.asdict()
+                manifest_dict["internal_manifest_bytes"] = manifest_dict[
+                    "internal_manifest_bytes"
+                ].as_unicode()
+                manifest_dict["inputs"]["repository"] = manifest_dict["inputs"][
+                    "repository"
+                ].asdict()
+                manifest_dict["inputs"]["legacy_image_handler"] = None  # TODO(kleesc): Remove
+                manifest_dict["inputs"]["legacy_id_handler"] = None  # TODO(kleesc): Remove
+
+                return manifest_dict
+
+        manifest_cache_key = cache_key.for_repository_manifest(
+            repository_ref.id, manifest_digest, model_cache.cache_config
+        )
+
+        result = model_cache.retrieve(manifest_cache_key, load_manifest)
+        # TODO(kleesc): cleanup this Manifest interface to avoid explicit conversions
+        result["internal_manifest_bytes"] = Bytes.for_string_or_unicode(
+            result["internal_manifest_bytes"]
+        )
+
+        return Manifest.from_dict(result)
 
     def lookup_cached_active_repository_tags(
         self, model_cache, repository_ref, start_pagination_id, limit

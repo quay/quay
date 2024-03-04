@@ -158,7 +158,8 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
         raise NameUnknown("repository not found")
 
     try:
-        manifest = registry_model.lookup_manifest_by_digest(
+        manifest = registry_model.lookup_cached_manifest_by_digest(
+            model_cache,
             repository_ref,
             manifest_ref,
             raise_on_error=True,
@@ -391,7 +392,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         if manifest is None:
             raise ManifestUnknown()
 
-        tags = registry_model.delete_tags_for_manifest(manifest)
+        tags = registry_model.delete_tags_for_manifest(model_cache, manifest)
         if not tags:
             raise ManifestUnknown()
 

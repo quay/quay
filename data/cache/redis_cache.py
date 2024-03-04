@@ -32,6 +32,9 @@ class ReadEndpointSupportedRedis(object):
     def set(self, key, val, *args, **kwargs):
         return self.write_client.set(key, val, *args, **kwargs)
 
+    def delete(self, key, *args, **kwargs):
+        return self.write_client.delete(key, *args, **kwargs)
+
     def __getattr__(self, name):
         return getattr(self.write_client, name, None)
 

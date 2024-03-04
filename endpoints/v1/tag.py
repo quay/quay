@@ -3,7 +3,7 @@ import logging
 
 from flask import abort, jsonify, make_response, request, session
 
-from app import docker_v2_signing_key, storage
+from app import docker_v2_signing_key, model_cache, storage
 from auth.decorators import process_auth
 from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from data.registry_model import registry_model
@@ -129,7 +129,7 @@ def delete_tag(namespace_name, repo_name, tag):
     )
 
     if permission.can() and repository_ref is not None:
-        if not registry_model.delete_tag(repository_ref, tag):
+        if not registry_model.delete_tag(model_cache, repository_ref, tag):
             abort(404)
 
         track_and_log("delete_tag", repository_ref, tag=tag)
