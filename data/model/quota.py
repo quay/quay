@@ -471,7 +471,10 @@ def reset_backfill(repository_id: int):
     try:
         QuotaRepositorySize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
-        ).where(QuotaRepositorySize.repository == repository_id).execute()
+        ).where(
+            QuotaRepositorySize.repository == repository_id,
+            QuotaRepositorySize.backfill_start_ms.is_null(False),
+        ).execute()
         namespace_id = get_namespace_id_from_repository(repository_id)
         reset_namespace_backfill(namespace_id)
     except QuotaRepositorySize.DoesNotExist:
@@ -489,7 +492,10 @@ def reset_namespace_backfill(namespace_id: int):
     try:
         QuotaNamespaceSize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
-        ).where(QuotaNamespaceSize.namespace_user == namespace_id).execute()
+        ).where(
+            QuotaNamespaceSize.namespace_user == namespace_id,
+            QuotaNamespaceSize.backfill_start_ms.is_null(False),
+        ).execute()
     except QuotaNamespaceSize.DoesNotExist:
         pass
 
