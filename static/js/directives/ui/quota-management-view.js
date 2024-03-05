@@ -72,7 +72,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var loadOrgQuota = function () {
-        if (!Features.QUOTA_MANAGEMENT) {
+        if (!Features.QUOTA_MANAGEMENT || !Features.EDIT_QUOTA) {
           return;
         }
 

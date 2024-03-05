@@ -73,13 +73,13 @@
             </div>
             <div class="cor-loader" ng-show="organizations.length == 0 && backgroundLoadingOrgs"></div>
             <div class="manager-header" header-title="Organizations">
-              <div ng-if="Features.QUOTA_MANAGEMENT">
+              <div ng-if="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA">
                 <span style="font-size: 1.2em">
                   <span>Total Registry Size: {{bytesToHumanReadableString(registrySizeBytes)}}, Updated: {{lastRan == null ? 'Never' : lastRan}}</span>
                   <span ng-if="lastRan == null && !registrySizeQueued && !registrySizeRunning">, Calculation required </span>
                   <span ng-if="registrySizeQueued">, Calculation queued </span>
                   <span ng-if="registrySizeRunning">, Calculating... </span>
-                </span> 
+                </span>
                 <button class="margin-2 btn btn-primary hidden-xs"  ng-click="askRecalculateRegistrySize()">Calculate</button>
               </div>
             </div>
@@ -103,7 +103,7 @@
                 <a ng-click="orderBy('email')">Admin Email</a>
               </td>
               <td ng-class="tablePredicateClass('quota', options.predicate, options.reverse)"
-                  ng-if="Features.QUOTA_MANAGEMENT">
+                  ng-if="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA">
                 <a ng-click="orderBy('quota_report.quota_bytes')">Quota Consumed</a>
               </td>
               <td style="width: 24px;"></td>
@@ -122,7 +122,7 @@
                 <td ng-if="Features.MAILING">
                   <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
                 </td>
-                <td ng-if="Features.QUOTA_MANAGEMENT">
+                <td ng-if="Features && Features.EDIT_QUOTA">
                   <span ng-if="current_org.quota_report.quota_bytes">
                   {{
                     current_org.quota_report.percent_consumed ?
@@ -134,10 +134,10 @@
                   <span ng-if="current_org.quota_report.configured_quota">
                   {{ " of " + bytesToHumanReadableString(current_org.quota_report.configured_quota) }}
                   </span>
-                  <span ng-if="Features.QUOTA_MANAGEMENT && current_org.quota_report.backfill_status == 'waiting'">
+                  <span ng-if="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA && current_org.quota_report.backfill_status == 'waiting'">
                     Backfill Queued <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently queued." bs-tooltip></i>
                   </span>
-                  <span ng-if="Features.QUOTA_MANAGEMENT && current_org.quota_report.backfill_status == 'running'">
+                  <span ng-if="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA && current_org.quota_report.backfill_status == 'running'">
                     Backfill Running <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently running." bs-tooltip></i>
                   </span>
                 </td>
@@ -152,7 +152,7 @@
                     <span class="cor-option" option-click="askTakeOwnership(current_org)">
                       <i class="fa fa-bolt"></i> Take Ownership
                     </span>
-                    <span class="cor-option" ng-show="Features.QUOTA_MANAGEMENT" option-click="showQuotaConfig(current_org)">
+                    <span class="cor-option" ng-show="Features.QUOTA_MANAGEMENT && Features.EDIT_QUOTA" option-click="showQuotaConfig(current_org)">
                       <i class="fa fa-gear"></i> Configure Quota
                     </span>
                   </span>

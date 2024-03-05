@@ -257,7 +257,7 @@ class RepositoryList(ApiResource):
 
         repositories_with_view = [repo.to_dict() for repo in repos]
 
-        if features.QUOTA_MANAGEMENT:
+        if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA:
             model.add_quota_view(repositories_with_view)
 
         return {"repositories": repositories_with_view}, next_page_token

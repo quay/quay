@@ -20,7 +20,7 @@ angular.module('quay').directive('repoListTable', function () {
       $scope.repositories = null;
       $scope.orderedRepositories = [];
       $scope.reposPerPage = 25;
-      $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT;
+      $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT && Config.FEATURE_EDIT_QUOTA;
       $scope.repoMirroringEnabled = Config.FEATURE_REPO_MIRROR;
       $scope.maxPopularity = 0;
       $scope.options = {

@@ -245,7 +245,7 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             "super_user": usermanager.is_superuser(self.username),
             "enabled": self.enabled,
         }
-        if features.QUOTA_MANAGEMENT and self.quotas is not None:
+        if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:
             user_data["quotas"] = (
                 [quota_view(quota) for quota in self.quotas] if self.quotas else []
             )
@@ -270,7 +270,7 @@ class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
             "avatar": avatar.get_data_for_org(self),
         }
 
-        if features.QUOTA_MANAGEMENT and self.quotas is not None:
+        if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:
             d["quotas"] = [quota_view(quota) for quota in self.quotas] if self.quotas else []
             d["quota_report"] = model.namespacequota.get_quota_for_view(self.username)
 

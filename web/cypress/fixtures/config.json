@@ -49,6 +49,7 @@
     "ENTERPRISE_LOGO_URL": "/static/img/quay-horizontal-color.svg",
     "FEATURE_PROXY_CACHE": false,
     "FEATURE_QUOTA_MANAGEMENT": false,
+    "FEATURE_EDIT_QUOTA": true,
     "FEATURE_REPO_MIRROR": false,
     "LOCAL_OAUTH_HANDLER": "/oauth/localapp",
     "PREFERRED_URL_SCHEME": "http",

@@ -288,7 +288,7 @@ class SuperUserRegistrySize(ApiResource):
     "/v1/superuser/organization/<namespace>/quota",
 )
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class SuperUserUserQuotaList(ApiResource):
 
     schemas = {
@@ -355,7 +355,7 @@ class SuperUserUserQuotaList(ApiResource):
     "/v1/superuser/organization/<namespace>/quota/<quota_id>",
 )
 @show_if(features.SUPER_USERS)
-@show_if(features.QUOTA_MANAGEMENT)
+@show_if(features.QUOTA_MANAGEMENT and features.EDIT_QUOTA)
 class SuperUserUserQuota(ApiResource):
 
     schemas = {

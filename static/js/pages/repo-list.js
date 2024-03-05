@@ -22,7 +22,7 @@
     $scope.Features = Features;
     $scope.inReadOnlyMode = StateService.inReadOnlyMode();
     $scope.repoMirroringEnabled = Config.FEATURE_REPO_MIRROR
-    $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT
+    $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT && Config.FEATURE_EDIT_QUOTA;
 
     // When loading the UserService, if the user is logged in, create a list of
     // relevant namespaces and collect the relevant repositories.
