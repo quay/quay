@@ -65,6 +65,9 @@ class OIDCUsers(FederatedUsers):
         Adds user to quay teams that have team sync enabled with an OIDC group
         """
         if user_groups is None:
+            logger.debug(
+                f"External OIDC Group Sync: Found no oidc groups for user: {user_obj.username}"
+            )
             return
 
         for oidc_group in user_groups:
@@ -72,7 +75,7 @@ class OIDCUsers(FederatedUsers):
             synced_teams = team.get_oidc_team_from_groupname(oidc_group, self._federated_service)
             if len(synced_teams) == 0:
                 logger.debug(
-                    f"OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {self._federated_service} service"
+                    f"External OIDC Group Sync: OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {self._federated_service} service"
                 )
                 continue
 
@@ -81,14 +84,17 @@ class OIDCUsers(FederatedUsers):
                 team_name = team_synced.team.name
                 org_name = team_synced.team.organization.username
                 if not team_name or not org_name:
-                    logger.debug(f"Cannot retrieve team for the oidc group: {oidc_group}")
+                    logger.debug(
+                        f"External OIDC Group Sync: Cannot retrieve quay team synced with the oidc group: {oidc_group}"
+                    )
 
                 # add user to team
                 try:
-                    # team_obj = team.get_organization_team(org_name, team_name)
                     team.add_user_to_team(user_obj, team_synced.team)
                 except InvalidTeamException as err:
-                    logger.exception(err)
+                    logger.exception(
+                        f"External OIDC Group Sync: Exception occurred when adding user: {user_obj.username} to quay team: {team_synced.team} as {err}"
+                    )
                 except UserAlreadyInTeam:
                     # Ignore
                     pass
@@ -107,6 +113,9 @@ class OIDCUsers(FederatedUsers):
         """
         # fetch user's quay teams that have team sync enabled
         existing_user_teams = team.get_federated_user_teams(user_obj, self._federated_service)
+        logger.debug(
+            f"External OIDC Group Sync: For user {user_obj.username} re-syncing {len(existing_user_teams)} quay teams"
+        )
         user_groups = user_groups or []
         for user_team in existing_user_teams:
             try:
@@ -119,10 +128,12 @@ class OIDCUsers(FederatedUsers):
                     org_name = user_team.teamsync.team.organization.username
                     team.remove_user_from_team(org_name, user_team.name, user_obj.username, None)
                     logger.debug(
-                        f"Successfully removed user: {user_obj.username} from team: {user_team.name} in organization: {org_name}"
+                        f"External OIDC Group Sync: Successfully removed user: {user_obj.username} from team: {user_team.name} in organization: {org_name}"
                     )
             except Exception as err:
-                logger.exception(err)
+                logger.exception(
+                    f"External OIDC Group Sync: Exception occurred for user {user_obj.username} when removing membership from quay team: {user_team.name} as {err}"
+                )
         return
 
     def sync_user_groups(self, user_groups, user_obj, login_service):
