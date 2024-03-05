@@ -28,7 +28,7 @@ export default function Settings(props: SettingsProps) {
         />
       ),
     },
-    ...(config?.features?.AUTO_PRUNE
+    ...(config?.features?.AUTO_PRUNE && props.repoDetails?.can_write
       ? [
           {
             name: 'Repository Auto-Prune Policies',
