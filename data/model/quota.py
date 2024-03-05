@@ -146,7 +146,7 @@ def write_namespace_total(
     # backfilled, so let the entry be created. Otherwise it still needs to be handled by the
     # backfill worker so let's exit
     if (
-        operation == "add"
+        operation == QuotaOperation.ADD
         and not namespace_size_exists
         and only_manifest_in_namespace(namespace_id, manifest_id)
     ):
@@ -174,9 +174,9 @@ def write_namespace_total(
             namespace_total,
         )
         params = {}
-        if operation == "add":
+        if operation == QuotaOperation.ADD:
             params["size_bytes"] = QuotaNamespaceSize.size_bytes + namespace_total
-        elif operation == "subtract":
+        elif operation == QuotaOperation.SUBTRACT:
             params["size_bytes"] = QuotaNamespaceSize.size_bytes - namespace_total
         QuotaNamespaceSize.update(**params).where(
             QuotaNamespaceSize.namespace_user == namespace_id
@@ -203,7 +203,7 @@ def write_repository_total(
     # backfilled, so let the entry be created. Otherwise it still needs to be handled by the
     # backfill worker so let's exit
     if (
-        operation == "add"
+        operation == QuotaOperation.ADD
         and not repository_size_exists
         and only_manifest_in_repository(repository_id, manifest_id)
     ):
@@ -231,9 +231,9 @@ def write_repository_total(
             repository_total,
         )
         params = {}
-        if operation == "add":
+        if operation == QuotaOperation.ADD:
             params["size_bytes"] = QuotaRepositorySize.size_bytes + repository_total
-        elif operation == "subtract":
+        elif operation == QuotaOperation.SUBTRACT:
             params["size_bytes"] = QuotaRepositorySize.size_bytes - repository_total
         QuotaRepositorySize.update(**params).where(
             QuotaRepositorySize.repository == repository_id
