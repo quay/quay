@@ -58,7 +58,7 @@ class OIDCUsers(FederatedUsers):
         """
         No way to query users so returning empty list
         """
-        return ([], self._federated_service, None)
+        return ([], self._federated_service, "Not supported")
 
     def sync_oidc_groups(self, user_groups, user_obj):
         """
