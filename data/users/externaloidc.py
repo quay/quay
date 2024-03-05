@@ -58,9 +58,9 @@ class OIDCUsers(FederatedUsers):
         """
         No way to query users so returning empty list
         """
-        return ([], self.federated_service, None)
+        return ([], self._federated_service, None)
 
-    def sync_oidc_groups(self, user_groups, user_obj, service_name):
+    def sync_oidc_groups(self, user_groups, user_obj):
         """
         Adds user to quay teams that have team sync enabled with an OIDC group
         """
@@ -69,10 +69,10 @@ class OIDCUsers(FederatedUsers):
 
         for oidc_group in user_groups:
             # fetch TeamSync row if exists, for the oidc_group synced with the login service
-            synced_teams = team.get_oidc_team_from_groupname(oidc_group, service_name)
+            synced_teams = team.get_oidc_team_from_groupname(oidc_group, self._federated_service)
             if len(synced_teams) == 0:
                 logger.debug(
-                    f"OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {service_name} service"
+                    f"OIDC group: {oidc_group} is either not synced with a team in quay or is not synced with the {self._federated_service} service"
                 )
                 continue
 
@@ -100,13 +100,13 @@ class OIDCUsers(FederatedUsers):
         """
         return (True, None)
 
-    def resync_quay_teams(self, user_groups, user_obj, login_service_name):
+    def resync_quay_teams(self, user_groups, user_obj):
         """
         Fetch quay teams that user is a member of.
         Remove user from teams that are synced with an OIDC group but group does not exist in "user_groups"
         """
         # fetch user's quay teams that have team sync enabled
-        existing_user_teams = team.get_federated_user_teams(user_obj, login_service_name)
+        existing_user_teams = team.get_federated_user_teams(user_obj, self._federated_service)
         user_groups = user_groups or []
         for user_team in existing_user_teams:
             try:
@@ -129,7 +129,6 @@ class OIDCUsers(FederatedUsers):
         if not user_obj:
             return
 
-        service_name = login_service.service_id()
-        self.sync_oidc_groups(user_groups, user_obj, service_name)
-        self.resync_quay_teams(user_groups, user_obj, service_name)
+        self.sync_oidc_groups(user_groups, user_obj)
+        self.resync_quay_teams(user_groups, user_obj)
         return
