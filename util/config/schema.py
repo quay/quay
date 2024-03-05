@@ -1285,6 +1285,11 @@ CONFIG_SCHEMA = {
             "description": "Enables configuration, caching, and validation for quota management feature",
             "x-example": False,
         },
+        "FEATURE_QUOTA_SUPPRESS_FAILURES": {
+            "type": "boolean",
+            "description": "Catches and suppresses quota failures during image push and garbage collection",
+            "x-example": False,
+        },
         "DEFAULT_SYSTEM_REJECT_QUOTA_BYTES": {
             "type": "int",
             "description": "Enables system default quota reject byte allowance for all organizations",

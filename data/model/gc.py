@@ -34,7 +34,7 @@ from data.database import (
 )
 from data.model import _basequery, blob, config, db_transaction, storage
 from data.model.oci import tag as oci_tag
-from data.model.quota import reset_backfill, subtract_blob_size
+from data.model.quota import QuotaOperation, update_quota
 from data.secscan_model import secscan_model
 from util.metrics.prometheus import gc_repos_purged, gc_table_rows_deleted
 
@@ -425,12 +425,8 @@ def _garbage_collect_manifest(manifest_id, context):
             .execute()
         )
 
-        # Subtract blobs from namespace/repo total after they've been deleted successfully.
-        # If the quota feature is disabled mark the total as stale
-        if features.QUOTA_MANAGEMENT:
-            subtract_blob_size(manifest.repository_id, manifest_id, blob_sizes)
-        else:
-            reset_backfill(manifest.repository_id)
+        # Subtract blob sizes if quota management is enabled
+        update_quota(manifest.repository_id, manifest_id, blob_sizes, QuotaOperation.SUBTRACT)
 
         # Delete the security status for the manifest
         deleted_manifest_security = (

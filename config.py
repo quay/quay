@@ -810,6 +810,9 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_EDIT_QUOTA = True
 
+    # Catches and suppresses quota failures during image push and garbage collection
+    FEATURE_QUOTA_SUPPRESS_FAILURES = False
+
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
