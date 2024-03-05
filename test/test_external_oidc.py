@@ -64,11 +64,11 @@ class OIDCAuthTests(unittest.TestCase):
         assert model.team.add_user_to_team(user_obj, team_2)
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        self.oidc_instance.sync_oidc_groups([], user_obj, "oidc")
+        self.oidc_instance.sync_oidc_groups([], user_obj)
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
-        self.oidc_instance.sync_oidc_groups(None, user_obj, "oidc")
+        self.oidc_instance.sync_oidc_groups(None, user_obj)
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
@@ -103,7 +103,7 @@ class OIDCAuthTests(unittest.TestCase):
             "wrong_group_name",
         ]
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        self.oidc_instance.sync_oidc_groups(user_groups, user_obj, "oidc")
+        self.oidc_instance.sync_oidc_groups(user_groups, user_obj)
 
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
 
@@ -113,7 +113,7 @@ class OIDCAuthTests(unittest.TestCase):
         user_obj = model.user.get_user("devtable")
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        self.oidc_instance.resync_quay_teams([], user_obj, "oidc")
+        self.oidc_instance.resync_quay_teams([], user_obj)
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
@@ -130,7 +130,7 @@ class OIDCAuthTests(unittest.TestCase):
         assert model.team.add_user_to_team(user_obj, team_2)
 
         user_teams_before_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
-        self.oidc_instance.resync_quay_teams([], user_obj, "oidc")
+        self.oidc_instance.resync_quay_teams([], user_obj)
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
@@ -155,14 +155,27 @@ class OIDCAuthTests(unittest.TestCase):
         assert model.team.set_team_syncing(team_2, "oidc", {"group_name": "test_org_2_team_1"})
         assert model.team.add_user_to_team(user_obj, team_2)
 
-        user_groups = ["test_org_1_team_1", "another_group"]
+        # add user to another team that has team sync enabled with oidc login service
+        team_3 = model.team.create_team("team_2", test_org_2, "member")
+        assert model.team.set_team_syncing(team_3, "oidc", {"group_name": "test_org_2_team_2"})
+        assert model.team.add_user_to_team(user_obj, team_3)
+
+        user_groups = ["test_org_1_team_1", "another_group", "test_org_2_team_2"]
         # user should be removed from team_2
-        self.oidc_instance.resync_quay_teams(user_groups, user_obj, "oidc")
+        self.oidc_instance.resync_quay_teams(user_groups, user_obj)
         assert (
             TeamMember.select()
             .where(TeamMember.user == user_obj, TeamMember.team == team_2)
             .count()
             == 0
+        )
+
+        # user should part of team_1 and team_3
+        assert (
+            TeamMember.select()
+            .where(TeamMember.user == user_obj, TeamMember.team << [team_1, team_3])
+            .count()
+            == 2
         )
 
     def test_sync_user_groups_for_empty_user_obj(self):
@@ -213,3 +226,9 @@ class OIDCAuthTests(unittest.TestCase):
             error_msg
             == "Unsupported login option. Please sign in with the configured oidc provider"
         )
+
+    def test_query_users(self):
+        result, service, error_msg = self.oidc_instance.query_users("some_query_here", None)
+        assert len(result) == 0
+        assert service == "oidc"
+        assert error_msg == "Not supported"
