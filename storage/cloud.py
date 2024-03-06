@@ -886,8 +886,6 @@ class GoogleCloudStorage(_CloudStorage):
             secret_key,
         )
 
-        self.boto_timeout = boto_timeout
-
         # Workaround for setting GCS cors at runtime with boto
         cors_xml = """<?xml version="1.0" encoding="UTF-8"?>
         <CorsConfig>
