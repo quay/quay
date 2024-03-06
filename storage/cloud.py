@@ -11,9 +11,11 @@ from uuid import uuid4
 import boto3.session
 import botocore.config
 import botocore.exceptions
-from botocore.credentials import create_assume_role_refresher
-from botocore.credentials import DeferredRefreshableCredentials
 from botocore.client import Config
+from botocore.credentials import (
+    DeferredRefreshableCredentials,
+    create_assume_role_refresher,
+)
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
 from cryptography.hazmat.backends import default_backend
@@ -865,11 +867,14 @@ class IBMCloudStorage(_CloudStorage):
 class GoogleCloudStorage(_CloudStorage):
     ENDPOINT_URL = "https://storage.googleapis.com"
 
-    def __init__(self, context, storage_path, access_key, secret_key, bucket_name):
+    def __init__(self, context, storage_path, access_key, secret_key, bucket_name, boto_timeout=60):
         # GCS does not support ListObjectV2
         self._list_object_version = _LIST_OBJECT_VERSIONS["v1"]
         upload_params = {}
-        connect_kwargs = {"endpoint_url": GoogleCloudStorage.ENDPOINT_URL}
+        connect_kwargs = {
+            "endpoint_url": GoogleCloudStorage.ENDPOINT_URL,
+            "config": Config(connect_timeout=boto_timeout, read_timeout=boto_timeout),
+        }
         super(GoogleCloudStorage, self).__init__(
             context,
             boto3.session.Session,
