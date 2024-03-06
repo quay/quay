@@ -11,8 +11,10 @@ from uuid import uuid4
 import boto3.session
 import botocore.config
 import botocore.exceptions
-from botocore.credentials import create_assume_role_refresher
-from botocore.credentials import DeferredRefreshableCredentials
+from botocore.credentials import (
+    DeferredRefreshableCredentials,
+    create_assume_role_refresher,
+)
 from botocore.client import Config
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
