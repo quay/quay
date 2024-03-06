@@ -1,10 +1,12 @@
 import logging
 import time
 from collections import namedtuple
+from enum import Enum
 from typing import Dict, List
 
 from peewee import JOIN, fn
 
+import features
 from data.database import (
     ImageStorage,
     ManifestBlob,
@@ -25,12 +27,33 @@ logger = logging.getLogger(__name__)
 get_epoch_timestamp_ms = lambda: int(time.time() * 1000)
 
 
-def add_blob_size(repository_id: int, manifest_id: int, blobs: dict):
-    update_sizes(repository_id, manifest_id, blobs, "add")
+class QuotaOperation(str, Enum):
+    ADD = "add"
+    SUBTRACT = "subtract"
 
 
-def subtract_blob_size(repository_id: int, manifest_id: int, blobs: dict):
-    update_sizes(repository_id, manifest_id, blobs, "subtract")
+def update_quota(repository_id: int, manifest_id: int, blobs: dict, operation: QuotaOperation):
+    # If quota management is disabled, mark the total as stale and return
+    if not features.QUOTA_MANAGEMENT:
+        if config.app_config.get("QUOTA_INVALIDATE_TOTALS", True):
+            reset_backfill(repository_id)
+        return
+
+    # Not ideal to use such a wide exception but failure to calculate quota should not
+    # stop image pushes
+    try:
+        update_sizes(repository_id, manifest_id, blobs, operation)
+    except Exception as ex:
+        if features.QUOTA_SUPPRESS_FAILURES:
+            logger.exception(
+                "quota size calculation: failed to %s manifest id %s from repository %s with exception: %s",
+                operation,
+                manifest_id,
+                repository_id,
+                ex,
+            )
+        else:
+            raise ex
 
 
 def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: str):
@@ -39,10 +62,18 @@ def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: s
     existing manifests from the total
     """
     if len(blobs) == 0:
+        logger.debug(
+            "no blobs found for manifest %s in repository %s, skipping calculation",
+            manifest_id,
+            repository_id,
+        )
         return
 
     namespace_id = get_namespace_id_from_repository(repository_id)
     if not eligible_namespace(namespace_id):
+        logger.debug(
+            "ineligible namespace %s for quota calculation, skipping calculation", namespace_id
+        )
         return
 
     # Addition - if the blob already referenced it's already been counted
@@ -115,10 +146,13 @@ def write_namespace_total(
     # backfilled, so let the entry be created. Otherwise it still needs to be handled by the
     # backfill worker so let's exit
     if (
-        operation == "add"
+        operation == QuotaOperation.ADD
         and not namespace_size_exists
         and only_manifest_in_namespace(namespace_id, manifest_id)
     ):
+        logger.info(
+            "inserting namespace size for manifest %s in namespace %s", manifest_id, namespace_id
+        )
         # pylint: disable-next=no-value-for-parameter
         QuotaNamespaceSize.insert(
             namespace_user_id=namespace_id,
@@ -132,14 +166,23 @@ def write_namespace_total(
     # manifest in the repository, it needs to be handled by the backfill worker.
     # If it does exist we can add/subtract the total
     if namespace_size_exists:
+        logger.info(
+            "updating namespace size for manifest %s in namespace %s, %s %s",
+            manifest_id,
+            namespace_id,
+            operation,
+            namespace_total,
+        )
         params = {}
-        if operation == "add":
+        if operation == QuotaOperation.ADD:
             params["size_bytes"] = QuotaNamespaceSize.size_bytes + namespace_total
-        elif operation == "subtract":
+        elif operation == QuotaOperation.SUBTRACT:
             params["size_bytes"] = QuotaNamespaceSize.size_bytes - namespace_total
         QuotaNamespaceSize.update(**params).where(
             QuotaNamespaceSize.namespace_user == namespace_id
         ).execute()
+    else:
+        logger.info("backfill required for manifest %s in namespace %s", manifest_id, namespace_id)
 
 
 def write_repository_total(
@@ -160,10 +203,13 @@ def write_repository_total(
     # backfilled, so let the entry be created. Otherwise it still needs to be handled by the
     # backfill worker so let's exit
     if (
-        operation == "add"
+        operation == QuotaOperation.ADD
         and not repository_size_exists
         and only_manifest_in_repository(repository_id, manifest_id)
     ):
+        logger.info(
+            "inserting repository size for manifest %s in repository %s", manifest_id, repository_id
+        )
         # pylint: disable-next=no-value-for-parameter
         QuotaRepositorySize.insert(
             repository_id=repository_id,
@@ -177,14 +223,25 @@ def write_repository_total(
     # manifest in the repository, it needs to be handled by the backfill worker.
     # If it does exist we can add/subtract the total
     if repository_size_exists:
+        logger.info(
+            "updating repository size for manifest %s in repository %s, %s %s",
+            manifest_id,
+            repository_id,
+            operation,
+            repository_total,
+        )
         params = {}
-        if operation == "add":
+        if operation == QuotaOperation.ADD:
             params["size_bytes"] = QuotaRepositorySize.size_bytes + repository_total
-        elif operation == "subtract":
+        elif operation == QuotaOperation.SUBTRACT:
             params["size_bytes"] = QuotaRepositorySize.size_bytes - repository_total
         QuotaRepositorySize.update(**params).where(
             QuotaRepositorySize.repository == repository_id
         ).execute()
+    else:
+        logger.info(
+            "backfill required for manifest %s in repository %s", manifest_id, repository_id
+        )
 
 
 def get_namespace_id_from_repository(repository: int):
@@ -414,7 +471,10 @@ def reset_backfill(repository_id: int):
     try:
         QuotaRepositorySize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
-        ).where(QuotaRepositorySize.repository == repository_id).execute()
+        ).where(
+            QuotaRepositorySize.repository == repository_id,
+            QuotaRepositorySize.backfill_start_ms.is_null(False),
+        ).execute()
         namespace_id = get_namespace_id_from_repository(repository_id)
         reset_namespace_backfill(namespace_id)
     except QuotaRepositorySize.DoesNotExist:
@@ -432,7 +492,10 @@ def reset_namespace_backfill(namespace_id: int):
     try:
         QuotaNamespaceSize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
-        ).where(QuotaNamespaceSize.namespace_user == namespace_id).execute()
+        ).where(
+            QuotaNamespaceSize.namespace_user == namespace_id,
+            QuotaNamespaceSize.backfill_start_ms.is_null(False),
+        ).execute()
     except QuotaNamespaceSize.DoesNotExist:
         pass
 

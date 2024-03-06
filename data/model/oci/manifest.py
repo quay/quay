@@ -28,7 +28,7 @@ from data.model.oci.tag import (
     filter_to_alive_tags,
     get_child_manifests,
 )
-from data.model.quota import add_blob_size, reset_backfill
+from data.model.quota import QuotaOperation, update_quota
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from image.docker.schema1 import ManifestException
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
@@ -363,12 +363,8 @@ def _create_manifest(
             if storage_ids:
                 connect_blobs(manifest, storage_ids, repository_id)
 
-            # Add blobs to namespace/repo total. If feature is not enabled the total
-            # should be marked stale
-            if features.QUOTA_MANAGEMENT and len(blob_sizes) > 0:
-                add_blob_size(repository_id, manifest.id, blob_sizes)
-            elif not features.QUOTA_MANAGEMENT:
-                reset_backfill(repository_id)
+            # Add blob sizes if quota management is enabled
+            update_quota(repository_id, manifest.id, blob_sizes, QuotaOperation.ADD)
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)

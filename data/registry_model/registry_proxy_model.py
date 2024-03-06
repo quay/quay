@@ -29,11 +29,10 @@ from data.model import (
 from data.model.oci.manifest import is_child_manifest
 from data.model.proxy_cache import get_proxy_cache_config_for_org
 from data.model.quota import (
-    add_blob_size,
-    blob_exists_in_namespace,
+    QuotaOperation,
     get_namespace_id_from_repository,
     is_blob_alive,
-    reset_backfill,
+    update_quota,
 )
 from data.model.repository import create_repository, get_repository
 from data.registry_model.blobuploader import (
@@ -684,12 +683,8 @@ class ProxyModel(OCIModel):
         except ManifestBlob.DoesNotExist:
             ManifestBlob.create(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
 
-            # Add blobs to namespace/repo total. If feature is not enabled the total
-            # should be marked stale
-            if features.QUOTA_MANAGEMENT:
-                add_blob_size(repo_id, manifest_id, {blob.id: blob.image_size})
-            else:
-                reset_backfill(repo_id)
+            # Add blob sizes if quota management is enabled
+            update_quota(repo_id, manifest_id, {blob.id: blob.image_size}, QuotaOperation.ADD)
 
         return blob
 

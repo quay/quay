@@ -25,6 +25,7 @@ class QuotaTotalWorker(Worker):
         self.add_operation(self.backfill, POLL_PERIOD)
 
     def backfill(self):
+        logger.info("Quota backfill worker started, searching for namespaces to calculate size")
         subq = QuotaNamespaceSize.select().where(
             QuotaNamespaceSize.namespace_user == User.id,
             QuotaNamespaceSize.backfill_start_ms.is_null(False),
@@ -38,6 +39,7 @@ class QuotaTotalWorker(Worker):
             )
             .limit(BATCH_SIZE)
         ):
+            logger.info("Running backfill for namespace %s", namespace.id)
             run_backfill(namespace.id)
 
 
