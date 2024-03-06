@@ -67,7 +67,11 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                         ? logDescriptions[log.kind](log.metadata)
                         : 'No description available'}
                     </Td>
-                    <Td>{log.performer?.name}</Td>
+                    <Td>
+                      {log.performer?.name
+                        ? log.performer?.name
+                        : log.metadata?.performer}
+                    </Td>
                     <Td>{log.ip}</Td>
                   </Tr>
                 )),

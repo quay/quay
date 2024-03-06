@@ -221,4 +221,10 @@ export const logKinds = {
   login_success: 'Login success',
   permanently_delete_tag: 'Permanently Delete Tag',
   autoprune_tag_delete: 'Autoprune worker tag deletion',
+  create_namespace_autoprune_policy: 'Create Namespace Autoprune Policy',
+  update_namespace_autoprune_policy: 'Update Namespace Autoprune Policy',
+  delete_namespace_autoprune_policy: 'Delete Namespace Autoprune Policy',
+  create_repository_autoprune_policy: 'Create Repository Autoprune Policy',
+  update_repository_autoprune_policy: 'Update Repository Autoprune Policy',
+  delete_repository_autoprune_policy: 'Delete Repository Autoprune Policy',
 };
