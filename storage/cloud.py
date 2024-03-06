@@ -869,7 +869,10 @@ class GoogleCloudStorage(_CloudStorage):
         # GCS does not support ListObjectV2
         self._list_object_version = _LIST_OBJECT_VERSIONS["v1"]
         upload_params = {}
-        connect_kwargs = {"endpoint_url": GoogleCloudStorage.ENDPOINT_URL}
+        connect_kwargs = {
+            "endpoint_url": GoogleCloudStorage.ENDPOINT_URL,
+            "config": Config(connect_timeout=600, read_timeout=600),
+        }
         super(GoogleCloudStorage, self).__init__(
             context,
             boto3.session.Session,
