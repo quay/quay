@@ -590,6 +590,12 @@ export function useLogDescriptions() {
         return `Repository mirror ${metadata.verb} by Skopeo`;
       }
     },
+    create_proxy_cache_config: function (metadata: Metadata) {
+      return 'Created proxy cache for namespace';
+    },
+    delete_proxy_cache_config: function () {
+      return 'Deleted proxy cache for namespace';
+    },
   };
 
   return descriptions;
