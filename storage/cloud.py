@@ -11,11 +11,11 @@ from uuid import uuid4
 import boto3.session
 import botocore.config
 import botocore.exceptions
+from botocore.client import Config
 from botocore.credentials import (
     DeferredRefreshableCredentials,
     create_assume_role_refresher,
 )
-from botocore.client import Config
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
 from cryptography.hazmat.backends import default_backend
@@ -885,7 +885,7 @@ class GoogleCloudStorage(_CloudStorage):
             access_key,
             secret_key,
         )
-        
+
         self.boto_timeout = boto_timeout
 
         # Workaround for setting GCS cors at runtime with boto
