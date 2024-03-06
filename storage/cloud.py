@@ -867,13 +867,13 @@ class IBMCloudStorage(_CloudStorage):
 class GoogleCloudStorage(_CloudStorage):
     ENDPOINT_URL = "https://storage.googleapis.com"
 
-    def __init__(self, context, storage_path, access_key, secret_key, bucket_name):
+    def __init__(self, context, storage_path, access_key, secret_key, bucket_name, boto_timeout=60):
         # GCS does not support ListObjectV2
         self._list_object_version = _LIST_OBJECT_VERSIONS["v1"]
         upload_params = {}
         connect_kwargs = {
             "endpoint_url": GoogleCloudStorage.ENDPOINT_URL,
-            "config": Config(connect_timeout=600, read_timeout=600),
+            "config": Config(connect_timeout=boto_timeout, read_timeout=boto_timeout),
         }
         super(GoogleCloudStorage, self).__init__(
             context,
@@ -885,6 +885,8 @@ class GoogleCloudStorage(_CloudStorage):
             access_key,
             secret_key,
         )
+        
+        self.boto_timeout = boto_timeout
 
         # Workaround for setting GCS cors at runtime with boto
         cors_xml = """<?xml version="1.0" encoding="UTF-8"?>
