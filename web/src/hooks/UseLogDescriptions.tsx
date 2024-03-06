@@ -293,6 +293,24 @@ export function useLogDescriptions() {
     autoprune_tag_delete: function (metadata: Metadata) {
       return `Tag ${metadata.tag} pruned in repository ${metadata.namespace}/${metadata.repo} by ${metadata.performer}`;
     },
+    create_namespace_autoprune_policy: function (metadata: Metadata) {
+      return `Created namespace autoprune policy: "${metadata.method}:${metadata.value}" for namespace: ${metadata.namespace}`;
+    },
+    update_namespace_autoprune_policy: function (metadata: Metadata) {
+      return `Updated namespace autoprune policy: "${metadata.method}:${metadata.value}" for namespace: ${metadata.namespace}`;
+    },
+    delete_namespace_autoprune_policy: function (metadata: Metadata) {
+      return `Deleted namespace autoprune policy for namespace:${metadata.namespace}`;
+    },
+    create_repository_autoprune_policy: function (metadata: Metadata) {
+      return `Created repository autoprune policy: "${metadata.method}:${metadata.value}" for repository: ${metadata.namespace}/${metadata.repo}`;
+    },
+    update_repository_autoprune_policy: function (metadata: Metadata) {
+      return `Updated repository autoprune policy: "${metadata.method}:${metadata.value}" for repository: ${metadata.namespace}/${metadata.repo}`;
+    },
+    delete_repository_autoprune_policy: function (metadata: Metadata) {
+      return `Deleted repository autoprune policy for repository: ${metadata.namespace}/${metadata.repo}`;
+    },
     delete_tag: function (metadata: Metadata) {
       return `Tag ${metadata.tag} deleted in repository ${metadata.namespace}/${metadata.repo} by user ${metadata.username}`;
     },
