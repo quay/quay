@@ -255,6 +255,50 @@ describe('Repository Builds', () => {
     }).as('getOrg');
   });
 
+  it('Tab does not appear if repo is mirror', () => {
+    cy.fixture('testrepo.json').then((repoFixture) => {
+      repoFixture.state = 'MIRROR';
+      cy.intercept(
+        'GET',
+        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        repoFixture,
+      ).as('getRepo');
+    });
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
+      {
+        page: 1,
+        has_additional: false,
+        tags: [],
+      },
+    ).as('getTag');
+    cy.visit('/repository/testorg/testrepo');
+    cy.contains('Builds').should('not.exist');
+  });
+
+  it('Tab does not appear if repo is readonly', () => {
+    cy.fixture('testrepo.json').then((repoFixture) => {
+      repoFixture.state = 'READONLY';
+      cy.intercept(
+        'GET',
+        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        repoFixture,
+      ).as('getRepo');
+    });
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
+      {
+        page: 1,
+        has_additional: false,
+        tags: [],
+      },
+    ).as('getTag');
+    cy.visit('/repository/testorg/testrepo');
+    cy.contains('Builds').should('not.exist');
+  });
+
   it('Shows empty list', () => {
     cy.intercept('GET', '/api/v1/repository/testorg/testrepo/build/?limit=10', {
       builds: [],
