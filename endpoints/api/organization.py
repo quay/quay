@@ -41,7 +41,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.api.user import PrivateRepositories, User
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import InvalidRequest, NotFound, Unauthorized
 from proxy import Proxy, UpstreamRegistryError
 from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
@@ -622,7 +622,7 @@ class ApplicationInformation(ApiResource):
         }
 
 
-def app_view(application):
+def app_view(application, access_token):
     is_admin = AdministerOrganizationPermission(application.organization.username).can()
     client_secret = None
     if is_admin:
@@ -638,6 +638,7 @@ def app_view(application):
         "client_secret": client_secret,
         "redirect_uri": application.redirect_uri if is_admin else None,
         "avatar_email": application.avatar_email if is_admin else None,
+        "access_token": access_token if is_admin else None,
     }
 
 
@@ -676,6 +677,14 @@ class OrganizationApplications(ApiResource):
                     "type": "string",
                     "description": "The e-mail address of the avatar to use for the application",
                 },
+                "local": {
+                    "type": "boolean",
+                    "description": "Checks whether we should treat the created application as a local app.",
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "The list of scopes that will be applied to the application.",
+                },
             },
         },
     }
@@ -694,7 +703,7 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             applications = model.oauth.list_applications_for_org(org)
-            return {"applications": [app_view(application) for application in applications]}
+            return {"applications": [app_view(application, None) for application in applications]}
 
         raise Unauthorized()
 
@@ -713,22 +722,67 @@ class OrganizationApplications(ApiResource):
                 raise NotFound()
 
             app_data = request.get_json()
-            application = model.oauth.create_application(
-                org,
-                app_data["name"],
-                app_data.get("application_uri", ""),
-                app_data.get("redirect_uri", ""),
-                description=app_data.get("description", ""),
-                avatar_email=app_data.get("avatar_email", None),
+            logger.debug(
+                "Application will be created based on the following data: {}".format(app_data)
             )
 
-            app_data.update(
-                {"application_name": application.name, "client_id": application.client_id}
-            )
+            # Check if the app is considered local.
+            if app_data.get("local", False):
+                # If a scope is added to the JSON request:
+                if app_data.get("scope") is not None:
+                    scope = app_data.get("scope")
+                    # We need to validate the scope string.
+                    # If the decoded string is 0, raise exception.
+                    if not scopes.validate_scope_string(scope):
+                        logger.debug(
+                            "Failed to create appllication: invalid scope requested: '{}'.".format(
+                                scope
+                            )
+                        )
+                        raise InvalidRequest(
+                            "Could not create application: Invalid or empty scope provided."
+                        )
+                    application = model.oauth.create_application(
+                        org,
+                        app_data["name"],
+                        app_data.get("application_uri", ""),
+                        app_data.get("redirect_uri", ""),
+                        description=app_data.get("description", ""),
+                        avatar_email=app_data.get("avatar_email", None),
+                    )
+                    app_data.update(
+                        {"application_name": application.name, "client_id": application.client_id}
+                    )
+                    user = get_authenticated_user()
+                    # Token expiry set to 10 years, in seconds
+                    created, token = model.oauth.create_user_access_token(
+                        user, app_data["client_id"], scope, None, 60 * 60 * 24 * 365 * 10
+                    )
 
-            log_action("create_application", orgname, app_data)
+                    log_action("create_application", orgname, app_data)
+                    return app_view(application, token)
+                # If scopes are missing, raise exception
+                else:
+                    logger.debug("Failed to create application: missing scopes.")
+                    raise InvalidRequest("Could not create application: missing scopes in request.")
+            else:
+                # Application is not considered local, so just create it and return.
+                application = model.oauth.create_application(
+                    org,
+                    app_data["name"],
+                    app_data.get("application_uri", ""),
+                    app_data.get("redirect_uri", ""),
+                    description=app_data.get("description", ""),
+                    avatar_email=app_data.get("avatar_email", None),
+                )
 
-            return app_view(application)
+                app_data.update(
+                    {"application_name": application.name, "client_id": application.client_id}
+                )
+
+                log_action("create_application", orgname, app_data)
+
+                return app_view(application, None)
         raise Unauthorized()
 
 
@@ -787,7 +841,7 @@ class OrganizationApplicationResource(ApiResource):
             if not application:
                 raise NotFound()
 
-            return app_view(application)
+            return app_view(application, None)
 
         raise Unauthorized()
 
@@ -823,7 +877,7 @@ class OrganizationApplicationResource(ApiResource):
 
             log_action("update_application", orgname, app_data)
 
-            return app_view(application)
+            return app_view(application, None)
         raise Unauthorized()
 
     @require_scope(scopes.ORG_ADMIN)
@@ -885,7 +939,7 @@ class OrganizationApplicationResetClientSecret(ApiResource):
                 {"application_name": application.name, "client_id": client_id},
             )
 
-            return app_view(application)
+            return app_view(application, None)
         raise Unauthorized()
 
 
