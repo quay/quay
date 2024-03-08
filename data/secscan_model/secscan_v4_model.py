@@ -491,7 +491,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                     indexer_version=IndexerVersion.V4,
                     metadata_json={},
                 ).on_conflict(
-                    conflict_target=[ManifestSecurityStatus.manifest],
                     preserve=[
                         ManifestSecurityStatus.repository,
                         ManifestSecurityStatus.error_json,
