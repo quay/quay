@@ -12,6 +12,30 @@
         "kind": "robot"
       },
       "invited": false
+    },
+    {
+      "name": "teamsyncorg+test_robot",
+      "kind": "user",
+      "is_robot": true,
+      "avatar": {
+        "name": "teamsyncorg+test_robot",
+        "hash": "6fa2235019080ab57555e22663913ce47da02ca8316eb0f42b85e0311d36f365",
+        "color": "#c7c7c7",
+        "kind": "robot"
+      },
+      "invited": false
+    },
+    {
+      "name": "admin",
+      "kind": "user",
+      "is_robot": false,
+      "avatar": {
+        "name": "admin",
+        "hash": "5a3393d91c84c8f057c08f3b494fe80d26a7df2257275fc9b0d136aaf12a8ba7",
+        "color": "#b5cf6b",
+        "kind": "user"
+      },
+      "invited": false
     }
   ],
   "can_edit": true,
