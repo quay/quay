@@ -253,18 +253,6 @@ export default function RepositoryDetails() {
                     />
                   </Tab>
                   <Tab
-                    eventKey={TabIndex.Settings}
-                    title={<TabTitleText>Settings</TabTitleText>}
-                    isHidden={!repoDetails?.can_admin}
-                  >
-                    <Settings
-                      org={organization}
-                      repo={repository}
-                      setDrawerContent={setDrawerContent}
-                      repoDetails={repoDetails}
-                    />
-                  </Tab>
-                  <Tab
                     eventKey={TabIndex.Logs}
                     title={<TabTitleText>Logs</TabTitleText>}
                   >
@@ -279,6 +267,7 @@ export default function RepositoryDetails() {
                     title={<TabTitleText>Builds</TabTitleText>}
                     isHidden={
                       config?.features.BUILD_SUPPORT != true ||
+                      repoDetails?.state !== 'NORMAL' ||
                       (!repoDetails?.can_write && !repoDetails?.can_admin)
                     }
                   >
@@ -286,6 +275,18 @@ export default function RepositoryDetails() {
                       org={organization}
                       repo={repository}
                       setupTriggerUuid={setupBuildTriggerUuid}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.Settings}
+                    title={<TabTitleText>Settings</TabTitleText>}
+                    isHidden={!repoDetails?.can_admin}
+                  >
+                    <Settings
+                      org={organization}
+                      repo={repository}
+                      setDrawerContent={setDrawerContent}
                       repoDetails={repoDetails}
                     />
                   </Tab>
