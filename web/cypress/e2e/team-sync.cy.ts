@@ -198,4 +198,23 @@ describe('OIDC Team Sync', () => {
     cy.contains('button', 'Confirm').click();
     cy.contains('Successfully removed team synchronization');
   });
+
+  it('Verify delete option for users and robot accounts', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',
+      {
+        fixture: 'teamsynced-members-superuser.json',
+      },
+    ).as('getSycedTeamMembers');
+    cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
+    cy.wait('@getSycedTeamMembers');
+    cy.get('button[data-testid="teamsyncorg+robotacct-delete-icon"]').should(
+      'exist',
+    );
+    cy.get('button[data-testid="teamsyncorg+test_robot-delete-icon"]').should(
+      'exist',
+    );
+    cy.get('button[data-testid="admin-delete-icon"]').should('not.exist');
+  });
 });
