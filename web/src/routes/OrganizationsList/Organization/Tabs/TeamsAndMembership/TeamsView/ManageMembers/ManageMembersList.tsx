@@ -344,6 +344,16 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     }
   };
 
+  const displayDeleteIcon = (teamAccountType) => {
+    if (pageInReadOnlyMode) {
+      if (teamAccountType == 'Robot account') {
+        return true;
+      }
+      return false;
+    }
+    return true;
+  };
+
   const teamDescriptionComponent = (
     <ToolbarContent className="team-description-padding">
       <Flex>
@@ -633,7 +643,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                     if={
                       config?.registry_state !== 'readonly' &&
                       organization.is_admin &&
-                      !pageInReadOnlyMode
+                      displayDeleteIcon(getAccountTypeForMember(teamMember))
                     }
                   >
                     <Td>
