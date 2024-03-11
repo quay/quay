@@ -42,9 +42,9 @@ from endpoints.v2.errors import (
     InvalidRequest,
     LayerTooLarge,
     NameUnknown,
+    PushesDisabled,
     QuotaExceeded,
     Unsupported,
-    PushesDisabled,
 )
 from util.cache import cache_control
 from util.names import parse_namespace_repository

@@ -878,4 +878,4 @@ class DefaultConfig(ImmutableConfig):
 
     # Disable pushes while allowing other registry operations.
     # Defaults to "false".
-    DISABLE_PUSHES: False
+    DISABLE_PUSHES = False
