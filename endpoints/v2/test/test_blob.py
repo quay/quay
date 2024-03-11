@@ -514,3 +514,43 @@ def test_blob_upload_offset(client, app):
         headers=headers,
         body="something",
     )
+
+
+def test_blob_upload_when_pushes_disabled(client, app):
+    user = model.user.get_user("devtable")
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+    token = generate_bearer_token(
+        realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+    )
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+    }
+
+    # Create a blob upload request.
+    params = {
+        "repository": "devtable/simple",
+    }
+
+    # Disable pushes before conducting the call
+    realapp.config["DISABLE_PUSHES"] = True
+    conduct_call(
+        client,
+        "v2.start_blob_upload",
+        url_for,
+        "POST",
+        params,
+        expected_code=405,
+        headers=headers,
+    )
+
+    # re-enable pushes, since the setting persists across all tests
+    realapp.config["DISABLE_PUSHES"] = False

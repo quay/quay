@@ -44,6 +44,7 @@ from endpoints.v2.errors import (
     NameUnknown,
     QuotaExceeded,
     Unsupported,
+    PushesDisabled,
 )
 from util.cache import cache_control
 from util.names import parse_namespace_repository
@@ -149,6 +150,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
     """
     Attempts to mount a blob requested by the user from another repository.
     """
+
     logger.debug("Got mount request for blob `%s` into `%s`", mount_blob_digest, repository_ref)
     from_repo = request.args.get("from", None)
     if from_repo is None:
@@ -246,6 +248,10 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 def start_blob_upload(namespace_name, repo_name):
+
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Cannot push images, pushes disabled on registry.")
+        raise PushesDisabled
 
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -347,6 +353,10 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 def upload_chunk(namespace_name, repo_name, upload_uuid):
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Cannot push images, pushes disabled on registry.")
+        raise PushesDisabled
+
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
@@ -389,6 +399,11 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
+    # Check if pushes are disabled on the registry
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Cannot push images, pushes disabled on registry.")
+        raise PushesDisabled
+
     # Ensure the digest is present before proceeding.
     digest = request.args.get("digest", None)
     if digest is None:
