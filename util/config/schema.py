@@ -1447,5 +1447,10 @@ CONFIG_SCHEMA = {
             "description": "Number of seconds to wait after a write operation in the UI",
             "x-example": 3,
         },
+        "DISABLE_PUSHES": {
+            "type": "boolean",
+            "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
+            "x-example": False,
+        },
     },
 }
