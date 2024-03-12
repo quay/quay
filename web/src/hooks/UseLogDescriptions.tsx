@@ -595,7 +595,7 @@ export function useLogDescriptions() {
     },
     delete_proxy_cache_config: function () {
       return 'Deleted proxy cache for namespace';
-
+    },
     enable_team_sync: function (metadata: Metadata) {
       return `Team syncing enabled for ${metadata.team}`;
     },
