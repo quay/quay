@@ -28,6 +28,14 @@ ALLOWED_ALGORITHMS = ["RS256", "RS384"]
 JWT_CLOCK_SKEW_SECONDS = 30
 
 
+class PasswordGrantException(Exception):
+    """
+    Exception raised when authentication through Password Credentials Grant fails.
+    """
+
+    pass
+
+
 class DiscoveryFailureException(Exception):
     """
     Exception raised when OIDC discovery fails.
@@ -319,6 +327,43 @@ class OIDCLoginService(OAuthService):
         # Retrieve the public key from the cache. If the cache does not contain the public key,
         # it will internally call _load_public_key to retrieve it and then save it.
         return self._public_key_cache[kid]
+
+    def password_grant_for_login(self, username, password):
+        """
+        OIDC authentication via Password Credentials Grant
+        """
+        payload = {
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "client_id": self.client_id(),
+            "client_secret": self.client_secret(),
+            "scope": " ".join(self.get_login_scopes()),
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        token_url = self.token_endpoint().to_url()
+        response = self._http_client.post(token_url, data=payload, headers=headers, timeout=5)
+
+        if response.status_code // 100 != 2:
+            logger.debug("Got get_access_token response %s", response.text)
+            raise PasswordGrantException(
+                "Got non-2XX response for code exchange: %s" % response.status_code
+            )
+            return None
+
+        json_data = response.json()
+        if not json_data:
+            raise PasswordGrantException("Got non-JSON response for password credentials grant")
+            return None
+
+        if not json_data.get("access_token", None):
+            raise PasswordGrantException(
+                "Failed to read access_token in response for password credentials grant"
+            )
+            return None
+
+        return json_data
 
 
 class _PublicKeyCache(TTLCache):
