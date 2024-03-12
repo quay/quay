@@ -51,7 +51,7 @@ class OIDCUsers(FederatedUsers):
                     response = service.password_grant_for_login(username_or_email, password)
 
                     if response is None:
-                        return (None, f"External OIDC Group Sync: Got no user info")
+                        return (None, "External OIDC Group Sync: Got no user info")
 
                     user_info = service.get_user_info(
                         service._http_client, response["access_token"]

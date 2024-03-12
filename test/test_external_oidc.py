@@ -219,13 +219,14 @@ class OIDCAuthTests(unittest.TestCase):
         user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
         assert user_teams_before_sync == user_teams_after_sync
 
-    def test_verify_credentials(self):
-        result, error_msg = self.oidc_instance.verify_credentials("username", "password")
+    def test_missing_verify_credentials(self):
+        result, error_msg = self.oidc_instance.verify_credentials(None, "password")
         assert result is None
-        assert (
-            error_msg
-            == "Unsupported login option. Please sign in with the configured oidc provider"
-        )
+        assert error_msg == "Missing username or email."
+
+        result, error_msg = self.oidc_instance.verify_credentials("username", None)
+        assert result is None
+        assert error_msg == "Anonymous binding not allowed."
 
     def test_query_users(self):
         result, service, error_msg = self.oidc_instance.query_users("some_query_here", None)
