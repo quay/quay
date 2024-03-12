@@ -214,6 +214,11 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Pushes to the registry are disabled; skipping")
+        while True:
+            time.sleep(100000)
+
     if features.STORAGE_REPLICATION:
         for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
             if storage_type == "LocalStorage":

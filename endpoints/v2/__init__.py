@@ -28,6 +28,7 @@ from endpoints.v2.errors import (
     Unauthorized,
     Unsupported,
     V2RegistryException,
+    PushesDisabled,
 )
 from proxy import UpstreamRegistryError
 from util.http import abort
@@ -52,7 +53,10 @@ def handle_registry_v2_exception(error):
 
 @v2_bp.app_errorhandler(ReadOnlyModeException)
 def handle_readonly(ex):
-    return _format_error_response(ReadOnlyMode())
+    if app.config.get("REGISTRY_STATE") == "readonly":
+        return _format_error_response(ReadOnlyMode())
+    if app.config.get("PUSHES_DISABLED", False):
+        return _format_error_response(PushesDisabled())
 
 
 @v2_bp.app_errorhandler(UpstreamRegistryError)

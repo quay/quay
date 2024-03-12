@@ -185,13 +185,17 @@ def check_readonly(func):
             return func(*args, **kwargs)
 
         # Skip if not in read only mode.
-        if app.config.get("REGISTRY_STATE", "normal") != "readonly":
+        if (
+            app.config.get("REGISTRY_STATE", "normal") != "readonly"
+            or app.config.get("DISABLE_PUSHES", False) == False
+        ):
             return func(*args, **kwargs)
 
         # Skip if readonly access is allowed.
         if hasattr(func, "__readonly_call_allowed"):
             return func(*args, **kwargs)
 
+        # Raise if complete registry is in read-only mode
         raise ReadOnlyModeException()
 
     return wrapper
