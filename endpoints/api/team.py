@@ -307,6 +307,7 @@ class OrganizationTeamSyncing(ApiResource):
 
             # Set the team's syncing config.
             model.team.set_team_syncing(team, authentication.federated_service, config)
+            log_action("enable_team_sync", orgname, {"team": teamname})
 
             if app.config["AUTHENTICATION_TYPE"] == "OIDC":
                 # delete existing team members, team membership will be synced with OIDC group
@@ -329,6 +330,7 @@ class OrganizationTeamSyncing(ApiResource):
                 raise NotFound()
 
             model.team.remove_team_syncing(orgname, teamname)
+            log_action("disable_team_sync", orgname, {"team": teamname})
             return team_view(orgname, team)
 
         raise Unauthorized()
