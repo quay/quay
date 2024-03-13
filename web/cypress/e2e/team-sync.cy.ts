@@ -101,7 +101,7 @@ describe('OIDC Team Sync', () => {
     cy.contains(
       'This team is synchronized with a group in oidc and its user membership is therefore read-only.',
     ).should('exist');
-    cy.contains('Directory Synchronization Config').should('exist');
+    cy.contains('Team Synchronization Config').should('exist');
     cy.contains('Bound to group').should('exist');
     cy.contains('testteam_teamsync_group').should('exist');
     cy.contains('Last Updated').should('exist');
@@ -122,7 +122,7 @@ describe('OIDC Team Sync', () => {
     cy.contains(
       'This team is synchronized with a group in oidc and its user membership is therefore read-only.',
     ).should('exist');
-    cy.contains('Directory Synchronization Config').should('not.exist');
+    cy.contains('Team Synchronization Config').should('not.exist');
     cy.contains('Bound to group').should('not.exist');
     cy.contains('org:team').should('not.exist');
     cy.contains('Last Updated').should('not.exist');
