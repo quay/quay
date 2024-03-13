@@ -446,7 +446,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           onClick={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
           key="team-sync-btn"
         >
-          Enable Directory Sync
+          Enable Team Sync
         </Button>,
       );
     }
@@ -479,7 +479,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               isExpanded={!teamSyncConfigExpanded}
               id="team-sync-config-toggle"
             >
-              Directory Synchronization Config
+              Team Synchronization Config
             </AccordionToggle>
             <AccordionContent
               id="team-sync-config-toggle"
@@ -512,8 +512,8 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     <OIDCTeamSyncModal
       isModalOpen={isOIDCTeamSyncModalOpen}
       toggleModal={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
-      titleText="Enable OIDC Directory Syncing"
-      primaryText="Directory synchronization allows this team's user membership to be backed by a group in OIDC."
+      titleText="Enable OIDC Team Sync"
+      primaryText="Team synchronization allows this team's user membership to be backed by a group in OIDC."
       onConfirmSync={(groupName) =>
         enableTeamSync(groupName, teamCanSync?.service)
       }

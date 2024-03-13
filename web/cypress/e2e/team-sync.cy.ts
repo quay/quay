@@ -41,7 +41,7 @@ describe('OIDC Team Sync', () => {
   it('Validate OIDC group name', () => {
     cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
     cy.get('#team-members-toolbar').within(() =>
-      cy.get('button:contains("Enable Directory Sync")').click(),
+      cy.get('button:contains("Enable Team Sync")').click(),
     );
     cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
@@ -67,7 +67,7 @@ describe('OIDC Team Sync', () => {
     cy.get('button:contains("Enable Sync")').should('not.be.disabled');
   });
 
-  it('Enable directory sync', () => {
+  it('Enable team sync', () => {
     cy.intercept(
       'POST',
       '/api/v1/organization/teamsyncorg/team/testteam/syncing',
@@ -77,7 +77,7 @@ describe('OIDC Team Sync', () => {
     ).as('getTeamSyncSuccess');
     cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
     cy.get('#team-members-toolbar').within(() =>
-      cy.get('button:contains("Enable Directory Sync")').click(),
+      cy.get('button:contains("Enable Team Sync")').click(),
     );
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
@@ -182,7 +182,7 @@ describe('OIDC Team Sync', () => {
       '/organization/teamsyncorg/teams/testempty?tab=Teamsandmembership',
     );
     cy.wait('@getTeamMembers');
-    cy.contains('button', 'Enable Directory Sync').click();
+    cy.contains('button', 'Enable Team Sync').click();
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
       .type('org_team_group');
