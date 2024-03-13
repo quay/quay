@@ -102,9 +102,9 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             right: 500, // Adjusted to accommodate legend
             top: 50,
           }}
+          domainPadding={{x: 5 * Object.keys(logData).length}}
           height={400}
           width={1250}
-          domainPadding={{x: 40}}
           scale={{x: 'time', y: 'linear'}}
         >
           <ChartAxis fixLabelOverlap />
