@@ -25,11 +25,11 @@ from endpoints.api import (
 )
 from endpoints.decorators import (
     anon_protect,
+    check_pushes_disabled,
     check_readonly,
     disallow_for_account_recovery_mode,
     inject_registry_model,
     parse_repository_name,
-    check_pushes_disabled,
 )
 
 from endpoints.metrics import image_pulls, image_pushes
