@@ -76,7 +76,9 @@ def _get_user_repo_permissions(
     UserThroughTeam = User.alias()
 
     base_query = (
-        RepositoryPermission.select(RepositoryPermission, Role, Repository, Namespace)
+        RepositoryPermission.select(
+            RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=True
+        )
         .join(Role)
         .switch(RepositoryPermission)
         .join(Repository)

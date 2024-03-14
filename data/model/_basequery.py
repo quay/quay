@@ -56,7 +56,7 @@ def reduce_as_tree(queries_to_reduce):
 
 def get_existing_repository(namespace_name, repository_name, for_update=False, kind_filter=None):
     query = (
-        Repository.select(Repository, Namespace)
+        Repository.select(Repository, Namespace, can_use_read_replica=True)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
         .where(Namespace.username == namespace_name, Repository.name == repository_name)
         .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
