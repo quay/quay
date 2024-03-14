@@ -188,7 +188,7 @@ describe('Usage Logs Export', () => {
     cy.contains('Logs').click();
 
     cy.contains('Hide Chart').click();
-    cy.get('[class=pf-v5-c-chart]').should('not.be.visible');
+    cy.get('[class=pf-v5-c-chart]').should('not.exist');
 
     cy.contains('Show Chart').click();
     cy.get('[class=pf-v5-c-chart]').should('be.visible');
