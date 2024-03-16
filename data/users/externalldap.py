@@ -443,7 +443,7 @@ class LDAPUsers(FederatedUsers):
                 logger.warning(
                     f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
                 )
-            return (False, args.get('info', args.get('desc')))
+            return (False, args.get("info", args.get("desc")))
         except ldap.LDAPError as lde:
             logger.exception("Exception when trying to health check LDAP")
             return (False, str(lde))
