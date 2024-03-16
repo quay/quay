@@ -131,6 +131,35 @@ class LocalHealthCheck(HealthCheck):
         return ["LocalHealthCheck"]
 
 
+class LDAPHealthCheck(HealthCheck):
+    def __init__(self, app, config_provider, instance_keys):
+        super(LDAPHealthCheck, self).__init__(
+            app, config_provider, instance_keys, ["redis", "storage"]
+        )
+
+    @classmethod
+    def check_names(cls):
+        return ["LDAPHealthCheck"]
+
+    def calculate_overall_health(self, service_statuses, skip=None, notes=None):
+        data, retcode = super(LDAPHealthCheck, self).calculate_overall_health(
+            service_statuses, skip=skip, notes=skip
+        )
+
+        logger.error(f"calculate_overall_health: data {data}")
+        is_healthy = True
+        if all([retcode != 200, data.get("services", {}).get("auth", True) == False]):
+            if list(filter(lambda x: x[1] == False, data.get("services").items())) != [
+                ("auth", False)
+            ]:
+                # more than auth is state False set error response
+                is_healthy = False
+            else:
+                is_healthy = True
+
+        return (data, 200 if is_healthy else 503)
+
+
 class RDSAwareHealthCheck(HealthCheck):
     def __init__(
         self,
