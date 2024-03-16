@@ -84,6 +84,9 @@ def _check_auth(app):
     """
     Returns the status of the auth engine, as accessed from this instance.
     """
+    if app.config.get("AUTHENTICATION_TYPE", "Database") == "LDAP":
+        # do not fail Quay if LDAP is down as tokens and OIDC will still be working
+        return (True, authentication.ping()[-1])
     return authentication.ping()
 
 
