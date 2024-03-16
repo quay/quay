@@ -266,7 +266,7 @@ class LDAPUsers(FederatedUsers):
                 logger.warning(
                     f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
                 )
-            return (None, "Invalid username or password.")
+            return (None, "Username not found.")
         except ldap.LDAPError:
             logger.debug("LDAP search exception")
             return (None, "Username not found")
