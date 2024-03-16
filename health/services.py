@@ -80,21 +80,11 @@ def _check_storage(app):
         return (False, "Storage check failed with exception %s" % ex)
 
 
-def _check_auth(for_warning):
+def _check_auth(app):
     """
     Returns the status of the auth engine, as accessed from this instance.
     """
-
-    def _check_auth_ldap(app):
-        authstate = authentication.ping()
-        if all([not for_warning, app.config.get("AUTHENTICATION_TYPE", "Database") == "LDAP"]):
-            # do not fail Quay if LDAP is down as tokens and OIDC will still be working
-            state = True
-        else:
-            state = authstate[0]
-        return (state, authstate[-1])
-
-    return _check_auth_ldap
+    return authentication.ping()
 
 
 def _check_service_key(app):
@@ -172,19 +162,17 @@ _INSTANCE_SERVICES = {
     "web_gunicorn": _check_gunicorn("_internal_ping"),
     "service_key": _check_service_key,
     "disk_space": _check_disk_space(for_warning=False),
-    "auth": _check_auth(for_warning=False),
 }
 
 _GLOBAL_SERVICES = {
     "database": _check_database,
     "redis": _check_redis,
     "storage": _check_storage,
-    "auth": _check_auth(for_warning=False),
+    "auth": _check_auth,
 }
 
 _WARNING_SERVICES = {
     "disk_space_warning": _check_disk_space(for_warning=True),
-    "auth": _check_auth(for_warning=True),
 }
 
 
