@@ -554,18 +554,18 @@ class TestLDAP(unittest.TestCase):
         secondary_user_rdns = ["ou=otheremployees"]
 
         ldap = LDAPUsers(
-                "ldap://localhost",
-                base_dn,
-                admin_dn,
-                admin_passwd,
-                user_rdn,
-                uid_attr,
-                email_attr,
-                memberof_attr,
-                secondary_user_rdns=secondary_user_rdns,
-                requires_email=False,
-                timeout=5,
-            )
+            "ldap://localhost",
+            base_dn,
+            admin_dn,
+            admin_passwd,
+            user_rdn,
+            uid_attr,
+            email_attr,
+            memberof_attr,
+            secondary_user_rdns=secondary_user_rdns,
+            requires_email=False,
+            timeout=5,
+        )
         (response, federated_id, error_message) = ldap.query_users("cool")
         self.assertEqual(None, response)
         self.assertEqual("Username not found", error_message)
