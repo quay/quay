@@ -568,7 +568,7 @@ class TestLDAP(unittest.TestCase):
         )
         (response, federated_id, error_message) = ldap.query_users("cool")
         self.assertEqual(None, response)
-        self.assertEqual("Username not found", error_message)
+        self.assertEqual("Invalid username or password.", error_message)
 
     def test_iterate_group_members(self):
         with mock_ldap() as ldap:
