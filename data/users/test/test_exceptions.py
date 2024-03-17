@@ -218,6 +218,17 @@ def test_ldap_warning_exception_verify_credentials():
 def test_ldap_catchall_exception_verify_credentials():
     # reset content from log
     exceptHandler.content = []  # type: List[str]
+    user = LDAPUsers(
+        ldap_uri="ldaps://localhost",
+        base_dn=["dc=example", "dc=com"],
+        admin_dn="cn=invalid,dc=example,dc=com",
+        admin_passwd="stillinvalid",
+        user_rdn="ou=people,dc=example,dc=com",
+        uid_attr="uid",
+        email_attr="mail",
+        timeout=1,
+        network_timeout=1,
+    )
 
     def raiseException(ex):
         raise ex("debuglog level only")
