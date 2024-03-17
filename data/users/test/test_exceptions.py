@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 import ldap
 
@@ -25,7 +26,7 @@ logger.addHandler(exceptHandler)
 
 def test_ldap_user_search():
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
     user = LDAPUsers(
         ldap_uri="invalid",
         base_dn=["dc=example", "dc=com"],
@@ -46,12 +47,12 @@ def test_ldap_user_search():
     assert user._ldap_user_search("someone") == (None, "Invalid username or password.")
     assert exceptHandler.content[0] == "SERVER_DOWN -1 Can't contact LDAP server"
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
 
 
 def test_ldap_warning_exceptions_user_search():
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
     for exception in (
         (ldap.AUTH_UNKNOWN, -6),
         (ldap.CONFIDENTIALITY_REQUIRED, 13),
@@ -86,7 +87,7 @@ def test_ldap_warning_exceptions_user_search():
         assert user._ldap_user_search("someone") == (None, "Invalid username or password.")
         assert exceptHandler.content[0] == f"{exception[0].__name__} {exception[1]} test"
         # reset content from log
-        exceptHandler.content = []
+        exceptHandler.content = []  # type: List[str]
 
 
 def test_ldap_warning_exceptions_ping():
@@ -126,12 +127,13 @@ def test_ldap_warning_exceptions_ping():
         assert user.ping() == (False, "test")
         assert exceptHandler.content[0] == f"{exception[0].__name__} {exception[1]} test"
         # reset content from log
-        exceptHandler.content = []
+        exceptHandler.content = []  # type: List[str]
 
 
 def test_ldap_warning_exception_at_least_one_user_exists():
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
+
     for exception in (
         (ldap.AUTH_UNKNOWN, -6),
         (ldap.CONFIDENTIALITY_REQUIRED, 13),
@@ -166,12 +168,13 @@ def test_ldap_warning_exception_at_least_one_user_exists():
         assert user.at_least_one_user_exists() == (None, "LDAP Admin dn or password is invalid")
         assert exceptHandler.content[0] == f"{exception[0].__name__} {exception[1]} test"
         # reset content from log
-        exceptHandler.content = []
+        exceptHandler.content = []  # type: List[str]
 
 
 def test_ldap_warning_exception_verify_credentials():
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
+
     for exception in (
         (ldap.AUTH_UNKNOWN, -6),
         (ldap.CONFIDENTIALITY_REQUIRED, 13),
@@ -209,12 +212,12 @@ def test_ldap_warning_exception_verify_credentials():
         )
         assert exceptHandler.content[0] == f"{exception[0].__name__} {exception[1]} test"
         # reset content from log
-        exceptHandler.content = []
+        exceptHandler.content = []  # type: List[str]
 
 
 def test_ldap_catchall_exception_verify_credentials():
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
 
     def raiseException(ex):
         raise ex("debuglog level only")
@@ -226,4 +229,4 @@ def test_ldap_catchall_exception_verify_credentials():
     assert user.verify_credentials("someone", "changeme") == (None, "Invalid username or password.")
     assert exceptHandler.content[0] == "debuglog level only"
     # reset content from log
-    exceptHandler.content = []
+    exceptHandler.content = []  # type: List[str]
