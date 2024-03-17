@@ -2,7 +2,6 @@ import logging
 from typing import List
 
 import ldap
-import pytest
 
 from data.users.externalldap import LDAPUsers, logger
 
@@ -236,7 +235,7 @@ def test_ldap_catchall_exception_verify_credentials():
 
     user._ldap.get_connection = lambda: raiseException(IOError)
     assert user.verify_credentials("someone", "changeme") == (None, "Invalid username or password.")
-    assert exceptHandler.content != []
+    assert exceptHandler.content == []
     logger.setLevel(logging.DEBUG)
     assert user.verify_credentials("someone", "changeme") == (None, "Invalid username or password.")
     assert exceptHandler.content[0] == "debuglog level only"
