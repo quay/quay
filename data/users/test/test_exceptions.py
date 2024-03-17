@@ -2,6 +2,7 @@ import logging
 from typing import List
 
 import ldap
+import pytest
 
 from data.users.externalldap import LDAPUsers, logger
 
