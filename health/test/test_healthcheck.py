@@ -1,12 +1,12 @@
 import logging
-from typing import List, Dict
+from typing import Dict, List
+
 import pytest
 
-from health.healthcheck import LDAPHealthCheck
-import health.services 
 import health.healthcheck
-
+import health.services
 from app import app
+from health.healthcheck import LDAPHealthCheck
 
 INSTANCE_SERVICES = {
     "registry_gunicorn": (True, ""),
@@ -28,19 +28,25 @@ WARNING_SERVICES = {
 
 app.config.update({"TESTING": True})
 
+
 class ConfigProvider(object):
     provider_id = "provider_id"
+
 
 class InstanceKeys(object):
     local_key_id = "local_key_id"
 
+
 class SuperUserPermission(object):
-    def can(self):  return True
+    def can(self):
+        return True
+
 
 def _check_all_services() -> Dict:
     services = dict(INSTANCE_SERVICES)
     services.update(GLOBAL_SERVICES)
     return services
+
 
 def _check_warning_services() -> Dict:
     return WARNING_SERVICES
@@ -50,22 +56,23 @@ health.services.check_all_services = _check_all_services
 health.services.check_warning_services = _check_warning_services
 health.healthcheck.SuperUserPermission = SuperUserPermission
 
-def test_healthcheck_allgood(): 
+
+def test_healthcheck_allgood():
     with app.app_context():
         hc = LDAPHealthCheck(app, ConfigProvider(), InstanceKeys())
-        assert hc.check_names() == ['LDAPHealthCheck']
-        assert hc.instance_skips == ['redis', 'storage']
+        assert hc.check_names() == ["LDAPHealthCheck"]
+        assert hc.instance_skips == ["redis", "storage"]
         states, code = hc.calculate_overall_health(_check_all_services())
         assert code == 200
-        assert set(states['services'].values()) == set([True])
+        assert set(states["services"].values()) == set([True])
+
 
 def test_healtcheck_failauth():
     with app.app_context():
         hc = LDAPHealthCheck(app, ConfigProvider(), InstanceKeys())
-        assert hc.check_names() == ['LDAPHealthCheck']
-        assert hc.instance_skips == ['redis', 'storage']
+        assert hc.check_names() == ["LDAPHealthCheck"]
+        assert hc.instance_skips == ["redis", "storage"]
         GLOBAL_SERVICES["auth"] = (False, "failing")
         states, code = hc.calculate_overall_health(_check_all_services())
         assert code == 200
-        assert set(states['services'].values()) == set([True, False])
-
+        assert set(states["services"].values()) == set([True, False])
