@@ -146,7 +146,6 @@ class LDAPHealthCheck(HealthCheck):
             service_statuses, skip=skip, notes=skip
         )
 
-        logger.error(f"calculate_overall_health: data {data}")
         is_healthy = True
         if all([retcode != 200, data.get("services", {}).get("auth", True) == False]):
             if list(filter(lambda x: x[1] == False, data.get("services").items())) != [
