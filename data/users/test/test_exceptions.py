@@ -7,7 +7,7 @@ from data.users.externalldap import LDAPUsers, logger
 
 class ExceptionLogHandler(logging.StreamHandler):
     on_same_line = False
-    content = []
+    content = [] # type: List[str]
 
     def emit(self, record):
         try:
