@@ -52,9 +52,9 @@ def _check_warning_services() -> Dict:
     return WARNING_SERVICES
 
 
-health.services.check_all_services = _check_all_services
-health.services.check_warning_services = _check_warning_services
-health.healthcheck.SuperUserPermission = SuperUserPermission
+health.services.check_all_services = _check_all_services  # type: ignore
+health.services.check_warning_services = _check_warning_services  # type: ignore
+health.healthcheck.SuperUserPermission = SuperUserPermission  # type: ignore
 
 
 def test_healthcheck_allgood():
