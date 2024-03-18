@@ -1,13 +1,79 @@
+import json
 import unittest
+import urllib.parse
 
 import pytest
+from httmock import HTTMock, urlmatch
 
 from data import model
 from data.database import TeamMember
 from data.users.externaloidc import OIDCUsers
 from initdb import finished_database_for_testing, setup_database_for_testing
-from oauth.oidc import OIDCLoginService
+from oauth.oidc import OIDCLoginService, PasswordGrantException
 from test.fixtures import *
+
+
+@pytest.fixture()
+def discovery_content():
+    return {
+        "scopes_supported": ["openid"],
+        "authorization_endpoint": "http://fakeoidc/authorize",
+        "token_endpoint": "http://fakeoidc/token",
+        "jwks_uri": "http://fakeoidc/jwks",
+        "userinfo_endpoint": "http://fakeoidc/userinfo",
+    }
+
+
+@pytest.fixture()
+def discovery_handler(discovery_content):
+    @urlmatch(netloc=r"fakeoidc", path=r".+openid.+")
+    def handler(_, __):
+        return json.dumps(discovery_content)
+
+    return handler
+
+
+@pytest.fixture()
+def token_handler_password_grant():
+    @urlmatch(netloc=r"fakeoidc", path=r"/token")
+    def handler(_, request):
+        params = urllib.parse.parse_qs(request.body)
+        if params.get("grant_type")[0] != "password":
+            return {"status_code": 400, "content": "Invalid authorization type"}
+
+        if params.get("username")[0] != "someusername":
+            return {"status_code": 401, "content": "Invalid login credentials"}
+
+        if params.get("password")[0] != "somepassword":
+            return {"status_code": 401, "content": "Invalid login credentials"}
+
+        content = {
+            "access_token": "sometoken",
+        }
+        return {"status_code": 200, "content": json.dumps(content)}
+
+    return handler
+
+
+@pytest.fixture()
+def userinfo_content():
+    return {
+        "sub": "cooluser",
+        "preferred_username": "someusername",
+        "email": "foo@example.com",
+    }
+
+
+@pytest.fixture
+def userinfo_handler(userinfo_content):
+    @urlmatch(netloc=r"fakeoidc", path=r"/userinfo")
+    def handler(_, req):
+        if req.headers.get("Authorization") != "Bearer sometoken":
+            return {"status_code": 401, "content": "Missing expected header"}
+
+        return {"status_code": 200, "content": json.dumps(userinfo_content)}
+
+    return handler
 
 
 class OIDCAuthTests(unittest.TestCase):
@@ -233,3 +299,17 @@ class OIDCAuthTests(unittest.TestCase):
         assert len(result) == 0
         assert service == "oidc"
         assert error_msg == "Not supported"
+
+
+def test_verify_credentials(discovery_handler, token_handler_password_grant, userinfo_handler):
+    oidc_instance = OIDCAuthTests().fake_oidc()
+    with HTTMock(discovery_handler, token_handler_password_grant, userinfo_handler):
+        result, error_msg = oidc_instance.verify_credentials("username", "password")
+        # no result because invalid credentials
+        assert result is None
+
+        result, error_msg = oidc_instance.verify_credentials("someusername", "somepassword")
+        assert result.username == "someusername"
+        assert result.email == "foo@example.com"
+        assert result.id == "cooluser"
+        assert error_msg is None

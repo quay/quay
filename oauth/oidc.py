@@ -332,6 +332,9 @@ class OIDCLoginService(OAuthService):
         """
         OIDC authentication via Password Credentials Grant
         """
+        if not username or not password:
+            raise PasswordGrantException("Missing username or password")
+
         payload = {
             "grant_type": "password",
             "username": username,
@@ -348,20 +351,17 @@ class OIDCLoginService(OAuthService):
         if response.status_code // 100 != 2:
             logger.debug("Got get_access_token response %s", response.text)
             raise PasswordGrantException(
-                "Got non-2XX response for code exchange: %s" % response.status_code
+                f"Got {response.status_code} response for code exchange: {response.text}"
             )
-            return None
 
         json_data = response.json()
         if not json_data:
             raise PasswordGrantException("Got non-JSON response for password credentials grant")
-            return None
 
         if not json_data.get("access_token", None):
             raise PasswordGrantException(
                 "Failed to read access_token in response for password credentials grant"
             )
-            return None
 
         return json_data
 

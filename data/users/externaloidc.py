@@ -4,6 +4,7 @@ import logging
 import app
 from data.model import InvalidTeamException, UserAlreadyInTeam, team
 from data.users.federated import FederatedUsers, UserInformation
+from oauth.login_utils import get_username_from_userinfo
 from oauth.oidc import OIDCLoginService
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class OIDCUsers(FederatedUsers):
 
                     return (
                         UserInformation(
-                            username=user_info.get("preferred_username"),
+                            username=get_username_from_userinfo(user_info, service.config),
                             email=user_info.get("email"),
                             id=user_info.get("sub"),
                         ),
