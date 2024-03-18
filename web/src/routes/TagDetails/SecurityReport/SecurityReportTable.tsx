@@ -59,7 +59,7 @@ function getVulnerabilityLink(vulnerability: VulnerabilityListItem) {
 }
 
 function TableTitle() {
-  return <Title headingLevel={'h1'}> Vulnerabilities </Title>;
+  return <Title headingLevel={'h1'}> Advisories </Title>;
 }
 
 export default function SecurityReportTable({features}: SecurityDetailsProps) {
