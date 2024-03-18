@@ -3,6 +3,7 @@ Manage organizations, members and OAuth applications.
 """
 
 import logging
+import time
 
 import recaptcha2
 from flask import request
@@ -378,11 +379,17 @@ class OrgPrivateRepositories(ApiResource):
             if features.RH_MARKETPLACE:
                 query = organization_skus.get_org_subscriptions(organization.id)
                 rh_subscriptions = list(query.dicts()) if query is not None else []
+                now_ms = time.time() * 1000
                 for subscription in rh_subscriptions:
-                    subscription_sku = marketplace_subscriptions.get_subscription_sku(
+                    subscription_details = marketplace_subscriptions.get_subscription_details(
                         subscription["subscription_id"]
                     )
-                    equivalent_stripe_plan = get_plan_using_rh_sku(subscription_sku)
+                    if subscription_details["expiration_date"] < now_ms:
+                        organization_skus.remove_subscription_from_org(
+                            organization.id, subscription["subscription_id"]
+                        )
+                        continue
+                    equivalent_stripe_plan = get_plan_using_rh_sku(subscription_details["sku"])
                     if equivalent_stripe_plan:
                         if subscription.get("quantity") is None:
                             quantity = 1

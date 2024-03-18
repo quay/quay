@@ -140,6 +140,60 @@ mocked_subscription_response = [
     },
 ]
 
+mocked_expired_sub = [
+    {
+        "id": 41619474,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdByUserName": None,
+        "createdDate": 1708616554000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateUserName": None,
+        "lastUpdateDate": 1708616554000,
+        "externalCreatedDate": None,
+        "externalLastUpdateDate": None,
+        "activeStartDate": None,
+        "activeEndDate": None,
+        "inactiveDate": None,
+        "signedDate": None,
+        "terminatedDate": None,
+        "renewedDate": None,
+        "parentSubscriptionProductId": None,
+        "externalOrderSystemName": "SUBSCRIPTION",
+        "externalOrderNumber": None,
+        "status": None,
+        "sku": "MW02701",
+        "childrenIds": [41619475],
+        "serviceable": False,
+    },
+    {
+        "id": 41619475,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdByUserName": None,
+        "createdDate": 1645544830000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateUserName": None,
+        "lastUpdateDate": 1645544830000,
+        "externalCreatedDate": None,
+        "externalLastUpdateDate": None,
+        "activeStartDate": 1645544830000,
+        "activeEndDate": 1645544830000,
+        "inactiveDate": None,
+        "signedDate": None,
+        "terminatedDate": None,
+        "renewedDate": None,
+        "parentSubscriptionProductId": 41619474,
+        "externalOrderSystemName": "SUBSCRIPTION",
+        "externalOrderNumber": None,
+        "status": "active",
+        "oracleInventoryOrgId": None,
+        "sku": "SVCMW02701",
+        "childrenIds": None,
+        "serviceable": True,
+    },
+]
+
 
 class TestMarketplace(unittest.TestCase):
     @patch("requests.request")
@@ -152,8 +206,8 @@ class TestMarketplace(unittest.TestCase):
         assert customer_id is None
         subscription_response = subscription_api.lookup_subscription(123456, "sku")
         assert subscription_response is None
-        subscription_sku = subscription_api.get_subscription_sku(123456)
-        assert subscription_sku is None
+        subscription_details = subscription_api.get_subscription_details(123456)
+        assert subscription_details is None
         extended_subscription = subscription_api.extend_subscription(12345, 102623)
         assert extended_subscription is None
         create_subscription_response = subscription_api.create_entitlement(12345, "sku")
@@ -178,3 +232,12 @@ class TestMarketplace(unittest.TestCase):
 
         subscriptions = subscription_api.lookup_subscription(12345, "some_sku")
         assert len(subscriptions) == 2
+
+    @patch("requests.request")
+    def test_subscription_details(self, requests_mock):
+        subscription_api = RedHatSubscriptionApi(app_config)
+        requests_mock.return_value.content = json.dumps(mocked_expired_sub)
+
+        subscription_details = subscription_api.get_subscription_details(12345)
+        assert subscription_details["sku"] == "MW02701"
+        assert subscription_details["expiration_date"] == 1645544830000
