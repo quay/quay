@@ -471,6 +471,9 @@ def initialize_database():
     LogEntryKind.create(name="update_repository_autoprune_policy")
     LogEntryKind.create(name="delete_repository_autoprune_policy")
 
+    LogEntryKind.create(name="enable_team_sync")
+    LogEntryKind.create(name="disable_team_sync")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
