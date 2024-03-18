@@ -73,7 +73,7 @@ def get_tag(repository_id, tag_name):
     The tag is returned joined with its manifest.
     """
     query = (
-        Tag.select(Tag, Manifest)
+        Tag.select(Tag, Manifest, can_use_read_replica=True)
         .join(Manifest)
         .where(Tag.repository == repository_id)
         .where(Tag.name == tag_name)

@@ -1,13 +1,13 @@
 import os
 import shutil
-from test.fixtures import *
-from test.testconfig import FakeTransaction
 
 import pytest
 from peewee import OperationalError
 
 from data.database import User, configure, db_disallow_replica_use, read_only_config
 from data.readreplica import ReadOnlyModeException
+from test.fixtures import *
+from test.testconfig import FakeTransaction
 
 
 @pytest.mark.skipif(bool(os.environ.get("TEST_DATABASE_URI")), reason="Testing requires SQLite")
@@ -49,7 +49,7 @@ def test_readreplica(init_db_path, tmpdir_factory):
     assert not read_only_config.obj.is_readonly
     assert read_only_config.obj.read_replicas
 
-    devtable_user = User.get(username="devtable")
+    devtable_user = User.get(username="devtable", can_use_read_replica=True)
     assert devtable_user.username == "devtable"
 
     # Force us to hit the master and ensure it doesn't work.
@@ -57,8 +57,16 @@ def test_readreplica(init_db_path, tmpdir_factory):
         with pytest.raises(OperationalError):
             User.get(username="devtable")
 
+    # Explicitly disallow replica use and ensure it doesn't work.
+    with pytest.raises(OperationalError):
+        User.get(username="devtable", can_use_read_replica=False)
+
+    # Default to hitting the master and ensure it doesn't work.
+    with pytest.raises(OperationalError):
+        User.get(username="devtable")
+
     # Test read replica again.
-    devtable_user = User.get(username="devtable")
+    devtable_user = User.get(username="devtable", can_use_read_replica=True)
     assert devtable_user.username == "devtable"
 
     # Try to change some data. This should fail because the primary is broken.
