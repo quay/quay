@@ -1,9 +1,5 @@
 import logging
 
-from data import model
-from oauth.loginmanager import OAuthLoginManager
-from oauth.oidc import PublicKeyLoadException
-
 logger = logging.getLogger(__name__)
 
 
