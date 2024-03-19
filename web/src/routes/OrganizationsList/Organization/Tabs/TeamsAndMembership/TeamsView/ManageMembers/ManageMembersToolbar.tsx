@@ -69,7 +69,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             >
               <FlexItem>
                 <Button onClick={props.toggleOIDCTeamSyncModal}>
-                  Enable Directory Sync
+                  Enable Team Sync
                 </Button>
               </FlexItem>
             </Conditional>

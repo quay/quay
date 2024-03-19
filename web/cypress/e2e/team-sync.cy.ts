@@ -41,7 +41,7 @@ describe('OIDC Team Sync', () => {
   it('Validate OIDC group name', () => {
     cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
     cy.get('#team-members-toolbar').within(() =>
-      cy.get('button:contains("Enable Directory Sync")').click(),
+      cy.get('button:contains("Enable Team Sync")').click(),
     );
     cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
@@ -67,7 +67,7 @@ describe('OIDC Team Sync', () => {
     cy.get('button:contains("Enable Sync")').should('not.be.disabled');
   });
 
-  it('Enable directory sync', () => {
+  it('Enable team sync', () => {
     cy.intercept(
       'POST',
       '/api/v1/organization/teamsyncorg/team/testteam/syncing',
@@ -77,7 +77,7 @@ describe('OIDC Team Sync', () => {
     ).as('getTeamSyncSuccess');
     cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
     cy.get('#team-members-toolbar').within(() =>
-      cy.get('button:contains("Enable Directory Sync")').click(),
+      cy.get('button:contains("Enable Team Sync")').click(),
     );
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
@@ -101,7 +101,7 @@ describe('OIDC Team Sync', () => {
     cy.contains(
       'This team is synchronized with a group in oidc and its user membership is therefore read-only.',
     ).should('exist');
-    cy.contains('Directory Synchronization Config').should('exist');
+    cy.contains('Team Synchronization Config').should('exist');
     cy.contains('Bound to group').should('exist');
     cy.contains('testteam_teamsync_group').should('exist');
     cy.contains('Last Updated').should('exist');
@@ -122,7 +122,7 @@ describe('OIDC Team Sync', () => {
     cy.contains(
       'This team is synchronized with a group in oidc and its user membership is therefore read-only.',
     ).should('exist');
-    cy.contains('Directory Synchronization Config').should('not.exist');
+    cy.contains('Team Synchronization Config').should('not.exist');
     cy.contains('Bound to group').should('not.exist');
     cy.contains('org:team').should('not.exist');
     cy.contains('Last Updated').should('not.exist');
@@ -182,7 +182,7 @@ describe('OIDC Team Sync', () => {
       '/organization/teamsyncorg/teams/testempty?tab=Teamsandmembership',
     );
     cy.wait('@getTeamMembers');
-    cy.contains('button', 'Enable Directory Sync').click();
+    cy.contains('button', 'Enable Team Sync').click();
     cy.get('#directory-sync-modal')
       .find('input[id="team-sync-group-name"]')
       .type('org_team_group');
