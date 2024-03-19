@@ -4,7 +4,7 @@ import logging
 import random
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Type, TypeVar, Any
+from typing import Any, Type, TypeVar
 
 from peewee import SENTINEL, Model, ModelSelect, OperationalError, Proxy
 
