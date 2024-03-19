@@ -94,6 +94,8 @@ class OIDCLoginService(OAuthService):
         return self._get_endpoint("token_endpoint")
 
     def user_endpoint(self):
+        if self.config.get("OIDC_DISABLE_USER_ENDPOINT", False):
+            return None
         return self._get_endpoint("userinfo_endpoint")
 
     def _get_endpoint(self, endpoint_key, **kwargs):
