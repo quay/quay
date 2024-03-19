@@ -4,7 +4,7 @@ import logging
 import random
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Type, TypeVar, Any
+from typing import Any, Type, TypeVar
 
 from peewee import SENTINEL, Model, ModelSelect, OperationalError, Proxy
 
@@ -141,27 +141,16 @@ class ReadReplicaSupportedModel(Model):
 
     @classmethod
     def select(
-        cls: Type[TReadReplicaSupportedModel], *args, **kwargs: Any
+        cls: Type[TReadReplicaSupportedModel], *args, can_use_read_replica=False, **kwargs: Any
     ) -> ModelSelect[TReadReplicaSupportedModel]:
-
-        can_use_read_replica = False
-        if "can_use_read_replica" in kwargs:
-            can_use_read_replica = kwargs.get("can_use_read_replica")
-            del kwargs["can_use_read_replica"]
-
         query = super(ReadReplicaSupportedModel, cls).select(*args, **kwargs)
         query._database = cls._select_database(can_use_read_replica)
         return query
 
     @classmethod
     def get(
-        cls: Type[TReadReplicaSupportedModel], *args, **kwargs: Any
+        cls: Type[TReadReplicaSupportedModel], *args, can_use_read_replica=False, **kwargs: Any
     ) -> TReadReplicaSupportedModel:
-        can_use_read_replica = False
-        if "can_use_read_replica" in kwargs:
-            can_use_read_replica = kwargs.get("can_use_read_replica")
-            del kwargs["can_use_read_replica"]
-
         sq = cls.select(can_use_read_replica=can_use_read_replica)
         if args:
             # Handle simple lookup using just the primary key.
