@@ -5191,6 +5191,20 @@ class TestOrganizationRhSku(ApiTestCase):
         json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
         self.assertEqual(json["privateAllowed"], False)
 
+    def test_reconciled_attachment(self):
+        self.login(SUBSCRIPTION_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 87654321, "quantity": 1}]},
+            expected_code=401,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+        )
+        self.assertEqual(len(json), 0)
+
 
 class TestUserSku(ApiTestCase):
     def test_get_user_skus(self):

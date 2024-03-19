@@ -374,9 +374,7 @@ PLANS = [
     },
 ]
 
-RH_SKUS = [
-    plan["rh_sku"] for plan in PLANS if plan.get("rh_sku") is not None and plan.get("sku_billing")
-]
+RH_SKUS = [plan["rh_sku"] for plan in PLANS if plan.get("rh_sku") is not None]
 
 RECONCILER_SKUS = [
     plan["rh_sku"]
