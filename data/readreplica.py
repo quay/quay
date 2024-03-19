@@ -4,7 +4,7 @@ import logging
 import random
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Type, TypeVar, Any
+from typing import Any, Type, TypeVar
 
 from peewee import SENTINEL, Model, ModelSelect, OperationalError, Proxy
 
@@ -144,7 +144,7 @@ class ReadReplicaSupportedModel(Model):
         cls: Type[TReadReplicaSupportedModel], *args, **kwargs: Any
     ) -> ModelSelect[TReadReplicaSupportedModel]:
 
-        can_use_read_replica = False
+        can_use_read_replica = None
         if "can_use_read_replica" in kwargs:
             can_use_read_replica = kwargs.get("can_use_read_replica")
             del kwargs["can_use_read_replica"]
@@ -157,7 +157,7 @@ class ReadReplicaSupportedModel(Model):
     def get(
         cls: Type[TReadReplicaSupportedModel], *args, **kwargs: Any
     ) -> TReadReplicaSupportedModel:
-        can_use_read_replica = False
+        can_use_read_replica = None
         if "can_use_read_replica" in kwargs:
             can_use_read_replica = kwargs.get("can_use_read_replica")
             del kwargs["can_use_read_replica"]
