@@ -101,11 +101,12 @@ def paginate(
             if page_info is not None:
                 start_id = page_info.get("start_id", None)
 
-            def callback(results, response):
+            def callback(results, response, offset=None):
                 if len(results) <= limit:
                     return
 
-                next_page_token = encrypt_page_token({"start_id": max([obj.id for obj in results])})
+                start_id = max([obj.id for obj in results]) if not offset else offset
+                next_page_token = encrypt_page_token({"start_id": start_id})
 
                 link_url = os.path.join(
                     get_app_url(), url_for(request.endpoint, **request.view_args)

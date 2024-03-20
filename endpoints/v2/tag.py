@@ -37,5 +37,5 @@ def list_all_tags(namespace_name, repo_name, start_id, limit, pagination_callbac
         }
     )
 
-    pagination_callback(tags, response)
+    pagination_callback(tags, response, offset=start_id + limit)
     return response

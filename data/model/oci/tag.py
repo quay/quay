@@ -135,10 +135,10 @@ def lookup_alive_tags_shallow(repository_id, start_pagination_id=None, limit=Non
 
     *only* contain their ID and name. Also note that the Tags are returned ordered by ID.
     """
-    query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.id)
+    query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.name)
 
     if start_pagination_id is not None:
-        query = query.where(Tag.id >= start_pagination_id)
+        query = query.offset(start_pagination_id)
 
     if limit is not None:
         query = query.limit(limit)
