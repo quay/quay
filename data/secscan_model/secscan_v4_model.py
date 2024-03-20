@@ -32,6 +32,7 @@ from data.secscan_model.datatypes import (
     SecurityInformationLookupResult,
     UpdatedVulnerability,
     Vulnerability,
+    link_to_cves,
 )
 from data.secscan_model.interface import (
     InvalidConfigurationException,
@@ -605,6 +606,22 @@ def features_for(report):
             else {}
         )
 
+        base_scores = []
+        if report.get("enrichments", {}):
+            for enrichment_list in report["enrichments"].values():
+                for pkg_vuln in enrichment_list:
+                    for k, v in pkg_vuln.items():
+                        if not isinstance(v, list):
+                            logger.error(f"Unexpected type for value of key '{k}': {type(v)}")
+                            continue
+                        for item in v:
+                            if not isinstance(item, dict) or "baseScore" not in item:
+                                logger.error(f"Invalid item format or missing 'baseScore': {item}")
+                                continue
+                            base_scores.append(item["baseScore"])
+
+        cve_ids = [link_to_cves(v["links"]) for v in pkg_vulns]
+
         features.append(
             Feature(
                 pkg["name"],
@@ -612,6 +629,8 @@ def features_for(report):
                 "",
                 pkg_env["introduced_in"],
                 pkg["version"],
+                base_scores,
+                cve_ids,
                 [
                     Vulnerability(
                         fetch_vuln_severity(vuln, enrichments),
