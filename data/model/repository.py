@@ -715,7 +715,11 @@ def get_repository_sizes(repo_ids: list):
         )
 
     tuples = (
-        QuotaRepositorySize.select(QuotaRepositorySize.repository, QuotaRepositorySize.size_bytes)
+        QuotaRepositorySize.select(
+            QuotaRepositorySize.repository,
+            QuotaRepositorySize.size_bytes,
+            can_use_read_replica=True,
+        )
         .where(QuotaRepositorySize.repository << repo_ids)
         .tuples()
     )
