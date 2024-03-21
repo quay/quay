@@ -183,7 +183,7 @@ describe('Repository settings - Repository autoprune policies', () => {
       'Namespace Auto-Pruning Policies',
     );
     cy.get('[data-testid="namespace-autoprune-policy-method"]').contains(
-      'number_of_tags:',
+      'Number of Tags:',
     );
     cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
   });
