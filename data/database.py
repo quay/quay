@@ -492,7 +492,8 @@ def configure(config_object, testing=False):
     logger.debug("Configuring database")
     db_kwargs = dict(config_object["DB_CONNECTION_ARGS"])
     write_db_uri = config_object["DB_URI"]
-    db.initialize(_db_from_url(write_db_uri, db_kwargs))
+    allow_pooling = config_object.get("DB_CONNECTION_POOLING", True)
+    db.initialize(_db_from_url(write_db_uri, db_kwargs, allow_pooling=allow_pooling))
 
     parsed_write_uri = make_url(write_db_uri)
     db_random_func.initialize(SCHEME_RANDOM_FUNCTION[parsed_write_uri.drivername])
@@ -516,6 +517,7 @@ def configure(config_object, testing=False):
                 ro_config["DB_URI"],
                 ro_config.get("DB_CONNECTION_ARGS", db_kwargs),
                 is_read_replica=True,
+                allow_pooling=ro_config.get("DB_CONNECTION_POOLING", True),
             )
             for ro_config in read_replicas
         ]
