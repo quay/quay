@@ -492,7 +492,7 @@ def configure(config_object, testing=False):
     logger.debug("Configuring database")
     db_kwargs = dict(config_object["DB_CONNECTION_ARGS"])
     write_db_uri = config_object["DB_URI"]
-    allow_pooling = config_object.get('DB_CONNECTION_POOLING', True)
+    allow_pooling = config_object.get("DB_CONNECTION_POOLING", True)
     db.initialize(_db_from_url(write_db_uri, db_kwargs, allow_pooling=allow_pooling))
 
     parsed_write_uri = make_url(write_db_uri)
