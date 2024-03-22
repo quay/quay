@@ -497,7 +497,7 @@ def remove_team_syncing(orgname, teamname):
         existing.delete_instance()
 
 
-def get_stale_team(stale_timespan):
+def get_stale_team(stale_timespan, login_services):
     """
     Returns a team that is setup to sync to an external group, and who has not been synced in.
 
@@ -508,7 +508,11 @@ def get_stale_team(stale_timespan):
     try:
         candidates = (
             TeamSync.select(TeamSync.id)
-            .where((TeamSync.last_updated <= stale_at) | (TeamSync.last_updated >> None))
+            .join(LoginService)
+            .where(
+                LoginService.name << login_services,
+                (TeamSync.last_updated <= stale_at) | (TeamSync.last_updated >> None),
+            )
             .limit(500)
             .alias("candidates")
         )
