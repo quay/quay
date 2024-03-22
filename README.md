@@ -65,6 +65,7 @@ High-level features include:
 * IRC: #quay on [libera.chat]
 * Bug tracking: [JBoss JIRA]
 * Security Issues: [security@redhat.com]
+* Community meetings held the first Wednesday of every month 11:00 AM EST: [meeting link](https://meet.google.com/rsj-atvk-zth)
 
 [quay-sig@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-sig
 [libera.chat]: https://web.libera.chat/?channel=#quay
