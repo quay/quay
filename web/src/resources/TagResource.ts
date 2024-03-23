@@ -367,22 +367,10 @@ export async function setTagsMutability(
     ),
   );
 
-  // Filter failed responses
-  const errResponses = responses.filter(
-    (r) => r.status == 'rejected',
-  ) as PromiseRejectedResult[];
-
-  // If errors collect and throw
-  if (errResponses.length > 0) {
-    const bulkDeleteError = new BulkOperationError<TagOperationError>(
-      'error setting tags to ' + (immutability ? 'immutable' : 'mutable'),
-    );
-    for (const response of errResponses) {
-      const reason = response.reason as TagOperationError;
-      bulkDeleteError.addError(reason.tag, reason);
-    }
-    throw bulkDeleteError;
-  }
+  throwIfError(
+    responses,
+    'Error setting tags to ' + (immutability ? 'immutable' : 'mutable'),
+  );
 }
 
 export async function getManifestByDigest(
