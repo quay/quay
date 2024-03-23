@@ -84,12 +84,16 @@ def _create_tags(repo, manifest, count, start_time_before=None, immutable=False)
         _create_tag(repo, manifest, start_time, immutable)
 
 
-def _assert_repo_tag_count(repo, count, assert_start_after=None):
+def _assert_repo_tag_count(repo, count, assert_start_after=None, should_all_be_immutable=False):
     tags, _ = list_repository_tag_history(repo, 1, 100, active_tags_only=True)
     assert len(tags) == count
     if assert_start_after is not None:
         for tag in tags:
             assert tag.lifetime_start_ms > _past_timestamp_ms(assert_start_after)
+
+    if should_all_be_immutable:
+        for tag in tags:
+            assert tag.immutable
 
 
 def _past_timestamp_ms(time_delta):
@@ -113,26 +117,41 @@ def test_namespace_prune_multiple_repos_by_tag_count(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
+    repo4 = model.repository.create_repository(
+        "sellnsmall", "repo4", None, repo_kind="image", visibility="public"
+    )
+    repo5 = model.repository.create_repository(
+        "sellnsmall", "repo5", None, repo_kind="image", visibility="public"
+    )
     manifest1_repo1 = _create_manifest("sellnsmall", repo1)
     manifest2_repo1 = _create_manifest("sellnsmall", repo1)
     manifest_repo2 = _create_manifest("sellnsmall", repo2)
     manifest_repo3 = _create_manifest("sellnsmall", repo3)
+    manifest_repo4 = _create_manifest("sellnsmall", repo4)
+    manifest_repo5 = _create_manifest("sellnsmall", repo5)
 
     _create_tags(repo1, manifest1_repo1.manifest, 10)
     _create_tags(repo1, manifest2_repo1.manifest, 2, immutable=True)
     _create_tags(repo2, manifest_repo2.manifest, 3)
     _create_tags(repo3, manifest_repo3.manifest, 5)
+    _create_tags(repo4, manifest_repo4.manifest, 5, immutable=True)
+    _create_tags(repo4, manifest_repo5.manifest, 5)
+    _create_tags(repo4, manifest_repo5.manifest, 10, immutable=True)
 
     _assert_repo_tag_count(repo1, (10 + 2))
     _assert_repo_tag_count(repo2, 3)
     _assert_repo_tag_count(repo3, 5)
+    _assert_repo_tag_count(repo4, 5)
+    _assert_repo_tag_count(repo5, (5 + 10))
 
     worker = AutoPruneWorker()
     worker.prune()
 
-    _assert_repo_tag_count(repo1, (5 + 2))
+    _assert_repo_tag_count(repo1, 5)
     _assert_repo_tag_count(repo2, 3)
     _assert_repo_tag_count(repo3, 5)
+    _assert_repo_tag_count(repo4, 5, should_all_be_immutable=True)
+    _assert_repo_tag_count(repo5, 10, should_all_be_immutable=True)
 
     task = model.autoprune.fetch_autoprune_task_by_namespace_id(new_policy.namespace_id)
     assert task.status == "success"

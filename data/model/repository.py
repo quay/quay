@@ -659,13 +659,18 @@ def has_immutable_tags(repo):
 
 def set_repository_state(repo, state, raise_on_error=False):
     if state == RepositoryState.MIRROR and has_immutable_tags(repo):
-        raise TagImmutableException(
-            "Cannot set repository %s to mirror state which which contains immutable tags."
-            % repo.name
+        logger.error(
+            "Cannot set repository %s to mirror state which contains immutable tags.", repo.name
         )
 
-    repo.state = state
-    repo.save()
+        if raise_on_error:
+            raise TagImmutableException(
+                "Cannot set repository %s to mirror state which which contains immutable tags."
+                % repo.name
+            )
+    else:
+        repo.state = state
+        repo.save()
 
 
 def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_queue):

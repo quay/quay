@@ -49,6 +49,7 @@ export default function TagActions(props: TagActionsProps) {
     </DropdownItem>,
     <DropdownItem
       key="edit-labels-action"
+      isDisabled={props.tags.some((tag: Tag) => tag.immutable)}
       onClick={() => {
         setIsOpen(false);
         setIsEditLabelsModalOpen(true);
@@ -58,6 +59,7 @@ export default function TagActions(props: TagActionsProps) {
     </DropdownItem>,
     <DropdownItem
       key="edit-expiration-action"
+      isDisabled={props.tags.some((tag: Tag) => tag.immutable)}
       onClick={() => {
         setIsOpen(false);
         setIsEditExpirationModalOpen(true);

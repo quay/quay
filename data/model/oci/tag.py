@@ -534,21 +534,20 @@ def set_tag_immutability(repository_id, tag_name, immutable):
     if tag.lifetime_end_ms is not None:
         return None
 
-    return _set_tag_immutability(repository_id, tag, immutable)
+    return _set_tag_immutability(tag, immutable)
 
 
-def _set_tag_immutability(repository_id, tag, immutable):
+def _set_tag_immutability(tag, immutable):
     """
     Sets the immutable flag on the given tag.
     """
-    with db_transaction():
-        updated = (
-            Tag.update(immutable=immutable, lifetime_end_ms=None).where(Tag.id == tag.id).execute()
-        )
-        if updated != 1:
-            return None
+    updated = (
+        Tag.update(immutable=immutable, lifetime_end_ms=None).where(Tag.id == tag.id).execute()
+    )
+    if updated != 1:
+        return None
 
-        return tag
+    return tag
 
 
 def delete_tag(repository_id, tag_name):
@@ -911,6 +910,20 @@ def fetch_paginated_autoprune_repo_tags_by_number(
     try:
         tags_offset = max_tags_allowed + ((page - 1) * items_per_page)
         now_ms = get_epoch_timestamp_ms()
+
+        immutableTags = (
+            Tag.select(Tag.name)
+            .where(
+                Tag.repository_id == repo_id,
+                (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+                Tag.hidden == False,
+                Tag.immutable == True,
+            )
+            .count()
+        )
+
+        offset = 0 if immutableTags > max_tags_allowed else (max_tags_allowed - immutableTags)
+
         query = (
             Tag.select(Tag.name)
             .where(
@@ -922,7 +935,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
             .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
-            .offset(tags_offset)
+            .offset(offset)
             .limit(items_per_page)
         )
         return list(query)
