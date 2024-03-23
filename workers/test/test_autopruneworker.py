@@ -135,8 +135,8 @@ def test_namespace_prune_multiple_repos_by_tag_count(initialized_db):
     _create_tags(repo2, manifest_repo2.manifest, 3)
     _create_tags(repo3, manifest_repo3.manifest, 5)
     _create_tags(repo4, manifest_repo4.manifest, 5, immutable=True)
-    _create_tags(repo4, manifest_repo5.manifest, 5)
-    _create_tags(repo4, manifest_repo5.manifest, 10, immutable=True)
+    _create_tags(repo5, manifest_repo5.manifest, 5)
+    _create_tags(repo5, manifest_repo5.manifest, 10, immutable=True)
 
     _assert_repo_tag_count(repo1, (10 + 2))
     _assert_repo_tag_count(repo2, 3)
