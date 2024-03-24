@@ -608,6 +608,11 @@ export function useLogDescriptions() {
     oauth_token_assigned: function (metadata) {
       return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
     },
+    change_tag_immutability: function (metadata: Metadata) {
+      return `Tag ${metadata.tag} immutability set to ${
+        metadata.immutable ? 'immutable' : 'mutable'
+      } in repopository ${metadata.namespace}/${metadata.repo}`;
+    },
   };
 
   return descriptions;
