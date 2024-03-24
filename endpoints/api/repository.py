@@ -525,7 +525,7 @@ class RepositoryStateResource(RepositoryParamResource):
             return {"detail": "%s is not a valid Repository state." % state_name}, 400
 
         try:
-            model.set_repository_state(namespace, repository, state)
+            model.set_repository_state(namespace, repository, state, raise_on_error=True)
         except TagImmutableException as e:
             raise PreconditionFailed(str(e))
 
