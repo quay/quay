@@ -465,7 +465,9 @@ def test_delete_immutable_tag(via_manifest, registry_model):
             manifest = registry_model.get_manifest_for_tag(latest_tag)
             registry_model.delete_tags_for_manifest(model_cache, manifest, raise_on_error=True)
         else:
-            registry_model.delete_tag(repository_ref, latest_tag.name, raise_on_error=True)
+            registry_model.delete_tag(
+                model_cache, repository_ref, latest_tag.name, raise_on_error=True
+            )
 
     # Ensure the tag still exists.
     tag = registry_model.get_repo_tag(repository_ref, latest_tag.name)
