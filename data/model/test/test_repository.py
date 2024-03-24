@@ -89,7 +89,8 @@ def test_get_size_during_upload(initialized_db):
     )
     size = get_size_during_upload(repo1.id)
     assert size == upload_size
-    
+
+
 def test_set_immutable_tag_and_change_state(initialized_db):
     # Create a repository and some tags
     repo = create_repository(
