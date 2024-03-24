@@ -398,7 +398,9 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
             raise ManifestUnknown()
 
         try:
-            tags = registry_model.delete_tags_for_manifest(model_cache, manifest, raise_on_error=True)
+            tags = registry_model.delete_tags_for_manifest(
+                model_cache, manifest, raise_on_error=True
+            )
         except TagImmutableException as e:
             raise TagImmutable(message=str(e))
 
