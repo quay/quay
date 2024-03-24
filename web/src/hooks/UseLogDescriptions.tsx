@@ -602,6 +602,11 @@ export function useLogDescriptions() {
     disable_team_sync: function (metadata: Metadata) {
       return `Team syncing disabled for ${metadata.team}`;
     },
+    change_tag_immutability: function (metadata: Metadata) {
+      return `Tag ${metadata.tag} immutability set to ${
+        metadata.immutable ? 'immutable' : 'mutable'
+      } in repopository ${metadata.namespace}/${metadata.repo}`;
+    },
   };
 
   return descriptions;
