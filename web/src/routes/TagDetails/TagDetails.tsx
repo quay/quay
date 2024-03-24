@@ -37,6 +37,7 @@ export default function TagDetails() {
     last_modified: '',
     manifest_digest: '',
     reversion: false,
+    immutable: false,
     size: 0,
     start_ts: 0,
     manifest_list: {
@@ -99,7 +100,7 @@ export default function TagDetails() {
           : currentDigest;
         setDigest(currentDigest);
         setTagDetails(tagResp);
-      } catch (error: any) {
+      } catch (error) {
         console.error(error);
         setErr(addDisplayError('Unable to get details for tag', error));
       }

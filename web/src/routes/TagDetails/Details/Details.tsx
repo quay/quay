@@ -62,22 +62,30 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup>
-            <DescriptionListTerm>Digest</DescriptionListTerm>
+          <DescriptionListGroup data-testid="immutable">
+            <DescriptionListTerm>Immutable</DescriptionListTerm>
             <DescriptionListDescription>
-              {props.digest ? (
-                <ClipboardCopy
-                  data-testid="digest-clipboardcopy"
-                  isReadOnly
-                  hoverTip="Copy"
-                  clickTip="Copied"
-                  variant="inline-compact"
-                >
-                  {props.digest}
-                </ClipboardCopy>
-              ) : (
-                <Skeleton width="100%"></Skeleton>
-              )}
+              {props.tag.immutable ? 'Yes' : 'No'}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup data-testid="expiration">
+            <DescriptionListTerm>Expiration</DescriptionListTerm>
+            <DescriptionListDescription>
+              {props.tag.expiration
+                ? formatDate(props.tag.last_modified)
+                : 'Never'}
+            </DescriptionListDescription>
+          </DescriptionListGroup>
+          <DescriptionListGroup data-testid="vulnerabilities">
+            <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
+            <DescriptionListDescription>
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={props.digest}
+                tag={props.tag.name}
+                cacheResults={true}
+              />
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup data-testid="size">
@@ -94,16 +102,22 @@ export default function Details(props: DetailsProps) {
               )}
             </DescriptionListDescription>
           </DescriptionListGroup>
-          <DescriptionListGroup data-testid="vulnerabilities">
-            <DescriptionListTerm>Vulnerabilities</DescriptionListTerm>
+          <DescriptionListGroup>
+            <DescriptionListTerm>Digest</DescriptionListTerm>
             <DescriptionListDescription>
-              <SecurityDetails
-                org={props.org}
-                repo={props.repo}
-                digest={props.digest}
-                tag={props.tag.name}
-                cacheResults={true}
-              />
+              {props.digest ? (
+                <ClipboardCopy
+                  data-testid="digest-clipboardcopy"
+                  isReadOnly
+                  hoverTip="Copy"
+                  clickTip="Copied"
+                  variant="inline-compact"
+                >
+                  {props.digest}
+                </ClipboardCopy>
+              ) : (
+                <Skeleton width="100%"></Skeleton>
+              )}
             </DescriptionListDescription>
           </DescriptionListGroup>
           <DescriptionListGroup data-testid="labels">

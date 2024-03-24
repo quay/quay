@@ -50,6 +50,123 @@ def test_change_tag_expiration(app):
         tag = registry_model.get_repo_tag(repo_ref, "latest")
         assert tag.lifetime_end_ts == updated_expiration
 
+        request_body = {
+            "expiration": tag.lifetime_start_ts - 1,  # Attempt tet expiration to the past
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 400)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag.lifetime_end_ts == updated_expiration
+
+
+def test_delete_immutable_tag(app):
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        tag = registry_model.set_tag_immutable(tag, True)
+
+        conduct_api_call(cl, RepositoryTag, "delete", params, None, 412)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag
+
+
+def test_change_immutable_tag_expiration(app):
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        tag = registry_model.set_tag_immutable(tag, True)
+
+        request_body = {
+            "expiration": tag.lifetime_start_ts + 60 * 60 * 24,
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 412)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag.lifetime_end_ts is None
+
+        request_body = {
+            "expiration": tag.lifetime_start_ts + 60 * 60 * 24,
+            "immutable": False,
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag.lifetime_end_ts is not None
+        assert not tag.immutable
+
+        request_body = {
+            "expiration": tag.lifetime_start_ts + 60 * 60 * 24,
+            "immutable": True,
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 400)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert not tag.immutable
+
+
+def test_change_tag_immutability(app):
+    with client_with_identity("devtable", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+
+        request_body = {
+            "immutable": True,
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert tag.immutable
+
+        request_body = {
+            "immutable": False,
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert not tag.immutable
+
+        request_body = {
+            "immutable": ["wrong-data-format"],
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 400)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert not tag.immutable
+
+
+def test_change_tag_immutability_unauthorized(app):
+    with client_with_identity("freshuser", app) as cl:
+        params = {
+            "repository": "devtable/simple",
+            "tag": "latest",
+        }
+
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+
+        request_body = {
+            "immutable": True,
+        }
+
+        conduct_api_call(cl, RepositoryTag, "put", params, request_body, 403)
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+        assert not tag.immutable
+
 
 @pytest.mark.parametrize(
     "manifest_exists,test_tag,expected_status",

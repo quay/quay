@@ -22,6 +22,17 @@
   margin: 4px;
 }
 
+.tag-operations-dialog .immutable-tag-list {
+  margin: 4px;
+  padding: 0px;
+}
+
+.tag-operations-dialog .immutable-tag-list li {
+  list-style: none;
+  display: inline-block;
+  margin: 4px;
+}
+
 .tag-operations-dialog .label-section {
   margin-bottom: 10px;
   padding: 6px;
