@@ -1,26 +1,65 @@
-import {Spinner, Radio, Alert} from '@patternfly/react-core';
-import {useRepositoryState} from 'src/hooks/UseRepositoryState';
 import {
-  RepositoryDetails,
+  Alert,
+  Button,
+  Form,
+  FormGroup,
+  Radio,
+  Spinner,
+} from '@patternfly/react-core';
+import {AxiosError} from 'axios';
+import {useEffect, useState} from 'react';
+import {AlertVariant} from 'src/atoms/AlertState';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {useRepositoryState} from 'src/hooks/UseRepositoryState';
+import {getDisplayError} from 'src/resources/ErrorHandling';
+import {
   RepositoryState as IRepositoryState,
+  RepositoryDetails,
 } from 'src/resources/RepositoryResource';
-import {useState} from 'react';
-import {Form, FormGroup, Button} from '@patternfly/react-core';
 
 export const RepositoryStateForm = (props: StateProps) => {
+  const {addAlert} = useAlerts();
   const [selectedState, setSelectedState] = useState(props.repoDetails.state);
   const handleSubmit = (e) => {
     e.preventDefault();
     setState(selectedState as IRepositoryState);
   };
 
-  const {setState, loading: loadingSetState} = useRepositoryState(
+  const {
+    setState,
+    loadingSetRepositoryState,
+    errorSetRepositoryState,
+    errorSetRepositoryStateDetails,
+  } = useRepositoryState(
     props.org,
     props.repo,
     props.repoDetails.state as IRepositoryState,
   );
 
-  if (loadingSetState) {
+  useEffect(() => {
+    if (errorSetRepositoryState) {
+      addAlert({
+        title:
+          'Failed to set repository state to ' +
+          repoStateToString(selectedState as IRepositoryState),
+        variant: AlertVariant.Failure,
+        message: getDisplayError(errorSetRepositoryStateDetails as AxiosError),
+      });
+    }
+  }, [errorSetRepositoryState]);
+
+  const repoStateToString = (state: IRepositoryState) => {
+    switch (state) {
+      case 'NORMAL':
+        return 'normal';
+      case 'MIRROR':
+        return 'mirror';
+      case 'READ_ONLY':
+        return 'read-only';
+    }
+  };
+
+  if (loadingSetRepositoryState) {
     return <Spinner size="md" />;
   }
 
