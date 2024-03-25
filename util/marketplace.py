@@ -232,6 +232,9 @@ class RedHatSubscriptionApi(object):
             if subscriptions:
                 for user_subscription in subscriptions:
                     if user_subscription is not None:
+                        if user_subscription["masterEndSystemName"] == "SUBSCRIPTION":
+                            continue
+
                         bound_to_org = organization_skus.subscription_bound_to_org(
                             user_subscription["id"]
                         )
@@ -248,6 +251,9 @@ class RedHatSubscriptionApi(object):
                             user_subscription["sku"] = sku
                             subscription_list.append(user_subscription)
         return subscription_list
+
+
+# Mocked classes for unit tests
 
 
 TEST_USER = {
@@ -286,6 +292,21 @@ TEST_USER = {
             "effectiveEndDate": 3813177600000,
         },
     ],
+    "reconciled_subscription": {
+        "id": 87654321,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1675957362000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1675957362000,
+        "installBaseStartDate": 1707368400000,
+        "installBaseEndDate": 1707368399000,
+        "webCustomerId": 123456,
+        "subscriptionNumber": "12399889",
+        "quantity": 1,
+        "effectiveStartDate": 1707368400000,
+        "effectiveEndDate": 3813177600000,
+    },
 }
 STRIPE_USER = {"account_number": 11111, "email": "stripe_user@test.com", "username": "stripe_user"}
 FREE_USER = {
@@ -322,6 +343,8 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
     def lookup_subscription(self, customer_id, sku_id):
         if customer_id == TEST_USER["account_number"] and sku_id == "MW02701":
             return TEST_USER["subscriptions"]
+        elif customer_id == TEST_USER["account_number"] and sku_id == "MW00584MO":
+            return [TEST_USER["reconciled_subscription"]]
         return None
 
     def create_entitlement(self, customer_id, sku_id):
@@ -336,6 +359,8 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
             return {"sku": "MW02701", "expiration_date": 3813177600000}
         elif subscription_id == 80808080:
             return {"sku": "MW02701", "expiration_date": 1645544830000}
+        elif subscription_id == 87654321:
+            return {"sku": "MW00584MO", "expiration_date": 3813177600000}
         else:
             return None
 
