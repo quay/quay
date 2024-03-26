@@ -4,7 +4,7 @@ import time
 
 import requests
 
-from data.billing import RH_SKUS, get_plan_using_rh_sku
+from data.billing import RECONCILER_SKUS, RH_SKUS, get_plan_using_rh_sku
 from data.model import entitlements, organization_skus
 
 logger = logging.getLogger(__name__)
@@ -232,7 +232,10 @@ class RedHatSubscriptionApi(object):
             if subscriptions:
                 for user_subscription in subscriptions:
                     if user_subscription is not None:
-                        if user_subscription["masterEndSystemName"] == "SUBSCRIPTION":
+                        if (
+                            user_subscription["masterEndSystemName"] == "SUBSCRIPTION"
+                            and sku in RECONCILER_SKUS
+                        ):
                             continue
 
                         bound_to_org = organization_skus.subscription_bound_to_org(
