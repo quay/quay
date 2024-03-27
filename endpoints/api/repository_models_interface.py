@@ -14,6 +14,7 @@ class RepositoryBaseElement(
     namedtuple(
         "RepositoryBaseElement",
         [
+            "id",
             "namespace_name",
             "repository_name",
             "is_starred",
@@ -35,6 +36,7 @@ class RepositoryBaseElement(
     """
     Repository a single quay repository.
 
+    :type id: int
     :type namespace_name: string
     :type repository_name: string
     :type is_starred: boolean

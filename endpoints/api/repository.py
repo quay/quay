@@ -255,10 +255,10 @@ class RepositoryList(ApiResource):
             popularity,
         )
 
-        repositories_with_view = [repo.to_dict() for repo in repos]
-
         if features.QUOTA_MANAGEMENT:
-            model.add_quota_view(repositories_with_view)
+            repositories_with_view = model.add_quota_view(repos)
+        else:
+            repositories_with_view = [repo.to_dict() for repo in repos]
 
         return {"repositories": repositories_with_view}, next_page_token
 

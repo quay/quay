@@ -701,6 +701,40 @@ def get_repository_size(repo_id: int):
         return 0
 
 
+def get_repository_sizes(repo_ids: list):
+    """
+    Returns a map from repository ID to the size of the repository in bytes.
+    List of repo_ids should be kept below 1000 to avoid performance issues.
+    """
+    if not repo_ids:
+        return {}
+
+    if len(repo_ids) > 1000:
+        logger.warning(
+            "Fetching more than 1000 repository sizes at once, you may experience performance issues."
+        )
+
+    tuples = (
+        QuotaRepositorySize.select(
+            QuotaRepositorySize.repository,
+            QuotaRepositorySize.size_bytes,
+        )
+        .where(QuotaRepositorySize.repository << repo_ids)
+        .tuples()
+    )
+
+    size_map = {}
+    for record in tuples:
+        size_map[record[0]] = record[1] if record[1] is not None else 0
+
+    # Default to 0 for any repositories that don't have a size.
+    for repo_id in repo_ids:
+        if repo_id not in size_map:
+            size_map[repo_id] = 0
+
+    return size_map
+
+
 def get_size_during_upload(repo_id: int):
     query = (
         BlobUpload.select(fn.Sum(BlobUpload.byte_count).alias("size_bytes")).where(
