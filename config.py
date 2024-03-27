@@ -810,6 +810,9 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_EDIT_QUOTA = True
 
+    # Enables quota verfication on image push
+    FEATURE_VERIFY_QUOTA = True
+
     # Catches and suppresses quota failures during image push and garbage collection
     FEATURE_QUOTA_SUPPRESS_FAILURES = False
 

@@ -1331,6 +1331,11 @@ CONFIG_SCHEMA = {
             "description": "Allow editing of quota configurations",
             "x-example": True,
         },
+        "FEATURE_VERIFY_QUOTA": {
+            "type": "boolean",
+            "description": "Allow verification of quota on image push",
+            "x-example": True,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
