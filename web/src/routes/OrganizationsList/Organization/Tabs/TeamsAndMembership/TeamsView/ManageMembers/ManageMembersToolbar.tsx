@@ -74,7 +74,9 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
               </FlexItem>
             </Conditional>
 
-            <Conditional if={props.pageInReadOnlyMode}>
+            <Conditional
+              if={props.pageInReadOnlyMode && props.teamCanSync != null}
+            >
               <FlexItem>
                 <Button onClick={props.toggleRemoveTeamSyncModal}>
                   Remove synchronization
