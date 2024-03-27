@@ -14,6 +14,7 @@ class RepositoryBaseElement(
     namedtuple(
         "RepositoryBaseElement",
         [
+            "id",
             "namespace_name",
             "repository_name",
             "is_starred",
@@ -35,6 +36,7 @@ class RepositoryBaseElement(
     """
     Repository a single quay repository.
 
+    :type id: int
     :type namespace_name: string
     :type repository_name: string
     :type is_starred: boolean
@@ -56,11 +58,6 @@ class RepositoryBaseElement(
             "kind": self.kind_name,
             "state": self.state.name if self.state is not None else None,
         }
-
-        if features.QUOTA_MANAGEMENT:
-            repo["quota_report"] = model.namespacequota.get_repo_quota_for_view(
-                self.namespace_name, self.repository_name
-            )
 
         if self.should_last_modified:
             repo["last_modified"] = self.last_modified
