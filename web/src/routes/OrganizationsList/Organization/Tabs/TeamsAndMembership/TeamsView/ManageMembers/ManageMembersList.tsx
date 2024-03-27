@@ -450,7 +450,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         </Button>,
       );
     }
-    if (pageInReadOnlyMode) {
+    if (pageInReadOnlyMode && teamCanSync) {
       result.push(
         <Button
           onClick={() => setRemoveTeamSyncModalOpen(!isRemoveTeamSyncModalOpen)}
@@ -468,7 +468,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       <Alert
         isInline
         variant="info"
-        title={`This team is synchronized with a group in ${teamCanSync?.service} and its user membership is therefore read-only.`}
+        title={`This team is synchronized with a group in ${teamSyncInfo?.service} and its user membership is therefore read-only.`}
         id="teamsync-readonly-alert"
       />
       <Conditional if={OIDCGroupName != null}>
@@ -556,7 +556,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         <Conditional if={isOIDCTeamSyncModalOpen}>
           {OIDCTeamSyncModalHolder}
         </Conditional>
-        <Conditional if={isRemoveTeamSyncModalOpen}>
+        <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync != null}>
           {removeTeamSyncModalHolder}
         </Conditional>
       </>
@@ -605,7 +605,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           >
             {OIDCTeamSyncModalHolder}
           </Conditional>
-          <Conditional if={isRemoveTeamSyncModalOpen}>
+          <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync != null}>
             {removeTeamSyncModalHolder}
           </Conditional>
           <Table aria-label="Selectable table" variant="compact">

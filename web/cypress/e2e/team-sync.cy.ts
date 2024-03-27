@@ -127,6 +127,7 @@ describe('OIDC Team Sync', () => {
     cy.contains('org:team').should('not.exist');
     cy.contains('Last Updated').should('not.exist');
     cy.contains('tr', 'teamsyncorg+robotacct');
+    cy.contains('Remove Synchronization').should('not.exist');
   });
 
   it('Remove Directory Sync', () => {
