@@ -45,7 +45,7 @@ class OIDCUsers(FederatedUsers):
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         """
-        Never used since all groups, by definition, are in the database.
+        Used by teamSync worker, unsupported for oidc team sync
         """
         return (None, "Not supported")
 
