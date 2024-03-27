@@ -17,9 +17,10 @@ def sync_teams_to_groups(authentication, stale_cutoff):
     logger.debug("Looking up teams to sync to groups")
 
     sync_team_tried = set()
+    supported_services = ["ldap", "keystone"]
     while len(sync_team_tried) < MAX_TEAMS_PER_ITERATION:
         # Find a stale team.
-        stale_team_sync = model.team.get_stale_team(stale_cutoff)
+        stale_team_sync = model.team.get_stale_team(stale_cutoff, supported_services)
         if not stale_team_sync:
             logger.debug("No additional stale team found; sleeping")
             return
@@ -82,7 +83,7 @@ def sync_team(authentication, stale_team_sync):
     # Collect all the members currently found in the group, adding them to the team as we go
     # along.
     group_membership = set()
-    for (member_info, err) in member_iterator:
+    for member_info, err in member_iterator:
         if err is not None:
             logger.error("Got error when trying to construct a member: %s", err)
             continue
