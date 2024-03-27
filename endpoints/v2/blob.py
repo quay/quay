@@ -26,6 +26,7 @@ from endpoints.api import log_unauthorized
 from endpoints.decorators import (
     anon_allowed,
     anon_protect,
+    check_pushes_disabled,
     check_readonly,
     check_region_blacklisted,
     disallow_for_account_recovery_mode,
@@ -149,6 +150,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
     """
     Attempts to mount a blob requested by the user from another repository.
     """
+
     logger.debug("Got mount request for blob `%s` into `%s`", mount_blob_digest, repository_ref)
     from_repo = request.args.get("from", None)
     if from_repo is None:
@@ -245,6 +247,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def start_blob_upload(namespace_name, repo_name):
 
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
@@ -346,6 +349,7 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -389,6 +393,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
+
     # Ensure the digest is present before proceeding.
     digest = request.args.get("digest", None)
     if digest is None:
@@ -439,6 +444,7 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def cancel_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -461,6 +467,7 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def delete_digest(namespace_name, repo_name, digest):
     # We do not support deleting arbitrary digests, as they break repo images.
     raise Unsupported()
