@@ -151,6 +151,7 @@ class PreOCIModel(RepositoryDataInterface):
         return (
             [
                 RepositoryBaseElement(
+                    repo.rid,
                     repo.namespace_user.username,
                     repo.name,
                     repo.rid in star_set,
@@ -210,6 +211,7 @@ class PreOCIModel(RepositoryDataInterface):
         is_public = model.repository.is_repository_public(repo)
         kind_name = RepositoryTable.kind.get_name(repo.kind_id)
         base = RepositoryBaseElement(
+            repo.id,
             namespace_name,
             repository_name,
             is_starred,
@@ -256,6 +258,41 @@ class PreOCIModel(RepositoryDataInterface):
             repo.trust_enabled,
             repo.state,
         )
+
+    def add_quota_view(self, repos):
+        namespace_limit_bytes = {}
+        repos_with_view = []
+        repo_sizes = model.repository.get_repository_sizes([repo.id for repo in repos])
+        for repo in repos:
+            repo_with_view = repo.to_dict()
+            repos_with_view.append(repo_with_view)
+
+            if (
+                repo_with_view.get("namespace", None) is None
+                or repo_with_view.get("name", None) is None
+            ):
+                continue
+
+            # Caching result in namespace_limit_bytes
+            if repo_with_view.get("namespace") not in namespace_limit_bytes:
+                quotas = model.namespacequota.get_namespace_quota_list(
+                    repo_with_view.get("namespace")
+                )
+                # Currently only one quota per namespace is supported
+                namespace_limit_bytes[repo_with_view.get("namespace")] = (
+                    quotas[0].limit_bytes
+                    if quotas
+                    else model.namespacequota.fetch_system_default(quotas)
+                )
+
+            # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
+            # we still want to report repo's storage consumption
+            repo_with_view["quota_report"] = {
+                "quota_bytes": repo_sizes.get(repo.id, 0),
+                "configured_quota": namespace_limit_bytes[repo_with_view.get("namespace")],
+            }
+
+        return repos_with_view
 
 
 pre_oci_model = PreOCIModel()

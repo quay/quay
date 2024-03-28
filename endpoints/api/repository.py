@@ -252,7 +252,12 @@ class RepositoryList(ApiResource):
             popularity,
         )
 
-        return {"repositories": [repo.to_dict() for repo in repos]}, next_page_token
+        if features.QUOTA_MANAGEMENT:
+            repositories_with_view = model.add_quota_view(repos)
+        else:
+            repositories_with_view = [repo.to_dict() for repo in repos]
+
+        return {"repositories": repositories_with_view}, next_page_token
 
 
 @resource("/v1/repository/<apirepopath:repository>")
