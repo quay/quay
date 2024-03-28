@@ -450,7 +450,7 @@ def _write_manifest(
             storage,
             raise_on_error=True,
             verify_quota=app.config.get("FEATURE_QUOTA_MANAGEMENT", False)
-            and app.config.get("FEATURE_EDIT_QUOTA", True),
+            and app.config.get("FEATURE_VERIFY_QUOTA", True),
         )
     except CreateManifestException as cme:
         raise ManifestInvalid(detail={"message": str(cme)})
