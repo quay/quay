@@ -102,6 +102,7 @@ export interface ITeamMember {
 
 export interface ITeamMembersCanSyncResponse {
   service: string;
+  issuer_domain?: string;
 }
 
 export interface ITeamMembersSyncedResponse {
