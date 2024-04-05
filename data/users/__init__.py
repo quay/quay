@@ -13,6 +13,7 @@ from data.users.externalldap import LDAPUsers
 from data.users.externaloidc import OIDCUsers
 from data.users.federated import FederatedUsers
 from data.users.keystone import get_keystone_users
+from oauth.oidc import OIDCLoginService
 from util.config.superusermanager import ConfigUserManager
 from util.security.aes import AESCipher
 from util.security.secret import convert_secret_key
@@ -45,7 +46,7 @@ def get_federated_service_name(authentication_type):
 LDAP_CERT_FILENAME = "ldap.crt"
 
 
-def get_users_handler(config, _, override_config_dir):
+def get_users_handler(config, _, override_config_dir, oauth_login):
     """
     Returns a users handler for the authentication configured in the given config object.
     """
@@ -140,37 +141,40 @@ def get_users_handler(config, _, override_config_dir):
         return AppTokenInternalAuth()
 
     if authentication_type == "OIDC":
-        client_id = config.get("CLIENT_ID")
-        client_secret = config.get("CLIENT_SECRET")
-        oidc_server = config.get("OIDC_SERVER")
-        service_name = config.get("SERVICE_NAME")
-        login_scopes = config.get("LOGIN_SCOPES")
-        preferred_group_claim_name = config.get("PREFERRED_GROUP_CLAIM_NAME")
+        for service in oauth_login.services:
+            if isinstance(service, OIDCLoginService):
+                config = service.config
+                client_id = config.get("CLIENT_ID", None)
+                client_secret = config.get("CLIENT_SECRET", None)
+                oidc_server = config.get("OIDC_SERVER", None)
+                service_name = config.get("SERVICE_NAME", None)
+                login_scopes = config.get("LOGIN_SCOPES", None)
+                preferred_group_claim_name = config.get("PREFERRED_GROUP_CLAIM_NAME", None)
 
-        return OIDCUsers(
-            client_id,
-            client_secret,
-            oidc_server,
-            service_name,
-            login_scopes,
-            preferred_group_claim_name,
-        )
+                return OIDCUsers(
+                    client_id,
+                    client_secret,
+                    oidc_server,
+                    service_name,
+                    login_scopes,
+                    preferred_group_claim_name,
+                )
 
     raise RuntimeError("Unknown authentication type: %s" % authentication_type)
 
 
 class UserAuthentication(object):
-    def __init__(self, app=None, config_provider=None, override_config_dir=None):
+    def __init__(self, app=None, config_provider=None, override_config_dir=None, oauth_login=None):
         self.secret_key = None
         self.app = app
         if app is not None:
-            self.state = self.init_app(app, config_provider, override_config_dir)
+            self.state = self.init_app(app, config_provider, override_config_dir, oauth_login)
         else:
             self.state = None
 
-    def init_app(self, app, config_provider, override_config_dir):
+    def init_app(self, app, config_provider, override_config_dir, oauth_login):
         self.secret_key = convert_secret_key(app.config["SECRET_KEY"])
-        users = get_users_handler(app.config, config_provider, override_config_dir)
+        users = get_users_handler(app.config, config_provider, override_config_dir, oauth_login)
 
         # register extension with app
         app.extensions = getattr(app, "extensions", {})

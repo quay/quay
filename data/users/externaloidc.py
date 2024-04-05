@@ -1,5 +1,6 @@
 import json
 import logging
+from urllib.parse import urlparse
 
 import app
 from data.model import InvalidTeamException, UserAlreadyInTeam, team
@@ -29,6 +30,12 @@ class OIDCUsers(FederatedUsers):
         self._login_scopes = login_scopes
         self._preferred_group_claim_name = preferred_group_claim_name
         self._requires_email = requires_email
+
+    def service_metadata(self):
+        for service in app.oauth_login.services:
+            if isinstance(service, OIDCLoginService):
+                return {"issuer_domain": urlparse(service.get_issuer()).netloc}
+        return {}
 
     def is_superuser(self, username: str):
         """
