@@ -140,7 +140,7 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
 
         return AppTokenInternalAuth()
 
-    if authentication_type == "OIDC":
+    if authentication_type == "OIDC" and oauth_login:
         for service in oauth_login.services:
             if isinstance(service, OIDCLoginService):
                 config = service.config
