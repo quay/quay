@@ -3,7 +3,6 @@ import os
 import re
 from datetime import datetime, timedelta
 
-from elasticsearch import RequestsHttpConnection
 from elasticsearch.exceptions import AuthorizationException, NotFoundError
 from elasticsearch_dsl import Date, Document, Index, Integer, Ip, Keyword, Object, Text
 from elasticsearch_dsl.connections import connections
@@ -139,7 +138,6 @@ class ElasticsearchLogs(object):
                 http_auth=http_auth,
                 use_ssl=self._use_ssl,
                 verify_certs=True,
-                connection_class=RequestsHttpConnection,
                 timeout=ELASTICSEARCH_DEFAULT_CONNECTION_TIMEOUT,
             )
 
@@ -153,7 +151,6 @@ class ElasticsearchLogs(object):
                 http_auth=http_auth,
                 use_ssl=self._use_ssl,
                 verify_certs=True,
-                connection_class=RequestsHttpConnection,
                 timeout=ELASTICSEARCH_TEMPLATE_CONNECTION_TIMEOUT,
             )
 
