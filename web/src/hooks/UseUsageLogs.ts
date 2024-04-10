@@ -46,9 +46,16 @@ export async function getAggregateLogs(
     repo != null
       ? `/api/v1/repository/${org}/${repo}/aggregatelogs`
       : `/api/v1/organization/${org}/aggregatelogs`;
-  const response: AxiosResponse = await axios.get(url, {
-    params: {starttime: `${starttime}`, endtime: `${endtime}`},
-  });
+  const response: AxiosResponse = await axios
+    .get(url, {params: {starttime: `${starttime}`, endtime: `${endtime}`}})
+    .catch(function (error) {
+      if (error.response?.status === 501) {
+        throw new Error(error.response.data?.message);
+      } else {
+        throw error;
+      }
+    });
+
   assertHttpCode(response.status, 200);
   return response.data.aggregated;
 }
@@ -64,13 +71,22 @@ export async function getLogs(
     repo != null
       ? `/api/v1/repository/${org}/${repo}/logs`
       : `/api/v1/organization/${org}/logs`;
-  const response = await axios.get(url, {
-    params: {
-      starttime: `${starttime}`,
-      endtime: `${endtime}`,
-      next_page: next_page ? next_page : '',
-    },
-  });
+  const response = await axios
+    .get(url, {
+      params: {
+        starttime: `${starttime}`,
+        endtime: `${endtime}`,
+        next_page: next_page ? next_page : '',
+      },
+    })
+    .catch(function (error) {
+      console.log(error.toJSON());
+      if (error.response.status === 501) {
+        throw new Error(error.response.data?.message);
+      }
+      throw error;
+    });
+  assertHttpCode(response.status, 200);
   return {
     logs: response.data.logs,
     nextPage: response.data.next_page,
