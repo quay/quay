@@ -31,7 +31,7 @@ describe('OIDC Team Sync', () => {
     }).as('getAggregateLogs');
     cy.intercept('GET', '/api/v1/organization/teamsyncorg/logs?*', {
       start_time: '',
-      end_time:'',
+      end_time: '',
       logs: [],
     }).as('getLogs');
 
@@ -48,6 +48,9 @@ describe('OIDC Team Sync', () => {
     cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
     cy.get('#team-members-toolbar').within(() =>
       cy.get('button:contains("Enable Team Sync")').click(),
+    );
+    cy.get('#directory-sync-modal').contains(
+      "Enter the group name you'd like to sync membership with:",
     );
     cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
@@ -223,5 +226,21 @@ describe('OIDC Team Sync', () => {
       'exist',
     );
     cy.get('button[data-testid="admin-delete-icon"]').should('not.exist');
+  });
+
+  it('Verify oidc azure login modal', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',
+      {
+        fixture: 'teamsync-azure.json',
+      },
+    ).as('getAzureTeamMembers');
+    cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
+    cy.wait('@getAzureTeamMembers');
+    cy.get('button:contains("Enable Team Sync")').click();
+    cy.get('#directory-sync-modal').contains(
+      "Enter the group Object Id you'd like to sync membership with:",
+    );
   });
 });
