@@ -313,3 +313,10 @@ def test_verify_credentials(discovery_handler, token_handler_password_grant, use
         assert result.email == "foo@example.com"
         assert result.id == "cooluser"
         assert error_msg is None
+
+
+def test_service_metadata(discovery_handler, token_handler_password_grant, userinfo_handler):
+    oidc_instance = OIDCAuthTests().fake_oidc()
+    with HTTMock(discovery_handler, token_handler_password_grant, userinfo_handler):
+        result = oidc_instance.service_metadata()
+        assert result["issuer_domain"] == "fakeoidc"
