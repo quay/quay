@@ -103,7 +103,7 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        flags: unit
+        flags: unit, -Z
 
   types:
     name: Types Test
