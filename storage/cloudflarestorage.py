@@ -88,6 +88,8 @@ class CloudFlareS3Storage(S3Storage):
             params["namespace"] = kwargs.get("namespace")
         if kwargs.get("username"):
             params["username"] = kwargs.get("username")
+        if kwargs.get("repo_name"):
+            params["repo_name"] = kwargs.get("repo_name")
 
         url_dict.update(params)
         url_new_query = urllib.parse.urlencode(url_dict)
