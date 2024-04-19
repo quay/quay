@@ -8,6 +8,20 @@ describe('Robot Accounts Page', () => {
       .then((token) => {
         cy.loginByCSRF(token);
       });
+
+    cy.request(`${Cypress.env('REACT_QUAY_APP_API_URL')}/config`)
+      .its('body')
+      .then((body) => {
+        const serverHostname = body.config.SERVER_HOSTNAME;
+        cy.wrap(serverHostname).as('serverHostname');
+      });
+
+    cy.intercept(
+      'GET',
+      `${Cypress.env(
+        'REACT_QUAY_APP_API_URL',
+      )}/api/v1/organization/testorg/robots/testrobot`,
+    ).as('getRobotCredentials');
   });
 
   it('Search Filter', () => {
@@ -22,6 +36,94 @@ describe('Robot Accounts Page', () => {
     cy.get('#robot-account-search').type('somethingrandome');
     cy.contains('0 - 0 of 0');
     cy.get('#robot-account-search').clear();
+  });
+
+  it('Get Robot token as Kubernetes Secret', () => {
+    let testrobotToken = '';
+
+    cy.visit('/organization/testorg?tab=Robotaccounts');
+
+    // select first robot
+    cy.contains('a', 'testorg+testrobot').click();
+
+    cy.wait('@getRobotCredentials').then((interception) => {
+      testrobotToken = interception.response.body.token;
+      cy.wrap(testrobotToken).as('testrobotToken');
+    });
+
+    // switch to kubernetes secret tab
+    cy.get('button:contains("Kubernetes")').click();
+
+    // ensure default scope selection is correct
+    cy.get('#secret-scope-toggle > .pf-v5-c-menu-toggle__text').contains(
+      'Organization',
+    );
+    cy.get('@serverHostname').then((serverHostname) => {
+      cy.get('#secret-scope').should('have.text', serverHostname + '/testorg');
+    });
+
+    // examine generated secret and verify it is scoped to the organization
+    cy.get('div[id="step-2"]')
+      .get('button[aria-label="Show content"]')
+      .click({multiple: true});
+
+    cy.get('@serverHostname').then((serverHostname) => {
+      cy.get('@testrobotToken').then((testrobotToken) => {
+        const robotCredential = 'testorg+testrobot:' + testrobotToken;
+        const encodedRobotCredential = btoa(robotCredential);
+
+        const expectedAuthJson = {
+          auths: {
+            [serverHostname + '/testorg']: {
+              auth: encodedRobotCredential,
+              email: '',
+            },
+          },
+        };
+
+        const encodedExpectedAuthJson = btoa(
+          JSON.stringify(expectedAuthJson, null, 2),
+        );
+
+        cy.get('#step-2')
+          .get('pre')
+          .invoke('text')
+          .should('contain', encodedExpectedAuthJson);
+      });
+    });
+
+    // change scope to registry
+    cy.get('#secret-scope-toggle > .pf-v5-c-menu-toggle__controls').click();
+    cy.get('#secret-scope-selector').contains('Registry').click();
+    cy.get('@serverHostname').then((serverHostname) => {
+      cy.get('#secret-scope').should('have.text', serverHostname);
+    });
+
+    // examine generated secret again and verify it is scoped to the registry
+    cy.get('@serverHostname').then((serverHostname) => {
+      cy.get('@testrobotToken').then((testrobotToken) => {
+        const robotCredential = 'testorg+testrobot:' + testrobotToken;
+        const encodedRobotCredential = btoa(robotCredential);
+
+        const expectedAuthJson = {
+          auths: {
+            [String(serverHostname)]: {
+              auth: encodedRobotCredential,
+              email: '',
+            },
+          },
+        };
+
+        const encodedExpectedAuthJson = btoa(
+          JSON.stringify(expectedAuthJson, null, 2),
+        );
+
+        cy.get('#step-2')
+          .get('pre')
+          .invoke('text')
+          .should('contain', encodedExpectedAuthJson);
+      });
+    });
   });
 
   it('Robot Account Toolbar Items', () => {
