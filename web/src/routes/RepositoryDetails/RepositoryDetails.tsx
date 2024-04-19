@@ -47,7 +47,6 @@ import RepositoryDescription from './RepositoryDescription/RepositoryDescription
 enum TabIndex {
   Description = 'description',
   Tags = 'tags',
-  Information = 'information',
   TagHistory = 'history',
   Builds = 'builds',
   Logs = 'logs',
@@ -63,7 +62,7 @@ function getTabIndex(tab: string) {
 
 export default function RepositoryDetails() {
   const config = useQuayConfig();
-  const [activeTabKey, setActiveTabKey] = useState(TabIndex.Description);
+  const [activeTabKey, setActiveTabKey] = useState(TabIndex.Tags);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -230,7 +229,6 @@ export default function RepositoryDetails() {
                 <Tabs
                   mountOnEnter
                   unmountOnExit
-                  activeKey={activeTabKey}
                   onSelect={tabsOnSelect}
                   usePageInsets={true}
                 >
@@ -250,6 +248,7 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
+                    activeKey={activeTabKey}
                   >
                     <TagsList
                       organization={organization}
