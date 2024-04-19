@@ -168,6 +168,19 @@ export async function setRepositoryState(
   return response.data;
 }
 
+export async function setRepositoryDescription(
+  namespace: string,
+  repositoryName: string,
+  description: string,
+) {
+  const api = `/api/v1/repository/${namespace}/${repositoryName}`;
+  const response: AxiosResponse = await axios.put(api, {
+    description,
+  });
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
 export async function bulkDeleteRepositories(repos: IRepository[]) {
   const responses = await Promise.allSettled(
     repos.map((repo) => deleteRepository(repo.namespace, repo.name)),
