@@ -231,6 +231,7 @@ export default function RepositoryDetails() {
                   unmountOnExit
                   onSelect={tabsOnSelect}
                   usePageInsets={true}
+                  activeKey={activeTabKey}
                 >
                   <Tab
                     eventKey={TabIndex.Description}
@@ -248,7 +249,6 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
-                    activeKey={activeTabKey}
                   >
                     <TagsList
                       organization={organization}
