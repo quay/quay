@@ -15,7 +15,8 @@ import {
   Flex,
   Split,
   SplitItem,
-  CodeBlock, CodeBlockCode,
+  CodeBlock,
+  CodeBlockCode,
 } from '@patternfly/react-core';
 import remarkGfm from 'remark-gfm';
 
@@ -43,7 +44,11 @@ const markdownComponents = {
   ol: ({node, ...props}) => (
     <List component={ListComponent.ol} type={OrderType.number} {...props} />
   ),
-  pre: ({node, children, ...props}) => (<CodeBlock {...props}> <CodeBlockCode>{children}</CodeBlockCode></CodeBlock>),
+  pre: ({node, children, ...props}) => (
+    <CodeBlock {...props}>
+      <CodeBlockCode>{children}</CodeBlockCode>
+    </CodeBlock>
+  ),
 };
 
 interface RepositoryDescriptionProps {
