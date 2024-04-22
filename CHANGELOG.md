@@ -3,8 +3,19 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.11.1"></a>
+## [v3.11.1] - 2024-04-19
+### Cherrypick
+- [01e3bcce](https://github.com/quay/quay/commit/01e3bcce7b93d0352701028c4b19c4a56945d1ac): merging f24176 from master (PROJQUAY-7033) ([#2801](https://github.com/quay/quay/issues/2801))
+### [Redhat-3.11] Nginx
+- [c56638f2](https://github.com/quay/quay/commit/c56638f2fa5701367da698e014f9e4f873298775): add rule to route /updateuser to old ui (PROJQUAY-6722) ([#2747](https://github.com/quay/quay/issues/2747))
+### [Redhat-3.11] Ui
+- [9f2eacc9](https://github.com/quay/quay/commit/9f2eacc97f440681c0071bbba944113a31e40b99): Add human readable autoprune policy method type (PROJQUAY-6918) ([#2784](https://github.com/quay/quay/issues/2784))
+- [b70ab7fc](https://github.com/quay/quay/commit/b70ab7fc7698f67eb6a10173497878d149b761a1): non org admins cannot remove team sync (PROJQUAY-6924) ([#2795](https://github.com/quay/quay/issues/2795))
+- [e4889c00](https://github.com/quay/quay/commit/e4889c00b61a66fd30ac6ad6dd9a560d81b80e46): dont show username password signin when auth_type is oidc (PROJQUAY-6740) ([#2780](https://github.com/quay/quay/issues/2780))
+
 <a name="v3.11.0"></a>
-## [v3.11.0] - 2024-03-01
+## [v3.11.0] - 2024-03-19
 ### Api
 - [46d1322c](https://github.com/quay/quay/commit/46d1322ca7579f5080ed2af3b0b25a43ed123676): Return layer compressed size with manifest request (PROJQUAY-6616) ([#2627](https://github.com/quay/quay/issues/2627))
 - [aaba7539](https://github.com/quay/quay/commit/aaba7539b9bd180d9c80e9d71c4d7e4b1780b8f7): adding nickname decorator to autoprune policy endpoints (PROJQUAY-6483) ([#2524](https://github.com/quay/quay/issues/2524))
@@ -32,6 +43,7 @@
 - [5e1a54a5](https://github.com/quay/quay/commit/5e1a54a585b19d39248a04d5136eb46c796e9064): bump browserify-sign from 4.2.1 to 4.2.2 in /web ([#2439](https://github.com/quay/quay/issues/2439))
 - [52275a3d](https://github.com/quay/quay/commit/52275a3d82f23cbde878b69e54af91a414ef4163): bump eslint from 8.49.0 to 8.56.0 in /web ([#2566](https://github.com/quay/quay/issues/2566))
 ### Cache
+- [be4edd02](https://github.com/quay/quay/commit/be4edd02a3b39c0c8c84660a5e5e15aae79fa330): add caching for manifest requests (PROJQUAY-6482) ([#2522](https://github.com/quay/quay/issues/2522))
 - [a7737722](https://github.com/quay/quay/commit/a7737722fcb335180ec01812d9b3fa472bda3deb): adding caching on look_up repository (PROJQUAY-6472) ([#2521](https://github.com/quay/quay/issues/2521))
 ### Cdn
 - [93c816b2](https://github.com/quay/quay/commit/93c816b2b78881d3aa5ae797e6771d075a3bda30): add namespace and username to CDN redirect for usage calculation (PROJQUAY-5939) ([#2616](https://github.com/quay/quay/issues/2616))
@@ -53,6 +65,8 @@
 - [2410c7a9](https://github.com/quay/quay/commit/2410c7a99c9d9731df05c889406db80bbe144544): add web worker count to deployment (PROJQUAY-6453) ([#2520](https://github.com/quay/quay/issues/2520))
 - [7284542f](https://github.com/quay/quay/commit/7284542f16eb3735bb2228fd7d0a7e15a3061f20): add DB pooling to py3 template (PROJQUAY-5550) ([#2474](https://github.com/quay/quay/issues/2474))
 - [3f39a0fc](https://github.com/quay/quay/commit/3f39a0fc6fffd0d3e279a10f99d56f77eabb6d18): Add connection pooling env variable (PROJQUAY-5550) ([#2472](https://github.com/quay/quay/issues/2472))
+### Endpoints
+- [827ca13a](https://github.com/quay/quay/commit/827ca13aa01c130af0137a8272a5b92e7a144254): add error handler for RequestRedirect (PROJQUAY-6724) ([#2710](https://github.com/quay/quay/issues/2710))
 ### Feat
 - [98811f53](https://github.com/quay/quay/commit/98811f539731b80c6d2de9a55011674d9225fd3e): Add auto-prune policy at repository level (PROJQUAY-6354) ([#2691](https://github.com/quay/quay/issues/2691))
 ### Federationuser(Ldap)
@@ -74,6 +88,8 @@
 - [3aa21213](https://github.com/quay/quay/commit/3aa2121326b07e10dc46a98e4f33a6529bf83713): return None if subscription api times out (PROJQUAY-5363) ([#2437](https://github.com/quay/quay/issues/2437))
 ### Oci
 - [8895caf9](https://github.com/quay/quay/commit/8895caf97ba6e06c885b222010c7159594645ab3): remove platform requirement for image index (PROJQUAY-6658) ([#2657](https://github.com/quay/quay/issues/2657))
+### Oidc
+- [3446d563](https://github.com/quay/quay/commit/3446d5630b638f31335bca5d245f06277f2aa4b3): display error msg when signing in via username password (PROJQUAY-6740) ([#2714](https://github.com/quay/quay/issues/2714))
 ### Quayio
 - [161a4717](https://github.com/quay/quay/commit/161a4717d28f3da547be2eb605f02823f8233d1b): Remove cpu limits (PROJQUAY-6440) ([#2503](https://github.com/quay/quay/issues/2503))
 ### Quota
@@ -138,6 +154,22 @@
 - [7c0cc50a](https://github.com/quay/quay/commit/7c0cc50a59845700cd08407f79157984c60cc5a0): Add landing page for quay.io (PROJQUAY-5460) ([#2264](https://github.com/quay/quay/issues/2264))
 ### User(Robots)
 - [0dfa72d0](https://github.com/quay/quay/commit/0dfa72d03607142ebf1e7acb398ac32c9019a717): disallow robot login and create 2nd (PROJQUAY-5968) ([#2483](https://github.com/quay/quay/issues/2483))
+### [Redhat-3.11] Autoprune
+- [d084d6b8](https://github.com/quay/quay/commit/d084d6b882fa0b1b84968b4ac563fd687bc88b76): add alembic script to remove unique constraint on index (PROJQUAY-6782) ([#2732](https://github.com/quay/quay/issues/2732))
+### [Redhat-3.11] Feat(Oidc)
+- [d2ee37f0](https://github.com/quay/quay/commit/d2ee37f074fa8836cba4ab8f61d38db59e6c893a): add OIDC_DISABLE_USER_ENDPOINT parameter (PROJQUAY-6908) ([#2774](https://github.com/quay/quay/issues/2774))
+### [Redhat-3.11] Oidc
+- [d6d495d2](https://github.com/quay/quay/commit/d6d495d2ebcf3c4b21071c04020c91f7d8e82522): allows users to login via cli (PROJQUAY-6873) ([#2771](https://github.com/quay/quay/issues/2771))
+- [be53ca4c](https://github.com/quay/quay/commit/be53ca4c75911927489b5ad17c09750d72bb88a0): use federated login service to sync quay teams (PROJQUAY-6741) ([#2726](https://github.com/quay/quay/issues/2726))
+### [Redhat-3.11] Storage
+- [6722a23d](https://github.com/quay/quay/commit/6722a23dd23849fe35f3c28d3aec70776c473352): Increase GCP timeout (PROJQUAY-6819) ([#2745](https://github.com/quay/quay/issues/2745))
+### [Redhat-3.11] Ui
+- [540ed54a](https://github.com/quay/quay/commit/540ed54ae691f90edd27ca5b3f7f2dfd4f8c5900): rename directory sync to team sync (PROJQUAY-6880) ([#2753](https://github.com/quay/quay/issues/2753))
+- [a2bb47e4](https://github.com/quay/quay/commit/a2bb47e4d9d92c1035d8e6a5539a1c3bdc8ae17f): updating nginx routing rule for userfiles (PROJQUAY-6841) ([#2744](https://github.com/quay/quay/issues/2744))
+- [2cd0dcb0](https://github.com/quay/quay/commit/2cd0dcb0180986180ec642b4be3d5d719c265d7b): show delete option for robot accounts when team is synced with external group (PROJQUAY-6828) ([#2738](https://github.com/quay/quay/issues/2738))
+- [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
+- [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
+- [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
 <a name="v3.10.4"></a>
 ## [v3.10.4] - 2024-02-07
@@ -2064,7 +2096,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.11.0...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.11.1...HEAD
+[v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
 [v3.11.0]: https://github.com/quay/quay/compare/v3.10.4...v3.11.0
 [v3.10.4]: https://github.com/quay/quay/compare/v3.10.3...v3.10.4
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
