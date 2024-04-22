@@ -5205,6 +5205,14 @@ class TestOrganizationRhSku(ApiTestCase):
         )
         self.assertEqual(len(json), 0)
 
+    def test_terminated_attachment(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(22222222, org.id, user.id, 1)
+        json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
+        self.assertEqual(json["privateAllowed"], False)
+
 
 class TestUserSku(ApiTestCase):
     def test_get_user_skus(self):
