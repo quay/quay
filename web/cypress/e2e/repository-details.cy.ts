@@ -563,7 +563,7 @@ describe('Repository Details Page', () => {
       });
 
     const formattedDate = new Date();
-    const currentDateUS = formattedDate.toLocaleDateString('en-US', {
+    const currentDateGB = formattedDate.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -580,7 +580,7 @@ describe('Repository Details Page', () => {
 
     // Ensure current date can be chosen
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get(`[aria-label="${currentDateUS}"]`).click();
+    cy.get(`[aria-label="${currentDateGB}"]`).click();
     cy.get('input[aria-label="Date picker"]').should(
       'have.value',
       currentDateLong,
@@ -591,7 +591,7 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
+    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -667,13 +667,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
 
     nextMonth.setHours(1);
@@ -717,13 +717,14 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
+      // for some reason the date picker is always using UK date formats for the aria labels
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
 
     nextMonth.setHours(1);
@@ -764,13 +765,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
 
     nextMonth.setHours(1);
