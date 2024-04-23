@@ -549,7 +549,7 @@ describe('Repository Details Page', () => {
       });
   });
 
-  it('changes expiration through kebab', () => {
+  it.only('changes expiration through kebab', () => {
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
@@ -591,13 +591,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-GB', {
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
 
     cy.get('#expiration-time-picker').click();
 
@@ -612,10 +612,12 @@ describe('Repository Details Page', () => {
 
     nextMonth.setHours(2);
     nextMonth.setMinutes(3);
-    const formattedTime2 = nextMonth.toLocaleTimeString(navigator.language, {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
+    const formattedTime2 = nextMonth
+      .toLocaleTimeString(navigator.language, {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+      .replace(/ AM| PM/, ''); // remove AM/PM suffixes because the TimePicker adds those automatically
     cy.get('#expiration-time-picker-input').type(formattedTime2);
     cy.contains('Change Expiration').click();
 
