@@ -127,7 +127,7 @@ class ExportActionLogsWorker(QueueWorker):
 
         upload_metadata = new_metadata
         logs_iterator = logs_model.yield_logs_for_export(
-            start_time, end_time, repository_id, namespace_id, max_query_time
+            start_time, end_time, repository_id, namespace_id, max_query_time, upload_id
         )
 
         try:
