@@ -95,7 +95,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
 
   const dateFormat = (date: Date) => {
     if (!isNullOrUndefined(date)) {
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString(navigator.language, {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -181,6 +181,12 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     setTimePickerError(null);
   };
 
+  const is24HourFormat = () => {
+    const dateString = new Date().toLocaleTimeString();
+    const lastTwoCharacters = dateString.slice(-2);
+    return lastTwoCharacters !== 'AM' && lastTwoCharacters !== 'PM';
+  };
+
   return (
     <>
       <Modal
@@ -232,6 +238,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
                 placeholder="No time selected"
                 time={date === null ? ' ' : date.toLocaleTimeString()}
                 onChange={onTimeChange}
+                is24Hour={is24HourFormat()}
               />
               <span style={{paddingRight: '1em'}} />
               <Button variant={ButtonVariant.secondary} onClick={onClear}>

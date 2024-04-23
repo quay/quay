@@ -25,7 +25,7 @@ export function formatDate(date: string | number) {
   }
 
   const adjustedDate = typeof date === 'number' ? date * 1000 : date;
-  return new Date(adjustedDate).toLocaleString('en-US', {
+  return new Date(adjustedDate).toLocaleString(navigator.language, {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     timeStyle: 'short',
     dateStyle: 'medium',
