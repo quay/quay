@@ -563,7 +563,7 @@ describe('Repository Details Page', () => {
       });
 
     const formattedDate = new Date();
-    const currentDate = formattedDate.toLocaleDateString(navigator.language, {
+    const currentDateUS = formattedDate.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -580,7 +580,7 @@ describe('Repository Details Page', () => {
 
     // Ensure current date can be chosen
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get(`[aria-label="${currentDate}"]`).click();
+    cy.get(`[aria-label="${currentDateUS}"]`).click();
     cy.get('input[aria-label="Date picker"]').should(
       'have.value',
       currentDateLong,
@@ -591,13 +591,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonth = nextMonth.toLocaleDateString(navigator.language, {
+    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
 
     cy.get('#expiration-time-picker').click();
 
@@ -667,13 +667,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonth = nextMonth.toLocaleDateString(navigator.language, {
+    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
     cy.get('#expiration-time-picker').click();
 
     nextMonth.setHours(1);
@@ -717,13 +717,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonth = nextMonth.toLocaleDateString(navigator.language, {
+    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
     cy.get('#expiration-time-picker').click();
 
     nextMonth.setHours(1);
@@ -764,13 +764,13 @@ describe('Repository Details Page', () => {
 
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    const sameDateNextMonth = nextMonth.toLocaleDateString(navigator.language, {
+    const sameDateNextMonthUS = nextMonth.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    cy.get(`[aria-label="${sameDateNextMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthUS}"]`).click();
     cy.get('#expiration-time-picker').click();
 
     nextMonth.setHours(1);
