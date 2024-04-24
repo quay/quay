@@ -184,8 +184,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
 
   const minExpirationDateTime = () => {
     if (date !== null && isToday(date)) {
-      const now = new Date();
-      return now;
+      return new Date(); // now
     } else {
       const newDate = new Date();
       newDate.setHours(0, 0, 0);
