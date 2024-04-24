@@ -1922,7 +1922,13 @@ describe('Repository Builds - View build logs', () => {
               );
             });
           });
-        });
+
+        cy.contains('Copy')
+          .click()
+          .then(() => {
+            expect(clipboardStub).to.be.called;
+          });
+      });
 
       // Download
       cy.contains('a', 'Download').should(
