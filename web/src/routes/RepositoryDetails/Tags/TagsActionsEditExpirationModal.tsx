@@ -9,14 +9,15 @@ import {
   Label,
   Modal,
   ModalVariant,
+  Split,
+  SplitItem,
   TimePicker,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
+import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useSetExpiration} from 'src/hooks/UseTags';
-import {AlertVariant} from 'src/atoms/AlertState';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
-import Conditional from 'src/components/empty/Conditional';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
   const [date, setDate] = useState<Date>(null);
@@ -28,7 +29,6 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     errorSetExpirationDetails,
   } = useSetExpiration(props.org, props.repo);
   const [validDate, setValidDate] = useState<boolean>(true);
-  const [timePickerError, setTimePickerError] = useState<string>(null);
   const initialDate: Date = isNullOrUndefined(props.expiration)
     ? null
     : new Date(props.expiration);
@@ -123,10 +123,8 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
       setDate(newDate);
       if (newDate <= new Date()) {
         setValidDate(false);
-        setTimePickerError('Time is before the allowable range.');
       } else {
         setValidDate(true);
-        setTimePickerError(null);
       }
     } else {
       setValidDate(false);
@@ -147,11 +145,9 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
       newDate.setHours(hour, minute);
       if (newDate > new Date()) {
         setValidDate(true);
-        setTimePickerError(null);
         setDate(newDate);
       } else {
         setValidDate(false);
-        setTimePickerError('Time is before the allowable range.');
       }
     } else {
       setValidDate(false);
@@ -161,7 +157,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const rangeValidator = (date: Date) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    return date < now ? 'Date is before the allowable range.' : '';
+    return date < now ? 'Cannot set expiration date to the past.' : '';
   };
 
   const onSave = () => {
@@ -178,13 +174,24 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
   const onClear = () => {
     setDate(null);
     setValidDate(true);
-    setTimePickerError(null);
   };
 
   const is24HourFormat = () => {
     const dateString = new Date().toLocaleTimeString();
     const lastTwoCharacters = dateString.slice(-2);
     return lastTwoCharacters !== 'AM' && lastTwoCharacters !== 'PM';
+  };
+
+  const minExpirationDateTime = () => {
+    if (date !== null && isToday(date)) {
+      const newDate = new Date();
+      newDate.setHours(newDate.getHours() + 1, 0, 0);
+      return newDate;
+    } else {
+      const newDate = new Date();
+      newDate.setHours(0, 0, 0);
+      return newDate;
+    }
   };
 
   return (
@@ -225,30 +232,39 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
           <DescriptionListGroup>
             <DescriptionListTerm>Expiration date</DescriptionListTerm>
             <DescriptionListDescription>
-              <DatePicker
-                placeholder="No date selected"
-                value={dateFormat(date)}
-                dateFormat={dateFormat}
-                dateParse={(date: string) => new Date(date)}
-                onChange={onDateChange}
-                validators={[rangeValidator]}
-              />
-              <TimePicker
-                id="expiration-time-picker"
-                placeholder="No time selected"
-                time={date === null ? ' ' : date.toLocaleTimeString()}
-                onChange={onTimeChange}
-                is24Hour={is24HourFormat()}
-              />
-              <span style={{paddingRight: '1em'}} />
-              <Button variant={ButtonVariant.secondary} onClick={onClear}>
-                Clear
-              </Button>
-              <Conditional
-                if={timePickerError !== null && timePickerError.length > 0}
-              >
-                <div style={{color: 'red'}}>{timePickerError}</div>
-              </Conditional>
+              <Split hasGutter style={{height: '4em'}}>
+                <SplitItem>
+                  <DatePicker
+                    placeholder="No date selected"
+                    value={dateFormat(date)}
+                    dateFormat={dateFormat}
+                    dateParse={(date: string) => new Date(date)}
+                    onChange={onDateChange}
+                    validators={[rangeValidator]}
+                  />
+                </SplitItem>
+                <SplitItem>
+                  <TimePicker
+                    id="expiration-time-picker"
+                    placeholder="No time selected"
+                    time={
+                      date === null || !validDate
+                        ? ' '
+                        : date.toLocaleTimeString()
+                    }
+                    onChange={onTimeChange}
+                    is24Hour={is24HourFormat()}
+                    minTime={minExpirationDateTime()}
+                    invalidMinMaxErrorMessage="Cannot set expiration date to the past."
+                    style={{width: '150px', whiteSpace: 'normal'}}
+                  />
+                </SplitItem>
+                <SplitItem>
+                  <Button variant={ButtonVariant.secondary} onClick={onClear}>
+                    Clear
+                  </Button>
+                </SplitItem>
+              </Split>
             </DescriptionListDescription>
           </DescriptionListGroup>
         </DescriptionList>

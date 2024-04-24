@@ -549,7 +549,7 @@ describe('Repository Details Page', () => {
       });
   });
 
-  it.only('changes expiration through kebab', () => {
+  it('changes expiration through kebab', () => {
     const formattedDate = new Date();
     const currentDateGB = formattedDate.toLocaleDateString('en-GB', {
       year: 'numeric',
