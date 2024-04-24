@@ -243,7 +243,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               data-testid={TableModeType.Invited}
               isSelected={tableMode == TableModeType.Invited}
               onChange={onTableModeChange}
-              isDisabled={!organization.is_admin}
+              isDisabled={!organization.is_admin || teamSyncInfo != null}
             />
           </ToggleGroup>
         </ToolbarItem>

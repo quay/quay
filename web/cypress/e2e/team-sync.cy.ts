@@ -243,4 +243,17 @@ describe('OIDC Team Sync', () => {
       "Enter the group Object Id you'd like to sync membership with:",
     );
   });
+
+  it('Verify Invited tab is disabled for a team that is synced', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',
+      {
+        fixture: 'teamsynced-members-superuser.json',
+      },
+    ).as('getSycedTeamMembers');
+    cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
+    cy.wait('@getSycedTeamMembers');
+    cy.get(`[data-testid="Invited"]`).find('button').should('be.disabled');
+  });
 });
