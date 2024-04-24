@@ -1,0 +1,9 @@
+{
+  "name": "testteam",
+  "members": [],
+  "can_edit": true,
+  "can_sync": {
+    "service": "oidc",
+    "issuer_domain": "login.microsoftonline.com"
+  }
+}
