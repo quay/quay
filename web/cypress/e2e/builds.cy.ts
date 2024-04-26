@@ -1900,8 +1900,9 @@ describe('Repository Builds - View build logs', () => {
       cy.get('.build-log-timestamp').should('not.exist');
 
       // Copy
-      cy.contains('Copy')
-        .click()
+      cy.get('button:contains("Copy")')
+        .focus()
+        .dblclick()
         .then(() => {
           cy.window().then((win) => {
             win.navigator.clipboard.readText().then((text) => {
