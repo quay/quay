@@ -186,7 +186,7 @@ const MorePlansCard: React.FunctionComponent = () => {
 
 export default function Pricing() {
   const planCards = (
-    <Level style={{margin: '24px'}} id="purchase-plans">
+    <Level hasGutter style={{margin: '24px'}} id="purchase-plans">
       <LevelItem>
         <Card className="pricing-card">
           <CardTitle>

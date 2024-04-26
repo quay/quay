@@ -47,10 +47,10 @@ export default function OverviewList() {
             style={{maxHeight: '96px'}}
           />
           <FlexItem className="overview-info">
-            <Title headingLevel="h1">Quay.io</Title>
+            <Title headingLevel="h1">Red Hat Quay.io</Title>
             <Text>
-              Secure, Scalable, and Flexible: Quay.io Image Registry for Modern
-              Applications
+              Secure, Scalable, and Flexible: Quay.io Image Registry for Cloud
+              Native Applications
             </Text>
             <Button variant="link" style={{paddingLeft: '0'}}>
               Learn More <ExternalLinkAltIcon />
@@ -71,7 +71,7 @@ export default function OverviewList() {
         id="overview-tab"
       >
         <Tab eventKey={0} title={<TabTitleText>Overview</TabTitleText>}>
-          <GettingStarted />
+          <GettingStarted onPaidPlansClick={() => setActiveTabKey(1)} />
 
           <Title headingLevel="h1" className="overview-title">
             Key Features
