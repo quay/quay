@@ -102,10 +102,8 @@ RUN set -ex\
 # Build-static downloads the static javascript.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
 WORKDIR /opt/app-root/src
-# COPY --chown=1001:0 package.json package-lock.json  ./
 COPY --chown=1001:0 static/  ./
 RUN npm clean-install
-# COPY --chown=1001:0 *.json *.js  ./
 RUN npm run --quiet build
 
 # Build React UI
