@@ -47,9 +47,10 @@ export default function KeyFeatures() {
               displaySize="lg"
             >
               <Text id="store-containers-info">
-                Ensure your apps are stored privately, with access that you
-                control. Quay is teamwork optimized, with powerful access
-                controls.
+                Easily publish your container images or or store them privately
+                with granular access control. Quay.io is optimized for open
+                source project and enterprise users, with powerful flexible
+                permission and tenancy model.
               </Text>
             </ExpandableSection>
           </DataListItem>
@@ -74,7 +75,7 @@ export default function KeyFeatures() {
             >
               <Text id="build-containers-info">
                 Use Quay.io to automate your container builds, with integration
-                to GitHub, Bitbucket, and more. Robot accounts allow you to lock
+                to GitHub, GitLab, and more. Robot accounts allow you to lock
                 down automated access and audit each deployment.
               </Text>
             </ExpandableSection>
@@ -98,8 +99,8 @@ export default function KeyFeatures() {
               displaySize="lg"
             >
               <Text id="scan-containers-info">
-                Quay continually scans your containers for vulnerabilities,
-                giving you complete visibility into known issues and how to fix
+                Quay.io continually scans your containers for vulnerabilities,
+                giving you real-time visibility into known issues and how to fix
                 them.
               </Text>
             </ExpandableSection>
@@ -135,10 +136,11 @@ export default function KeyFeatures() {
 
       <Hint className="quayio-hint">
         <HintBody>
-          Red Hat Quay.io container registry platform provides secure storage,
-          distribution, and governance of containers and cloud native artifacts
-          on any infrastructure. It is available as a standalone component or
-          running on top of Red Hat Openshift.
+          Quay.io is a managed container registry service provided by Red Hat to
+          deliver secure storage, distribution, and governance of containers and
+          cloud native artifacts on any infrastructure. It is also available as
+          a self-managed product running standalone or on top of Red Hat
+          Openshift.
         </HintBody>
         <HintFooter>
           <Button
