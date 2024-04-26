@@ -29,10 +29,7 @@ describe('Overview List Page', () => {
     cy.visit('/overview');
 
     cy.get('#try-quayio-button').click();
-    cy.url().should(
-      'eq',
-      `${Cypress.env('REACT_QUAY_APP_API_URL')}/organization`,
-    );
+    cy.location('pathname').should('eq', '/organization');
 
     cy.visit('/overview');
 
