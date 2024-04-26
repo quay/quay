@@ -288,7 +288,10 @@ export default function Pricing() {
         <ExpandableSection
           isExpanded
           toggleContent={
-            <Title headingLevel="h3" style={{color: 'black'}}>
+            <Title
+              headingLevel="h3"
+              style={{color: 'var(--pf-v5-global--Color--100)'}}
+            >
               How do I use Quay with my servers and code?
             </Title>
           }
@@ -316,7 +319,10 @@ export default function Pricing() {
         <ExpandableSection
           isExpanded
           toggleContent={
-            <Title headingLevel="h3" style={{color: 'black'}}>
+            <Title
+              headingLevel="h3"
+              style={{color: 'var(--pf-v5-global--Color--100)'}}
+            >
               How is Quay optimized for a team environment?
             </Title>
           }
