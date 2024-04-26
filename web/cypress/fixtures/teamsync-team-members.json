@@ -16,6 +16,7 @@
   ],
   "can_edit": true,
   "can_sync": {
-    "service": "oidc"
+    "service": "oidc",
+    "issuer_domain": "keycloakdev.apps.quaytest.com"
   }
 }
