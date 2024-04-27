@@ -11,7 +11,13 @@ from data.model import DataModelException, config, user
 
 logger = logging.getLogger(__name__)
 
-ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING = ["pull_repo", "login_failure", "pull_repo_failed"]
+ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING = [
+    "pull_repo",
+    "login_failure",
+    "pull_repo_failed",
+    "login_success",
+    "logout_success",
+]
 
 
 def _logs_query(
