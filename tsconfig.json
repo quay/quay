@@ -11,8 +11,11 @@
     "outDir": "dist",
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "types": ["cypress", "node"]
+    "types": ["cypress", "node"],
+    "paths": {
+      "src/*": ["./web/src/*"]
+    }
   },
-  "include": ["web/src", "**/*.ts"],
+  "include": ["web/**/*.ts"],
   "exclude": ["node_modules"]
 }
