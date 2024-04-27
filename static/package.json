@@ -6,13 +6,13 @@
   "scripts": {
     "dev": "karma start --browsers ChromeHeadless",
     "test": "karma start --single-run --browsers ChromeNoSandbox",
-    "test:node": "JASMINE_CONFIG_PATH=static/test/jasmine.json jasmine-ts './static/js/**/*.spec.ts'",
-    "e2e": "ts-node ./node_modules/.bin/protractor static/test/protractor.conf.ts",
+    "test:node": "JASMINE_CONFIG_PATH=test/jasmine.json jasmine-ts './js/**/*.spec.ts'",
+    "e2e": "ts-node ./node_modules/.bin/protractor test/protractor.conf.ts",
     "build": "NODE_ENV=production webpack --mode=production --progress",
     "watch": "webpack --watch --mode=development",
     "lint": "tslint --type-check -p tsconfig.json -e **/*.spec.ts",
-    "analyze": "npm run clean && NODE_ENV=production webpack --profile --mode=production --json > static/build/stats.json && webpack-bundle-analyzer --mode static -r static/build/report.html static/build/stats.json",
-    "clean": "rm -f static/build/*"
+    "analyze": "npm run clean && NODE_ENV=production webpack --profile --mode=production --json > build/stats.json && webpack-bundle-analyzer --mode static -r build/report.html build/stats.json",
+    "clean": "rm -f build/*"
   },
   "repository": {
     "type": "git",
