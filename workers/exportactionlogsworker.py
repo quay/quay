@@ -19,6 +19,8 @@ from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import QueueWorker
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get(f'{__name__.split(".")[-1]}_LOGLEVEL', 'INFO'))
+
 
 
 POLL_PERIOD_SECONDS = app.config.get("EXPORT_ACTION_LOGS_WORKER_POLL_PERIOD", 60)

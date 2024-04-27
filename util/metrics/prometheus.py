@@ -14,6 +14,8 @@ from flask import g, request
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, push_to_gateway
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get(f'{__name__.split(".")[-1]}_LOGLEVEL', 'INFO'))
+
 
 
 # DB connections

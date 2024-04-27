@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 from threading import Event, Lock
 
@@ -8,6 +9,8 @@ from data.database import CloseForLongOperation
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get(f'{__name__.split(".")[-1]}_LOGLEVEL', 'INFO'))
+
 
 QUEUE_WORKER_SLEEP_DURATION = 5
 

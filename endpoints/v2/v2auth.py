@@ -3,7 +3,7 @@ import re
 from collections import namedtuple
 
 from cachetools.func import lru_cache
-from flask import jsonify, request
+from flask import jsonify, request, g
 
 import features
 from app import app, instance_keys, userevents, usermanager
@@ -62,7 +62,7 @@ scopeResult = namedtuple(
 @process_basic_auth
 @no_cache
 @anon_protect
-def generate_registry_jwt(auth_result):
+def registry_auth_token(auth_result):
     """
     This endpoint will generate a JWT conforming to the Docker Registry v2 Auth Spec:
 
@@ -77,11 +77,20 @@ def generate_registry_jwt(auth_result):
     auth_header = request.headers.get("authorization", "")
     auth_credentials_sent = bool(auth_header)
 
-    # Load the auth context and verify thatg we've directly received credentials.
+    logger.info(f'🔴 🔴 🔴 🔴 auth_credentials_sent {auth_credentials_sent}, audience_param {audience_param}, '
+                f'scope_params {scope_params}')
+    token = generate_registry_jwt(auth_result, auth_credentials_sent, audience_param, scope_params)
+
+    return jsonify({"token": token})
+
+
+def generate_registry_jwt(auth_result, auth_credentials_sent, audience_param, scope_params):
+    # Load the auth context and verify that we've directly received credentials.
     has_valid_auth_context = False
     if get_authenticated_context():
         has_valid_auth_context = not get_authenticated_context().is_anonymous
 
+    logger.info(f'🥐🥐🥐🥐🥐 has_valid_auth_context {has_valid_auth_context}')
     if auth_credentials_sent and not has_valid_auth_context:
         # The auth credentials sent for the user are invalid.
         raise InvalidLogin(auth_result.error_message)
@@ -170,7 +179,7 @@ def generate_registry_jwt(auth_result):
     token = generate_bearer_token(
         audience_param, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, instance_keys
     )
-    return jsonify({"token": token})
+    return token
 
 
 @lru_cache(maxsize=1)
@@ -190,8 +199,87 @@ def _get_tuf_root(repository_ref, namespace, reponame):
     return QUAY_TUF_ROOT
 
 
+def validate_repository_name(namespace, reponame, namespace_and_repo):
+    # Ensure that we are never creating an invalid repository.
+    if features.EXTENDED_REPOSITORY_NAMES:
+        if not REPOSITORY_NAME_EXTENDED_REGEX.match(reponame):
+            logger.debug("Found invalid repository name in auth flow: %s", reponame)
+            raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
+    else:
+        if not REPOSITORY_NAME_REGEX.match(reponame):
+            logger.debug("Found invalid repository name in auth flow: %s", reponame)
+            if len(namespace_and_repo.split("/")) > 1:
+                msg = "Nested repositories are not supported. Found: %s" % namespace_and_repo
+                raise NameInvalid(message=msg)
+
+            raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
+
+
+def ensure_namespace_enabled(namespace):
+    # Ensure the namespace is enabled.
+    if registry_model.is_existing_disabled_namespace(namespace):
+        msg = "Namespace %s has been disabled. Please contact a system administrator." % namespace
+        raise NamespaceDisabled(message=msg)
+
+
+def validate_repository_state(repository_ref):
+    if not repository_ref:
+        return
+
+    if repository_ref is not None and repository_ref.kind != "image":
+        raise Unsupported(message="Cannot push/pull non-image repository")
+
+    # Ensure the repository is not marked for deletion.
+    if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
+        raise Unsupported(message="Unknown repository")
+
+
+def validate_user_can_create_new_repo(namespace, reponame):
+    pass
+
+
+def ensure_repository_exists(user, namespace, reponame):
+    repository_ref = registry_model.lookup_repository(namespace, reponame)
+    namespace_ref = model.user.get_namespace_user(namespace)
+
+    if not namespace_ref and not app.config.get("CREATE_NAMESPACE_ON_PUSH", False):
+        raise Unsupported(message="Unknown namespace")
+
+    if not repository_ref and features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
+        raise Unsupported(message="Restricted users cannot create repositories")
+
+    if not repository_ref and not CreateRepositoryPermission(namespace).can():
+        raise Unsupported(message="No permission to create repository")
+
+    if repository_ref is not None and repository_ref.kind != "image":
+        raise Unsupported(message="Cannot administer non-image repository")
+
+    try:
+        if not namespace_ref and app.config.get("CREATE_NAMESPACE_ON_PUSH", False):
+            model.organization.create_organization(
+                namespace,
+                ("+" + namespace + "@").join(user.email.split("@")),
+                user,
+                email_required=features.MAILING,
+            )
+
+        if not repository_ref:
+            visibility = "private" if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True) else "public"
+            found = model.repository.get_or_create_repository(namespace, reponame, get_authenticated_user(),
+                                                              visibility=visibility)
+
+            repository_ref = RepositoryReference.for_repo_obj(found)
+
+    except model.DataModelException as ex:
+        logger.exception("Failed to create repository %s/%s", namespace, reponame)
+        raise Unsupported(message="Cannot create repository")
+
+    return repository_ref
+
+
 def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
     # TODO: The complexity of this function is difficult to follow and maintain. Refactor/Cleanup.
+    logger.info(f'🟣🟣🟣🟣scope_param {scope_param}, has_valid_auth_context {has_valid_auth_context}')
     if len(scope_param) == 0:
         if not has_valid_auth_context:
             # In this case, we are doing an auth flow, and it's not an anonymous pull.
@@ -215,143 +303,60 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     lib_namespace = app.config["LIBRARY_NAMESPACE"]
     namespace, reponame = parse_namespace_repository(namespace_and_repo, lib_namespace)
+    logger.info(f'🟣🟣🟣🟣 namespace {namespace}, reponame {reponame}, registry_and_repo {registry_and_repo}')
 
-    # Ensure that we are never creating an invalid repository.
-    if features.EXTENDED_REPOSITORY_NAMES:
-        if not REPOSITORY_NAME_EXTENDED_REGEX.match(reponame):
-            logger.debug("Found invalid repository name in auth flow: %s", reponame)
-            raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
-    else:
-        if not REPOSITORY_NAME_REGEX.match(reponame):
-            logger.debug("Found invalid repository name in auth flow: %s", reponame)
-            if len(namespace_and_repo.split("/")) > 1:
-                msg = "Nested repositories are not supported. Found: %s" % namespace_and_repo
-                raise NameInvalid(message=msg)
-
-            raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
-
-    # Ensure the namespace is enabled.
-    if registry_model.is_existing_disabled_namespace(namespace):
-        msg = "Namespace %s has been disabled. Please contact a system administrator." % namespace
-        raise NamespaceDisabled(message=msg)
-
-    final_actions = []
+    validate_repository_name(namespace, reponame, namespace_and_repo)
+    ensure_namespace_enabled(namespace)
 
     repository_ref = registry_model.lookup_repository(namespace, reponame)
-    repo_is_public = repository_ref is not None and repository_ref.is_public
-    invalid_repo_message = ""
-    if repository_ref is not None and repository_ref.kind != "image":
-        invalid_repo_message = (
-            "This repository is for managing %s " + "and not container images."
-        ) % repository_ref.kind
+    validate_repository_state(repository_ref)
 
-    # Ensure the repository is not marked for deletion.
-    if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
-        raise Unknown(message="Unknown repository")
+    repo_is_public = repository_ref is not None and repository_ref.is_public
+    final_actions = []
 
     if "push" in requested_actions:
         # Check if there is a valid user or token, as otherwise the repository cannot be
         # accessed.
         if has_valid_auth_context:
             user = get_authenticated_user()
+            logger.info(
+                f'🟣🟣🟣🟣 user {user} can create repo {CreateRepositoryPermission(namespace).can()} identity {g.identity}')
 
             # Lookup the repository. If it exists, make sure the entity has modify
             # permission. Otherwise, make sure the entity has create permission.
-            if repository_ref:
-                if ModifyRepositoryPermission(namespace, reponame).can():
-                    if repository_ref is not None and repository_ref.kind != "image":
-                        raise Unsupported(message=invalid_repo_message)
 
-                    # Check for different repository states.
-                    if repository_ref.state == RepositoryState.NORMAL:
-                        # In NORMAL mode, if the user has permission, then they can push.
-                        final_actions.append("push")
-                    elif repository_ref.state == RepositoryState.MIRROR:
-                        # In MIRROR mode, only the mirroring robot can push.
-                        mirror = model.repo_mirror.get_mirror(repository_ref.id)
-                        robot = mirror.internal_robot if mirror is not None else None
-                        if robot is not None and user is not None and robot == user:
-                            assert robot.robot
-                            final_actions.append("push")
-                        else:
-                            logger.debug(
-                                "Repository %s/%s push requested for non-mirror robot %s: %s",
-                                namespace,
-                                reponame,
-                                robot,
-                                user,
-                            )
-                    elif repository_ref.state == RepositoryState.READ_ONLY:
-                        # No pushing allowed in read-only state.
-                        pass
-                    else:
-                        logger.warning(
-                            "Unknown state for repository %s: %s",
-                            repository_ref,
-                            repository_ref.state,
-                        )
+            repository_ref = ensure_repository_exists(user, namespace, reponame)
+            if not ModifyRepositoryPermission(namespace, reponame).can():
+                raise Unsupported(message="No permission to modify repository")
+
+            # Check for different repository states.
+            if repository_ref.state == RepositoryState.NORMAL:
+                # In NORMAL mode, if the user has permission, then they can push.
+                final_actions.append("push")
+            elif repository_ref.state == RepositoryState.MIRROR:
+                # In MIRROR mode, only the mirroring robot can push.
+                mirror = model.repo_mirror.get_mirror(repository_ref.id)
+                robot = mirror.internal_robot if mirror is not None else None
+                if robot is not None and user is not None and robot == user:
+                    assert robot.robot
+                    final_actions.append("push")
                 else:
-                    logger.debug("No permission to modify repository %s/%s", namespace, reponame)
-
-            # TODO(kleesc): this is getting hard to follow. Should clean this up at some point.
-            elif (
-                features.RESTRICTED_USERS
-                and user is not None
-                and usermanager.is_restricted_user(user.username)
-                and user.username == namespace
-            ):
-                logger.debug("Restricted users cannot create repository %s/%s", namespace, reponame)
-
+                    logger.debug(
+                        "Repository %s/%s push requested for non-mirror robot %s: %s",
+                        namespace,
+                        reponame,
+                        robot,
+                        user,
+                    )
+            elif repository_ref.state == RepositoryState.READ_ONLY:
+                # No pushing allowed in read-only state.
+                pass
             else:
-                if (
-                    app.config.get("CREATE_NAMESPACE_ON_PUSH", False)
-                    and model.user.get_namespace_user(namespace) is None
-                ):
-                    if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
-                        logger.debug(
-                            "Restricted users cannot create repository %s/%s", namespace, reponame
-                        )
-                    else:
-                        logger.debug("Creating organization for: %s/%s", namespace, reponame)
-                        try:
-                            model.organization.create_organization(
-                                namespace,
-                                ("+" + namespace + "@").join(user.email.split("@")),
-                                user,
-                                email_required=features.MAILING,
-                            )
-                        except model.DataModelException as ex:
-                            raise Unsupported(message="Cannot create organization")
-
-                if CreateRepositoryPermission(namespace).can() and user is not None:
-                    if (
-                        features.RESTRICTED_USERS
-                        and usermanager.is_restricted_user(user.username)
-                        and user.username == namespace
-                    ):
-                        logger.debug(
-                            "Restricted users cannot create repository %s/%s", namespace, reponame
-                        )
-                    else:
-                        logger.debug("Creating repository: %s/%s", namespace, reponame)
-                        visibility = (
-                            "private"
-                            if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True)
-                            else "public"
-                        )
-                        found = model.repository.get_or_create_repository(
-                            namespace, reponame, user, visibility=visibility
-                        )
-
-                        if found is not None:
-                            repository_ref = RepositoryReference.for_repo_obj(found)
-
-                            if repository_ref.kind != "image":
-                                raise Unsupported(message="Cannot push to an app repository")
-
-                            final_actions.append("push")
-                else:
-                    logger.debug("No permission to create repository %s/%s", namespace, reponame)
+                logger.warning(
+                    "Unknown state for repository %s: %s",
+                    repository_ref,
+                    repository_ref.state,
+                )
 
     if "pull" in requested_actions:
         user = None
@@ -367,28 +372,21 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             global_readonly_superuser = usermanager.is_global_readonly_superuser(user.username)
 
         if (
-            ReadRepositoryPermission(namespace, reponame).can()
-            or can_pullthru
-            or repo_is_public
-            or global_readonly_superuser
+                ReadRepositoryPermission(namespace, reponame).can()
+                or can_pullthru
+                or repo_is_public
+                or global_readonly_superuser
         ):
-            if repository_ref is not None and repository_ref.kind != "image":
-                raise Unsupported(message=invalid_repo_message)
-
             final_actions.append("pull")
         else:
             logger.debug("No permission to pull repository %s/%s", namespace, reponame)
 
     if "*" in requested_actions:
         # Grant * user is admin
+        user = get_authenticated_user()
+        repository_ref = ensure_repository_exists(user, namespace, reponame)
         if AdministerRepositoryPermission(namespace, reponame).can():
-            if repository_ref is not None and repository_ref.kind != "image":
-                raise Unsupported(message=invalid_repo_message)
-
-            if repository_ref and repository_ref.state in (
-                RepositoryState.MIRROR,
-                RepositoryState.READ_ONLY,
-            ):
+            if repository_ref.state in (RepositoryState.MIRROR, RepositoryState.READ_ONLY):
                 logger.debug("No permission to administer repository %s/%s", namespace, reponame)
             else:
                 assert repository_ref.state == RepositoryState.NORMAL

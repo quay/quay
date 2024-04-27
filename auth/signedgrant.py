@@ -30,6 +30,7 @@ def validate_signed_grant(auth_header):
     Validates a signed grant as found inside an auth header and returns whether it points to a valid
     grant.
     """
+    logger.info(f'👹👹👹 validate signed grant auth_header {auth_header}')
     if not auth_header:
         return ValidateResult(AuthKind.signed_grant, missing=True)
 

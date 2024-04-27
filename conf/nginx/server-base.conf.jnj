@@ -126,6 +126,17 @@ location /secscan/ {
     proxy_pass http://secscan_app_server;
 }
 
+location /artifacts/ {
+    proxy_pass http://registry_app_server;
+    proxy_read_timeout 10;
+    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
+
+    {% if enable_rate_limits %}
+    limit_req zone=dynamicauth_heavy_http1 burst=1 nodelay;
+    limit_req zone=dynamicauth_heavy_http2 burst=5 nodelay;
+    {% endif %}
+}
+
 {% if signing_enabled %}
 location ~ ^/v2/(.+)/_trust/tuf/(.*)$ {
   set $upstream_tuf {{ tuf_server }};

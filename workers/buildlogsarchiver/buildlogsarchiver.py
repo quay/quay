@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from gzip import GzipFile
 from tempfile import SpooledTemporaryFile
@@ -12,6 +13,8 @@ from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get(f'{__name__.split(".")[-1]}_LOGLEVEL', 'INFO'))
+
 
 
 POLL_PERIOD_SECONDS = 30

@@ -90,6 +90,14 @@ services:
       QUAYRUN: /tmp
       WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
       WORKER_COUNT: "1"
+      namespacegcworker_LOGLEVEL: "WARNING"
+      buildlogsarchiver_LOGLEVEL: "WARNING"
+      exportactionlogsworker_LOGLEVEL: "WARNING"
+      notificationworker_LOGLEVEL: "WARNING"
+      queueworker_LOGLEVEL: "WARNING"
+      prometheus_LOGLEVEL: "WARNING"
+      repositorygcworker_LOGLEVEL: "WARNING"
+      PYDEV_DEBUG: host.docker.internal:9999
 
   # clair is configured to share it's network
   # namespace with quay. this allows quay to serve

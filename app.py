@@ -155,13 +155,13 @@ def _request_start():
         import pydevd_pycharm
 
         host, port = os.getenv("PYDEV_DEBUG").split(":")
-        pydevd_pycharm.settrace(
-            host,
-            port=int(port),
-            stdoutToServer=True,
-            stderrToServer=True,
-            suspend=False,
-        )
+        # pydevd_pycharm.settrace(
+        #     host,
+        #     port=int(port),
+        #     stdoutToServer=True,
+        #     stderrToServer=True,
+        #     suspend=False,
+        # )
 
     debug_extra = {}
     x_forwarded_for = request.headers.get("X-Forwarded-For", None)

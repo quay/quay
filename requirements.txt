@@ -153,3 +153,4 @@ wrapt==1.13.3
 zipp==3.17.0
 zope.event==5.0
 zope.interface==5.4.0
+pydevd-pycharm~=233.15026.15

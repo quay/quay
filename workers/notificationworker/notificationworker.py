@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 from app import app, notification_queue
@@ -15,6 +16,8 @@ from workers.notificationworker.models_pre_oci import pre_oci_model as model
 from workers.queueworker import JobException, QueueWorker
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get(f'{__name__.split(".")[-1]}_LOGLEVEL', 'INFO'))
+
 
 
 class NotificationWorker(QueueWorker):

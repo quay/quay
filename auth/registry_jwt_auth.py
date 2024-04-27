@@ -72,7 +72,7 @@ def get_auth_headers(repository=None, scopes=None):
     Returns a dictionary of headers for auth responses.
     """
     headers = {}
-    realm_auth_path = url_for("v2.generate_registry_jwt")
+    realm_auth_path = url_for("v2.registry_auth_token")
     authenticate = 'Bearer realm="{0}{1}",service="{2}"'.format(
         get_app_url(), realm_auth_path, app.config["SERVER_HOSTNAME"]
     )

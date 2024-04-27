@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 
 import features
@@ -11,6 +12,8 @@ from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import QueueWorker, WorkerSleepException
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get(f'{__name__.split(".")[-1]}_LOGLEVEL', 'INFO'))
+
 
 
 POLL_PERIOD_SECONDS = 60

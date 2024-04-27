@@ -333,7 +333,7 @@ def get_robot_password(username):
         ),
     ],
 )
-def test_generate_registry_jwt(
+def test_registry_auth_token(
     scope,
     username,
     password,
@@ -362,7 +362,7 @@ def test_generate_registry_jwt(
 
     resp = conduct_call(
         client,
-        "v2.generate_registry_jwt",
+        "v2.registry_auth_token",
         url_for,
         "GET",
         params,
