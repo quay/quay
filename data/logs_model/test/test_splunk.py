@@ -15,6 +15,8 @@ from mock import Mock, patch
 from ..logs_producer.splunk_logs_producer import SplunkLogsProducer
 from .test_elasticsearch import logs_model, mock_db_model
 from data.logs_model import configure
+from data.logs_model.logs_producer import LogSendException
+from data.model import config as _config
 from test.fixtures import *
 
 FAKE_SPLUNK_HOST = "fakesplunk"
@@ -46,6 +48,12 @@ FAKE_PERFORMER = {
 FAKE_REPO = {
     "name": "fake_repo",
 }
+
+
+@pytest.fixture(scope="function")
+def app_config():
+    with patch.dict(_config.app_config, {}, clear=True):
+        yield _config.app_config
 
 
 @pytest.fixture()
@@ -105,11 +113,14 @@ def cert_file_path():
 
 @pytest.mark.parametrize(
     """
-    kind_name, namespace_name,
-    performer, ip, metadata, repository, repository_name, timestamp, throws
+    unlogged_ok, unlogged_pulls_ok, kind_name, namespace_name, performer, ip,
+    metadata, repository, repository_name, timestamp, throws, send_exception
     """,
     [
+        # logs a push_repo action
         pytest.param(
+            False,
+            False,
             "push_repo",
             "devtable",
             FAKE_PERFORMER["user1"],
@@ -119,9 +130,57 @@ def cert_file_path():
             "repo1",
             parse("2019-01-01T03:30"),
             False,
+            None,
+        ),
+        # doesn't raise a failed push_repo action
+        pytest.param(
+            True,
+            False,
+            "push_repo",
+            "devtable",
+            FAKE_PERFORMER["user1"],
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+            False,
+            LogSendException("Failed to send log data"),
+        ),
+        # doesn't raise a failed pull_repo action
+        pytest.param(
+            False,
+            True,
+            "pull_repo",
+            "devtable",
+            FAKE_PERFORMER["user1"],
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+            False,
+            LogSendException("Failed to send log data"),
+        ),
+        # raise a failed pull_repo action
+        pytest.param(
+            False,
+            False,
+            "pull_repo",
+            "devtable",
+            FAKE_PERFORMER["user1"],
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+            True,
+            LogSendException("Failed to send log data"),
         ),
         # raises ValueError when repository_name is not None and repository is not None
         pytest.param(
+            False,
+            False,
             "pull_repo",
             "devtable",
             FAKE_PERFORMER["user1"],
@@ -131,9 +190,12 @@ def cert_file_path():
             "repo1",
             parse("2019-01-01T03:30"),
             True,
+            None,
         ),
         # raises exception when no namespace is given
         pytest.param(
+            False,
+            False,
             "pull_repo",
             None,
             FAKE_PERFORMER["user1"],
@@ -143,10 +205,13 @@ def cert_file_path():
             "user1/repo1",
             parse("2019-01-01T03:30"),
             True,
+            None,
         ),
     ],
 )
-def test_splunk_logs_producer(
+def test_splunk_logs_producers(
+    unlogged_ok,
+    unlogged_pulls_ok,
     kind_name,
     namespace_name,
     performer,
@@ -156,37 +221,56 @@ def test_splunk_logs_producer(
     repository_name,
     timestamp,
     throws,
+    send_exception,
     logs_model,
     splunk_logs_model_config,
     mock_db_model,
     initialized_db,
     cert_file_path,
+    app_config,
 ):
-    with (
-        patch(
-            "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"
-        ) as mock_send,
-        patch("splunklib.client.connect"),
-    ):
+    app_config["ALLOW_PULLS_WITHOUT_STRICT_LOGGING"] = unlogged_pulls_ok
+    app_config["ALLOW_WITHOUT_STRICT_LOGGING"] = unlogged_ok
+
+    with patch(
+        "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"
+    ) as mock_send, patch("splunklib.client.connect"):
         with patch("ssl.SSLContext.load_verify_locations"):
             configure(splunk_logs_model_config)
+
+            if send_exception:
+                mock_send.side_effect = send_exception
+
             if throws:
-                with pytest.raises(
-                    ValueError,
-                    match=r"Incorrect argument provided when logging action logs, "
-                    r"namespace name should not be empty",
-                ):
-                    logs_model.log_action(
-                        kind_name,
-                        namespace_name,
-                        performer,
-                        ip,
-                        metadata,
-                        repository,
-                        repository_name,
-                        timestamp,
-                    )
-                mock_send.assert_not_called()
+                if not send_exception:
+                    with pytest.raises(
+                        ValueError,
+                        match=r"Incorrect argument provided when logging action logs, "
+                        r"namespace name should not be empty",
+                    ):
+                        logs_model.log_action(
+                            kind_name,
+                            namespace_name,
+                            performer,
+                            ip,
+                            metadata,
+                            repository,
+                            repository_name,
+                            timestamp,
+                        )
+                    mock_send.assert_not_called()
+                else:
+                    with pytest.raises(LogSendException):
+                        logs_model.log_action(
+                            kind_name,
+                            namespace_name,
+                            performer,
+                            ip,
+                            metadata,
+                            repository,
+                            repository_name,
+                            timestamp,
+                        )
             else:
                 logs_model.log_action(
                     kind_name,
@@ -198,12 +282,12 @@ def test_splunk_logs_producer(
                     repository_name,
                     timestamp,
                 )
-
+                
                 expected_event = {
                     "account": "devtable",
                     "datetime": datetime(2019, 1, 1, 3, 30),
                     "ip": "192.168.1.1",
-                    "kind": "push_repo",
+                    "kind": kind_name,
                     "metadata_json": {"key": "value"},
                     "performer": "fake_username",
                     "repository": None,

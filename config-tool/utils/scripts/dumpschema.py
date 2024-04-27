@@ -182,6 +182,13 @@ CONFIG_SCHEMA = {
             + "and it is desired for pulls to continue during that time. Defaults to False.",
             "x-example": True,
         },
+        "ALLOW_WITHOUT_STRICT_LOGGING": {
+            "type": "boolean",
+            "description": "If true, any action in which the audit log entry cannot be written will "
+            + "still succeed. Useful if using an external logging service that may be down "
+            + "intermittently and the registry should continue to work. Defaults to False.",
+            "x-example": False,
+        },
         # Storage.
         "FEATURE_STORAGE_REPLICATION": {
             "type": "boolean",

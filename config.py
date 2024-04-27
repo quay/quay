@@ -456,6 +456,9 @@ class DefaultConfig(ImmutableConfig):
     # Allow registry pulls when unable to write to the audit log
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING = False
 
+    # Allow any registry action when unable to write to the audit log
+    ALLOW_WITHOUT_STRICT_LOGGING = False
+
     # Temporary tag expiration in seconds, this may actually be longer based on GC policy
     PUSH_TEMP_TAG_EXPIRATION_SEC = 60 * 60  # One hour per layer
 

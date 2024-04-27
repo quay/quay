@@ -94,9 +94,13 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         try:
             self._logs_producer.send(log_data)
         except LogSendException as lse:
-            strict_logging_disabled = config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
-            logger.exception("log_action failed", extra=({"exception": lse}).update(log_data))
-            if not (strict_logging_disabled and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING):
+            strict_logging_disabled = config.app_config.get("ALLOW_WITHOUT_STRICT_LOGGING") or (
+                config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+                and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
+            )
+            if strict_logging_disabled:
+                logger.exception("log_action failed", extra=({"exception": lse}).update(log_data))
+            else:
                 raise
 
     def lookup_logs(
