@@ -6,6 +6,7 @@ const BG_IMAGES_DIRNAME = 'assets';
 const ASSET_PATH = process.env.ASSET_PATH || '/';
 module.exports = (env) => {
   return {
+    entry: "./web/src/index.tsx",
     module: {
       rules: [
         {
@@ -145,13 +146,14 @@ module.exports = (env) => {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: path.resolve(__dirname, 'src', 'index.html'),
+        template: path.resolve(__dirname, 'web', 'src', 'index.html'),
       }),
       new CopyPlugin({
-        patterns: [{from: './src/assets/favicon.png', to: 'images'}],
+        patterns: [{from: './web/src/assets/favicon.png', to: 'images'}],
       }),
     ],
     resolve: {
+      alias: { src: "web/src" },
       extensions: ['.js', '.ts', '.tsx', '.jsx'],
       plugins: [
         new TsconfigPathsPlugin({

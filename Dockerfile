@@ -109,9 +109,9 @@ RUN npm run --quiet build
 # Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
-COPY --chown=1001:0 web/package.json web/package-lock.json  ./
+COPY --chown=1001:0 package.json package-lock.json webpack.common.js webpack.prod.js tsconfig.json ./
 RUN npm clean-install
-COPY --chown=1001:0 web .
+COPY --chown=1001:0 web web/
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.

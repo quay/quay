@@ -13,6 +13,6 @@
     "sourceMap": true,
     "types": ["cypress", "node"]
   },
-  "include": ["src", "**/*.ts"],
+  "include": ["web/src", "**/*.ts"],
   "exclude": ["node_modules"]
 }
