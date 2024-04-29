@@ -131,7 +131,9 @@ class OrganizationQuotaList(ApiResource):
             try:
                 limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
             except ValueError:
-                raise request_error(message="Invalid limit format")
+                raise request_error(
+                    message="Invalid limit format, use a number followed by a unit (e.g. 1GiB)"
+                )
         else:
             limit_bytes = quota_data["limit_bytes"]
 
@@ -220,7 +222,9 @@ class OrganizationQuota(ApiResource):
                 try:
                     limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                 except ValueError:
-                    raise request_error(message="Invalid limit format")
+                    raise request_error(
+                        message="Invalid limit format, use a number followed by a unit (e.g. 1GiB)"
+                    )
             elif "limit_bytes" in quota_data:
                 limit_bytes = quota_data["limit_bytes"]
 
