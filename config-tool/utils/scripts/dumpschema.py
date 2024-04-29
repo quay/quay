@@ -955,6 +955,117 @@ CONFIG_SCHEMA = {
                         },
                     },
                 },
+                "splunk_config": {
+                    "type": "object",
+                    "description": "Logs model config for splunk action logs/ splunk cluster configuration",
+                    "x-reference": "https://dev.splunk.com/enterprise/docs/devtools/python/sdk-python"
+                    "/howtousesplunkpython/howtogetdatapython#To-add-data-directly-to-an-index",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "Splunk cluster endpoint",
+                            "x-example": "host.splunk.example",
+                        },
+                        "port": {
+                            "type": "number",
+                            "description": "Splunk management cluster endpoint port",
+                            "x-example": 1234,
+                        },
+                        "bearer_token": {
+                            "type": "string",
+                            "description": "Bearer_Token for splunk.See: "
+                            "https://dev.splunk.com/enterprise/docs/devtools/python/sdk-python"
+                            "/howtousesplunkpython/howtoconnectpython/#Log-in-using-a-bearer-token",
+                            "x-example": "us-east-1",
+                        },
+                        "url_scheme": {
+                            "type": "string",
+                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL"
+                            "*at all*, this *must* be `https`",
+                            "enum": ["http", "https"],
+                            "x-example": "https",
+                        },
+                        "verify_ssl": {
+                            "type": "boolean",
+                            "description": "Enable (True) or disable (False) SSL verification for https connections."
+                            "Defaults to True",
+                            "x-example": True,
+                        },
+                        "index_prefix": {
+                            "type": "string",
+                            "description": "Splunk's index prefix",
+                            "x-example": "splunk_logentry_",
+                        },
+                        "ssl_ca_path": {
+                            "type": "string",
+                            "description": "*Relative container path* to a single .pem file containing a CA "
+                            "certificate for SSL verification",
+                            "x-example": "conf/stack/ssl-ca-cert.pem",
+                        },
+                    },
+                },
+                "splunk_hec_config": {
+                    "type": "object",
+                    "description": "Logs model config for splunk HTTP event collector action logs configuration",
+                    "x-reference": "https://docs.splunk.com/Documentation/SplunkCloud/latest/Data/UsetheHTTPEventCollector#More_information_on_HEC_for_developers",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "Splunk cluster endpoint",
+                            "x-example": "host.splunk.example",
+                        },
+                        "port": {
+                            "type": "number",
+                            "description": "Splunk management cluster endpoint port",
+                            "x-example": 8080,
+                            "default": 443,
+                        },
+                        "hec_token": {
+                            "type": "string",
+                            "description": "HEC token for splunk.",
+                            "x-example": "1ad4d7bb-eed9-443a-897d-29e3b27df7a8",
+                        },
+                        "url_scheme": {
+                            "type": "string",
+                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL"
+                            "*at all*, this *must* be `https`",
+                            "enum": ["http", "https"],
+                            "x-example": "https",
+                            "default": "https",
+                        },
+                        "verify_ssl": {
+                            "type": "boolean",
+                            "description": "Enable (True) or disable (False) SSL verification for https connections."
+                            "Defaults to True",
+                            "x-example": True,
+                            "default": True,
+                        },
+                        "ssl_ca_path": {
+                            "type": "string",
+                            "description": "*Relative container path* to a single .pem file containing a CA "
+                            "certificate for SSL verification",
+                            "x-example": "conf/stack/ssl-ca-cert.pem",
+                        },
+                        "index": {
+                            "type": "string",
+                            "description": "The splunk index to use (overrides the token's default index).",
+                            "x-example": "main",
+                        },
+                        "splunk_host": {
+                            "type": "string",
+                            "description": "The host name to log this event with (Defaults to the configured server hostname).",
+                            "x-example": "quay.dev",
+                            "default": "configured server hostname",
+                        },
+                        "splunk_sourcetype": {
+                            "type": "string",
+                            "description": "The name of the Splunk sourcetype to use.",
+                            "x-example": "quay-sourcetype",
+                            "default": "access_combined",
+                        },
+                    },
+                    "required": ["host", "hec_token"],
+                },
                 "kafka_config": {
                     "type": "object",
                     "description": "Kafka cluster configuration",
