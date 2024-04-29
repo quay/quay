@@ -1,8 +1,5 @@
 import os
 from datetime import datetime, timedelta
-from test.fixtures import *
-from test.test_keystone_auth import fake_keystone
-from test.test_ldap import mock_ldap
 
 import pytest
 from mock import patch
@@ -10,6 +7,9 @@ from mock import patch
 from data import database, model
 from data.users.federated import FederatedUsers, UserInformation
 from data.users.teamsync import sync_team, sync_teams_to_groups
+from test.fixtures import *
+from test.test_keystone_auth import fake_keystone
+from test.test_ldap import mock_ldap
 from util.names import parse_robot_username
 
 _FAKE_AUTH = "fake"
@@ -362,3 +362,21 @@ def test_teamsync_existing_email(
 
         team_members = list(model.team.list_team_users(sync_team_info.team))
         assert len(team_members) > 0
+
+
+def test_get_stale_team_for_unsupported_login_service(initialized_db):
+    dev_user = model.user.get_user("devtable")
+    org = model.organization.create_organization("testorg", "testorg" + "@example.com", dev_user)
+
+    database.LoginService.create(name=_FAKE_AUTH)
+    team1 = model.team.create_team("team1", org, "member", "Some synced team.")
+    model.team.set_team_syncing(team1, "oidc", {"group_dn": "cn=Test-Group,ou=Users"})
+
+    sync_team_info = model.team.get_team_sync_information("testorg", "team1")
+    assert sync_team_info.last_updated is None
+
+    fake_auth = FakeUsers([])
+    sync_teams_to_groups(fake_auth, timedelta(seconds=20))
+
+    updated_sync_info = model.team.get_team_sync_information("testorg", "team1")
+    assert updated_sync_info.last_updated is None
