@@ -65,6 +65,8 @@ export enum NavigationPath {
 
   // Build info
   buildInfo = '/repository/:organizationName/:repositoryName/build/:buildId',
+
+  npm = '/artifacts/npm',
 }
 
 export function getRepoDetailPath(

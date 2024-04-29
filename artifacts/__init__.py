@@ -3,7 +3,7 @@ import pkgutil
 
 from flask import Blueprint
 from artifacts import plugins
-from artifacts.plugin import BaseArtifactPlugin
+from artifacts.plugins import BaseArtifactPlugin
 import sys
 import logging
 

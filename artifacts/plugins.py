@@ -57,3 +57,9 @@ class ArtifactPluginQuayClient(FlaskClient):
 
     def get_artifact_repo(artifact_name: str):
         pass
+
+    def get_artifact_manifest(artifact_name: str):
+        pass
+
+    def get_artifact_blob_url(self, artifact_digest: str):
+        pass

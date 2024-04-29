@@ -6,14 +6,14 @@ import {
   PageSidebarBody,
 } from '@patternfly/react-core';
 import {Link, useLocation} from 'react-router-dom';
-import {SidebarState} from 'src/atoms/SidebarState';
+import {SidebarRoutes, SidebarState} from 'src/atoms/SidebarState';
 import {NavigationPath} from 'src/routes/NavigationPath';
 import OrganizationsList from 'src/routes/OrganizationsList/OrganizationsList';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
-import {useRecoilValue} from 'recoil';
+import {useRecoilState, useRecoilValue} from 'recoil';
 import OverviewList from 'src/routes/OverviewList/OverviewList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {fetchQuayConfig} from 'src/resources/QuayConfig';
+import {useEffect} from 'react';
 
 interface SideNavProps {
   isSideNav: boolean;
@@ -26,26 +26,31 @@ export function QuaySidebar() {
   const location = useLocation();
   const sidebarState = useRecoilValue(SidebarState);
   const quayConfig = useQuayConfig();
-  const routes: SideNavProps[] = [
-    {
-      isSideNav: quayConfig?.config?.BRANDING.quay_io ? true : false,
-      navPath: NavigationPath.overviewList,
-      title: 'Overview',
-      component: <OverviewList />,
-    },
-    {
-      isSideNav: true,
-      navPath: NavigationPath.organizationsList,
-      title: 'Organizations',
-      component: <OrganizationsList />,
-    },
-    {
-      isSideNav: true,
-      navPath: NavigationPath.repositoriesList,
-      title: 'Repositories',
-      component: <RepositoriesList organizationName={null} />,
-    },
-  ];
+  const [routes, setSidebarRoutes] =
+    useRecoilState<SideNavProps[]>(SidebarRoutes);
+
+  useEffect(() => {
+    setSidebarRoutes([
+      {
+        isSideNav: quayConfig?.config?.BRANDING.quay_io ? true : false,
+        navPath: NavigationPath.overviewList,
+        title: 'Overview',
+        component: <OverviewList />,
+      },
+      {
+        isSideNav: true,
+        navPath: NavigationPath.organizationsList,
+        title: 'Organizations',
+        component: <OrganizationsList />,
+      },
+      {
+        isSideNav: true,
+        navPath: NavigationPath.repositoriesList,
+        title: 'Repositories',
+        component: <RepositoriesList organizationName={null} />,
+      },
+    ]);
+  });
 
   const Navigation = (
     <Nav>

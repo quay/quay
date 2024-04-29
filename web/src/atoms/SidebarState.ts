@@ -6,3 +6,8 @@ export const SidebarState = atom({
     isOpen: true,
   },
 });
+
+export const SidebarRoutes = atom({
+  key: 'sidebarRoutes',
+  default: [],
+});

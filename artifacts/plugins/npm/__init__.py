@@ -1,7 +1,7 @@
 import logging
 
 from .npm_routes import bp as npm_bp
-from ...plugin import BaseArtifactPlugin
+from ...plugins import BaseArtifactPlugin
 
 
 PLUGIN_NAME = "npm"

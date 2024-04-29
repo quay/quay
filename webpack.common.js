@@ -153,7 +153,7 @@ module.exports = (env) => {
       }),
     ],
     resolve: {
-      alias: { src: "web/src" },
+      alias: { src: "/web/src" },
       extensions: [".js", ".ts", ".tsx", ".jsx"],
       plugins: [
         new TsconfigPathsPlugin({
