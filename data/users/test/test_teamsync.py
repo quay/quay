@@ -1,8 +1,5 @@
 import os
 from datetime import datetime, timedelta
-from test.fixtures import *
-from test.test_keystone_auth import fake_keystone
-from test.test_ldap import mock_ldap
 
 import pytest
 from mock import patch
@@ -10,6 +7,9 @@ from mock import patch
 from data import database, model
 from data.users.federated import FederatedUsers, UserInformation
 from data.users.teamsync import sync_team, sync_teams_to_groups
+from test.fixtures import *
+from test.test_keystone_auth import fake_keystone
+from test.test_ldap import mock_ldap
 from util.names import parse_robot_username
 
 _FAKE_AUTH = "fake"
