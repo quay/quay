@@ -43,6 +43,12 @@ class OIDCUsers(FederatedUsers):
         """
         return None
 
+    def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
+        """
+        Used by teamSync worker, unsupported for oidc team sync
+        """
+        return (None, "Not supported")
+
     def verify_credentials(self, username_or_email, password):
         """
         Unsupported to login via username/email and password
