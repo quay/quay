@@ -85,7 +85,7 @@ def run_migrations_offline():
     """
     db_url = get_db_url()
     config.set_main_option("sqlalchemy.url", db_url)  # TODO: Is this required?
-    context.configure(url=db_url, target_metadata=target_metadata, transactional_ddl=True, render_as_batch=True)
+    context.configure(url=db_url, target_metadata=target_metadata, transactional_ddl=True)
 
     with context.begin_transaction():
         context.run_migrations(op=alembic_op, tables=tables, tester=get_tester())
