@@ -6,7 +6,6 @@ BITTORRENT_FILENAME_PEPPER: 0ee18f90-5b6d-42d2-ab5e-ec9fcd846272
 BUILDLOGS_REDIS:
   host: quay-redis
   port: 6379
-# DATABASE_SECRET_KEY: '30060361640793187613697366923211113205676925445650250274752125083971638376224'
 DB_URI: postgresql://quay:quay@quay-db/quay
 # DB_URI: sqlite:////quay-registry/sqlite/data/quay_sqlite.db
 DATABASE_SECRET_KEY: 'anothercrazykey!'
