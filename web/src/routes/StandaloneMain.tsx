@@ -4,13 +4,13 @@ import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
 
 import {QuayHeader} from 'src/components/header/QuayHeader';
 import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
-import {NavigationPath} from './NavigationPath';
+import { NavigationPath, NavigationRoute } from './NavigationPath';
 import OrganizationsList from './OrganizationsList/OrganizationsList';
 import Organization from './OrganizationsList/Organization/Organization';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import RepositoryTagRouter from './RepositoryTagRouter';
 
-import {useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
@@ -24,8 +24,10 @@ import OverviewList from './OverviewList/OverviewList';
 import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedirect';
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
+import {useRecoilState} from 'recoil';
+import {NavigationRoutes, PluginNavigationRoutes} from 'src/atoms/Routes';
 
-const NavigationRoutes = [
+const DefaultNavigationRoutes = [
   {
     path: NavigationPath.teamMember,
     Component: <Organization />,
@@ -63,7 +65,20 @@ export function StandaloneMain() {
   axiosIns.defaults.baseURL = axios.defaults.baseURL;
 
   const quayConfig = useQuayConfig();
+  const [navRoutes, setNavRoutes] =
+    useRecoilState<NavigationRoute[]>(NavigationRoutes);
+  const [pluginRoutes] = useRecoilState<NavigationRoute[]>(
+    PluginNavigationRoutes,
+  );
   const {loading, error} = useCurrentUser();
+
+  useEffect(() => {
+    setNavRoutes(DefaultNavigationRoutes);
+  }, []);
+
+  useEffect(() => {
+    setNavRoutes((prevNavRoutes) => [...prevNavRoutes, ...pluginRoutes]);
+  }, [pluginRoutes]);
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -112,7 +127,7 @@ export function StandaloneMain() {
         <Alerts />
         <Routes>
           <Route index element={<Navigate to="/organization" replace />} />
-          {NavigationRoutes.map(({path, Component}, key) => (
+          {navRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}
           <Route path="*" element={<NotFound />} />

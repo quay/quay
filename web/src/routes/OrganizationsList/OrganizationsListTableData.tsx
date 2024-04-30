@@ -59,12 +59,15 @@ export default function OrgTableData(props: OrganizationsTableItem) {
   );
 
   // Get members
-  const {data: members} = useQuery(
-    ['organization', props.name, 'members'],
-    ({signal}) => fetchMembersForOrg(props.name, signal),
-    {placeholderData: props.isUser ? [] : undefined},
-  );
-  const memberCount = props.isUser ? 0 : members ? members.length : null;
+  let memberCount = 0;
+  if (!props.isUser) {
+    const {data: members} = useQuery(
+      ['organization', props.name, 'members'],
+      ({signal}) => fetchMembersForOrg(props.name, signal),
+      {placeholderData: props.isUser ? [] : undefined},
+    );
+    memberCount = props.isUser ? 0 : members ? members.length : null;
+  }
 
   // Get robots
   const {data: robots} = useQuery(
@@ -89,7 +92,9 @@ export default function OrgTableData(props: OrganizationsTableItem) {
     );
     return recentRepo.last_modified || -1;
   };
-  const lastModifiedDate = getLastModifiedRepoTime(repositories);
+  const lastModifiedDate = getLastModifiedRepoTime(
+    repositories as IRepository[],
+  );
 
   let teamCountVal: string;
   if (!props.isUser) {

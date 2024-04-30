@@ -38,17 +38,20 @@ import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 
 interface RepoListHeaderProps {
   shouldRender: boolean;
+  title?: string;
 }
 function RepoListHeader(props: RepoListHeaderProps) {
   if (!props.shouldRender) {
     return null;
   }
+
+  const title = props.title || 'Repositories';
   return (
     <>
       <QuayBreadcrumb />
       <PageSection variant={PageSectionVariants.light} hasShadowBottom>
         <div className="co-m-nav-title--row">
-          <Title headingLevel="h1">Repositories</Title>
+          <Title headingLevel="h1">{title}</Title>
         </div>
       </PageSection>
     </>
@@ -290,7 +293,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   return (
     <>
-      <RepoListHeader shouldRender={currentOrg === null} />
+      <RepoListHeader shouldRender={currentOrg === null} title={props.title} />
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
         <RepositoryToolBar
@@ -427,4 +430,5 @@ export interface RepoListTableItem {
 
 interface RepositoriesListProps {
   organizationName: string;
+  title?: string;
 }

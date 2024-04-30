@@ -112,6 +112,7 @@ WORKDIR /opt/app-root
 COPY --chown=1001:0 package.json package-lock.json webpack.common.js webpack.prod.js tsconfig.json ./
 RUN npm clean-install
 COPY --chown=1001:0 web web/
+COPY --chown=1001:0 artifacts artifacts/
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.

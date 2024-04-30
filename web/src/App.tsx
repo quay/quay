@@ -8,9 +8,11 @@ import {useAnalytics} from 'src/hooks/UseAnalytics';
 import {Signin} from 'src/routes/Signin/Signin';
 import {StandaloneMain} from 'src/routes/StandaloneMain';
 import {ThemeProvider} from './contexts/ThemeContext';
+import { InitPlugins } from "../../artifacts/plugins";
 
 export default function App() {
   useAnalytics();
+  InitPlugins();
 
   return (
     <div className="App">

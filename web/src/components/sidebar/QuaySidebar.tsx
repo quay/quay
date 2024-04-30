@@ -6,7 +6,11 @@ import {
   PageSidebarBody,
 } from '@patternfly/react-core';
 import {Link, useLocation} from 'react-router-dom';
-import {SidebarRoutes, SidebarState} from 'src/atoms/SidebarState';
+import {
+  PluginSidebarNavItems,
+  SidebarNavItems,
+  SidebarState,
+} from 'src/atoms/SidebarState';
 import {NavigationPath} from 'src/routes/NavigationPath';
 import OrganizationsList from 'src/routes/OrganizationsList/OrganizationsList';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
@@ -15,7 +19,7 @@ import OverviewList from 'src/routes/OverviewList/OverviewList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useEffect} from 'react';
 
-interface SideNavProps {
+export interface SideNavProps {
   isSideNav: boolean;
   navPath: NavigationPath;
   title: string;
@@ -26,11 +30,13 @@ export function QuaySidebar() {
   const location = useLocation();
   const sidebarState = useRecoilValue(SidebarState);
   const quayConfig = useQuayConfig();
-  const [routes, setSidebarRoutes] =
-    useRecoilState<SideNavProps[]>(SidebarRoutes);
+  const pluginSidebarNavItems = useRecoilValue(PluginSidebarNavItems);
+  const [sidebarNavItems, setSidebarNavItems] =
+    useRecoilState<SideNavProps[]>(SidebarNavItems);
 
   useEffect(() => {
-    setSidebarRoutes([
+    // default sidebar routes
+    setSidebarNavItems([
       {
         isSideNav: quayConfig?.config?.BRANDING.quay_io ? true : false,
         navPath: NavigationPath.overviewList,
@@ -50,12 +56,20 @@ export function QuaySidebar() {
         component: <RepositoriesList organizationName={null} />,
       },
     ]);
-  });
+  }, []);
+
+  useEffect(() => {
+    // merge with plugin sidebar routes
+    setSidebarNavItems((prevNavItems) => [
+      ...prevNavItems,
+      ...pluginSidebarNavItems,
+    ]);
+  }, [pluginSidebarNavItems]);
 
   const Navigation = (
     <Nav>
       <NavList>
-        {routes.map((route) =>
+        {sidebarNavItems.map((route) =>
           route.isSideNav ? (
             <NavItem
               key={route.navPath}

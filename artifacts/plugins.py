@@ -9,10 +9,10 @@ class BaseArtifactPlugin(object):
         self.name = plugin_name
 
     def register_routes(self, app):
-        raise NotImplementedError("You must implement the init_routes method")
+        raise NotImplementedError("You must implement the register_routes method")
 
     def register_workers(self):
-        raise NotImplementedError("You must implement the init_workers method")
+        raise NotImplementedError("You must implement the register_workers method")
 
     def __str__(self):
         return self.name

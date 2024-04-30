@@ -5,6 +5,10 @@ import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
 import OverviewList from './OverviewList/OverviewList';
 
+export interface NavigationRoute {
+  path: string;
+  Component: JSX.Element;
+}
 const organizationNameBreadcrumb = (match) => {
   return <span>{match.params.organizationName}</span>;
 };
@@ -65,8 +69,6 @@ export enum NavigationPath {
 
   // Build info
   buildInfo = '/repository/:organizationName/:repositoryName/build/:buildId',
-
-  npm = '/artifacts/npm',
 }
 
 export function getRepoDetailPath(
