@@ -1,10 +1,8 @@
 import logging
 
+from .constants import PLUGIN_NAME
 from .npm_routes import bp as npm_bp
-from ...plugins import BaseArtifactPlugin
-
-
-PLUGIN_NAME = "npm"
+from artifacts.plugins_base import BaseArtifactPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +12,6 @@ class NpmPlugin(BaseArtifactPlugin):
         super().__init__(name)
 
     def register_routes(self, app):
-        logger.info(f"🔴🔴🔴🔴🔴🔴🔴🔴 Registering routes for {PLUGIN_NAME}")
         app.register_blueprint(npm_bp, url_prefix="/npm")
 
     def register_workers(self):

@@ -4,10 +4,9 @@ import logging
 from pprint import pprint
 
 from artifacts.plugins.npm.npm_utils import parse_package_tarball, get_package_list, check_valid_package_name, \
-    InvalidPackageNameError, parse_package_metadata, get_package_tarball
+    InvalidPackageNameError, parse_package_metadata, get_package_tarball, quayRegistryClient
 from artifacts.utils.plugin_auth import apply_auth_result
-from artifacts.utils.registry_utils import upload_artifact_blob, create_oci_artifact_manifest, calculate_sha256_digest, \
-    upload_oci_artifact_manifest
+from artifacts.utils.registry_utils import calculate_sha256_digest
 from auth.credentials import validate_credentials
 
 from auth.auth_context import get_authenticated_user, get_authenticated_context, set_authenticated_context
@@ -117,11 +116,11 @@ def npm_publish_package(package):
 
     metadata_json = json.dumps(metadata)
     metadata_digest = calculate_sha256_digest(metadata_json.encode('utf-8'))
-    response = upload_artifact_blob(namespace, repo_name, metadata_json, metadata_digest, grant_token)
+    response = quayRegistryClient.upload_artifact_blob(namespace, repo_name, metadata_json, metadata_digest, grant_token)
     # TODO: check if the response is good
 
     data_digest = calculate_sha256_digest(data)
-    response = upload_artifact_blob(namespace, repo_name, data, data_digest, grant_token)
+    response = quayRegistryClient.upload_artifact_blob(namespace, repo_name, data, data_digest, grant_token)
 
     logger.info(f'🔴🟣🔴🟣🔴🟣 digest {data_digest}')
     logger.info(f'🔴🟣🔴🟣🔴🟣 response {response}')
@@ -129,7 +128,7 @@ def npm_publish_package(package):
     pprint(dict(response.headers))
 
     # create manifest
-    manifest = create_oci_artifact_manifest(
+    manifest = quayRegistryClient.create_oci_artifact_manifest(
         media_type='application/vnd.npm.package.v1+json',
         length=len(data),
         digest=data_digest,
@@ -140,9 +139,9 @@ def npm_publish_package(package):
 
     logger.info(f'🔴🟣🔴🟣🔴🟣 manifest {manifest}')
 
-    response = upload_oci_artifact_manifest(namespace, repo_name, manifest, repo_tag, grant_token)
+    response = quayRegistryClient.upload_oci_artifact_manifest(namespace, repo_name, manifest, repo_tag, grant_token)
     logger.info(f'🔴🟣🔴🟣🔴🟣 manifest response {response} {response.data}')
-
+    # TODO: check if the response is good
     return jsonify({'ok': 'Package published'}), 200
 
 

@@ -134,7 +134,11 @@ export interface ITeamRepoPerms {
   lastModified: number;
 }
 
-export function useFetchRepoPermForTeam(orgName: string, teamName: string) {
+export function useFetchRepoPermForTeam(
+  orgName: string,
+  teamName: string,
+  repoKind: string,
+) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
@@ -161,7 +165,7 @@ export function useFetchRepoPermForTeam(orgName: string, teamName: string) {
     isError: errorLoadingRepos,
   } = useQuery<IRepository[]>(
     ['repos'],
-    ({signal}) => fetchRepositoriesForNamespace(orgName, signal),
+    ({signal}) => fetchRepositoriesForNamespace(orgName, repoKind, signal),
     {
       placeholderData: [],
     },

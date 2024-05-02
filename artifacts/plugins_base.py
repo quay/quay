@@ -25,16 +25,6 @@ def get_artifact_repository(namespace_name, artifact_name):
     return repository_ref
 
 
-def create_artifact_repository(namespace_name, artifact_name):
-    # TODO: Parse the namespace and artifact name
-    # TODO: check if the name is a proper valid name (no special characters, etc)
-
-    # TODO check auth permissions (see _authorize_or_downscope_request)
-    # TODO create the repository
-    # TODO return the repository
-    pass
-
-
 class ArtifactPluginQuayClient(FlaskClient):
     def __init__(self, plugin_name: str, *args, **kwargs):
         self.name = plugin_name

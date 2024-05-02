@@ -3,11 +3,13 @@ import json
 import logging
 import pprint
 
+from artifacts.plugins.npm import PLUGIN_NAME
 from artifacts.plugins.npm.npm_auth import generate_auth_token_for_read
-from artifacts.utils.registry_utils import list_tags, RegistryError, get_oci_manifest_by_tag, get_oci_blob
+from artifacts.utils.registry_utils import RegistryError, QuayRegistryClient
 
 logger = logging.getLogger(__name__)
 
+quayRegistryClient = QuayRegistryClient(PLUGIN_NAME)
 
 def parse_package_tarball(npm_post_data):
     attachments = npm_post_data.get('_attachments', {})
@@ -43,7 +45,7 @@ def get_package_metadata(namespace, package_name, tag):
     package metadata is stored in the config blob
     """
     grant_token = generate_auth_token_for_read(namespace, package_name)
-    response = get_oci_manifest_by_tag(namespace, package_name, tag, grant_token)
+    response = quayRegistryClient.get_oci_manifest_by_tag(namespace, package_name, tag, grant_token)
     if response.status_code != 200:
         raise RegistryError('Error fetching manifest')
 
@@ -52,7 +54,7 @@ def get_package_metadata(namespace, package_name, tag):
     if not config_digest:
         raise RegistryError('No config digest found in manifest')
 
-    response = get_oci_blob(namespace, package_name, config_digest, grant_token)
+    response = quayRegistryClient.get_oci_blob(namespace, package_name, config_digest, grant_token)
     if response.status_code != 200:
         raise RegistryError('Error fetching config blob')
 
@@ -62,7 +64,7 @@ def get_package_metadata(namespace, package_name, tag):
 def get_package_list(namespace, package_name):
     # get list of tags for the package
     grant_token = generate_auth_token_for_read(namespace, package_name)
-    response = list_tags(namespace, package_name, grant_token)
+    response = quayRegistryClient.list_tags(namespace, package_name, grant_token)
     if response.status_code != 200:
         raise RegistryError('Error fetching tags')
     tags = response.json.get('tags')
@@ -78,13 +80,13 @@ def get_package_list(namespace, package_name):
 def get_package_tarball(namespace, package_name, package_version):
     # get the package manifest
     grant_token = generate_auth_token_for_read(namespace, package_name)
-    response = get_oci_manifest_by_tag(namespace, package_name, package_version, grant_token)
+    response = quayRegistryClient.get_oci_manifest_by_tag(namespace, package_name, package_version, grant_token)
     if response.status_code != 200:
         raise RegistryError('Error fetching manifest')
 
     manifest = response.json
     data_digest = manifest.get('layers')[0].get('digest')
-    response = get_oci_blob(namespace, package_name, data_digest, grant_token)
+    response = quayRegistryClient.get_oci_blob(namespace, package_name, data_digest, grant_token)
     if response.status_code != 200:
         raise RegistryError('Error fetching blob')
 

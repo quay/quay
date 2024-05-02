@@ -66,6 +66,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const [makePrivateModalOpen, setmakePrivateModal] = useState(false);
   const [err, setErr] = useState<string[]>();
   const location = useLocation();
+  const repoKind = props.repoKind || 'image';
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
@@ -81,7 +82,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     page,
     perPage,
     totalResults,
-  } = useRepositories(currentOrg);
+  } = useRepositories(currentOrg, repoKind);
 
   repos?.sort((r1, r2) => {
     return r1.last_modified > r2.last_modified ? -1 : 1;
@@ -431,4 +432,5 @@ export interface RepoListTableItem {
 interface RepositoriesListProps {
   organizationName: string;
   title?: string;
+  repoKind?: string;
 }

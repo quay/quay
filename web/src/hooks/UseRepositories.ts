@@ -12,7 +12,7 @@ import {
 } from 'src/resources/RepositoryResource';
 import {useCurrentUser} from './UseCurrentUser';
 
-export function useRepositories(organization?: string) {
+export function useRepositories(organization?: string, repoKind?: string) {
   const {user} = useCurrentUser();
 
   // Keep state of current search in this hook
@@ -21,6 +21,7 @@ export function useRepositories(organization?: string) {
   const [search, setSearch] = useRecoilState<OrgSearchState>(searchReposState);
   const searchFilter = useRecoilValue(searchReposFilterState);
   const [currentOrganization, setCurrentOrganization] = useState(organization);
+  repoKind = repoKind || 'image';
 
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
@@ -32,13 +33,13 @@ export function useRepositories(organization?: string) {
     isLoading: loading,
     isPlaceholderData,
   } = useQuery({
-    queryKey: ['organization', organization || 'all', 'repositories', page],
+    queryKey: ['organization', organization || 'all', 'repositories', repoKind, page],
     keepPreviousData: true,
     placeholderData: [],
     queryFn: ({signal}) => {
       return currentOrganization
-        ? fetchRepositoriesForNamespace(currentOrganization, signal)
-        : fetchAllRepos(listOfOrgNames, true, signal);
+        ? fetchRepositoriesForNamespace(currentOrganization, repoKind, signal)
+        : fetchAllRepos(listOfOrgNames, repoKind, true, signal); // TODO: can repoKind be an array?
     },
   });
 

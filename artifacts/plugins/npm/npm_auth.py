@@ -78,7 +78,6 @@ def generate_auth_token_for_write(namespace, repo_name):
     apply_auth_result(auth_result)
     aud_params = "localhost:8080"
     push_scope = f"repository:{namespace}/{repo_name}:push"
-    # scope_result = _authorize_or_downscope_request(push_scope, has_valid_auth_context)
     scope_params = [push_scope]
     return generate_registry_jwt(auth_result, True, aud_params, scope_params)
 

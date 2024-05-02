@@ -23,6 +23,7 @@ export const setRepoPermForTeamColumnNames = {
 export default function SetRepoPermissionForTeamModal(
   props: SetRepoPermissionForTeamModalProps,
 ) {
+  const repoKind = 'image'; // TODO: make this dynamic
   const {
     teamRepoPerms,
     paginatedTeamRepoPerms,
@@ -34,7 +35,7 @@ export default function SetRepoPermissionForTeamModal(
     setPerPage,
     search,
     setSearch,
-  } = useFetchRepoPermForTeam(props.organizationName, props.teamName);
+  } = useFetchRepoPermForTeam(props.organizationName, props.teamName, repoKind);
 
   const {
     updateRepoPerm,

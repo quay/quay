@@ -1,0 +1,1 @@
+PLUGIN_NAME = "npm"

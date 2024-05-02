@@ -43,6 +43,7 @@ export enum RepositoryState {
 
 export async function fetchAllRepos(
   namespaces: string[],
+  repoKind: string,
   flatten = false,
   signal: AbortSignal,
   next_page_token = null,
@@ -60,7 +61,7 @@ export async function fetchAllRepos(
     const batch = namespaces.slice(i, i + BATCH_SIZE);
     const batchRepos = await Promise.all(
       batch.map((ns) => {
-        return fetchRepositoriesForNamespace(ns, signal, next_page_token);
+        return fetchRepositoriesForNamespace(ns, repoKind, signal, next_page_token);
       }),
     );
     namespacedRepos.push(...batchRepos);
@@ -79,12 +80,13 @@ export async function fetchAllRepos(
 
 export async function fetchRepositoriesForNamespace(
   ns: string,
+  repoKind: string,
   signal: AbortSignal,
   next_page_token: string = null,
 ): Promise<IRepository[]> {
   const url = next_page_token
-    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&namespace=${ns}&public=true`
-    : `/api/v1/repository?last_modified=true&namespace=${ns}&public=true`;
+    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&namespace=${ns}&public=true&repo_kind=${repoKind}`
+    : `/api/v1/repository?last_modified=true&namespace=${ns}&public=true&repo_kind=${repoKind}`;
   const response: AxiosResponse = await axios.get(url, {signal});
   assertHttpCode(response.status, 200);
 
@@ -92,7 +94,12 @@ export async function fetchRepositoriesForNamespace(
   const repos = response.data?.repositories as IRepository[];
 
   if (next_page) {
-    const resp = await fetchRepositoriesForNamespace(ns, signal, next_page);
+    const resp = await fetchRepositoriesForNamespace(
+      ns,
+      repoKind,
+      signal,
+      next_page,
+    );
     return repos.concat(resp);
   }
   return repos as IRepository[];

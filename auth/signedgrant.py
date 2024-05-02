@@ -25,28 +25,14 @@ def generate_signed_token(grants, user_context):
     return "{0}{1}".format(SIGNATURE_PREFIX, encrypted)
 
 
-def validate_signed_grant(auth_header):
-    """
-    Validates a signed grant as found inside an auth header and returns whether it points to a valid
-    grant.
-    """
-    logger.info(f'👹👹👹 validate signed grant auth_header {auth_header}')
-    if not auth_header:
-        return ValidateResult(AuthKind.signed_grant, missing=True)
-
-    # Try to parse the token from the header.
-    normalized = [part.strip() for part in auth_header.split(" ") if part]
-    if normalized[0].lower() != "token" or len(normalized) != 2:
-        logger.debug("Not a token: %s", auth_header)
-        return ValidateResult(AuthKind.signed_grant, missing=True)
-
+def validate_signed_grant_token(token):
     # Check that it starts with the expected prefix.
-    if not normalized[1].startswith(SIGNATURE_PREFIX):
-        logger.debug("Not a signed grant token: %s", auth_header)
+    if not token.startswith(SIGNATURE_PREFIX):
+        logger.debug("Not a signed grant token: %s", token)
         return ValidateResult(AuthKind.signed_grant, missing=True)
 
     # Decrypt the grant.
-    encrypted = normalized[1][len(SIGNATURE_PREFIX) :]
+    encrypted = token[len(SIGNATURE_PREFIX):]
     ser = SecureCookieSessionInterface().get_signing_serializer(app)
 
     try:
@@ -59,3 +45,18 @@ def validate_signed_grant(auth_header):
 
     logger.debug("Successfully validated signed grant with data: %s", token_data)
     return ValidateResult(AuthKind.signed_grant, signed_data=token_data)
+
+
+def validate_signed_grant(auth_header):
+    """
+    Validates a signed grant as found inside an auth header and returns whether it points to a valid
+    grant.
+    """
+    if not auth_header:
+        return ValidateResult(AuthKind.signed_grant, missing=True)
+
+    # Try to parse the token from the header.
+    normalized = [part.strip() for part in auth_header.split(" ") if part]
+    if normalized[0].lower() != "token" or len(normalized) != 2:
+        logger.debug("Not a token: %s", auth_header)
+        return ValidateResult(AuthKind.signed_grant, missing=True)

@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { PluginSidebarNavItems } from "src/atoms/SidebarState";
 import { useRecoilState } from "recoil";
 import { SideNavProps } from "src/components/sidebar/QuaySidebar";
 import { PluginNavigationRoutes } from "src/atoms/Routes";
 import { NavigationRoute } from "src/routes/NavigationPath";
-import RepositoriesList from "src/routes/RepositoriesList/RepositoriesList";
+import { NpmPackagesList } from "./NpmPackagesList";
+import RepositoryDetails from "src/routes/RepositoryDetails/RepositoryDetails";
 
 export function init() {
   const [pluginSidebarNavItems, setPluginSidebarNavItems] = useRecoilState<
@@ -22,7 +23,7 @@ export function init() {
           isSideNav: true,
           navPath: "npm",
           title: "NPM Packages",
-          component: <NpmPlugin />,
+          component: <NpmPackagesList />,
         },
       ] as SideNavProps[];
     });
@@ -32,17 +33,17 @@ export function init() {
         ...prevRoutes,
         {
           path: "/npm",
-          Component: <NpmPlugin />,
+          Component: <NpmPackagesList />,
+        },
+        {
+          path: "/npm/repository",
+          Component: <NpmPackagesList />,
+        },
+        {
+          path: "/npm/repository/:organizationName/*",
+          Component: <RepositoryDetails />,
         },
       ] as NavigationRoute[];
     });
   }, []);
-}
-
-function NpmPlugin() {
-  return (
-    <>
-      <RepositoriesList organizationName={null} title={"NPM Packages"} />
-    </>
-  );
 }
