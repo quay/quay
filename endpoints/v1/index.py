@@ -225,12 +225,12 @@ def create_repository(namespace_name, repo_name):
                 namespace=namespace_name,
                 repository=repo_name,
             )
-        elif repository_ref.kind != "image":
-            msg = (
-                "This repository is for managing %s resources and not container images."
-                % repository_ref.kind
-            )
-            abort(405, message=msg, namespace=namespace_name)
+        # elif repository_ref.kind != "image":
+        #     msg = (
+        #         "This repository is for managing %s resources and not container images."
+        #         % repository_ref.kind
+        #     )
+        #     abort(405, message=msg, namespace=namespace_name)
     else:
         create_perm = CreateRepositoryPermission(namespace_name)
         if not create_perm.can():

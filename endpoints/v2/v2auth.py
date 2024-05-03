@@ -226,8 +226,8 @@ def validate_repository_state(repository_ref):
     if not repository_ref:
         return
 
-    if repository_ref is not None and repository_ref.kind != "image":
-        raise Unsupported(message="Cannot push/pull non-image repository")
+    # if repository_ref is not None and repository_ref.kind != "image":
+    #     raise Unsupported(message="Cannot push/pull non-image repository")
 
     # Ensure the repository is not marked for deletion.
     if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
@@ -251,8 +251,8 @@ def ensure_repository_exists(user, namespace, reponame):
     if not repository_ref and not CreateRepositoryPermission(namespace).can():
         raise Unsupported(message="No permission to create repository")
 
-    if repository_ref is not None and repository_ref.kind != "image":
-        raise Unsupported(message="Cannot administer non-image repository")
+    # if repository_ref is not None and repository_ref.kind != "image":
+    #     raise Unsupported(message="Cannot administer non-image repository")
 
     try:
         if not namespace_ref and app.config.get("CREATE_NAMESPACE_ON_PUSH", False):
