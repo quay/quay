@@ -1,6 +1,7 @@
 """
 Superuser API.
 """
+
 import logging
 import os
 import socket
@@ -8,6 +9,7 @@ import string
 from datetime import datetime
 from random import SystemRandom
 
+import bitmath
 from cryptography.hazmat.primitives import serialization
 from flask import jsonify, make_response, request
 
@@ -295,13 +297,27 @@ class SuperUserUserQuotaList(ApiResource):
         "NewNamespaceQuota": {
             "type": "object",
             "description": "Description of a new organization quota",
-            "required": ["limit_bytes"],
-            "properties": {
-                "limit_bytes": {
-                    "type": "integer",
-                    "description": "Number of bytes the organization is allowed",
+            "oneOf": [
+                {
+                    "required": ["limit_bytes"],
+                    "properties": {
+                        "limit_bytes": {
+                            "type": "integer",
+                            "description": "Number of bytes the organization is allowed",
+                        },
+                    },
                 },
-            },
+                {
+                    "required": ["limit"],
+                    "properties": {
+                        "limit": {
+                            "type": "string",
+                            "description": "Human readable storage capacity of the organization",
+                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                        },
+                    },
+                },
+            ],
         },
     }
 
@@ -333,7 +349,14 @@ class SuperUserUserQuotaList(ApiResource):
     def post(self, namespace):
         if SuperUserPermission().can():
             quota_data = request.get_json()
-            limit_bytes = quota_data["limit_bytes"]
+
+            if "limit" in quota_data:
+                try:
+                    limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
+                except ValueError:
+                    raise request_error(message="Invalid limit format")
+            else:
+                limit_bytes = quota_data["limit_bytes"]
 
             namespace_user = user.get_user_or_org(namespace)
             quotas = namespacequota.get_namespace_quota_list(namespace_user.username)
@@ -362,12 +385,36 @@ class SuperUserUserQuota(ApiResource):
         "UpdateNamespaceQuota": {
             "type": "object",
             "description": "Description of a new organization quota",
-            "properties": {
-                "limit_bytes": {
-                    "type": "integer",
-                    "description": "Number of bytes the organization is allowed",
+            "oneOf": [
+                {
+                    "properties": {
+                        "limit_bytes": {
+                            "type": "integer",
+                            "description": "Number of bytes the organization is allowed",
+                        },
+                    },
+                    "required": ["limit_bytes"],
+                    "additionalProperties": False,
                 },
-            },
+                {
+                    "properties": {
+                        "limit": {
+                            "type": "string",
+                            "description": "Human readable storage capacity of the organization",
+                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                        },
+                    },
+                    "required": ["limit"],
+                    "additionalProperties": False,
+                },
+                {
+                    "properties": {
+                        "limit_bytes": {"not": {}},
+                        "limit": {"not": {}},
+                    },
+                    "additionalProperties": False,
+                },
+            ],
         },
     }
 
@@ -384,8 +431,19 @@ class SuperUserUserQuota(ApiResource):
             quota = get_quota(namespace_user.username, quota_id)
 
             try:
-                if "limit_bytes" in quota_data:
+                limit_bytes = None
+
+                if "limit" in quota_data:
+                    try:
+                        limit_bytes = (
+                            bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
+                        )
+                    except ValueError:
+                        raise request_error(message="Invalid limit format")
+                elif "limit_bytes" in quota_data:
                     limit_bytes = quota_data["limit_bytes"]
+
+                if limit_bytes:
                     namespacequota.update_namespace_quota_size(quota, limit_bytes)
             except DataModelException as ex:
                 raise request_error(exception=ex)
