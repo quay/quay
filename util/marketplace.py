@@ -24,15 +24,17 @@ class RedHatUserApi(object):
         email = user.email
         account_number = entitlements.get_web_customer_id(user.id)
         if account_number is None:
-            account_number = self.lookup_customer_id(email)
-            if account_number:
+            account_numbers = self.lookup_customer_id(email)
+            if account_numbers:
                 # store in database for next lookup
-                entitlements.save_web_customer_id(user, account_number)
+                for account_number in account_numbers:
+                    entitlements.save_web_customer_id(user, account_number)
+                account_number = account_numbers[0]
         return account_number
 
     def lookup_customer_id(self, email):
         """
-        Send request to internal api for customer id (ebs acc number)
+        Send request to internal api for customer id (web customer id)
         """
         request_body_dict = {
             "by": {"emailStartsWith": email},
@@ -68,14 +70,15 @@ class RedHatUserApi(object):
         if not info:
             logger.debug("request to %s did not return any data", self.user_endpoint)
             return None
+
+        customer_ids = []
         for account in info:
-            if account["accountRelationships"][0]["account"]["type"] == "person":
-                customer_id = account["accountRelationships"][0]["account"].get("id")
-                # convert str response from api to int value
-                if customer_id.isdigit():
-                    customer_id = int(customer_id)
-                return customer_id
-        return None
+            customer_id = account["accountRelationships"][0]["account"].get("id")
+            # convert str response from api to int value
+            if customer_id.isdigit():
+                customer_id = int(customer_id)
+            customer_ids.append(customer_id)
+        return customer_ids
 
 
 class RedHatSubscriptionApi(object):
@@ -326,11 +329,11 @@ class FakeUserApi(RedHatUserApi):
 
     def lookup_customer_id(self, email):
         if email == TEST_USER["email"]:
-            return TEST_USER["account_number"]
+            return [TEST_USER["account_number"]]
         if email == FREE_USER["email"]:
-            return FREE_USER["account_number"]
+            return [FREE_USER["account_number"]]
         if email == STRIPE_USER["email"]:
-            return STRIPE_USER["account_number"]
+            return [STRIPE_USER["account_number"]]
         return None
 
 

@@ -55,7 +55,7 @@ def test_reconcile_different_ids(initialized_db):
 
     new_id = model.entitlements.get_web_customer_id(test_user.id)
     assert new_id != 12345
-    assert new_id == marketplace_users.lookup_customer_id(test_user.email)
+    assert [new_id] == marketplace_users.lookup_customer_id(test_user.email)
 
     # make sure it will remove account numbers from db that do not belong
     with patch.object(marketplace_users, "lookup_customer_id") as mock:
