@@ -69,11 +69,13 @@ def check_internal_api_for_subscription(namespace_user):
                 plans.append(get_plan_using_rh_sku(sku))
         pass
     else:
-        user_account_number = marketplace_users.get_account_number(namespace_user)
-        if user_account_number:
-            plans = marketplace_subscriptions.get_list_of_subscriptions(
-                user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
-            )
+        user_account_numbers = marketplace_users.get_account_number(namespace_user)
+        if user_account_numbers:
+            plans = []
+            for user_account_number in user_account_numbers:
+                plans += marketplace_subscriptions.get_list_of_subscriptions(
+                    user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
+                )
     return plans
 
 
@@ -1000,16 +1002,22 @@ class OrganizationRhSku(ApiResource):
                 if subscription_id is None:
                     break
                 user = get_authenticated_user()
-                account_number = marketplace_users.get_account_number(user)
-                subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+                account_numbers = marketplace_users.get_account_number(user)
+                user_available_subscriptions = []
+                for account_number in account_numbers:
+                    user_available_subscriptions += (
+                        marketplace_subscriptions.get_list_of_subscriptions(account_number)
+                    )
 
                 if subscriptions is None:
                     abort(401, message="no valid subscriptions present")
 
-                user_subscription_ids = [int(subscription["id"]) for subscription in subscriptions]
+                user_subscription_ids = [
+                    int(subscription["id"]) for subscription in user_available_subscriptions
+                ]
                 if int(subscription_id) in user_subscription_ids:
                     quantity = 1
-                    for subscription in subscriptions:
+                    for subscription in user_available_subscriptions:
                         if subscription["id"] == subscription_id:
                             quantity = subscription["quantity"]
                             break
@@ -1104,11 +1112,15 @@ class UserSkuList(ApiResource):
         List the invoices for the current user.
         """
         user = get_authenticated_user()
-        account_number = marketplace_users.get_account_number(user)
-        if not account_number:
+        account_numbers = marketplace_users.get_account_number(user)
+        if not account_numbers:
             raise NotFound()
 
-        user_subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+        user_subscriptions = []
+        for account_number in account_numbers:
+            user_subscriptions += marketplace_subscriptions.get_list_of_subscriptions(
+                account_number
+            )
 
         for subscription in user_subscriptions:
             bound_to_org, organization = organization_skus.subscription_bound_to_org(

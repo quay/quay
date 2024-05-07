@@ -638,11 +638,13 @@ class PrivateRepositories(ApiResource):
                     repos_allowed = plan["privateRepos"]
         if features.RH_MARKETPLACE:
             # subscriptions in marketplace will get added to private repo count
-            user_account_number = marketplace_users.get_account_number(user)
-            if user_account_number:
-                subscriptions = marketplace_subscriptions.get_list_of_subscriptions(
-                    user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
-                )
+            user_account_numbers = marketplace_users.get_account_number(user)
+            if user_account_numbers:
+                subscriptions = []
+                for account_number in user_account_numbers:
+                    subscriptions += marketplace_subscriptions.get_list_of_subscriptions(
+                        account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
+                    )
                 for user_subscription in subscriptions:
                     repos_allowed += user_subscription["privateRepos"]
 

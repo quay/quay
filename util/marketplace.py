@@ -22,15 +22,14 @@ class RedHatUserApi(object):
 
     def get_account_number(self, user):
         email = user.email
-        account_number = entitlements.get_web_customer_id(user.id)
-        if account_number is None:
+        account_numbers = entitlements.get_web_customer_ids(user.id)
+        if len(account_numbers) == 0:
             account_numbers = self.lookup_customer_id(email)
             if account_numbers:
                 # store in database for next lookup
                 for account_number in account_numbers:
                     entitlements.save_web_customer_id(user, account_number)
-                account_number = account_numbers[0]
-        return account_number
+        return account_numbers
 
     def lookup_customer_id(self, email):
         """
