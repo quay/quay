@@ -1,3 +1,4 @@
+from storage.akamaistorage import AkamaiS3Storage
 from storage.azurestorage import AzureStorage
 from storage.cloud import (
     CloudFrontedS3Storage,
@@ -33,6 +34,7 @@ STORAGE_DRIVER_CLASSES = {
     "MultiCDNStorage": MultiCDNStorage,
     "IBMCloudStorage": IBMCloudStorage,
     "STSS3Storage": STSS3Storage,
+    "AkamaiS3Storage": AkamaiS3Storage,
 }
 
 
