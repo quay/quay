@@ -51,6 +51,8 @@ class ReconciliationWorker(Worker):
             logger.debug(
                 "Database returned %s customer ids for %s", str(model_customer_ids), user.username
             )
+            if model_customer_ids is None:
+                model_customer_ids = []
 
             # check against user api
             customer_ids = user_api.lookup_customer_id(email)
@@ -71,6 +73,7 @@ class ReconciliationWorker(Worker):
                 if customer_id not in model_customer_ids:
                     logger.debug("Saving new customer id %s for %s", customer_id, user.username)
                     entitlements.save_web_customer_id(user, customer_id)
+
             for customer_id in model_customer_ids:
                 if customer_id not in customer_ids:
                     entitlements.remove_web_customer_id(user, customer_id)

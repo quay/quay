@@ -61,7 +61,7 @@ def test_reconcile_different_ids(initialized_db):
     with patch.object(marketplace_users, "lookup_customer_id") as mock:
         mock.return_value = None
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
-    assert model.entitlements.get_web_customer_ids(test_user.id) == []
+    assert model.entitlements.get_web_customer_ids(test_user.id) is None
 
 
 def test_update_same_id(initialized_db):
