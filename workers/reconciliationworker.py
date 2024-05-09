@@ -53,32 +53,33 @@ class ReconciliationWorker(Worker):
             )
 
             # check against user api
-            customer_id = user_api.lookup_customer_id(email)
-            logger.debug("Found %s number for %s", str(customer_id), email)
-
-            if model_customer_id is None and customer_id:
-                logger.debug("Saving new customer id %s for %s", customer_id, user.username)
-                entitlements.save_web_customer_id(user, customer_id)
-            elif model_customer_id != customer_id:
-                # what is in the database differs from the service
-                # take the service and store in the database instead
-                if customer_id:
-                    logger.debug(
-                        "Reconciled differing ids for %s, changing from %s to %s",
-                        user.username,
-                        model_customer_id,
-                        customer_id,
-                    )
-                    entitlements.update_web_customer_id(user, customer_id)
-                else:
+            customer_ids = user_api.lookup_customer_id(email)
+            if customer_ids is None:
+                logger.debug("No web customer ids found for %s", email)
+                if model_customer_id:
                     # user does not have a web customer id from api and should be removed from table
                     logger.debug(
                         "Removing conflicting id %s for %s", model_customer_id, user.username
                     )
                     entitlements.remove_web_customer_id(user, model_customer_id)
-            elif customer_id is None:
-                logger.debug("User %s does not have an account number", user.username)
                 continue
+
+            logger.debug("Found %s number for %s", str(customer_ids), email)
+
+            for customer_id in customer_ids:
+                if model_customer_id is None and customer_id:
+                    logger.debug("Saving new customer id %s for %s", customer_id, user.username)
+                    entitlements.save_web_customer_id(user, customer_id)
+                elif model_customer_id != customer_id:
+                    # what is in the database differs from the service
+                    # take the service and store in the database instead
+                    logger.debug(
+                        "Reconciled differing ids for %s, changing from %s to %s",
+                        user.username,
+                        model_customer_id,
+                        customer_ids,
+                    )
+                    entitlements.update_web_customer_id(user, customer_id)
 
             # check if we need to create a subscription for customer in RH marketplace
             try:
@@ -95,11 +96,12 @@ class ReconciliationWorker(Worker):
                     if plan is None:
                         continue
                     if plan.get("rh_sku") == sku_id:
-                        subscription = marketplace_api.lookup_subscription(customer_id, sku_id)
-                        if subscription is None:
-                            logger.debug("Found %s to create for %s", sku_id, user.username)
-                            marketplace_api.create_entitlement(customer_id, sku_id)
-                        break
+                        for customer_id in customer_ids:
+                            subscription = marketplace_api.lookup_subscription(customer_id, sku_id)
+                            if subscription is None:
+                                logger.debug("Found %s to create for %s", sku_id, user.username)
+                                marketplace_api.create_entitlement(customer_id, sku_id)
+                            break
                 else:
                     logger.debug("User %s does not have a stripe subscription", user.username)
 
