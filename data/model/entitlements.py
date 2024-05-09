@@ -6,10 +6,17 @@ from data.database import RedHatSubscriptions
 logger = logging.getLogger(__name__)
 
 
-def get_web_customer_id(user_id):
+def get_web_customer_ids(user_id):
     try:
-        query = RedHatSubscriptions.get(RedHatSubscriptions.user_id == user_id).account_number
-        return query
+        customer_ids = [
+            customer.account_number
+            for customer in RedHatSubscriptions.select().where(
+                RedHatSubscriptions.user_id == user_id
+            )
+        ]
+        if len(customer_ids) == 0:
+            return None
+        return customer_ids
     except RedHatSubscriptions.DoesNotExist:
         return None
 
