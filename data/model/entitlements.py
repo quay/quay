@@ -8,9 +8,14 @@ logger = logging.getLogger(__name__)
 
 def get_web_customer_ids(user_id):
     try:
-        customer_ids = []
-        for customer in RedHatSubscriptions.select().where(RedHatSubscriptions.user_id == user_id):
-            customer_ids.append(customer.account_number)
+        customer_ids = [
+            customer.account_number
+            for customer in RedHatSubscriptions.select().where(
+                RedHatSubscriptions.user_id == user_id
+            )
+        ]
+        if len(customer_ids) == 0:
+            return None
         return customer_ids
     except RedHatSubscriptions.DoesNotExist:
         return None

@@ -23,7 +23,7 @@ class RedHatUserApi(object):
     def get_account_number(self, user):
         email = user.email
         account_numbers = entitlements.get_web_customer_ids(user.id)
-        if len(account_numbers) == 0:
+        if account_numbers is None:
             account_numbers = self.lookup_customer_id(email)
             if account_numbers:
                 # store in database for next lookup
