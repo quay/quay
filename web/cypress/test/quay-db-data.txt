@@ -34,6 +34,9 @@ ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_role_id
 ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_organization_id_user;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_tag_kind_id_tagkind;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_tag_id;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_notification_id;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_method_id;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
@@ -502,6 +505,7 @@ ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS pk_tagmanifestlabel;
 ALTER TABLE IF EXISTS ONLY public.tagmanifest DROP CONSTRAINT IF EXISTS pk_tagmanifest;
 ALTER TABLE IF EXISTS ONLY public.tagkind DROP CONSTRAINT IF EXISTS pk_tagkind;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS pk_tag_notification_success;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS pk_tag;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS pk_star;
 ALTER TABLE IF EXISTS ONLY public.servicekeyapproval DROP CONSTRAINT IF EXISTS pk_servicekeyapproval;
@@ -603,6 +607,7 @@ ALTER TABLE IF EXISTS public.teammemberinvite ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.teammember ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.team ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagtorepositorytag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagnotificationsuccess ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifesttomanifest ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifestlabelmap ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifestlabel ALTER COLUMN id DROP DEFAULT;
@@ -722,6 +727,8 @@ DROP SEQUENCE IF EXISTS public.team_id_seq;
 DROP TABLE IF EXISTS public.team;
 DROP SEQUENCE IF EXISTS public.tagtorepositorytag_id_seq;
 DROP TABLE IF EXISTS public.tagtorepositorytag;
+DROP SEQUENCE IF EXISTS public.tagnotificationsuccess_id_seq;
+DROP TABLE IF EXISTS public.tagnotificationsuccess;
 DROP SEQUENCE IF EXISTS public.tagmanifesttomanifest_id_seq;
 DROP TABLE IF EXISTS public.tagmanifesttomanifest;
 DROP SEQUENCE IF EXISTS public.tagmanifestlabelmap_id_seq;
@@ -3728,7 +3735,8 @@ CREATE TABLE public.repositorynotification (
     title character varying(255),
     config_json text NOT NULL,
     event_config_json text NOT NULL,
-    number_of_failures integer DEFAULT 0 NOT NULL
+    number_of_failures integer DEFAULT 0 NOT NULL,
+    last_ran_ms bigint
 );
 
 
@@ -4346,6 +4354,42 @@ ALTER TABLE public.tagmanifesttomanifest_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.tagmanifesttomanifest_id_seq OWNED BY public.tagmanifesttomanifest.id;
+
+
+--
+-- Name: tagnotificationsuccess; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.tagnotificationsuccess (
+    id integer NOT NULL,
+    notification_id integer NOT NULL,
+    tag_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+ALTER TABLE public.tagnotificationsuccess OWNER TO quay;
+
+--
+-- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.tagnotificationsuccess_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.tagnotificationsuccess_id_seq OWNER TO quay;
+
+--
+-- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.tagnotificationsuccess_id_seq OWNED BY public.tagnotificationsuccess.id;
 
 
 --
@@ -5503,6 +5547,13 @@ ALTER TABLE ONLY public.tagmanifesttomanifest ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: tagnotificationsuccess id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess ALTER COLUMN id SET DEFAULT nextval('public.tagnotificationsuccess_id_seq'::regclass);
+
+
+--
 -- Name: tagtorepositorytag id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5623,7 +5674,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-b4da5b09c8df
+2664723e1b4b
 \.
 
 
@@ -5801,6 +5852,7 @@ COPY public.externalnotificationevent (id, name) FROM stdin;
 8	repo_mirror_sync_started
 9	repo_mirror_sync_success
 10	repo_mirror_sync_failed
+11	repo_image_expiry
 \.
 
 
@@ -6298,6 +6350,8 @@ COPY public.logentrykind (id, name) FROM stdin;
 108	create_repository_autoprune_policy
 109	update_repository_autoprune_policy
 110	delete_repository_autoprune_policy
+111	enable_team_sync
+112	disable_team_sync
 \.
 
 
@@ -6313,6 +6367,7 @@ COPY public.loginservice (id, name) FROM stdin;
 5	keystone
 6	dex
 7	jwtauthn
+8	oidc
 \.
 
 
@@ -7022,12 +7077,12 @@ COPY public.repositorykind (id, name) FROM stdin;
 -- Data for Name: repositorynotification; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.repositorynotification (id, uuid, repository_id, event_id, method_id, title, config_json, event_config_json, number_of_failures) FROM stdin;
-1	a5a83554-b024-4522-8b63-509266b1e45e	5	1	2		{"flow_api_token": "testtoken"}	{}	0
-2	2a4aeb62-3bea-4bb7-83ca-75a34dec3367	5	2	3	hipchat-notification	{"notification_token": "testtoken", "room_id": "123"}	{}	0
-3	70a8f966-1dc1-47b8-9b51-3cf71d0f9ad2	5	6	5	slack-notification	{"url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"}	{}	3
-4	1efd38da-6ab4-4e09-822d-3b1742a00b1c	5	8	6	webhook-notification	{"url": "https://doesnotexist", "template": "{\\"foo\\":\\"bar\\"}"}	{}	3
-5	1d07e6db-be20-405a-8780-9d83bf1d16da	5	9	1	email-notification	{"email": "user1@redhat.com"}	{}	3
+COPY public.repositorynotification (id, uuid, repository_id, event_id, method_id, title, config_json, event_config_json, number_of_failures, last_ran_ms) FROM stdin;
+1	a5a83554-b024-4522-8b63-509266b1e45e	5	1	2		{"flow_api_token": "testtoken"}	{}	0	\N
+2	2a4aeb62-3bea-4bb7-83ca-75a34dec3367	5	2	3	hipchat-notification	{"notification_token": "testtoken", "room_id": "123"}	{}	0	\N
+3	70a8f966-1dc1-47b8-9b51-3cf71d0f9ad2	5	6	5	slack-notification	{"url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"}	{}	3	\N
+4	1efd38da-6ab4-4e09-822d-3b1742a00b1c	5	8	6	webhook-notification	{"url": "https://doesnotexist", "template": "{\\"foo\\":\\"bar\\"}"}	{}	3	\N
+5	1d07e6db-be20-405a-8780-9d83bf1d16da	5	9	1	email-notification	{"email": "user1@redhat.com"}	{}	3	\N
 \.
 
 
@@ -7658,6 +7713,14 @@ COPY public.tagmanifesttomanifest (id, tag_manifest_id, manifest_id, broken) FRO
 
 
 --
+-- Data for Name: tagnotificationsuccess; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.tagnotificationsuccess (id, notification_id, tag_id, method_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: tagtorepositorytag; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -8043,7 +8106,7 @@ SELECT pg_catalog.setval('public.emailconfirmation_id_seq', 1, false);
 -- Name: externalnotificationevent_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.externalnotificationevent_id_seq', 10, true);
+SELECT pg_catalog.setval('public.externalnotificationevent_id_seq', 11, true);
 
 
 --
@@ -8148,14 +8211,14 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 110, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 112, true);
 
 
 --
 -- Name: loginservice_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.loginservice_id_seq', 7, true);
+SELECT pg_catalog.setval('public.loginservice_id_seq', 8, true);
 
 
 --
@@ -8232,7 +8295,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 2, true);
 
 
 --
@@ -8477,14 +8540,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 1, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 2, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 2, true);
 
 
 --
@@ -8534,6 +8597,13 @@ SELECT pg_catalog.setval('public.tagmanifestlabelmap_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.tagmanifesttomanifest_id_seq', 1, false);
+
+
+--
+-- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.tagnotificationsuccess_id_seq', 1, false);
 
 
 --
@@ -9328,6 +9398,14 @@ ALTER TABLE ONLY public.star
 
 ALTER TABLE ONLY public.tag
     ADD CONSTRAINT pk_tag PRIMARY KEY (id);
+
+
+--
+-- Name: tagnotificationsuccess pk_tag_notification_success; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT pk_tag_notification_success PRIMARY KEY (id);
 
 
 --
@@ -12733,6 +12811,30 @@ ALTER TABLE ONLY public.tag
 
 ALTER TABLE ONLY public.tag
     ADD CONSTRAINT fk_tag_manifest_id_manifest FOREIGN KEY (manifest_id) REFERENCES public.manifest(id);
+
+
+--
+-- Name: tagnotificationsuccess fk_tag_notification_success_method_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT fk_tag_notification_success_method_id FOREIGN KEY (method_id) REFERENCES public.externalnotificationmethod(id);
+
+
+--
+-- Name: tagnotificationsuccess fk_tag_notification_success_notification_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT fk_tag_notification_success_notification_id FOREIGN KEY (notification_id) REFERENCES public.repositorynotification(id);
+
+
+--
+-- Name: tagnotificationsuccess fk_tag_notification_success_tag_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT fk_tag_notification_success_tag_id FOREIGN KEY (tag_id) REFERENCES public.tag(id);
 
 
 --
