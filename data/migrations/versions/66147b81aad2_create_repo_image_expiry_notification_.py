@@ -7,8 +7,8 @@ Create Date: 2024-05-13 14:28:58.794953
 """
 
 # revision identifiers, used by Alembic.
-revision = '66147b81aad2'
-down_revision = '36cd2b747a08'
+revision = "66147b81aad2"
+down_revision = "36cd2b747a08"
 
 
 def upgrade(op, tables, tester):
