@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections import namedtuple
 from typing import Literal, Optional, overload
 
@@ -17,17 +16,12 @@ from data.database import (
     RepositoryNotification,
     Tag,
     db_transaction,
-    get_epoch_timestamp_ms,
 )
-from data.model import BlobDoesNotExist, config
+from data.model import BlobDoesNotExist
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.oci.tag import (
-    create_temporary_tag_if_necessary,
-    filter_to_alive_tags,
-    get_child_manifests,
-)
+from data.model.oci.tag import create_temporary_tag_if_necessary, filter_to_alive_tags
 from data.model.quota import QuotaOperation, update_quota
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from image.docker.schema1 import ManifestException
@@ -359,6 +353,13 @@ def _create_manifest(
     try:
         with db_transaction():
             manifest = create_manifest(repository_id, manifest_interface_instance)
+
+            # Get the created date of the manifest, if any.
+            created_date = manifest_interface_instance.get_created_date(retriever)
+
+            if created_date:
+                manifest.created = int(created_date.timestamp())
+                manifest.save()
 
             if storage_ids:
                 connect_blobs(manifest, storage_ids, repository_id)

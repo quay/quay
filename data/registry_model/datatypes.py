@@ -296,6 +296,7 @@ class Manifest(
             "config_media_type",
             "_layers_compressed_size",
             "internal_manifest_bytes",
+            "created",
         ],
     )
 ):
@@ -321,6 +322,7 @@ class Manifest(
             media_type=ManifestTable.media_type.get_name(manifest.media_type_id),
             _layers_compressed_size=manifest.layers_compressed_size,
             config_media_type=manifest.config_media_type,
+            created=manifest.created,
             inputs=dict(
                 legacy_id_handler=legacy_id_handler,
                 legacy_image_row=legacy_image_row,

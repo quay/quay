@@ -297,6 +297,13 @@ class OCIManifest(ManifestInterface):
         labels.update(self.annotations)
         return labels
 
+    def get_created_date(self, content_retriever):
+        if not self.is_image_manifest:
+            return None
+
+        built_config = self._get_built_config(content_retriever)
+        return built_config.created
+
     def get_layers(self, content_retriever):
         """
         Returns the layers of this manifest, from base to leaf or None if this kind of manifest does

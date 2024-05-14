@@ -93,7 +93,6 @@ Example:
 """
 
 import copy
-import hashlib
 import json
 from collections import namedtuple
 
@@ -228,6 +227,21 @@ class DockerSchema2Config(object):
         Returns a dictionary of all the labels defined in this configuration.
         """
         return self._parsed.get("config", {}).get("Labels", {}) or {}
+
+    @property
+    def created(self):
+        """
+        Returns the creation timestamp if it exists or None.
+        """
+        created = self._parsed.get(DOCKER_SCHEMA2_CONFIG_CREATED_KEY, None) or None
+
+        if created:
+            try:
+                return parse_date(created)
+            except ValueError:
+                return None
+        else:
+            return None
 
     @property
     def has_empty_layer(self):
