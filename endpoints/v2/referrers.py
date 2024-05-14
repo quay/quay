@@ -1,28 +1,25 @@
-import features
-
 from flask import Response, request
 
+import features
 from app import model_cache
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.model import ManifestDoesNotExist, RepositoryDoesNotExist
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.decorators import (
-    inject_registry_model,
     anon_protect,
-    disallow_for_account_recovery_mode,
-    parse_repository_name,
     check_readonly,
+    disallow_for_account_recovery_mode,
+    inject_registry_model,
+    parse_repository_name,
     route_show_if,
 )
-from endpoints.v2 import v2_bp, require_repo_read
+from endpoints.v2 import require_repo_read, v2_bp
 from endpoints.v2.errors import ManifestUnknown, NameUnknown
 from image.oci.index import OCIIndexBuilder
 from image.shared.schemas import parse_manifest_from_bytes
-
 from util.bytes import Bytes
 from util.http import abort
-
 
 BASE_REFERRERS_ROUTE = '/<repopath:repository>/referrers/<regex("{0}"):manifest_ref>'
 MANIFEST_REFERRERS_ROUTE = BASE_REFERRERS_ROUTE.format(digest_tools.DIGEST_PATTERN)
@@ -53,7 +50,9 @@ def list_manifest_referrers(namespace_name, repo_name, manifest_ref, registry_mo
 
     artifact_type = request.args.get("artifactType", None)
 
-    referrers = registry_model.lookup_cached_referrers_for_manifest(model_cache, repository_ref, manifest, artifact_type)
+    referrers = registry_model.lookup_cached_referrers_for_manifest(
+        model_cache, repository_ref, manifest, artifact_type
+    )
     index = _build_referrers_index_for_manifests(referrers)
     headers = {"Content-Type": index.media_type}
     if artifact_type is not None:

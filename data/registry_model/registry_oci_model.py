@@ -36,14 +36,11 @@ from data.registry_model.datatypes import (
 from data.registry_model.interface import RegistryDataInterface
 from data.registry_model.label_handlers import LABEL_EXPIRY_KEY, apply_label_to_manifest
 from data.registry_model.shared import SyntheticIDHandler
-from image.docker.schema1 import (
-    DOCKER_SCHEMA1_CONTENT_TYPES,
-)
+from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from image.shared import ManifestException
 from util.bytes import Bytes
-from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
-
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
@@ -174,11 +171,15 @@ class OCIModel(RegistryDataInterface):
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler)
 
-    def lookup_cached_referrers_for_manifest(self, model_cache, repository_ref, manifest, artifact_type=None):
+    def lookup_cached_referrers_for_manifest(
+        self, model_cache, repository_ref, manifest, artifact_type=None
+    ):
         def load_referrers():
             return self.lookup_referrers_for_manifest(repository_ref, manifest, artifact_type)
 
-        referrers_cache_key = cache_key.for_manifest_referrers(repository_ref, manifest.digest, model_cache.cache_config)
+        referrers_cache_key = cache_key.for_manifest_referrers(
+            repository_ref, manifest.digest, model_cache.cache_config
+        )
         result = model_cache.retrieve(referrers_cache_key, load_referrers)
         try:
             return [Manifest.from_dict(referrer_dict) for referrer_dict in result]

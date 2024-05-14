@@ -12,7 +12,6 @@ from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 from datetime import datetime
 from enum import Enum, IntEnum, unique
-from functools import lru_cache
 from random import SystemRandom
 
 import rehash
@@ -666,19 +665,6 @@ class BaseModel(ReadReplicaSupportedModel):
                 return self.__data__.get(field_name)
 
         return super(BaseModel, self).__getattribute__(name)
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def _driver_name(cls):
-        driver_classname = type(db.obj).__name__.lower()
-        if driver_classname.find("mysql") >= 0:
-            return "mysql"
-        elif driver_classname.find("postgresql") >= 0:
-            return "postgresql"
-        elif driver_classname.find("sqlite") >= 0:
-            return "sqlite"
-
-        raise RuntimeError("Unknown database driver: %s", type(db.obj).__name__)
 
 
 class User(BaseModel):

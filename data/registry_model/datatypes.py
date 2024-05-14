@@ -13,7 +13,7 @@ from data.database import get_epoch_timestamp_ms
 from data.registry_model.datatype import datatype, optionalinput, requiresinput
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
-from image.oci.index import OCIIndex, INDEX_MANIFESTS_KEY, INDEX_DIGEST_KEY
+from image.oci.index import INDEX_DIGEST_KEY, INDEX_MANIFESTS_KEY, OCIIndex
 from image.oci.manifest import OCI_MANIFEST_ARTIFACT_TYPE_KEY
 from image.shared import ManifestException
 from image.shared.schemas import is_manifest_list_type, parse_manifest_from_bytes
