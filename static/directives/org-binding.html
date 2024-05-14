@@ -1,9 +1,9 @@
 <div class="org-binding-settings-element" >
-  <span><h3>Monthly Subscriptions From Red Hat Customer Portal</h3></span>
+  <span><h3>Subscriptions From Red Hat Customer Portal</h3></span>
   <div class="cor-loader-inline" ng-show="marketplaceLoading"></div>
   <span ng-show="!organization && !marketplaceLoading">
     <div ng-repeat="subscription in userMarketplaceSubscriptions">
-      {{subscription.quantity}}x {{ subscription.sku }}
+      {{subscription.quantity}}x {{ subscription.metadata.privateRepos }} private repos
       {{subscription.assigned_to_org ? "attached to org " + subscription.assigned_to_org : ""}}
     </div>
   </span>
@@ -11,14 +11,14 @@
   <table ng-show="organization && !marketplaceLoading">
     <tr class="indented-row" ng-repeat="subscription in orgMarketplaceSubscriptions">
       <td>
-        {{ subscription.quantity }}x {{ subscription.sku }} attached to this org
+        {{ subscription.quantity }}x {{ subscription.metadata.privateRepos }} private repos attached to this org
       </td>
     </tr>
     <tr class="indented-row">
       <td style="padding: 10px">
         <select class="form-control" ng-model="subscriptionBinding">
           <option ng-repeat="subscription in availableSubscriptions" value="{{ subscription }}">
-            {{subscription.quantity}}x {{subscription.sku}}
+            {{subscription.quantity}}x {{subscription.metadata.privateRepos}} private repos
           </option>
         </select>
         <a class="btn btn-primary" ng-click="bindSku(subscriptionBinding)">Attach subscriptions</a>
@@ -26,7 +26,7 @@
       <td style="padding: 10px">
         <select class="form-control" ng-model="subscriptionRemovals">
           <option ng-repeat="orgSubscription in orgMarketplaceSubscriptions" value="{{orgSubscription}}">
-            {{orgSubscription.quantity}}x {{orgSubscription.sku}}
+            {{orgSubscription.quantity}}x {{orgSubscription.metadata.privateRepos}} private repos
           </option>
         </select>
         <a class="btn btn-default" ng-click="batchRemoveSku(subscriptionRemovals, numRemovals)">
