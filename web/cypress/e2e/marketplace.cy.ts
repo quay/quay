@@ -8,7 +8,7 @@ const marketplaceOrgResponse = [
     sku: 'MW02701',
     metadata: {
       title: 'premium',
-      privateRepos: 9007199254740991,
+      privateRepos: 100,
       stripeId: 'not_a_stripe_plan',
       rh_sku: 'MW02701',
       sku_billing: true,
@@ -118,10 +118,10 @@ describe('Marketplace Section', () => {
     cy.visit('/organization/user1?tab=Settings');
     cy.get('#pf-tab-1-billinginformation').click();
     cy.get('#user-subscription-list').contains(
-      '2x MW02701 belonging to user namespace',
+      '2x 100 private repos belonging to user namespace',
     );
     cy.get('#user-subscription-list').contains(
-      '1x MW02701 belonging to user namespace',
+      '1x 100 private repos belonging to user namespace',
     );
   });
 
@@ -151,13 +151,17 @@ describe('Marketplace Section', () => {
     cy.get('#pf-tab-1-billinginformation').click();
     cy.get('#attach-subscription-button').click();
     cy.get('#subscription-select-toggle').click();
-    cy.get('#subscription-select-list').contains('2x MW02701').click();
+    cy.get('#subscription-select-list')
+      .contains('2x 100 private repos')
+      .click();
     cy.get('#confirm-subscription-select').click();
     cy.contains('Successfully attached subscription').should('exist');
 
     cy.get('#remove-subscription-button').click();
     cy.get('#subscription-select-toggle').click();
-    cy.get('#subscription-select-list').contains('2x MW02701').click();
+    cy.get('#subscription-select-list')
+      .contains('2x 100 private repos')
+      .click();
     cy.get('#confirm-subscription-select').click();
     cy.contains('Successfully removed subscription').should('exist');
   });
