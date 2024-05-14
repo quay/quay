@@ -1,12 +1,11 @@
+import datetime
 import json
-from test.fixtures import *
 
 import pytest
 from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
 from data.database import (
-    ImageStorage,
     ImageStorageLocation,
     ManifestBlob,
     ManifestChild,
@@ -25,14 +24,12 @@ from data.model.oci.tag import filter_to_alive_tags, get_tag
 from data.model.repository import create_repository, get_repository
 from data.model.storage import get_layer_path
 from digest.digest_tools import sha256_digest
-from image.docker.schema1 import DockerSchema1Manifest, DockerSchema1ManifestBuilder
+from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
-from image.docker.schema2.manifest import (
-    DockerSchema2Manifest,
-    DockerSchema2ManifestBuilder,
-)
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.shared.interfaces import ContentRetriever
 from image.shared.schemas import parse_manifest_from_bytes
+from test.fixtures import *
 from util.bytes import Bytes
 
 
@@ -236,7 +233,11 @@ def test_get_or_create_manifest_list(initialized_db):
         "Baz": "Meh",
     }
 
-    layer_json = json.dumps(
+    expected_created_time_manifest2 = datetime.datetime(2024, 4, 3, 22, 0, 59)
+    expected_created_time_manifest3 = datetime.datetime(2024, 4, 3, 22, 0, 18)
+
+    # create the different configs for the child manifests
+    manifest1_layer_json = json.dumps(
         {
             "id": "somelegacyid",
             "config": {
@@ -252,8 +253,18 @@ def test_get_or_create_manifest_list(initialized_db):
         }
     )
 
-    # Add a blob containing the config.
-    _, config_digest = _populate_blob(layer_json)
+    manifest2_layer_json = json.dumps(
+        {**json.loads(manifest1_layer_json), "created": expected_created_time_manifest2.isoformat()}
+    )
+
+    manifest3_layer_json = json.dumps(
+        {**json.loads(manifest1_layer_json), "created": expected_created_time_manifest3.isoformat()}
+    )
+
+    # Add the blob2 containing the config.
+    _, _ = _populate_blob(manifest1_layer_json)
+    _, manifest2_config_digest = _populate_blob(manifest2_layer_json)
+    _, manifest3_config_digest = _populate_blob(manifest3_layer_json)
 
     # Add a blob of random data.
     random_data = "hello world"
@@ -261,27 +272,37 @@ def test_get_or_create_manifest_list(initialized_db):
 
     # Build the manifests.
     v1_builder = DockerSchema1ManifestBuilder("devtable", "simple", "anothertag")
-    v1_builder.add_layer(random_digest, layer_json)
-    v1_manifest = v1_builder.build(docker_v2_signing_key).unsigned()
+    v1_builder.add_layer(random_digest, manifest1_layer_json)
+    manifest1 = v1_builder.build(docker_v2_signing_key).unsigned()
 
     v2_builder = DockerSchema2ManifestBuilder()
-    v2_builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    v2_builder.set_config_digest(manifest2_config_digest, len(manifest2_layer_json.encode("utf-8")))
     v2_builder.add_layer(random_digest, len(random_data.encode("utf-8")))
-    v2_manifest = v2_builder.build()
+    manifest2 = v2_builder.build()
+
+    v2_builder = DockerSchema2ManifestBuilder()
+    v2_builder.set_config_digest(manifest3_config_digest, len(manifest3_layer_json.encode("utf-8")))
+    v2_builder.add_layer(random_digest, len(random_data.encode("utf-8")))
+    manifest3 = v2_builder.build()
 
     # Write the manifests.
-    v1_created = get_or_create_manifest(repository, v1_manifest, storage)
+    v1_created = get_or_create_manifest(repository, manifest1, storage)
     assert v1_created
-    assert v1_created.manifest.digest == v1_manifest.digest
+    assert v1_created.manifest.digest == manifest1.digest
 
-    v2_created = get_or_create_manifest(repository, v2_manifest, storage)
+    v2_created = get_or_create_manifest(repository, manifest2, storage)
     assert v2_created
-    assert v2_created.manifest.digest == v2_manifest.digest
+    assert v2_created.manifest.digest == manifest2.digest
+
+    v2_created = get_or_create_manifest(repository, manifest3, storage)
+    assert v2_created
+    assert v2_created.manifest.digest == manifest3.digest
 
     # Build the manifest list.
     list_builder = DockerSchema2ManifestListBuilder()
-    list_builder.add_manifest(v1_manifest, "amd64", "linux")
-    list_builder.add_manifest(v2_manifest, "amd32", "linux")
+    list_builder.add_manifest(manifest1, "amd64", "linux")
+    list_builder.add_manifest(manifest2, "arm64", "linux")
+    list_builder.add_manifest(manifest3, "ppc64le", "linux")
     manifest_list = list_builder.build()
 
     # Write the manifest list, which should also write the manifests themselves.
@@ -295,17 +316,22 @@ def test_get_or_create_manifest_list(initialized_db):
     assert created_list.config_media_type == manifest_list.config_media_type
     assert created_list.layers_compressed_size == manifest_list.layers_compressed_size
 
+    # Verify that the manifest list creation date is the latest of the child manifests.
+    assert created_list.created == expected_created_time_manifest2.timestamp()
+
     # Ensure the child manifest links exist.
     child_manifests = {
         cm.child_manifest.digest: cm.child_manifest
         for cm in ManifestChild.select().where(ManifestChild.manifest == created_list)
     }
-    assert len(child_manifests) == 2
-    assert v1_manifest.digest in child_manifests
-    assert v2_manifest.digest in child_manifests
+    assert len(child_manifests) == 3
+    assert manifest1.digest in child_manifests
+    assert manifest2.digest in child_manifests
+    assert manifest3.digest in child_manifests
 
-    assert child_manifests[v1_manifest.digest].media_type.name == v1_manifest.media_type
-    assert child_manifests[v2_manifest.digest].media_type.name == v2_manifest.media_type
+    assert child_manifests[manifest1.digest].media_type.name == manifest1.media_type
+    assert child_manifests[manifest2.digest].media_type.name == manifest2.media_type
+    assert child_manifests[manifest3.digest].media_type.name == manifest2.media_type
 
 
 def test_get_or_create_manifest_list_duplicate_child_manifest(initialized_db):

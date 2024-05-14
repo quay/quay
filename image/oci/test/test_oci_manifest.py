@@ -1,88 +1,89 @@
+import hashlib
 import json
 
 import pytest
+from dateutil.parser import parse as parse_date
 
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.oci import register_artifact_type
 from image.oci.manifest import MalformedOCIManifest, OCIManifest
+from image.oci.test.test_oci_config import CONFIG_BYTES, CONFIG_DIGEST, CONFIG_SIZE
 from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 
-SAMPLE_MANIFEST = """{
-  "schemaVersion": 2,
-  "config": {
-    "mediaType": "application/vnd.oci.image.config.v1+json",
-    "size": 7023,
-    "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
-  },
-  "layers": [
+SAMPLE_MANIFEST = json.dumps(
     {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-      "size": 32654,
-      "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"
-    },
-    {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-      "size": 16724,
-      "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b"
-    },
-    {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-      "size": 73109,
-      "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736"
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": "application/vnd.oci.image.config.v1+json",
+            "size": CONFIG_SIZE,
+            "digest": CONFIG_DIGEST,
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 32654,
+                "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 16724,
+                "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 73109,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+        ],
+        "annotations": {"com.example.key1": "value1", "com.example.key2": "value2"},
     }
-  ],
-  "annotations": {
-    "com.example.key1": "value1",
-    "com.example.key2": "value2"
-  }
-}"""
+).encode("utf-8")
+SAMPLE_MANIFEST_DIGEST = "sha256:" + hashlib.sha256(SAMPLE_MANIFEST).hexdigest()
 
 
-SAMPLE_REMOTE_MANIFEST = """{
-  "schemaVersion": 2,
-  "config": {
-    "mediaType": "application/vnd.oci.image.config.v1+json",
-    "size": 7023,
-    "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
-  },
-  "layers": [
+SAMPLE_REMOTE_MANIFEST = json.dumps(
     {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-      "size": 32654,
-      "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"
-    },
-    {
-      "mediaType": "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip",
-      "size": 16724,
-      "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
-      "urls": ["https://foo/bar"]
-    },
-    {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-      "size": 73109,
-      "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736"
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": "application/vnd.oci.image.config.v1+json",
+            "size": CONFIG_SIZE,
+            "digest": CONFIG_DIGEST,
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 32654,
+                "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip",
+                "size": 16724,
+                "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
+                "urls": ["https://foo/bar"],
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 73109,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+        ],
+        "annotations": {"com.example.key1": "value1", "com.example.key2": "value2"},
     }
-  ],
-  "annotations": {
-    "com.example.key1": "value1",
-    "com.example.key2": "value2"
-  }
-}"""
+).encode("utf-8")
+SAMPLE_REMOTE_MANIFEST_DIGEST = "sha256:" + hashlib.sha256(SAMPLE_REMOTE_MANIFEST).hexdigest()
 
 
 def test_parse_basic_manifest():
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
     assert not manifest.is_manifest_list
-    assert (
-        manifest.digest == "sha256:855b4e9ce4a4e5121dbc51a4f7ebfe7c2d6bcd16b159e754224f44573cfed5c2"
-    )
+    assert manifest.digest == SAMPLE_MANIFEST_DIGEST
 
     assert manifest.blob_digests == [
         "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
         "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
         "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        CONFIG_DIGEST,
     ]
 
     assert manifest.local_blob_digests == manifest.blob_digests
@@ -97,25 +98,29 @@ def test_parse_basic_manifest():
     assert manifest.has_legacy_image
     assert manifest.annotations == {"com.example.key1": "value1", "com.example.key2": "value2"}
 
+    retriever = ContentRetrieverForTesting.for_config(
+        json.loads(CONFIG_BYTES.decode("utf-8")), CONFIG_DIGEST, CONFIG_SIZE
+    )
+    manifest_created = manifest.get_created_date(retriever)
+    assert manifest_created == parse_date("2015-10-31T22:22:56.015925234Z")
+
 
 def test_parse_basic_remote_manifest():
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_REMOTE_MANIFEST))
     assert not manifest.is_manifest_list
-    assert (
-        manifest.digest == "sha256:dd18ed87a00474aff683cee7160771e043f1f0eadd780232715bc0678a984a5e"
-    )
+    assert manifest.digest == SAMPLE_REMOTE_MANIFEST_DIGEST
 
     assert manifest.blob_digests == [
         "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
         "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
         "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        CONFIG_DIGEST,
     ]
 
     assert manifest.local_blob_digests == [
         "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
         "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        CONFIG_DIGEST,
     ]
 
     assert len(manifest.filesystem_layers) == 3
@@ -147,8 +152,8 @@ def test_get_schema1_manifest():
             "architecture": "amd64",
             "os": "linux",
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        7023,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
@@ -161,10 +166,7 @@ def test_get_schema1_manifest():
     schema1 = manifest.get_schema1_manifest("somenamespace", "somename", "sometag", retriever)
     assert schema1 is not None
     assert schema1.media_type == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
-    assert set(schema1.local_blob_digests) == (
-        set(manifest.local_blob_digests)
-        - {"sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"}
-    )
+    assert set(schema1.local_blob_digests) == (set(manifest.local_blob_digests) - {CONFIG_DIGEST})
     assert len(schema1.layers) == 3
 
     via_convert = manifest.convert_manifest(
@@ -203,27 +205,29 @@ def test_validate_manifest_invalid_config_type(ignore_unknown_mediatypes):
 
 @pytest.mark.parametrize("ignore_unknown_mediatypes", [True, False])
 def test_validate_manifest_with_subject_artifact_type(ignore_unknown_mediatypes):
-    manifest_bytes = """{
-      "schemaVersion": 2,
-      "artifactType": "application/some.thing",
-      "config": {
-        "mediaType": "application/some.other.thing",
-        "digest": "sha256:6bd578ec7d1e7381f63184dfe5fbe7f2f15805ecc4bfd485e286b76b1e796524",
-        "size": 145
-      },
-      "layers": [
+    manifest_bytes = json.dumps(
         {
-          "mediaType": "application/tar+gzip",
-          "digest": "sha256:ce879e86a8f71031c0f1ab149a26b000b3b5b8810d8d047f240ef69a6b2516ee",
-          "size": 2807
+            "schemaVersion": 2,
+            "artifactType": "application/some.thing",
+            "config": {
+                "mediaType": "application/some.other.thing",
+                "digest": "sha256:6bd578ec7d1e7381f63184dfe5fbe7f2f15805ecc4bfd485e286b76b1e796524",
+                "size": 145,
+            },
+            "layers": [
+                {
+                    "mediaType": "application/tar+gzip",
+                    "digest": "sha256:ce879e86a8f71031c0f1ab149a26b000b3b5b8810d8d047f240ef69a6b2516ee",
+                    "size": 2807,
+                }
+            ],
+            "subject": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "size": CONFIG_SIZE,
+                "digest": CONFIG_DIGEST,
+            },
         }
-      ],
-      "subject": {
-        "mediaType": "application/vnd.oci.image.config.v1+json",
-        "size": 7023,
-        "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
-      }
-    }"""
+    ).encode("utf-8")
 
     if ignore_unknown_mediatypes:
         OCIManifest(
@@ -248,8 +252,8 @@ def test_get_schema1_manifest_missing_history():
             "architecture": "amd64",
             "os": "linux",
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        7023,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
@@ -262,10 +266,7 @@ def test_get_schema1_manifest_missing_history():
     schema1 = manifest.get_schema1_manifest("somenamespace", "somename", "sometag", retriever)
     assert schema1 is not None
     assert schema1.media_type == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
-    assert set(schema1.local_blob_digests) == (
-        set(manifest.local_blob_digests)
-        - {"sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"}
-    )
+    assert set(schema1.local_blob_digests) == (set(manifest.local_blob_digests) - {CONFIG_DIGEST})
     assert len(schema1.layers) == 3
 
     via_convert = manifest.convert_manifest(
@@ -293,8 +294,8 @@ def test_get_schema1_manifest_incorrect_history():
             "architecture": "amd64",
             "os": "linux",
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        7023,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
