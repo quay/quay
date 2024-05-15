@@ -85,7 +85,7 @@
                       <i class="fa fa-key"></i> Change Password
                     </span>
                     <span class="cor-option" option-click="sendRecoveryEmail(current_user)"
-                          ng-if="!current_user.super_user && user.username == current_user.username"
+                          ng-if="!current_user.super_user"
                           quay-show="Features.MAILING && Config.AUTHENTICATION_TYPE == 'Database'">
                       <i class="fa fa-envelope"></i> Send Recovery E-mail
                     </span>
