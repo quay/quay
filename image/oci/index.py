@@ -266,17 +266,22 @@ class OCIIndex(ManifestListInterface):
         Returns the datetime of the most recent created date of the child manifests or None if not applicable.
         """
 
-        child_created_dates = [
-            child_manifest.manifest_obj.get_created_date(content_retriever)
-            for child_manifest in self.child_manifests(content_retriever)
-        ]
+        child_created_dates = []
+        for child_manifest in self.child_manifests(content_retriever):
+            try:
+                manifest = child_manifest.manifest_obj
+                created_date = manifest.get_created_date(content_retriever)
+                if created_date is not None:
+                    child_created_dates.append(created_date)
+            except (ManifestException):
+                logger.debug(
+                    "Could not load child manifest of when determining index creation date"
+                )
 
-        not_none_dates = [date for date in child_created_dates if date is not None]
-
-        if len(not_none_dates) == 0:
+        if len(child_created_dates) == 0:
             return None
         else:
-            return max(not_none_dates)
+            return max(child_created_dates)
 
     @property
     def blob_digests(self):
