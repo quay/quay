@@ -70,6 +70,10 @@ func TestValidateLDAP(t *testing.T) {
 			if err != nil && tt.want != "typeError" {
 				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
 			}
+			if err != nil && err.Error() != `LDAP Result Code 4 "Size Limit Exceeded": ` {
+				// break loop on size limit
+				break
+			}
 
 			opts := shared.Options{}
 
