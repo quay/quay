@@ -13,7 +13,7 @@ import {
   Tabs,
   Title,
 } from '@patternfly/react-core';
-import {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
@@ -42,10 +42,11 @@ import TagHistory from './TagHistory/TagHistory';
 import TagsList from './Tags/TagsList';
 import {DrawerContentType} from './Types';
 import UsageLogs from '../UsageLogs/UsageLogs';
+import RepositoryDescription from './RepositoryDescription/RepositoryDescription';
 
 enum TabIndex {
+  Description = 'description',
   Tags = 'tags',
-  Information = 'information',
   TagHistory = 'history',
   Builds = 'builds',
   Logs = 'logs',
@@ -77,7 +78,7 @@ export default function RepositoryDetails() {
 
   const organization = parseOrgNameFromUrl(location.pathname);
   const repository = parseRepoNameFromUrl(location.pathname);
-  const {repoDetails, errorLoadingRepoDetails} = useRepository(
+  const {repoDetails, errorLoadingRepoDetails, isLoading} = useRepository(
     organization,
     repository,
   );
@@ -228,10 +229,23 @@ export default function RepositoryDetails() {
                 <Tabs
                   mountOnEnter
                   unmountOnExit
-                  activeKey={activeTabKey}
                   onSelect={tabsOnSelect}
                   usePageInsets={true}
+                  activeKey={activeTabKey}
                 >
+                  <Tab
+                    eventKey={TabIndex.Description}
+                    title={<TabTitleText>Description</TabTitleText>}
+                  >
+                    <RepositoryDescription
+                      org={organization}
+                      repo={repository}
+                      description={repoDetails?.description}
+                      canEdit={repoDetails?.can_write}
+                      isLoading={isLoading}
+                    />
+                  </Tab>
+
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
