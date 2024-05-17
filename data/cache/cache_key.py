@@ -49,14 +49,14 @@ def for_namespace_geo_restrictions(namespace_name, cache_config):
     return CacheKey("geo_restrictions__%s" % namespace_name, cache_ttl)
 
 
-def for_active_repo_tags(repository_id, start_pagination_id, limit, cache_config):
+def for_active_repo_tags(repository_id, last_pagination_tag_name, limit, cache_config):
     """
     Returns a cache key for the active tags in a repository.
     """
 
     cache_ttl = cache_config.get("active_repo_tags_cache_ttl", "120s")
     return CacheKey(
-        "repo_active_tags__%s_%s_%s" % (repository_id, start_pagination_id, limit), cache_ttl
+        "repo_active_tags__%s_%s_%s" % (repository_id, last_pagination_tag_name, limit), cache_ttl
     )
 
 

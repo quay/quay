@@ -968,6 +968,8 @@ def test_lookup_active_repository_tags(test_cached, oci_model):
     latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
     manifest = oci_model.get_manifest_for_tag(latest_tag)
 
+    existing_tags = oci_model.list_all_active_repository_tags(repository_ref)
+
     tag_count = 500
 
     # Create a bunch of tags.
@@ -978,35 +980,51 @@ def test_lookup_active_repository_tags(test_cached, oci_model):
             repository_ref, "somenewtag%s" % index, manifest, storage, docker_v2_signing_key
         )
 
+    for tag in existing_tags:
+        tags_expected.add(tag.name)
+
+    tags_expected = sorted(tags_expected)
     assert tags_expected
 
+    tags_to_process = tags_expected.copy()
+
     # List the tags.
+    tag_limit = 11
     tags_found = set()
-    tag_id = None
+    tag_name = None
     while True:
         if test_cached:
             model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
-            tags = oci_model.lookup_cached_active_repository_tags(
-                model_cache, repository_ref, tag_id, 11
+            tags, has_more = oci_model.lookup_cached_active_repository_tags(
+                model_cache, repository_ref, tag_name, tag_limit
             )
         else:
-            tags = oci_model.lookup_active_repository_tags(repository_ref, tag_id, 11)
+            tags, has_more = oci_model.lookup_active_repository_tags(
+                repository_ref, tag_name, tag_limit
+            )
 
-        assert len(tags) <= 11
-        for tag in tags[0:10]:
+        assert len(tags) <= tag_limit
+        for tag in tags:
+            # ensure last tag name is not part of result set
+            if tag_name is not None:
+                assert tag_name is not tag.name
+
+            # make sure we don't have duplicates between result pages
             assert tag.name not in tags_found
-            if tag.name in tags_expected:
-                tags_found.add(tag.name)
-                tags_expected.remove(tag.name)
 
-        if len(tags) < 11:
+            # make sure the tags are in lexical order
+            assert tag.name == tags_to_process.pop(0)
+
+            tags_found.add(tag.name)
+
+        if not has_more:
             break
 
-        tag_id = tags[10].id
+        tag_name = tags[-1].name
 
     # Make sure we've found all the tags.
-    assert tags_found
-    assert not tags_expected
+    assert set(tags_found) == set(tags_expected)
+    assert not tags_to_process
 
 
 def test_create_manifest_with_temp_tag(initialized_db, registry_model):

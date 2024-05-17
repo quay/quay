@@ -127,7 +127,7 @@ def test_list_alive_tags(initialized_db):
 def test_lookup_alive_tags_shallow(initialized_db):
     found = False
     for tag in filter_to_visible_tags(filter_to_alive_tags(Tag.select())):
-        tags = lookup_alive_tags_shallow(tag.repository)
+        tags, _ = lookup_alive_tags_shallow(tag.repository)
         found = True
         assert tag in tags
 
@@ -138,7 +138,7 @@ def test_lookup_alive_tags_shallow(initialized_db):
     tag.hidden = True
     tag.save()
 
-    tags = lookup_alive_tags_shallow(tag.repository)
+    tags, _ = lookup_alive_tags_shallow(tag.repository)
     assert tag not in tags
 
 
