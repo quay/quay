@@ -649,12 +649,7 @@ def has_immutable_tags(repo):
 
     Otherwise, returns None.
     """
-    return (
-        Tag.select()
-        .join(Repository)
-        .where((Repository.id == repo.id) & (Tag.immutable == True))
-        .exists()
-    )
+    return Tag.select().where((Tag.repository_id == repo.id) & (Tag.immutable == True)).exists()
 
 
 def set_repository_state(repo, state, raise_on_error=False):
