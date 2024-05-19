@@ -1,5 +1,5 @@
-import {Spinner, Tooltip} from '@patternfly/react-core';
-import {DownloadIcon, LockIcon, LockOpenIcon} from '@patternfly/react-icons';
+import {Label, LabelGroup, Spinner} from '@patternfly/react-core';
+import {DownloadIcon, LockIcon} from '@patternfly/react-icons';
 import {
   ExpandableRowContent,
   Table,
@@ -170,15 +170,17 @@ function TagsTableRow(props: RowProps) {
             loadTags={props.loadTags}
           />
         </Td>
-        <Td dataLabel={ColumnNames.immutable}>
-          {tag.immutable && (
-            <Tooltip content="This tag is immutable">
-              <LockIcon />
-            </Tooltip>
-          )}
-        </Td>
         <Td dataLabel={ColumnNames.digest}>
           {tag.manifest_digest.substring(0, 19)}
+        </Td>
+        <Td dataLabel={ColumnNames.status}>
+          <LabelGroup>
+            {tag.immutable && (
+              <Label icon={<LockIcon />} color="blue" isCompact>
+                Immutable
+              </Label>
+            )}
+          </LabelGroup>
         </Td>
         <Td
           dataLabel={ColumnNames.pull}
@@ -263,16 +265,8 @@ export default function TagsTable(props: TableProps) {
             <Th>Size</Th>
             <Th>Last Modified</Th>
             <Th>Expires</Th>
-            <Th>
-              <Tooltip content="Tag Immutability">
-                <LockIcon />
-              </Tooltip>{' '}
-              /{' '}
-              <Tooltip content="Tag Immutability">
-                <LockOpenIcon />
-              </Tooltip>
-            </Th>
             <Th>Manifest</Th>
+            <Th>Status</Th>
             <Th>Pull</Th>
             <Th />
           </Tr>
