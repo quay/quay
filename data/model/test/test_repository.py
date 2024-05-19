@@ -4,9 +4,8 @@ from io import BytesIO
 
 import pytest
 
-from data.database import BlobUpload, QuotaRepositorySize, Repository
 from app import storage
-from data.database import BlobUpload, Repository, RepositoryState
+from data.database import BlobUpload, QuotaRepositorySize, Repository, RepositoryState
 from data.model import TagImmutableException
 from data.model.repository import (
     create_repository,
@@ -151,7 +150,8 @@ def test_get_repository_sizes(initialized_db):
         repo2.id: 92,
         repo3.id: 0,
     }
-    
+
+
 def test_set_immutable_tag_and_change_state(initialized_db):
     # Create a repository and some tags
     repo = create_repository(
