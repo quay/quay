@@ -7,7 +7,7 @@ from flask import abort, request
 
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
-from auth.permissions import AdministerRepositoryPermission
+from auth.permissions import ModifyRepositoryPermission
 from data.model import TagImmutableException
 from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
@@ -67,7 +67,7 @@ def _tag_dict(tag):
 
 
 def _set_tag_immutable(tag_ref, repository, namespace):
-    if not AdministerRepositoryPermission(namespace, repository).can():
+    if not ModifyRepositoryPermission(namespace, repository).can():
         raise Unauthorized()
 
     if tag_ref.immutable:
@@ -95,7 +95,7 @@ def _set_tag_immutable(tag_ref, repository, namespace):
 
 
 def _set_tag_mutable(tag_ref, repository, namespace):
-    if not AdministerRepositoryPermission(namespace, repository).can():
+    if not ModifyRepositoryPermission(namespace, repository).can():
         raise Unauthorized()
 
     if not tag_ref.immutable:
