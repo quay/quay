@@ -225,8 +225,8 @@ class RepositoryTag(RepositoryParamResource):
                     "description": "(If specified) The expiration for the image",
                 },
                 "immutable": {
-                    "type": ["boolean", "null"],
-                    "description": "(If specified) The expiration for the image",
+                    "type": ["boolean"],
+                    "description": "(If specified) Whether that should be immutable",
                 },
             },
         },
