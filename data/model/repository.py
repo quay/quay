@@ -505,15 +505,19 @@ def _get_sorted_matching_repositories(
             search_fields = set([SEARCH_FIELDS.description.name, SEARCH_FIELDS.name.name])
 
         # Always search at least on name (init clause)
-        clause = Repository.name.match(lookup_value)
+        repo_name_value, user_name_value = lookup_value, None
+        if "/" in lookup_value:
+            user_name_value, repo_name_value = lookup_value.split("/", 1)
+
+        clause = Repository.name.match(repo_name_value)
         computed_score = RepositorySearchScore.score.alias("score")
 
         # If the description field is in the search fields, then we need to compute a synthetic score
         # to discount the weight of the description more than the name.
         if SEARCH_FIELDS.description.name in search_fields:
-            clause = Repository.description.match(lookup_value) | clause
+            clause = Repository.description.match(repo_name_value) | clause
             cases = [
-                (Repository.name.match(lookup_value), 100 * RepositorySearchScore.score),
+                (Repository.name.match(repo_name_value), 100 * RepositorySearchScore.score),
             ]
             computed_score = Case(None, cases, RepositorySearchScore.score).alias("score")
 
@@ -525,6 +529,10 @@ def _get_sorted_matching_repositories(
             .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
             .order_by(SQL("score").desc(), RepositorySearchScore.id)
         )
+
+        # If an organization/user was found and it was not blank.
+        if (user_name_value is not None) and (user_name_value != ""):
+            query = query.where(Namespace.username == user_name_value)
 
     if repo_kind is not None:
         query = query.where(Repository.kind == Repository.kind.get_id(repo_kind))

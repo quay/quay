@@ -64,6 +64,43 @@ def test_search_pagination(query, authed_username, initialized_db):
     assert repositories[1].id == next_repos[0].id
 
 
+@pytest.mark.skipif(
+    os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0,
+    reason="MySQL requires specialized indexing of newly created repos",
+)
+@pytest.mark.parametrize(
+    "query,repo_count",
+    [
+        ("somenewrepo", 3),
+        ("devtable/somenewrepo", 2),
+        ("devtable/", 2),
+        ("devtable/somenewrepo2", 1),
+        ("doesnotexist/somenewrepo", 0),
+        ("does/notexist/somenewrepo", 0),
+        ("/somenewrepo", 3),
+        ("repo/withslash", 0),
+        ("/repo/withslash", 1),
+    ],
+)
+def test_search_filtering_complex(query, repo_count, initialized_db):
+    # Create some public repos
+    repo1 = create_repository(
+        "devtable", "somenewrepo", None, repo_kind="image", visibility="public"
+    )
+    repo2 = create_repository(
+        "devtable", "somenewrepo2", None, repo_kind="image", visibility="public"
+    )
+    repo3 = create_repository(
+        "freshuser", "somenewrepo", None, repo_kind="image", visibility="public"
+    )
+    repo4 = create_repository(
+        "freshuser", "repo/withslash", None, repo_kind="image", visibility="public"
+    )
+
+    repositories = get_filtered_matching_repositories(query, filter_username=None)
+    assert len(repositories) == repo_count
+
+
 def test_get_estimated_repository_count(initialized_db):
     assert get_estimated_repository_count() >= Repository.select().count()
 
