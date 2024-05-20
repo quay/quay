@@ -1,3 +1,4 @@
+import datetime
 import logging
 import uuid
 from calendar import timegm
@@ -18,6 +19,7 @@ from data.database import (
     get_epoch_timestamp_ms,
 )
 from data.model import config, user
+from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -490,6 +492,9 @@ def _delete_tag(tag, now_ms):
     Deletes the given tag by marking it as expired.
     """
     with db_transaction():
+        # clean notifications for tag expiry
+        delete_tag_notifications_for_tag(tag)
+
         updated = (
             Tag.update(lifetime_end_ms=now_ms)
             .where(Tag.id == tag.id, Tag.lifetime_end_ms == tag.lifetime_end_ms)
@@ -626,6 +631,9 @@ def set_tag_end_ms(tag, end_ms):
     """
 
     with db_transaction():
+        # clean notifications for tag expiry
+        delete_tag_notifications_for_tag(tag)
+
         updated = (
             Tag.update(lifetime_end_ms=end_ms)
             .where(Tag.id == tag)
@@ -817,4 +825,32 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(repo_id, tag_lifetime_ms: 
     except Exception as err:
         raise Exception(
             f"Error fetching repository tags by creation date for repository id: {repo_id} with error as: {str(err)}"
+        )
+
+
+def fetch_repo_tags_for_image_expiry_expiry_event(repo_id, days, notified_tags):
+    """
+    notified_tags refer to the tags that were already notified for the event
+    Return query to fetch repository's distinct active tags that are expiring in x number days
+    """
+    # TODO: check tags expiring due to org-level/repo-level auto-prune policies
+    try:
+        future_ms = (datetime.datetime.now() + datetime.timedelta(days=days)).timestamp() * 1000
+        now_ms = get_epoch_timestamp_ms()
+        query = (
+            Tag.select(Tag.id, Tag.name)
+            .where(
+                Tag.repository_id == repo_id,
+                (~(Tag.lifetime_end_ms >> None)),  # filter for tags where expiry is set
+                Tag.lifetime_end_ms > now_ms,  # filter expired tags
+                Tag.lifetime_end_ms <= future_ms,
+                Tag.hidden == False,
+                Tag.id.not_in(notified_tags),
+            )
+            .distinct()
+        )
+        return list(query)
+    except Exception as err:
+        raise Exception(
+            f"Error fetching repository tags repository id: {repo_id} with error as: {str(err)}"
         )
