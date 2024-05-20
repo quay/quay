@@ -45,13 +45,13 @@ export default function SecurityReport(props: SecurityReportProps) {
   }
 
   // Return correct messages for the different scan states
-  if (securityDetails && securityDetails.status === 'queued') {
+  if (securityDetails?.status === 'queued') {
     return <QueuedState />;
-  } else if (securityDetails && securityDetails.status === 'failed') {
+  } else if (securityDetails?.status === 'failed') {
     return <FailedState />;
   } else if (
-    (securityDetails && securityDetails.status === 'unsupported') ||
-    securityDetails.data.Layer.Features.length == 0
+    securityDetails?.status === 'unsupported' ||
+    securityDetails?.data?.Layer?.Features?.length == 0
   ) {
     return <UnsupportedState />;
   }
