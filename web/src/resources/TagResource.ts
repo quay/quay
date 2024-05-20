@@ -6,6 +6,7 @@ import {
   ResourceError,
   throwIfError,
 } from './ErrorHandling';
+import {SecurityDetailsResponse} from './ManifestSecurityResource';
 
 export interface TagsResponse {
   page: number;
@@ -71,72 +72,6 @@ export interface ManifestByDigestResponse {
   config_media_type?: any;
   layers?: any;
 }
-
-export interface SecurityDetailsResponse {
-  status: string;
-  data: Data;
-}
-export interface Data {
-  Layer: Layer;
-}
-export interface Layer {
-  Name: string;
-  ParentName: string;
-  NamespaceName: string;
-  IndexedByVersion: number;
-  Features: Feature[];
-}
-export interface Feature {
-  Name: string;
-  VersionFormat: string;
-  NamespaceName: string;
-  AddedBy: string;
-  Version: string;
-  Vulnerabilities?: Vulnerability[];
-}
-
-export interface Vulnerability {
-  Severity: VulnerabilitySeverity;
-  NamespaceName: string;
-  Link: string;
-  FixedBy: string;
-  Description: string;
-  Name: string;
-  Metadata: VulnerabilityMetadata;
-}
-
-export interface VulnerabilityMetadata {
-  UpdatedBy: string;
-  RepoName: string;
-  RepoLink: string;
-  DistroName: string;
-  DistroVersion: string;
-  NVD: {
-    CVSSv3: {
-      Vectors: string;
-      Score: number;
-    };
-  };
-}
-
-export enum VulnerabilitySeverity {
-  Critical = 'Critical',
-  High = 'High',
-  Medium = 'Medium',
-  Low = 'Low',
-  Negligible = 'Negligible',
-  None = 'None',
-  Unknown = 'Unknown',
-}
-
-export const VulnerabilityOrder = {
-  [VulnerabilitySeverity.Critical]: 0,
-  [VulnerabilitySeverity.High]: 1,
-  [VulnerabilitySeverity.Medium]: 2,
-  [VulnerabilitySeverity.Low]: 3,
-  [VulnerabilitySeverity.Negligible]: 4,
-  [VulnerabilitySeverity.Unknown]: 5,
-};
 
 // TODO: Support cancelation signal here
 export async function getTags(
@@ -329,18 +264,6 @@ export async function getManifestByDigest(
 ) {
   const response: AxiosResponse<ManifestByDigestResponse> = await axios.get(
     `/api/v1/repository/${org}/${repo}/manifest/${digest}`,
-  );
-  assertHttpCode(response.status, 200);
-  return response.data;
-}
-
-export async function getSecurityDetails(
-  org: string,
-  repo: string,
-  digest: string,
-) {
-  const response: AxiosResponse<SecurityDetailsResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}/security?vulnerabilities=true`,
   );
   assertHttpCode(response.status, 200);
   return response.data;

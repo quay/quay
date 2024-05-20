@@ -1,6 +1,6 @@
-import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import moment from 'moment';
 import {ITeamMember} from 'src/hooks/UseMembers';
+import {VulnerabilitySeverity} from 'src/resources/ManifestSecurityResource';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {

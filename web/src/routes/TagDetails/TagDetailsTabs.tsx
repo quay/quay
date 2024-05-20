@@ -6,9 +6,6 @@ import SecurityReport from './SecurityReport/SecurityReport';
 import {Tag} from 'src/resources/TagResource';
 import {TabIndex} from './Types';
 import {Packages} from './Packages/Packages';
-import ErrorBoundary from 'src/components/errors/ErrorBoundary';
-import {isErrorString} from 'src/resources/ErrorHandling';
-import RequestError from 'src/components/errors/RequestError';
 
 // Return the tab as an enum or null if it does not exist
 function getTabIndex(tab: string) {
@@ -51,13 +48,17 @@ export default function TagTabs(props: TagTabsProps) {
         eventKey={TabIndex.SecurityReport}
         title={<TabTitleText>Security Report</TabTitleText>}
       >
-        <SecurityReport />
+        <SecurityReport
+          org={props.org}
+          repo={props.repo}
+          digest={props.digest}
+        />
       </Tab>
       <Tab
         eventKey={TabIndex.Packages}
         title={<TabTitleText>Packages</TabTitleText>}
       >
-        <Packages />
+        <Packages org={props.org} repo={props.repo} digest={props.digest} />
       </Tab>
     </Tabs>
   );
