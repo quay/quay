@@ -462,3 +462,15 @@ class BuildCancelledEvent(BaseBuildEvent):
 
     def get_summary(self, event_data, notification_data):
         return "Build cancelled " + _build_summary(event_data)
+
+
+class RepoImageExpiryEvent(NotificationEvent):
+    @classmethod
+    def event_name(cls):
+        return "repo_image_expiry"
+
+    def get_level(self, event_data, notification_data):
+        return "info"
+
+    def get_summary(self, event_data, notification_data):
+        return f"Repository {event_data['repository']} image(s) expiring"

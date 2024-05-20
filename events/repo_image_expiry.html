@@ -1,0 +1,9 @@
+The following tags of repository {{ event_data.repository | repository_reference }} are due to expire
+{% if event_data.expiring_in %}
+ in {{ event_data.expiring_in }}
+{% endif %}
+: <br>
+
+{% if event_data.tags %}
+    {% for tag in event_data.tags %}{%if loop.index > 1 %}, {% endif %}{{ (event_data.repository, tag) | repository_tag_reference }}{% endfor %}
+{% endif %}

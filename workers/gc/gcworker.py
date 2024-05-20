@@ -10,6 +10,7 @@ from data.model.repository import get_random_gc_policy
 from data.registry_model import registry_model
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.metrics.prometheus import gc_iterations
+from util.notification import scan_for_image_expiry_notifications
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
@@ -35,6 +36,9 @@ class GarbageCollectionWorker(Worker):
         """
         Performs garbage collection on repositories.
         """
+        # scan for tags that are expiring based on configured RepositoryNotifications
+        scan_for_image_expiry_notifications(event_name="repo_image_expiry")
+
         with UseThenDisconnect(app.config):
             policy = get_random_gc_policy()
             if policy is None:
