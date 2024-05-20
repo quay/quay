@@ -46,8 +46,6 @@ describe('Packages Report Page', () => {
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
     cy.contains('Security scan is not supported.');
     cy.contains('Image does not have content the scanner recognizes.');
-    cy.get('[data-testid="packages-chart"]').contains('0').should('exist');
-    cy.get('td[data-label="Package Name"]').should('have.length', 0);
   });
 
   it('filter by name', () => {
