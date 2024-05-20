@@ -37,6 +37,15 @@ def upgrade(op, tables, tester):
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_tag_notification_success")),
     )
+    op.create_index(
+        "tagnotificationsuccess_notification_id",
+        "tagnotificationsuccess",
+        ["notification_id"],
+        unique=False,
+    )
+    op.create_index(
+        "tagnotificationsuccess_tag_id", "tagnotificationsuccess", ["tag_id"], unique=False
+    )
 
 
 def downgrade(op, tables, tester):
