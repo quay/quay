@@ -751,6 +751,7 @@ class User(BaseModel):
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
                     RepositoryAutoPrunePolicy,
+                    TagNotificationSuccess,
                 }
                 | appr_classes
                 | v22_classes
@@ -972,6 +973,7 @@ class Repository(BaseModel):
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
                 RepositoryAutoPrunePolicy,
+                TagNotificationSuccess,
             }
             | appr_classes
             | v22_classes
@@ -1426,6 +1428,7 @@ class RepositoryNotification(BaseModel):
     config_json = TextField()
     event_config_json = TextField(default="{}")
     number_of_failures = IntegerField(default=0)
+    last_ran_ms = BigIntegerField(null=True)
 
 
 class RepositoryAuthorizedEmail(BaseModel):
@@ -2030,6 +2033,12 @@ class RepositoryAutoPrunePolicy(BaseModel):
     repository = ForeignKeyField(Repository, index=True, null=False)
     namespace = QuayUserField(index=True, null=False)
     policy = JSONField(null=False, default={})
+
+
+class TagNotificationSuccess(BaseModel):
+    notification = ForeignKeyField(RepositoryNotification, index=True, null=False)
+    tag = ForeignKeyField(Tag, index=True, null=False)
+    method = ForeignKeyField(ExternalNotificationMethod, null=False)
 
 
 # Defines a map from full-length index names to the legacy names used in our code
