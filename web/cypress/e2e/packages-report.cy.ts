@@ -44,8 +44,8 @@ describe('Packages Report Page', () => {
       {fixture: 'security/noPackages.json'},
     ).as('getSecurityReport');
     cy.visit('/repository/user1/hello-world/tag/security?tab=packages');
-    cy.contains('Quay Security Reporting does not recognize any packages');
-    cy.contains('No known patches are available');
+    cy.contains('Security scan is not supported.');
+    cy.contains('Image does not have content the scanner recognizes.');
     cy.get('[data-testid="packages-chart"]').contains('0').should('exist');
     cy.get('td[data-label="Package Name"]').should('have.length', 0);
   });
