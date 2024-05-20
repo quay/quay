@@ -21,8 +21,12 @@ export interface SecurityDetailsProps {
   tag: string;
   digest: string;
   variant?: Variant | 'condensed' | 'full';
-  cacheResults?: boolean;
+  load?: boolean;
 }
+
+SecurityDetails.defaultProps = {
+  load: true,
+};
 
 export default function SecurityDetails(props: SecurityDetailsProps) {
   const location = useLocation();
@@ -41,7 +45,7 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
       props.org,
       props.repo,
       props.digest,
-      props.digest !== '',
+      props.load && props.digest !== '',
     );
 
   const queryParams = new Map<string, string>([

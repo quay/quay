@@ -60,6 +60,7 @@ function SubRow(props: SubRowProps) {
             digest={props.manifest.digest}
             tag={props.tag.name}
             variant="condensed"
+            load={props.isTagExpanded(props.tag)}
           />
         </ExpandableRowContent>
       </Td>
