@@ -37,11 +37,11 @@ def upgrade(op, tables, tester):
     op.create_index("repository_kind_id", "repository", ["kind_id"], unique=False)
     with op.batch_alter_table("repository") as batch_op:
         batch_op.create_foreign_key(
-        op.f("fk_repository_kind_id_repositorykind"),
-        "repositorykind",
-        ["kind_id"],
-        ["id"],
-    )
+            op.f("fk_repository_kind_id_repositorykind"),
+            "repositorykind",
+            ["kind_id"],
+            ["id"],
+        )
 
     # ### population of test data ### #
     tester.populate_column("repository", "kind_id", tester.TestDataType.Foreign("repositorykind"))

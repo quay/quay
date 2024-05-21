@@ -113,9 +113,7 @@ def upgrade(op, tables, tester):
             op.f("fk_tagtorepositorytag_repository_tag_id_repositorytag"),
             type_="foreignkey",
         )
-        batch_op.drop_constraint(
-            op.f("fk_tagtorepositorytag_tag_id_tag"), type_="foreignkey"
-        )
+        batch_op.drop_constraint(op.f("fk_tagtorepositorytag_tag_id_tag"), type_="foreignkey")
 
     # Image
     with op.batch_alter_table("image") as batch_op:
@@ -124,9 +122,7 @@ def upgrade(op, tables, tester):
 
     # ManifestLegacyImage
     with op.batch_alter_table("manifestlegacyimage") as batch_op:
-        batch_op.drop_constraint(
-            op.f("fk_manifestlegacyimage_image_id_image"), type_="foreignkey"
-        )
+        batch_op.drop_constraint(op.f("fk_manifestlegacyimage_image_id_image"), type_="foreignkey")
         batch_op.drop_constraint(
             op.f("fk_manifestlegacyimage_manifest_id_manifest"),
             type_="foreignkey",
@@ -285,7 +281,7 @@ def downgrade(op, tables, tester):
     # Image
     with op.batch_alter_table("image") as batch_op:
         batch_op.create_foreign_key(
-            op.f("fk_image_repository_id_repository"),"repository", ["repository_id"], ["id"]
+            op.f("fk_image_repository_id_repository"), "repository", ["repository_id"], ["id"]
         )
         batch_op.create_foreign_key(
             op.f("fk_image_storage_id_imagestorage"), "imagestorage", ["storage_id"], ["id"]

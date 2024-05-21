@@ -31,7 +31,7 @@ def upgrade(op, tables, tester):
 
     with op.batch_alter_table("appspecificauthtoken") as batch_op:
         batch_op.alter_column("token_name", nullable=False, existing_type=sa.String(length=255))
-        batch_op.alter_column( "token_secret", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column("token_secret", nullable=False, existing_type=sa.String(length=255))
 
     with op.batch_alter_table("oauthaccesstoken") as batch_op:
         batch_op.alter_column("token_name", nullable=False, existing_type=sa.String(length=255))

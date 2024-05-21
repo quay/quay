@@ -186,7 +186,7 @@ node_modules/.npm-install-stamp: package.json package-lock.json | build-image-lo
 
 .PHONY: local-dev-clean
 local-dev-clean:
-	rm -f ./conf/jwtproxy_conf.yaml ./conf/mitm.cert ./conf/mitm.key ./conf/quay.kid ./conf/quay.pem ./conf/supervisord.conf
+	rm -f ./conf/jwtproxy_conf.yaml ./conf/mitm.cert ./conf/mitm.key ./conf/quay.kid ./conf/quay.pem ./conf/supervisord.conf supervisord.log supervisord.pid
 	rm -rf ./conf/__pycache__ ./static/build
 
 .PHONY: local-dev-build-frontend

@@ -89,7 +89,7 @@ def upgrade(op, tables, tester):
 
     logger.info("Migrating to external_reference from existing columns")
     op.add_column("repomirrorconfig", sa.Column("external_reference", sa.Text(), nullable=True))
-    if op.get_context().dialect.name != 'sqlite':
+    if op.get_context().dialect.name != "sqlite":
         op.get_bind().execute("COMMIT")
 
     logger.info("Reencrypting existing columns")
@@ -188,7 +188,9 @@ def downgrade(op, tables, tester):
         batch_op.drop_column("external_reference")
 
     with op.batch_alter_table("repomirrorconfig") as batch_op:
-        batch_op.alter_column("external_registry", nullable=False, existing_type=sa.String(length=255))
+        batch_op.alter_column(
+            "external_registry", nullable=False, existing_type=sa.String(length=255)
+        )
         batch_op.alter_column(
             "external_namespace",
             nullable=False,
