@@ -132,7 +132,7 @@ def upgrade(op, tables, tester):
     # NOTE: Disconnects the Alembic database connection. We do this because the Peewee calls below
     # use a *different* connection, and if we leave the alembic connection open, it'll time out.
     # See: https://github.com/sqlalchemy/alembic/issues/630
-    if op.get_context().dialect.name != 'sqlite':
+    if op.get_context().dialect.name != "sqlite":
         op.get_bind().execute("COMMIT")
         op.get_bind().invalidate()
 
