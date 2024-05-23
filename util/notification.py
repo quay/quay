@@ -9,6 +9,7 @@ from data.database import (
     get_epoch_timestamp_ms,
 )
 from data.model import db_transaction, oci
+from data.model.autoprune import fetch_tags_expiring_due_to_auto_prune_policies
 from data.model.user import get_namespace_by_user_id
 from data.registry_model import registry_model
 from notifications import spawn_notification
@@ -99,6 +100,13 @@ def scan_for_image_expiry_notifications(event_name, batch_size=BATCH_SIZE):
         tags = oci.tag.fetch_repo_tags_for_image_expiry_expiry_event(
             repo_id, config["days"], notified_tags
         )
+        autoprune_tags = fetch_tags_expiring_due_to_auto_prune_policies(
+            repo_id, repository.namespace_user
+        )
+
+        if len(autoprune_tags):
+            tags.extend(autoprune_tags)
+
         if not len(tags):
             continue
 
