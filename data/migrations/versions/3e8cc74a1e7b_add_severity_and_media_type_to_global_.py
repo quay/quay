@@ -40,7 +40,7 @@ def upgrade(op, tables, tester):
             ["media_type_id"],
             ["id"],
         )
-    ### end Alembic commands ###
+    # ### end Alembic commands ###
 
     op.bulk_insert(
         tables.mediatype,
