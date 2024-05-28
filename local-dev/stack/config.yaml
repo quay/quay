@@ -7,7 +7,6 @@ BUILDLOGS_REDIS:
   host: quay-redis
   port: 6379
 DB_URI: postgresql://quay:quay@quay-db/quay
-# DB_URI: sqlite:////quay-registry/sqlite/data/quay_sqlite.db
 DATABASE_SECRET_KEY: 'anothercrazykey!'
 DEFAULT_TAG_EXPIRATION: 2w
 DISTRIBUTED_STORAGE_CONFIG:

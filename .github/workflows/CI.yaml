@@ -94,7 +94,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        cat requirements-dev.txt | grep tox | xargs pip install
+        cat requirements-dev.txt | grep tox | xargs pip install --constraints requirements.txt
 
     - name: tox
       run: tox -e py39-unit -- --cov=./ --cov-report=xml
@@ -157,7 +157,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
+        cat requirements-dev.txt | grep tox | xargs pip install --constraints requirements.txt
 
     - name: tox
       run: tox -e py39-e2e
@@ -180,7 +180,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
+        cat requirements-dev.txt | grep tox | xargs pip install --constraints requirements.txt
 
     - name: tox
       run: tox -e py39-registry
@@ -293,7 +293,7 @@ jobs:
         sudo systemctl start docker
         docker version
         python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
+        cat requirements-dev.txt | grep tox | xargs pip install --constraints requirements.txt
 
     - name: tox
       run: tox -e py39-mysql
@@ -319,7 +319,7 @@ jobs:
         sudo systemctl start docker
         docker version
         python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
+        cat requirements-dev.txt | grep tox | xargs pip install --constraints requirements.txt
 
     - name: tox
       run: tox -e py39-psql

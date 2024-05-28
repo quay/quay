@@ -25,7 +25,7 @@ def upgrade(op, tables, tester):
             "uploadedblob",
             sa.Column(
                 "id",
-                sa.Integer() if op.get_context().dialect.name == "sqlite" else sa.BigInteger(),
+                sa.BigInteger().with_variant(sa.Integer, "sqlite"),
                 nullable=False,
             ),
             sa.Column("repository_id", sa.Integer(), nullable=False),
