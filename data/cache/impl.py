@@ -341,11 +341,18 @@ class RedisDataModelCache(DataModelCache):
                     cache_key.expiration,
                 )
             except RedisError as re:
+                # not printing the full value as it could be large and spam logs
                 logger.warning(
-                    "Got RedisError exception when trying to set key %s to %s: %s",
+                    "Got RedisError exception when trying to set key %s: %s",
+                    cache_key.key,
+                    re,
+                )
+
+                # print the full value only in debug mode
+                logger.debug(
+                    "Not caching loaded result for key %s: %s",
                     cache_key.key,
                     result,
-                    re,
                 )
             except Exception as e:
                 logger.exception(
