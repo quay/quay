@@ -29,7 +29,6 @@ from util.registry import filelike
 
 logger = logging.getLogger(__name__)
 
-
 multipart_uploads_started = Counter(
     "quay_multipart_uploads_started_total",
     "number of multipart uploads to Quay storage that started",
@@ -39,11 +38,9 @@ multipart_uploads_completed = Counter(
     "number of multipart uploads to Quay storage that completed",
 )
 
-
 _PartUpload = namedtuple("_PartUpload", ["part_number", "e_tag"])
 _PartUploadMetadata = namedtuple("_PartUploadMetadata", ["path", "offset", "length"])
 _CHUNKS_KEY = "chunks"
-
 
 # This is for HEAD requests to check if a key exists.
 # Since the HEAD request does not have a response body, boto3 uses the status code as error code
@@ -64,6 +61,20 @@ def _build_endpoint_url(hostname, port=None, is_secure=True):
         hostname = hostname + ":" + str(port)
 
     return hostname
+
+
+def is_in_network_request(context, request_ip, s3_region):
+    # Lookup the IP address in our resolution table and determine whether it is under AWS.
+    # If it is, then return an S3 signed URL, since we are in-network.
+    # We only allow requests within the same region as cross region over AWS can incur
+    # additional traffic cost
+    resolved_ip_info: ResolvedLocation = context.ip_resolver.resolve_ip(request_ip)
+    logger.debug("Resolved IP information for IP %s: %s", request_ip, resolved_ip_info)
+    return (
+        resolved_ip_info
+        and resolved_ip_info.provider == "aws"
+        and resolved_ip_info.aws_region == s3_region
+    )
 
 
 class StreamReadKeyAsFile(BufferedIOBase):
@@ -1117,20 +1128,9 @@ class CloudFrontedS3Storage(S3Storage):
                 path, request_ip, expires_in, requires_cors, head, **kwargs
             )
 
-        resolved_ip_info = None
         logger.debug('Got direct download request for path "%s" with IP "%s"', path, request_ip)
 
-        # Lookup the IP address in our resolution table and determine whether it is under AWS.
-        # If it is, then return an S3 signed URL, since we are in-network.
-        # We only allow requests within the same region as cross region over AWS can incur
-        # additional traffic cost
-        resolved_ip_info: ResolvedLocation = self._context.ip_resolver.resolve_ip(request_ip)
-        logger.debug("Resolved IP information for IP %s: %s", request_ip, resolved_ip_info)
-        if (
-            resolved_ip_info
-            and resolved_ip_info.provider == "aws"
-            and resolved_ip_info.aws_region == self.s3_region
-        ):
+        if is_in_network_request(self._context, request_ip, self.s3_region):
             return super(CloudFrontedS3Storage, self).get_direct_download_url(
                 path, request_ip, expires_in, requires_cors, head, **kwargs
             )
@@ -1154,7 +1154,6 @@ class CloudFrontedS3Storage(S3Storage):
         logger.debug(
             'Returning CloudFront URL for path "%s" with IP "%s": %s',
             path,
-            resolved_ip_info,
             signed_url,
         )
         return signed_url
