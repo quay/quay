@@ -662,6 +662,7 @@ class DefaultConfig(ImmutableConfig):
         "catalog_page_cache_ttl": "60s",
         "namespace_geo_restrictions_cache_ttl": "240s",
         "active_repo_tags_cache_ttl": "120s",
+        "value_size_limit": "1MiB",
     }
 
     # Defines the number of successive failures of a build trigger's build before the trigger is
