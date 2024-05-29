@@ -5,8 +5,8 @@ import urllib.parse
 
 import jwt
 from authlib.jose import JsonWebKey, KeySet
+from cachetools import TTLCache
 from cachetools.func import lru_cache
-from cachetools.ttl import TTLCache
 from requests import request
 
 from oauth.base import (
