@@ -75,8 +75,3 @@ export const currentOpenPopoverState = atom({
   key: 'currentOpenPopoverState',
   default: '',
 });
-
-export const childManifestSizeState = atomFamily({
-  key: 'childManifestDigest',
-  default: null,
-});

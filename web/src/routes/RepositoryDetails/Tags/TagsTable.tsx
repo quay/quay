@@ -1,32 +1,31 @@
-import {Spinner} from '@patternfly/react-core';
+import {Popover, Spinner, TextContent, Text} from '@patternfly/react-core';
+import {DownloadIcon} from '@patternfly/react-icons';
 import {
   ExpandableRowContent,
   Table,
-  Thead,
-  Tr,
-  Th,
   Tbody,
   Td,
+  Th,
+  Thead,
+  Tr,
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest} from 'src/resources/TagResource';
-import {useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
-import {getTagDetailPath} from 'src/routes/NavigationPath';
-import TablePopover from './TablePopover';
-import SecurityDetails from './SecurityDetails';
-import {formatDate} from 'src/libs/utils';
+import {useResetRecoilState} from 'recoil';
 import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
-import ColumnNames from './ColumnNames';
-import {DownloadIcon} from '@patternfly/react-icons';
-import {ChildManifestSize} from 'src/components/Table/ImageSize';
-import TagActions from './TagsActions';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {formatDate} from 'src/libs/utils';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {Manifest, Tag} from 'src/resources/TagResource';
+import {getTagDetailPath} from 'src/routes/NavigationPath';
+import ColumnNames from './ColumnNames';
+import SecurityDetails from './SecurityDetails';
+import TablePopover from './TablePopover';
+import TagActions from './TagsActions';
 import TagExpiration from './TagsTableExpiration';
-import ManifestListSize from 'src/components/Table/ManifestListSize';
+import {ImageSize} from 'src/components/Table/ImageSize';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -67,7 +66,7 @@ function SubRow(props: SubRowProps) {
       </Td>
       <Td dataLabel="size" noPadding={false} colSpan={3}>
         <ExpandableRowContent>
-          <ChildManifestSize
+          <ImageSize
             org={props.org}
             repo={props.repo}
             digest={props.manifest.digest}
@@ -153,7 +152,21 @@ function TagsTableRow(props: RowProps) {
         </Td>
         <Td dataLabel={ColumnNames.size}>
           {tag.manifest_list ? (
-            <ManifestListSize manifests={tag.manifest_list.manifests} />
+            <Popover
+              headerContent={<div>Aggregate manifest list size</div>}
+              bodyContent={
+                <div>This is the aggregate of all child manifest sizes.</div>
+              }
+            >
+              <TextContent>
+                <Text
+                  className="pf-v5-c-description-list__text pf-m-help-text"
+                  style={{fontSize: 'var(--pf-v5-c-table--cell--FontSize)'}}
+                >
+                  {prettyBytes(tag.size)}
+                </Text>
+              </TextContent>
+            </Popover>
           ) : (
             prettyBytes(tag.size)
           )}
