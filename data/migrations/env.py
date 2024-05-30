@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Alembic's configuration
 config = context.config
+assert config.config_file_name is not None, "Alembic config file name must be set"
 
 logging.config.fileConfig(config.config_file_name)
 
