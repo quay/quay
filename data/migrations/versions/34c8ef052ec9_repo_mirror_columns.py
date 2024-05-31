@@ -91,8 +91,8 @@ def upgrade(op, tables, tester):
     op.add_column("repomirrorconfig", sa.Column("external_reference", sa.Text(), nullable=True))
     # when adding the "external_reference" column, the table "repomirrorconfig" gets locked preventing running queries on it
     # immediately after. Hence explicitly committing the transaction to ensure lock gets released.
-    # if op.get_context().dialect.name != "sqlite":
-    #     op.get_bind().execute("COMMIT")
+    if op.get_context().dialect.name != "sqlite":
+        op.get_bind().execute("COMMIT")
 
     logger.info("Reencrypting existing columns")
     if app.config.get("SETUP_COMPLETE", False) and not tester.is_testing():
