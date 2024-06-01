@@ -6,6 +6,7 @@ import ldap
 from ldap.controls import SimplePagedResultsControl
 from ldap.filter import escape_filter_chars, filter_format
 
+from data.model.user import find_user_by_email, get_nonrobot_user
 from data.users.federated import FederatedUsers, UserInformation
 from util.itertoolrecipes import take
 
@@ -259,9 +260,14 @@ class LDAPUsers(FederatedUsers):
         suffix="",
         filter_superusers=False,
         filter_restricted_users=False,
+        login=False,
     ):
         if not username_or_email:
             return (None, "Empty username/email")
+
+        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
+        if all([dbuser is None, dbmail is None, not login]):
+            return (None, "Robot account")
 
         # Verify the admin connection works first. We do this here to avoid wrapping
         # the entire block in the INVALID CREDENTIALS check.
@@ -299,12 +305,17 @@ class LDAPUsers(FederatedUsers):
             return (with_dns, None)
 
     def _ldap_single_user_search(
-        self, username_or_email, filter_superusers=False, filter_restricted_users=False
+        self, username_or_email, filter_superusers=False, filter_restricted_users=False, login=False
     ):
+        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
+        if all([dbuser is None, dbmail is None, not login]):
+            return (None, "Robot account")
+
         with_dns, err_msg = self._ldap_user_search(
             username_or_email,
             filter_superusers=filter_superusers,
             filter_restricted_users=filter_restricted_users,
+            login=login,
         )
         if err_msg is not None:
             return (None, err_msg)
@@ -443,7 +454,7 @@ class LDAPUsers(FederatedUsers):
         if not password:
             return (None, "Anonymous binding not allowed.")
 
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+        (found_user, err_msg) = self._ldap_single_user_search(username_or_email, login=True)
         if found_user is None:
             return (None, err_msg)
 
@@ -511,9 +522,13 @@ class LDAPUsers(FederatedUsers):
         if not username_or_email:
             return False
 
+        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
+        if all([dbuser is None, dbmail is None]):
+            return False  # Robots are not in LDAP so return False as not being a superuser
+
         logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_superusers=True
+            username_or_email, filter_superusers=True, login=True
         )
         if found_user is None:
             logger.debug("LDAP superuser %s not found: %s", username_or_email, err_msg)
@@ -533,10 +548,13 @@ class LDAPUsers(FederatedUsers):
         if self._ldap_restricted_user_filter is None:
             return True
 
+        dbuser, dbmail = get_nonrobot_user(username_or_email), find_user_by_email(username_or_email)
+        if all([dbuser is None, dbmail is None]):
+            return False  # Robots are not in LDAP so return False as not restricted
+
         logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email,
-            filter_restricted_users=True,
+            username_or_email, filter_restricted_users=True, login=True
         )
         if found_user is None:
             logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
