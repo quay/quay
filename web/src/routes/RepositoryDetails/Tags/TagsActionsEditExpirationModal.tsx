@@ -18,6 +18,8 @@ import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useSetExpiration} from 'src/hooks/UseTags';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
+import {getDisplayError} from 'src/resources/ErrorHandling';
+import {Tag} from 'src/resources/TagResource';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
   const [date, setDate] = useState<Date>(null);
@@ -53,7 +55,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
         : formatDate(date.getTime() / 1000);
       const title: string =
         props.tags.length === 1
-          ? `Successfully set expiration for tag ${props.tags[0]} to ${dateMessage}`
+          ? `Successfully set expiration for tag ${props.tags[0].name} to ${dateMessage}`
           : `Successfully updated tag expirations to ${dateMessage}`;
       addAlert({variant: AlertVariant.Success, title: title});
       props.loadTags();
@@ -68,15 +70,13 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
     if (errorSetExpiration) {
       const title: string =
         props.tags.length === 1
-          ? `Could not set expiration for tag ${props.tags[0]}`
+          ? `Could not set expiration for tag ${props.tags[0].name}`
           : 'Could not update tag expirations';
       const errorDisplayMessage = (
         <>
           {Array.from(errorSetExpirationDetails.getErrors()).map(
             ([tag, error]) => (
-              <p key={tag}>
-                Could not update expiration for tag {tag}: {error.error.message}
-              </p>
+              <p key={tag}>{getDisplayError(error)}</p>
             ),
           )}
         </>
@@ -223,7 +223,7 @@ export default function EditExpirationModal(props: EditExpirationModalProps) {
             <DescriptionListTerm>Tags that will be updated</DescriptionListTerm>
             <DescriptionListDescription id="edit-expiration-tags">
               {props.tags.map((tag) => (
-                <Label key={tag}>{tag}</Label>
+                <Label key={tag.name}>{tag.name}</Label>
               ))}
             </DescriptionListDescription>
           </DescriptionListGroup>
@@ -276,7 +276,7 @@ interface EditExpirationModalProps {
   repo: string;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  tags: string[];
+  tags: Tag[];
   loadTags: () => void;
   expiration?: string;
   onComplete?: () => void;

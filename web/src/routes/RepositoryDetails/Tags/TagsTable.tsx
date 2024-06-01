@@ -1,32 +1,32 @@
-import {Spinner} from '@patternfly/react-core';
+import {Label, LabelGroup, Spinner} from '@patternfly/react-core';
+import {DownloadIcon, LockIcon} from '@patternfly/react-icons';
 import {
   ExpandableRowContent,
   Table,
-  Thead,
-  Tr,
-  Th,
   Tbody,
   Td,
+  Th,
+  Thead,
+  Tr,
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest} from 'src/resources/TagResource';
-import {useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
-import {getTagDetailPath} from 'src/routes/NavigationPath';
-import TablePopover from './TablePopover';
-import SecurityDetails from './SecurityDetails';
-import {formatDate} from 'src/libs/utils';
+import {useResetRecoilState} from 'recoil';
 import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
-import ColumnNames from './ColumnNames';
-import {DownloadIcon} from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
-import TagActions from './TagsActions';
-import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import ManifestListSize from 'src/components/Table/ManifestListSize';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {formatDate} from 'src/libs/utils';
+import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import {Manifest, Tag} from 'src/resources/TagResource';
+import {getTagDetailPath} from 'src/routes/NavigationPath';
+import ColumnNames from './ColumnNames';
+import SecurityDetails from './SecurityDetails';
+import TablePopover from './TablePopover';
+import TagActions from './TagsActions';
 import TagExpiration from './TagsTableExpiration';
-import ManifestListSize from 'src/components/Table/ManifestListSize';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -122,7 +122,7 @@ function TagsTableRow(props: RowProps) {
             rowIndex,
             onSelect: (_event, isSelecting) =>
               props.selectTag(tag, rowIndex, isSelecting),
-            isSelected: props.selectedTags.includes(tag.name),
+            isSelected: props.selectedTags.includes(tag),
           }}
         />
         <Td dataLabel={ColumnNames.name}>
@@ -165,13 +165,22 @@ function TagsTableRow(props: RowProps) {
           <TagExpiration
             org={props.org}
             repo={props.repo}
-            tag={tag.name}
+            tag={tag}
             expiration={tag.expiration}
             loadTags={props.loadTags}
           />
         </Td>
         <Td dataLabel={ColumnNames.digest}>
           {tag.manifest_digest.substring(0, 19)}
+        </Td>
+        <Td dataLabel={ColumnNames.status}>
+          <LabelGroup>
+            {tag.immutable && (
+              <Label icon={<LockIcon />} color="blue" isCompact>
+                Immutable
+              </Label>
+            )}
+          </LabelGroup>
         </Td>
         <Td
           dataLabel={ColumnNames.pull}
@@ -201,7 +210,7 @@ function TagsTableRow(props: RowProps) {
               org={props.org}
               repo={props.repo}
               manifest={tag.manifest_digest}
-              tags={[tag.name]}
+              tags={[tag]}
               expiration={tag.expiration}
               loadTags={props.loadTags}
               repoDetails={props.repoDetails}
@@ -257,6 +266,7 @@ export default function TagsTable(props: TableProps) {
             <Th>Last Modified</Th>
             <Th>Expires</Th>
             <Th>Manifest</Th>
+            <Th>Status</Th>
             <Th>Pull</Th>
             <Th />
           </Tr>
@@ -292,7 +302,7 @@ interface TableProps {
   tags: Tag[];
   loading: boolean;
   selectAllTags: (isSelecting: boolean) => void;
-  selectedTags: string[];
+  selectedTags: Tag[];
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
@@ -303,7 +313,7 @@ interface RowProps {
   repo: string;
   tag: Tag;
   rowIndex: number;
-  selectedTags: string[];
+  selectedTags: Tag[];
   isTagExpanded: (tag: Tag) => boolean;
   setTagExpanded: (tag: Tag, isExpanding?: boolean) => void;
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;

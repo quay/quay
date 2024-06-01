@@ -13,13 +13,15 @@ import Conditional from 'src/components/empty/Conditional';
 import {useDeleteTag} from 'src/hooks/UseTags';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
+import {Tag} from 'src/resources/TagResource';
+import {getDisplayError} from 'src/resources/ErrorHandling';
 
-export interface ModalOptions {
+export interface DeleteModalOptions {
   isOpen: boolean;
   force: boolean;
 }
 
-export function DeleteModal(props: ModalProps) {
+export function DeleteModal(props: DeleteModalProps) {
   const {
     deleteTags,
     successDeleteTags,
@@ -45,10 +47,10 @@ export function DeleteModal(props: ModalProps) {
       };
       switch (true) {
         case props.tags.length === 1 && props.modalOptions.force:
-          alert.title = `Permanently deleted tag ${props.tags[0]} successfully`;
+          alert.title = `Permanently deleted tag ${props.tags[0].name} successfully`;
           break;
         case props.tags.length === 1 && !props.modalOptions.force:
-          alert.title = `Deleted tag ${props.tags[0]} successfully`;
+          alert.title = `Deleted tag ${props.tags[0].name} successfully`;
           break;
         case props.tags.length > 1 && props.modalOptions.force:
           alert.title = 'Permanently deleted tags successfully';
@@ -72,10 +74,10 @@ export function DeleteModal(props: ModalProps) {
       };
       switch (true) {
         case props.tags.length === 1 && props.modalOptions.force:
-          alert.title = `Could not permanently delete tag ${props.tags[0]}`;
+          alert.title = `Could not permanently delete tag ${props.tags[0].name}`;
           break;
         case props.tags.length === 1 && !props.modalOptions.force:
-          alert.title = `Could not delete tag ${props.tags[0]}`;
+          alert.title = `Could not delete tag ${props.tags[0].name}`;
           break;
         case props.tags.length > 1 && props.modalOptions.force:
           alert.title = 'Could not permanently delete tags';
@@ -87,9 +89,7 @@ export function DeleteModal(props: ModalProps) {
       alert.message = (
         <>
           {Array.from(errorDeleteTagDetails.getErrors()).map(([tag, error]) => (
-            <p key={tag}>
-              Could not delete tag {tag}: {error.error.message}
-            </p>
+            <p key={tag}>{getDisplayError(error)}</p>
           ))}
         </>
       );
@@ -105,6 +105,7 @@ export function DeleteModal(props: ModalProps) {
       <Modal
         id="tag-deletion-modal"
         title={title}
+        titleIconVariant={props.modalOptions.force ? 'danger' : 'warning'}
         description={
           <Conditional if={props.modalOptions.force}>
             <span style={{color: 'red'}}>
@@ -159,8 +160,8 @@ export function DeleteModal(props: ModalProps) {
           <div className="delete-modal-readonly-alert" />
         </Conditional>
         {props.tags?.map((tag) => (
-          <span key={tag}>
-            <Label>{tag}</Label>{' '}
+          <span key={tag.name}>
+            <Label>{tag.name}</Label>{' '}
           </span>
         ))}
         <Conditional if={props.tags?.length > 20}>
@@ -173,10 +174,10 @@ export function DeleteModal(props: ModalProps) {
   );
 }
 
-type ModalProps = {
-  modalOptions: ModalOptions;
+export type DeleteModalProps = {
+  modalOptions: DeleteModalOptions;
   setModalOptions: (modalOptions) => void;
-  tags: string[];
+  tags: Tag[];
   onComplete?: () => void;
   loadTags: () => void;
   org: string;

@@ -12,12 +12,13 @@ export function useRepositoryState(
   const queryClient = useQueryClient();
   const {
     mutate: setState,
-    isLoading: loading,
-    isError: error,
+    isLoading: loadingSetRepositoryState,
+    isError: errorSetRepositoryState,
+    error: errorSetRepositoryStateDetails,
   } = useMutation(
     async (state: RepositoryState) => setRepositoryState(org, repo, state),
     {
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
         queryClient.invalidateQueries(['repodetails', org, repo]);
       },
     },
@@ -26,7 +27,8 @@ export function useRepositoryState(
   return {
     state: state,
     setState: setState,
-    loading: loading,
-    error: error,
+    loadingSetRepositoryState,
+    errorSetRepositoryState,
+    errorSetRepositoryStateDetails,
   };
 }

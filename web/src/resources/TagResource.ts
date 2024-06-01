@@ -1,9 +1,9 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {
-  assertHttpCode,
   BulkOperationError,
   ResourceError,
+  assertHttpCode,
   throwIfError,
 } from './ErrorHandling';
 
@@ -24,6 +24,7 @@ export interface Tag {
   manifest_list: ManifestList;
   expiration?: string;
   end_ts?: number;
+  immutable?: boolean;
 }
 
 export interface ManifestList {
@@ -64,12 +65,24 @@ export interface Label {
   media_type?: string;
   source_type?: string;
 }
+
+export interface ManifestLayer {
+  compressed_size: number;
+  is_remote: boolean;
+  urls: string[];
+  command: string;
+  comment: string;
+  author: string;
+  blob_digest: string;
+  created_datetime: string;
+}
+
 export interface ManifestByDigestResponse {
   digest: string;
   is_manifest_list: boolean;
   manifest_data: string;
-  config_media_type?: any;
-  layers?: any;
+  config_media_type?: never;
+  layers?: ManifestLayer[];
 }
 
 export interface SecurityDetailsResponse {
@@ -242,7 +255,7 @@ export async function deleteLabel(
   }
 }
 
-interface TagLocation {
+export interface TagLocation {
   org: string;
   repo: string;
   tag: string;
@@ -251,7 +264,7 @@ interface TagLocation {
 export async function bulkDeleteTags(
   org: string,
   repo: string,
-  tags: string[],
+  tags: Tag[],
   force = false,
 ) {
   const deletion_function = force ? expireTag : deleteTag;
@@ -266,47 +279,46 @@ export async function bulkDeleteTags(
 
   // If errors collect and throw
   if (errResponses.length > 0) {
-    const bulkDeleteError = new BulkOperationError<TagDeleteError>(
+    const bulkDeleteError = new BulkOperationError<TagOperationError>(
       'error deleting tags',
     );
     for (const response of errResponses) {
-      const reason = response.reason as TagDeleteError;
+      const reason = response.reason as TagOperationError;
       bulkDeleteError.addError(reason.tag, reason);
     }
     throw bulkDeleteError;
   }
 }
 
-export class TagDeleteError extends Error {
-  error: Error;
+export class TagOperationError extends ResourceError {
   tag: string;
   constructor(message: string, tag: string, error: AxiosError) {
-    super(message);
+    super(message, tag, error);
     this.tag = tag;
     this.error = error;
-    Object.setPrototypeOf(this, TagDeleteError.prototype);
+    Object.setPrototypeOf(this, TagOperationError.prototype);
   }
 }
 
-export async function deleteTag(org: string, repo: string, tag: string) {
+export async function deleteTag(org: string, repo: string, tag: Tag) {
   try {
     const response: AxiosResponse = await axios.delete(
-      `/api/v1/repository/${org}/${repo}/tag/${tag}`,
+      `/api/v1/repository/${org}/${repo}/tag/${tag.name}`,
     );
     assertHttpCode(response.status, 204);
   } catch (err) {
-    throw new TagDeleteError(
+    throw new TagOperationError(
       'failed to delete tag',
-      `${org}/${repo}:${tag}`,
+      `${org}/${repo}:${tag.name}`,
       err,
     );
   }
 }
 
-export async function expireTag(org: string, repo: string, tag: string) {
+export async function expireTag(org: string, repo: string, tag: Tag) {
   try {
     const response: AxiosResponse = await axios.post(
-      `/api/v1/repository/${org}/${repo}/tag/${tag}/expire`,
+      `/api/v1/repository/${org}/${repo}/tag/${tag.name}/expire`,
       {
         include_submanifests: true,
         is_alive: true,
@@ -314,12 +326,51 @@ export async function expireTag(org: string, repo: string, tag: string) {
     );
     assertHttpCode(response.status, 200);
   } catch (err) {
-    throw new TagDeleteError(
+    throw new TagOperationError(
       'failed to expire tag',
+      `${org}/${repo}:${tag.name}`,
+      err,
+    );
+  }
+}
+
+export async function setTagMutability(
+  org: string,
+  repo: string,
+  tag: string,
+  immutability = false,
+) {
+  try {
+    const response: AxiosResponse = await axios.put(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}`,
+      {
+        immutable: immutability,
+      },
+    );
+    assertHttpCode(response.status, 201);
+  } catch (err) {
+    throw new TagOperationError(
+      'failed to set tag to ' + (immutability ? 'immutable' : 'mutable'),
       `${org}/${repo}:${tag}`,
       err,
     );
   }
+}
+
+export async function setTagsMutability(
+  tags: TagLocation[],
+  immutability = false,
+) {
+  const responses = await Promise.allSettled(
+    tags.map((tag) =>
+      setTagMutability(tag.org, tag.repo, tag.tag, immutability),
+    ),
+  );
+
+  throwIfError(
+    responses,
+    'Error setting tags to ' + (immutability ? 'immutable' : 'mutable'),
+  );
 }
 
 export async function getManifestByDigest(
@@ -360,7 +411,7 @@ export async function createTag(
 export async function bulkSetExpiration(
   org: string,
   repo: string,
-  tags: string[],
+  tags: Tag[],
   expiration: number,
 ) {
   const responses = await Promise.allSettled(
@@ -372,15 +423,15 @@ export async function bulkSetExpiration(
 export async function setExpiration(
   org: string,
   repo: string,
-  tag: string,
+  tag: Tag,
   expiration: number,
 ) {
   try {
-    await axios.put(`/api/v1/repository/${org}/${repo}/tag/${tag}`, {
+    await axios.put(`/api/v1/repository/${org}/${repo}/tag/${tag.name}`, {
       expiration: expiration,
     });
   } catch (error) {
-    throw new ResourceError('Unable to set tag expiration', tag, error);
+    throw new ResourceError('Unable to set tag expiration', tag.name, error);
   }
 }
 
@@ -390,26 +441,20 @@ export async function restoreTag(
   tag: string,
   digest: string,
 ) {
-  const response: AxiosResponse = await axios.post(
-    `/api/v1/repository/${org}/${repo}/tag/${tag}/restore`,
-    {
-      manifest_digest: digest,
-    },
-  );
+  await axios.post(`/api/v1/repository/${org}/${repo}/tag/${tag}/restore`, {
+    manifest_digest: digest,
+  });
 }
 
 export async function permanentlyDeleteTag(
   org: string,
   repo: string,
-  tag: string,
+  tag: Tag,
   digest: string,
 ) {
-  const response: AxiosResponse = await axios.post(
-    `/api/v1/repository/${org}/${repo}/tag/${tag}/expire`,
-    {
-      manifest_digest: digest,
-      include_submanifests: true,
-      is_alive: false,
-    },
-  );
+  await axios.post(`/api/v1/repository/${org}/${repo}/tag/${tag.name}/expire`, {
+    manifest_digest: digest,
+    include_submanifests: true,
+    is_alive: false,
+  });
 }

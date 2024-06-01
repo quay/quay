@@ -66,7 +66,7 @@ export const paginationState = atom({
   },
 });
 
-export const selectedTagsState = atom({
+export const selectedTagsState = atom<Tag[]>({
   key: 'selectedTagsState',
   default: [],
 });
