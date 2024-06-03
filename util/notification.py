@@ -16,6 +16,10 @@ from notifications import spawn_notification
 logger = logging.getLogger(__name__)
 BATCH_SIZE = 10
 
+# Define a constant for the SKIP_LOCKED flag for testing purposes,
+# since we test with mysql 5.7 which does not support this flag.
+SKIP_LOCKED = True
+
 
 def fetch_active_notification(event, task_run_interval_ms=5 * 60 * 60 * 1000):
     """
@@ -42,7 +46,7 @@ def fetch_active_notification(event, task_run_interval_ms=5 * 60 * 60 * 1000):
                 )
                 .order_by(RepositoryNotification.last_ran_ms.asc(nulls="first"))
             )
-            notification = db_for_update(query, skip_locked=True).get()
+            notification = db_for_update(query, skip_locked=SKIP_LOCKED).get()
 
             RepositoryNotification.update(last_ran_ms=get_epoch_timestamp_ms()).where(
                 RepositoryNotification.id == notification.id
