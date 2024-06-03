@@ -89,6 +89,7 @@ class RepoNotificationPreOCIModel(RepoNotificationInterface):
             return None
 
         return RepositoryNotification(
+            id=notification.id,
             uuid=notification.uuid,
             title=notification.title,
             event_name=notification.event.name,

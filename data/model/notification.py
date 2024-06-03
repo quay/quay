@@ -243,7 +243,7 @@ def delete_repo_notification(namespace_name, repository_name, uuid):
         or found.repository.name != repository_name
     ):
         raise InvalidNotificationException("No repository notifiation found with uuid: %s" % uuid)
-    delete_tag_notifications(found.id)
+    delete_tag_notifications_for_notification(found.id)
     found.delete_instance()
     return found
 
