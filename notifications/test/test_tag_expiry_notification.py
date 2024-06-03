@@ -1,7 +1,9 @@
 import datetime
 import json
+import os
 import unittest
 
+import util
 from app import notification_queue
 from data.database import (
     ExternalNotificationMethod,
@@ -69,9 +71,6 @@ class TagExpiryNotificationTests(unittest.TestCase):
             {"days": 7},
             title="Image(s) will expire in 7 days",
         )
-
-    def clear_tag_notifications(self):
-        pass
 
     def setUp(self):
         setup_database_for_testing(self)
@@ -152,6 +151,8 @@ class TagExpiryNotificationTests(unittest.TestCase):
             assert tag.id in tag_ids
 
     def test_fetch_active_notification(self):
+        if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+            util.notification.SKIP_LOCKED = False
         event = self.create_new_notification()
         # causing the event to failure
         for i in range(3):
@@ -176,6 +177,8 @@ class TagExpiryNotificationTests(unittest.TestCase):
         assert event.last_ran_ms >= time_now
 
     def test_scan_for_image_expiry_notifications(self):
+        if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+            util.notification.SKIP_LOCKED = False
         future_ms = (datetime.datetime.now() + datetime.timedelta(days=1)).timestamp() * 1000
         for tag in self.tags:
             set_tag_end_ms(tag, future_ms)
