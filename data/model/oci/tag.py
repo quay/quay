@@ -19,6 +19,7 @@ from data.database import (
     get_epoch_timestamp_ms,
 )
 from data.model import config, modelutil, user
+from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -478,6 +479,9 @@ def _delete_tag(tag, now_ms):
     Deletes the given tag by marking it as expired.
     """
     with db_transaction():
+        # clean notifications for tag expiry
+        delete_tag_notifications_for_tag(tag)
+
         updated = (
             Tag.update(lifetime_end_ms=now_ms)
             .where(Tag.id == tag.id, Tag.lifetime_end_ms == tag.lifetime_end_ms)
@@ -614,6 +618,9 @@ def set_tag_end_ms(tag, end_ms):
     """
 
     with db_transaction():
+        # clean notifications for tag expiry
+        delete_tag_notifications_for_tag(tag)
+
         updated = (
             Tag.update(lifetime_end_ms=end_ms)
             .where(Tag.id == tag)
@@ -816,11 +823,13 @@ def fetch_repo_tags_for_image_expiry_expiry_event(repo_id, days, notified_tags):
     # TODO: check tags expiring due to org-level/repo-level auto-prune policies
     try:
         future_ms = (datetime.datetime.now() + datetime.timedelta(days=days)).timestamp() * 1000
+        now_ms = get_epoch_timestamp_ms()
         query = (
             Tag.select(Tag.id, Tag.name)
             .where(
                 Tag.repository_id == repo_id,
-                (~(Tag.lifetime_end_ms >> None)),
+                (~(Tag.lifetime_end_ms >> None)),  # filter for tags where expiry is set
+                Tag.lifetime_end_ms > now_ms,  # filter expired tags
                 Tag.lifetime_end_ms <= future_ms,
                 Tag.hidden == False,
                 Tag.id.not_in(notified_tags),

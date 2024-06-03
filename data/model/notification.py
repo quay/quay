@@ -1,4 +1,5 @@
 import json
+import logging
 
 from peewee import SQL
 
@@ -10,13 +11,15 @@ from data.database import (
     NotificationKind,
     Repository,
     RepositoryNotification,
+    TagNotificationSuccess,
     Team,
     TeamMember,
     TeamRole,
     User,
-    db_for_update,
 )
 from data.model import InvalidNotificationException, db_transaction
+
+logger = logging.getLogger(__name__)
 
 
 def create_notification(kind_name, target, metadata={}, lookup_path=None):
@@ -132,7 +135,7 @@ def delete_matching_notifications(target, kind_name, **kwargs):
         except:
             continue
 
-        for (key, value) in kwargs.items():
+        for key, value in kwargs.items():
             if not key in metadata or metadata[key] != value:
                 matches = False
                 break
@@ -240,6 +243,7 @@ def delete_repo_notification(namespace_name, repository_name, uuid):
         or found.repository.name != repository_name
     ):
         raise InvalidNotificationException("No repository notifiation found with uuid: %s" % uuid)
+    delete_tag_notifications_for_notification(found.id)
     found.delete_instance()
     return found
 
@@ -260,3 +264,21 @@ def list_repo_notifications(namespace_name, repository_name, event_name=None):
         )
 
     return query
+
+
+def delete_tag_notifications_for_notification(notification_id):
+    resp = (
+        TagNotificationSuccess.delete()
+        .where(TagNotificationSuccess.notification == notification_id)
+        .execute()
+    )
+    logger.debug(
+        f"Deleted {resp} entries from TagNotificationSuccess for RepositoryNotificationId: {notification_id}"
+    )
+    return
+
+
+def delete_tag_notifications_for_tag(tag):
+    resp = TagNotificationSuccess.delete().where(TagNotificationSuccess.tag == tag.id).execute()
+    logger.debug(f"Deleted {resp} entries from TagNotificationSuccess for tag: {tag.name}")
+    return

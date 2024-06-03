@@ -498,6 +498,7 @@ def initialize_database():
     ExternalNotificationEvent.create(name="repo_mirror_sync_started")
     ExternalNotificationEvent.create(name="repo_mirror_sync_success")
     ExternalNotificationEvent.create(name="repo_mirror_sync_failed")
+    ExternalNotificationEvent.create(name="repo_image_expiry")
 
     ExternalNotificationMethod.create(name="quay_notification")
     ExternalNotificationMethod.create(name="email")
@@ -1403,6 +1404,7 @@ WHITELISTED_EMPTY_MODELS = [
     "QuotaRegistrySize",
     "NamespaceAutoPrunePolicy",
     "AutoPruneTaskStatus",
+    "TagNotificationSuccess",
 ]
 
 
