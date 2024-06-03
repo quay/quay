@@ -613,5 +613,12 @@ class OCIManifestBuilder(object):
         if self.annotations:
             manifest_dict[OCI_MANIFEST_ANNOTATIONS_KEY] = self.annotations
 
+        if self.subject:
+            manifest_dict[OCI_MANIFEST_SUBJECT_KEY] = {
+                OCI_MANIFEST_MEDIATYPE_KEY: self.subject.mediatype,
+                OCI_MANIFEST_SIZE_KEY: self.subject.size,
+                OCI_MANIFEST_DIGEST_KEY: self.subject.digest,
+            }
+
         json_str = json.dumps(manifest_dict, ensure_ascii=ensure_ascii, indent=3)
         return OCIManifest(Bytes.for_string_or_unicode(json_str))
