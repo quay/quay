@@ -483,7 +483,7 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
-    return app.config.get("FEATURE_SUPERUSERS_FULL_ACCESS", False) and SuperUserPermission().can()
+    return features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
 
 
 def verify_not_prod(func):

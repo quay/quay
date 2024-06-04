@@ -145,7 +145,7 @@ class PermissionPrototypeList(ApiResource):
         List the existing prototypes for this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:

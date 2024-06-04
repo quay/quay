@@ -270,7 +270,7 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         Lists the auto-prune policies for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         if registry_model.lookup_repository(namespace, repository) is None:
@@ -290,7 +290,7 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         Creates an auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         if registry_model.lookup_repository(namespace, repository) is None:
@@ -370,7 +370,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         Fetches the auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         policy = model.autoprune.get_repository_autoprune_policy_by_uuid(repository, policy_uuid)
@@ -387,7 +387,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         Updates the auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         app_data = request.get_json()
@@ -438,7 +438,7 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         Deletes the auto-prune policy for the repository
         """
         permission = AdministerRepositoryPermission(namespace, repository)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         try:

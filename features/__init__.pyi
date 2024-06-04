@@ -215,3 +215,5 @@ AUTO_PRUNE: FeatureNameValue
 # Referrer APIO
 MANIFEST_SUBJECT_BACKFILL: FeatureNameValue
 REFERRERS_API: FeatureNameValue
+
+SUPERUSERS_FULL_ACCESS: FeatureNameValue
