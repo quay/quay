@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.10.5"></a>
-## [v3.10.5] - 2024-03-28
+<a name="v3.10.6"></a>
+## [v3.10.6] - 2024-04-08
 ### Cherrypick
 - [02635f5f](https://github.com/quay/quay/commit/02635f5fccbd5870be87a9aa41f77d160612a877): commit f2417670 from master (PROJQUAY-6895) ([#2797](https://github.com/quay/quay/issues/2797))
 ### [Redhat-3.10] Api
@@ -34,6 +34,24 @@
 - [026561ce](https://github.com/quay/quay/commit/026561ce932b237494b0f773714222f6950db38c): allow current day to be selected for tag expiration (PROJQUAY-6262) ([#2466](https://github.com/quay/quay/issues/2466))
 ### [Redhat-3.10] User(Robots)
 - [2044413b](https://github.com/quay/quay/commit/2044413b83273bc49ac7d3bb929763722e5a2376): disallow robot login and create 2nd (PROJQUAY-5968) ([#2541](https://github.com/quay/quay/issues/2541))
+
+<a name="v3.11.1"></a>
+## [v3.11.1] - 2024-05-16
+### Cherrypick
+- [01e3bcce](https://github.com/quay/quay/commit/01e3bcce7b93d0352701028c4b19c4a56945d1ac): merging f24176 from master (PROJQUAY-7033) ([#2801](https://github.com/quay/quay/issues/2801))
+### [Redhat-3.11] Nginx
+- [c56638f2](https://github.com/quay/quay/commit/c56638f2fa5701367da698e014f9e4f873298775): add rule to route /updateuser to old ui (PROJQUAY-6722) ([#2747](https://github.com/quay/quay/issues/2747))
+### [Redhat-3.11] Oidc
+- [025945c0](https://github.com/quay/quay/commit/025945c0439e120130be62ff6042d5713e6ae1eb): ask for group object id for azure oauth login (PROJQUAY-6917) ([#2837](https://github.com/quay/quay/issues/2837))
+### [Redhat-3.11] Teamsync
+- [e035b73b](https://github.com/quay/quay/commit/e035b73b194802455e50a6ba9f3f5823ffb0c620): run team sync worker for teams synced via ldap or keystone (PROJQUAY-6762) ([#2852](https://github.com/quay/quay/issues/2852))
+### [Redhat-3.11] Ui
+- [409c68db](https://github.com/quay/quay/commit/409c68dbba0ceba9be6a55d3c7de229d59ce1028): send recovery email option in superusers panel (PROJQUAY-7195) ([#2880](https://github.com/quay/quay/issues/2880))
+- [234bab2b](https://github.com/quay/quay/commit/234bab2bc8e5551dd136ef9df829eea9986602b7): disable invited tab when team is synced (PROJQUAY-6831) ([#2845](https://github.com/quay/quay/issues/2845))
+- [6672861c](https://github.com/quay/quay/commit/6672861ca49ee7b6103116daa497f52a29596405): fixing failing cypress test (PROJQUAY-7106) ([#2844](https://github.com/quay/quay/issues/2844))
+- [9f2eacc9](https://github.com/quay/quay/commit/9f2eacc97f440681c0071bbba944113a31e40b99): Add human readable autoprune policy method type (PROJQUAY-6918) ([#2784](https://github.com/quay/quay/issues/2784))
+- [b70ab7fc](https://github.com/quay/quay/commit/b70ab7fc7698f67eb6a10173497878d149b761a1): non org admins cannot remove team sync (PROJQUAY-6924) ([#2795](https://github.com/quay/quay/issues/2795))
+- [e4889c00](https://github.com/quay/quay/commit/e4889c00b61a66fd30ac6ad6dd9a560d81b80e46): dont show username password signin when auth_type is oidc (PROJQUAY-6740) ([#2780](https://github.com/quay/quay/issues/2780))
 
 <a name="v3.11.0"></a>
 ## [v3.11.0] - 2024-03-19
@@ -191,6 +209,13 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.5"></a>
+## [v3.10.5] - 2024-04-08
+### Cherrypick
+- [02635f5f](https://github.com/quay/quay/commit/02635f5fccbd5870be87a9aa41f77d160612a877): commit f2417670 from master (PROJQUAY-6895) ([#2797](https://github.com/quay/quay/issues/2797))
+### [Redhat-3.10] Quota
+- [30496b29](https://github.com/quay/quay/commit/30496b29c4f7f99de4b3440eb2cecf116a5c4b47): removing repo size from quota verification (PROJQUAY-6637) ([#2708](https://github.com/quay/quay/issues/2708))
 
 <a name="v3.10.4"></a>
 ## [v3.10.4] - 2024-02-07
@@ -599,6 +624,11 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.7"></a>
+## [v3.9.7] - 2024-04-23
+### Cherrypick
+- [e9743d3d](https://github.com/quay/quay/commit/e9743d3d9588cb73e1aa260529ddac5553c21bfb): commit f2417670 from master (PROJQUAY-6895) ([#2796](https://github.com/quay/quay/issues/2796))
 
 <a name="v3.9.6"></a>
 ## [v3.9.6] - 2024-01-09
@@ -2117,14 +2147,17 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.5...HEAD
-[v3.10.5]: https://github.com/quay/quay/compare/v3.11.0...v3.10.5
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.4...v3.11.0
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.6...HEAD
+[v3.10.6]: https://github.com/quay/quay/compare/v3.11.1...v3.10.6
+[v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.5...v3.11.0
+[v3.10.5]: https://github.com/quay/quay/compare/v3.10.4...v3.10.5
 [v3.10.4]: https://github.com/quay/quay/compare/v3.10.3...v3.10.4
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.6...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.7...v3.10.0
+[v3.9.7]: https://github.com/quay/quay/compare/v3.9.6...v3.9.7
 [v3.9.6]: https://github.com/quay/quay/compare/v3.9.5...v3.9.6
 [v3.9.5]: https://github.com/quay/quay/compare/v3.9.4...v3.9.5
 [v3.9.4]: https://github.com/quay/quay/compare/v3.9.3...v3.9.4
