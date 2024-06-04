@@ -1447,5 +1447,10 @@ CONFIG_SCHEMA = {
             "description": "Number of seconds to wait after a write operation in the UI",
             "x-example": 3,
         },
+        "NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX": {
+            "type": "string",
+            "description": "Set minimal security level for new notifications on detected vulnerabilities. Avoids creation of large number of notifications after first index.",
+            "x-example": "High",
+        },
     },
 }

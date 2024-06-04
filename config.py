@@ -844,6 +844,10 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables notifications about vulnerabilities to be sent for new pushes
     FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = True
 
+    # Set minimal security level for new notifications on detected vulnerabilities. Avoids
+    # creation of large number of notifications after first index. If not defined, defaults to "High".
+    NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX = ""
+
     FEATURE_SUPERUSERS_FULL_ACCESS = False
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
 
