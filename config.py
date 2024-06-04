@@ -846,7 +846,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Set minimal security level for new notifications on detected vulnerabilities. Avoids
     # creation of large number of notifications after first index. If not defined, defaults to "High".
-    NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX = ""
+    NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX = "High"
 
     FEATURE_SUPERUSERS_FULL_ACCESS = False
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False

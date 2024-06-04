@@ -473,7 +473,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                             for key in keys:
                                 vuln = found_vulnerabilities[key]
 
-                                # logger.debug("Found vulneraiblity %s", vuln)
                                 found_severity = PRIORITY_LEVELS.get(
                                     vuln["normalized_severity"], PRIORITY_LEVELS["Unknown"]
                                 )
