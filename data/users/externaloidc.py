@@ -43,6 +43,12 @@ class OIDCUsers(FederatedUsers):
         """
         return None
 
+    def is_global_readonly_superuser(self, username: str):
+        """
+        Initiated from FederatedUserManager.is_global_readonly_superuser(), falls back to ConfigUserManager.is_global_readonly_superuser()
+        """
+        return None
+
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         """
         Used by teamSync worker, unsupported for oidc team sync
