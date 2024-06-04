@@ -460,7 +460,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                             if self.app.config.get("NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX")
                             else "High"
                         )
-                        logger.debug("Minimal level set: %s", level)
                         lowest_severity = PRIORITY_LEVELS[level]
 
                         if found_vulnerabilities is not None:
@@ -480,10 +479,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                                 )
 
                                 if found_severity["score"] >= lowest_severity["score"]:
-                                    logger.debug(
-                                        "Found severity score of %s for vulnerability.",
-                                        found_severity["score"],
-                                    )
                                     tag_names = list(
                                         registry_model.tag_names_for_manifest(manifest, TAG_LIMIT)
                                     )
