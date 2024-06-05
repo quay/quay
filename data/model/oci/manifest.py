@@ -394,6 +394,7 @@ def _create_manifest(
                 create_temporary_tag_if_necessary(
                     manifest,
                     temp_tag_expiration_sec,
+                    skip_expiration=manifest_interface_instance.subject is not None,
                 )
 
         # Define the labels for the manifest (if any).
