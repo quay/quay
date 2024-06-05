@@ -28,6 +28,8 @@ export default function MarketplaceDetails(props: MarketplaceDetailsProps) {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [modalType, setModalType] = React.useState('attach');
 
+  const maxPrivateRepos = 9007199254740991;
+
   useEffect(() => {
     if (loading) return;
     if (error) return;
@@ -81,7 +83,11 @@ export default function MarketplaceDetails(props: MarketplaceDetailsProps) {
           <FlexItem>
             {userSubscriptions.map((subscription: Dict<string>) => (
               <HelperText key={subscription.id}>
-                {subscription.quantity}x {subscription.sku}
+                {subscription.quantity}x{' '}
+                {subscription.metadata.privateRepos >= maxPrivateRepos
+                  ? 'unlimited'
+                  : subscription.metadata.privateRepos}{' '}
+                private repos
                 {subscription.assigned_to_org
                   ? ` attached to ${subscription.assigned_to_org}`
                   : ' belonging to user namespace'}
@@ -102,7 +108,8 @@ export default function MarketplaceDetails(props: MarketplaceDetailsProps) {
         <FlexItem>
           {orgSubscriptions.map((subscription: Dict<string>) => (
             <HelperText key={subscription.id}>
-              {subscription.quantity}x {subscription.sku} attached
+              {subscription.quantity}x {subscription.metadata.privateRepos}{' '}
+              private repos attached
             </HelperText>
           ))}
         </FlexItem>

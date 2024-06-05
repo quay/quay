@@ -59,6 +59,8 @@ export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
     },
   });
 
+  const maxPrivateRepos = 9007199254740991;
+
   return (
     <Modal
       variant={ModalVariant.small}
@@ -85,7 +87,13 @@ export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
                 {props.subscriptions[selectedSku]
                   ? props.subscriptions[selectedSku]?.quantity +
                     'x ' +
-                    props.subscriptions[selectedSku]?.sku
+                    (BigInt(
+                      props.subscriptions[selectedSku]?.metadata.privateRepos,
+                    ) >= maxPrivateRepos
+                      ? 'unlimited'
+                      : props.subscriptions[selectedSku]?.metadata
+                          .privateRepos) +
+                    ' private repos'
                   : 'Select Subscription'}
               </MenuToggle>
             )}
@@ -97,7 +105,11 @@ export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
             <SelectList id="subscription-select-list">
               {props.subscriptions.map((subscription: Dict<string>, index) => (
                 <SelectOption key={subscription.id} value={index}>
-                  {subscription.quantity}x {subscription.sku}
+                  {subscription.quantity}x{' '}
+                  {subscription.metadata.privateRepos >= maxPrivateRepos
+                    ? 'unlimited'
+                    : subscription.metadata.privateRepos}{' '}
+                  private repos
                 </SelectOption>
               ))}
             </SelectList>
