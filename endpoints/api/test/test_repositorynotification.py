@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from mock import MagicMock, Mock
 
@@ -11,6 +9,7 @@ from endpoints.api.repositorynotification import (
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.fixture()
