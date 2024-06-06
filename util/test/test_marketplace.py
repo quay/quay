@@ -152,6 +152,60 @@ mocked_expired_sub = [
     },
 ]
 
+mocked_terminated_sub = [
+    {
+        "id": 41619474,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdByUserName": None,
+        "createdDate": 1708616554000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateUserName": None,
+        "lastUpdateDate": 1708616554000,
+        "externalCreatedDate": None,
+        "externalLastUpdateDate": None,
+        "activeStartDate": None,
+        "activeEndDate": None,
+        "inactiveDate": None,
+        "signedDate": None,
+        "terminatedDate": 1645544830000,
+        "renewedDate": None,
+        "parentSubscriptionProductId": None,
+        "externalOrderSystemName": "SUBSCRIPTION",
+        "externalOrderNumber": None,
+        "status": None,
+        "sku": "MW02701",
+        "childrenIds": [41619475],
+        "serviceable": False,
+    },
+    {
+        "id": 41619475,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdByUserName": None,
+        "createdDate": 1645544830000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateUserName": None,
+        "lastUpdateDate": 1645544830000,
+        "externalCreatedDate": None,
+        "externalLastUpdateDate": None,
+        "activeStartDate": 1645544830000,
+        "activeEndDate": 4869471324000,
+        "inactiveDate": None,
+        "signedDate": None,
+        "terminatedDate": None,
+        "renewedDate": None,
+        "parentSubscriptionProductId": 41619474,
+        "externalOrderSystemName": "SUBSCRIPTION",
+        "externalOrderNumber": None,
+        "status": "active",
+        "oracleInventoryOrgId": None,
+        "sku": "SVCMW02701",
+        "childrenIds": None,
+        "serviceable": True,
+    },
+]
+
 
 class TestMarketplace(unittest.TestCase):
     @patch("requests.request")
@@ -195,3 +249,10 @@ class TestMarketplace(unittest.TestCase):
         subscription_details = subscription_api.get_subscription_details(12345)
         assert subscription_details["sku"] == "MW02701"
         assert subscription_details["expiration_date"] == 1645544830000
+        assert subscription_details["terminated_date"] is None
+
+        requests_mock.return_value.content = json.dumps(mocked_terminated_sub)
+        subscription_details = subscription_api.get_subscription_details(12345)
+        assert subscription_details["sku"] == "MW02701"
+        assert subscription_details["expiration_date"] == 4869471324000
+        assert subscription_details["terminated_date"] == 1645544830000

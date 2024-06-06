@@ -61,8 +61,9 @@ def check_internal_api_for_subscription(namespace_user):
             )
             sku = subscription_details["sku"]
             expiration = subscription_details["expiration_date"]
+            terminated = subscription_details["terminated_date"]
             now_ms = time.time() * 1000
-            if expiration < now_ms:
+            if expiration < now_ms or (terminated is not None and terminated < now_ms):
                 organization_skus.remove_subscription_from_org(namespace_user.id, subscription_id)
                 continue
             for x in range(quantity):
@@ -972,7 +973,11 @@ class OrganizationRhSku(ApiResource):
                         subscription["subscription_id"]
                     )
                     now_ms = time.time() * 1000
-                    if subscription_details["expiration_date"] < now_ms:
+                    expired_at = subscription_details["expiration_date"]
+                    terminated_at = subscription_details["terminated_date"]
+                    if expired_at < now_ms or (
+                        terminated_at is not None and terminated_at < now_ms
+                    ):
                         model.organization_skus.remove_subscription_from_org(
                             organization.id, subscription["subscription_id"]
                         )

@@ -214,7 +214,12 @@ class RedHatSubscriptionApi(object):
 
             subscription_sku = info[0]["sku"]
             expiration_date = info[1]["activeEndDate"]
-            return {"sku": subscription_sku, "expiration_date": expiration_date}
+            terminated_date = info[0]["terminatedDate"]
+            return {
+                "sku": subscription_sku,
+                "expiration_date": expiration_date,
+                "terminated_date": terminated_date,
+            }
         except requests.exceptions.SSLError:
             raise requests.exceptions.SSLError
         except requests.exceptions.ReadTimeout:
@@ -312,6 +317,21 @@ TEST_USER = {
         "effectiveStartDate": 1707368400000,
         "effectiveEndDate": 3813177600000,
     },
+    "terminated_subscription": {
+        "id": 22222222,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1675957362000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1675957362000,
+        "installBaseStartDate": 1707368400000,
+        "installBaseEndDate": 1707368399000,
+        "webCustomerId": 123456,
+        "subscriptionNumber": "12399889",
+        "quantity": 1,
+        "effectiveStartDate": 1707368400000,
+        "effectiveEndDate": 3813177600000,
+    },
 }
 STRIPE_USER = {"account_number": 11111, "email": "stripe_user@test.com", "username": "stripe_user"}
 FREE_USER = {
@@ -361,11 +381,17 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
     def get_subscription_details(self, subscription_id):
         valid_ids = [subscription["id"] for subscription in TEST_USER["subscriptions"]]
         if subscription_id in valid_ids:
-            return {"sku": "MW02701", "expiration_date": 3813177600000}
+            return {"sku": "MW02701", "expiration_date": 3813177600000, "terminated_date": None}
         elif subscription_id == 80808080:
-            return {"sku": "MW02701", "expiration_date": 1645544830000}
+            return {"sku": "MW02701", "expiration_date": 1645544830000, "terminated_date": None}
         elif subscription_id == 87654321:
-            return {"sku": "MW00584MO", "expiration_date": 3813177600000}
+            return {"sku": "MW00584MO", "expiration_date": 3813177600000, "terminated_date": None}
+        elif subscription_id == 22222222:
+            return {
+                "sku": "MW00584MO",
+                "expiration_date": 3813177600000,
+                "terminated_date": 1645544830000,
+            }
         else:
             return None
 

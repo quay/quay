@@ -384,7 +384,11 @@ class OrgPrivateRepositories(ApiResource):
                     subscription_details = marketplace_subscriptions.get_subscription_details(
                         subscription["subscription_id"]
                     )
-                    if subscription_details["expiration_date"] < now_ms:
+                    expired_at = subscription_details["expiration_date"]
+                    terminated_at = subscription_details["terminated_date"]
+                    if expired_at < now_ms or (
+                        terminated_at is not None and terminated_at < now_ms
+                    ):
                         organization_skus.remove_subscription_from_org(
                             organization.id, subscription["subscription_id"]
                         )
