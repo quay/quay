@@ -30,7 +30,9 @@ class ManifestSubjectBackfillWorker(Worker):
 
     def _backfill_manifest_subject(self):
         try:
-            Manifest.select().where(Manifest.subject_backfilled == False).get()
+            Manifest.select().where(
+                Manifest.subject_backfilled == False | Manifest.subject_backfilled >> None
+            ).get()
         except Manifest.DoesNotExist:
             logger.debug("Manifest subject backfill worker has completed; skipping")
             return False

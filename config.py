@@ -769,7 +769,7 @@ class DefaultConfig(ImmutableConfig):
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_HELM_OCI_SUPPORT = True
 
-    FEATURE_REFERRERS_API = True
+    FEATURE_REFERRERS_API = False
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
@@ -786,7 +786,7 @@ class DefaultConfig(ImmutableConfig):
 
     # TEMP FEATURE: Backfill the sizes and subjects of manifests.
     FEATURE_MANIFEST_SIZE_BACKFILL = True
-    FEATURE_MANIFEST_SUBJECT_BACKFILL = True
+    FEATURE_MANIFEST_SUBJECT_BACKFILL = False
 
     # Repos created by push default to private visibility
     CREATE_PRIVATE_REPO_ON_PUSH = True

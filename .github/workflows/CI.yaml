@@ -259,6 +259,19 @@ jobs:
         name: cypress-videos
         path: web/cypress/videos
 
+    - name: Create report
+      run: |
+        mkdir -p .logs/
+        docker logs quay-quay >.logs/quay.log 2>&1 || true
+      if: always()
+
+    - name: Upload Quay logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: logs
+        path: .logs/
+      if: always()
+
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-20.04

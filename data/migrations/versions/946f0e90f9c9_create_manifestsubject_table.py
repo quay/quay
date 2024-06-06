@@ -25,7 +25,7 @@ def upgrade(op, tables, tester):
         op.add_column("manifest", sa.Column("subject", sa.String(length=255), nullable=True))
 
     if not "subject_backfilled" in [c["name"] for c in manifest_columns]:
-        op.add_column("manifest", sa.Column("subject_backfilled", sa.Boolean(), nullable=False))
+        op.add_column("manifest", sa.Column("subject_backfilled", sa.Boolean()))
 
     if not "manifest_repository_id_subject" in [i["name"] for i in manifest_indexes]:
         op.create_index(
