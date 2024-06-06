@@ -508,11 +508,32 @@ def delete_autoprune_task(task):
         )
 
 
-def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit):
-    """
-    Prunes tags in the given repository based on the number of tags specified in the policy config.
-    """
+def prune_tags(tags, repo, namespace):
+    for tag in tags:
+        try:
+            tag = oci.tag.delete_tag(repo.id, tag.name)
+            if tag is not None:
+                log.log_action(
+                    "autoprune_tag_delete",
+                    namespace.username,
+                    repository=repo,
+                    metadata={
+                        "performer": "autoprune worker",
+                        "namespace": namespace.username,
+                        "repo": repo.name,
+                        "tag": tag.name,
+                    },
+                )
+        except Exception as err:
+            raise Exception(
+                f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
+            )
 
+
+def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_limit=100):
+    """
+    Fetch tags in the given repository based on the number of tags specified in the policy config.
+    """
     policy_method = policy_config.get("method", None)
 
     if policy_method != AutoPruneMethod.NUMBER_OF_TAGS.value:
@@ -521,41 +542,30 @@ def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit)
         )
 
     assert_valid_namespace_autoprune_policy(policy_config)
-
+    all_tags = []
+    page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo.id, int(policy_config["value"]), tag_page_limit
+            repo_id, int(policy_config["value"]), tag_page_limit, page
         )
         if len(tags) == 0:
             break
+        all_tags.extend(tags)
+        page += 1
 
-        for tag in tags:
-            try:
-                tag = oci.tag.delete_tag(repo.id, tag.name)
-                if tag is not None:
-                    log.log_action(
-                        "autoprune_tag_delete",
-                        namespace.username,
-                        repository=repo,
-                        metadata={
-                            "performer": "autoprune worker",
-                            "namespace": namespace.username,
-                            "repo": repo.name,
-                            "tag": tag.name,
-                        },
-                    )
-            except Exception as err:
-                raise Exception(
-                    f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
-                )
+    return all_tags
 
 
-def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=100):
+def prune_repo_by_number_of_tags(repo, policy_config, namespace, tag_page_limit):
+    tags = fetch_tags_expiring_by_tag_count_policy(repo.id, policy_config, tag_page_limit)
+    prune_tags(tags, repo, namespace)
+
+
+def fetch_tags_expiring_by_creation_date_policy(repo_id, policy_config, tag_page_limit=100):
     """
-    Prunes tags in the given repository based on the creation date specified in the policy config,
+    Fetch tags in the given repository based on the creation date specified in the policy config,
     where the value is a valid timedelta string. (e.g. 1d, 1w, 1m, 1y)
     """
-
     policy_method = policy_config.get("method", None)
 
     if policy_method != AutoPruneMethod.CREATION_DATE.value:
@@ -565,34 +575,23 @@ def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=1
 
     assert_valid_namespace_autoprune_policy(policy_config)
 
+    all_tags = []
     time_ms = int(convert_to_timedelta(policy_config["value"]).total_seconds() * 1000)
+    page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo.id, time_ms, tag_page_limit
+            repo_id, time_ms, tag_page_limit, page
         )
-
         if len(tags) == 0:
             break
+        all_tags.extend(tags)
+        page += 1
+    return all_tags
 
-        for tag in tags:
-            try:
-                tag = oci.tag.delete_tag(repo.id, tag.name)
-                if tag is not None:
-                    log.log_action(
-                        "autoprune_tag_delete",
-                        namespace.username,
-                        repository=repo,
-                        metadata={
-                            "performer": "autoprune worker",
-                            "namespace": namespace.username,
-                            "repo": repo.name,
-                            "tag": tag.name,
-                        },
-                    )
-            except Exception as err:
-                raise Exception(
-                    f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
-                )
+
+def prune_repo_by_creation_date(repo, policy_config, namespace, tag_page_limit=100):
+    tags = fetch_tags_expiring_by_creation_date_policy(repo.id, policy_config, tag_page_limit)
+    prune_tags(tags, repo, namespace)
 
 
 def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
@@ -637,7 +636,10 @@ def execute_policies_for_repo(
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
     try:
-        query = Repository.select(Repository.name, Repository.id,).where(
+        query = Repository.select(
+            Repository.name,
+            Repository.id,
+        ).where(
             Repository.state == RepositoryState.NORMAL,
             Repository.namespace_user == namespace_id,
         )
@@ -695,3 +697,51 @@ def execute_namespace_policies(
 
         if page_token is None:
             break
+
+
+def fetch_tags_for_repo_policies(policies, repo_id):
+    all_tags = []
+    for policy in policies:
+        if policy.method == AutoPruneMethod.NUMBER_OF_TAGS.value:
+            tags = fetch_tags_expiring_by_tag_count_policy(repo_id, policy.config)
+        elif policy.method == AutoPruneMethod.CREATION_DATE.value:
+            tags = fetch_tags_expiring_by_creation_date_policy(repo_id, policy.config)
+        if len(tags):
+            all_tags.extend(tags)
+    return all_tags
+
+
+def fetch_tags_for_namespace_policies(ns_policies, namespace_id):
+    page_token = None
+    all_tags = []
+    while True:
+        repos, page_token = get_paginated_repositories_for_namespace(namespace_id, page_token)
+        for repo in repos:
+
+            for ns_policy in ns_policies:
+                repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
+                repo_tags = fetch_tags_for_repo_policies(repo_policies, repo.id)
+                if len(repo_tags):
+                    all_tags.extend(repo_tags)
+
+                namespace_tags = fetch_tags_for_repo_policies([ns_policy], repo.id)
+                if len(namespace_tags):
+                    all_tags.extend(namespace_tags)
+        if page_token is None:
+            break
+
+    return all_tags
+
+
+def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id):
+    all_tags = []
+    repo_policies = get_repository_autoprune_policies_by_repo_id(repo_id)
+    repo_tags = fetch_tags_for_repo_policies(repo_policies, repo_id)
+    if len(repo_tags):
+        all_tags.extend(repo_tags)
+
+    namespace_policies = get_namespace_autoprune_policies_by_id(namespace_id)
+    namespace_tags = fetch_tags_for_namespace_policies(namespace_policies, namespace_id)
+    if len(namespace_tags):
+        all_tags.extend(namespace_tags)
+    return all_tags
