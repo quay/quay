@@ -93,3 +93,11 @@ def for_repository_manifest(repository_id, digest, cache_config):
     """
     cache_ttl = cache_config.get("repository_manifest_cache_ttl", "300s")
     return CacheKey("repository_manifest__%s_%s" % (repository_id, digest), cache_ttl)
+
+
+def for_manifest_referrers(repository_id, manifest_digest, cache_config):
+    """
+    Returns a cache key for listing a manifest's referrers
+    """
+    cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
+    return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)

@@ -140,6 +140,18 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False, allow_hid
         return None
 
 
+def lookup_manifest_referrers(repository_id, manifest_digest, config_media_type=None):
+    query = (
+        Manifest.select()
+        .where(Manifest.repository == repository_id)
+        .where(Manifest.subject == manifest_digest)
+    )
+    if config_media_type is not None:
+        query = query.where(Manifest.config_media_type == config_media_type)
+
+    return query
+
+
 @overload
 def create_manifest(
     repository_id: int,
@@ -175,9 +187,13 @@ def create_manifest(
             repository=repository_id,
             digest=manifest.digest,
             media_type=media_type,
-            manifest_bytes=manifest.bytes.as_encoded_str(),
+            manifest_bytes=manifest.bytes.as_encoded_str(),  # TODO(kleesc): Remove once fully on JSONB only
             config_media_type=manifest.config_media_type,
             layers_compressed_size=manifest.layers_compressed_size,
+            subject_backfilled=True,  # TODO(kleesc): Remove once backfill is done
+            subject=manifest.subject.digest
+            if manifest.subject
+            else None,  # TODO(kleesc): Remove once fully on JSONB only
         )
     except IntegrityError as e:
         # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
@@ -378,6 +394,7 @@ def _create_manifest(
                 create_temporary_tag_if_necessary(
                     manifest,
                     temp_tag_expiration_sec,
+                    skip_expiration=manifest_interface_instance.subject is not None,
                 )
 
         # Define the labels for the manifest (if any).

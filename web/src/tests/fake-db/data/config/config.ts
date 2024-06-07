@@ -69,6 +69,8 @@ const response = {
   },
   external_login: [],
   features: {
+    REFERRERS_API: false,
+    MANIFEST_SUBJECT_BACKFILL: false,
     SUPERUSERS_FULL_ACCESS: true,
     ACTION_LOG_ROTATION: false,
     ADVERTISE_V2: true,

@@ -125,22 +125,15 @@ class OCIManifest(ManifestInterface):
                     "type": "string",
                     "description": "Type of an artifact when the manifest is used for an artifact.",
                 },
-                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(
-                    ALLOWED_ARTIFACT_TYPES,
-                    ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
-                ),
+                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
                 OCI_MANIFEST_LAYERS_KEY: {
                     "type": "array",
                     "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
                     "items": get_descriptor_schema(
-                        OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES,
-                        ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
+                        OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
                     ),
                 },
-                OCI_MANIFEST_SUBJECT_KEY: get_descriptor_schema(
-                    [],
-                    ignore_unknown_mediatypes=True,
-                ),
+                OCI_MANIFEST_SUBJECT_KEY: get_descriptor_schema([]),
                 OCI_MANIFEST_ANNOTATIONS_KEY: {
                     "type": "object",
                     "description": "The annotations, if any, on this manifest",
@@ -156,14 +149,13 @@ class OCIManifest(ManifestInterface):
 
         return METASCHEMA
 
-    def __init__(self, manifest_bytes, validate=False, ignore_unknown_mediatypes=False):
+    def __init__(self, manifest_bytes, validate=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._payload = manifest_bytes
 
         self._filesystem_layers = None
         self._cached_built_config = None
-        self._ignore_unknown_mediatypes = ignore_unknown_mediatypes
 
         try:
             self._parsed = json.loads(self._payload.as_unicode())
@@ -538,7 +530,9 @@ class OCIManifestBuilder(object):
 
     def __init__(self):
         self.config = None
+        self.subject = None
         self.filesystem_layers = []
+        self.annotations = {}
 
     def clone(self):
         cloned = OCIManifestBuilder()
@@ -557,6 +551,15 @@ class OCIManifestBuilder(object):
         Sets the digest and size of the configuration layer.
         """
         self.config = OCIManifestConfig(size=config_size, digest=config_digest)
+
+    def set_subject(self, digest, size, mediatype):
+        self.subject = OCIManifestDescriptor(digest=digest, size=size, mediatype=mediatype)
+
+    def add_annotation(self, key, value):
+        """
+        Adds an annotation to the index
+        """
+        self.annotations[key] = value
 
     def add_layer(self, digest, size, urls=None):
         """
@@ -606,6 +609,16 @@ class OCIManifestBuilder(object):
             # Layers
             OCI_MANIFEST_LAYERS_KEY: [_build_layer(layer) for layer in self.filesystem_layers],
         }
+
+        if self.annotations:
+            manifest_dict[OCI_MANIFEST_ANNOTATIONS_KEY] = self.annotations
+
+        if self.subject:
+            manifest_dict[OCI_MANIFEST_SUBJECT_KEY] = {
+                OCI_MANIFEST_MEDIATYPE_KEY: self.subject.mediatype,
+                OCI_MANIFEST_SIZE_KEY: self.subject.size,
+                OCI_MANIFEST_DIGEST_KEY: self.subject.digest,
+            }
 
         json_str = json.dumps(manifest_dict, ensure_ascii=ensure_ascii, indent=3)
         return OCIManifest(Bytes.for_string_or_unicode(json_str))

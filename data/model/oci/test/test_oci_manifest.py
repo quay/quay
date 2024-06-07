@@ -1,5 +1,6 @@
 import json
-from test.fixtures import *
+import random
+import string
 
 import pytest
 from playhouse.test_utils import assert_query_count
@@ -19,6 +20,7 @@ from data.model.oci.manifest import (
     CreateManifestException,
     get_or_create_manifest,
     lookup_manifest,
+    lookup_manifest_referrers,
 )
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.oci.tag import filter_to_alive_tags, get_tag
@@ -31,8 +33,11 @@ from image.docker.schema2.manifest import (
     DockerSchema2Manifest,
     DockerSchema2ManifestBuilder,
 )
+from image.oci.config import OCIConfig
+from image.oci.manifest import OCIManifestBuilder
 from image.shared.interfaces import ContentRetriever
 from image.shared.schemas import parse_manifest_from_bytes
+from test.fixtures import *
 from util.bytes import Bytes
 
 
@@ -594,3 +599,73 @@ def test_create_manifest_cannot_load_config_blob(initialized_db):
         get_or_create_manifest(
             repository, manifest, storage, retriever=broken_retriever, raise_on_error=True
         )
+
+
+def test_get_or_create_manifest_with_subject(initialized_db):
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    repository = create_repository("devtable", "newrepo", None)
+
+    # Manifest 1
+    # Add a blob containing the config.
+    config1 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config1_json = json.dumps(config1)
+    _, config1_digest = _populate_blob(config1_json)
+
+    # Add a blob of random data.
+    random_data1 = generate_random_data_for_layer()
+    _, random_digest1 = _populate_blob(random_data1)
+
+    oci_builder1 = OCIManifestBuilder()
+    oci_builder1.set_config_digest(config1_digest, len(config1_json.encode("utf-8")))
+    oci_builder1.add_layer(random_digest1, len(random_data1.encode("utf-8")))
+    oci_manifest1 = oci_builder1.build()
+
+    # Manifest 2
+    # Add a blob containing the config.
+    config2 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config2_json = json.dumps(config2)
+    _, config2_digest = _populate_blob(config2_json)
+
+    # Add a blob of random data.
+    random_data2 = generate_random_data_for_layer()
+    _, random_digest2 = _populate_blob(random_data1)
+
+    oci_builder2 = OCIManifestBuilder()
+    oci_builder2.set_config_digest(config2_digest, len(config2_json.encode("utf-8")))
+    oci_builder2.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    oci_builder2.set_subject(
+        oci_manifest1.digest, len(oci_manifest1.bytes.as_encoded_str()), oci_manifest1.media_type
+    )
+    oci_manifest2 = oci_builder2.build()
+
+    manifest1_created = get_or_create_manifest(repository, oci_manifest1, storage)
+    assert manifest1_created
+
+    manifest2_created = get_or_create_manifest(repository, oci_manifest2, storage)
+    assert manifest2_created
+
+    assert (
+        oci_manifest2.subject
+        and oci_manifest2.subject.digest == oci_manifest1.digest
+        and oci_manifest2.subject.size == len(oci_manifest1.bytes.as_encoded_str())
+        and oci_manifest2.subject.mediatype == oci_manifest1.media_type
+    )
+
+    referrers = lookup_manifest_referrers(repository.id, oci_manifest1.digest)
+    assert referrers and len(list(referrers)) == 1
+
+    referrer = referrers[0]
+    assert referrer.digest == oci_manifest2.digest

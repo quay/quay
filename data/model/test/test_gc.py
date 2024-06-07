@@ -1,6 +1,7 @@
 import hashlib
 import json
 import random
+import string
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
@@ -625,3 +626,80 @@ def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
             assert not storage.exists(
                 {preferred}, storage.blob_path(removed_blob_from_storage.content_checksum)
             )
+
+
+def test_delete_manifests_with_subject(initialized_db):
+    def generate_random_data_for_layer():
+        charset = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        return "".join(random.choice(charset) for _ in range(random.randrange(1, 20)))
+
+    repository = create_repository("devtable", "newrepo")
+
+    config1 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config1_json = json.dumps(config1)
+    _, config1_digest = _populate_blob(repository, config1_json.encode("ascii"))
+
+    # Add a blob of random data.
+    random_data1 = generate_random_data_for_layer()
+    _, random_digest1 = _populate_blob(repository, random_data1.encode("ascii"))
+
+    oci_builder1 = OCIManifestBuilder()
+    oci_builder1.set_config_digest(config1_digest, len(config1_json.encode("utf-8")))
+    oci_builder1.add_layer(random_digest1, len(random_data1.encode("utf-8")))
+    oci_manifest1 = oci_builder1.build()
+
+    # Manifest 2
+    # Add a blob containing the config.
+    config2 = {
+        "os": "linux",
+        "architecture": "amd64",
+        "rootfs": {"type": "layers", "diff_ids": []},
+        "history": [],
+    }
+    config2_json = json.dumps(config2)
+    _, config2_digest = _populate_blob(repository, config2_json.encode("ascii"))
+
+    # Add a blob of random data.
+    random_data2 = generate_random_data_for_layer()
+    _, random_digest2 = _populate_blob(repository, random_data1.encode("ascii"))
+
+    oci_builder2 = OCIManifestBuilder()
+    oci_builder2.set_config_digest(config2_digest, len(config2_json.encode("utf-8")))
+    oci_builder2.add_layer(random_digest2, len(random_data2.encode("utf-8")))
+    oci_builder2.set_subject(
+        oci_manifest1.digest, len(oci_manifest1.bytes.as_encoded_str()), oci_manifest1.media_type
+    )
+    oci_manifest2 = oci_builder2.build()
+
+    manifest1_created = model.oci.manifest.get_or_create_manifest(
+        repository, oci_manifest1, storage
+    )
+    assert manifest1_created
+
+    # Delete temp tags for GC check
+    Tag.delete().where(Tag.manifest == manifest1_created.manifest.id).execute()
+
+    # Subject does not have referrers yet
+    assert not model.gc._check_manifest_used(manifest1_created.manifest.id)
+
+    manifest2_created = model.oci.manifest.get_or_create_manifest(
+        repository, oci_manifest2, storage
+    )
+    assert manifest2_created
+
+    # Check that the "temp" tag won't expire for the referrer
+    tag2 = Tag.select().where(Tag.manifest == manifest2_created.manifest.id).get()
+    assert tag2.lifetime_end_ms is None
+
+    assert model.gc._check_manifest_used(manifest1_created.manifest.id)
+
+    # The referrer should also be considered in use even without a tag,
+    # otherwise GC would delete a valid manifest referrer.
+    # These are kept alive with a "non-temporary" hidden tag.
+    # In order to clean these up, they need to be manually deleted for now.
+    assert model.gc._check_manifest_used(manifest2_created.manifest.id)

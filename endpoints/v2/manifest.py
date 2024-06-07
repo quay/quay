@@ -359,7 +359,6 @@ def _parse_manifest(content_type, request_data):
         return parse_manifest_from_bytes(
             Bytes.for_string_or_unicode(request_data),
             content_type,
-            ignore_unknown_mediatypes=app.config.get("IGNORE_UNKNOWN_MEDIATYPES"),
         )
     except ManifestException as me:
         logger.exception("failed to parse manifest when writing by tagname")

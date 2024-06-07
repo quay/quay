@@ -251,4 +251,4 @@ def v2_support_enabled():
     return response
 
 
-from endpoints.v2 import blob, catalog, manifest, tag, v2auth
+from endpoints.v2 import blob, catalog, manifest, referrers, tag, v2auth

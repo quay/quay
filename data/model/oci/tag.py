@@ -326,14 +326,18 @@ def get_expired_tag(repository_id, tag_name):
         return None
 
 
-def create_temporary_tag_if_necessary(manifest, expiration_sec):
+def create_temporary_tag_if_necessary(manifest, expiration_sec, skip_expiration=False):
     """
     Creates a temporary tag pointing to the given manifest, with the given expiration in seconds,
     unless there is an existing tag that will keep the manifest around.
     """
     tag_name = "$temp-%s" % str(uuid.uuid4())
     now_ms = get_epoch_timestamp_ms()
-    end_ms = now_ms + (expiration_sec * 1000)
+    if skip_expiration:
+        # Skip expiration for hidden tags used for OCI artifacts referring to a subject manifest
+        end_ms = None
+    else:
+        end_ms = now_ms + (expiration_sec * 1000)
 
     # Check if there is an existing tag on the manifest that won't expire within the
     # timeframe. If so, no need for a temporary tag.
