@@ -5,6 +5,12 @@ from flask_principal import AnonymousIdentity
 from mock import patch
 
 import features
+from data.model.autoprune import create_repository_autoprune_policy
+from data.model.namespacequota import (
+    get_namespace_quota_limit_list,
+    get_namespace_quota_list,
+)
+from data.model.user import get_user
 from endpoints.api import api
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
@@ -6594,3 +6600,198 @@ def test_team_sync_security(is_superuser, allow_nonsuperuser, method, expected, 
                 conduct_api_call(
                     cl, OrganizationTeamSyncing, method, TEAM_PARAMS, {}, expected_status
                 )
+
+
+@pytest.mark.parametrize(
+    "resource, method, query_params, body_params, expected",
+    [
+        (
+            OrgLogs,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            OrgAggregateLogs,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            ExportOrgLogs,
+            "POST",
+            {"orgname": "neworg"},
+            {},
+            200,
+        ),
+        (
+            Organization,
+            "PUT",
+            {"orgname": "neworg"},
+            {"email": "updateemail@bogus.com"},
+            200,
+        ),
+        (
+            Organization,
+            "DELETE",
+            {"orgname": "neworg"},
+            None,
+            204,
+        ),
+        (
+            OrganizationMember,
+            "GET",
+            {"orgname": "neworg", "membername": "newuser"},
+            None,
+            200,
+        ),
+        (
+            OrganizationMember,
+            "DELETE",
+            {"orgname": "neworg", "membername": "randomuser"},
+            None,
+            204,
+        ),
+        (
+            OrganizationQuotaLimitList,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            OrganizationQuotaLimit,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            RepositoryList,
+            "POST",
+            None,
+            {
+                "namespace": "neworg",
+                "repository": "newrepo",
+                "visibility": "public",
+                "description": "",
+                "repo_kind": "image",
+            },
+            201,
+        ),
+        (
+            TeamPermissions,
+            "GET",
+            {"orgname": "neworg", "teamname": "readers"},
+            None,
+            200,
+        ),
+        (
+            TeamMember,
+            "DELETE",
+            {"orgname": "neworg", "teamname": "readers", "membername": "randomuser"},
+            None,
+            204,
+        ),
+        (
+            TeamMemberList,
+            "GET",
+            {"orgname": "neworg", "teamname": "readers"},
+            None,
+            200,
+        ),
+        (
+            PermissionPrototypeList,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            RepositoryAutoPrunePolicies,
+            "GET",
+            {"repository": "neworg/repo"},
+            None,
+            200,
+        ),
+        (
+            RepositoryAutoPrunePolicy,
+            "GET",
+            {"repository": "neworg/repo"},
+            None,
+            200,
+        ),
+        (
+            RepositoryAutoPrunePolicies,
+            "POST",
+            {"repository": "neworg/repo"},
+            {"method": "number_of_tags", "value": 10},
+            201,
+        ),
+        (
+            RepositoryAutoPrunePolicy,
+            "PUT",
+            {"repository": "neworg/repo"},
+            {"method": "number_of_tags", "value": 15},
+            204,
+        ),
+        (
+            RepositoryAutoPrunePolicy,
+            "DELETE",
+            {"repository": "neworg/repo"},
+            None,
+            200,
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "enabled",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_superuser_full_access_security(
+    resource, method, query_params, body_params, expected, enabled, app
+):
+    setup_org()
+    if resource == OrganizationQuotaLimitList or resource == OrganizationQuotaLimit:
+        quota_list = get_namespace_quota_list(query_params.get("orgname"))
+        query_params["quota_id"] = quota_list[0].id
+        quota_limit = get_namespace_quota_limit_list(quota_list[0])
+        query_params["limit_id"] = quota_limit[0].id
+
+    if resource == RepositoryAutoPrunePolicy:
+        policy = create_repository_autoprune_policy(
+            query_params.get("repository").split("/")[0],
+            query_params.get("repository").split("/")[1],
+            {"method": "number_of_tags", "value": 10},
+            create_task=True,
+        )
+        query_params["policy_uuid"] = policy.uuid
+
+    if not enabled:
+        expected = 403
+
+    with toggle_feature("SUPERUSERS_FULL_ACCESS", enabled):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, resource, method, query_params, body_params, expected)
+
+
+def setup_org():
+    newuser = model.user.create_user("newuser", "password", "newuser+test@devtable.com")
+    newuser.verified = True
+    newuser.save()
+    org = model.organization.create_organization("neworg", "newuser@devtable.com", newuser)
+    org.save()
+
+    team = model.team.create_team("readers", org, "member", "Readers of neworg.")
+    random_user = get_user("randomuser")
+    model.team.add_user_to_team(random_user, team)
+
+    model.repository.create_repository(org.username, "repo", newuser)
+
+    neworg_quota = model.namespacequota.create_namespace_quota(org, 3000)
+    model.namespacequota.create_namespace_quota_limit(neworg_quota, "warning", 50)
