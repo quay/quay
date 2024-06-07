@@ -418,6 +418,12 @@ class DockerSchema1Manifest(ManifestInterface):
                 internal_layer=layer,
             )
 
+    def get_created_date(self, content_retriever):
+        """
+        Returns the datetime when this manifest was created, or None if not applicable.
+        """
+        return self.created_datetime
+
     @property
     def is_image_manifest(self):
         return True

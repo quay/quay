@@ -4,6 +4,7 @@ import json
 import os
 
 import pytest
+from dateutil.parser import parse as parse_date
 
 from app import docker_v2_signing_key
 from image.docker.schema1 import (
@@ -130,6 +131,7 @@ def test_valid_manifest():
                 "Labels": {},
             },
             "rootfs": {"type": "layers", "diff_ids": []},
+            "created": "2018-04-03T18:37:09.284840891Z",
             "history": [
                 {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "foo"},
                 {"created": "2018-04-12T18:37:09.284840891Z", "created_by": "bar"},
@@ -166,6 +168,9 @@ def test_valid_manifest():
         assert manifest_image_layers[index].blob_digest == str(
             manifest.filesystem_layers[index].digest
         )
+
+    manifest_created = manifest.get_created_date(retriever)
+    assert manifest_created == parse_date("2018-04-03T18:37:09.284840891Z")
 
 
 def test_valid_remote_manifest():

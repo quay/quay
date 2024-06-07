@@ -265,6 +265,9 @@ class DockerSchema2Manifest(ManifestInterface):
     def get_manifest_labels(self, content_retriever):
         return self._get_built_config(content_retriever).labels
 
+    def get_created_date(self, content_retriever):
+        return self._get_built_config(content_retriever).created
+
     def get_layers(self, content_retriever):
         """
         Returns the layers of this manifest, from base to leaf or None if this kind of manifest does

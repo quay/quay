@@ -1,8 +1,10 @@
 import datetime
+import hashlib
 import json
 from contextlib import nullcontext as does_not_raise
 
 import pytest
+from dateutil.parser import parse as parse_date
 from dateutil.tz import tzutc
 
 from image.oci import (
@@ -14,62 +16,59 @@ from image.oci import (
 from image.oci.config import LayerHistory, MalformedConfig, OCIConfig
 from util.bytes import Bytes
 
-SAMPLE_CONFIG = """{
-    "created": "2015-10-31T22:22:56.015925234Z",
-    "author": "Alyssa P. Hacker <alyspdev@example.com>",
-    "architecture": "amd64",
-    "os": "linux",
-    "config": {
-        "User": "alice",
-        "ExposedPorts": {
-            "8080/tcp": {}
+CONFIG_BYTES = json.dumps(
+    {
+        "created": "2015-10-31T22:22:56.015925234Z",
+        "author": "Alyssa P. Hacker <alyspdev@example.com>",
+        "architecture": "amd64",
+        "os": "linux",
+        "config": {
+            "User": "alice",
+            "ExposedPorts": {"8080/tcp": {}},
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "FOO=oci_is_a",
+                "BAR=well_written_spec",
+            ],
+            "Entrypoint": ["/bin/my-app-binary"],
+            "Cmd": None,
+            "Volumes": {"/var/job-result-data": {}, "/var/log/my-app-logs": {}},
+            "WorkingDir": "/home/alice",
+            "Labels": {
+                "com.example.project.git.url": "https://example.com/project.git",
+                "com.example.project.git.commit": "45a939b2999782a3f005621a8d0f29aa387e1d6b",
+            },
         },
-        "Env": [
-            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "FOO=oci_is_a",
-            "BAR=well_written_spec"
-        ],
-        "Entrypoint": [
-            "/bin/my-app-binary"
-        ],
-        "Cmd": null,
-        "Volumes": {
-            "/var/job-result-data": {},
-            "/var/log/my-app-logs": {}
+        "rootfs": {
+            "diff_ids": [
+                "sha256:c6f988f4874bb0add23a778f753c65efe992244e148a1d2ec2a8b664fb66bbd1",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+            ],
+            "type": "layers",
         },
-        "WorkingDir": "/home/alice",
-        "Labels": {
-            "com.example.project.git.url": "https://example.com/project.git",
-            "com.example.project.git.commit": "45a939b2999782a3f005621a8d0f29aa387e1d6b"
-        }
-    },
-    "rootfs": {
-      "diff_ids": [
-        "sha256:c6f988f4874bb0add23a778f753c65efe992244e148a1d2ec2a8b664fb66bbd1",
-        "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
-      ],
-      "type": "layers"
-    },
-    "history": [
-      {
-        "created": "2015-10-31T22:22:54.690851953Z",
-        "created_by": "/bin/sh -c #(nop) ADD file:a3bc1e842b69636f9df5256c49c5374fb4eef1e281fe3f282c65fb853ee171c5 in /"
-      },
-      {
-        "created": "2015-10-31T22:22:55.613815829Z",
-        "created_by": "/bin/sh -c #(nop) CMD [\\"sh\\"]",
-        "empty_layer": true
-      }
-    ]
-}"""
+        "history": [
+            {
+                "created": "2015-10-31T22:22:54.690851953Z",
+                "created_by": "/bin/sh -c #(nop) ADD file:a3bc1e842b69636f9df5256c49c5374fb4eef1e281fe3f282c65fb853ee171c5 in /",
+            },
+            {
+                "created": "2015-10-31T22:22:55.613815829Z",
+                "created_by": '/bin/sh -c #(nop) CMD ["sh"]',
+                "empty_layer": True,
+            },
+        ],
+    }
+).encode("utf-8")
+CONFIG_SIZE = len(CONFIG_BYTES)
+CONFIG_DIGEST = "sha256:" + hashlib.sha256(CONFIG_BYTES).hexdigest()
 
 
 def test_parse_basic_config():
-    config = OCIConfig(Bytes.for_string_or_unicode(SAMPLE_CONFIG))
-    assert (
-        config.digest == "sha256:c692ed232a0d8a30ba61f3f90e6e3113af36932e0e0ee9d88626f84fe1e348c2"
-    )
-    assert config.size == 1483
+    config = OCIConfig(Bytes.for_string_or_unicode(CONFIG_BYTES))
+    assert config.digest == CONFIG_DIGEST
+    assert config.size == CONFIG_SIZE
+
+    assert config.created == parse_date("2015-10-31T22:22:56.015925234Z")
 
     history = list(config.history)
     assert config.has_empty_layer
@@ -106,13 +105,13 @@ def test_parse_basic_config():
 
 
 def test_config_additional_fields():
-    valid_config = json.loads(SAMPLE_CONFIG)
+    valid_config = json.loads(CONFIG_BYTES)
     valid_config["additional_field"] = "boop"
     OCIConfig(Bytes.for_string_or_unicode(json.dumps(valid_config)))
 
 
 def test_config_missing_required():
-    valid_config = json.loads(SAMPLE_CONFIG)
+    valid_config = json.loads(CONFIG_BYTES)
     valid_config.pop("os")
 
     with pytest.raises(MalformedConfig):

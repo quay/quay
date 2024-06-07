@@ -694,6 +694,46 @@ def test_create_manifest_and_retarget_tag(registry_model):
     assert another_manifest.get_parsed_manifest().manifest_dict == sample_manifest.manifest_dict
 
 
+def test_create_manifest_and_retarget_tag_with_created_date(registry_model):
+
+    created_time = datetime(2024, 4, 3, 22, 0, 18)
+
+    CONFIG_LAYER_JSON = json.dumps(
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+            "created": created_time.isoformat(),
+        }
+    )
+
+    # Create the blobs and manifest object
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    builder = DockerSchema2ManifestBuilder()
+    _, config_digest = _populate_blob_with_content(
+        CONFIG_LAYER_JSON, "devtable", repository_ref.name
+    )
+    builder.set_config_digest(config_digest, len(CONFIG_LAYER_JSON.encode("utf-8")))
+    blob_content = "blobcontent"
+    _, blob_digest = _populate_blob_with_content(blob_content, "devtable", repository_ref.name)
+    builder.add_layer(blob_digest, len(blob_content))
+    manifest = builder.build()
+    assert manifest is not None
+
+    registry_model.create_manifest_and_retarget_tag(
+        repository_ref,
+        manifest,
+        "newtag",
+        storage,
+    )
+
+    manifest = registry_model.get_manifest_for_tag(
+        registry_model.get_repo_tag(repository_ref, "newtag")
+    )
+
+    assert manifest.created == created_time.timestamp()
+
+
 def test_create_manifest_and_retarget_tag_with_quota(registry_model):
     CONFIG_LAYER_JSON = json.dumps(
         {
