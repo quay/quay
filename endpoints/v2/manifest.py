@@ -25,6 +25,7 @@ from endpoints.api import (
 )
 from endpoints.decorators import (
     anon_protect,
+    check_pushes_disabled,
     check_readonly,
     disallow_for_account_recovery_mode,
     inject_registry_model,
@@ -273,6 +274,7 @@ def _doesnt_accept_schema_v1():
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
@@ -297,6 +299,7 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:
@@ -373,6 +376,7 @@ def _parse_manifest(content_type, request_data):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     """
     Delete the manifest specified by the digest.

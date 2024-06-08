@@ -79,6 +79,11 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Pushes to the registry are disabled; skipping startup")
+        while True:
+            time.sleep(100000)
+
     GlobalLock.configure(app.config)
     logger.debug("Starting repository GC worker")
     worker = RepositoryGCWorker(

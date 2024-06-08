@@ -879,3 +879,7 @@ class DefaultConfig(ImmutableConfig):
 
     # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
     ROBOTS_WHITELIST: Optional[List[str]] = []
+
+    # Disable pushes while allowing other registry operations.
+    # Defaults to "False".
+    DISABLE_PUSHES = False
