@@ -98,9 +98,6 @@ def run_migrations_online():
 
     In this scenario we need to create an Engine and associate a connection with the context.
     """
-    # if isinstance(db.obj, SqliteDatabase) and "DB_URI" not in os.environ:
-    #     logger.info("Skipping Sqlite migration!")
-    #     return
 
     engine = get_engine()
     connection = engine.connect()
