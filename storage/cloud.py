@@ -1034,6 +1034,7 @@ class RadosGWStorage(_CloudStorage):
         access_key,
         secret_key,
         bucket_name,
+        region_name=None,
         port=None,
         maximum_chunk_size_mb=None,
         server_side_assembly=True,
@@ -1045,6 +1046,7 @@ class RadosGWStorage(_CloudStorage):
                 connect_timeout=600 if not server_side_assembly else 60,
                 read_timeout=600 if not server_side_assembly else 60,
             ),
+            "region_name": region_name,
         }
 
         super(RadosGWStorage, self).__init__(
