@@ -20,6 +20,7 @@ import {NotificationMethod} from 'src/hooks/UseNotificationMethods';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
 import {isValidEmail} from 'src/libs/utils';
 import {fetchAuthorizedEmail} from 'src/resources/AuthorizedEmailResource';
+import {NotificationEventConfig} from 'src/hooks/UseEvents';
 
 export default function CreateEmailNotification(
   props: CreateEmailNotification,
@@ -68,7 +69,7 @@ export default function CreateEmailNotification(
           email: email,
         },
         event: props.event?.type,
-        event_config: {},
+        event_config: props.eventConfig,
         method: props.method?.type,
         title: title,
       });
@@ -103,7 +104,7 @@ export default function CreateEmailNotification(
           email: email,
         },
         event: props.event?.type,
-        event_config: {},
+        event_config: props.eventConfig,
         method: props.method?.type,
         title: title,
       });
@@ -223,6 +224,7 @@ interface CreateEmailNotification {
   repo: string;
   event: NotificationEvent;
   method: NotificationMethod;
+  eventConfig: NotificationEventConfig;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

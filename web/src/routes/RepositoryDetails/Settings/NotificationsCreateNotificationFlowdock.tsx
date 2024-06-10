@@ -8,6 +8,7 @@ import {
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
+import {NotificationEventConfig} from 'src/hooks/UseEvents';
 
 export default function CreateFlowdockNotification(
   props: CreateFlowdockNotification,
@@ -30,7 +31,7 @@ export default function CreateFlowdockNotification(
         flow_api_token: apiTopken,
       },
       event: props.event?.type,
-      event_config: {},
+      event_config: props.eventConfig,
       method: props.method?.type,
       title: title,
     });
@@ -89,6 +90,7 @@ interface CreateFlowdockNotification {
   repo: string;
   event: NotificationEvent;
   method: NotificationMethod;
+  eventConfig: NotificationEventConfig;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }
