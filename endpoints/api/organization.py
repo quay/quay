@@ -263,7 +263,7 @@ class Organization(ApiResource):
         Change the details for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -330,7 +330,7 @@ class Organization(ApiResource):
         Deletes the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -526,7 +526,7 @@ class OrganizationMember(ApiResource):
         Retrieves the details of a member of the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             # Lookup the user.
             member = model.user.get_user(membername)
             if not member:
@@ -576,7 +576,7 @@ class OrganizationMember(ApiResource):
         it from all teams in the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             # Lookup the user.
             user = model.user.get_nonrobot_user(membername)
             if not user:
