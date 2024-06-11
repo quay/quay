@@ -401,7 +401,7 @@ require_user_admin = require_user_permission(UserAdminPermission, scopes.ADMIN_U
 
 
 def allow_if_superuser():
-    return app.config.get("FEATURE_SUPERUSERS_FULL_ACCESS", False) and SuperUserPermission().can()
+    return features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
 
 
 def verify_not_prod(func):
