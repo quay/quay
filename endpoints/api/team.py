@@ -355,7 +355,7 @@ class TeamMemberList(ApiResource):
         view_permission = ViewTeamPermission(orgname, teamname)
         edit_permission = AdministerOrganizationPermission(orgname)
 
-        if view_permission.can():
+        if view_permission.can() or allow_if_superuser():
             team = None
             try:
                 team = model.team.get_organization_team(orgname, teamname)
@@ -460,7 +460,7 @@ class TeamMember(ApiResource):
         If the user is merely invited to join the team, then the invite is removed instead.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             # Remote the user from the team.
             invoking_user = get_authenticated_user().username
 
@@ -575,7 +575,7 @@ class TeamPermissions(ApiResource):
         Returns the list of repository permissions for the org's team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 team = model.team.get_organization_team(orgname, teamname)
             except model.InvalidTeamException:
