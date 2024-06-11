@@ -1,7 +1,6 @@
 import itertools
 import logging
 import urllib
-
 from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
