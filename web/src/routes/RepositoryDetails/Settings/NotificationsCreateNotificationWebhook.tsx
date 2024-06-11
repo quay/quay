@@ -36,6 +36,7 @@ export default function CreateWebhookNotification(
     props.method != undefined &&
     props.event != undefined &&
     url != '' &&
+    props.isValidateConfig() &&
     isValidURL(url);
 
   const createNotification = async () => {
@@ -118,6 +119,7 @@ interface CreateWebhookNotificationProps {
   event: NotificationEvent;
   method: NotificationMethod;
   eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

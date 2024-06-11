@@ -23,7 +23,10 @@ export default function CreateFlowdockNotification(
   } = useUpdateNotifications(props.org, props.repo);
 
   const isFormComplete =
-    props.method != undefined && props.event != undefined && apiTopken != '';
+    props.method != undefined &&
+    props.event != undefined &&
+    apiTopken != '' &&
+    props.isValidateConfig();
 
   const createNotification = async () => {
     create({
@@ -91,6 +94,7 @@ interface CreateFlowdockNotification {
   event: NotificationEvent;
   method: NotificationMethod;
   eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }
