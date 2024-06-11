@@ -247,7 +247,7 @@ class VulnerabilityFoundEvent(NotificationEvent):
             return msg % (
                 event_data[vuln_key][priority_key],
                 event_data["repository"],
-                len(event_data["tags"]),
+                len(event_data.get("tags")),
             )
 
 
