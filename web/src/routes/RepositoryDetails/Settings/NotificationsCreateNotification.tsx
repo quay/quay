@@ -44,6 +44,13 @@ export default function CreateNotification(props: CreateNotificationProps) {
   const {notificationMethods} = useNotificationMethods();
   const [error, setError] = useState<string>('');
 
+  const isValidateConfig = () => {
+    if (event?.type == NotificationEventType.imageExpiry) {
+      return eventConfig?.days != undefined;
+    }
+    return true;
+  };
+
   return (
     <>
       <Title headingLevel="h3">Create notification</Title>
@@ -133,6 +140,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             event={event}
             method={method}
             eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -146,6 +154,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             event={event}
             method={method}
             eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -157,6 +166,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             event={event}
             method={method}
             eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -168,6 +178,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             event={event}
             method={method}
             eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -179,6 +190,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             event={event}
             method={method}
             eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -190,6 +202,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
             event={event}
             method={method}
             eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />

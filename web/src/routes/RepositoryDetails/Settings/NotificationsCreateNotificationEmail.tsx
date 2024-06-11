@@ -52,6 +52,7 @@ export default function CreateEmailNotification(
     props.event != undefined &&
     email != undefined &&
     email != '' &&
+    props.isValidateConfig() &&
     isValidEmail(email);
 
   useEffect(() => {
@@ -225,6 +226,7 @@ interface CreateEmailNotification {
   event: NotificationEvent;
   method: NotificationMethod;
   eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

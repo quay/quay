@@ -25,6 +25,7 @@ export default function CreateQuayNotification(props: CreateQuayNotification) {
   const isFormComplete =
     props.method != undefined &&
     props.event != undefined &&
+    props.isValidateConfig() &&
     selectedEntity != null;
 
   const createNotification = async () => {
@@ -92,6 +93,7 @@ interface CreateQuayNotification {
   event: NotificationEvent;
   method: NotificationMethod;
   eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

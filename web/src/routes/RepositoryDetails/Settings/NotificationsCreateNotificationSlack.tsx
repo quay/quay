@@ -36,6 +36,7 @@ export default function CreateSlackNotification(
     props.method != undefined &&
     props.event != undefined &&
     url != '' &&
+    props.isValidateConfig() &&
     isValidWebhookURL(url);
 
   const createNotification = async () => {
@@ -111,6 +112,7 @@ interface CreateSlackNotificationProps {
   event: NotificationEvent;
   method: NotificationMethod;
   eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

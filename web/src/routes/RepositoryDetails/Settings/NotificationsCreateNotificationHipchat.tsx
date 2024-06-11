@@ -50,6 +50,7 @@ export default function CreateHipchatNotification(
     props.event != undefined &&
     token != '' &&
     roomId != '' &&
+    props.isValidateConfig() &&
     isValidRoomId(roomId);
 
   useEffect(() => {
@@ -124,6 +125,7 @@ interface CreateHipchatNotification {
   event: NotificationEvent;
   method: NotificationMethod;
   eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }
