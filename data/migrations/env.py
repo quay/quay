@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Alembic's configuration
 config = context.config
 
+assert config.config_file_name is not None, "Alembic config file name must be set"
 logging.config.fileConfig(config.config_file_name)
 
 # Alembic is designed to be used with SQL Alchemy. These steps convert the schema as defined by the
@@ -85,7 +86,12 @@ def run_migrations_offline():
     """
     db_url = get_db_url()
     config.set_main_option("sqlalchemy.url", db_url)  # TODO: Is this required?
-    context.configure(url=db_url, target_metadata=target_metadata, transactional_ddl=True)
+    context.configure(
+        url=db_url,
+        target_metadata=target_metadata,
+        transactional_ddl=True,
+        transaction_per_migration=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations(op=alembic_op, tables=tables, tester=get_tester())
@@ -107,6 +113,7 @@ def run_migrations_online():
         connection=connection,
         target_metadata=target_metadata,
         transactional_ddl=False,
+        transaction_per_migration=True,
     )
 
     try:
