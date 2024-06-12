@@ -26,6 +26,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v4"
+	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
@@ -653,6 +654,24 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 			}
 		}
 		return errors.New("if you are using a Postgres database, you must install the pg_trgm extension")
+
+	} else if scheme == "sqlite" {
+		// Open a connection to the SQLite database
+		db, err := sql.Open("sqlite3", dbname)
+		if err != nil {
+			return fmt.Errorf("error connecting to sqlite database: %s", err)
+		}
+		defer db.Close()
+
+		// Try to ping database
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		log.Debugf("Pinging sqlite database at %s db path:", dbname)
+		err = db.PingContext(ctx)
+		if err != nil {
+			return err
+		}
 
 	} else {
 		return errors.New("you must use a valid scheme")
