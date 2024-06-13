@@ -65,8 +65,6 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
-      jwt:
-        image: quay.io/coreos/jwt-auth-example:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
