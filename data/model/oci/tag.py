@@ -17,7 +17,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import config, modelutil, user
+from data.model import config, user
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -129,21 +129,30 @@ def tag_names_for_manifest(manifest_id, limit=None):
     return [tag.name for tag in filter_to_alive_tags(query)]
 
 
-def lookup_alive_tags_shallow(repository_id, start_pagination_id=None, limit=None):
+def lookup_alive_tags_shallow(repository_id, last_pagination_tag_name=None, limit=None):
     """
-    Returns a list of the tags alive in the specified repository. Note that the tags returned.
-
-    *only* contain their ID and name. Also note that the Tags are returned ordered by ID.
+    Returns a list of the tags alive in the specified repository and
+    has_more to indicate whethere further pagination is required.
+    Note that the tags returned *only* contain their ID and name.
+    The tags are returned ordered by tag name to comply with OCI spec.
     """
-    query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.id)
+    query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.name)
 
-    if start_pagination_id is not None:
-        query = query.where(Tag.id >= start_pagination_id)
+    if last_pagination_tag_name is not None:
+        query = query.where(Tag.name > last_pagination_tag_name)
 
     if limit is not None:
-        query = query.limit(limit)
+        query = query.limit(limit + 1)
 
-    return filter_to_alive_tags(query)
+    tags = filter_to_alive_tags(query)
+
+    has_more = len(tags) > limit if limit is not None else False
+
+    # If there are more tags, remove the extra one and return the rest
+    if has_more:
+        tags = tags[:-1]
+
+    return tags, has_more
 
 
 def list_alive_tags(repository_id):

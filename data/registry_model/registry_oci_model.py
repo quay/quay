@@ -315,15 +315,17 @@ class OCIModel(RegistryDataInterface):
         """
         return Label.for_label(oci.label.delete_manifest_label(label_uuid, manifest._db_id))
 
-    def lookup_active_repository_tags(self, repository_ref, start_pagination_id, limit):
+    def lookup_active_repository_tags(self, repository_ref, last_pagination_tag_name, limit):
         """
-        Returns a page of actvie tags in a repository.
+        Returns a page of active tags in a repository and has_more to indicate if there are more.
 
         Note that the tags returned by this method are ShallowTag objects, which only contain the
         tag name.
         """
-        tags = oci.tag.lookup_alive_tags_shallow(repository_ref._db_id, start_pagination_id, limit)
-        return [ShallowTag.for_tag(tag) for tag in tags]
+        tags, has_more = oci.tag.lookup_alive_tags_shallow(
+            repository_ref._db_id, last_pagination_tag_name, limit
+        )
+        return [ShallowTag.for_tag(tag) for tag in tags], has_more
 
     def list_all_active_repository_tags(self, repository_ref):
         """
@@ -946,7 +948,7 @@ class OCIModel(RegistryDataInterface):
         return Manifest.from_dict(result)
 
     def lookup_cached_active_repository_tags(
-        self, model_cache, repository_ref, start_pagination_id, limit
+        self, model_cache, repository_ref, last_pagination_tag_name, limit
     ):
         """
         Returns a page of active tags in a repository.
@@ -957,18 +959,22 @@ class OCIModel(RegistryDataInterface):
         """
 
         def load_tags():
-            tags = self.lookup_active_repository_tags(repository_ref, start_pagination_id, limit)
-            return [tag.asdict() for tag in tags]
+            tags, has_more = self.lookup_active_repository_tags(
+                repository_ref, last_pagination_tag_name, limit
+            )
+            return [tag.asdict() for tag in tags], has_more
 
         tags_cache_key = cache_key.for_active_repo_tags(
-            repository_ref._db_id, start_pagination_id, limit, model_cache.cache_config
+            repository_ref._db_id, last_pagination_tag_name, limit, model_cache.cache_config
         )
-        result = model_cache.retrieve(tags_cache_key, load_tags)
+        result, has_more = tuple(model_cache.retrieve(tags_cache_key, load_tags))
 
         try:
-            return [ShallowTag.from_dict(tag_dict) for tag_dict in result]
+            return [ShallowTag.from_dict(tag_dict) for tag_dict in result], has_more
         except FromDictionaryException:
-            return self.lookup_active_repository_tags(repository_ref, start_pagination_id, limit)
+            return self.lookup_active_repository_tags(
+                repository_ref, last_pagination_tag_name, limit
+            )
 
     def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
         """
