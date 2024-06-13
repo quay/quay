@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Alembic's configuration
 config = context.config
+assert config.config_file_name is not None, "Alembic config file name must be set"
 
 logging.config.fileConfig(config.config_file_name)
 
@@ -97,9 +98,6 @@ def run_migrations_online():
 
     In this scenario we need to create an Engine and associate a connection with the context.
     """
-    if isinstance(db.obj, SqliteDatabase) and "DB_URI" not in os.environ:
-        logger.info("Skipping Sqlite migration!")
-        return
 
     engine = get_engine()
     connection = engine.connect()
@@ -107,6 +105,7 @@ def run_migrations_online():
         connection=connection,
         target_metadata=target_metadata,
         transactional_ddl=False,
+        render_as_batch=True,
     )
 
     try:
