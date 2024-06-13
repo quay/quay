@@ -8,12 +8,14 @@ from auth import scopes
 from data.database import (
     OAuthAccessToken,
     OAuthApplication,
+    OauthAssignedToken,
     OAuthAuthorizationCode,
     User,
     random_string_generator,
 )
 from data.fields import Credential, DecryptedValue
-from data.model import config, user
+from data.model import config, db_transaction, notification, user
+from data.model.organization import is_org_admin
 from oauth import utils
 from oauth.provider import AuthorizationProvider
 from util import get_app_url
@@ -189,15 +191,24 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
 
         return self._make_redirect_error_response(redirect_uri, "authorization_denied")
 
-    def get_token_response(self, response_type, client_id, redirect_uri, **params):
+    def get_token_response(
+        self, response_type, client_id, redirect_uri, assignment_uuid=None, **params
+    ):
         # Ensure proper response_type
         if response_type != "token":
             err = "unsupported_response_type"
             return self._make_redirect_error_response(redirect_uri, err)
 
         # Check for a valid client ID.
-        is_valid_client_id = self.validate_client_id(client_id)
-        if not is_valid_client_id:
+        oauth_application = self.get_application_for_client_id(client_id)
+
+        if oauth_application is None or (
+            not is_org_admin(self.get_authorized_user(), oauth_application.organization)
+            and get_token_assignment(
+                assignment_uuid, self.get_authorized_user(), oauth_application.organization
+            )
+            is None
+        ):
             err = "unauthorized_client"
             return self._make_redirect_error_response(redirect_uri, err)
 
@@ -238,6 +249,13 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             refresh_token=None,
             data=data,
         )
+
+        # check for assignment_id and delete it if it exists
+        if assignment_uuid is not None:
+            user_obj = self.get_authorized_user()
+            assign = get_token_assignment_for_client_id(assignment_uuid, user_obj, client_id)
+            if assign is not None:
+                assign.delete_instance()
 
         url = utils.build_url(redirect_uri, params)
         url += "#access_token=%s&token_type=%s&expires_in=%s" % (
@@ -337,12 +355,15 @@ def lookup_application(org, client_id):
 
 
 def delete_application(org, client_id):
-    application = lookup_application(org, client_id)
-    if not application:
-        return
+    with db_transaction():
+        application = lookup_application(org, client_id)
+        if not application:
+            return
 
-    application.delete_instance(recursive=True, delete_nullable=True)
-    return application
+        OauthAssignedToken.delete().where(OauthAssignedToken.application == application).execute()
+
+        application.delete_instance(recursive=True, delete_nullable=True)
+        return application
 
 
 def lookup_access_token_by_uuid(token_uuid):
@@ -378,10 +399,40 @@ def list_access_tokens_for_user(user_obj):
     return query
 
 
+def get_assigned_authorization_for_user(user_obj, uuid):
+    try:
+        assigned_token = (
+            OauthAssignedToken.select()
+            .join(OAuthApplication)
+            .where(OauthAssignedToken.assigned_user == user_obj, OauthAssignedToken.uuid == uuid)
+            .get()
+        )
+        return assigned_token
+    except OauthAssignedToken.DoesNotExist:
+        return None
+
+
+def list_assigned_authorizations_for_user(user_obj):
+    query = (
+        OauthAssignedToken.select()
+        .join(OAuthApplication)
+        .where(OauthAssignedToken.assigned_user == user_obj)
+    )
+
+    return query
+
+
 def list_applications_for_org(org):
     query = OAuthApplication.select().join(User).where(OAuthApplication.organization == org)
 
     return query
+
+
+def get_oauth_application_for_client_id(client_id):
+    try:
+        return OAuthApplication.get(client_id=client_id)
+    except OAuthApplication.DoesNotExist:
+        return None
 
 
 def create_user_access_token(user_obj, client_id, scope, access_token=None, expires_in=9000):
@@ -406,3 +457,56 @@ def create_user_access_token(user_obj, client_id, scope, access_token=None, expi
         data="",
     )
     return created, access_token
+
+
+def assign_token_to_user(application, user, redirect_uri, scope, response_type):
+    with db_transaction():
+        token = OauthAssignedToken.create(
+            application=application,
+            assigned_user=user,
+            redirect_uri=redirect_uri,
+            scope=scope,
+            response_type=response_type,
+        )
+
+        notification.create_notification(
+            "assigned_authorization",
+            user,
+            {
+                "username": user.username,
+            },
+        )
+
+    return token
+
+
+def get_token_assignment(uuid, db_user, org):
+    try:
+        return (
+            OauthAssignedToken.select()
+            .join(OAuthApplication)
+            .where(
+                OauthAssignedToken.uuid == uuid,
+                OauthAssignedToken.assigned_user == db_user,
+                OAuthApplication.organization == org,
+            )
+            .get()
+        )
+    except OauthAssignedToken.DoesNotExist:
+        return None
+
+
+def get_token_assignment_for_client_id(uuid, user, client_id):
+    try:
+        return (
+            OauthAssignedToken.select()
+            .join(OAuthApplication)
+            .where(
+                OauthAssignedToken.uuid == uuid,
+                OauthAssignedToken.assigned_user == user,
+                OAuthApplication.client_id == client_id,
+            )
+            .get()
+        )
+    except OauthAssignedToken.DoesNotExist:
+        return None

@@ -25,11 +25,14 @@ from app import (
     notification_queue,
     storage,
 )
+from auth.scopes import READ_REPO, get_scope_information
 from buildtrigger.basehandler import BuildTriggerHandler
 from data import database, model
 from data.database import Repository as RepositoryTable
 from data.database import RepositoryActionCount
 from data.logs_model import logs_model
+from data.model.organization import create_organization
+from data.model.user import get_user
 from data.registry_model import registry_model
 from endpoints.api import api, api_bp
 from endpoints.api.billing import (
@@ -138,6 +141,8 @@ from endpoints.api.user import (
     StarredRepository,
     StarredRepositoryList,
     User,
+    UserAssignedAuthorization,
+    UserAssignedAuthorizations,
     UserAuthorization,
     UserAuthorizationList,
     UserNotification,
@@ -4595,6 +4600,81 @@ class TestUserAuthorizations(ApiTestCase):
         self.getJsonResponse(
             UserAuthorization,
             params=dict(access_token_uuid=authorization["uuid"]),
+            expected_code=404,
+        )
+
+
+class TestUserAssignedAuthorizations(ApiTestCase):
+    def test_list_authorizations(self):
+        assigned_scope = READ_REPO.scope
+        self.login(PUBLIC_USER)
+        admin = get_user(ADMIN_ACCESS_USER)
+        assigned_user = get_user(PUBLIC_USER)
+        org = create_organization("neworg", "neworg@devtable.com", admin)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assigned_authorization = model.oauth.assign_token_to_user(
+            app, assigned_user, app.redirect_uri, assigned_scope, "token"
+        )
+
+        response = self.getJsonResponse(
+            UserAssignedAuthorizations,
+            expected_code=200,
+        )
+        assert len(response["authorizations"]) == 1
+        authorization = response["authorizations"][0]
+        del authorization["application"]["avatar"]
+        del authorization["application"]["organization"]["avatar"]
+        assert authorization == {
+            "application": {
+                "name": app.name,
+                "clientId": app.client_id,
+                "description": app.description,
+                "url": app.application_uri,
+                "organization": {
+                    "name": org.username,
+                },
+            },
+            "uuid": assigned_authorization.uuid,
+            "redirectUri": assigned_authorization.redirect_uri,
+            "scopes": get_scope_information(assigned_scope),
+            "responseType": assigned_authorization.response_type,
+        }
+
+
+class TestUserAssignedAuthorization(ApiTestCase):
+    def test_delete_assigned_authorization(self):
+        assigned_scope = READ_REPO.scope
+        self.login(PUBLIC_USER)
+        admin = get_user(ADMIN_ACCESS_USER)
+        assigned_user = get_user(PUBLIC_USER)
+        org = create_organization("neworg", "neworg@devtable.com", admin)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assigned_authorization = model.oauth.assign_token_to_user(
+            app, assigned_user, app.redirect_uri, assigned_scope, "token"
+        )
+
+        response = self.getJsonResponse(
+            UserAssignedAuthorizations,
+            expected_code=200,
+        )
+        assert len(response["authorizations"]) == 1
+
+        self.deleteEmptyResponse(
+            UserAssignedAuthorization,
+            params=dict(assigned_authorization_uuid=assigned_authorization.uuid),
+        )
+
+        response = self.getJsonResponse(
+            UserAssignedAuthorizations,
+            expected_code=200,
+        )
+        assert len(response["authorizations"]) == 0
+
+    def test_delete_assigned_authorization_not_found(self):
+        self.login(PUBLIC_USER)
+        self.deleteResponse(
+            UserAssignedAuthorization,
+            params=dict(assigned_authorization_uuid="doesnotexist"),
             expected_code=404,
         )
 

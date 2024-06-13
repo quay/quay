@@ -89,6 +89,8 @@ ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_userid;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_orgid;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS fk_oauthauthorizationcode_application_id_oauthapplication;
+ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS fk_oauthassignedtoken_assigned_user_user;
+ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS fk_oauthassignedtoken_application_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS fk_oauthapplication_organization_id_user;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_authorized_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_application_id_oauthapplication;
@@ -319,6 +321,9 @@ DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_code_name;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_application_id;
+DROP INDEX IF EXISTS public.oauthassignedtoken_uuid;
+DROP INDEX IF EXISTS public.oauthassignedtoken_assigned_user;
+DROP INDEX IF EXISTS public.oauthassignedtoken_application_id;
 DROP INDEX IF EXISTS public.oauthapplication_organization_id;
 DROP INDEX IF EXISTS public.oauthapplication_client_id;
 DROP INDEX IF EXISTS public.oauthaccesstoken_uuid;
@@ -539,6 +544,7 @@ ALTER TABLE IF EXISTS ONLY public.proxycacheconfig DROP CONSTRAINT IF EXISTS pk_
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS pk_permissionprototype;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS pk_organizationrhskus;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS pk_oauthauthorizationcode;
+ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS pk_oauthassignedtoken;
 ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS pk_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS pk_oauthaccesstoken;
 ALTER TABLE IF EXISTS ONLY public.notificationkind DROP CONSTRAINT IF EXISTS pk_notificationkind;
@@ -645,6 +651,7 @@ ALTER TABLE IF EXISTS public.proxycacheconfig ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.permissionprototype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.organizationrhskus ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthauthorizationcode ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.oauthassignedtoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthapplication ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthaccesstoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.notificationkind ALTER COLUMN id DROP DEFAULT;
@@ -804,6 +811,8 @@ DROP SEQUENCE IF EXISTS public.organizationrhskus_id_seq;
 DROP TABLE IF EXISTS public.organizationrhskus;
 DROP SEQUENCE IF EXISTS public.oauthauthorizationcode_id_seq;
 DROP TABLE IF EXISTS public.oauthauthorizationcode;
+DROP SEQUENCE IF EXISTS public.oauthassignedtoken_id_seq;
+DROP TABLE IF EXISTS public.oauthassignedtoken;
 DROP SEQUENCE IF EXISTS public.oauthapplication_id_seq;
 DROP TABLE IF EXISTS public.oauthapplication;
 DROP SEQUENCE IF EXISTS public.oauthaccesstoken_id_seq;
@@ -2834,6 +2843,45 @@ ALTER TABLE public.oauthapplication_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.oauthapplication_id_seq OWNED BY public.oauthapplication.id;
+
+
+--
+-- Name: oauthassignedtoken; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.oauthassignedtoken (
+    id integer NOT NULL,
+    uuid character varying(255) NOT NULL,
+    assigned_user_id integer NOT NULL,
+    application_id integer NOT NULL,
+    redirect_uri character varying(255),
+    scope character varying(255) NOT NULL,
+    response_type character varying(255)
+);
+
+
+ALTER TABLE public.oauthassignedtoken OWNER TO quay;
+
+--
+-- Name: oauthassignedtoken_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.oauthassignedtoken_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.oauthassignedtoken_id_seq OWNER TO quay;
+
+--
+-- Name: oauthassignedtoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.oauthassignedtoken_id_seq OWNED BY public.oauthassignedtoken.id;
 
 
 --
@@ -5227,6 +5275,13 @@ ALTER TABLE ONLY public.oauthapplication ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: oauthassignedtoken id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken ALTER COLUMN id SET DEFAULT nextval('public.oauthassignedtoken_id_seq'::regclass);
+
+
+--
 -- Name: oauthauthorizationcode id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5627,7 +5682,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-0cdd1f27a450
+0988213e0885
 \.
 
 
@@ -6498,6 +6553,7 @@ COPY public.notificationkind (id, name) FROM stdin;
 16	repo_mirror_sync_failed
 17	quota_warning
 18	quota_error
+19	assigned_authorization
 \.
 
 
@@ -6514,6 +6570,14 @@ COPY public.oauthaccesstoken (id, uuid, application_id, authorized_user_id, scop
 --
 
 COPY public.oauthapplication (id, client_id, redirect_uri, application_uri, organization_id, name, description, gravatar_email, secure_client_secret, fully_migrated) FROM stdin;
+\.
+
+
+--
+-- Data for Name: oauthassignedtoken; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.oauthassignedtoken (id, uuid, assigned_user_id, application_id, redirect_uri, scope, response_type) FROM stdin;
 \.
 
 
@@ -8248,7 +8312,7 @@ SELECT pg_catalog.setval('public.notification_id_seq', 2, true);
 -- Name: notificationkind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notificationkind_id_seq', 18, true);
+SELECT pg_catalog.setval('public.notificationkind_id_seq', 19, true);
 
 
 --
@@ -8263,6 +8327,13 @@ SELECT pg_catalog.setval('public.oauthaccesstoken_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.oauthapplication_id_seq', 1, false);
+
+
+--
+-- Name: oauthassignedtoken_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.oauthassignedtoken_id_seq', 1, false);
 
 
 --
@@ -9057,6 +9128,14 @@ ALTER TABLE ONLY public.oauthaccesstoken
 
 ALTER TABLE ONLY public.oauthapplication
     ADD CONSTRAINT pk_oauthapplication PRIMARY KEY (id);
+
+
+--
+-- Name: oauthassignedtoken pk_oauthassignedtoken; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken
+    ADD CONSTRAINT pk_oauthassignedtoken PRIMARY KEY (id);
 
 
 --
@@ -10651,6 +10730,27 @@ CREATE INDEX oauthapplication_client_id ON public.oauthapplication USING btree (
 --
 
 CREATE INDEX oauthapplication_organization_id ON public.oauthapplication USING btree (organization_id);
+
+
+--
+-- Name: oauthassignedtoken_application_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX oauthassignedtoken_application_id ON public.oauthassignedtoken USING btree (application_id);
+
+
+--
+-- Name: oauthassignedtoken_assigned_user; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX oauthassignedtoken_assigned_user ON public.oauthassignedtoken USING btree (assigned_user_id);
+
+
+--
+-- Name: oauthassignedtoken_uuid; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX oauthassignedtoken_uuid ON public.oauthassignedtoken USING btree (uuid);
 
 
 --
@@ -12316,6 +12416,22 @@ ALTER TABLE ONLY public.oauthaccesstoken
 
 ALTER TABLE ONLY public.oauthapplication
     ADD CONSTRAINT fk_oauthapplication_organization_id_user FOREIGN KEY (organization_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: oauthassignedtoken fk_oauthassignedtoken_application_oauthapplication; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken
+    ADD CONSTRAINT fk_oauthassignedtoken_application_oauthapplication FOREIGN KEY (application_id) REFERENCES public.oauthapplication(id);
+
+
+--
+-- Name: oauthassignedtoken fk_oauthassignedtoken_assigned_user_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken
+    ADD CONSTRAINT fk_oauthassignedtoken_assigned_user_user FOREIGN KEY (assigned_user_id) REFERENCES public."user"(id);
 
 
 --

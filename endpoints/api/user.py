@@ -34,6 +34,8 @@ from auth.permissions import (
 from data import model
 from data.billing import get_plan
 from data.database import Repository as RepositoryTable
+from data.model.notification import delete_notifications_by_kind
+from data.model.oauth import get_assigned_authorization_for_user
 from data.users.shared import can_create_user
 from endpoints.api import (
     ApiResource,
@@ -1188,6 +1190,28 @@ def authorization_view(access_token):
     }
 
 
+def assigned_authorization_view(assigned_authorization):
+    oauth_app = assigned_authorization.application
+    app_email = oauth_app.avatar_email or oauth_app.organization.email
+    return {
+        "application": {
+            "name": oauth_app.name,
+            "clientId": oauth_app.client_id,
+            "description": oauth_app.description,
+            "url": oauth_app.application_uri,
+            "avatar": avatar.get_data(oauth_app.name, app_email, "app"),
+            "organization": {
+                "name": oauth_app.organization.username,
+                "avatar": avatar.get_data_for_org(oauth_app.organization),
+            },
+        },
+        "uuid": assigned_authorization.uuid,
+        "redirectUri": assigned_authorization.redirect_uri,
+        "scopes": scopes.get_scope_information(assigned_authorization.scope),
+        "responseType": assigned_authorization.response_type,
+    }
+
+
 @resource("/v1/user/authorizations")
 @internal_only
 class UserAuthorizationList(ApiResource):
@@ -1224,6 +1248,43 @@ class UserAuthorization(ApiResource):
             raise NotFound()
 
         access_token.delete_instance(recursive=True, delete_nullable=True)
+        return "", 204
+
+
+@resource("/v1/user/assignedauthorization")
+@internal_only
+class UserAssignedAuthorizations(ApiResource):
+    @require_user_admin()
+    @nickname("listAssignedAuthorizations")
+    def get(self):
+        user = get_authenticated_user()
+
+        assignments = model.oauth.list_assigned_authorizations_for_user(user)
+
+        # Delete any notifications for assigned authorizations, since they have now been viewed
+        delete_notifications_by_kind(user, "assigned_authorization")
+
+        return {
+            "authorizations": [
+                assigned_authorization_view(assignment) for assignment in assignments
+            ]
+        }
+
+
+@resource("/v1/user/assignedauthorization/<assigned_authorization_uuid>")
+@internal_only
+class UserAssignedAuthorization(ApiResource):
+    @require_user_admin()
+    @nickname("deleteAssignedAuthorization")
+    def delete(self, assigned_authorization_uuid):
+
+        assigned_authorization = get_assigned_authorization_for_user(
+            get_authenticated_user(), assigned_authorization_uuid
+        )
+        if not assigned_authorization:
+            raise NotFound()
+
+        assigned_authorization.delete_instance()
         return "", 204
 
 

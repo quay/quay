@@ -751,6 +751,7 @@ class User(BaseModel):
                     NamespaceAutoPrunePolicy,
                     AutoPruneTaskStatus,
                     RepositoryAutoPrunePolicy,
+                    OauthAssignedToken,
                 }
                 | appr_classes
                 | v22_classes
@@ -2033,6 +2034,19 @@ class RepositoryAutoPrunePolicy(BaseModel):
     repository = ForeignKeyField(Repository, index=True, null=False)
     namespace = QuayUserField(index=True, null=False)
     policy = JSONField(null=False, default={})
+
+
+class OauthAssignedToken(BaseModel):
+    uuid = CharField(default=uuid_generator, max_length=36, index=True, unique=True, null=False)
+    assigned_user = QuayUserField(index=True, unique=False, null=False)
+    application = ForeignKeyField(OAuthApplication, index=True, null=False, unique=False)
+    redirect_uri = CharField(max_length=255, null=True)
+    scope = CharField(max_length=255, null=False)
+    response_type = CharField(max_length=255, null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
 
 
 # Defines a map from full-length index names to the legacy names used in our code
