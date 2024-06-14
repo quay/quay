@@ -760,7 +760,9 @@ class S3Storage(_CloudStorage):
         port=None,
         # Boto3 options (Full url including scheme anbd optionally port)
         endpoint_url=None,
+        # Chunk size options for multipart upload
         maximum_chunk_size_gb=None,
+        minimum_chunk_size_mb=None,
         # STS Options
         aws_session_token=None,
         deferred_refreshable_credentials=None,
@@ -798,6 +800,8 @@ class S3Storage(_CloudStorage):
             maximum_chunk_size_gb if maximum_chunk_size_gb is not None else 5
         )  # 5gb default
         self.maximum_chunk_size = chunk_size * 1024 * 1024 * 1024
+
+        self.minimum_chunk_size = (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
 
     def setup(self):
         self.get_cloud_bucket().Cors().put(
