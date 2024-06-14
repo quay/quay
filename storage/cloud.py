@@ -801,7 +801,9 @@ class S3Storage(_CloudStorage):
         )  # 5gb default
         self.maximum_chunk_size = chunk_size * 1024 * 1024 * 1024
 
-        self.minimum_chunk_size = (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
+        self.minimum_chunk_size = (
+            (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
+        )
 
     def setup(self):
         self.get_cloud_bucket().Cors().put(
