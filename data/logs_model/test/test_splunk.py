@@ -232,9 +232,12 @@ def test_splunk_logs_producers(
     app_config["ALLOW_PULLS_WITHOUT_STRICT_LOGGING"] = unlogged_pulls_ok
     app_config["ALLOW_WITHOUT_STRICT_LOGGING"] = unlogged_ok
 
-    with patch(
-        "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"
-    ) as mock_send, patch("splunklib.client.connect"):
+    with (
+        patch(
+            "data.logs_model.logs_producer.splunk_logs_producer.SplunkLogsProducer.send"
+        ) as mock_send,
+        patch("splunklib.client.connect"),
+    ):
         with patch("ssl.SSLContext.load_verify_locations"):
             configure(splunk_logs_model_config)
 
@@ -282,7 +285,7 @@ def test_splunk_logs_producers(
                     repository_name,
                     timestamp,
                 )
-                
+
                 expected_event = {
                     "account": "devtable",
                     "datetime": datetime(2019, 1, 1, 3, 30),
