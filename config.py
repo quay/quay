@@ -883,3 +883,5 @@ class DefaultConfig(ImmutableConfig):
 
     # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
     ROBOTS_WHITELIST: Optional[List[str]] = []
+
+    DEFAULT_ORG_AUTORPRUNE_POLICY: Optional[Dict[str, str]] = None

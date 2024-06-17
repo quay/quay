@@ -1524,5 +1524,22 @@ CONFIG_SCHEMA = {
             "description": "Set minimal security level for new notifications on detected vulnerabilities. Avoids creation of large number of notifications after first index.",
             "x-example": "High",
         },
+        "DEFAULT_ORG_AUTORPRUNE_POLICY": {
+            "type": "object",
+            "description": "Default auto-prune policy applied to newly created organizations",
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "",
+                    "enum": ["number_of_tags", "creation_date"],
+                    "x-example": "number_of_tags",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "",
+                    "x-example": "2d",
+                },
+            },
+        },
     },
 }
