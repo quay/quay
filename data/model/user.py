@@ -860,6 +860,10 @@ def get_user_or_org(username):
         return None
 
 
+def get_active_namespaces():
+    return User.select().where(User.robot == False, User.enabled == True)
+
+
 def get_user_by_id(user_db_id):
     try:
         return User.get(User.id == user_db_id, User.organization == False)

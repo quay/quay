@@ -890,3 +890,4 @@ class DefaultConfig(ImmutableConfig):
     ROBOTS_WHITELIST: Optional[List[str]] = []
 
     FEATURE_ASSIGN_OAUTH_TOKEN = True
+    DEFAULT_ORG_AUTORPRUNE_POLICY: Optional[Dict[str, str]] = None

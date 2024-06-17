@@ -1536,5 +1536,22 @@ CONFIG_SCHEMA = {
             "description": "Allows organization administrators to assign OAuth tokens to other users",
             "x-example": False,
         },
+        "DEFAULT_ORG_AUTORPRUNE_POLICY": {
+            "type": "object",
+            "description": "Default auto-prune policy applied to newly created organizations",
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "",
+                    "enum": ["number_of_tags", "creation_date"],
+                    "x-example": "number_of_tags",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "",
+                    "x-example": "2d",
+                },
+            },
+        },
     },
 }

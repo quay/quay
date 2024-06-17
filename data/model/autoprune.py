@@ -39,12 +39,18 @@ class AutoPruneMethod(Enum):
 
 
 class NamespaceAutoPrunePolicy:
-    def __init__(self, db_row):
-        config = json.loads(db_row.policy)
-        self._db_row = db_row
-        self.uuid = db_row.uuid
-        self.method = config.get("method")
-        self.config = config
+    def __init__(self, db_row=None, policy_dict=None):
+        if db_row is not None:
+            config = json.loads(db_row.policy)
+            self._db_row = db_row
+            self.uuid = db_row.uuid
+            self.method = config.get("method")
+            self.config = config
+        elif policy_dict is not None:
+            self._db_row = None
+            self.uuid = None
+            self.method = policy_dict.get("method")
+            self.config = policy_dict
 
     def get_row(self):
         return self._db_row
@@ -603,16 +609,21 @@ def execute_policy_on_repo(policy, repo_id, namespace_id, tag_page_limit=100):
     policy_to_func_map[policy.method](repo, policy.config, namespace, tag_page_limit)
 
 
-def execute_policies_for_repo(ns_policies, repo, namespace_id, tag_page_limit=100):
+def execute_policies_for_repo(
+    ns_policies, repo, namespace_id, tag_page_limit=100, include_repo_policies=True
+):
     """
     Executes both repository and namespace level policies for the given repository. The policies
     are applied in a serial fashion and are run asynchronosly in the background.
     """
     for ns_policy in ns_policies:
-        repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-        # note: currently only one policy is configured per repo
-        for repo_policy in repo_policies:
-            execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+
+        if include_repo_policies:
+            repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
+            # note: currently only one policy is configured per repo
+            for repo_policy in repo_policies:
+                execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+
         # execute associated namespace policy
         execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
 
@@ -651,7 +662,11 @@ def get_repository_by_policy_repo_id(policy_repo_id):
 
 
 def execute_namespace_polices(
-    ns_policies, namespace_id, repository_page_limit=50, tag_page_limit=100
+    ns_policies,
+    namespace_id,
+    repository_page_limit=50,
+    tag_page_limit=100,
+    include_repo_policies=True,
 ):
     """
     Executes the given policies for the repositories in the provided namespace.
@@ -667,7 +682,9 @@ def execute_namespace_polices(
         )
 
         for repo in repos:
-            execute_policies_for_repo(ns_policies, repo, namespace_id, tag_page_limit)
+            execute_policies_for_repo(
+                ns_policies, repo, namespace_id, tag_page_limit, include_repo_policies
+            )
 
         if page_token is None:
             break
