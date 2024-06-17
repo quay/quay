@@ -152,7 +152,7 @@ def oci_tag_paginate(
                 requested_limit = _MAX_RESULTS_PER_PAGE
                 last_tag_name = None
 
-            limit = max(min(requested_limit, _MAX_RESULTS_PER_PAGE), 1)
+            limit = max(min(requested_limit, _MAX_RESULTS_PER_PAGE), 0)
 
             if last_tag_name is not None:
                 last_tag_name = last_tag_name.strip()

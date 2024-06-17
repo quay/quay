@@ -29,15 +29,22 @@ def list_all_tags(namespace_name, repo_name, last_pagination_tag_name, limit, pa
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    tags, has_more = registry_model.lookup_cached_active_repository_tags(
-        model_cache, repository_ref, last_pagination_tag_name, limit
-    )
+    tags = []
+    has_more = False
+
+    if limit > 0:
+        tags, has_more = registry_model.lookup_cached_active_repository_tags(
+            model_cache, repository_ref, last_pagination_tag_name, limit
+        )
+
     response = jsonify(
         {
-            "name": "{0}/{1}".format(namespace_name, repo_name),
+            "name": f"{namespace_name}/{repo_name}",
             "tags": [tag.name for tag in tags][0:limit],
         }
     )
 
-    pagination_callback(tags, has_more, response)
+    if limit > 0:
+        pagination_callback(tags, has_more, response)
+
     return response
