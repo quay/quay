@@ -224,7 +224,9 @@ def update_last_accessed(token_or_user):
         pass
     except PeeweeException as ex:
         # If there is any form of DB exception, only fail if strict logging is enabled.
-        strict_logging_disabled = config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+        strict_logging_disabled = config.app_config.get(
+            "ALLOW_WITHOUT_STRICT_LOGGING"
+        ) or config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
         if strict_logging_disabled:
             data = {
                 "exception": ex,
