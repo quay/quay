@@ -3,7 +3,7 @@ import {NotificationEventConfig} from 'src/hooks/UseEvents';
 
 export default function RepoEventExpiry(props: RepoEventExpiryProps) {
   const onChange = (_event, value) => {
-    props.setEventConfig({days: value});
+    props.setEventConfig({days: Number(value)});
   };
 
   return (
