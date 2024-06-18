@@ -657,6 +657,9 @@ def authorize_application():
     if response_type != "token" and assignment_uuid is not None:
         abort(400)
 
+    if not features.ASSIGN_OAUTH_TOKEN and assignment_uuid is not None:
+        abort(400)
+
     # Add the access token.
     if response_type == "token":
         return provider.get_token_response(
@@ -723,6 +726,9 @@ def request_authorization_code():
     if not get_authenticated_user():
         abort(401)
         return
+
+    if not features.ASSIGN_OAUTH_TOKEN and assignment_uuid is not None:
+        abort(400)
 
     # assignment currently only supported for token response type
     if response_type != "token" and assignment_uuid is not None:
@@ -817,6 +823,9 @@ def assign_user_to_app():
     redirect_uri = request.args.get("redirect_uri", None)
     scope = request.args.get("scope", None)
     username = request.args.get("username", None)
+
+    if not features.ASSIGN_OAUTH_TOKEN:
+        abort(404)
 
     if not current_user.is_authenticated:
         abort(401)

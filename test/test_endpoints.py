@@ -28,7 +28,7 @@ from endpoints.api import api, api_bp
 from endpoints.api.user import Signin
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
 from endpoints.keyserver import jwk_with_kid
-from endpoints.test.shared import gen_basic_auth
+from endpoints.test.shared import gen_basic_auth, toggle_feature
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
 from initdb import finished_database_for_testing, setup_database_for_testing
@@ -389,6 +389,26 @@ class WebEndpointTestCase(EndpointTestCase):
         )
         assert "Are you sure you want to authorize this application?" in str(response)
 
+    def test_request_authorization_code_assigned_authorization_disabled(self):
+        self.login("devtable", "password")
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        with toggle_feature("ASSIGN_OAUTH_TOKEN", False):
+            self.getResponse(
+                "web.request_authorization_code",
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="repo:read",
+                assignment_uuid=assignment.uuid,
+                response_type="token",
+                expected_code=400,
+            )
+
     def test_request_authorization_code_assigned_authorization_with_existing_scopes(self):
         self.login("devtable", "password")
         devtable = get_user("devtable")
@@ -679,6 +699,31 @@ class OAuthTestCase(EndpointTestCase):
         )
         assert len(list(model.oauth.list_access_tokens_for_user(devtable))) == 2
         assert model.oauth.get_assigned_authorization_for_user(devtable, assignment.uuid) is None
+
+    def test_authorize_application_assigned_authorization_disabled(self):
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        form = {
+            "client_id": app.client_id,
+            "redirect_uri": app.redirect_uri,
+            "scope": "user:admin",
+            "assignment_uuid": assignment.uuid,
+            "response_type": "token",
+        }
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
+        with toggle_feature("ASSIGN_OAUTH_TOKEN", False):
+            self.postResponse(
+                "web.authorize_application",
+                headers=headers,
+                form=form,
+                with_csrf=True,
+                expected_code=400,
+            )
 
     @parameterized.expand(["token", "code"])
     def test_authorize_nocsrf_correctheader(self, response_type):
@@ -1202,6 +1247,23 @@ class AssignOauthAppTestCase(EndpointTestCase):
             username="freshuser",
             response_type="token",
         )
+
+    def test_assign_user_disabled(self):
+        self.login("devtable", "password")
+        user = get_user("randomuser")
+        org = create_organization("neworg", "neworg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        with toggle_feature("ASSIGN_OAUTH_TOKEN", False):
+            self.postResponse(
+                "web.assign_user_to_app",
+                with_csrf=True,
+                expected_code=404,
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="user:admin",
+                username="freshuser",
+                response_type="token",
+            )
 
 
 if __name__ == "__main__":

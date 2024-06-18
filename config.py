@@ -51,6 +51,7 @@ CLIENT_WHITELIST = [
     "UI_V2_FEEDBACK_FORM",
     "TERMS_OF_SERVICE_URL",
     "UI_DELAY_AFTER_WRITE_SECONDS",
+    "FEATURE_ASSIGN_OAUTH_TOKEN",
 ]
 
 
@@ -887,3 +888,5 @@ class DefaultConfig(ImmutableConfig):
 
     # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
     ROBOTS_WHITELIST: Optional[List[str]] = []
+
+    FEATURE_ASSIGN_OAUTH_TOKEN = True

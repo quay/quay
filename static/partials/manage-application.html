@@ -113,14 +113,16 @@
                 allowed-entities="['user']"
                 pull-right="true"></div>
               </span>
-              <button class="btn btn-primary" ng-click="customUser = !customUser">
-                <div ng-if="!customUser">
-                  Assign another user
-                </div>
-                <div ng-if="customUser">
-                  Cancel
-                </div>
-              </button>
+              <span ng-show="Config.FEATURE_ASSIGN_OAUTH_TOKEN">
+                <button  class="btn btn-primary" ng-click="customUser = !customUser">
+                  <div ng-if="!customUser">
+                    Assign another user
+                  </div>
+                  <div ng-if="customUser">
+                    Cancel
+                  </div>
+                </button>
+              </span>
             </div>
           </div>
 
@@ -137,10 +139,10 @@
 
           <a class="btn btn-success"
              href="{{ generateUrl() }}"
-             ng-disabled="!getScopes(genScopes).length || (customUser && selectedUser == null)" ng-safenewtab ng-if="selectedUser == null">
+             ng-disabled="!getScopes(genScopes).length" ng-safenewtab ng-if="!customUser">
              Generate Access Token
           </a>
-          <button class="btn btn-success" ng-click="confirmAssignUser()" ng-if="selectedUser !== null">
+          <button class="btn btn-success" ng-click="confirmAssignUser()" ng-disabled="selectedUser == null" ng-if="customUser">
             Assign token
           </button>
         </cor-tab-pane>

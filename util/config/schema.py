@@ -1531,5 +1531,10 @@ CONFIG_SCHEMA = {
             "description": "Set minimal security level for new notifications on detected vulnerabilities. Avoids creation of large number of notifications after first index.",
             "x-example": "High",
         },
+        "FEATURE_ASSIGN_OAUTH_TOKEN": {
+            "type": "boolean",
+            "description": "Allows organization administrators to assign OAuth tokens to other users",
+            "x-example": False,
+        },
     },
 }

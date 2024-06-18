@@ -481,6 +481,9 @@ def assign_token_to_user(application, user, redirect_uri, scope, response_type):
 
 
 def get_token_assignment(uuid, db_user, org):
+    if uuid is None:
+        return None
+
     try:
         return (
             OauthAssignedToken.select()

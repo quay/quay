@@ -1252,6 +1252,7 @@ class UserAuthorization(ApiResource):
 
 
 @resource("/v1/user/assignedauthorization")
+@show_if(features.ASSIGN_OAUTH_TOKEN)
 @internal_only
 class UserAssignedAuthorizations(ApiResource):
     @require_user_admin()
@@ -1272,6 +1273,7 @@ class UserAssignedAuthorizations(ApiResource):
 
 
 @resource("/v1/user/assignedauthorization/<assigned_authorization_uuid>")
+@show_if(features.ASSIGN_OAUTH_TOKEN)
 @internal_only
 class UserAssignedAuthorization(ApiResource):
     @require_user_admin()

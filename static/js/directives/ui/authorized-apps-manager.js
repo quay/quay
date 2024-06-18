@@ -28,7 +28,10 @@ angular.module('quay').directive('authorizedAppsManager', function () {
       };
 
       var loadAssignedAuthApps = function(){
-        if ($scope.assignedAuthAppsResource) { return; }
+        if ($scope.assignedAuthAppsResource || !Config.FEATURE_ASSIGN_OAUTH_TOKEN) {
+          $scope.assignedAuthApps = [];
+          return;
+        }
 
         $scope.assignedAuthAppsResource = ApiService.listAssignedAuthorizationsAsResource().get(function(resp) {
           $scope.assignedAuthApps = resp['authorizations'];
@@ -46,6 +49,9 @@ angular.module('quay').directive('authorizedAppsManager', function () {
       };
 
       $scope.deleteAssignedAuthorization = function(assignedAuthorization){
+        if(!Config.FEATURE_ASSIGN_OAUTH_TOKEN){
+          return;
+        }
         var params = {
           'assigned_authorization_uuid': assignedAuthorization['uuid']
         };
