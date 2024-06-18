@@ -968,3 +968,25 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 	return true, ValidationError{}
 
 }
+
+// ValidateDefaultAutoPruneKey validates that DEFAULT_ORG_AUTORPRUNE_POLICY has key of `number_of_tags` or `creation_date`
+func ValidateDefaultAutoPruneKey(input map[string]interface{}, field string, fgName string) (bool, ValidationError) {
+
+	keys := make([]string, len(input))
+	key := keys[0]
+
+	re := regexp.MustCompile(`^number_of_tags|creation_date$`)
+	matches := re.FindAllString(key, -1)
+
+	// If the pattern is not matched
+	if len(matches) != 1 {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + "must have `number_of_tags` or `creation_date` as key",
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
+}

@@ -1161,6 +1161,16 @@ CONFIG_SCHEMA = {
             "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
             "x-example": ["somexternaldomain.com"],
         },
+        "FEATURE_AUTO_PRUNE": {
+            "type": "boolean",
+            "description": "If set to true, auto pruning of images is supported. Defaults to False",
+            "x-example": False,
+        },
+        "DEFAULT_ORG_AUTOPRUNE_POLICY": {
+            "type": "object",
+            "description": "Default org wide auto prune policy. Defaults to empty",
+            "x-example": {"number_of_tags":  "10"},
+        }
     },
 }
 
