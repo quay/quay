@@ -6,12 +6,15 @@ import (
 )
 
 type AutoPruneFieldGroup struct {
-	FEATURE_AUTO_PRUNE           bool                   `default:"false" validate:"" json:"FEATURE_AUTO_PRUNE,omitempty" yaml:"FEATURE_AUTO_PRUNE,omitempty"`
-	DEFAULT_ORG_AUTOPRUNE_POLICY map[string]interface{} `default:"" validate:"" json:"DEFAULT_ORG_AUTOPRUNE_POLICY,omitempty" yaml:"DEFAULT_ORG_AUTOPRUNE_POLICY,omitempty"`
+	FEATURE_AUTO_PRUNE           bool                          `default:"false" validate:"" json:"FEATURE_AUTO_PRUNE,omitempty" yaml:"FEATURE_AUTO_PRUNE,omitempty"`
+	DEFAULT_ORG_AUTOPRUNE_POLICY *DefaultAutoPrunePolicyStruct `default:"" validate:"" json:"DEFAULT_ORG_AUTOPRUNE_POLICY,omitempty" yaml:"DEFAULT_ORG_AUTOPRUNE_POLICY,omitempty"`
 }
 
-// DefaultAutoPrunePolicyStruct represents the DefaultAutoPrunePolicy struct
-type DefaultAutoPrunePolicyStruct map[string]interface{}
+type DefaultAutoPrunePolicyStruct struct {
+	Method string `default:"" validate:"" json:"method,omitempty" yaml:"method,omitempty"`
+	// value can be string or int
+	Value interface{} `default:"" validate:"" json:"value,omitempty" yaml:"value,omitempty"`
+}
 
 // NewAutoPruneFieldGroup creates a new AutoPruneFieldGroup
 func NewAutoPruneFieldGroup(fullConfig map[string]interface{}) (*AutoPruneFieldGroup, error) {
@@ -26,7 +29,6 @@ func NewAutoPruneFieldGroup(fullConfig map[string]interface{}) (*AutoPruneFieldG
 	}
 
 	if value, ok := fullConfig["DEFAULT_ORG_AUTOPRUNE_POLICY"]; ok {
-
 		var err error
 		value := value.(map[string]interface{})
 		newAutoPruneFieldGroup.DEFAULT_ORG_AUTOPRUNE_POLICY, err = NewDefaultOrgAutoPrunePolicyStruct(value)
@@ -38,10 +40,30 @@ func NewAutoPruneFieldGroup(fullConfig map[string]interface{}) (*AutoPruneFieldG
 	return newAutoPruneFieldGroup, nil
 }
 
-func NewDefaultOrgAutoPrunePolicyStruct(defaultConfig map[string]interface{}) (map[string]interface{}, error) {
-	newDefaultOrgAutoPrunePolicyStruct := DefaultAutoPrunePolicyStruct{}
-	for key, value := range defaultConfig {
-		newDefaultOrgAutoPrunePolicyStruct[key] = value
+func NewDefaultOrgAutoPrunePolicyStruct(defaultConfig map[string]interface{}) (*DefaultAutoPrunePolicyStruct, error) {
+	newDefaultOrgAutoPrunePolicyStruct := &DefaultAutoPrunePolicyStruct{}
+	defaults.Set(newDefaultOrgAutoPrunePolicyStruct)
+
+	if value, ok := defaultConfig["method"]; ok {
+		newDefaultOrgAutoPrunePolicyStruct.Method, ok = value.(string)
+		if !ok {
+			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_ORG_AUTOPRUNE_POLICY `method` must be of type string")
+		}
 	}
+
+	if value, ok := defaultConfig["value"]; ok {
+		newDefaultOrgAutoPrunePolicyStruct.Value, ok = value.(int)
+		if ok {
+			return newDefaultOrgAutoPrunePolicyStruct, nil
+		}
+	}
+
+	if value, ok := defaultConfig["value"]; ok {
+		newDefaultOrgAutoPrunePolicyStruct.Value, ok = value.(string)
+		if !ok {
+			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_ORG_AUTOPRUNE_POLICY `value` must be of type string or int")
+		}
+	}
+
 	return newDefaultOrgAutoPrunePolicyStruct, nil
 }
