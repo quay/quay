@@ -673,7 +673,8 @@ class _CloudStorage(BaseStorageV2):
                     self.get_cloud_conn().copy(
                         CopySource={"Bucket": self.get_cloud_bucket().name, "Key": chunk_path},
                         Bucket=self.get_cloud_bucket().name,
-                        Key=final_path)
+                        Key=final_path,
+                    )
 
                     return
 
