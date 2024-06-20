@@ -670,10 +670,12 @@ class _CloudStorage(BaseStorageV2):
                     # copy of 5GB (for S3) chunks in the next block
 
                     chunk_path = self._init_path(chunk_list[0].path)
-                    self.get_cloud_conn().copy(
+
+                    self._perform_action_with_retry(
+                        self.get_cloud_conn().copy,
                         CopySource={"Bucket": self.get_cloud_bucket().name, "Key": chunk_path},
                         Bucket=self.get_cloud_bucket().name,
-                        Key=final_path,
+                        Key=self._init_path(final_path),
                     )
 
                     return
