@@ -264,6 +264,22 @@ def get_namespace_size(namespace_id: int):
         return None
 
 
+def get_all_namespace_sizes() -> List[Dict[str, int]]:
+    namespaces_with_sizes = (
+        User.select(
+            User.id,
+            User.username,
+            User.organization,
+            QuotaNamespaceSize.size_bytes,
+            can_use_read_replica=True,
+        )
+        .join(QuotaNamespaceSize)
+        .dicts()
+    )
+
+    return namespaces_with_sizes
+
+
 def get_repository_size(repository_id: int):
     try:
         repository_size = (
@@ -274,6 +290,23 @@ def get_repository_size(repository_id: int):
         return repository_size
     except QuotaRepositorySize.DoesNotExist:
         return None
+
+
+def get_all_repository_sizes() -> List[Dict[str, int]]:
+    repositories_with_sizes = (
+        Repository.select(
+            Repository.id,
+            Repository.name,
+            User.username.alias("namespace"),
+            QuotaRepositorySize.size_bytes,
+            can_use_read_replica=True,
+        )
+        .join(User)
+        .join(QuotaRepositorySize, on=(Repository.id == QuotaRepositorySize.repository))
+        .dicts()
+    )
+
+    return repositories_with_sizes
 
 
 def only_manifest_in_namespace(namespace_id: int, manifest_id: int):
