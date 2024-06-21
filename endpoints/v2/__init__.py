@@ -141,13 +141,6 @@ def oci_tag_paginate(
             try:
                 requested_limit = request.args.get("n", _MAX_RESULTS_PER_PAGE, type=int)
                 last_tag_name = request.args.get("last", None, type=str)
-
-                if requested_limit > _MAX_RESULTS_PER_PAGE:
-                    raise TooManyTagsRequested(
-                        "Too many tags requested",
-                        "requested limit %s is too high, max is %s"
-                        % (requested_limit, _MAX_RESULTS_PER_PAGE),
-                    )
             except ValueError:
                 requested_limit = _MAX_RESULTS_PER_PAGE
                 last_tag_name = None
