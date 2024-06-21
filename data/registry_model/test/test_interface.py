@@ -865,6 +865,66 @@ def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci
     assert yet_another_tag.lifetime_end_ms is not None
 
 
+def test_create_manifest_and_retarget_tag_with_manifest_list(oci_model):
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    app_config = {"TESTING": True}
+
+    # expiration label config
+    config_json = json.dumps(
+        {
+            "config": {
+                "Labels": {
+                    "quay.expires-after": "2w",
+                },
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+
+    # Create manifest and add expiration label
+    manifest_builder = DockerSchema2ManifestBuilder()
+    manifest_builder.set_config_digest(blob.digest, blob.compressed_size)
+    manifest_builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    built_manifest = manifest_builder.build()
+
+    manifest, latest = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, built_manifest, "latest", storage
+    )
+    assert manifest is not None
+
+    # Create manifest list
+    manifest_list_builder = DockerSchema2ManifestListBuilder()
+    manifest_list_builder.add_manifest(built_manifest, "ppc64le", "linux")
+    manifest_list = manifest_list_builder.build()
+
+    first_manifest, first_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest_list, "tag1", storage
+    )
+
+    assert first_manifest is not None
+    assert first_tag is not None
+    assert first_tag.lifetime_end_ms is not None
+
+    # Simulate second push by calling another create_manifest_and_retarget_tag
+    second_manifest, second_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, first_manifest, "tag2", storage
+    )
+
+    # Second tag should have same expiration as the first
+    assert second_tag is not None
+    assert second_tag.lifetime_end_ms is not None
+
+
 def _populate_blob(digest):
     location = ImageStorageLocation.get(name="local_us")
     store_blob_record_and_temp_link("devtable", "simple", digest, location, 1, 120)

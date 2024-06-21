@@ -16,7 +16,9 @@ from data.database import (
     db_transaction,
 )
 from data.model import DataModelException, QuotaExceededException, namespacequota, oci
+from data.model.oci.label import list_manifest_labels
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.oci.tag import get_child_manifests
 from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatype import FromDictionaryException
 from data.registry_model.datatypes import (
@@ -464,6 +466,21 @@ class OCIModel(RegistryDataInterface):
                     ),
                     None,
                 )
+
+                # If there are child manifests also look at their labels
+                child_query = get_child_manifests(repository_ref._db_id, wrapped_manifest.id)
+
+                child_manifests = child_query.dicts()
+
+                for child in child_manifests:
+                    child_labels = list_manifest_labels(
+                        child["child_manifest"], prefix_filter="quay"
+                    )
+
+                    label_dict = next(
+                        (label.asdict() for label in [Label.for_label(l) for l in child_labels]),
+                        None,
+                    )
             else:
                 label_dict = next(
                     (
