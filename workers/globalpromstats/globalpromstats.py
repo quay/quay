@@ -114,7 +114,7 @@ def populate_registry_size_stats():
     registry_size = model.quota.get_registry_size()
 
     if registry_size is not None:
-        registry_total_used_bytes.set(registry_size.size_bytes)
+        registry_total_used_bytes.set(registry_size["size_bytes"])
 
 
 class GlobalPrometheusStatsWorker(Worker):
