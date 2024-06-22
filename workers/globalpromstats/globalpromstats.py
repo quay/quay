@@ -13,8 +13,6 @@ from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
-GlobalLock.configure(app.config)
-
 repository_rows = Gauge("quay_repository_rows", "number of repositories in the database")
 user_rows = Gauge("quay_user_rows", "number of users in the database")
 org_rows = Gauge("quay_org_rows", "number of organizations in the database")
@@ -145,8 +143,8 @@ class GlobalPrometheusStatsWorker(Worker):
         try:
             with GlobalLock("GLOBAL_PROM_STATS"):
                 self._report_stats()
-        except LockNotAcquiredException as e:
-            logger.debug("Could not acquire global lock for global prometheus stats: " + str(e))
+        except LockNotAcquiredException:
+            logger.debug("Could not acquire global lock for global prometheus stats")
 
     def _report_stats(self):
         logger.debug("Reporting global stats")
