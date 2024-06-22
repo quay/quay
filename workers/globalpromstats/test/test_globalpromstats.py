@@ -6,7 +6,7 @@ from prometheus_client import REGISTRY
 
 from workers.globalpromstats.globalpromstats import GlobalPrometheusStatsWorker
 
-MockRegistrySize = namedtuple("RegistrySize", ["id", "queued", "running", "size_bytes"])
+MockRegistrySize = namedtuple("MockRegistrySize", ["id", "queued", "running", "size_bytes"])
 
 
 class TestGlobalPrometheusStatsWorker(unittest.TestCase):
