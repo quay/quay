@@ -96,10 +96,6 @@ def populate_namespace_quota_stats():
                 namespace=namespace_name, entity_type=namespace_entity_type
             ).set(namespace_available)
 
-        logger.debug(
-            "Emitting namespace stats for %s with sitze %s", namespace_name, namespace_used_bytes
-        )
-
 
 def populate_repo_quota_stats():
     repositories = model.quota.get_all_repository_sizes()
@@ -112,13 +108,6 @@ def populate_repo_quota_stats():
         repository_stats_used_bytes.labels(
             repository=repository_name, namespace=repository_namespace
         ).set(repository_used_bytes)
-
-        logger.debug(
-            "Emitting repo stats for %s/%s with size %s",
-            repository_namespace,
-            repository_name,
-            repository_used_bytes,
-        )
 
 
 def populate_registry_size_stats():
