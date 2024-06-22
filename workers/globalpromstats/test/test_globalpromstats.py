@@ -23,7 +23,8 @@ class TestGlobalPrometheusStatsWorker(unittest.TestCase):
         return_value=2,
     )
     @patch(
-        "workers.globalpromstats.globalpromstats.model.quota.get_registry_size", return_value=100000
+        "workers.globalpromstats.globalpromstats.model.quota.get_registry_size",
+        return_value={"id": "1", "queued": False, "running": False, "size_bytes": 100000},
     )
     @patch(
         "workers.globalpromstats.globalpromstats.model.quota.get_all_namespace_sizes",
