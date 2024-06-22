@@ -1,9 +1,12 @@
 import unittest
+from collections import namedtuple
 from unittest.mock import patch
 
 from prometheus_client import REGISTRY
 
 from workers.globalpromstats.globalpromstats import GlobalPrometheusStatsWorker
+
+MockRegistrySize = namedtuple("RegistrySize", ["id", "queued", "running", "size_bytes"])
 
 
 class TestGlobalPrometheusStatsWorker(unittest.TestCase):
@@ -24,7 +27,7 @@ class TestGlobalPrometheusStatsWorker(unittest.TestCase):
     )
     @patch(
         "workers.globalpromstats.globalpromstats.model.quota.get_registry_size",
-        return_value={"id": "1", "queued": False, "running": False, "size_bytes": 100000},
+        return_value=MockRegistrySize("1", False, False, 100000),
     )
     @patch(
         "workers.globalpromstats.globalpromstats.model.quota.get_all_namespace_sizes",
