@@ -82,7 +82,7 @@ class ConfigUserManager(UserManager):
 
     def is_restricted_user(self, username: str, include_robots: bool = True) -> bool:
         # do not restrict superusers
-        if self.is_superuser(username_or_email):
+        if self.is_superuser(username):
             return False
 
         if include_robots:
