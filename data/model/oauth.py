@@ -202,12 +202,8 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         # Check for a valid client ID.
         oauth_application = self.get_application_for_client_id(client_id)
 
-        if oauth_application is None or (
-            not is_org_admin(self.get_authorized_user(), oauth_application.organization)
-            and get_token_assignment(
-                assignment_uuid, self.get_authorized_user(), oauth_application.organization
-            )
-            is None
+        if oauth_application is None or not self.is_org_admin_or_has_token_assignment(
+            oauth_application.organization, assignment_uuid
         ):
             err = "unauthorized_client"
             return self._make_redirect_error_response(redirect_uri, err)
@@ -291,6 +287,13 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
 
     def discard_refresh_token(self, client_id, refresh_token):
         raise NotImplementedError()
+
+    def is_org_admin_or_has_token_assignment(self, organization, assignment_uuid):
+        return (
+            is_org_admin(self.get_authorized_user(), organization)
+            or get_token_assignment(assignment_uuid, self.get_authorized_user(), organization)
+            is not None
+        )
 
 
 def create_application(org, name, application_uri, redirect_uri, **kwargs):
