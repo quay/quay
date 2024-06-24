@@ -1,14 +1,14 @@
 """add oauth assigned token table
 
 Revision ID: 0988213e0885
-Revises: 946f0e90f9c9
+Revises: 0cdd1f27a450
 Create Date: 2024-05-15 09:09:58.088599
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "0988213e0885"
-down_revision = "946f0e90f9c9"
+down_revision = "0cdd1f27a450"
 
 import sqlalchemy as sa
 
