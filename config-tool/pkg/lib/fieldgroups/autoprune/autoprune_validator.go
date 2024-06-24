@@ -1,8 +1,9 @@
 package autoprune
 
 import (
-	"github.com/quay/quay/config-tool/pkg/lib/shared"
 	"regexp"
+
+	"github.com/quay/quay/config-tool/pkg/lib/shared"
 )
 
 // Validate checks the configuration settings for this field group
@@ -18,35 +19,35 @@ func (fg *AutoPruneFieldGroup) Validate(opts shared.Options) []shared.Validation
 		return errors
 	}
 
-	// If DEFAULT_ORG_AUTOPRUNE_POLICY is not present, skip validation
-	if fg.DEFAULT_ORG_AUTOPRUNE_POLICY == nil {
+	// If DEFAULT_NAMESPACE_AUTOPRUNE_POLICY is not present, skip validation
+	if fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY == nil {
 		return errors
 	}
 
 	// Check for method key
-	if ok, err := shared.ValidateDefaultAutoPruneKey(fg.DEFAULT_ORG_AUTOPRUNE_POLICY.Method, "DEFAULT_ORG_AUTOPRUNE_POLICY", fgName); !ok {
+	if ok, err := shared.ValidateDefaultAutoPruneKey(fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Method, "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY", fgName); !ok {
 		errors = append(errors, err)
 	}
 
 	// Make sure the key `value` exists
-	if fg.DEFAULT_ORG_AUTOPRUNE_POLICY.Value == nil {
+	if fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Value == nil {
 		newError := shared.ValidationError{
-			Tags:       []string{"DEFAULT_ORG_AUTOPRUNE_POLICY"},
+			Tags:       []string{"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"},
 			FieldGroup: fgName,
-			Message:    "DEFAULT_ORG_AUTOPRUNE_POLICY must have the key `value`",
+			Message:    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY must have the key `value`",
 		}
 		errors = append(errors, newError)
 		return errors
 	}
 
 	// number_of_tags method requires value to be `int`
-	if fg.DEFAULT_ORG_AUTOPRUNE_POLICY.Method == "number_of_tags" {
-		_, ok := fg.DEFAULT_ORG_AUTOPRUNE_POLICY.Value.(int)
+	if fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Method == "number_of_tags" {
+		_, ok := fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Value.(int)
 		if !ok {
 			newError := shared.ValidationError{
-				Tags:       []string{"DEFAULT_ORG_AUTOPRUNE_POLICY"},
+				Tags:       []string{"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"},
 				FieldGroup: fgName,
-				Message:    "DEFAULT_ORG_AUTOPRUNE_POLICY method `number_of_tags` must have an integer value",
+				Message:    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY method `number_of_tags` must have an integer value",
 			}
 			errors = append(errors, newError)
 			return errors
@@ -54,13 +55,13 @@ func (fg *AutoPruneFieldGroup) Validate(opts shared.Options) []shared.Validation
 	}
 
 	// creation_date method requires value to be `string`
-	if fg.DEFAULT_ORG_AUTOPRUNE_POLICY.Method == "creation_date" {
-		value, ok := fg.DEFAULT_ORG_AUTOPRUNE_POLICY.Value.(string)
+	if fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Method == "creation_date" {
+		value, ok := fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Value.(string)
 		if !ok {
 			newError := shared.ValidationError{
-				Tags:       []string{"DEFAULT_ORG_AUTOPRUNE_POLICY"},
+				Tags:       []string{"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"},
 				FieldGroup: fgName,
-				Message:    "DEFAULT_ORG_AUTOPRUNE_POLICY method `creation_date` must have a string type as value",
+				Message:    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY method `creation_date` must have a string type as value",
 			}
 			errors = append(errors, newError)
 			return errors
@@ -69,9 +70,9 @@ func (fg *AutoPruneFieldGroup) Validate(opts shared.Options) []shared.Validation
 			re, _ := regexp.Compile(`^([0-9]+[smdwy])$`)
 			if !re.MatchString(value) {
 				newError := shared.ValidationError{
-					Tags:       []string{"DEFAULT_ORG_AUTOPRUNE_POLICY"},
+					Tags:       []string{"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"},
 					FieldGroup: fgName,
-					Message:    "DEFAULT_ORG_AUTOPRUNE_POLICY creation_date value must follow: `^([0-9]+[smdwy])$`",
+					Message:    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY creation_date value must follow: `^([0-9]+[smdwy])$`",
 				}
 				errors = append(errors, newError)
 				return errors

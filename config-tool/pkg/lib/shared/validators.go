@@ -969,7 +969,7 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 
 }
 
-// ValidateDefaultAutoPruneKey validates that DEFAULT_ORG_AUTOPRUNE_POLICY has key of `number_of_tags` or `creation_date`
+// ValidateDefaultAutoPruneKey validates that DEFAULT_NAMESPACE_AUTOPRUNE_POLICY has key of `number_of_tags` or `creation_date`
 func ValidateDefaultAutoPruneKey(input string, field string, fgName string) (bool, ValidationError) {
 
 	re := regexp.MustCompile(`^number_of_tags|creation_date$`)

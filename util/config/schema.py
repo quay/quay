@@ -1536,7 +1536,7 @@ CONFIG_SCHEMA = {
             "description": "Allows organization administrators to assign OAuth tokens to other users",
             "x-example": False,
         },
-        "DEFAULT_ORG_AUTORPRUNE_POLICY": {
+        "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
             "type": "object",
             "description": "Default auto-prune policy applied to newly created organizations",
             "properties": {

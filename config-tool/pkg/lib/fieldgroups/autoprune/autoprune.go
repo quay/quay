@@ -2,12 +2,13 @@ package autoprune
 
 import (
 	"errors"
+
 	"github.com/creasty/defaults"
 )
 
 type AutoPruneFieldGroup struct {
-	FEATURE_AUTO_PRUNE           bool                          `default:"false" validate:"" json:"FEATURE_AUTO_PRUNE,omitempty" yaml:"FEATURE_AUTO_PRUNE,omitempty"`
-	DEFAULT_ORG_AUTOPRUNE_POLICY *DefaultAutoPrunePolicyStruct `default:"" validate:"" json:"DEFAULT_ORG_AUTOPRUNE_POLICY,omitempty" yaml:"DEFAULT_ORG_AUTOPRUNE_POLICY,omitempty"`
+	FEATURE_AUTO_PRUNE                 bool                          `default:"false" validate:"" json:"FEATURE_AUTO_PRUNE,omitempty" yaml:"FEATURE_AUTO_PRUNE,omitempty"`
+	DEFAULT_NAMESPACE_AUTOPRUNE_POLICY *DefaultAutoPrunePolicyStruct `default:"" validate:"" json:"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY,omitempty" yaml:"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY,omitempty"`
 }
 
 type DefaultAutoPrunePolicyStruct struct {
@@ -28,10 +29,10 @@ func NewAutoPruneFieldGroup(fullConfig map[string]interface{}) (*AutoPruneFieldG
 		}
 	}
 
-	if value, ok := fullConfig["DEFAULT_ORG_AUTOPRUNE_POLICY"]; ok {
+	if value, ok := fullConfig["DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"]; ok {
 		var err error
 		value := value.(map[string]interface{})
-		newAutoPruneFieldGroup.DEFAULT_ORG_AUTOPRUNE_POLICY, err = NewDefaultOrgAutoPrunePolicyStruct(value)
+		newAutoPruneFieldGroup.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY, err = NewDefaultOrgAutoPrunePolicyStruct(value)
 		if err != nil {
 			return newAutoPruneFieldGroup, err
 		}
@@ -47,7 +48,7 @@ func NewDefaultOrgAutoPrunePolicyStruct(defaultConfig map[string]interface{}) (*
 	if value, ok := defaultConfig["method"]; ok {
 		newDefaultOrgAutoPrunePolicyStruct.Method, ok = value.(string)
 		if !ok {
-			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_ORG_AUTOPRUNE_POLICY `method` must be of type string")
+			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_NAMESPACE_AUTOPRUNE_POLICY `method` must be of type string")
 		}
 	}
 
@@ -61,7 +62,7 @@ func NewDefaultOrgAutoPrunePolicyStruct(defaultConfig map[string]interface{}) (*
 	if value, ok := defaultConfig["value"]; ok {
 		newDefaultOrgAutoPrunePolicyStruct.Value, ok = value.(string)
 		if !ok {
-			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_ORG_AUTOPRUNE_POLICY `value` must be of type string or int")
+			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_NAMESPACE_AUTOPRUNE_POLICY `value` must be of type string or int")
 		}
 	}
 

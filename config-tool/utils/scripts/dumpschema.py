@@ -1173,11 +1173,11 @@ CONFIG_SCHEMA = {
             "description": "If set to true, auto pruning of images is supported. Defaults to False",
             "x-example": False,
         },
-        "DEFAULT_ORG_AUTOPRUNE_POLICY": {
+        "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
             "type": "object",
             "description": "Default org wide auto prune policy. Defaults to empty",
-            "x-example": {"number_of_tags":  "10"},
-        }
+            "x-example": {"number_of_tags": "10"},
+        },
     },
 }
 

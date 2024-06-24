@@ -1154,7 +1154,7 @@
       "ct-default": "false",
       "ct-validate": ""
     },
-    "DEFAULT_ORG_AUTOPRUNE_POLICY": {
+    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
       "x-example": {"number_of_tags":  "10"},
       "type": "object",
       "description": "Default org wide auto prune policy. Defaults to empty",

@@ -60,13 +60,20 @@ class NamespaceAutoPrunePolicy:
 
 
 class RepositoryAutoPrunePolicy:
-    def __init__(self, db_row):
-        config = json.loads(db_row.policy)
-        self._db_row = db_row
-        self.uuid = db_row.uuid
-        self.method = config.get("method")
-        self.config = config
-        self.repository_id = db_row.repository_id
+    def __init__(self, db_row=None, policy_dict=None):
+        if db_row is not None:
+            config = json.loads(db_row.policy)
+            self._db_row = db_row
+            self.uuid = db_row.uuid
+            self.method = config.get("method")
+            self.config = config
+            self.repository_id = db_row.repository_id
+        elif policy_dict is not None:
+            self._db_row = None
+            self.uuid = None
+            self.method = policy_dict.get("method")
+            self.config = policy_dict
+            self.repository_id = None
 
     def get_row(self):
         return self._db_row
@@ -661,7 +668,7 @@ def get_repository_by_policy_repo_id(policy_repo_id):
         return None
 
 
-def execute_namespace_polices(
+def execute_namespace_policies(
     ns_policies,
     namespace_id,
     repository_page_limit=50,
