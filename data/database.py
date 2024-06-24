@@ -1730,7 +1730,7 @@ class Manifest(BaseModel):
     config_media_type = CharField(null=True)
     layers_compressed_size = BigIntegerField(null=True)
     subject = CharField(null=True)
-    subject_backfilled = BooleanField(default=False)
+    subject_backfilled = BooleanField(default=False, index=True)
 
     class Meta:
         database = db
