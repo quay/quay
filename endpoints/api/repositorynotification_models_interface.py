@@ -9,7 +9,6 @@ class RepositoryNotification(
     namedtuple(
         "RepositoryNotification",
         [
-            "id",
             "uuid",
             "title",
             "event_name",
@@ -23,7 +22,6 @@ class RepositoryNotification(
     """
     RepositoryNotification represents a notification for a repository.
 
-    :type id: int
     :type uuid: string
     :type event: string
     :type method: string
@@ -45,7 +43,6 @@ class RepositoryNotification(
             event_config = {}
 
         return {
-            "id": self.id,
             "uuid": self.uuid,
             "title": self.title,
             "event": self.event_name,
