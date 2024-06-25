@@ -44,6 +44,7 @@ def initial_set(initialized_db):
         event_config={"days": 5},
         title="Image(s) will expire in 5 days",
     )
+    n_1 = notification.get_repo_notification(n_1.uuid)
     n_2 = notification.create_repo_notification(
         repo_ref,
         image_expiry_event.name,
@@ -52,6 +53,7 @@ def initial_set(initialized_db):
         {"days": 10},
         title="Image(s) will expire in 10 days",
     )
+    n_2 = notification.get_repo_notification(n_2.uuid)
 
     tags = list_alive_tags(repo_ref)
     for tag in tags:
