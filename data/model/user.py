@@ -19,6 +19,7 @@ from data.database import (
     NamespaceAutoPrunePolicy,
     NamespaceGeoRestriction,
     OAuthApplication,
+    OauthAssignedToken,
     QuotaNamespaceSize,
     RepoMirrorConfig,
     Repository,
@@ -1355,6 +1356,7 @@ def _delete_user_linked_data(user):
         # Delete any OAuth approvals and tokens associated with the user.
         with db_transaction():
             for app in OAuthApplication.select().where(OAuthApplication.organization == user):
+                OauthAssignedToken.delete().where(OauthAssignedToken.application == app).execute()
                 app.delete_instance(recursive=True)
     else:
         # Remove the user from any teams in which they are a member.
@@ -1393,6 +1395,9 @@ def _delete_user_linked_data(user):
 
     # Delete the quota size entry
     QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
+
+    # Delete any oauth assigned tokens
+    OauthAssignedToken.delete().where(OauthAssignedToken.assigned_user == user).execute()
 
 
 def get_pull_credentials(robotname):

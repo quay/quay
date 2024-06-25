@@ -1,15 +1,19 @@
 from datetime import datetime
-from test.fixtures import *
-from test.helpers import check_transitive_modifications
 
 import pytest
 from mock import patch
 
+from auth.scopes import READ_REPO
 from data import model
 from data.database import DeletedNamespace, EmailConfirmation, FederatedLogin, User
 from data.fields import Credential
 from data.model.notification import create_notification
-from data.model.organization import get_organization
+from data.model.oauth import (
+    assign_token_to_user,
+    get_oauth_application_for_client_id,
+    get_token_assignment,
+)
+from data.model.organization import create_organization, get_organization
 from data.model.repository import create_repository
 from data.model.team import add_user_to_team, create_team
 from data.model.user import (
@@ -26,6 +30,7 @@ from data.model.user import (
     get_public_repo_count,
     get_pull_credentials,
     get_quay_user_from_federated_login_name,
+    get_user,
     list_namespace_robots,
     lookup_robot,
     mark_namespace_for_deletion,
@@ -34,6 +39,8 @@ from data.model.user import (
     verify_robot,
 )
 from data.queue import WorkQueue
+from test.fixtures import *
+from test.helpers import check_transitive_modifications
 from util.security.token import encode_public_private_token
 from util.timedeltastring import convert_to_timedelta
 
@@ -96,7 +103,7 @@ def test_get_active_users(disabled, deleted, initialized_db):
             assert user.enabled
 
 
-def test_mark_namespace_for_deletion(initialized_db):
+def test_mark_user_for_deletion(initialized_db):
     def create_transaction(db):
         return db.transaction()
 
@@ -116,6 +123,16 @@ def test_mark_namespace_for_deletion(initialized_db):
     attach_federated_login(user, "github", "someusername")
     assert FederatedLogin.select().where(FederatedLogin.user == user).count() == 2
     assert FederatedLogin.select().where(FederatedLogin.service_ident == "someusername").exists()
+
+    # Add an oauth assigned token
+    org = model.organization.get_organization("buynlarge")
+    application = model.oauth.create_application(
+        org, "test", "http://foo/bar", "http://foo/bar/baz"
+    )
+    assigned_token = assign_token_to_user(
+        application, user, "http://foo/bar/baz", READ_REPO.scope, "token"
+    )
+    assert get_token_assignment(assigned_token.uuid, user, org) is not None
 
     # Mark the user for deletion.
     queue = WorkQueue("testgcnamespace", create_transaction)
@@ -140,12 +157,85 @@ def test_mark_namespace_for_deletion(initialized_db):
         not FederatedLogin.select().where(FederatedLogin.service_ident == "someusername").exists()
     )
 
+    # Ensure the oauth assigned token is gone
+    assert get_token_assignment(assigned_token.uuid, user, org) is None
+
     # Ensure we can create a user with the same namespace again.
     new_user = create_user_noverify("foobar", "foo@example.com", email_required=False)
     assert new_user.id != user.id
 
     # Ensure the older user is still in the DB.
     assert User.get(id=user.id).username != "foobar"
+
+
+def test_mark_organization_for_deletion(initialized_db):
+    def create_transaction(db):
+        return db.transaction()
+
+    # Create a user and then mark it for deletion.
+    user = get_user("devtable")
+    org = create_organization("foobar", "foobar@devtable.com", user)
+
+    # Add some robots.
+    create_robot("foo", org)
+    create_robot("bar", org)
+
+    assert lookup_robot("foobar+foo") is not None
+    assert lookup_robot("foobar+bar") is not None
+    assert len(list(list_namespace_robots("foobar"))) == 2
+
+    # Add some federated user links.
+    attach_federated_login(org, "google", "someusername")
+    attach_federated_login(org, "github", "someusername")
+    assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 2
+    assert FederatedLogin.select().where(FederatedLogin.service_ident == "someusername").exists()
+
+    # Add an oauth assigned token and application
+    application1 = model.oauth.create_application(
+        org, "test", "http://foo/bar", "http://foo/bar/baz"
+    )
+    application = model.oauth.create_application(
+        org, "test2", "http://foo/bar", "http://foo/bar/baz"
+    )
+    assigned_token = assign_token_to_user(
+        application, user, "http://foo/bar/baz", READ_REPO.scope, "token"
+    )
+    assert get_token_assignment(assigned_token.uuid, user, org) is not None
+
+    # Mark the user for deletion.
+    queue = WorkQueue("testgcnamespace", create_transaction)
+    mark_namespace_for_deletion(org, [], queue)
+
+    # Ensure the older user is still in the DB.
+    older_user = User.get(id=org.id)
+    assert older_user.username != "foobar"
+
+    # Ensure the robots are deleted.
+    with pytest.raises(InvalidRobotException):
+        assert lookup_robot("foobar+foo")
+
+    with pytest.raises(InvalidRobotException):
+        assert lookup_robot("foobar+bar")
+
+    assert len(list(list_namespace_robots(older_user.username))) == 0
+
+    # Ensure the federated logins are gone.
+    assert FederatedLogin.select().where(FederatedLogin.user == org).count() == 0
+    assert (
+        not FederatedLogin.select().where(FederatedLogin.service_ident == "someusername").exists()
+    )
+
+    # Ensure the oauth assigned token is gone
+    assert get_oauth_application_for_client_id(application1.client_id) is None
+    assert get_oauth_application_for_client_id(application.client_id) is None
+    assert get_token_assignment(assigned_token.uuid, org, org) is None
+
+    # Ensure we can create a user with the same namespace again.
+    new_org = create_organization("foobar", "foobar@devtable.com", user)
+    assert new_org.id != org.id
+
+    # Ensure the older org is still in the DB.
+    assert User.get(id=org.id).username != "foobar"
 
 
 def test_delete_namespace_via_marker(initialized_db):

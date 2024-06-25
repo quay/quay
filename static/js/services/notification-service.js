@@ -244,7 +244,15 @@ function($rootScope, $interval, UserService, ApiService, StringBuilderService, P
       'page': function(metadata) {
         return '/superuser/?tab=servicekeys';
       },
-    }
+    },
+    'assigned_authorization': {
+      'level': 'primary',
+      'message': 'You have been assigned an Oauth authorization. Please approve or deny the request.',
+      'page': function(metadata) {
+        return '/user/'+metadata["username"]+'/?tab=external';
+      },
+      'dismissable': true
+    },
   };
 
   notificationService.dismissNotification = function(notification) {

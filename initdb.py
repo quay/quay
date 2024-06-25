@@ -74,6 +74,7 @@ from data.model.autoprune import (
     create_namespace_autoprune_policy,
     create_repository_autoprune_policy,
 )
+from data.model.oauth import assign_token_to_user
 from data.queue import WorkQueue
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -531,6 +532,8 @@ def initialize_database():
     NotificationKind.create(name="quota_warning")
     NotificationKind.create(name="quota_error")
 
+    NotificationKind.create(name="assigned_authorization")
+
     QuayRegion.create(name="us")
     QuayService.create(name="quay")
 
@@ -983,6 +986,9 @@ def populate_database(minimal=False):
         "http://localhost:8000",
         "http://localhost:8000/o2c.html",
         client_id="deadbeef",
+    )
+    assign_token_to_user(
+        oauth_app_1, new_user_1, "http://localhost:8000/o2c.html", "repo:admin", "token"
     )
 
     model.oauth.create_application(
