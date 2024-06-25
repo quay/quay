@@ -22,7 +22,6 @@ def mock_get_notification(uuid):
     mock_notification = MagicMock(iface.RepositoryNotification)
     if uuid == "exists":
         mock_notification.return_value = iface.RepositoryNotification(
-            "id",
             "exists",
             "title",
             "event_name",

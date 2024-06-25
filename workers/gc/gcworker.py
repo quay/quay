@@ -8,6 +8,7 @@ from data.database import Repository, RepositoryState, UseThenDisconnect
 from data.model.gc import garbage_collect_repo
 from data.model.repository import get_random_gc_policy
 from data.registry_model import registry_model
+from notifications.notificationevent import RepoImageExpiryEvent
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.metrics.prometheus import gc_iterations
 from util.notification import scan_for_image_expiry_notifications
@@ -37,7 +38,7 @@ class GarbageCollectionWorker(Worker):
 
     def _scan_notifications(self):
         # scan for tags that are expiring based on configured RepositoryNotifications
-        scan_for_image_expiry_notifications(event_name="repo_image_expiry")
+        scan_for_image_expiry_notifications(event_name=RepoImageExpiryEvent.event_name())
 
     def _garbage_collection_repos(self, skip_lock_for_testing=False):
         """
