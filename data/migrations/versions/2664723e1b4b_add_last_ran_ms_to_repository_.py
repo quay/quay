@@ -11,13 +11,25 @@ revision = "2664723e1b4b"
 down_revision = "f67fe4871771"
 
 import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 
 
 def upgrade(op, tables, tester):
     op.add_column(
         "repositorynotification", sa.Column("last_ran_ms", sa.BigInteger(), nullable=True)
     )
+    bind = op.get_bind()
+    inspector = Inspector.from_engine(bind)
+    repositorynotification_indexes = inspector.get_indexes("repositorynotification")
+    if not "last_ran_repositorynotification" in [i["name"] for i in repositorynotification_indexes]:
+        op.create_index(
+            "last_ran_repositorynotification",
+            "repositorynotification",
+            ["last_ran_ms"],
+            unique=False,
+        )
 
 
 def downgrade(op, tables, tester):
     op.drop_column("repositorynotification", "last_ran_ms")
+    op.drop_index("last_ran_repositorynotification", table_name="repositorynotification")

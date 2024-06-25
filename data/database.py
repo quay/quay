@@ -1429,7 +1429,7 @@ class RepositoryNotification(BaseModel):
     config_json = TextField()
     event_config_json = TextField(default="{}")
     number_of_failures = IntegerField(default=0)
-    last_ran_ms = BigIntegerField(null=True)
+    last_ran_ms = BigIntegerField(null=True, index=True)
 
 
 class RepositoryAuthorizedEmail(BaseModel):
