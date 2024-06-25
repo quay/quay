@@ -21,9 +21,11 @@ def upgrade(op, tables, tester):
     bind = op.get_bind()
     inspector = Inspector.from_engine(bind)
     repositorynotification_indexes = inspector.get_indexes("repositorynotification")
-    if not "last_ran_repositorynotification" in [i["name"] for i in repositorynotification_indexes]:
+    if not "repositorynotification_last_ran_ms" in [
+        i["name"] for i in repositorynotification_indexes
+    ]:
         op.create_index(
-            "last_ran_repositorynotification",
+            "repositorynotification_last_ran_ms",
             "repositorynotification",
             ["last_ran_ms"],
             unique=False,
@@ -31,5 +33,5 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
+    op.drop_index("repositorynotification_last_ran_ms", table_name="repositorynotification")
     op.drop_column("repositorynotification", "last_ran_ms")
-    op.drop_index("last_ran_repositorynotification", table_name="repositorynotification")
