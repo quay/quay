@@ -91,13 +91,15 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             x: [new Date(props.starttime), new Date(props.endtime)],
             y: [0, maxRange],
           }}
-          legendOrientation="vertical"
-          legendPosition="right"
+          legendOrientation={
+            getLegendData().length >= 12 ? 'horizontal' : 'vertical'
+          }
+          legendPosition={getLegendData().length >= 12 ? 'bottom' : 'right'}
           legendData={getLegendData()}
           legendAllowWrap
           name="usage-logs-graph"
           padding={{
-            bottom: 50,
+            bottom: 10 * getLegendData().length,
             left: 80,
             right: 500, // Adjusted to accommodate legend
             top: 50,
