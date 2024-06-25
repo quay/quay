@@ -7707,7 +7707,7 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 --
 
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
-2	\N	ServiceKeyApprovalType.AUTOMATIC	2024-06-07 15:53:13.57574
+2	\N	ServiceKeyApprovalType.AUTOMATIC	2024-06-07 15:53:13.57574	
 \.
 
 
@@ -7805,40 +7805,40 @@ COPY public.tagtorepositorytag (id, repository_id, tag_id, repository_tag_id) FR
 --
 
 COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
-3	owners	4	1
-4	owners	5	1
-5	owners	6	1
-6	owners	7	1
-7	owners	8	1
-8	owners	9	1
-9	owners	10	1
-10	owners	11	1
-11	owners	12	1
-12	owners	13	1
-13	owners	14	1
-14	owners	15	1
-15	owners	16	1
-16	owners	17	1
-17	owners	18	1
-18	owners	19	1
-19	owners	20	1
-20	owners	21	1
-21	owners	22	1
-22	owners	23	1
-23	owners	24	1
-24	owners	25	1
-25	owners	26	1
-26	owners	27	1
-27	owners	28	1
-28	testteam	28	3
-29	testteam2	28	3
-30	owners	32	1
-31	arsenal	28	3
-32	liverpool	28	3
-33	chelsea	28	3
-34	owners	34	1
-35	teamforreadonly	32	3
-36	prometheus	6	3
+3	owners	4	1	
+4	owners	5	1	
+5	owners	6	1	
+6	owners	7	1	
+7	owners	8	1	
+8	owners	9	1	
+9	owners	10	1	
+10	owners	11	1	
+11	owners	12	1	
+12	owners	13	1	
+13	owners	14	1	
+14	owners	15	1	
+15	owners	16	1	
+16	owners	17	1	
+17	owners	18	1	
+18	owners	19	1	
+19	owners	20	1	
+20	owners	21	1	
+21	owners	22	1	
+22	owners	23	1	
+23	owners	24	1	
+24	owners	25	1	
+25	owners	26	1	
+26	owners	27	1	
+27	owners	28	1	
+28	testteam	28	3	
+29	testteam2	28	3	
+30	owners	32	1	
+31	arsenal	28	3	
+32	liverpool	28	3	
+33	chelsea	28	3	
+34	owners	34	1	
+35	teamforreadonly	32	3	
+36	prometheus	6	3	
 \.
 
 
@@ -12892,6 +12892,14 @@ ALTER TABLE ONLY public.repositorypermission
 
 ALTER TABLE ONLY public.repositorysearchscore
     ADD CONSTRAINT fk_repositorysearchscore_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
+-- Name: repositorysize fk_repositorysize_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.repositorysize
+    ADD CONSTRAINT fk_repositorysize_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
 
 
 --
