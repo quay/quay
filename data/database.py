@@ -752,6 +752,7 @@ class User(BaseModel):
                     AutoPruneTaskStatus,
                     RepositoryAutoPrunePolicy,
                     OauthAssignedToken,
+                    TagNotificationSuccess,
                 }
                 | appr_classes
                 | v22_classes
@@ -973,6 +974,7 @@ class Repository(BaseModel):
                 QuotaNamespaceSize,
                 QuotaRepositorySize,
                 RepositoryAutoPrunePolicy,
+                TagNotificationSuccess,
             }
             | appr_classes
             | v22_classes
@@ -1427,6 +1429,7 @@ class RepositoryNotification(BaseModel):
     config_json = TextField()
     event_config_json = TextField(default="{}")
     number_of_failures = IntegerField(default=0)
+    last_ran_ms = BigIntegerField(null=True, index=True)
 
 
 class RepositoryAuthorizedEmail(BaseModel):
@@ -2047,6 +2050,12 @@ class OauthAssignedToken(BaseModel):
     class Meta:
         database = db
         read_only_config = read_only_config
+
+
+class TagNotificationSuccess(BaseModel):
+    notification = ForeignKeyField(RepositoryNotification, index=True, null=False)
+    tag = ForeignKeyField(Tag, index=True, null=False)
+    method = ForeignKeyField(ExternalNotificationMethod, null=False)
 
 
 # Defines a map from full-length index names to the legacy names used in our code
