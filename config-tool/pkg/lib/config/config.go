@@ -4,6 +4,7 @@ import (
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/accesssettings"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/actionlogarchiving"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/apptokenauthentication"
+	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/autoprune"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/bitbucketbuildtrigger"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/buildmanager"
 	"github.com/quay/quay/config-tool/pkg/lib/fieldgroups/database"
@@ -158,5 +159,10 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 	}
 	newConfig["BuildManager"] = newBuildManagerFieldGroup
 
+	newAutoPruneFieldGroup, err := autoprune.NewAutoPruneFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["AutoPrune"] = newAutoPruneFieldGroup
 	return newConfig, nil
 }

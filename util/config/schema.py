@@ -1536,5 +1536,22 @@ CONFIG_SCHEMA = {
             "description": "Allows organization administrators to assign OAuth tokens to other users",
             "x-example": False,
         },
+        "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
+            "type": "object",
+            "description": "Default auto-prune policy applied to newly created organizations",
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "The method to prune tags by",
+                    "enum": ["number_of_tags", "creation_date"],
+                    "x-example": "number_of_tags",
+                },
+                "value": {
+                    "type": ["string", "number"],
+                    "description": "The value for the configured method. For number_of_tags it is a number denoting the number of tags to keep, for creation_date it is a string with the duration to keep tags for",
+                    "x-example": "2d",
+                },
+            },
+        },
     },
 }

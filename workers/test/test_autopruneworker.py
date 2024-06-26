@@ -10,6 +10,7 @@ from data import model
 from data.database import AutoPruneTaskStatus, ImageStorageLocation, Tag
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.tag import list_repository_tag_history, retarget_tag
+from data.model.user import get_active_namespaces
 from data.queue import WorkQueue
 from digest.digest_tools import sha256_digest
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
@@ -624,3 +625,49 @@ def test_nspolicy_creation_date_repopolicy_tagcount_reconcile(initialized_db):
 
     task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy.namespace_id)
     assert task2.status == "success"
+
+
+def test_registry_prune(initialized_db):
+    namespaces = [namespace.username for namespace in get_active_namespaces()]
+    assert len(namespaces) > 5  # 5 is arbitrary, just need more than 2
+    mock_config = {
+        "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {"method": "number_of_tags", "value": 10},
+        "DEFAULT_POLICY_FETCH_NAMESPACES_LIMIT": 2,
+    }
+    with patch("workers.autopruneworker.app.config", mock_config):
+        with patch(
+            "workers.autopruneworker.execute_namespace_policies", MagicMock()
+        ) as mock_execute_namespace_policies:
+
+            def assert_mock_execute_namespace_policies(
+                policies, namespace, repo_page_limit, tag_page_limit, include_repo_policies
+            ):
+                assert len(policies) == 1
+                assert policies[0].config == mock_config["DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"]
+                assert include_repo_policies is False
+                assert namespace.username in namespaces
+                namespaces.remove(namespace.username)
+
+            mock_execute_namespace_policies.side_effect = assert_mock_execute_namespace_policies
+            worker = AutoPruneWorker()
+            worker.prune_registry(skip_lock_for_testing=True)
+            assert len(namespaces) == 0
+
+
+def test_registry_prune_no_default_policy(initialized_db):
+    worker = AutoPruneWorker()
+    assert len(worker._operations) == 1
+
+
+def test_registry_prune_invalid_policy(initialized_db):
+    mock_config = {
+        "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {"method": "doesnotexist", "value": "doesnotexist"}
+    }
+    with patch("workers.autopruneworker.app.config", mock_config):
+        errored = False
+        try:
+            worker = AutoPruneWorker()
+            worker.prune_registry(skip_lock_for_testing=True)
+        except model.InvalidNamespaceAutoPrunePolicy as ex:
+            errored = True
+        assert errored
