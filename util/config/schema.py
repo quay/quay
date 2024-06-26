@@ -1541,7 +1541,7 @@ CONFIG_SCHEMA = {
             "description": "Default auto-prune policy applied to newly created organizations",
             "properties": {
                 "method": {
-                    "type": "string",
+                    "type": ["string", "number"],
                     "description": "",
                     "enum": ["number_of_tags", "creation_date"],
                     "x-example": "number_of_tags",
