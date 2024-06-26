@@ -13,7 +13,11 @@ from data.model.oauth import (
     get_oauth_application_for_client_id,
     get_token_assignment,
 )
-from data.model.organization import create_organization, get_organization, get_organizations
+from data.model.organization import (
+    create_organization,
+    get_organization,
+    get_organizations,
+)
 from data.model.repository import create_repository
 from data.model.team import add_user_to_team, create_team
 from data.model.user import (
@@ -366,7 +370,7 @@ def test_get_public_repo_count(initialized_db):
 
 
 def test_get_active_namespaces(initialized_db):
-    num_active_users = len(get_active_users())
+    num_active_users = len(get_active_users(disabled=False))
     num_organizations = len(get_organizations())
     active_namespaces = len(get_active_namespaces())
     assert num_active_users > 0
