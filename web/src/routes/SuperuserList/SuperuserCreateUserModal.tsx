@@ -10,82 +10,71 @@ import {
   HelperTextItem,
 } from '@patternfly/react-core';
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
-import './css/Organizations.scss';
 import {isValidEmail} from 'src/libs/utils';
 import {useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
-import {useCreateOrganization} from 'src/hooks/UseCreateOrganization';
-
-export interface Validation {
-  message: string;
-  isValid: boolean;
-  type: 'default' | 'error' | 'warning';
-}
+import {Validation} from '../OrganizationsList/CreateOrganizationModal';
+import {useCreate} from 'src/hooks/UseSuperuserUsers';
 
 const defaultMessage: Validation = {
   message:
-    'This will also be the namespace for your repositories. Must be alphanumeric, all lowercase, at least 2 characters long and at most 255 characters long',
+    'Name of the user. Must be all lowercase, at least 4 characters long and at most 30 characters long',
   isValid: true,
   type: 'default',
 };
 
-export const CreateOrganizationModal = (
-  props: CreateOrganizationModalProps,
+export const SuperuserCreateUserModal = (
+  props: SuperuserCreateUserModalProps,
 ): JSX.Element => {
-  const [organizationName, setOrganizationName] = useState('');
-  const [organizationEmail, setOrganizationEmail] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
   const [invalidEmailFlag, setInvalidEmailFlag] = useState(false);
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
 
-  const {createOrganization} = useCreateOrganization({
+  const {createUser} = useCreate({
     onSuccess: () => props.handleModalToggle(),
     onError: (err) => {
-      setErr(addDisplayError('Unable to create organization', err));
+      setErr(addDisplayError('Unable to create user', err));
     },
   });
 
   const handleNameInputChange = (value: string) => {
-    const regex = /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/;
-    if (!regex.test(value) || value.length >= 256 || value.length < 2) {
+    const regex = /^[a-z0-9_]{4,30}$/;
+    if (!regex.test(value) || value.length >= 30 || value.length < 4) {
       setValidation({
         message:
-          'Must be alphanumeric, all lowercase, at least 2 characters long and at most 255 characters long',
+          'Username can only consist of either lowercase letters(a-z), digits(0-9), or underscore(_). It must be at least 4 characters and at most 30 characters long',
         isValid: false,
         type: 'error',
-      });
-    } else if (value.length > 30 || value.length < 4) {
-      setValidation({
-        message:
-          'Namespaces less than 4 or more than 30 characters are only compatible with Docker 1.6+',
-        isValid: true,
-        type: 'warning',
-      });
-    } else if (value.includes('.') || value.includes('-')) {
-      setValidation({
-        message:
-          'Namespaces with dashes or dots are only compatible with Docker 1.9+',
-        isValid: true,
-        type: 'warning',
       });
     } else {
       setValidation(defaultMessage);
     }
-    setOrganizationName(value);
+    setNewUsername(value);
   };
 
   const handleEmailInputChange = (value: string) => {
-    setOrganizationEmail(value);
+    setNewUserEmail(value);
+
+    // Check if the new email value is not empty
+    if (value.length !== 0) {
+      // Validate the email format using isValidEmail function
+      isValidEmail(value) ? setInvalidEmailFlag(false) : setInvalidEmailFlag(true);
+    } else {
+      // If the value is empty, consider it invalid (optional step based on your requirements)
+      setInvalidEmailFlag(true);
+    }
   };
 
-  const createOrganizationHandler = async () => {
-    await createOrganization(organizationName, organizationEmail);
+  const createUserHandler = async () => {
+    await createUser(newUsername, newUserEmail);
   };
 
   const onInputBlur = () => {
-    if (organizationEmail.length !== 0) {
-      isValidEmail(organizationEmail)
+    if (newUserEmail.length !== 0) {
+      isValidEmail(newUserEmail)
         ? setInvalidEmailFlag(false)
         : setInvalidEmailFlag(true);
     } else {
@@ -95,25 +84,23 @@ export const CreateOrganizationModal = (
 
   return (
     <Modal
-      title="Create Organization"
+      title="Create User"
       variant={ModalVariant.large}
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
       actions={[
         <Button
-          id="create-org-confirm"
+          id="create-user-confirm"
           key="confirm"
           variant="primary"
-          onClick={createOrganizationHandler}
+          onClick={createUserHandler}
           form="modal-with-form-form"
-          isDisabled={
-            invalidEmailFlag || !organizationName || !validation.isValid
-          }
+          isDisabled={invalidEmailFlag || !newUsername || !newUserEmail || !validation.isValid}
         >
           Create
         </Button>,
         <Button
-          id="create-org-cancel"
+          id="create-user-cancel"
           key="cancel"
           variant="link"
           onClick={props.handleModalToggle}
@@ -123,18 +110,18 @@ export const CreateOrganizationModal = (
       ]}
     >
       <FormError message={err} setErr={setErr} />
-      <Form id="create-org-modal" isWidthLimited>
+      <Form id="create-user-modal" isWidthLimited>
         <FormGroup
           isInline
-          label="Organization Name"
+          label="Username"
           isRequired
-          fieldId="create-org-name"
+          fieldId="create-user-name"
         >
           <TextInput
             isRequired
             type="text"
-            id="create-org-name-input"
-            value={organizationName}
+            id="create-user-name-input"
+            value={newUsername}
             onChange={(_event, value) => handleNameInputChange(value)}
             validated={validation.type}
           />
@@ -152,15 +139,15 @@ export const CreateOrganizationModal = (
             </HelperText>
           </FormHelperText>
         </FormGroup>
-        <FormGroup label="Organization Email" fieldId="create-org-email">
+        <FormGroup label="User Email" fieldId="create-user-email" isRequired>
           <TextInput
+            isRequired
             type="email"
-            id="create-org-email-input"
-            name="create-org-email-input"
-            value={organizationEmail}
+            id="create-user-email-input"
+            name="create-user-email-input"
+            value={newUserEmail}
             onChange={(_event, value) => handleEmailInputChange(value)}
             validated={invalidEmailFlag ? 'error' : 'default'}
-            onBlur={onInputBlur}
           />
 
           <FormHelperText>
@@ -170,12 +157,10 @@ export const CreateOrganizationModal = (
                   variant="error"
                   icon={<ExclamationCircleIcon />}
                 >
-                  Enter a valid email: email@provider.com
+                  Invalid email format, it should be of the form email@provider.com
                 </HelperTextItem>
               ) : (
-                <HelperTextItem>
-                  {"This address must be different from your account's email"}
-                </HelperTextItem>
+                <HelperTextItem>{'This must be a valid email address'}</HelperTextItem>
               )}
             </HelperText>
           </FormHelperText>
@@ -186,7 +171,7 @@ export const CreateOrganizationModal = (
   );
 };
 
-type CreateOrganizationModalProps = {
+type SuperuserCreateUserModalProps = {
   isModalOpen: boolean;
   handleModalToggle?: () => void;
 };

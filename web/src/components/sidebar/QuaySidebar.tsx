@@ -15,8 +15,8 @@ import {useRecoilValue} from 'recoil';
 import OverviewList from 'src/routes/OverviewList/OverviewList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useState} from 'react';
-import SuperuserUsersList from 'src/routes/SuperuserList/SuperuserUsersList';
 import SuperuserOrgsList from 'src/routes/SuperuserList/Organizations/SuperuserOrgsList';
+import SuperuserUsersList from 'src/routes/SuperuserList/Users/SuperuserUsersList';
 
 interface SideNavProps {
   isSideNav: boolean;
