@@ -161,5 +161,6 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
+    GlobalLock.configure(app.config)
     worker = AutoPruneWorker()
     worker.start()
