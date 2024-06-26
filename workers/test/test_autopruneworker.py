@@ -628,8 +628,8 @@ def test_nspolicy_creation_date_repopolicy_tagcount_reconcile(initialized_db):
 
 
 def test_registry_prune(initialized_db):
-    namespaces = list(get_active_namespaces())
-    assert len(namespaces) > 5  # 5 is arbitrary, just need a good amount
+    namespaces = [namespace.username for namespace in get_active_namespaces()]
+    assert len(namespaces) > 5  # 5 is arbitrary, just need more than 2
     mock_config = {
         "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {"method": "number_of_tags", "value": 10},
         "DEFAULT_POLICY_FETCH_NAMESPACES_LIMIT": 2,
@@ -644,12 +644,14 @@ def test_registry_prune(initialized_db):
             ):
                 assert len(policies) == 1
                 assert policies[0].config == mock_config["DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"]
-                assert namespace == namespaces.pop(0)
                 assert include_repo_policies is False
+                assert namespace.username in namespaces
+                namespaces.remove(namespace.username)
 
             mock_execute_namespace_policies.side_effect = assert_mock_execute_namespace_policies
             worker = AutoPruneWorker()
             worker.prune_registry(skip_lock_for_testing=True)
+            assert len(namespaces) == 0
 
 
 def test_registry_prune_no_default_policy(initialized_db):
