@@ -24,6 +24,8 @@ import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import OverviewList from './OverviewList/OverviewList';
+import SuperuserUsersList from './SuperuserList/Users/SuperuserUsersList';
+import SuperuserOrgsList from './SuperuserList/Organizations/SuperuserOrgsList';
 
 const NavigationRoutes = [
   {
@@ -50,6 +52,15 @@ const NavigationRoutes = [
     path: NavigationPath.teamMember,
     Component: <ManageMembersList />,
   },
+  {
+    path: NavigationPath.superuserUsersList,
+    Component: <SuperuserUsersList />,
+  },
+  {
+    path: NavigationPath.superuserOrgsList,
+    Component: <SuperuserOrgsList />,
+  },
+  
 ];
 
 function PluginMain() {
