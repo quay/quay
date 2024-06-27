@@ -1,6 +1,7 @@
 import logging
 
-from elasticsearch.exceptions import ElasticsearchException
+from elasticsearch.exceptions import TransportError
+from elastic_transport import ApiError
 
 from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface
@@ -18,10 +19,17 @@ class ElasticsearchLogsProducer(LogProducerInterface):
     def send(self, logentry):
         try:
             logentry.save()
-        except ElasticsearchException as ex:
+        except TransportError as ex:
             logger.exception("ElasticsearchLogsProducer error sending log to Elasticsearch: %s", ex)
             raise LogSendException(
                 "ElasticsearchLogsProducer error sending log to Elasticsearch: %s" % ex
+            )
+        except ApiError as ex:
+            logger.exception(
+                "ElasticsearchLogsProducer Elasticsearch error from an HTTP response: %s", ex
+            )
+            raise LogSendException(
+                "ElasticsearchLogsProducer Elasticsearch error from an HTTP response: %s" % ex
             )
         except Exception as e:
             logger.exception(
