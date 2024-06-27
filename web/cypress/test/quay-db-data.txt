@@ -374,7 +374,6 @@ DROP INDEX IF EXISTS public.manifestblob_repository_id;
 DROP INDEX IF EXISTS public.manifestblob_manifest_id_blob_id;
 DROP INDEX IF EXISTS public.manifestblob_manifest_id;
 DROP INDEX IF EXISTS public.manifestblob_blob_id;
-DROP INDEX IF EXISTS public.manifest_subject_backfilled;
 DROP INDEX IF EXISTS public.manifest_repository_id_subject;
 DROP INDEX IF EXISTS public.manifest_repository_id_media_type_id;
 DROP INDEX IF EXISTS public.manifest_repository_id_digest;
@@ -10485,13 +10484,6 @@ CREATE INDEX manifest_repository_id_media_type_id ON public.manifest USING btree
 --
 
 CREATE INDEX manifest_repository_id_subject ON public.manifest USING btree (repository_id, subject);
-
-
---
--- Name: manifest_subject_backfilled; Type: INDEX; Schema: public; Owner: quay
---
-
-CREATE INDEX manifest_subject_backfilled ON public.manifest USING btree (subject_backfilled);
 
 
 --
