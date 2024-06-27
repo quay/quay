@@ -19,12 +19,14 @@ def upgrade(op, tables, tester):
     inspector = Inspector.from_engine(bind)
     manifest_indexes = inspector.get_indexes("manifest")
     if not "manifest_subject_backfilled" in [i["name"] for i in manifest_indexes]:
-        op.create_index(
-            "manifest_subject_backfilled",
-            "manifest",
-            ["subject_backfilled"],
-            unique=False,
-        )
+        with op.get_context().autocommit_block():
+            op.create_index(
+                "manifest_subject_backfilled",
+                "manifest",
+                ["subject_backfilled"],
+                unique=False,
+                postgresql_concurrently=True,
+            )
 
 
 def downgrade(op, tables, tester):
