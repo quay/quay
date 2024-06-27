@@ -15,7 +15,7 @@ import {useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {Validation} from '../OrganizationsList/CreateOrganizationModal';
-import {useCreate} from 'src/hooks/UseSuperuserUsers';
+import {useCreateUser} from 'src/hooks/UseSuperuserUsers';
 
 const defaultMessage: Validation = {
   message:
@@ -33,7 +33,7 @@ export const SuperuserCreateUserModal = (
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
 
-  const {createUser} = useCreate({
+  const {createUser} = useCreateUser({
     onSuccess: () => props.handleModalToggle(),
     onError: (err) => {
       setErr(addDisplayError('Unable to create user', err));

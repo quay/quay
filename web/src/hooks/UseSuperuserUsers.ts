@@ -1,8 +1,8 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
-import {createUser, fetchSuperuserUsers} from 'src/resources/SuperuserResource';
-import {superuserUsersViewColumnNames} from 'src/routes/SuperuserList/Users/SuperuserUsersList';
+import {bulkDeleteUsers, createUser, fetchSuperuserUsers} from 'src/resources/SuperuserUsersResource';
+import {superuserUsersColumnNames} from 'src/routes/SuperuserList/Users/SuperuserUsersList';
 import {useCurrentUser} from './UseCurrentUser';
 
 export interface ISuperuserUsers {
@@ -19,7 +19,7 @@ export function useFetchSuperuserUsers() {
   const [perPage, setPerPage] = useState(20);
   const [search, setSearch] = useState<SearchState>({
     query: '',
-    field: superuserUsersViewColumnNames.username,
+    field: superuserUsersColumnNames.username,
   });
   const {isSuperUser} = useCurrentUser();
 
@@ -63,7 +63,7 @@ export function useFetchSuperuserUsers() {
 }
 
 
-export function useCreate({onSuccess, onError}) {
+export function useCreateUser({onSuccess, onError}) {
   const queryClient = useQueryClient();
 
   const createUserMutator = useMutation(
@@ -84,5 +84,29 @@ export function useCreate({onSuccess, onError}) {
   return {
     createUser: async (name: string, email: string) =>
       createUserMutator.mutate({name, email}),
+  };
+}
+
+
+export function useDeleteUser( {onSuccess, onError}) {
+  const queryClient = useQueryClient();
+  const deleteUsersMutator = useMutation(
+    async (users: ISuperuserUsers[] | ISuperuserUsers) => {
+      users = Array.isArray(users) ? users : [users];
+      return bulkDeleteUsers(users);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['superuserusers']);
+        onSuccess();
+      },
+      onError: (err) => {
+        onError(err);
+      },
+    },
+  );
+  return {
+    removeUser: async (users: ISuperuserUsers[] | ISuperuserUsers) =>
+      deleteUsersMutator.mutate(users),
   };
 }
