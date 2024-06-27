@@ -8,11 +8,38 @@ import {
   MenuToggleElement,
 } from '@patternfly/react-core';
 import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon';
-import {ISuperuserOrgs} from 'src/hooks/UseSuperuserOrgs';
+import {
+  ISuperuserOrgs,
+  useTakeOwnershipOfOrg,
+  useUpdateOrgName,
+} from 'src/hooks/UseSuperuserOrgs';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 export default function SuperuserOrgsKebab(props: SuperuserOrgsKebabProps) {
   const [isKebabOpen, setIsKebabOpen] = useState<boolean>(false);
-  const [searchParams] = useSearchParams();
+  const {addAlert} = useAlerts();
+
+  const {updateOrganizationName, errorUpdatingOrgName, successUpdatingOrgName} =
+    useUpdateOrgName();
+
+  const {changeOrgOwnership, loadingChangingOwnership, errorChangingOwnership} =
+    useTakeOwnershipOfOrg({
+      onSuccess: () => {
+        addAlert({
+          title: 'Successfully changed org ownership',
+          variant: AlertVariant.Success,
+          key: 'alert',
+        });
+      },
+      onError: (err) => {
+        addAlert({
+          title: err.response.data.error_message,
+          variant: AlertVariant.Failure,
+          key: 'alert',
+        });
+      },
+    });
 
   return (
     <Dropdown
@@ -34,18 +61,19 @@ export default function SuperuserOrgsKebab(props: SuperuserOrgsKebabProps) {
       shouldFocusToggleOnSelect
     >
       <DropdownList>
-        <DropdownItem>
-          <Link
-            to={null}
-            data-testid={`${props.org.name}-manage-team-member-option`}
-          >
-            Rename Organization
-          </Link>
+        <DropdownItem
+          key="rename"
+          onClick={() =>
+            updateOrganizationName({updatedOrgName: props.org.name})
+          }
+          data-testid={`${props.org.name}-rename-option`}
+        >
+          Rename Organization
         </DropdownItem>
 
         <DropdownItem
           key="delete"
-          onClick={props.onDeleteTeam}
+          onClick={props.onDeleteOrg}
           className="red-color"
           data-testid={`${props.org.name}-del-option`}
         >
@@ -53,10 +81,9 @@ export default function SuperuserOrgsKebab(props: SuperuserOrgsKebabProps) {
         </DropdownItem>
 
         <DropdownItem
-          key="delete"
-          onClick={props.onDeleteTeam}
-          className="red-color"
-          data-testid={`${props.org.name}-del-option`}
+          key="ownership"
+          onClick={async () => await changeOrgOwnership(props.org.name)}
+          data-testid={`${props.org.name}-ownership-option`}
         >
           Take Ownership
         </DropdownItem>
@@ -68,5 +95,5 @@ export default function SuperuserOrgsKebab(props: SuperuserOrgsKebabProps) {
 interface SuperuserOrgsKebabProps {
   org: ISuperuserOrgs;
   deSelectAll: () => void;
-  onDeleteTeam: () => void;
+  onDeleteOrg: () => void;
 }

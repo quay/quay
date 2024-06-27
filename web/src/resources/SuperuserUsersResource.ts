@@ -11,8 +11,8 @@ export async function fetchSuperuserUsers() {
 }
 
 export async function createUser(username: string, email: string) {
-  const createUserUrl = `/api/v1/superuser/users`;
-  const reqBody = {name: username, email: email};
+  const createUserUrl = `/api/v1/superuser/users/`;
+  const reqBody = {username: username, email: email};
   const response = await axios.post(createUserUrl, reqBody);
   assertHttpCode(response.status, 201);
   return response.data;

@@ -6,6 +6,8 @@ import {superuserOrgsColumnNames} from 'src/routes/SuperuserList/Organizations/S
 import {
   bulkDeleteOrgs,
   fetchSuperuserOrgs,
+  takeOwnershipOfOrg,
+  updateOrgName,
 } from 'src/resources/SuperuserOrgsResource';
 
 export interface ISuperuserOrgs {
@@ -81,5 +83,52 @@ export function useDeleteOrg({onSuccess, onError}) {
   return {
     removeOrg: async (orgs: ISuperuserOrgs[] | ISuperuserOrgs) =>
       deleteOrgsMutator.mutate(orgs),
+  };
+}
+
+export function useUpdateOrgName() {
+  const queryClient = useQueryClient();
+  const {
+    mutate: updateOrganizationName,
+    isError: errorUpdatingOrgName,
+    isSuccess: successUpdatingOrgName,
+  } = useMutation(
+    async ({updatedOrgName}: {updatedOrgName: string}) => {
+      return updateOrgName(updatedOrgName);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['superuserorgs']);
+      },
+    },
+  );
+  return {
+    updateOrganizationName,
+    errorUpdatingOrgName,
+    successUpdatingOrgName,
+  };
+}
+
+export function useTakeOwnershipOfOrg({onSuccess, onError}) {
+  const queryClient = useQueryClient();
+
+  const changeOrgOwnershipMutator = useMutation(
+    async ({orgName}: {orgName: string}) => takeOwnershipOfOrg(orgName),
+    {
+      onSuccess: () => {
+        onSuccess();
+        queryClient.invalidateQueries(['superuserusers']);
+      },
+      onError: (err) => {
+        onError(err);
+      },
+    },
+  );
+
+  return {
+    changeOrgOwnership: async (orgName: string) =>
+      changeOrgOwnershipMutator.mutate({orgName}),
+    loadingChangingOwnership: changeOrgOwnershipMutator.isLoading,
+    errorChangingOwnership: changeOrgOwnershipMutator.error,
   };
 }

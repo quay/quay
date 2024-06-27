@@ -24,3 +24,22 @@ export async function bulkDeleteOrgs(organizations: ISuperuserOrgs[]) {
   );
   throwIfError(responses, 'Error deleting organizations');
 }
+
+export async function updateOrgName(
+  updatedOrgName: string
+) {
+  const updateOrgNameUrl = `/api/v1/superuser/organizations/${updatedOrgName}`;
+  const payload = {name: updatedOrgName};
+  const response: AxiosResponse = await axios.put(updateOrgNameUrl, payload);
+  assertHttpCode(response.status, 200);
+  return response.data?.name;
+}
+
+export async function takeOwnershipOfOrg(
+  orgName: string
+) {
+  const changeOrgOwnershipUrl = `/api/v1/superuser/takeownership/${orgName}`;
+  const response: AxiosResponse = await axios.post(changeOrgOwnershipUrl);
+  assertHttpCode(response.status, 200);
+  return response.data?.namespace;
+}

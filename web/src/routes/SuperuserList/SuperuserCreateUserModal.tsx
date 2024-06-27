@@ -24,6 +24,13 @@ const defaultMessage: Validation = {
   type: 'default',
 };
 
+export interface CreateUserResponse {
+  username: string;
+  email: string;
+  password: string;
+  encrypted_password: string;
+}
+
 export const SuperuserCreateUserModal = (
   props: SuperuserCreateUserModalProps,
 ): JSX.Element => {
@@ -32,9 +39,15 @@ export const SuperuserCreateUserModal = (
   const [invalidEmailFlag, setInvalidEmailFlag] = useState(false);
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
+  const [password, setPassword] = useState('');
 
   const {createUser} = useCreateUser({
-    onSuccess: () => props.handleModalToggle(),
+    onSuccess: (data) => {
+      props.handleModalToggle();
+      const {password} = data;
+      console.log(JSON.stringify('pwd data is: %s', password));
+      setPassword(password);
+    },
     onError: (err) => {
       setErr(addDisplayError('Unable to create user', err));
     },
@@ -58,10 +71,11 @@ export const SuperuserCreateUserModal = (
   const handleEmailInputChange = (value: string) => {
     setNewUserEmail(value);
 
-    // Check if the new email value is not empty
+    // Validate email
     if (value.length !== 0) {
-      // Validate the email format using isValidEmail function
-      isValidEmail(value) ? setInvalidEmailFlag(false) : setInvalidEmailFlag(true);
+      isValidEmail(value)
+        ? setInvalidEmailFlag(false)
+        : setInvalidEmailFlag(true);
     } else {
       // If the value is empty, consider it invalid (optional step based on your requirements)
       setInvalidEmailFlag(true);
@@ -70,16 +84,6 @@ export const SuperuserCreateUserModal = (
 
   const createUserHandler = async () => {
     await createUser(newUsername, newUserEmail);
-  };
-
-  const onInputBlur = () => {
-    if (newUserEmail.length !== 0) {
-      isValidEmail(newUserEmail)
-        ? setInvalidEmailFlag(false)
-        : setInvalidEmailFlag(true);
-    } else {
-      return;
-    }
   };
 
   return (
@@ -95,7 +99,12 @@ export const SuperuserCreateUserModal = (
           variant="primary"
           onClick={createUserHandler}
           form="modal-with-form-form"
-          isDisabled={invalidEmailFlag || !newUsername || !newUserEmail || !validation.isValid}
+          isDisabled={
+            invalidEmailFlag ||
+            !newUsername ||
+            !newUserEmail ||
+            !validation.isValid
+          }
         >
           Create
         </Button>,
@@ -157,10 +166,13 @@ export const SuperuserCreateUserModal = (
                   variant="error"
                   icon={<ExclamationCircleIcon />}
                 >
-                  Invalid email format, it should be of the form email@provider.com
+                  Invalid email format, it should be of the form
+                  email@provider.com
                 </HelperTextItem>
               ) : (
-                <HelperTextItem>{'This must be a valid email address'}</HelperTextItem>
+                <HelperTextItem>
+                  {'This must be a valid email address'}
+                </HelperTextItem>
               )}
             </HelperText>
           </FormHelperText>

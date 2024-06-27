@@ -152,7 +152,7 @@ export default function SuperuserOrgsList(props: SuperuserOrgsListProps) {
                   <SuperuserOrgsKebab
                     org={org}
                     deSelectAll={() => setSelectedOrgs([])}
-                    onDeleteTeam={() => {
+                    onDeleteOrg={() => {
                       setOrgToBeDeleted(org);
                       setIsDeleteModalForRowOpen(!isDeleteModalForRowOpen);
                     }}

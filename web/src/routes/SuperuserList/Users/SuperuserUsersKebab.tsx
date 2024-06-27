@@ -62,7 +62,6 @@ export default function SuperuserUsersKebab(props: SuperuserUsersKebabProps) {
         <DropdownItem
           key="delete"
           onClick={props.onDeleteTeam}
-          className="red-color"
           data-testid={`${props.user.username}-del-option`}
         >
           Disable User
@@ -71,7 +70,6 @@ export default function SuperuserUsersKebab(props: SuperuserUsersKebabProps) {
         <DropdownItem
           key="delete"
           onClick={props.onDeleteTeam}
-          className="red-color"
           data-testid={`${props.user.username}-del-option`}
         >
           Take Ownership

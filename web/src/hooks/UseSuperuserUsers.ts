@@ -4,6 +4,7 @@ import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {bulkDeleteUsers, createUser, fetchSuperuserUsers} from 'src/resources/SuperuserUsersResource';
 import {superuserUsersColumnNames} from 'src/routes/SuperuserList/Users/SuperuserUsersList';
 import {useCurrentUser} from './UseCurrentUser';
+import { CreateUserResponse } from 'src/routes/SuperuserList/SuperuserCreateUserModal';
 
 export interface ISuperuserUsers {
   kind: string;
@@ -71,8 +72,8 @@ export function useCreateUser({onSuccess, onError}) {
       return createUser(name, email);
     },
     {
-      onSuccess: () => {
-        onSuccess();
+      onSuccess: (data: CreateUserResponse) => {
+        onSuccess(data);
         queryClient.invalidateQueries(['superuserusers']);
       },
       onError: (err) => {
