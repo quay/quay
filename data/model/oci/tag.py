@@ -779,11 +779,14 @@ def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
             ).execute()
 
 
-def fetch_paginated_autoprune_repo_tags_by_number(repo_id, max_tags_allowed: int, limit):
+def fetch_paginated_autoprune_repo_tags_by_number(
+    repo_id, max_tags_allowed: int, items_per_page, page
+):
     """
     Fetch repository's active tags sorted by creation date & are more than max_tags_allowed
     """
     try:
+        tags_offset = max_tags_allowed + ((page - 1) * items_per_page)
         now_ms = get_epoch_timestamp_ms()
         query = (
             Tag.select(Tag.name)
@@ -795,8 +798,8 @@ def fetch_paginated_autoprune_repo_tags_by_number(repo_id, max_tags_allowed: int
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
             .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
-            .offset(max_tags_allowed)
-            .limit(limit)
+            .offset(tags_offset)
+            .limit(items_per_page)
         )
         return list(query)
     except Exception as err:
@@ -805,11 +808,14 @@ def fetch_paginated_autoprune_repo_tags_by_number(repo_id, max_tags_allowed: int
         )
 
 
-def fetch_paginated_autoprune_repo_tags_older_than_ms(repo_id, tag_lifetime_ms: int, limit=100):
+def fetch_paginated_autoprune_repo_tags_older_than_ms(
+    repo_id, tag_lifetime_ms: int, items_per_page=100, page: int = 1
+):
     """
     Return repository's active tags older than tag_lifetime_ms
     """
     try:
+        tags_offset = items_per_page * (page - 1)
         now_ms = get_epoch_timestamp_ms()
         query = (
             Tag.select(Tag.name)
@@ -819,7 +825,8 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(repo_id, tag_lifetime_ms: 
                 (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
                 Tag.hidden == False,
             )
-            .limit(limit)  # type: ignore[func-returns-value]
+            .offset(tags_offset)  # type: ignore[func-returns-value]
+            .limit(items_per_page)
         )
         return list(query)
     except Exception as err:
@@ -833,7 +840,6 @@ def fetch_repo_tags_for_image_expiry_expiry_event(repo_id, days, notified_tags):
     notified_tags refer to the tags that were already notified for the event
     Return query to fetch repository's distinct active tags that are expiring in x number days
     """
-    # TODO: check tags expiring due to org-level/repo-level auto-prune policies
     try:
         future_ms = (datetime.datetime.now() + datetime.timedelta(days=days)).timestamp() * 1000
         now_ms = get_epoch_timestamp_ms()
