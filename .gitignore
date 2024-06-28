@@ -1,5 +1,6 @@
 *.pyc
 venv
+.venv
 screenshots/screenshots/
 conf/stack
 */node_modules
