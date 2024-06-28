@@ -602,6 +602,9 @@ export function useLogDescriptions() {
     disable_team_sync: function (metadata: Metadata) {
       return `Team syncing disabled for ${metadata.team}`;
     },
+    login_success: function (metadata: Metadata) {
+      return `Successful login`;
+    },
   };
 
   return descriptions;
