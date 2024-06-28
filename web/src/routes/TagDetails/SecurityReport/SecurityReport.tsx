@@ -1,37 +1,63 @@
-import SecurityReportTable from './SecurityReportTable';
-import {SecurityReportChart} from './SecurityReportChart';
-import {useRecoilValue} from 'recoil';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
-import {isErrorString} from 'src/resources/ErrorHandling';
+import {Skeleton} from '@patternfly/react-core';
 import RequestError from 'src/components/errors/RequestError';
+import {useManifestSecurity} from 'src/hooks/UseManifestSecurity';
+import {addDisplayError} from 'src/resources/ErrorHandling';
+import {SecurityReportChart} from './SecurityReportChart';
 import {
-  QueuedState,
   FailedState,
+  QueuedState,
   UnsupportedState,
 } from './SecurityReportScanStates';
+import SecurityReportTable from './SecurityReportTable';
 
-export default function SecurityReport() {
-  const data = useRecoilValue(SecurityDetailsState);
-  const error = useRecoilValue(SecurityDetailsErrorState);
+export interface SecurityReportProps {
+  org: string;
+  repo: string;
+  digest: string;
+}
 
-  if (isErrorString(error)) {
-    return <RequestError message={error} />;
+export default function SecurityReport(props: SecurityReportProps) {
+  const {
+    securityDetails,
+    isSecurityDetailsLoading,
+    isSecurityDetailsError,
+    securityDetailsError,
+  } = useManifestSecurity(
+    props.org,
+    props.repo,
+    props.digest,
+    props.digest !== '',
+  );
+
+  if (isSecurityDetailsLoading) {
+    return <Skeleton width="50%"></Skeleton>;
+  }
+
+  if (isSecurityDetailsError) {
+    return (
+      <RequestError
+        message={addDisplayError(
+          securityDetailsError.toString(),
+          securityDetailsError as Error,
+        )}
+      />
+    );
   }
 
   // Return correct messages for the different scan states
-  if (data && data.status === 'queued') {
+  if (securityDetails?.status === 'queued') {
     return <QueuedState />;
-  } else if (data && data.status === 'failed') {
+  } else if (securityDetails?.status === 'failed') {
     return <FailedState />;
-  } else if (data && data.status === 'unsupported') {
+  } else if (
+    securityDetails?.status === 'unsupported' ||
+    securityDetails?.data?.Layer?.Features?.length == 0
+  ) {
     return <UnsupportedState />;
   }
 
   // Set features to a default of null to distinuish between a completed API call and one that is in progress
-  const features = data ? data.data.Layer.Features : null;
+  const features = securityDetails ? securityDetails.data.Layer.Features : null;
   return (
     <>
       <SecurityReportChart features={features} />

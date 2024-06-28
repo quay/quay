@@ -11,13 +11,11 @@ import {
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
 import {Tag, Manifest} from 'src/resources/TagResource';
-import {useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
 import TablePopover from './TablePopover';
 import SecurityDetails from './SecurityDetails';
 import {formatDate} from 'src/libs/utils';
-import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
 import ColumnNames from './ColumnNames';
 import {DownloadIcon} from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
@@ -62,6 +60,7 @@ function SubRow(props: SubRowProps) {
             digest={props.manifest.digest}
             tag={props.tag.name}
             variant="condensed"
+            load={props.isTagExpanded(props.tag)}
           />
         </ExpandableRowContent>
       </Td>
@@ -91,11 +90,6 @@ function TagsTableRow(props: RowProps) {
   const config = useQuayConfig();
   const tag = props.tag;
   const rowIndex = props.rowIndex;
-
-  // Reset SecurityDetailsState so that loading skeletons appear when viewing report
-  const emptySecurityDetails = useResetRecoilState(SecurityDetailsState);
-  const resetSecurityDetails = () => emptySecurityDetails();
-
   const location = useLocation();
 
   return (
@@ -133,7 +127,6 @@ function TagsTableRow(props: RowProps) {
               props.repo,
               tag.name,
             )}
-            onClick={resetSecurityDetails}
           >
             {tag.name}
           </Link>
