@@ -789,7 +789,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
         tags_offset = max_tags_allowed + ((page - 1) * items_per_page)
         now_ms = get_epoch_timestamp_ms()
         query = (
-            Tag.select(Tag.name)
+            Tag.select(Tag.name, Tag.id)
             .where(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
@@ -818,7 +818,7 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
         tags_offset = items_per_page * (page - 1)
         now_ms = get_epoch_timestamp_ms()
         query = (
-            Tag.select(Tag.name)
+            Tag.select(Tag.name, Tag.id)
             .where(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
