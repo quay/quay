@@ -4,7 +4,12 @@
 
 
 <a name="v3.11.2"></a>
-## [v3.11.2] - 0001-01-01
+## [v3.11.2] - 2024-06-13
+### Api
+- [439784d6](https://github.com/quay/quay/commit/439784d60d4644b6072c053abf12df4266408a7a): adding endpoints to FEATURE_SUPERUSERS_FULL_ACCESS (PROJQUAY-7307) ([#2941](https://github.com/quay/quay/issues/2941))
+### [Redhat-3.11] Chore
+- [7d94ff01](https://github.com/quay/quay/commit/7d94ff015eed8dc03cbd935a6668d1e985ec893c): Update alembic migration script to support sqlite db (PROJQUAY-7314) ([#2947](https://github.com/quay/quay/issues/2947))
+- [ae76d6f3](https://github.com/quay/quay/commit/ae76d6f33596195598351356258ca18c70768968): remove unused jwt image ([#2948](https://github.com/quay/quay/issues/2948))
 
 <a name="v3.11.1"></a>
 ## [v3.11.1] - 2024-05-16
@@ -180,6 +185,9 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.6"></a>
+## [v3.10.6] - 2024-06-04
 
 <a name="v3.10.5"></a>
 ## [v3.10.5] - 2024-04-08
@@ -595,6 +603,9 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.8"></a>
+## [v3.9.8] - 2024-06-06
 
 <a name="v3.9.7"></a>
 ## [v3.9.7] - 2024-04-23
@@ -2121,13 +2132,15 @@
 [Unreleased]: https://github.com/quay/quay/compare/v3.11.2...HEAD
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.5...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.6...v3.11.0
+[v3.10.6]: https://github.com/quay/quay/compare/v3.10.5...v3.10.6
 [v3.10.5]: https://github.com/quay/quay/compare/v3.10.4...v3.10.5
 [v3.10.4]: https://github.com/quay/quay/compare/v3.10.3...v3.10.4
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.7...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.8...v3.10.0
+[v3.9.8]: https://github.com/quay/quay/compare/v3.9.7...v3.9.8
 [v3.9.7]: https://github.com/quay/quay/compare/v3.9.6...v3.9.7
 [v3.9.6]: https://github.com/quay/quay/compare/v3.9.5...v3.9.6
 [v3.9.5]: https://github.com/quay/quay/compare/v3.9.4...v3.9.5
