@@ -1381,6 +1381,28 @@ def populate_database(minimal=False):
         ),
     )
 
+    globalreadonlysuperuser = model.user.create_user(
+        "globalreadonlysuperuser", "password", "globalreadonlysuperuser+test@devtable.com"
+    )
+    globalreadonlysuperuser.verified = True
+    globalreadonlysuperuser.save()
+
+    normaluser = model.user.create_user("normaluser", "password", "normaluser+test@devtable.com")
+    normaluser.verified = True
+    normaluser.save()
+    orgwithnosuperuser = model.organization.create_organization(
+        "orgwithnosuperuser", "orgwithnosuperuser@devtable.com", normaluser
+    )
+    orgwithnosuperuser.save()
+
+    team = model.team.create_team("readers", orgwithnosuperuser, "member", "Readers of neworg.")
+    model.team.add_user_to_team(new_user_4, team)
+
+    model.repository.create_repository(orgwithnosuperuser.username, "repo", orgwithnosuperuser)
+
+    neworg_quota = model.namespacequota.create_namespace_quota(orgwithnosuperuser, 3000)
+    model.namespacequota.create_namespace_quota_limit(neworg_quota, "warning", 50)
+
 
 WHITELISTED_EMPTY_MODELS = [
     "DeletedNamespace",
