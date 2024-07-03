@@ -74,7 +74,6 @@ SECURITY_TESTS: List[
         Optional[Dict[str, Any]],
         Optional[str],
         int,
-        Optional[str],
     ]
 ] = [
     (AppTokens, "GET", {}, {}, None, 401),
