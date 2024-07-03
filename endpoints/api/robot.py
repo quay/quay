@@ -1,7 +1,9 @@
 """
 Manage user and organization robot accounts.
 """
-from flask import abort, request
+from datetime import datetime
+
+from flask import request
 
 from auth import scopes
 from auth.auth_context import get_authenticated_user
@@ -28,6 +30,7 @@ from endpoints.api import (
 )
 from endpoints.api.robot_models_pre_oci import pre_oci_model as model
 from endpoints.exception import Unauthorized
+from util.http import abort
 from util.names import format_robot_username
 from util.parsing import truthy_bool
 
@@ -44,6 +47,21 @@ CREATE_ROBOT_SCHEMA = {
             "type": "object",
             "description": "Optional unstructured metadata for the robot",
         },
+        "expiration": {
+            "type": ["number", "null"],
+            "description": "timestamp for the expiration of the robot token",
+        },
+    },
+}
+
+REGENERATE_ROBOT_TOKEN_SCHEMA = {
+    "type": "object",
+    "description": "Optional data for generating a robot token",
+    "properties": {
+        "expiration": {
+            "type": ["number", "null"],
+            "description": "timestamp for the expiration of the robot token",
+        }
     },
 }
 
@@ -55,6 +73,22 @@ def robots_list(prefix, include_permissions=False, include_token=False, limit=No
         prefix, limit=limit, include_token=include_token, include_permissions=include_permissions
     )
     return {"robots": [robot.to_dict(include_token=include_token) for robot in robots]}
+
+
+def parse_expiration(expiration):
+    if not expiration:
+        return None
+
+    expiration_dt = None
+    try:
+        expiration_dt = datetime.utcfromtimestamp(float(expiration))
+    except ValueError:
+        abort(400, "Invalid expiration timestamp")
+
+    if expiration_dt <= datetime.now():
+        abort(400, "Expiration timestamp must be in the future")
+
+    return expiration_dt
 
 
 @resource("/v1/user/robots")
@@ -249,6 +283,7 @@ class OrgRobot(ApiResource):
                     orgname,
                     create_data.get("description"),
                     create_data.get("unstructured_metadata"),
+                    parse_expiration(create_data.get("expiration")),
                 )
             except InvalidRobotException as e:
                 raise request_error(message=str(e))
@@ -259,6 +294,7 @@ class OrgRobot(ApiResource):
                     "robot": robot_shortname,
                     "description": create_data.get("description"),
                     "unstructured_metadata": create_data.get("unstructured_metadata"),
+                    "expiration": create_data.get("expiration"),
                 },
             )
             return robot.to_dict(include_metadata=True, include_token=True), 201
@@ -330,7 +366,7 @@ class OrgRobotPermissions(ApiResource):
 
             return {"permissions": [permission.to_dict() for permission in permissions]}
 
-        abort(403)
+        abort(403, "Not authorized")
 
 
 @resource("/v1/user/robots/<robot_shortname>/regenerate")
@@ -342,14 +378,21 @@ class RegenerateUserRobot(ApiResource):
     Resource for regenerate an organization's robot's token.
     """
 
+    schemas = {
+        "RegenerateRobotToken": REGENERATE_ROBOT_TOKEN_SCHEMA,
+    }
+
     @require_user_admin(disallow_for_restricted_users=True)
     @nickname("regenerateUserRobotToken")
+    @validate_json_request("RegenerateRobotToken", optional=True)
     def post(self, robot_shortname):
         """
         Regenerates the token for a user's robot.
         """
         parent = get_authenticated_user()
-        robot = model.regenerate_user_robot_token(robot_shortname, parent)
+        regen_data = request.get_json(silent=True) or {}
+        expiration = parse_expiration(regen_data.get("expiration"))
+        robot = model.regenerate_user_robot_token(robot_shortname, parent, expiration)
         log_action("regenerate_robot_token", parent.username, {"robot": robot_shortname})
         return robot.to_dict(include_token=True)
 
@@ -365,15 +408,23 @@ class RegenerateOrgRobot(ApiResource):
     Resource for regenerate an organization's robot's token.
     """
 
+    schemas = {
+        "RegenerateRobotToken": REGENERATE_ROBOT_TOKEN_SCHEMA,
+    }
+
     @require_scope(scopes.ORG_ADMIN)
     @nickname("regenerateOrgRobotToken")
+    @validate_json_request("RegenerateRobotToken", optional=True)
     def post(self, orgname, robot_shortname):
         """
         Regenerates the token for an organization robot.
         """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser():
-            robot = model.regenerate_org_robot_token(robot_shortname, orgname)
+            regen_data = request.get_json(silent=True) or {}
+            expiration = parse_expiration(regen_data.get("expiration"))
+
+            robot = model.regenerate_org_robot_token(robot_shortname, orgname, expiration)
             log_action("regenerate_robot_token", orgname, {"robot": robot_shortname})
             return robot.to_dict(include_token=True)
 
