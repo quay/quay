@@ -27,6 +27,8 @@ from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
     abort,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     api,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
@@ -305,7 +307,10 @@ class RepositoryBuildList(RepositoryParamResource):
 
                 # Make sure the user has administer permissions for the robot's namespace.
                 (robot_namespace, _) = result
-                if not AdministerOrganizationPermission(robot_namespace).can():
+                if (
+                    not AdministerOrganizationPermission(robot_namespace).can()
+                    and not allow_if_superuser()
+                ):
                     raise Unauthorized()
             else:
                 raise Unauthorized()
@@ -316,8 +321,11 @@ class RepositoryBuildList(RepositoryParamResource):
         if dockerfile_id:
             associated_repository = model.build.get_repository_for_resource(dockerfile_id)
             if associated_repository:
-                if not ModifyRepositoryPermission(
-                    associated_repository.namespace_user.username, associated_repository.name
+                if (
+                    not ModifyRepositoryPermission(
+                        associated_repository.namespace_user.username, associated_repository.name
+                    )
+                    and not allow_if_superuser()
                 ):
                     raise Unauthorized()
 
@@ -507,7 +515,12 @@ class RepositoryBuildLogs(RepositoryParamResource):
         Return the build logs for the build specified by the build uuid.
         """
         can_write = ModifyRepositoryPermission(namespace, repository).can()
-        if not features.READER_BUILD_LOGS and not can_write:
+        if (
+            not features.READER_BUILD_LOGS
+            and not can_write
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         build = model.build.get_repository_build(build_uuid)

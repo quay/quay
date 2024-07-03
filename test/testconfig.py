@@ -49,6 +49,7 @@ class TestConfig(DefaultConfig):
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
+    GLOBAL_READONLY_SUPER_USERS = ["globalreadonlysuperuser"]
 
     LICENSE_USER_LIMIT = 500
     LICENSE_EXPIRATION = datetime.now() + timedelta(weeks=520)
