@@ -26,6 +26,7 @@ from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     internal_only,
     log_action,
@@ -417,7 +418,11 @@ class OrganizationCollaboratorList(ApiResource):
         List outside collaborators of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can():
+        if (
+            not permission.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         try:
@@ -465,7 +470,7 @@ class OrganizationMemberList(ApiResource):
         List the human members of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -526,7 +531,7 @@ class OrganizationMember(ApiResource):
         Retrieves the details of a member of the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             # Lookup the user.
             member = model.user.get_user(membername)
             if not member:
@@ -687,7 +692,7 @@ class OrganizationApplications(ApiResource):
         List the applications for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -777,7 +782,7 @@ class OrganizationApplicationResource(ApiResource):
         Retrieves the application with the specified client_id under the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -925,7 +930,11 @@ class OrganizationProxyCacheConfig(ApiResource):
         Retrieves the proxy cache configuration of the organization.
         """
         permission = OrganizationMemberPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if (
+            not permission.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         try:

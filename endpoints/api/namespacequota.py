@@ -15,6 +15,7 @@ from data import model
 from data.model import config
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     nickname,
     request_error,
@@ -87,7 +88,11 @@ class OrganizationQuotaList(ApiResource):
     @nickname("listOrganizationQuota")
     def get(self, orgname):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not SuperUserPermission().can():
+        if (
+            not orgperm.can()
+            and not SuperUserPermission().can()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         try:
@@ -155,7 +160,11 @@ class OrganizationQuota(ApiResource):
     @nickname("getOrganizationQuota")
     def get(self, orgname, quota_id):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not SuperUserPermission().can():
+        if (
+            not orgperm.can()
+            and not SuperUserPermission().can()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
@@ -220,7 +229,11 @@ class OrganizationQuotaLimitList(ApiResource):
     @nickname("listOrganizationQuotaLimit")
     def get(self, orgname, quota_id):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not allow_if_superuser():
+        if (
+            not orgperm.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
@@ -290,7 +303,11 @@ class OrganizationQuotaLimit(ApiResource):
     @nickname("getOrganizationQuotaLimit")
     def get(self, orgname, quota_id, limit_id):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not allow_if_superuser():
+        if (
+            not orgperm.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
