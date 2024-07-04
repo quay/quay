@@ -1,10 +1,18 @@
+import datetime
 import json
 
 import pytest
 
 from data import model
-from endpoints.api import api
-from endpoints.api.robot import OrgRobot, OrgRobotList, UserRobot, UserRobotList
+from endpoints.api import api, format_date
+from endpoints.api.robot import (
+    OrgRobot,
+    OrgRobotList,
+    UserRobot,
+    UserRobotList,
+    RegenerateUserRobot,
+    RegenerateOrgRobot,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -159,3 +167,55 @@ def test_duplicate_robot_creation(app):
             expected_code=400,
         )
         assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"
+
+
+@pytest.mark.parametrize(
+    "endpoint, params",
+    [
+        (UserRobot, {"robot_shortname": "dtrobotwithexpiry"}),
+        (OrgRobot, {"orgname": "buynlarge", "robot_shortname": "coolrobotwithexpiry"}),
+    ],
+)
+def test_create_robot_with_expiration(endpoint, params, app):
+    with client_with_identity("devtable", app) as cl:
+        # Create the robot with the specified body.
+        expiration = datetime.datetime.now() + datetime.timedelta(days=1)
+        conduct_api_call(
+            cl,
+            endpoint,
+            "PUT",
+            params,
+            {"expiration": int(expiration.timestamp())},
+            expected_code=201,
+        )
+
+        # Ensure the create succeeded.
+        resp = conduct_api_call(
+            cl,
+            endpoint,
+            "GET",
+            params,
+        )
+
+        assert resp.json["expiration"] == format_date(expiration)
+
+
+@pytest.mark.parametrize(
+    "endpoint, params",
+    [
+        (UserRobot, {"robot_shortname": "dtrobotwithexpiry"}),
+        (OrgRobot, {"orgname": "buynlarge", "robot_shortname": "coolrobotwithexpiry"}),
+    ],
+)
+def test_regenerate_robot_token_with_expiration(endpoint, params, app):
+    expiration = datetime.datetime.now() + datetime.timedelta(days=1)
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(
+            cl,
+            endpoint,
+            "POST",
+            params,
+            {"expiration": int(expiration.timestamp())},
+        )
+        assert result.json["expiration"] is not None
+        assert result.json["expiration"] == format_date(expiration)
