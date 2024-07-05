@@ -9,6 +9,7 @@ from data.database import (
 )
 from data.database import Team as TeamTable
 from data.database import User
+from endpoints.api import format_date
 from endpoints.api.robot_models_interface import (
     Permission,
     Robot,
@@ -45,9 +46,14 @@ class RobotPreOCIModel(RobotInterface):
             if robot_name not in robots:
                 robot_dict = {}
                 token = None
+
                 if include_token:
                     if robot_tuple.get(RobotAccountToken.token):
                         token = robot_tuple.get(RobotAccountToken.token).decrypt()
+
+                expiration = robot_tuple.get(RobotAccountToken.expiration)
+                if expiration:
+                    expiration = format_date(expiration)
 
                 robot_dict = {
                     "name": robot_name,
@@ -60,6 +66,7 @@ class RobotPreOCIModel(RobotInterface):
                     "unstructured_metadata": robot_tuple.get(
                         RobotAccountMetadata.unstructured_json
                     ),
+                    "expiration": expiration,
                 }
 
                 if include_permissions:
@@ -77,6 +84,7 @@ class RobotPreOCIModel(RobotInterface):
                         robot_dict["teams"],
                         robot_dict["repositories"],
                         robot_dict["description"],
+                        robot_dict["expiration"],
                     )
                 else:
                     robots[robot_name] = Robot(
@@ -86,6 +94,7 @@ class RobotPreOCIModel(RobotInterface):
                         robot_dict["last_accessed"],
                         robot_dict["description"],
                         robot_dict["unstructured_metadata"],
+                        robot_dict["expiration"],
                     )
 
             if include_permissions:
@@ -114,6 +123,7 @@ class RobotPreOCIModel(RobotInterface):
                     cur_robot_teams,
                     cur_robot_repos,
                     robots[robot_name].description,
+                    robots[robot_name].expiration,
                 )
 
         return list(robots.values())
@@ -151,8 +161,13 @@ class RobotPreOCIModel(RobotInterface):
         model.user.delete_robot(robot_username)
 
     def create_user_robot(
-        self, robot_shortname, owning_user, description, unstructured_metadata, expiration=None
-    ):
+        self,
+        robot_shortname: str,
+        owning_user: User,
+        description: str,
+        unstructured_metadata: dict,
+        expiration: datetime = None,
+    ) -> Robot:
         robot, password = model.user.create_robot(
             robot_shortname, owning_user, description or "", unstructured_metadata
         )

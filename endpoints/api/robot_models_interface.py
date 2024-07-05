@@ -50,6 +50,7 @@ class RobotWithPermissions(
             "teams",
             "repository_names",
             "description",
+            "expiration",
         ],
     )
 ):
@@ -63,6 +64,7 @@ class RobotWithPermissions(
     :type teams: [Team]
     :type repository_names: [string]
     :type description: string
+    :type expiration: datetime|None
     """
 
     def to_dict(self, include_token=False):
@@ -76,6 +78,9 @@ class RobotWithPermissions(
             "repositories": self.repository_names,
             "description": self.description,
         }
+
+        if self.expiration:
+            data["expiration"] = format_date(self.expiration)
 
         if include_token:
             data["token"] = self.password
@@ -156,7 +161,9 @@ class RobotInterface(object):
         """
 
     @abstractmethod
-    def create_user_robot(self, robot_shortname, owning_user, expiration=None):
+    def create_user_robot(
+        self, robot_shortname, owning_user, description, metadata, expiration=None
+    ):
         """
 
         Returns:

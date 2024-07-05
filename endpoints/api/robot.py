@@ -163,6 +163,7 @@ class UserRobot(ApiResource):
                 parent,
                 create_data.get("description"),
                 create_data.get("unstructured_metadata"),
+                parse_expiration(create_data.get("expiration")),
             )
         except InvalidRobotException as e:
             raise request_error(message=str(e))
