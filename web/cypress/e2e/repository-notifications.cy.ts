@@ -12,6 +12,7 @@ describe('Repository Settings - Notifications', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
         res.body.features['MAILING'] = true;
+        res.body.features['IMAGE_EXPIRY_TRIGGER'] = true;
         return res;
       }),
     ).as('getConfig');
