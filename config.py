@@ -52,6 +52,7 @@ CLIENT_WHITELIST = [
     "TERMS_OF_SERVICE_URL",
     "UI_DELAY_AFTER_WRITE_SECONDS",
     "FEATURE_ASSIGN_OAUTH_TOKEN",
+    "FEATURE_IMAGE_EXPIRY_TRIGGER",
 ]
 
 
@@ -891,3 +892,6 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_ASSIGN_OAUTH_TOKEN = True
     DEFAULT_NAMESPACE_AUTOPRUNE_POLICY: Optional[Dict[str, str]] = None
+
+    # Allows users to set up notifications on image expiry, can remove flag once feature is tested
+    FEATURE_IMAGE_EXPIRY_TRIGGER = False
