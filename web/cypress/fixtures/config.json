@@ -130,7 +130,7 @@
     "USER_METADATA": true,
     "USER_RENAME": false,
     "AUTO_PRUNE": true,
-    "IMAGE_EXPIRY_TRIGGER": true,
+    "IMAGE_EXPIRY_TRIGGER": true
   },
   "oauth": {
     "GITHUB_TRIGGER_CONFIG": {
