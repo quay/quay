@@ -1,3 +1,5 @@
+from typing import Optional
+
 import features
 from app import avatar
 from data import model
@@ -166,7 +168,7 @@ class RobotPreOCIModel(RobotInterface):
         owning_user: User,
         description: str,
         unstructured_metadata: dict,
-        expiration: datetime = None,
+        expiration: Optional[datetime] = None,
     ) -> Robot:
         robot, password = model.user.create_robot(
             robot_shortname, owning_user, description or "", unstructured_metadata
