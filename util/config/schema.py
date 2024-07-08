@@ -1553,5 +1553,10 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "FEATURE_IMAGE_EXPIRY_TRIGGER": {
+            "type": "boolean",
+            "description": "Allows users to set up notifications on image expiry",
+            "x-example": False,
+        },
     },
 }
