@@ -22,16 +22,13 @@ BATCH_SIZE = 10
 # since we test with mysql 5.7 which does not support this flag.
 SKIP_LOCKED = True
 
-# interval in ms that defines frequency to re-run notifications, defaults to 5hrs
+# interval in ms that specifies how long a task must wait before being run again, defaults to 5hrs
 NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MS = app.config.get(
     "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MS", 5 * 60 * 60 * 1000
 )
 
 
 def fetch_active_notification(event):
-    """
-    task_run_interval_ms specifies how long a task must wait before being ran again.
-    """
     with db_transaction():
         try:
             # Fetch active notifications that match the event_name
