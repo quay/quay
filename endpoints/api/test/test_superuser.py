@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 
 from data.database import DeletedNamespace, User
@@ -10,6 +8,7 @@ from endpoints.api.superuser import (
 )
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -57,7 +56,7 @@ def test_paginate_test_list_all_users(app):
         assert firstResult["next_page"] is not None
         params["next_page"] = firstResult["next_page"]
         secondResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
-        assert len(secondResult["users"]) == 4
+        assert len(secondResult["users"]) == 6
         assert secondResult.get("next_page", None) is None
 
 

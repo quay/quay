@@ -9,6 +9,7 @@ from auth.permissions import AdministerOrganizationPermission
 from data import model
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     log_action,
     nickname,
@@ -58,7 +59,11 @@ class OrgAutoPrunePolicies(ApiResource):
         Lists the auto-prune policies for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if (
+            not permission.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         policies = model.autoprune.get_namespace_autoprune_policies_by_orgname(orgname)
@@ -146,7 +151,11 @@ class OrgAutoPrunePolicy(ApiResource):
         Fetches the auto-prune policy for the organization
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if (
+            not permission.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         policy = model.autoprune.get_namespace_autoprune_policy(orgname, policy_uuid)

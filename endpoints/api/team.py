@@ -20,6 +20,7 @@ from data import model
 from data.database import Team
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     format_date,
     internal_only,
@@ -351,7 +352,7 @@ class TeamMemberList(ApiResource):
         view_permission = ViewTeamPermission(orgname, teamname)
         edit_permission = AdministerOrganizationPermission(orgname)
 
-        if view_permission.can() or allow_if_superuser():
+        if view_permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             team = None
             try:
                 team = model.team.get_organization_team(orgname, teamname)
@@ -534,7 +535,7 @@ class InviteTeamMember(ApiResource):
         Delete an invite of an email address to join a team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             team = None
 
             # Find the team.
@@ -571,7 +572,7 @@ class TeamPermissions(ApiResource):
         Returns the list of repository permissions for the org's team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 team = model.team.get_organization_team(orgname, teamname)
             except model.InvalidTeamException:
