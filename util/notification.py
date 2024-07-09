@@ -22,9 +22,9 @@ BATCH_SIZE = 10
 # since we test with mysql 5.7 which does not support this flag.
 SKIP_LOCKED = True
 
-# interval in ms that specifies how long a task must wait before being run again, defaults to 5hrs
-NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MS = app.config.get(
-    "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MS", 5 * 60 * 60 * 1000
+# interval in minutes that specifies how long a task must wait before being run again, defaults to 5hrs
+NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES = app.config.get(
+    "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES", 5 * 60
 )
 
 
@@ -44,7 +44,8 @@ def fetch_active_notification(event):
                     RepositoryNotification.number_of_failures < 3,
                     (
                         RepositoryNotification.last_ran_ms
-                        < get_epoch_timestamp_ms() - NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MS
+                        < get_epoch_timestamp_ms()
+                        - (NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES * 60 * 1000)
                     )
                     | (RepositoryNotification.last_ran_ms.is_null(True)),
                 )
