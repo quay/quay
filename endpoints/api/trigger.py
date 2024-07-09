@@ -22,6 +22,7 @@ from data.model.build import update_build_trigger
 from endpoints.api import (
     RepositoryParamResource,
     abort,
+    allow_if_superuser,
     api,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
@@ -70,7 +71,7 @@ class BuildTriggerList(RepositoryParamResource):
     Resource for listing repository build triggers.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @disallow_for_app_repositories
     @nickname("listBuildTriggers")
     def get(self, namespace_name, repo_name):
@@ -105,7 +106,7 @@ class BuildTrigger(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @disallow_for_app_repositories
     @nickname("getBuildTrigger")
     def get(self, namespace_name, repo_name, trigger_uuid):
@@ -280,7 +281,7 @@ class BuildTriggerActivate(RepositoryParamResource):
             raise InvalidRequest("Trigger config is not sufficient for activation.")
 
         user_permission = UserAdminPermission(trigger.connected_user.username)
-        if user_permission.can():
+        if user_permission.can() or allow_if_superuser():
             # Update the pull robot (if any).
             pull_robot_name = request.get_json().get("pull_robot", None)
             if pull_robot_name:
@@ -504,7 +505,7 @@ class TriggerBuildList(RepositoryParamResource):
     Resource to represent builds that were activated from the specified trigger.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @disallow_for_app_repositories
     @parse_args()
     @query_param("limit", "The maximum number of builds to return", type=int, default=5)
