@@ -1,18 +1,34 @@
-import {FormGroup, TextInput, ValidatedOptions} from '@patternfly/react-core';
+import {
+  FormGroup,
+  TextInput,
+  ValidatedOptions,
+  HelperText,
+  HelperTextItem,
+} from '@patternfly/react-core';
 import {NotificationEventConfig} from 'src/hooks/UseEvents';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 
 export default function RepoEventExpiry(props: RepoEventExpiryProps) {
-  const [valid, setValid] = useState(ValidatedOptions.default);
+  const [valid, setValid] = useState<ValidatedOptions>(
+    ValidatedOptions.default,
+  );
 
-  const onChange = (_event, value) => {
-    props.setEventConfig({days: Number(value)});
+  const validateNumber = (value) => {
     if (value < 1) {
       setValid(ValidatedOptions.error);
     } else {
       setValid(ValidatedOptions.success);
     }
   };
+
+  const onChange = (_event, value) => {
+    props.setEventConfig({days: Number(value)});
+    validateNumber(value);
+  };
+
+  useEffect(() => {
+    validateNumber(props.eventConfig?.days);
+  });
 
   return (
     <FormGroup
@@ -28,6 +44,13 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
         required
         validated={valid}
       />
+      {valid == ValidatedOptions.error ? (
+        <HelperText>
+          <HelperTextItem variant="error" hasIcon>
+            number of days should be more than 0.
+          </HelperTextItem>
+        </HelperText>
+      ) : null}
     </FormGroup>
   );
 }
