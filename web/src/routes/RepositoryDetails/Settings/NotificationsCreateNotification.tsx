@@ -39,7 +39,9 @@ export default function CreateNotification(props: CreateNotificationProps) {
   const [isMethodOpen, setIsMethodOpen] = useState(false);
   const [event, setEvent] = useState<NotificationEvent>();
   const [method, setMethod] = useState<NotificationMethod>();
-  const [eventConfig, setEventConfig] = useState<NotificationEventConfig>({});
+  const [eventConfig, setEventConfig] = useState<NotificationEventConfig>({
+    days: 0,
+  });
   const {events} = useEvents();
   const {notificationMethods} = useNotificationMethods();
   const [error, setError] = useState<string>('');
