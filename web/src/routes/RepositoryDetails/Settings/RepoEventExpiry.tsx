@@ -1,9 +1,17 @@
-import {FormGroup, TextInput} from '@patternfly/react-core';
+import {FormGroup, TextInput, ValidatedOptions} from '@patternfly/react-core';
 import {NotificationEventConfig} from 'src/hooks/UseEvents';
+import {useState} from 'react';
 
 export default function RepoEventExpiry(props: RepoEventExpiryProps) {
+  const [valid, setValid] = useState(ValidatedOptions.default);
+
   const onChange = (_event, value) => {
     props.setEventConfig({days: Number(value)});
+    if (value < 1) {
+      setValid(ValidatedOptions.error);
+    } else {
+      setValid(ValidatedOptions.success);
+    }
   };
 
   return (
@@ -18,6 +26,7 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
         type={'number'}
         id="days-to-image-expiry"
         required
+        validated={valid}
       />
     </FormGroup>
   );
