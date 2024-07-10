@@ -5,6 +5,7 @@ import {
   HelperText,
   HelperTextItem,
 } from '@patternfly/react-core';
+import Conditional from 'src/components/empty/Conditional';
 import {NotificationEventConfig} from 'src/hooks/UseEvents';
 import {useEffect, useState} from 'react';
 
@@ -28,7 +29,7 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
 
   useEffect(() => {
     validateNumber(props.eventConfig?.days);
-  });
+  }, [props.eventConfig?.days]);
 
   return (
     <FormGroup
@@ -44,13 +45,13 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
         required
         validated={valid}
       />
-      {valid == ValidatedOptions.error ? (
+      <Conditional if={valid == ValidatedOptions.error}>
         <HelperText>
           <HelperTextItem variant="error" hasIcon>
             number of days should be more than 0.
           </HelperTextItem>
         </HelperText>
-      ) : null}
+      </Conditional>
     </FormGroup>
   );
 }
