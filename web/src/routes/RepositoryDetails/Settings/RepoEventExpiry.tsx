@@ -7,7 +7,7 @@ import {
 } from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
 import {NotificationEventConfig} from 'src/hooks/UseEvents';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 
 export default function RepoEventExpiry(props: RepoEventExpiryProps) {
   const [valid, setValid] = useState<ValidatedOptions>(
@@ -27,10 +27,6 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
     validateNumber(value);
   };
 
-  useEffect(() => {
-    validateNumber(props.eventConfig?.days);
-  }, [props.eventConfig?.days]);
-
   return (
     <FormGroup
       fieldId="event"
@@ -38,7 +34,7 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
       isRequired
     >
       <TextInput
-        value={props.eventConfig?.days}
+        value={props.eventConfig?.days || ''}
         onChange={onChange}
         type={'number'}
         id="days-to-image-expiry"
