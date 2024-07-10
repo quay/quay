@@ -46,7 +46,7 @@ export default function CreateNotification(props: CreateNotificationProps) {
 
   const isValidateConfig = () => {
     if (event?.type == NotificationEventType.imageExpiry) {
-      return eventConfig?.days != undefined;
+      return eventConfig?.days != undefined && eventConfig?.days > 0;
     }
     return true;
   };
