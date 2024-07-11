@@ -39,7 +39,7 @@ class NotificationMethodPerformException(JobException):
 
 def _ssl_cert():
     if app.config["PREFERRED_URL_SCHEME"] == "https":
-        cert_files = [OVERRIDE_CONFIG_DIRECTORY + f for f in SSL_FILENAMES]
+        cert_files = tuple([OVERRIDE_CONFIG_DIRECTORY + f for f in SSL_FILENAMES])
         cert_exists = all([os.path.isfile(f) for f in cert_files])
         return cert_files if cert_exists else None
 
