@@ -14,17 +14,13 @@ export default function RepoEventExpiry(props: RepoEventExpiryProps) {
     ValidatedOptions.default,
   );
 
-  const validateNumber = (value) => {
+  const onChange = (_event, value) => {
+    props.setEventConfig({days: Number(value)});
     if (value < 1) {
       setValid(ValidatedOptions.error);
     } else {
       setValid(ValidatedOptions.success);
     }
-  };
-
-  const onChange = (_event, value) => {
-    props.setEventConfig({days: Number(value)});
-    validateNumber(value);
   };
 
   return (
