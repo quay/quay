@@ -54,11 +54,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if ok, err := ValidateRequiredString(args.BucketName, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".bucket_name", fgName); !ok {
 			errors = append(errors, err)
 		}
-		// Check if region is set, if not default to us-east-1
-		if ok, err := ValidateRequiredString(args.Region, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".region", fgName); !ok {
-			// set the default if not set
-			args.Region = "us-east-1"
-		}
 
 		// Grab necessary variables
 		accessKey = args.AccessKey
