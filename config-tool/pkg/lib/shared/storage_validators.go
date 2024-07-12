@@ -230,7 +230,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -305,7 +305,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		// Validate bucket settings
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
