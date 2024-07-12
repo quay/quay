@@ -30,6 +30,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 	var secretKey string
 	var isSecure bool
 	var bucketName string
+	var region string = "us-east-1"
 	var token string = ""
 
 	switch storageType {
@@ -53,6 +54,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if ok, err := ValidateRequiredString(args.BucketName, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".bucket_name", fgName); !ok {
 			errors = append(errors, err)
 		}
+		// Check if region is set, if not default to us-east-1
+		if ok, err := ValidateRequiredString(args.Region, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".region", fgName); !ok {
+			// set the default if not set
+			args.Region = "us-east-1"
+		}
 
 		// Grab necessary variables
 		accessKey = args.AccessKey
@@ -60,6 +66,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		endpoint = args.Hostname
 		isSecure = args.IsSecure
 		bucketName = args.BucketName
+		region = args.Region
 
 		// Append port if present
 		if args.Port != 0 {
@@ -70,7 +77,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -94,6 +101,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
 		isSecure = true
+		region = "us-east-1"
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
@@ -140,7 +148,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			token = value.SessionToken
 
 		}
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -178,6 +186,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		token = *assumeRoleOutput.Credentials.SessionToken
 		bucketName = args.S3Bucket
 		isSecure = true
+		region = "us-east-1"
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
@@ -192,7 +201,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -398,7 +407,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 }
 
-func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string) (bool, ValidationError) {
+func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string, region string) (bool, ValidationError) {
 
 	// Set transport
 	tr, err := minio.DefaultTransport(true)
@@ -422,6 +431,7 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 		Creds:     credentials.NewStaticV4(accessKey, secretKey, token),
 		Secure:    isSecure,
 		Transport: tr,
+		Region:    region,
 	})
 	if err != nil {
 		newError := ValidationError{
