@@ -17,7 +17,7 @@ def upgrade(op, tables, tester):
     with op.batch_alter_table('repomirrorconfig') as batch_op:
         batch_op.add_column(sa.Column('external_registry_password_new', sa.String(length=9000), nullable=True))
     
-    # Copy data from the old columnn to the new column
+    # Copy data from the old column to the new column
     op.execute("""
         UPDATE repomirrorconfig
         SET external_registry_password_new = external_registry_password
