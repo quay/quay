@@ -42,12 +42,21 @@ func (fg *AutoPruneFieldGroup) Validate(opts shared.Options) []shared.Validation
 
 	// number_of_tags method requires value to be `int`
 	if fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Method == "number_of_tags" {
-		_, ok := fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Value.(int)
+		value, ok := fg.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Value.(int)
 		if !ok {
 			newError := shared.ValidationError{
 				Tags:       []string{"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"},
 				FieldGroup: fgName,
 				Message:    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY method `number_of_tags` must have an integer value",
+			}
+			errors = append(errors, newError)
+			return errors
+		}
+		if value < 1 {
+			newError := shared.ValidationError{
+				Tags:       []string{"DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"},
+				FieldGroup: fgName,
+				Message:    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY method `number_of_tags` must have an integer value more than 0",
 			}
 			errors = append(errors, newError)
 			return errors
