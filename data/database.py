@@ -1735,6 +1735,8 @@ class Manifest(BaseModel):
     layers_compressed_size = BigIntegerField(null=True)
     subject = CharField(null=True)
     subject_backfilled = BooleanField(default=False, index=True)
+    artifact_type = CharField(null=True)
+    artifact_type_backfilled = BooleanField(default=False, index=True)
 
     class Meta:
         database = db
@@ -1744,6 +1746,7 @@ class Manifest(BaseModel):
             (("repository", "media_type"), False),
             (("repository", "config_media_type"), False),
             (("repository", "subject"), False),
+            (("repository", "artifact_type"), False),
         )
 
 
