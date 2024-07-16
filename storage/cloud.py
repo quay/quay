@@ -782,10 +782,11 @@ class S3Storage(_CloudStorage):
         # STS Options
         aws_session_token=None,
         deferred_refreshable_credentials=None,
+        signature_version="s3v4",
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {
-            "config": Config(signature_version="s3v4"),
+            "config": Config(signature_version=signature_version),
             "aws_session_token": aws_session_token,
         }
         if s3_region is not None:
@@ -854,10 +855,12 @@ class IBMCloudStorage(_CloudStorage):
         bucket_name,
         port=None,
         maximum_chunk_size_mb=None,
+        signature_version=None,
     ):
         upload_params = {}
         connect_kwargs = {
             "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
+            "config": Config(signature_version=signature_version),
         }
 
         super(IBMCloudStorage, self).__init__(
@@ -900,13 +903,26 @@ class IBMCloudStorage(_CloudStorage):
 class GoogleCloudStorage(_CloudStorage):
     ENDPOINT_URL = "https://storage.googleapis.com"
 
-    def __init__(self, context, storage_path, access_key, secret_key, bucket_name, boto_timeout=60):
+    def __init__(
+        self,
+        context,
+        storage_path,
+        access_key,
+        secret_key,
+        bucket_name,
+        boto_timeout=60,
+        signature_version=None,
+    ):
         # GCS does not support ListObjectV2
         self._list_object_version = _LIST_OBJECT_VERSIONS["v1"]
         upload_params = {}
         connect_kwargs = {
             "endpoint_url": GoogleCloudStorage.ENDPOINT_URL,
-            "config": Config(connect_timeout=boto_timeout, read_timeout=boto_timeout),
+            "config": Config(
+                connect_timeout=boto_timeout,
+                read_timeout=boto_timeout,
+                signature_version=signature_version,
+            ),
         }
         super(GoogleCloudStorage, self).__init__(
             context,
@@ -1035,6 +1051,7 @@ class RadosGWStorage(_CloudStorage):
         secret_key,
         bucket_name,
         region_name=None,
+        signature_version=None,
         port=None,
         maximum_chunk_size_mb=None,
         server_side_assembly=True,
@@ -1045,6 +1062,7 @@ class RadosGWStorage(_CloudStorage):
             "config": Config(
                 connect_timeout=600 if not server_side_assembly else 60,
                 read_timeout=600 if not server_side_assembly else 60,
+                signature_version=signature_version,
             ),
             "region_name": region_name,
         }
@@ -1225,6 +1243,7 @@ class STSS3Storage(S3Storage):
         s3_region=None,
         endpoint_url=None,
         maximum_chunk_size_gb=None,
+        signature_version=None,
     ):
         sts_client = boto3.client(
             "sts", aws_access_key_id=sts_user_access_key, aws_secret_access_key=sts_user_secret_key
@@ -1246,6 +1265,7 @@ class STSS3Storage(S3Storage):
             "endpoint_url": endpoint_url,
             "maximum_chunk_size_gb": maximum_chunk_size_gb,
             "deferred_refreshable_credentials": deferred_refreshable_credentials,
+            "config": Config(signature_version=signature_version),
         }
 
         super().__init__(context, storage_path, s3_bucket, **connect_kwargs)
