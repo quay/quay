@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.1 (Debian 12.1-1.pgdg100+1)
--- Dumped by pg_dump version 12.1 (Debian 12.1-1.pgdg100+1)
+-- Dumped from database version 12.19 (Debian 12.19-1.pgdg120+1)
+-- Dumped by pg_dump version 12.19 (Debian 12.19-1.pgdg120+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -378,9 +378,11 @@ DROP INDEX IF EXISTS public.manifest_repository_id_subject;
 DROP INDEX IF EXISTS public.manifest_repository_id_media_type_id;
 DROP INDEX IF EXISTS public.manifest_repository_id_digest;
 DROP INDEX IF EXISTS public.manifest_repository_id_config_media_type;
+DROP INDEX IF EXISTS public.manifest_repository_id_artifact_type;
 DROP INDEX IF EXISTS public.manifest_repository_id;
 DROP INDEX IF EXISTS public.manifest_media_type_id;
 DROP INDEX IF EXISTS public.manifest_digest;
+DROP INDEX IF EXISTS public.manifest_artifact_type_backfilled;
 DROP INDEX IF EXISTS public.loginservice_name;
 DROP INDEX IF EXISTS public.logentrykind_name;
 DROP INDEX IF EXISTS public.logentry_repository_id_datetime_kind_id;
@@ -2337,7 +2339,9 @@ CREATE TABLE public.manifest (
     config_media_type character varying(255),
     layers_compressed_size bigint,
     subject character varying(255),
-    subject_backfilled boolean
+    subject_backfilled boolean,
+    artifact_type character varying(255),
+    artifact_type_backfilled boolean
 );
 
 
@@ -5734,7 +5738,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-8a7ba94c2e84
+3f8d7acdf7f9
 \.
 
 
@@ -5992,6 +5996,7 @@ COPY public.imagestoragelocation (id, name) FROM stdin;
 7	local
 8	s3_us_west_1
 9	default
+10	default2
 \.
 
 
@@ -6437,19 +6442,19 @@ COPY public.loginservice (id, name) FROM stdin;
 -- Data for Name: manifest; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.manifest (id, repository_id, digest, media_type_id, manifest_bytes, config_media_type, layers_compressed_size, subject, subject_backfilled) FROM stdin;
-1	1	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479	\N	\N
-2	1	sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:c0218de6585df06a66d67b25237bdda42137c727c367373a32639710c7a9fa94"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3684,\n         "digest": "sha256:b921b04d0447ddcd82a9220d887cd146f6ef39e20a938ee5e19a90fc3323e030"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3684	\N	\N
-3	1	sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:1ec996c686eb87d8f091080ec29dd1862b39b5822ddfd8f9a1e2c9288fad89fe"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2993,\n         "digest": "sha256:9b157615502ddff86482f7fe2fa7a074db74a62fce12b4e8507827ac8f08d0ce"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2993	\N	\N
-4	1	sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1485,\n      "digest": "sha256:46331d942d6350436f64e614d75725f6de3bb5c63e266e236e04389820a234c4"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3208,\n         "digest": "sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3208	\N	\N
-5	1	sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1468,\n      "digest": "sha256:36d89aa75357c8f99e359f8cabc0aae667d47d8f25ed51cbe66e148e3a77e19c"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2736,\n         "digest": "sha256:7f0d4fad461d1ac69488092b5914b5ec642133c0fb884539045de33fbcd2eadb"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2736	\N	\N
-6	1	sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1473,\n      "digest": "sha256:5004e9d559e7a75f42249ddeca4d5764fa4db05592a7a9a641e4ac37cc619ba1"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 4092,\n         "digest": "sha256:bbc6052697e5fdcd1b311e0b3f65189ffbe354cf8ae97e7a55d588e855097174"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	4092	\N	\N
-7	1	sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:61fff98d5ca765a4351964c8f4b5fb1a0d2c48458026f5452a389eb52d146fe8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3929,\n         "digest": "sha256:33450689bfb495ed64ead935c9933f1d6b3e42fe369b8de9680cf4ff9d89ce5c"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3929	\N	\N
-8	1	sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:b3593dab05491cdf5ee88c29bee36603c0df0bc34798eed5067f6e1335a9d391"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3000,\n         "digest": "sha256:3caa6dc69d0b73f21d29bfa75356395f2695a7abad34f010656740e90ddce399"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3000	\N	\N
-9	1	sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3276,\n         "digest": "sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3276	\N	\N
-10	1	sha256:7693efac53eb85ff1afb03f7f2560015c57ac2175707f1f141f31161634c9dba	15	{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525}],"mediaType":"application\\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}	\N	0	\N	\N
-11	155	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479	\N	\N
-12	1	sha256:7e9b6e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1470,\n      "digest": "sha256:9c7a54a9a43cca047013b82af109fe963fde787f63f9e016fdc3384500c2823d"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2457,\n         "digest": "sha256:719385e32844401d57ecfd3eacab360bf551a1491c05b85806ed8f1b08d792f6"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2457	\N	\N
+COPY public.manifest (id, repository_id, digest, media_type_id, manifest_bytes, config_media_type, layers_compressed_size, subject, subject_backfilled, artifact_type, artifact_type_backfilled) FROM stdin;
+1	1	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479	\N	\N	\N	\N
+2	1	sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:c0218de6585df06a66d67b25237bdda42137c727c367373a32639710c7a9fa94"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3684,\n         "digest": "sha256:b921b04d0447ddcd82a9220d887cd146f6ef39e20a938ee5e19a90fc3323e030"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3684	\N	\N	\N	\N
+3	1	sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:1ec996c686eb87d8f091080ec29dd1862b39b5822ddfd8f9a1e2c9288fad89fe"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2993,\n         "digest": "sha256:9b157615502ddff86482f7fe2fa7a074db74a62fce12b4e8507827ac8f08d0ce"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2993	\N	\N	\N	\N
+4	1	sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1485,\n      "digest": "sha256:46331d942d6350436f64e614d75725f6de3bb5c63e266e236e04389820a234c4"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3208,\n         "digest": "sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3208	\N	\N	\N	\N
+5	1	sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1468,\n      "digest": "sha256:36d89aa75357c8f99e359f8cabc0aae667d47d8f25ed51cbe66e148e3a77e19c"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2736,\n         "digest": "sha256:7f0d4fad461d1ac69488092b5914b5ec642133c0fb884539045de33fbcd2eadb"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2736	\N	\N	\N	\N
+6	1	sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1473,\n      "digest": "sha256:5004e9d559e7a75f42249ddeca4d5764fa4db05592a7a9a641e4ac37cc619ba1"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 4092,\n         "digest": "sha256:bbc6052697e5fdcd1b311e0b3f65189ffbe354cf8ae97e7a55d588e855097174"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	4092	\N	\N	\N	\N
+7	1	sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:61fff98d5ca765a4351964c8f4b5fb1a0d2c48458026f5452a389eb52d146fe8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3929,\n         "digest": "sha256:33450689bfb495ed64ead935c9933f1d6b3e42fe369b8de9680cf4ff9d89ce5c"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3929	\N	\N	\N	\N
+8	1	sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:b3593dab05491cdf5ee88c29bee36603c0df0bc34798eed5067f6e1335a9d391"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3000,\n         "digest": "sha256:3caa6dc69d0b73f21d29bfa75356395f2695a7abad34f010656740e90ddce399"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3000	\N	\N	\N	\N
+9	1	sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3276,\n         "digest": "sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3276	\N	\N	\N	\N
+10	1	sha256:7693efac53eb85ff1afb03f7f2560015c57ac2175707f1f141f31161634c9dba	15	{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525}],"mediaType":"application\\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}	\N	0	\N	\N	\N	\N
+11	155	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479	\N	\N	\N	\N
+12	1	sha256:7e9b6e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1470,\n      "digest": "sha256:9c7a54a9a43cca047013b82af109fe963fde787f63f9e016fdc3384500c2823d"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2457,\n         "digest": "sha256:719385e32844401d57ecfd3eacab360bf551a1491c05b85806ed8f1b08d792f6"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2457	\N	\N	\N	\N
 \.
 
 
@@ -7699,7 +7704,7 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
-2	http://localhost:8080	XGN_51pQtaIC1IH_QSSzG0lRI1jRwtwhAmYByS2oKO0	quay	{"n": "nruebufHwRxWO3hvP7MzHA8NjGmUDyHvcHesTiRzdT0pz6w7B7rjWv90xRn0fanPMRtk5GRb3cA8uWuK5dmIOXzMB_Og4Hi1QqxS0vwheca8XZk3amEniEWIOQfb1n2E8--vVmAG9E4y0ZGXJzD-hadctz5Xoi6r3yUrBjqqjWQBffHvNdnSh2KsouX4nC1P3cTVjFime44cHA5nBNKRpOV1Q7XTMwYl2hUp7qRJ-5IAzad9n7XtoWsxwmFaAFg_MbOqA_ncPAmfvbthDJSGWkaB04dtze9qfWdbKD9VVl6QJH0ost0qn72LLS3e3sHPWu-jANf7Q-InP5-tjSgDUQ", "e": "AQAB", "kty": "RSA", "kid": "XGN_51pQtaIC1IH_QSSzG0lRI1jRwtwhAmYByS2oKO0"}	{"created_by": "CLI tool"}	2024-06-07 15:53:13.557544	2024-06-07 17:53:13.494442	\N	2
+3	https://quaydev.io:443	SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg	quay	{"n": "vMcd7RirlR3JKPZLiQ5mgWLcSTyV7Gdiy3eu27qHp6k7zAuI435m_1q6wj8x040WQJhCPxCDuq1_2YxCHof7DxXWvazJrROEEU8jDbst7N90jupr9Y7XKvIckrCgClCRgJrMipNiso5uSKV3WSu7Typ0AQU8eaa-fCMVpGuH9XrtFeUPxpTZZFnGkJVt5oWin5fxjOwLDGQO_Te0LNah5O0L14hd84-9TFhdkBCVKvYyhq4u0eA8YruuURGpDdB4Wc9DSUkqRbHvUvBu5fgx8TGR9t5QF2mIo8J6GOj3ccEG0xnMwrVEjlE1txDvhl7E6dqtyeyggmCL0O7C3-1YfQ", "e": "AQAB", "kty": "RSA", "kid": "SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg"}	{"created_by": "CLI tool"}	2024-07-16 21:55:25.70086	2024-07-16 23:55:25.65144	\N	3
 \.
 
 
@@ -7709,6 +7714,7 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
 2	\N	ServiceKeyApprovalType.AUTOMATIC	2024-06-07 15:53:13.57574	
+3	\N	ServiceKeyApprovalType.AUTOMATIC	2024-07-16 21:55:25.709753	
 \.
 
 
@@ -8214,7 +8220,7 @@ SELECT pg_catalog.setval('public.imagestorage_id_seq', 21, true);
 -- Name: imagestoragelocation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.imagestoragelocation_id_seq', 9, true);
+SELECT pg_catalog.setval('public.imagestoragelocation_id_seq', 10, true);
 
 
 --
@@ -8620,14 +8626,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 2, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 3, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 2, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 3, true);
 
 
 --
@@ -10440,6 +10446,13 @@ CREATE UNIQUE INDEX loginservice_name ON public.loginservice USING btree (name);
 
 
 --
+-- Name: manifest_artifact_type_backfilled; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX manifest_artifact_type_backfilled ON public.manifest USING btree (artifact_type_backfilled);
+
+
+--
 -- Name: manifest_digest; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -10458,6 +10471,13 @@ CREATE INDEX manifest_media_type_id ON public.manifest USING btree (media_type_i
 --
 
 CREATE INDEX manifest_repository_id ON public.manifest USING btree (repository_id);
+
+
+--
+-- Name: manifest_repository_id_artifact_type; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX manifest_repository_id_artifact_type ON public.manifest USING btree (repository_id, artifact_type);
 
 
 --
