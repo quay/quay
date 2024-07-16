@@ -604,7 +604,10 @@ angular.module('quay').directive('logsView', function () {
           }
 
           return message;
-        }
+        },
+        'oauth_token_assigned': function (metadata) {
+          return 'OAuth token assigned to user {assigned_user} by {assigning_user} for application {application}[[with client id {client_id}]]';
+        },
       };
 
       var logKinds = {
@@ -707,6 +710,7 @@ angular.module('quay').directive('logsView', function () {
         'permanently_delete_tag': 'Permanently Delete Tag',
         'login_failure': 'Login failure',
         'autoprune_tag_delete': 'Autoprune worker tag deletion',
+        'oauth_token_assigned': 'OAuth token assigned',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',

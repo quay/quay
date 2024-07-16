@@ -475,6 +475,9 @@ def initialize_database():
     LogEntryKind.create(name="enable_team_sync")
     LogEntryKind.create(name="disable_team_sync")
 
+    LogEntryKind.create(name="oauth_token_assigned")
+    LogEntryKind.create(name="oauth_token_revoked")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
