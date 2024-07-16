@@ -31,6 +31,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 	var isSecure bool
 	var bucketName string
 	var token string = ""
+	var signature = "s3v2"
 
 	switch storageType {
 	case "LocalStorage":
@@ -60,6 +61,8 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		endpoint = args.Hostname
 		isSecure = args.IsSecure
 		bucketName = args.BucketName
+
+		signature = args.Signature
 
 		// Append port if present
 		if args.Port != 0 {
