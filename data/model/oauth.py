@@ -433,7 +433,12 @@ def list_applications_for_org(org):
 
 def get_oauth_application_for_client_id(client_id):
     try:
-        return OAuthApplication.get(client_id=client_id)
+        return (
+            OAuthApplication.select()
+            .join(User)
+            .where(OAuthApplication.client_id == client_id)
+            .get()
+        )
     except OAuthApplication.DoesNotExist:
         return None
 
