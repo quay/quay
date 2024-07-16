@@ -140,14 +140,14 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False, allow_hid
         return None
 
 
-def lookup_manifest_referrers(repository_id, manifest_digest, config_media_type=None):
+def lookup_manifest_referrers(repository_id, manifest_digest, artifact_type=None):
     query = (
         Manifest.select()
         .where(Manifest.repository == repository_id)
         .where(Manifest.subject == manifest_digest)
     )
-    if config_media_type is not None:
-        query = query.where(Manifest.config_media_type == config_media_type)
+    if artifact_type is not None:
+        query = query.where(Manifest.artifact_type == artifact_type)
 
     return query
 
@@ -193,6 +193,10 @@ def create_manifest(
             subject_backfilled=True,  # TODO(kleesc): Remove once backfill is done
             subject=manifest.subject.digest
             if manifest.subject
+            else None,  # TODO(kleesc): Remove once fully on JSONB only
+            artifact_type_backfilled=True,  # TODO(kleesc): Remove once backfill is done
+            artifact_type=manifest.artifact_type
+            if manifest.artifact_type
             else None,  # TODO(kleesc): Remove once fully on JSONB only
         )
     except IntegrityError as e:
