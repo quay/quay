@@ -1,4 +1,3 @@
-
 --
 -- PostgreSQL database dump
 --
@@ -5735,7 +5734,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-2664723e1b4b
+8a7ba94c2e84
 \.
 
 
@@ -6413,6 +6412,8 @@ COPY public.logentrykind (id, name) FROM stdin;
 110	delete_repository_autoprune_policy
 111	enable_team_sync
 112	disable_team_sync
+113	oauth_token_assigned
+114	oauth_token_revoked
 \.
 
 
@@ -8283,7 +8284,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 112, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 114, true);
 
 
 --
