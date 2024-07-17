@@ -187,4 +187,13 @@ describe('Repository settings - Repository autoprune policies', () => {
     );
     cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
   });
+
+  it('shows the registry autoprune policy', () => {
+    cy.visit('/repository/testorg/testrepo?tab=settings');
+    cy.contains('Repository Auto-Prune Policies').click();
+    cy.get('[data-testid="registry-autoprune-policy-method"]').contains(
+      'Number of Tags:',
+    );
+    cy.get('[data-testid="registry-autoprune-policy-value"]').contains('10');
+  });
 });

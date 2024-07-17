@@ -1538,7 +1538,7 @@ CONFIG_SCHEMA = {
         },
         "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
             "type": "object",
-            "description": "Default auto-prune policy applied to newly created organizations",
+            "description": "Default auto-prune policy applied to all organizations and repositories",
             "properties": {
                 "method": {
                     "type": "string",

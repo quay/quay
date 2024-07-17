@@ -36,24 +36,8 @@ import {isNullOrUndefined} from 'src/libs/utils';
 import {AutoPruneMethod} from 'src/resources/NamespaceAutoPruneResource';
 import {RepositoryAutoPrunePolicy} from 'src/resources/RepositoryAutoPruneResource';
 import {shorthandTimeUnits} from 'src/routes/OrganizationsList/Organization/Tabs/Settings/AutoPruning';
-
-enum AutoPrunePolicyType {
-  NONE = 'None',
-  TAG_NUMBER = 'Number of Tags',
-  TAG_CREATION_DATE = 'Age of Tags',
-}
-
-// mapping between AutoPruneMethod and AutoPrunePolicyType values
-const methodToPolicyType: Record<AutoPruneMethod, AutoPrunePolicyType> = {
-  [AutoPruneMethod.NONE]: AutoPrunePolicyType.NONE,
-  [AutoPruneMethod.TAG_NUMBER]: AutoPrunePolicyType.TAG_NUMBER,
-  [AutoPruneMethod.TAG_CREATION_DATE]: AutoPrunePolicyType.TAG_CREATION_DATE,
-};
-
-// function to get the corresponding display string based on AutoPruneMethod
-function getAutoPrunePolicyType(method: AutoPruneMethod): AutoPrunePolicyType {
-  return methodToPolicyType[method];
-}
+import ReadonlyAutoprunePolicy from './RepositoryAutoPruningReadonlyPolicy';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [uuid, setUuid] = useState<string>(null);
@@ -63,6 +47,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
   const {addAlert} = useAlerts();
   const {organization} = useOrganization(props.organizationName);
+  const config = useQuayConfig();
 
   const {
     error,
@@ -250,55 +235,23 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   if (!isNullOrUndefined(errorFetchingRepoPolicies)) {
     return <RequestError message={errorFetchingRepoPolicies.toString()} />;
   }
-
   return (
     <>
+      <Conditional
+        if={config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null}
+      >
+        <ReadonlyAutoprunePolicy
+          testId="registry-autoprune-policy"
+          title="Registry Auto-Pruning Policy"
+          policies={[config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY]}
+        />
+      </Conditional>
       <Conditional if={nsPolicies?.length > 0 && organization?.is_admin}>
-        <Title
-          headingLevel="h2"
-          style={{paddingBottom: '.5em'}}
-          data-testid="namespace-auto-prune-policy-heading"
-        >
-          Namespace Auto-Pruning Policies
-        </Title>
-        <Gallery>
-          <DataList
-            className="pf-v5-u-mb-lg"
-            aria-label="Simple data list example"
-            isCompact
-          >
-            <DataListItem aria-labelledby="simple-item1">
-              <DataListItemRow>
-                <DataListItemCells
-                  dataListCells={
-                    nsPolicies
-                      ? [
-                          <DataListCell
-                            key="policy-method"
-                            data-testid={'namespace-autoprune-policy-method'}
-                          >
-                            <span id="simple-item1">
-                              <b>
-                                {getAutoPrunePolicyType(nsPolicies[0]?.method)}:
-                              </b>
-                            </span>
-                          </DataListCell>,
-                          <DataListCell
-                            key="policy-value"
-                            data-testid={'namespace-autoprune-policy-value'}
-                          >
-                            <span id="simple-item1">
-                              <b>{nsPolicies[0]?.value}</b>
-                            </span>
-                          </DataListCell>,
-                        ]
-                      : []
-                  }
-                />
-              </DataListItemRow>
-            </DataListItem>
-          </DataList>
-        </Gallery>
+        <ReadonlyAutoprunePolicy
+          testId="namespace-autoprune-policy"
+          title="Namespace Auto-Pruning Policies"
+          policies={nsPolicies}
+        />
       </Conditional>
       <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
         Repository Auto-Pruning Policies
