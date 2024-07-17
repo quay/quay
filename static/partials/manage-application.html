@@ -114,14 +114,12 @@
                 pull-right="true"></div>
               </span>
               <span ng-show="Config.FEATURE_ASSIGN_OAUTH_TOKEN">
-                <button  class="btn btn-primary" ng-click="customUser = !customUser">
-                  <div ng-if="!customUser">
+                  <button class="btn btn-primary"  ng-if="!customUser" ng-click="assignUser()">
                     Assign another user
-                  </div>
-                  <div ng-if="customUser">
+                  </button>
+                  <button class="btn btn-primary"  ng-if="customUser" ng-click="cancelAssignUser()">
                     Cancel
-                  </div>
-                </button>
+                  </button>
               </span>
             </div>
           </div>
@@ -142,7 +140,7 @@
              ng-disabled="!getScopes(genScopes).length" ng-safenewtab ng-if="!customUser">
              Generate Access Token
           </a>
-          <button class="btn btn-success" ng-click="confirmAssignUser()" ng-disabled="selectedUser == null" ng-if="customUser">
+          <button class="btn btn-success" ng-click="confirmAssignUser()" ng-disabled="selectedUser == null || !getScopes(genScopes).length" ng-if="customUser">
             Assign token
           </button>
         </cor-tab-pane>
