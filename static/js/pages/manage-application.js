@@ -161,6 +161,15 @@
       });
     };
 
+    $scope.assignUser = function(){
+      $scope.customUser = true;
+    }
+
+    $scope.cancelAssignUser = function(){
+      $scope.selectedUser = null;
+      $scope.customUser = false;
+    }
+
 
     // Load the organization and application info.
     loadOrganization();
