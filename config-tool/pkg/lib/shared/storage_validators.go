@@ -33,6 +33,9 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 	var token string = ""
 	var signature = "s3v2"
 
+	// we do not have any signature checks so to avoid any compiling errors
+	signature = "s3v2"
+
 	switch storageType {
 	case "LocalStorage":
 		return true, []ValidationError{}
