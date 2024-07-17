@@ -1,7 +1,14 @@
 <div class="repo-panel-settings-element">
   <h3 class="tab-header"><span class="repository-title" repository="repository"></span> Settings</h3>
 
-    <!-- User/Team Permissions -->
+  <div ng-if="Config.FEATURE_AUTO_PRUNE && Config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null">
+    <div class="co-alert co-alert-warning" >
+     Registry wide autopruning is in effect <i class="fa fa-info-circle" data-title="Tags will be pruned across all repositories with the policy method: {{Config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.method}} and value: {{Config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.value}}" bs-tooltip></i>
+     </div>
+    <br/>
+  </div>
+
+   <!-- User/Team Permissions -->
     <div class="co-panel" id="repoPermissions">
       <div class="co-panel-heading"><i class="fa fa-key"></i> User and Robot Permissions</div>
       <div class="panel-body" style="padding-top: 5px;">
@@ -160,7 +167,7 @@
         <div class="co-alert co-alert-danger">
           You are requesting to delete the repository <strong>{{repository.namespace}}/{{repository.name}}</strong>. This action is <strong>non-reversable</strong>.
         </div>
-        
+
         You must type <code>{{repository.namespace}}/{{repository.name}}</code> below to confirm deletion:
         <input type="text" class="form-control" placeholder="Enter repository here"
             ng-model="deleteRepoInfo.verification" ng-pattern="deleteRepoInfo.verificationRegex" match="deleteRepoInfo.verificationRegex"
