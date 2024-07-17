@@ -1,14 +1,14 @@
 """increase upstreamregistry's password length (PROJQUAY-7430)
 
 Revision ID: a32e17bfad20
-Revises: 2664723e1b4b
+Revises: 3f8d7acdf7f9
 Create Date: 2024-07-13 20:47:26.649828
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "a32e17bfad20"
-down_revision = "2664723e1b4b"
+down_revision = "3f8d7acdf7f9"
 
 import sqlalchemy as sa
 

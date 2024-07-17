@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.19 (Debian 12.19-1.pgdg120+1)
--- Dumped by pg_dump version 12.19 (Debian 12.19-1.pgdg120+1)
+-- Dumped from database version 12.1 (Debian 12.1-1.pgdg100+1)
+-- Dumped by pg_dump version 12.1 (Debian 12.1-1.pgdg100+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3424,7 +3424,6 @@ CREATE TABLE public.repomirrorconfig (
     mirror_type integer NOT NULL,
     internal_robot_id integer NOT NULL,
     external_registry_username character varying(4096),
-    external_registry_password character varying(4096),
     external_registry_config text NOT NULL,
     sync_interval integer DEFAULT 60 NOT NULL,
     sync_start_date timestamp without time zone,
@@ -3433,7 +3432,8 @@ CREATE TABLE public.repomirrorconfig (
     sync_status integer NOT NULL,
     sync_transaction_id character varying(36),
     root_rule_id integer NOT NULL,
-    external_reference text NOT NULL
+    external_reference text NOT NULL,
+    external_registry_password character varying(9000)
 );
 
 
@@ -5738,7 +5738,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-3f8d7acdf7f9
+a32e17bfad20
 \.
 
 
@@ -6764,7 +6764,7 @@ COPY public.redhatsubscriptions (id, user_id, account_number) FROM stdin;
 -- Data for Name: repomirrorconfig; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_password, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference) FROM stdin;
+COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference, external_registry_password) FROM stdin;
 \.
 
 
