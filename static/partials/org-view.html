@@ -120,6 +120,14 @@
             <!-- Org Settings -->
             <div class="settings-section">
               <h3>Organization Settings</h3>
+
+              <div ng-if="Config.FEATURE_AUTO_PRUNE && Config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null">
+                <div class="co-alert co-alert-warning" >
+                 Registry wide autopruning is in effect <i class="fa fa-info-circle" data-title="Tags will be pruned across all repositories with the policy method: {{Config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.method}} and value: {{Config.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.value}}" bs-tooltip></i>
+                 </div>
+                <br/>
+              </div>
+
               <table class="co-list-table">
                 <tr>
                   <td>Namespace:</td>
