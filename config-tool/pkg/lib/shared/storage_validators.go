@@ -61,8 +61,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		isSecure = args.IsSecure
 		bucketName = args.BucketName
 
-		signature = args.Signature
-
 		// Append port if present
 		if args.Port != 0 {
 			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
