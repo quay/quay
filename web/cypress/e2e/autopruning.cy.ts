@@ -157,6 +157,15 @@ describe('Namespace settings - autoprune policies', () => {
     cy.contains('AxiosError: Request failed with status code 500');
   });
 
+  it('shows the registry autoprune policy', () => {
+    cy.visit('/organization/testorg?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+    cy.get('[data-testid="registry-autoprune-policy-method"]').contains(
+      'Number of Tags:',
+    );
+    cy.get('[data-testid="registry-autoprune-policy-value"]').contains('10');
+  });
+
   // TODO: Uncomment once user settings is supported
   // it('updates policy for users', () => {
   //     cy.visit('/organization/user1?tab=Settings');
