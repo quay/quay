@@ -491,6 +491,9 @@ def _get_sorted_matching_repositories(
     """
     select_fields = [Repository.id] if ids_only else [Repository, Namespace]
 
+    # Used to make sure that the join to the Namespace table only occurs once
+    is_namespace_table_joined = False
+
     if not lookup_value:
         # This is a generic listing of repositories. Simply return the sorted repositories based
         # on RepositorySearchScore.
@@ -532,7 +535,12 @@ def _get_sorted_matching_repositories(
 
         # If an organization/user was found and it was not blank.
         if (user_name_value is not None) and (user_name_value != ""):
-            query = query.where(Namespace.username == user_name_value)
+            query = (
+                query.switch(Repository)
+                .join(Namespace, on=(Namespace.id == Repository.namespace_user))
+                .where(Namespace.username == user_name_value)
+            )
+            is_namespace_table_joined = True
 
     if repo_kind is not None:
         query = query.where(Repository.kind == Repository.kind.get_id(repo_kind))
@@ -541,9 +549,10 @@ def _get_sorted_matching_repositories(
         query = query.where(Repository.visibility == _basequery.get_public_repo_visibility())
 
     if not ids_only:
-        query = query.switch(Repository).join(
-            Namespace, on=(Namespace.id == Repository.namespace_user)
-        )
+        if not is_namespace_table_joined:
+            query = query.switch(Repository).join(
+                Namespace, on=(Namespace.id == Repository.namespace_user)
+            )
 
     return query
 
