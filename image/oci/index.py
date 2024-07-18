@@ -422,13 +422,37 @@ class OCIIndexBuilder(object):
             os,
         )
 
+    def add_manifest_for_referrers_index(self, manifest):
+        """
+        Adds a manifest to the list.
+        """
+        assert manifest.media_type in ALLOWED_MEDIA_TYPES
+        self.add_manifest_digest(
+            manifest.digest,
+            len(manifest.bytes.as_encoded_str()),
+            manifest.media_type,
+            None,
+            None,
+            manifest.artifact_type,
+            manifest.annotations,
+        )
+
     def add_annotation(self, key, value):
         """
         Adds an annotation to the index
         """
         self.annotations[key] = value
 
-    def add_manifest_digest(self, manifest_digest, manifest_size, media_type, architecture, os):
+    def add_manifest_digest(
+        self,
+        manifest_digest,
+        manifest_size,
+        media_type,
+        architecture,
+        os,
+        artifact_type=None,
+        annotations=None,
+    ):
         """
         Adds a manifest to the list.
         """
@@ -445,6 +469,8 @@ class OCIIndexBuilder(object):
                 manifest_size,
                 media_type,
                 platform_dict,
+                artifact_type,
+                annotations,
             )
         )
 
@@ -471,6 +497,12 @@ class OCIIndexBuilder(object):
             }
             if manifest[3]:
                 manifest_dict[INDEX_PLATFORM_KEY] = manifest[3]
+
+            if manifest[4]:
+                manifest_dict[INDEX_ARTIFACT_TYPE_KEY] = manifest[4]
+
+            if manifest[5]:
+                manifest_dict[INDEX_ANNOTATIONS_KEY] = manifest[5]
 
             manifest_list_dict[INDEX_MANIFESTS_KEY].append(manifest_dict)
 
