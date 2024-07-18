@@ -2,6 +2,7 @@ import {
   Chart,
   ChartAxis,
   ChartBar,
+  ChartLegend,
   ChartGroup,
   ChartVoronoiContainer,
 } from '@patternfly/react-charts';
@@ -11,6 +12,8 @@ import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
+import {useTheme} from 'src/contexts/ThemeContext';
+import './css/UsageLogs.scss'
 
 interface UsageLogsGraphProps {
   starttime: string;
@@ -76,7 +79,16 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     return legends;
   }
 
-  return (
+  if (getLegendData().length === 0) {
+    return (
+      <Flex grow={{default: 'grow'}} style={{ margin: '50px' }}>
+        <FlexItem>
+          <p>No data to display.</p>
+        </FlexItem>
+      </Flex>
+    );
+  }
+  else return (
     <Flex grow={{default: 'grow'}}>
       <FlexItem>
         <Chart
@@ -91,15 +103,21 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             x: [new Date(props.starttime), new Date(props.endtime)],
             y: [0, maxRange],
           }}
+          legendAllowWrap
+          legendComponent={
+            <ChartLegend
+              data={getLegendData()}
+              itemsPerRow={8}
+              theme={useTheme()}
+            />
+          }
+          legendPosition='right'
           legendOrientation={
             getLegendData().length >= 12 ? 'horizontal' : 'vertical'
           }
-          legendPosition={getLegendData().length >= 12 ? 'bottom' : 'right'}
-          legendData={getLegendData()}
-          legendAllowWrap
           name="usage-logs-graph"
           padding={{
-            bottom: 10 * getLegendData().length,
+            bottom: 20 * getLegendData().length,
             left: 80,
             right: 500, // Adjusted to accommodate legend
             top: 50,
