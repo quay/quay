@@ -66,7 +66,7 @@ def _build_referrers_index_for_manifests(referrers):
 
     for referrer in referrers:
         parsed_referrer = referrer.get_parsed_manifest()
-        index_builder.add_manifest(parsed_referrer)
+        index_builder.add_manifest_for_referrers_index(parsed_referrer)
 
     index = index_builder.build()
     return index

@@ -2,12 +2,14 @@ import json
 
 import pytest
 
-from image.oci.index import MalformedIndex, OCIIndex
+from image.oci.index import MalformedIndex, OCIIndex, OCIIndexBuilder
 from image.oci.test.testdata import (
     OCI_IMAGE_INDEX_MANIFEST,
     OCI_IMAGE_INDEX_MANIFEST_WITH_ARTIFACT_TYPE_AND_SUBJECT,
     OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD,
+    OCI_IMAGE_WITH_ARTIFACT_TYPES_AND_ANNOTATIONS,
 )
+from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
 
 
@@ -73,3 +75,21 @@ def test_index_with_artifact_type_and_subject():
         index.subject.digest
         == "sha256:6416299892584b515393076863b75f192ca6cf98583d83b8e583ec3b6f2a8a5e"
     )
+
+
+def test_index_builder_with_artifact_type_and_annotations():
+    index_builder = OCIIndexBuilder()
+    parsed_manifest = parse_manifest_from_bytes(
+        Bytes.for_string_or_unicode(OCI_IMAGE_WITH_ARTIFACT_TYPES_AND_ANNOTATIONS),
+        "application/vnd.oci.image.manifest.v1+json",
+    )
+
+    index_builder.add_manifest_for_referrers_index(parsed_manifest)
+    referrers_index = index_builder.build()
+
+    assert referrers_index.is_manifest_list
+
+    manifests = referrers_index.manifest_dict["manifests"]
+    for manifest in manifests:
+        assert manifest.get("artifactType") is not None
+        assert manifest.get("annotations") is not None
