@@ -112,7 +112,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
                 theme={useTheme()}
               />
             }
-            legendPosition='right'
+            legendPosition="right"
             legendOrientation={
               getLegendData().length >= 12 ? 'horizontal' : 'vertical'
             }
