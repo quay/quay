@@ -43,7 +43,7 @@ def list_manifest_referrers(namespace_name, repo_name, manifest_ref, registry_mo
 
     try:
         manifest = registry_model.lookup_manifest_by_digest(
-            repository_ref, manifest_ref, raise_on_error=True
+            repository_ref, manifest_ref, raise_on_error=True, allow_hidden=True
         )
     except ManifestDoesNotExist as e:
         raise ManifestUnknown(str(e))
