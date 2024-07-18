@@ -12,9 +12,12 @@ type AutoPruneFieldGroup struct {
 }
 
 type DefaultAutoPrunePolicyStruct struct {
-	Method string `default:"" validate:"" json:"method,omitempty" yaml:"method,omitempty"`
-	// value can be string or int
-	Value interface{} `default:"" validate:"" json:"value,omitempty" yaml:"value,omitempty"`
+	Policies []*AutoPrunePolicy `default:"" validate:"" json:"policies,omitempty" yaml:"policies,omitempty"`
+}
+
+type AutoPrunePolicy struct {
+	Method string      `default:"" validate:"required" json:"method,omitempty" yaml:"method,omitempty"`
+	Value  interface{} `default:"" validate:"required" json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 // NewAutoPruneFieldGroup creates a new AutoPruneFieldGroup
@@ -30,41 +33,50 @@ func NewAutoPruneFieldGroup(fullConfig map[string]interface{}) (*AutoPruneFieldG
 	}
 
 	if value, ok := fullConfig["DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"]; ok {
-		var err error
-		value := value.(map[string]interface{})
-		newAutoPruneFieldGroup.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY, err = NewDefaultOrgAutoPrunePolicyStruct(value)
-		if err != nil {
-			return newAutoPruneFieldGroup, err
+		policies, ok := value.([]interface{})
+		if !ok {
+			return newAutoPruneFieldGroup, errors.New("DEFAULT_NAMESPACE_AUTOPRUNE_POLICY must be a list of policies")
+		}
+
+		newAutoPruneFieldGroup.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY = &DefaultAutoPrunePolicyStruct{}
+		newAutoPruneFieldGroup.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Policies = make([]*AutoPrunePolicy, 0, len(policies))
+
+		for _, policy := range policies {
+			policyConfig, ok := policy.(map[string]interface{})
+			if !ok {
+				return newAutoPruneFieldGroup, errors.New("each policy in DEFAULT_NAMESPACE_AUTOPRUNE_POLICY must be a map")
+			}
+
+			autoPrunePolicy, err := NewAutoPrunePolicy(policyConfig)
+			if err != nil {
+				return newAutoPruneFieldGroup, err
+			}
+
+			newAutoPruneFieldGroup.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Policies = append(newAutoPruneFieldGroup.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY.Policies, autoPrunePolicy)
 		}
 	}
 
 	return newAutoPruneFieldGroup, nil
 }
 
-func NewDefaultOrgAutoPrunePolicyStruct(defaultConfig map[string]interface{}) (*DefaultAutoPrunePolicyStruct, error) {
-	newDefaultOrgAutoPrunePolicyStruct := &DefaultAutoPrunePolicyStruct{}
-	defaults.Set(newDefaultOrgAutoPrunePolicyStruct)
+func NewAutoPrunePolicy(policyConfig map[string]interface{}) (*AutoPrunePolicy, error) {
+	autoPrunePolicy := &AutoPrunePolicy{}
+	defaults.Set(autoPrunePolicy)
 
-	if value, ok := defaultConfig["method"]; ok {
-		newDefaultOrgAutoPrunePolicyStruct.Method, ok = value.(string)
+	if value, ok := policyConfig["method"]; ok {
+		autoPrunePolicy.Method, ok = value.(string)
 		if !ok {
-			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_NAMESPACE_AUTOPRUNE_POLICY `method` must be of type string")
+			return autoPrunePolicy, errors.New("method must be a string")
 		}
+	} else {
+		return autoPrunePolicy, errors.New("method is required")
 	}
 
-	if value, ok := defaultConfig["value"]; ok {
-		newDefaultOrgAutoPrunePolicyStruct.Value, ok = value.(int)
-		if ok {
-			return newDefaultOrgAutoPrunePolicyStruct, nil
-		}
+	if value, ok := policyConfig["value"]; ok {
+		autoPrunePolicy.Value = value // No type checking needed here because Value is interface{}
+	} else {
+		return autoPrunePolicy, errors.New("value is required")
 	}
 
-	if value, ok := defaultConfig["value"]; ok {
-		newDefaultOrgAutoPrunePolicyStruct.Value, ok = value.(string)
-		if !ok {
-			return newDefaultOrgAutoPrunePolicyStruct, errors.New("DEFAULT_NAMESPACE_AUTOPRUNE_POLICY `value` must be of type string or int")
-		}
-	}
-
-	return newDefaultOrgAutoPrunePolicyStruct, nil
+	return autoPrunePolicy, nil
 }
