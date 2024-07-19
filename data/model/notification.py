@@ -248,7 +248,9 @@ def delete_repo_notification(namespace_name, repository_name, uuid):
     return found
 
 
-def list_repo_notifications(namespace_name, repository_name, event_name=None):
+def list_repo_notifications(
+    namespace_name, repository_name, event_name=None, notification_uuid=None
+):
     query = (
         RepositoryNotification.select(RepositoryNotification, Repository, Namespace)
         .join(Repository)
@@ -262,6 +264,9 @@ def list_repo_notifications(namespace_name, repository_name, event_name=None):
             .join(ExternalNotificationEvent)
             .where(ExternalNotificationEvent.name == event_name)
         )
+
+    if notification_uuid:
+        query = query.where(RepositoryNotification.uuid == notification_uuid)
 
     return query
 

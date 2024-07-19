@@ -35,6 +35,7 @@ def fetch_active_notification(event):
             query = (
                 RepositoryNotification.select(
                     RepositoryNotification.id,
+                    RepositoryNotification.uuid,
                     RepositoryNotification.method,
                     RepositoryNotification.repository,
                     RepositoryNotification.event_config_json,
@@ -127,7 +128,11 @@ def scan_for_image_expiry_notifications(event_name, batch_size=BATCH_SIZE):
         spawn_notification(
             repository_ref,
             event_name,
-            {"tags": [tag.name for tag in tags], "expiring_in": f"{config['days']} days"},
+            {
+                "notification_uuid": notification.uuid,
+                "tags": [tag.name for tag in tags],
+                "expiring_in": f"{config['days']} days",
+            },
         )
 
     return
