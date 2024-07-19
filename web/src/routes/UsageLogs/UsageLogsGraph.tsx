@@ -14,7 +14,7 @@ import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
 import {useTheme} from 'src/contexts/ThemeContext';
 
-import './css/UsageLogs.scss'
+import './css/UsageLogs.scss';
 
 interface UsageLogsGraphProps {
   starttime: string;
@@ -88,7 +88,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         </FlexItem>
       </Flex>
     );
-  } else 
+  } else
     return (
       <Flex grow={{default: 'grow'}}>
         <FlexItem>
