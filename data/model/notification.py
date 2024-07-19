@@ -266,9 +266,7 @@ def list_repo_notifications(
         )
 
     if notification_uuid:
-        query = query.switch(RepositoryNotification).where(
-            RepositoryNotification.uuid == notification_uuid
-        )
+        query = query.where(RepositoryNotification.uuid == notification_uuid)
 
     return query
 
