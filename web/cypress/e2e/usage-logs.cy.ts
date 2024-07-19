@@ -184,6 +184,7 @@ describe('Usage Logs Export', () => {
   });
 
   it('toggle chart', () => {
+    cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
     cy.visit('/organization/projectquay');
     cy.contains('Logs').click();
 
@@ -192,6 +193,12 @@ describe('Usage Logs Export', () => {
 
     cy.contains('Show Chart').click();
     cy.get('[class=pf-v5-c-chart]').should('be.visible');
+  });
+
+  it('empty chart', () => {
+    cy.visit('/organization/projectquay');
+    cy.contains('Logs').click();
+    cy.get('[p]').contains('No data to display.').should('be.visible');
   });
 
   it('filter logs', () => {
