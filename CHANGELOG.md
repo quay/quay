@@ -3,8 +3,11 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.11.3"></a>
+## [v3.11.3] - 0001-01-01
+
 <a name="v3.11.2"></a>
-## [v3.11.2] - 2024-06-13
+## [v3.11.2] - 2024-07-02
 ### Api
 - [439784d6](https://github.com/quay/quay/commit/439784d60d4644b6072c053abf12df4266408a7a): adding endpoints to FEATURE_SUPERUSERS_FULL_ACCESS (PROJQUAY-7307) ([#2941](https://github.com/quay/quay/issues/2941))
 ### [Redhat-3.11] Chore
@@ -2129,7 +2132,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.11.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.11.3...HEAD
+[v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
 [v3.11.0]: https://github.com/quay/quay/compare/v3.10.6...v3.11.0
