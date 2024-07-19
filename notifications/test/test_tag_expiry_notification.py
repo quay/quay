@@ -20,6 +20,7 @@ from data.model.oci.tag import (
     set_tag_end_ms,
 )
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
+from notifications.notificationevent import RepoImageExpiryEvent
 from test.fixtures import *
 from util.notification import *
 
@@ -252,3 +253,40 @@ def test_notifications_on_tag_delete(initial_set):
         .count()
     )
     assert tag_event_count == 0
+
+
+def test_list_repo_notifications(initial_set):
+    email_event = notification.create_repo_notification(
+        initial_set["repo_ref"],
+        RepoImageExpiryEvent.event_name(),
+        "email",
+        {"email": "sunanda@test.com"},
+        {"days": 10},
+        title="Image(s) will expire in 10 days",
+    )
+    repo_notifications = notification.list_repo_notifications(namespace, repo)
+    # 2 notifications created in initial_set() and 1 in this test case
+    assert len(repo_notifications) == 3
+
+    email_notification = notification.list_repo_notifications(
+        namespace, repo, notification_uuid=email_event.uuid
+    )
+    assert len(email_notification) == 1
+
+    email_notification = notification.list_repo_notifications(
+        namespace,
+        repo,
+        event_name=RepoImageExpiryEvent.event_name(),
+        notification_uuid=email_event.uuid,
+    )
+    assert len(email_notification) == 1
+
+    email_notification = notification.list_repo_notifications(
+        namespace, repo, event_name="repo_push", notification_uuid=email_event.uuid
+    )
+    assert len(email_notification) == 0
+
+    email_notification = notification.list_repo_notifications(
+        namespace, repo, event_name=RepoImageExpiryEvent.event_name()
+    )
+    assert len(email_notification) == 3
