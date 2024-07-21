@@ -7,6 +7,7 @@ from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTa
 from data.database import Repository
 from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
 from data.database import RepositoryState, User, db_for_update, get_epoch_timestamp_ms
+from data.logs_model import logs_model
 from data.model import (
     InvalidNamespaceAutoPruneMethod,
     InvalidNamespaceAutoPrunePolicy,
@@ -18,7 +19,6 @@ from data.model import (
     RepositoryAutoPrunePolicyAlreadyExists,
     RepositoryAutoPrunePolicyDoesNotExist,
     db_transaction,
-    log,
     modelutil,
     oci,
     repository,
@@ -513,7 +513,7 @@ def prune_tags(tags, repo, namespace):
         try:
             tag = oci.tag.delete_tag(repo.id, tag.name)
             if tag is not None:
-                log.log_action(
+                logs_model.log_action(
                     "autoprune_tag_delete",
                     namespace.username,
                     repository=repo,
