@@ -18,6 +18,7 @@ from data.model import (
     RepositoryAutoPrunePolicyAlreadyExists,
     RepositoryAutoPrunePolicyDoesNotExist,
     db_transaction,
+    log,
     modelutil,
     oci,
     repository,
@@ -508,14 +509,11 @@ def delete_autoprune_task(task):
 
 
 def prune_tags(tags, repo, namespace):
-    # imported here to avoid cyclic imports
-    from data.logs_model import logs_model
-
     for tag in tags:
         try:
             tag = oci.tag.delete_tag(repo.id, tag.name)
             if tag is not None:
-                logs_model.log_action(
+                log.log_action(
                     "autoprune_tag_delete",
                     namespace.username,
                     repository=repo,
