@@ -80,8 +80,12 @@ def notification_batch(batch_size=DEFAULT_BATCH_SIZE):
                 repo.namespace_name, repo.name, extra_data=extra_data, subpage=subpage
             )
 
+            notification_uuid = extra_data.get("notification_uuid", None)
             notifications = model.notification.list_repo_notifications(
-                repo.namespace_name, repo.name, event_name=event_name
+                repo.namespace_name,
+                repo.name,
+                event_name=event_name,
+                notification_uuid=notification_uuid,
             )
             path = [repo.namespace_name, repo.name, event_name] + (pathargs or [])
             for notification in list(notifications):

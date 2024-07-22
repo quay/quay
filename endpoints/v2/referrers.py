@@ -43,7 +43,7 @@ def list_manifest_referrers(namespace_name, repo_name, manifest_ref, registry_mo
 
     try:
         manifest = registry_model.lookup_manifest_by_digest(
-            repository_ref, manifest_ref, raise_on_error=True
+            repository_ref, manifest_ref, raise_on_error=True, allow_hidden=True
         )
     except ManifestDoesNotExist as e:
         raise ManifestUnknown(str(e))
@@ -66,7 +66,7 @@ def _build_referrers_index_for_manifests(referrers):
 
     for referrer in referrers:
         parsed_referrer = referrer.get_parsed_manifest()
-        index_builder.add_manifest(parsed_referrer)
+        index_builder.add_manifest_for_referrers_index(parsed_referrer)
 
     index = index_builder.build()
     return index
