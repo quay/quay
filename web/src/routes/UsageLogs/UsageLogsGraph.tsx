@@ -118,7 +118,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             }
             name="usage-logs-graph"
             padding={{
-              bottom: 20 * getLegendData().length,
+              bottom: 50,
               left: 80,
               right: 500, // Adjusted to accommodate legend
               top: 50,
