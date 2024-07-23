@@ -2328,6 +2328,27 @@ class TestListRepos(ApiTestCase):
         self.login(PUBLIC_USER)
         self.assertRepositoryNotVisible("neworg", "somerepo")
 
+    def test_list_repos_globalreadonlysuperuser(self):
+        repository = model.repository.get_repository("orgwithnosuperuser", "repo")
+        assert repository is not None
+        assert repository.visibility.name == "private"
+        self.login("globalreadonlysuperuser")
+        json = self.getJsonResponse(
+            RepositoryList,
+            params=dict(namespace="orgwithnosuperuser", public=False),
+        )
+
+        assert len(json["repositories"]) == 1
+        assert json["repositories"][0]["name"] == "repo"
+
+        # Make sure a normal user can't see the repository
+        self.login(NO_ACCESS_USER)
+        json = self.getJsonResponse(
+            RepositoryList,
+            params=dict(namespace="orgwithnosuperuser", public=False),
+        )
+        assert len(json["repositories"]) == 0
+
 
 class TestViewPublicRepository(ApiTestCase):
     def test_normalview(self):
