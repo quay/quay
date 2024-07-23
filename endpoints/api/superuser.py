@@ -29,6 +29,7 @@ from endpoints.api import (
     InvalidResponse,
     NotFound,
     Unauthorized,
+    allow_if_global_readonly_superuser,
     format_date,
     internal_only,
     log_action,
@@ -122,7 +123,7 @@ class SuperUserLogs(ApiResource):
         """
         List the usage logs for the current system.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
@@ -217,7 +218,7 @@ class SuperUserOrganizationList(ApiResource):
         """
         Returns a list of all organizations in the system.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
 
@@ -251,7 +252,7 @@ class SuperUserRegistrySize(ApiResource):
         """
         Returns size of the registry
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             registry_size = get_registry_size()
             if registry_size is not None:
                 return {
@@ -326,7 +327,7 @@ class SuperUserUserQuotaList(ApiResource):
     @nickname(["listUserQuotaSuperUser", "listOrganizationQuotaSuperUser"])
     @require_scope(scopes.SUPERUSER)
     def get(self, namespace):
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
 
             try:
                 namespace_user = user.get_user_or_org(namespace)
@@ -509,7 +510,7 @@ class SuperUserList(ApiResource):
         """
         Returns a list of all users in the system.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
 
@@ -946,7 +947,7 @@ class SuperUserServiceKeyManagement(ApiResource):
     @nickname("listServiceKeys")
     @require_scope(scopes.SUPERUSER)
     def get(self):
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             keys = pre_oci_model.list_all_service_keys()
 
             return jsonify(
@@ -1071,7 +1072,7 @@ class SuperUserServiceKey(ApiResource):
     @nickname("getServiceKey")
     @require_scope(scopes.SUPERUSER)
     def get(self, kid):
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             try:
                 key = pre_oci_model.get_service_key(kid, approved_only=False, alive_only=False)
                 return jsonify(key.to_dict())
@@ -1230,7 +1231,7 @@ class SuperUserRepositoryBuildLogs(ApiResource):
         """
         Return the build logs for the build specified by the build uuid.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             try:
                 repo_build = pre_oci_model.get_repository_build(build_uuid)
                 return get_logs_or_log_url(repo_build)
@@ -1257,7 +1258,7 @@ class SuperUserRepositoryBuildStatus(ApiResource):
         """
         Return the status for the builds specified by the build uuids.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             try:
                 build = pre_oci_model.get_repository_build(build_uuid)
             except InvalidRepositoryBuildException as e:
@@ -1284,7 +1285,7 @@ class SuperUserRepositoryBuildResource(ApiResource):
         """
         Returns information about a build.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             try:
                 build = pre_oci_model.get_repository_build(build_uuid)
             except InvalidRepositoryBuildException:
