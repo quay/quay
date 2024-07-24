@@ -31,7 +31,7 @@ def test_list_all_users(disabled, app):
 def test_list_all_orgs(app):
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserOrganizationList, "GET", None, None, 200).json
-        assert len(result["organizations"]) == 5
+        assert len(result["organizations"]) == 6
 
 
 def test_paginate_orgs(app):
@@ -44,7 +44,7 @@ def test_paginate_orgs(app):
         secondResult = conduct_api_call(
             cl, SuperUserOrganizationList, "GET", params, None, 200
         ).json
-        assert len(secondResult["organizations"]) == 2
+        assert len(secondResult["organizations"]) == 3
         assert secondResult.get("next_page", None) is None
 
 
