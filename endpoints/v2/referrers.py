@@ -46,7 +46,7 @@ def list_manifest_referrers(namespace_name, repo_name, manifest_ref, registry_mo
             repository_ref, manifest_ref, raise_on_error=True, allow_hidden=True
         )
     except ManifestDoesNotExist as e:
-        raise ManifestUnknown(str(e))
+        raise ManifestInvalid(str(e))
 
     artifact_type = request.args.get("artifactType", None)
 
