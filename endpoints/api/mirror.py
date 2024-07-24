@@ -218,7 +218,7 @@ class RepoMirrorResource(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @define_json_response("ViewMirrorConfig")
     @nickname("getRepoMirrorConfig")
     def get(self, namespace_name, repository_name):
