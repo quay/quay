@@ -308,7 +308,11 @@ def disallow_for_non_normal_repositories(func):
 
 
 def require_repo_permission(permission_class, scope, allow_public=False):
-    def _require_permission(allow_for_superuser=False, disallow_for_restricted_user=False):
+    def _require_permission(
+        allow_for_global_readonly_superuser=False,
+        allow_for_superuser=False,
+        disallow_for_restricted_user=False,
+    ):
         def wrapper(func):
             @add_method_metadata("oauth2_scope", scope)
             @wraps(func)
@@ -343,6 +347,9 @@ def require_repo_permission(permission_class, scope, allow_public=False):
 
                     if user is not None and SuperUserPermission().can():
                         return func(self, namespace, repository, *args, **kwargs)
+
+                if allow_for_global_readonly_superuser and allow_if_global_readonly_superuser():
+                    return func(self, namespace, repository, *args, **kwargs)
 
                 raise Unauthorized()
 
@@ -402,6 +409,15 @@ require_user_admin = require_user_permission(UserAdminPermission, scopes.ADMIN_U
 
 def allow_if_superuser():
     return features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
+
+
+def allow_if_global_readonly_superuser():
+    context = get_authenticated_context()
+    return (
+        context is not None
+        and context.authed_user is not None
+        and usermanager.is_global_readonly_superuser(context.authed_user.username)
+    )
 
 
 def verify_not_prod(func):

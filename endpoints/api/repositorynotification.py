@@ -109,7 +109,7 @@ class RepositoryNotificationList(RepositoryParamResource):
         )
         return new_notification.to_dict(), 201
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("listRepoNotifications")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name):
@@ -128,7 +128,7 @@ class RepositoryNotification(RepositoryParamResource):
     Resource for dealing with specific notifications.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getRepoNotification")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, uuid):
