@@ -1563,5 +1563,10 @@ CONFIG_SCHEMA = {
             "description": "Interval in minutes that defines frequency to re-run notifications",
             "x-example": 5000,
         },
+        "DISABLE_PUSHES": {
+            "type": "boolean",
+            "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
+            "x-example": False,
+        },
     },
 }
