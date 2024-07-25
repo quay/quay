@@ -3914,6 +3914,12 @@ class TestOrgRobots(ApiTestCase):
 
         self.assertEqual(json["token"], json2["token"])
 
+    def test_get_robots_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+        params = dict(orgname=ORGANIZATION)
+        for r in self.getJsonResponse(OrgRobotList, params=params)["robots"]:
+            assert "token" in r
+
 
 class TestLogs(ApiTestCase):
     def test_repo_logs(self):
