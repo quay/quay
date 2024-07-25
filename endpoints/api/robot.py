@@ -183,9 +183,10 @@ class OrgRobotList(ApiResource):
         """
         permission = OrganizationMemberPermission(orgname)
         if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
-            include_token = AdministerOrganizationPermission(orgname).can() and parsed_args.get(
-                "token", True
-            )
+            include_token = (
+                AdministerOrganizationPermission(orgname).can()
+                or allow_if_global_readonly_superuser()
+            ) and parsed_args.get("token", True)
             include_permissions = AdministerOrganizationPermission(
                 orgname
             ).can() and parsed_args.get("permissions", False)
