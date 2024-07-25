@@ -220,6 +220,11 @@ if __name__ == "__main__":
                 has_local_storage = True
                 break
 
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Pushes to the registry are disabled; skipping startup")
+        while True:
+            time.sleep(100000)
+
     if not features.STORAGE_REPLICATION or has_local_storage:
         if has_local_storage:
             logger.error("Storage replication can't be used with local storage")
