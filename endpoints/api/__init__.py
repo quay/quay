@@ -310,9 +310,9 @@ def disallow_for_non_normal_repositories(func):
 
 def require_repo_permission(permission_class, scope, allow_public=False):
     def _require_permission(
-        allow_for_global_readonly_superuser=False,
         allow_for_superuser=False,
         disallow_for_restricted_user=False,
+        allow_for_global_readonly_superuser=False,
     ):
         def wrapper(func):
             @add_method_metadata("oauth2_scope", scope)
@@ -494,6 +494,12 @@ def allow_if_superuser():
 
 
 def allow_if_global_readonly_superuser():
+    if (
+        app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None) is None
+        and app.config.get("GLOBAL_READONLY_SUPER_USERS", None) is None
+    ):
+        return False
+
     context = get_authenticated_context()
     return (
         context is not None
