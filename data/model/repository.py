@@ -534,10 +534,10 @@ def _get_sorted_matching_repositories(
         )
 
         # If an organization/user was found and it was not blank.
-        if (user_name_value is not None) and (user_name_value != ""):
+        if user_name_value is not None and user_name_value != "":
             query = (
                 query.switch(Repository)
-                .join(Namespace, on=(Namespace.id == Repository.namespace_user))
+                .join(Namespace)
                 .where(Namespace.username == user_name_value)
             )
             is_namespace_table_joined = True
@@ -548,11 +548,8 @@ def _get_sorted_matching_repositories(
     if not include_private:
         query = query.where(Repository.visibility == _basequery.get_public_repo_visibility())
 
-    if not ids_only:
-        if not is_namespace_table_joined:
-            query = query.switch(Repository).join(
-                Namespace, on=(Namespace.id == Repository.namespace_user)
-            )
+    if not ids_only and not is_namespace_table_joined:
+        query = query.switch(Repository).join(Namespace)
 
     return query
 
