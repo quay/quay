@@ -199,7 +199,6 @@ describe('Usage Logs Export', () => {
     cy.get('[class=pf-v5-c-chart]').should('be.visible');
   });
 
-
   it('empty chart', () => {
     cy.visit('/organization/projectquay');
     cy.contains('Logs').click();
