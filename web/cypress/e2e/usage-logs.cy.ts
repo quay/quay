@@ -193,4 +193,28 @@ describe('Usage Logs Export', () => {
     cy.contains('Show Chart').click();
     cy.get('[class=pf-v5-c-chart]').should('be.visible');
   });
+
+  it('filter logs', () => {
+    cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
+
+    cy.visit('/organization/projectquay');
+    cy.contains('Logs').click();
+
+    cy.get('[id="log-filter-input"]').type('create');
+
+    cy.get('table')
+      .contains('td', 'Create Repository projectquay/testrepo')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains('td', 'Organization projectquay created')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains(
+        'td',
+        'Change visibility for repository projectquay/testrepo to private',
+      )
+      .should('not.exist');
+  });
 });
