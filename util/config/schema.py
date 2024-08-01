@@ -1567,6 +1567,6 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Nginx keep alive timeout for manifests endpoints used by pulls and pushes",
             "x-example": "2s",
-        }
+        },
     },
 }
