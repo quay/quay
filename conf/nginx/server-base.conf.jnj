@@ -247,7 +247,7 @@ location ~ /v2/([^/]+)\/[^/]+/manifests/ {
     limit_req zone=namespaced_dynamicauth_light_http2 burst=50 nodelay;
     {% endif %}
 
-    keepalive_timeout 0; # Disables HTTP 1.1 keep-alive and forces round-robin.
+    keepalive_timeout {{ manifests_endpoint_keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin.
 }
 
 # This block applies to the beginning of a push or pull

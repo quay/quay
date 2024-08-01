@@ -1563,5 +1563,10 @@ CONFIG_SCHEMA = {
             "description": "Interval in minutes that defines frequency to re-run notifications",
             "x-example": 5000,
         },
+        "MANIFESTS_ENDPOINT_KEEPALIVE_TIMEOUT": {
+            "type": "string",
+            "description": "Nginx keep alive timeout for manifests endpoints used by pulls and pushes",
+            "x-example": "2s",
+        },
     },
 }
