@@ -102,7 +102,7 @@ def generate_server_config(config):
     signing_enabled = config.get("FEATURE_SIGNING", False)
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
-    manifests_endpoint_keepalive_timeout = config.get("MANIFESTS_ENDPOINT_KEEPALIVE_TIMEOUT", 0)
+    manifests_endpoint_keepalive_timeout = config.get("MANIFESTS_ENDPOINT_KEEPALIVE_TIMEOUT", "0")
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),
