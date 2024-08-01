@@ -897,3 +897,5 @@ class DefaultConfig(ImmutableConfig):
 
     # Allows users to set up notifications on image expiry, can remove flag once feature is tested
     FEATURE_IMAGE_EXPIRY_TRIGGER = False
+
+    MANIFESTS_ENDPOINT_KEEPALIVE_TIMEOUT = "60s"
