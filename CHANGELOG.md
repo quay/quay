@@ -3,8 +3,27 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.1"></a>
+## [v3.12.1] - 2024-07-29
+### Ui
+- [c6114771](https://github.com/quay/quay/commit/c6114771fdea3e82e9290b85f3c765026332ad68): Fix UI x-axis display (PROJQUAY-7467) ([#3097](https://github.com/quay/quay/issues/3097))
+### [Redhat-3.12] Api
+- [c09555c9](https://github.com/quay/quay/commit/c09555c9e73ecace4e447ec32f48f94ba1dbe965): adding global readonly user to list repo endpoint (PROJQUAY-7446) ([#3085](https://github.com/quay/quay/issues/3085))
+- [cd29306b](https://github.com/quay/quay/commit/cd29306bf400aec3831f90abd3f1324203869b59): adding token to global readonly user list robots (PROJQUAY-7177) ([#3083](https://github.com/quay/quay/issues/3083))
+- [4df87fbe](https://github.com/quay/quay/commit/4df87fbe09b442d113d68260695435a82b0fc91a): adding global readonly superuser to superuser endpoints (PROJQUAY-7449) ([#3076](https://github.com/quay/quay/issues/3076))
+### [Redhat-3.12] Build(Deps)
+- [a66b8d9b](https://github.com/quay/quay/commit/a66b8d9b3ec99b60f56b23f1fe5ee742c278c2c6): bump setuptools from 68.2.2 to 71.1.0 ([#3074](https://github.com/quay/quay/issues/3074))
+### [Redhat-3.12] Events
+- [5b22b19a](https://github.com/quay/quay/commit/5b22b19a9b0765cf5f7ca23395390adc954a666d): fix notification methods for image expiry events (PROJQUAY-7487) ([#3055](https://github.com/quay/quay/issues/3055))
+### [Redhat-3.12] Registry
+- [a87f935f](https://github.com/quay/quay/commit/a87f935fe577b52b399e0e792e780832ffe4052a): return 400 instead of 404 for manifest errors on referrers api (PROJQUAY-7523) ([#3081](https://github.com/quay/quay/issues/3081))
+### [Redhat-3.12] Storage(StorageClasses)
+- [bafff30d](https://github.com/quay/quay/commit/bafff30d44743937da49d39f9c74c9cee66010db): support changing signature version for pre-signed URL (PROJQUAY-7491) ([#3090](https://github.com/quay/quay/issues/3090))
+### [Redhat-3.12] Ui
+- [d3be959b](https://github.com/quay/quay/commit/d3be959bb7e103108b367af016b5655224e660f1): add search bar for usage logs (PROJQUAY-7109) ([#3096](https://github.com/quay/quay/issues/3096))
+
 <a name="v3.12.0"></a>
-## [v3.12.0] - 2024-07-15
+## [v3.12.0] - 2024-07-18
 ### Api
 - [e0573f92](https://github.com/quay/quay/commit/e0573f9230aadbc4a266ceb7a5544e25c0cc00c8): OCI-compliant tag listing behavior with limit = 0 (PROJQUAY-7327) ([#2954](https://github.com/quay/quay/issues/2954))
 - [e73d096b](https://github.com/quay/quay/commit/e73d096b28b06c2f657746a0f8afadb7927c359d): OCI compliant tag listing and pagination (PROJQUAY-6931) ([#2884](https://github.com/quay/quay/issues/2884))
@@ -92,6 +111,7 @@
 ### Nginx
 - [7eb752ba](https://github.com/quay/quay/commit/7eb752ba0a6f49e3dca421ec5b45c832993171f0): add rule to route /updateuser to old ui (PROJQUAY-6722) ([#2706](https://github.com/quay/quay/issues/2706))
 ### Oauth
+- [a6918da5](https://github.com/quay/quay/commit/a6918da548f6c9f1ab9c8bcd82bd341bbe488c1c): logging assign oauth action to audit logs (PROJQUAY-7431) ([#3033](https://github.com/quay/quay/issues/3033)) ([#3034](https://github.com/quay/quay/issues/3034))
 - [e4f05583](https://github.com/quay/quay/commit/e4f05583c12d38339dcd6e7e99a946fcaad7c211): allowing to assign token to user (PROJQUAY-7074) ([#2869](https://github.com/quay/quay/issues/2869))
 ### Observability
 - [3ee51a64](https://github.com/quay/quay/commit/3ee51a6404b75f0b18d094db078cf63cc7f3975d): move catchpoint_datasource to new cluster (PROJQUAY-7007) ([#2816](https://github.com/quay/quay/issues/2816))
@@ -122,6 +142,7 @@
 ### Teamsync
 - [6bf6c2b1](https://github.com/quay/quay/commit/6bf6c2b1810c89a2b9c2b56dab19610cd97732f8): run team sync worker for teams synced via ldap or keystone (PROJQUAY-6762) ([#2788](https://github.com/quay/quay/issues/2788))
 ### Ui
+- [9281363e](https://github.com/quay/quay/commit/9281363e878901a31973595154da811f085f41b4): adding message that registry wide autoprune has been enabled (PROJQUAY-7452) ([#3045](https://github.com/quay/quay/issues/3045))
 - [8812ebc1](https://github.com/quay/quay/commit/8812ebc16d262ea22cc4ecd8d8e38a15bf253121): Frontend changes for repo image expiry notification (PROJQUAY-7078) ([#2986](https://github.com/quay/quay/issues/2986))
 - [1d4865a0](https://github.com/quay/quay/commit/1d4865a0f963259996f5c3461535402204186f0a): adjust large legends for usage logs (PROJQUAY-7384) ([#2978](https://github.com/quay/quay/issues/2978))
 - [85ecb7cb](https://github.com/quay/quay/commit/85ecb7cbfd595a9199a63f950b4e20e3b9823a18): show 'unlimited' if private repo count is over max number (PROJQUAY-7016) ([#2824](https://github.com/quay/quay/issues/2824))
@@ -145,20 +166,33 @@
 - [2cf6b601](https://github.com/quay/quay/commit/2cf6b60190fb98598c313a0012cd5673f98430f4): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2730](https://github.com/quay/quay/issues/2730))
 ### [Redhat-3.12] Api
 - [9acc9142](https://github.com/quay/quay/commit/9acc9142d0db0186a8d373cf8450f4267d3ca457): adding permissions for global readonly superuser (PROJQUAY-7177) ([#3010](https://github.com/quay/quay/issues/3010))
+### [Redhat-3.12] Config
+- [da8f93c2](https://github.com/quay/quay/commit/da8f93c2211f9ab4265252b12c5f2d0d096aefbd): enable the referrers api by default (PROJQUAY-7499) ([#3049](https://github.com/quay/quay/issues/3049))
 ### [Redhat-3.12] Configtool
 - [8b3524d7](https://github.com/quay/quay/commit/8b3524d7a9f9dd0d978d3c14821940039ccd5fc1): default namespace autoprune policy validation (PROJQUAY-7407) ([#3030](https://github.com/quay/quay/issues/3030))
 ### [Redhat-3.12] Events
 - [414ea00b](https://github.com/quay/quay/commit/414ea00b6d7d4fbc7cbb96e45d414f3c19a8c595): Expose notification rerun time interval in a variable (PROJQUAY-7441) ([#3012](https://github.com/quay/quay/issues/3012))
+### [Redhat-3.12] Nginx
+- [2ecbdf63](https://github.com/quay/quay/commit/2ecbdf6323a600f614dd76f8ed83a410cfa4e15a): add email confirm route to new web ui (PROJQUAY-7444) ([#3039](https://github.com/quay/quay/issues/3039))
 ### [Redhat-3.12] Oauth
+- [27f4e121](https://github.com/quay/quay/commit/27f4e121ef5057972e66b51f17cd32dc638c3abf): clarifying message on creating oauth token (PROJQUAY-7434) ([#3037](https://github.com/quay/quay/issues/3037))
 - [7cffda5e](https://github.com/quay/quay/commit/7cffda5e7496b8e19e6d1a9d629b7446e71d8cc5): adding check for assignment uuid when creating token (PROJQUAY-7457) ([#3005](https://github.com/quay/quay/issues/3005))
+### [Redhat-3.12] Registry
+- [ae99470d](https://github.com/quay/quay/commit/ae99470d5c67cafc831706b5b5d35670a6220524): hidden tag should be included when checking a manifest's referrers (PROJQUAY-7519) ([#3052](https://github.com/quay/quay/issues/3052))
+- [0c63e3b2](https://github.com/quay/quay/commit/0c63e3b26772dcbc93759f3ad345126f8f12a9bf): add artifact types and annotations to referrers index response (PROJQUAY-7481) ([#3050](https://github.com/quay/quay/issues/3050))
+- [7785b4de](https://github.com/quay/quay/commit/7785b4defb5cbcb965a44ce47ca547b2f9218cea): index manifest artifact type for filtering (PROJQUAY-7471) ([#3040](https://github.com/quay/quay/issues/3040))
 ### [Redhat-3.12] Storage(RadosGWStorage)
 - [d248f173](https://github.com/quay/quay/commit/d248f173f9f82fc800e4ca583002dfd47c356d01): add Region to RadosGWStorage for multi-zone setups (PROJQUAY-7300) ([#2994](https://github.com/quay/quay/issues/2994))
 ### [Redhat-3.12] Ui
+- [401382f5](https://github.com/quay/quay/commit/401382f516b19d00c5c588954ddddadb4ad39bf5): assign OAuth token to user form checks (PROJQUAY-7433) ([#3046](https://github.com/quay/quay/issues/3046))
 - [a06b6e92](https://github.com/quay/quay/commit/a06b6e929c7a38b78ba885fa2dfc425f6b995dc1): show image expiry trigger in usage logs (PROJQUAY-7466) ([#3019](https://github.com/quay/quay/issues/3019))
 - [a0dabcb5](https://github.com/quay/quay/commit/a0dabcb542e6a2e9c20381bf8c78cb21886a9fe5): add helper text for input (PROJQUAY-7442) ([#3017](https://github.com/quay/quay/issues/3017))
 - [3e43a5f5](https://github.com/quay/quay/commit/3e43a5f50e025af0b1188388cb91eaec0060ba5a): fix for negative integers in image expiry days (PROJQUAY-7442) ([#3014](https://github.com/quay/quay/issues/3014))
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
+
+<a name="v3.11.3"></a>
+## [v3.11.3] - 2024-07-19
 
 <a name="v3.11.2"></a>
 ## [v3.11.2] - 2024-07-02
@@ -2286,8 +2320,10 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.0...HEAD
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.2...v3.12.0
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.1...HEAD
+[v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.3...v3.12.0
+[v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
 [v3.11.0]: https://github.com/quay/quay/compare/v3.10.6...v3.11.0
