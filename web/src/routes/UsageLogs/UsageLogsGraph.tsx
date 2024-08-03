@@ -28,6 +28,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
+    error: logError,
     isLoading: loadingAggregateLogs,
   } = useQuery(
     [
@@ -47,7 +48,9 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   );
 
   if (loadingAggregateLogs) return <Spinner />;
-  if (errorFetchingLogs) return <RequestError message="Unable to get logs" />;
+  if (errorFetchingLogs) {
+    return <RequestError message={logError.message} />;
+  }
 
   let maxRange = 0;
 
