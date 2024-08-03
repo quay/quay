@@ -4,15 +4,16 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 
 let config = {
-  entry: "./static/js/main.ts",
+  entry: "./js/main.ts",
   output: {
-    path: path.resolve(__dirname, "static/build"),
-    publicPath: "/static/build/",
+    path: path.resolve(__dirname, "build"),
+    publicPath: "/build/",
     filename: '[name]-quay-frontend.bundle.js',
     chunkFilename: '[name]-quay-frontend.chunk.js'
   },
   resolve: {
     extensions: [".ts", ".js"],
+    alias: { static: path.resolve(__dirname) }
   },
   // Use global variables to maintain compatibility with non-Webpack components
   externals: {

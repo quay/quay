@@ -61,9 +61,9 @@ services:
     init: true
     volumes:
       - ".:/quay-registry"
-    working_dir: /quay-registry
+    working_dir: /quay-registry/static
     environment:
-      npm_config_cache: /quay-registry/.npm
+      npm_config_cache: /quay-registry/static/.npm
     entrypoint:
       - sh
       - -c

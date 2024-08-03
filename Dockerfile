@@ -102,10 +102,8 @@ RUN set -ex\
 # Build-static downloads the static javascript.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
 WORKDIR /opt/app-root/src
-COPY --chown=1001:0 package.json package-lock.json  ./
+COPY --chown=1001:0 static/  ./
 RUN npm clean-install
-COPY --chown=1001:0 static/  ./static/
-COPY --chown=1001:0 *.json *.js  ./
 RUN npm run --quiet build
 
 # Build React UI
@@ -138,7 +136,7 @@ RUN go install -tags=fips ./cmd/config-tool
 FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
 COPY --from=config-editor /opt/app-root/src /quaydir/config_app
-COPY --from=build-static /opt/app-root/src/static /quaydir/static
+COPY --from=build-static /opt/app-root/src/ /quaydir/static
 COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 
 # Copy in source and update local copy of AWS IP Ranges.
