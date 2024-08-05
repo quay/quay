@@ -54,6 +54,23 @@ SSL_CIPHER_DEFAULTS = [
     "!KRB5-DES-CBC3-SHA",
 ]
 
+DEFAULT_RATE_LIMITS = {
+    "http1": {"v2": 60, "registry": 50, "api_resources": 5},
+    "http2": {
+        "v2": 600,
+        "registry": 500,
+        "api_resources": 50,
+    },
+    "namespaced": {
+        "http1_v2": 60,
+        "http2_v2": 600,
+        "http1_registry": 50,
+        "http2_registry": 500,
+        "http1_api_resources": 5,
+        "http2_api_resources": 50,
+    },
+}
+
 
 def write_config(filename, **kwargs):
     with open(filename + ".jnj") as f:
@@ -123,10 +140,15 @@ def generate_rate_limiting_config(config):
     config = config or {}
     non_rate_limited_namespaces = config.get("NON_RATE_LIMITED_NAMESPACES") or set()
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
+    if enable_rate_limits == True:
+        rate_limits = config.get("RATE_LIMITS")
+    else:
+        rate_limits = DEFAULT_RATE_LIMITS
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/rate-limiting.conf"),
         non_rate_limited_namespaces=non_rate_limited_namespaces,
         enable_rate_limits=enable_rate_limits,
+        rate_limits=rate_limits,
         static_dir=STATIC_DIR,
     )
 
