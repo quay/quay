@@ -249,6 +249,10 @@ location ~ /v2/([^/]+)\/[^/]+/manifests/ {
     {% endif %}
 
     keepalive_timeout {{ manifests_endpoint_keepalive_timeout }}; # Disables HTTP 1.1 keep-alive and forces round-robin.
+
+    {% if manifests_endpoint_read_timeout %}
+    proxy_read_timeout {{ manifests_endpoint_read_timeout }};
+    {% endif %}
 }
 
 # This block applies to the beginning of a push or pull
