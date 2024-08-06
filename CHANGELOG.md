@@ -4,7 +4,7 @@
 
 
 <a name="v3.12.1"></a>
-## [v3.12.1] - 2024-07-29
+## [v3.12.1] - 2024-08-06
 ### Ui
 - [c6114771](https://github.com/quay/quay/commit/c6114771fdea3e82e9290b85f3c765026332ad68): Fix UI x-axis display (PROJQUAY-7467) ([#3097](https://github.com/quay/quay/issues/3097))
 ### [Redhat-3.12] Api
@@ -13,8 +13,14 @@
 - [4df87fbe](https://github.com/quay/quay/commit/4df87fbe09b442d113d68260695435a82b0fc91a): adding global readonly superuser to superuser endpoints (PROJQUAY-7449) ([#3076](https://github.com/quay/quay/issues/3076))
 ### [Redhat-3.12] Build(Deps)
 - [a66b8d9b](https://github.com/quay/quay/commit/a66b8d9b3ec99b60f56b23f1fe5ee742c278c2c6): bump setuptools from 68.2.2 to 71.1.0 ([#3074](https://github.com/quay/quay/issues/3074))
+### [Redhat-3.12] Chore
+- [1afe6994](https://github.com/quay/quay/commit/1afe699459527b6466479aefd3cd801e0c692ace): change docker-compose to 'docker compose' ([#3110](https://github.com/quay/quay/issues/3110))
+### [Redhat-3.12] Deps
+- [535a65b3](https://github.com/quay/quay/commit/535a65b3591b431ded6c28f5bf06570062e2c28c): bump PyMySQL version (PROJQUAY-7251) ([#3114](https://github.com/quay/quay/issues/3114))
 ### [Redhat-3.12] Events
 - [5b22b19a](https://github.com/quay/quay/commit/5b22b19a9b0765cf5f7ca23395390adc954a666d): fix notification methods for image expiry events (PROJQUAY-7487) ([#3055](https://github.com/quay/quay/issues/3055))
+### [Redhat-3.12] Logging
+- [2cb7d2c3](https://github.com/quay/quay/commit/2cb7d2c303fc940c1005b1c3a779b67a234495f4): reduce noise in quay logs and add missing worker names (PROJQUAY-6562) ([#3108](https://github.com/quay/quay/issues/3108))
 ### [Redhat-3.12] Registry
 - [a87f935f](https://github.com/quay/quay/commit/a87f935fe577b52b399e0e792e780832ffe4052a): return 400 instead of 404 for manifest errors on referrers api (PROJQUAY-7523) ([#3081](https://github.com/quay/quay/issues/3081))
 ### [Redhat-3.12] Storage(StorageClasses)
