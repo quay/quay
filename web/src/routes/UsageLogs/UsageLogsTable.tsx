@@ -12,7 +12,7 @@ import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 
 interface UsageLogsTableProps {
   starttime: string;
@@ -29,6 +29,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
 
   const filterOnChange = (value: string) => {
     setFilterValue(value);
+    refetch();
   };
 
   const filterLogs = (data, filterValue) => {
@@ -44,6 +45,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     isError: errorLogs,
     fetchNextPage,
     hasNextPage,
+    refetch,
   } = useInfiniteQuery({
     queryKey: [
       'usageLogs',
