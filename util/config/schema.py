@@ -1568,5 +1568,15 @@ CONFIG_SCHEMA = {
             "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
             "x-example": False,
         },
+        "MANIFESTS_ENDPOINT_KEEPALIVE_TIMEOUT": {
+            "type": "string",
+            "description": "Nginx keep alive timeout for manifests endpoints used by pulls and pushes",
+            "x-example": "2s",
+        },
+        "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
+            "type": "string",
+            "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
+            "x-example": "5m",
+        },
     },
 }
