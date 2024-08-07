@@ -773,6 +773,7 @@ class RobotAccountToken(BaseModel):
     robot_account = QuayUserField(index=True, allows_robots=True, unique=True)
     token = EncryptedCharField(default_token_length=64)
     fully_migrated = BooleanField(default=False)
+    expiration = DateTimeField(index=True, null=True)
 
 
 class QuotaTypes(object):

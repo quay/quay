@@ -1,5 +1,6 @@
 import json
 import logging
+from sys import exec_prefix
 import uuid
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -329,7 +330,7 @@ def update_enabled(user, set_enabled):
     user.save()
 
 
-def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None):
+def create_robot(robot_shortname, parent, description="", unstructured_metadata=None, token=None, expiration=None):
     (username_valid, username_issue) = validate_username(robot_shortname)
     if config.app_config.get("ROBOTS_DISALLOW", False):
         msg = "Robot accounts have been disabled. Please contact your administrator."
@@ -359,7 +360,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
         with db_transaction():
             created = User.create(username=username, email=str(uuid.uuid4()), robot=True)
             token = token if token else random_string_generator(length=64)()
-            RobotAccountToken.create(robot_account=created, token=token, fully_migrated=True)
+            RobotAccountToken.create(robot_account=created, token=token, fully_migrated=True, expiration=expiration)
             FederatedLogin.create(
                 user=created, service=service, service_ident="robot:%s" % created.id
             )
@@ -394,9 +395,12 @@ def retrieve_robot_token(robot):
     """
     Returns the decrypted token for the given robot.
     """
-    token = RobotAccountToken.get(robot_account=robot).token.decrypt()
-    return token
+    return RobotAccountToken.get(robot_account=robot).token.decrypt()
 
+def get_robot_token_expiration(robot):
+    return RobotAccountToken.get(robot_account=robot).expiration
+
+    
 
 def get_robot_and_metadata(robot_shortname, parent):
     """
@@ -405,7 +409,8 @@ def get_robot_and_metadata(robot_shortname, parent):
     robot_username = format_robot_username(parent.username, robot_shortname)
     robot, metadata = lookup_robot_and_metadata(robot_username)
     token = retrieve_robot_token(robot)
-    return robot, token, metadata
+    expiration = get_robot_token_expiration(robot)
+    return robot, token, expiration, metadata
 
 
 def lookup_robot(robot_username):
@@ -475,7 +480,16 @@ def verify_robot(robot_username, password):
         )
     # Lookup the token for the robot.
     try:
-        token_data = RobotAccountToken.get(robot_account=robot)
+        token_data = (
+            RobotAccountToken.select()
+            .where(
+                RobotAccountToken.robot_account == robot,
+                (RobotAccountToken.expiration > datetime.now())
+                | (RobotAccountToken.expiration.is_null(True)),
+            )
+            .get()
+        )
+
         if not token_data.token.matches(password):
             msg = "Could not find robot with username: %s and supplied password." % robot_username
             raise InvalidRobotCredentialException(msg)
@@ -487,7 +501,7 @@ def verify_robot(robot_username, password):
     return robot
 
 
-def regenerate_robot_token(robot_shortname, parent):
+def regenerate_robot_token(robot_shortname, parent, expiration=None):
     robot_username = format_robot_username(parent.username, robot_shortname)
 
     robot, metadata = lookup_robot_and_metadata(robot_username)
@@ -505,6 +519,8 @@ def regenerate_robot_token(robot_shortname, parent):
         token_data = RobotAccountToken.create(robot_account=robot)
 
     token_data.token = password
+    if expiration:
+        token_data.expiration = expiration
 
     with db_transaction():
         token_data.save()
