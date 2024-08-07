@@ -15,7 +15,7 @@ from endpoints.decorators import (
     route_show_if,
 )
 from endpoints.v2 import require_repo_read, v2_bp
-from endpoints.v2.errors import ManifestUnknown, NameUnknown
+from endpoints.v2.errors import ManifestInvalid, ManifestUnknown, NameUnknown
 from image.oci.index import OCIIndexBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
