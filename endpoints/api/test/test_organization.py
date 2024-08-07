@@ -1,12 +1,15 @@
-from test.fixtures import *
-
 import pytest
 
 from data import model
 from endpoints.api import api
-from endpoints.api.organization import Organization, OrganizationCollaboratorList
+from endpoints.api.organization import (
+    Organization,
+    OrganizationApplications,
+    OrganizationCollaboratorList,
+)
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -44,3 +47,54 @@ def test_get_organization_collaborators(app):
         if collaborator["name"] == "outsideorg":
             assert "orgrepo" in collaborator["repositories"]
             assert "anotherorgrepo" not in collaborator["repositories"]
+
+
+def test_create_oauth_application(app):
+    payload = {"name": "test-app"}
+    with client_with_identity("devtable", app) as cl:
+        resp = conduct_api_call(
+            cl, OrganizationApplications, "POST", {"orgname": "buynlarge"}, payload, 200
+        )
+
+    assert resp.json["name"] == payload.get("name")
+
+
+def test_create_local_oauth_application_without_scope(app):
+    payload = {"name": "test-app", "local": True}
+    with client_with_identity("devtable", app) as cl:
+        resp = conduct_api_call(
+            cl, OrganizationApplications, "POST", {"orgname": "buynlarge"}, payload, 400
+        )
+
+
+def test_create_local_oauth_application_with_scope(app):
+    payload = {"name": "test-app", "local": True, "scope": "org:admin"}
+    with client_with_identity("devtable", app) as cl:
+        resp = conduct_api_call(
+            cl, OrganizationApplications, "POST", {"orgname": "buynlarge"}, payload, 200
+        )
+    assert resp.json["access_token"] is not None
+
+
+@pytest.mark.parametrize(
+    ("scope, expected_code"),
+    [
+        (" ", 400),
+        ("wrong:scope", 400),
+        ("WRONG:SCOPE", 400),
+        ("wrong scope", 400),
+        ("org:admin but wrong scope", 400),
+        ("ORG:admin", 400),
+        ("org:ADMIN", 400),
+    ],
+)
+def test_create_local_oauth_application_with_invalid_scopes(scope, expected_code, app):
+    with client_with_identity("devtable", app) as cl:
+        resp = conduct_api_call(
+            cl,
+            OrganizationApplications,
+            "POST",
+            {"orgname": "buynlarge"},
+            body={"name": "test-app", "local": True, "scope": scope},
+            expected_code=expected_code,
+        )
