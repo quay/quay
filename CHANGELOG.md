@@ -4,7 +4,7 @@
 
 
 <a name="v3.11.4"></a>
-## [v3.11.4] - 2024-07-25
+## [v3.11.4] - 2024-08-06
 ### Api
 - [439784d6](https://github.com/quay/quay/commit/439784d60d4644b6072c053abf12df4266408a7a): adding endpoints to FEATURE_SUPERUSERS_FULL_ACCESS (PROJQUAY-7307) ([#2941](https://github.com/quay/quay/issues/2941))
 ### Cherrypick
@@ -17,8 +17,11 @@
 ### [Redhat-3.11] Autoprune
 - [d084d6b8](https://github.com/quay/quay/commit/d084d6b882fa0b1b84968b4ac563fd687bc88b76): add alembic script to remove unique constraint on index (PROJQUAY-6782) ([#2732](https://github.com/quay/quay/issues/2732))
 ### [Redhat-3.11] Chore
+- [bd04b8bc](https://github.com/quay/quay/commit/bd04b8bcc2c4965d33fb0f81d94bf58d040828e0): change docker-compose to 'docker compose' ([#3116](https://github.com/quay/quay/issues/3116))
 - [7d94ff01](https://github.com/quay/quay/commit/7d94ff015eed8dc03cbd935a6668d1e985ec893c): Update alembic migration script to support sqlite db (PROJQUAY-7314) ([#2947](https://github.com/quay/quay/issues/2947))
 - [ae76d6f3](https://github.com/quay/quay/commit/ae76d6f33596195598351356258ca18c70768968): remove unused jwt image ([#2948](https://github.com/quay/quay/issues/2948))
+### [Redhat-3.11] Deps
+- [c0714be1](https://github.com/quay/quay/commit/c0714be111804dceb2f53e3d34e791de05571ee5): bump PyMySQL version (PROJQUAY-7251) ([#3115](https://github.com/quay/quay/issues/3115))
 ### [Redhat-3.11] Feat(Oidc)
 - [d2ee37f0](https://github.com/quay/quay/commit/d2ee37f074fa8836cba4ab8f61d38db59e6c893a): add OIDC_DISABLE_USER_ENDPOINT parameter (PROJQUAY-6908) ([#2774](https://github.com/quay/quay/issues/2774))
 ### [Redhat-3.11] Nginx
