@@ -898,7 +898,6 @@ class DefaultConfig(ImmutableConfig):
     # Allows users to set up notifications on image expiry, can remove flag once feature is tested
     FEATURE_IMAGE_EXPIRY_TRIGGER = False
 
-
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
