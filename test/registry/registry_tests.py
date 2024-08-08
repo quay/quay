@@ -3129,7 +3129,7 @@ def test_attempt_pull_by_tag_reference_for_deleted_tag(
     )
 
     # Delete the tag by reference
-    manifest.protocol.delete(
+    manifest_protocol.delete(
         liveserver_session, "devtable", "newrepo", "latest", credentials=credentials
     )
 
