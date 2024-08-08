@@ -227,5 +227,18 @@ describe('Usage Logs Export', () => {
         'Change visibility for repository projectquay/testrepo to private',
       )
       .should('not.exist');
+    cy.get('[id="log-filter-input"]').click();
+    cy.focused().clear();
+    cy.get('[id="log-filter-input"]').type('change');
+    cy.get('table')
+      .contains(
+        'td',
+        'Change visibility for repository projectquay/testrepo to private',
+      )
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains('td', 'Create Repository projectquay/testrepo')
+      .should('not.exist');
   });
 });
