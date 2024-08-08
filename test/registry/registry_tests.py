@@ -3103,3 +3103,42 @@ def test_conftest_policy_push(manifest_protocol, openpolicyagent_policy, liveser
         credentials=credentials,
         expected_failure=None,
     )
+
+
+def test_attempt_pull_by_tag_reference_for_deleted_tag(
+    manifest_protocol, basic_images, liveserver_session
+):
+    """Test: Delete a tag by specifying the reference in a v2 call"""
+    credentials = ("devtable", "password")
+
+    # Push the new repository
+    result = manifest_protocol.push(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
+    )
+    digests = [str(manifest.digest) for manifest in list(result.manifests.values())]
+    assert len(digests) == 1
+
+    # Ensure we can pull by digest
+    manifest_protocol.pull(
+        liveserver_session, "devtable", "newrepo", digests[0], basic_images, credentials=credentials
+    )
+
+    # Ensure we can pull by tag
+    manifest_protocol.pull(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
+    )
+
+    # Delete the tag by reference
+    manifest.protocol.delete(
+        liveserver_session, "devtable", "newrepo", "latest", credentials=credentials
+    )
+
+    # Attempt to pull from the repository by tag to verify it's not accessible
+    manifest_protocol.pull(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        credentials=credentials,
+        expected_failure=Failures.UNKNOWN_TAG,
+    )
