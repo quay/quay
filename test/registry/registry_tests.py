@@ -3139,6 +3139,7 @@ def test_attempt_pull_by_tag_reference_for_deleted_tag(
         "devtable",
         "newrepo",
         "latest",
+        basic_images,
         credentials=credentials,
         expected_failure=Failures.UNKNOWN_TAG,
     )
