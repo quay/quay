@@ -401,6 +401,38 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         return Response(status=202)
 
 
+@v2_bp.route(MANIFEST_TAGNAME_ROUTE, methods=["DELETE"])
+@disallow_for_account_recovery_mode
+@parse_repository_name()
+@process_registry_jwt_auth(scopes=["pull", "push"])
+@log_unauthorized_delete
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@anon_protect
+@check_readonly
+@check_pushes_disabled
+def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
+    """
+    Deletes the manifest specified by the tag.
+    """
+    with db_disallow_replica_use():
+        repository_ref = registry_model.lookup_repository(
+            namespace_name, repo_name, model_cache=model_cache
+        )
+        if repository_ref is None:
+            raise NameUnknown("repository not found")
+
+        tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
+        if tag is None:
+            raise ManifestUnknown()
+
+        deleted_tag = registry_model.delete_tag(model_cache, repository_ref, manifest_ref)
+        if not deleted_tag:
+            raise ManifestUnknown()
+
+        track_and_log("delete_tag", repository_ref, tag=deleted_tag.name, digest=manifest_ref)
+        return Response(status=202)
+
+
 def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
     _validate_schema1_manifest(namespace_name, repo_name, manifest_impl)
     with db_disallow_replica_use():
