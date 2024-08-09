@@ -901,5 +901,3 @@ class DefaultConfig(ImmutableConfig):
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
-
-    MANIFESTS_ENDPOINT_KEEPALIVE_TIMEOUT = "0"
