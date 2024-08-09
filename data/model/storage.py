@@ -384,7 +384,7 @@ def _lookup_repo_storages_by_content_checksum(repo, checksums, model_class):
     # generated crashes gunicorn, instead run each query
     # individually
     if len(queries) > 1000:
-        result = [next(q.execute(), None) for q in queries]
+        result = [next(iter(q.execute()), None) for q in queries]
         return [r for r in result if r is not None]
 
     return _basequery.reduce_as_tree(queries)
