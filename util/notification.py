@@ -109,8 +109,9 @@ def scan_for_image_expiry_notifications(event_name, batch_size=BATCH_SIZE):
         tags = oci.tag.fetch_repo_tags_for_image_expiry_expiry_event(
             repo_id, config["days"], notified_tags
         )
+        default_autoprune_policy = app.config["DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"]
         autoprune_tags = fetch_tags_expiring_due_to_auto_prune_policies(
-            repo_id, repository.namespace_user
+            repo_id, repository.namespace_user, default_autoprune_policy
         )
 
         if len(autoprune_tags):
