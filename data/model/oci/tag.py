@@ -908,10 +908,9 @@ def fetch_paginated_autoprune_repo_tags_by_number(
     Fetch repository's active tags sorted by creation date & are more than max_tags_allowed
     """
     try:
-        tags_offset = max_tags_allowed + ((page - 1) * items_per_page)
         now_ms = get_epoch_timestamp_ms()
 
-        immutableTags = (
+        immutable_tags = (
             Tag.select(Tag.name)
             .where(
                 Tag.repository_id == repo_id,
@@ -922,7 +921,11 @@ def fetch_paginated_autoprune_repo_tags_by_number(
             .count()
         )
 
-        offset = 0 if immutableTags > max_tags_allowed else (max_tags_allowed - immutableTags)
+        # if more immutable tags than allowed, need to prune all mutable tags
+        remaining_mutable_tags = (
+            0 if immutable_tags > max_tags_allowed else max_tags_allowed - immutable_tags
+        )
+        tags_offset = remaining_mutable_tags + ((page - 1) * items_per_page)
 
         query = (
             Tag.select(Tag.name)
@@ -935,7 +938,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
             .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
-            .offset(offset)
+            .offset(tags_offset)
             .limit(items_per_page)
         )
         return list(query)
