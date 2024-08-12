@@ -32,10 +32,9 @@ class GarbageCollectionWorker(Worker):
         self.add_operation(
             self._garbage_collection_repos, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
         )
-        if features.IMAGE_EXPIRY_TRIGGER:
-            self.add_operation(
-                self._scan_notifications, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
-            )
+        self.add_operation(
+            self._scan_notifications, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
+        )
 
     def _scan_notifications(self):
         # scan for tags that are expiring based on configured RepositoryNotifications

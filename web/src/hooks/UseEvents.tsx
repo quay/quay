@@ -89,7 +89,7 @@ export function useEvents() {
       type: NotificationEventType.imageExpiry,
       title: 'Image expiry trigger',
       icon: <HistoryIcon />,
-      enabled: config?.features.IMAGE_EXPIRY_TRIGGER,
+      enabled: true,
     },
   ];
 
