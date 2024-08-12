@@ -120,7 +120,11 @@ describe('Repository Settings - Permissions', () => {
   it('Adds user/robot/team permission', () => {
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('user');
+      // Adding .should() so cypress will automatically wait/retry until it reaches the desired state or time out.
+      cy.get('input').type('user').should('have.value', 'user');
+      cy.get('#entity-search-option-list').find('li').should((items) => {
+        expect(items).to.have.length(2);
+      });
       cy.get('button:contains("user2")').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
@@ -134,7 +138,11 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('test');
+      // Adding .should() so cypress will automatically wait/retry until it reaches the desired state or time out.
+      cy.get('input').type('test').should('have.value', 'test');
+      cy.get('#entity-search-option-list').find('li').should((items) => {
+        expect(items).to.have.length(4);
+      });
       cy.contains('testorg+testrobot2').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
@@ -151,7 +159,11 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('test');
+      // Adding .should() so cypress will automatically wait/retry until it reaches the desired state or time out.
+      cy.get('input').type('test').should('have.value', 'test');
+      cy.get('#entity-search-option-list').find('li').should((items) => {
+        expect(items).to.have.length(4);
+      });
       cy.contains('testteam2').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
