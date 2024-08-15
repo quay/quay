@@ -30,12 +30,21 @@ class SecurityWorker(Worker):
 
     def _index_in_scanner(self):
         batch_size = app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
-        self._next_token = self._model.perform_indexing(self._next_token, batch_size)
+
+        if app.config.get("SECURITY_SCANNER_V4_LOCK", False):
+            try:
+                with GlobalLock("SECURITY_SCANNER_V4_INDEXING"):
+                    self._next_token = self._model.perform_indexing(self._next_token, batch_size)
+            except LockNotAcquiredException:
+                return
+
+        else:
+            self._next_token = self._model.perform_indexing(self._next_token, batch_size)
 
     def _index_recent_manifests_in_scanner(self):
         batch_size = app.config.get("SECURITY_SCANNER_V4_RECENT_MANIFEST_BATCH_SIZE", 1000)
 
-        if not app.config.get("SECURITY_SCANNER_V4_SKIP_RECENT_MANIFEST_BATCH_LOCK", False):
+        if app.config.get("SECURITY_SCANNER_V4_RECENT_MANIFEST_BATCH_LOCK", False):
             try:
                 with GlobalLock(
                     "SECURITYWORKER_INDEX_RECENT_MANIFEST", lock_ttl=300, auto_renewal=True
