@@ -372,19 +372,17 @@ class ExportRepositoryLogs(RepositoryParamResource):
         """
         Queues an export of the logs for the specified repository.
         """
-        user = get_authenticated_user()
 
         if registry_model.lookup_repository(namespace, repository) is None:
             log_action(
                 "export_logs_failure",
-                user.username,
+                namespace,
                 {
                     "repo": repository,
                     "error": "non-existent repository",
-                    "url": request.get("callback_url"),
-                    "email": request.get("callback_email"),
+                    "url": request.get_json().get("callback_url"),
+                    "email": request.get_json().get("callback_email"),
                 },
-                repo_name=repository,
             )
             raise NotFound()
 
@@ -396,12 +394,12 @@ class ExportRepositoryLogs(RepositoryParamResource):
 
         log_action(
             "export_logs_success",
-            user.username,
+            namespace,
             {
                 "repo": repository,
                 "export_id": export_id,
-                "url": request.get("callback_url") or None,
-                "email": request.get("callback_email") or None,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
             },
             repo_name=repository,
         )
@@ -430,10 +428,11 @@ class ExportUserLogs(ApiResource):
         """
         Returns the aggregated logs for the current user.
         """
+        user = get_authenticated_user()
+
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
 
-        user = get_authenticated_user()
         export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
 
         log_action(
@@ -441,8 +440,8 @@ class ExportUserLogs(ApiResource):
             user.username,
             {
                 "export_id": export_id,
-                "url": request.get("callback_url") or None,
-                "email": request.get("callback_email") or None,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
             },
         )
 
@@ -472,7 +471,6 @@ class ExportOrgLogs(ApiResource):
         """
         Exports the logs for the specified organization.
         """
-        user = get_authenticated_user()
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser():
             start_time = parsed_args["starttime"]
@@ -485,10 +483,9 @@ class ExportOrgLogs(ApiResource):
                 orgname,
                 {
                     "export_id": export_id,
-                    "url": request.get("callback_url") or None,
-                    "email": request.get("callback_email") or None,
+                    "url": request.get_json().get("callback_url") or None,
+                    "email": request.get_json().get("callback_email") or None,
                 },
-                performer=user.username,
             )
 
             return {
@@ -500,9 +497,8 @@ class ExportOrgLogs(ApiResource):
             orgname,
             {
                 "error": "unauthorized",
-                "url": request.get("callback_url") or None,
-                "email": request.get("callback_email") or None,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
             },
-            performer=user.username,
         )
         raise Unauthorized()

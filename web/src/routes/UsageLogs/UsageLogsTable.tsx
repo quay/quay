@@ -92,7 +92,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
           <Table variant="compact" borders={false} style={{margin: '20px'}}>
             <Thead>
               <Tr>
-                <Th>Date & Time</Th>
+                <Th width={15}>Date & Time</Th>
                 <Th>Description</Th>
                 <Th>Performed by</Th>
                 <Th>IP address</Th>

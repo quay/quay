@@ -632,7 +632,51 @@ export function useLogDescriptions() {
     oauth_token_assigned: function (metadata) {
       return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
     },
+    export_logs_success: function (metadata: Metadata) {
+      if (metadata.repo) {
+        if (metadata.url) {
+          return `Logs export successful: id ${metadata.export_id}, url: ${metadata.url}, repository: ${metadata.repo}`;
+        } else if (metadata.email) {
+          return `Logs export successful: id ${
+            metadata.export_id
+          }, email: ${obfuscate_email(metadata.email)}, repository: ${
+            metadata.repo
+          }`;
+        } else {
+          return `Logs export successful: id ${metadata.export_id}, url: ${
+            metadata.url
+          }, email: ${obfuscate_email(metadata.email)}, repository: ${
+            metadata.repo
+          }`;
+        }
+      } else {
+        if (metadata.url) {
+          return `User/organization logs export successful: id ${metadata.export_id}, url: ${metadata.url}`;
+        } else if (metadata.email) {
+          return `User/organization logs export successful: id ${
+            metadata.export_id
+          }, email: ${obfuscate_email(metadata.email)}`;
+        } else {
+          return `User/organization logs export successful: id ${
+            metadata.export_id
+          }, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}`;
+        }
+      }
+    },
+    export_logs_failure: function (metadata: Metadata) {
+      return `Export logs failure: ${metadata.error}`;
+    },
   };
 
   return descriptions;
+}
+
+function obfuscate_email(email: Array) {
+  const email_array = email.split('@');
+  return (
+    email_array[0].substring(0, 2) +
+    '*'.repeat(email_array[0].length - 2) +
+    '@' +
+    email_array[1]
+  );
 }
