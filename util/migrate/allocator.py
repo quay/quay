@@ -4,7 +4,6 @@ from threading import Event
 
 from bintrees import RBTree
 
-# Assuming the logger level is set globally or in the application's configuration
 logger = logging.getLogger(__name__)
 
 
