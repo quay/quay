@@ -7,7 +7,15 @@ import {
   Split,
   SplitItem,
 } from '@patternfly/react-core';
-import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
+import {
+  Table,
+  TableText,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+} from '@patternfly/react-table';
 import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
@@ -95,14 +103,18 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                 <Th width={15}>Date & Time</Th>
                 <Th>Description</Th>
                 <Th>Performed by</Th>
-                <Th>IP address</Th>
+                <Th>IP Address</Th>
               </Tr>
             </Thead>
             <Tbody>
               {logs.pages.map((logPage: any) =>
                 logPage.logs.map((log: any, index: number) => (
                   <Tr key={index}>
-                    <Td>{new Date(log.datetime).toLocaleString()}</Td>
+                    <Td>
+                      <TableText wrapModifier="truncate">
+                        {new Date(log.datetime).toLocaleString()}
+                      </TableText>
+                    </Td>
                     <Td>
                       {logDescriptions[log.kind]
                         ? logDescriptions[log.kind](log.metadata)
