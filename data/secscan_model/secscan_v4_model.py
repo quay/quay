@@ -595,7 +595,9 @@ class V4SecurityScanner(SecurityScannerInterface):
 
     def garbage_collect_manifest_report(self, manifest_digest):
         def manifest_digest_exists():
-            query = Manifest.select(can_use_read_replica=True).where(Manifest.digest == manifest_digest)
+            query = Manifest.select(can_use_read_replica=True).where(
+                Manifest.digest == manifest_digest
+            )
 
             try:
                 query.get()
