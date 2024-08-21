@@ -1243,7 +1243,7 @@ class STSS3Storage(S3Storage):
         s3_region=None,
         endpoint_url=None,
         maximum_chunk_size_gb=None,
-        signature_version=None,
+        signature_version="s3v4",
     ):
         sts_client = boto3.client(
             "sts", aws_access_key_id=sts_user_access_key, aws_secret_access_key=sts_user_secret_key
@@ -1257,6 +1257,7 @@ class STSS3Storage(S3Storage):
             method="sts-assume-role",
         )
 
+        # !! NOTE !! connect_kwargs here initializes the S3Storage Class not the s3 connection (mis leading re-use of the name)
         connect_kwargs = {
             "s3_access_key": credentials["AccessKeyId"],
             "s3_secret_key": credentials["SecretAccessKey"],
@@ -1265,7 +1266,7 @@ class STSS3Storage(S3Storage):
             "endpoint_url": endpoint_url,
             "maximum_chunk_size_gb": maximum_chunk_size_gb,
             "deferred_refreshable_credentials": deferred_refreshable_credentials,
-            "config": Config(signature_version=signature_version),
+            "signature_version": signature_version,
         }
 
         super().__init__(context, storage_path, s3_bucket, **connect_kwargs)
