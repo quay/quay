@@ -145,7 +145,7 @@ jobs:
         export OCI_TEST_PULL=1
         export OCI_TEST_PUSH=1
         export OCI_TEST_CONTENT_DISCOVERY=1
-        export OCI_TEST_CONTENT_MANAGEMENT=0
+        export OCI_TEST_CONTENT_MANAGEMENT=1
 
         # Extra settings
         export OCI_HIDE_SKIPPED_WORKFLOWS=0
