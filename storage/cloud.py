@@ -1257,7 +1257,7 @@ class STSS3Storage(S3Storage):
             method="sts-assume-role",
         )
 
-        # !! NOTE !! connect_kwargs here initializes the S3Storage Class not the s3 connection (mis leading re-use of the name)
+        # !! NOTE !! connect_kwargs here initializes the S3Storage Class not the s3 connection (mis leading re-use of the name) 
         connect_kwargs = {
             "s3_access_key": credentials["AccessKeyId"],
             "s3_secret_key": credentials["SecretAccessKey"],
