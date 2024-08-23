@@ -1,14 +1,21 @@
 import logging
 import random
-from threading import Event
-
+import os
 from bintrees import RBTree
+from threading import Event
 
 logger = logging.getLogger(__name__)
 
-# Adjust log level based on the environment variable or Quay application configuration
-if not logger.isEnabledFor(logging.DEBUG):
-    logger.setLevel(logging.INFO)  # Suppress DEBUG logs if DEBUG is not enabled
+# Read the DEBUGLOG environment variable
+debug_log = os.getenv('DEBUGLOG', 'false').lower() == 'true'
+
+# Set the logging level based on DEBUGLOG
+if debug_log:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+
+
 
 
 class NoAvailableKeysError(ValueError):
