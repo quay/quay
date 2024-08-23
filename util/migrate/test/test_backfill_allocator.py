@@ -1,3 +1,4 @@
+import logging
 import random
 from datetime import datetime, timedelta
 
@@ -8,6 +9,33 @@ from util.migrate.allocator import (
     NoAvailableKeysError,
     yield_random_entries,
 )
+
+
+# Utility function to test logging setup
+def test_logging_setup(caplog):
+    # Test with DEBUGLOG set to "true"
+    os.environ["DEBUGLOG"] = "true"
+    logging.basicConfig(level=logging.DEBUG)
+
+    with caplog.at_level(logging.DEBUG):
+        logger = logging.getLogger("util.migrate.allocator")
+        logger.debug("Debug log test message")
+
+    assert "Debug log test message" in caplog.text
+    os.environ.pop("DEBUGLOG")
+
+    # Test with DEBUGLOG set to "false"
+    os.environ["DEBUGLOG"] = "false"
+    logging.basicConfig(level=logging.INFO)
+
+    with caplog.at_level(logging.INFO):
+        logger = logging.getLogger("util.migrate.allocator")
+        logger.debug("This debug log should not be captured")
+        logger.info("Info log test message")
+
+    assert "This debug log should not be captured" not in caplog.text
+    assert "Info log test message" in caplog.text
+    os.environ.pop("DEBUGLOG")
 
 
 def test_merge_blocks_operations():
