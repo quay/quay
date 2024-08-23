@@ -119,3 +119,21 @@ web/cypress/downloads
 # marketplace
 local-dev/stack/quay-marketplace-api.crt
 local-dev/stack/quay-marketplace-api.key
+
+
+
+
+# Ignore environment directories
+myenv/
+
+# Ignore build artifacts
+*.tar.gz
+
+# Ignore other directories and files
+clair
+funcparserlib-0.3.6/
+k
+quay
+quay12345
+sayali
+source
