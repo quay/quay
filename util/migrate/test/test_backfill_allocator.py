@@ -16,26 +16,28 @@ from util.migrate.allocator import (
 # Utility function to configure logging based on DEBUGLOG environment variable
 def configure_logging():
     debug_log = os.getenv("DEBUGLOG", "false").lower() == "true"
-    if debug_log:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    level = logging.DEBUG if debug_log else logging.INFO
+    logging.basicConfig(level=level)
 
 
-# Test to ensure logging setup is correctly configured
+# Test to verify logging setup
 def test_logging_setup():
     with patch("logging.basicConfig") as mock_basic_config:
+
         # Test with DEBUGLOG set to "true"
         os.environ["DEBUGLOG"] = "true"
         configure_logging()
         mock_basic_config.assert_called_once_with(level=logging.DEBUG)
-        mock_basic_config.reset_mock()  # Reset mock to call it again with different arguments
+        mock_basic_config.reset_mock()  # Reset mock for the next test
 
         # Test with DEBUGLOG set to "false"
         os.environ["DEBUGLOG"] = "false"
         configure_logging()
         mock_basic_config.assert_called_once_with(level=logging.INFO)
-        os.environ.pop("DEBUGLOG")
+        mock_basic_config.reset_mock()  # Reset mock for the next test
+
+    # Clean up environment variable
+    os.environ.pop("DEBUGLOG")
 
 
 def test_merge_blocks_operations():
