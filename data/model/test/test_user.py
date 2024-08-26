@@ -332,13 +332,13 @@ def test_robot(initialized_db):
     assert creds["username"] == "foobar+foo"
     assert creds["password"] == token
 
-    assert verify_robot("foobar+foo", token) == robot
+    assert verify_robot("foobar+foo", token, None) == robot
 
     with pytest.raises(InvalidRobotException):
-        assert verify_robot("foobar+foo", "someothertoken")
+        assert verify_robot("foobar+foo", "someothertoken", None)
 
     with pytest.raises(InvalidRobotException):
-        assert verify_robot("foobar+unknownbot", token)
+        assert verify_robot("foobar+unknownbot", token, None)
 
 
 def test_get_estimated_robot_count(initialized_db):

@@ -1,22 +1,28 @@
+import json
 import logging
 from datetime import datetime
 
+import jwt
 from flask import request
 from jwt import ExpiredSignatureError, InvalidTokenError
 
-from app import analytics, app, authentication, oauth_login
+from app import analytics, app, authentication, instance_keys, oauth_login
 from auth.log import log_action
 from auth.scopes import scopes_from_scope_string
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.database import FederatedLogin
+from data.model import InvalidRobotCredentialException, InvalidTokenException
+from data.model.user import lookup_robot
 from oauth.login import OAuthLoginException
 from oauth.login_utils import (
     _conduct_oauth_login,
     get_jwt_issuer,
     get_sub_username_email_from_token,
-    is_jwt,
 )
-from oauth.oidc import PublicKeyLoadException
+from oauth.oidc import OIDCLoginService, PublicKeyLoadException
+from util.security.jwtutil import is_jwt
+from util.security.registry_jwt import InvalidBearerTokenException, decode_bearer_token
 
 logger = logging.getLogger(__name__)
 
