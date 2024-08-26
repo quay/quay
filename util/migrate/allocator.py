@@ -1,11 +1,20 @@
 import logging
+import os
 import random
 from threading import Event
 
 from bintrees import RBTree
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # Set the default log level to DEBUG
+
+# Read the DEBUGLOG environment variable
+debug_log = os.getenv("DEBUGLOG", "false").lower() == "true"
+
+# Set the logging level based on DEBUGLOG
+if debug_log:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 
 class NoAvailableKeysError(ValueError):
