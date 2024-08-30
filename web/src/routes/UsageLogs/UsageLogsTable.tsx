@@ -1,9 +1,18 @@
-import {Button, Flex, FlexItem, Spinner} from '@patternfly/react-core';
+import {
+  Button,
+  Flex,
+  FlexItem,
+  Spinner,
+  SearchInput,
+  Split,
+  SplitItem,
+} from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
+import {useEffect, useState} from 'react';
 
 interface UsageLogsTableProps {
   starttime: string;
@@ -15,6 +24,20 @@ interface UsageLogsTableProps {
 
 export function UsageLogsTable(props: UsageLogsTableProps) {
   const logDescriptions = useLogDescriptions();
+
+  const [filterValue, setFilterValue] = useState('');
+
+  const filterOnChange = (value: string) => {
+    setFilterValue(value);
+  };
+
+  const filterLogs = (data, filterValue) => {
+    data.logs = data.logs.filter(function (log) {
+      return log.kind.includes(filterValue);
+    });
+    return data;
+  };
+
   const {
     data: logs,
     isLoading: loadingLogs,
@@ -39,6 +62,10 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       return logResp;
     },
     getNextPageParam: (lastPage: {[key: string]: string}) => lastPage.nextPage,
+    select: (data) => {
+      data.pages = data.pages.map((logs) => filterLogs(logs, filterValue));
+      return data;
+    },
   });
 
   if (loadingLogs) return <Spinner />;
@@ -47,6 +74,20 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
   return (
     <>
       <Flex direction={{default: 'column'}} style={{margin: '20px'}}>
+        <FlexItem>
+          <Split>
+            <SplitItem isFilled />
+            <SplitItem>
+              <SearchInput
+                placeholder="Filter logs"
+                value={filterValue}
+                onChange={(_event, value) => filterOnChange(value)}
+                onClear={() => filterOnChange('')}
+                id="log-filter-input"
+              />
+            </SplitItem>
+          </Split>
+        </FlexItem>
         <FlexItem>
           <Table variant="compact" borders={false} style={{margin: '20px'}}>
             <Thead>

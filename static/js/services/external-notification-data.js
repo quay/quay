@@ -12,6 +12,10 @@ function(Config, Features, VulnerabilityService, DocumentationService) {
       'id': 'repo_push',
       'title': 'Push to Repository',
       'icon': 'fa-upload'
+    },
+    {
+      'id': 'repo_image_expiry',
+      'title': 'Image expiry trigger'
     }
   ];
 

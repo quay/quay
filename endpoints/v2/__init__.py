@@ -15,12 +15,13 @@ from auth.permissions import (
     ReadRepositoryPermission,
 )
 from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
-from data.model import QuotaExceededException
+from data.model import PushesDisabledException, QuotaExceededException
 from data.readreplica import ReadOnlyModeException
 from data.registry_model import registry_model
 from endpoints.decorators import anon_allowed, route_show_if
 from endpoints.v2.errors import (
     InvalidRequest,
+    PushesDisabled,
     QuotaExceeded,
     ReadOnlyMode,
     TooManyTagsRequested,
@@ -62,6 +63,11 @@ def handle_proxy_cache_error(error):
 @v2_bp.app_errorhandler(QuotaExceededException)
 def handle_quota_error(error):
     return _format_error_response(QuotaExceeded())
+
+
+@v2_bp.app_errorhandler(PushesDisabledException)
+def handle_pushes_disabled(error):
+    return _format_error_response(PushesDisabled())
 
 
 def _format_error_response(error: V2RegistryException) -> Response:

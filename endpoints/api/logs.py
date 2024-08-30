@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from flask import abort, request
 
 import features
-from app import app, avatar, export_action_logs_queue
+from app import app, avatar, export_action_logs_queue, usermanager
 from auth import scopes
-from auth.auth_context import get_authenticated_user
+from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data.logs_model import logs_model
 from data.logs_model.shared import InvalidLogsDateRangeError
@@ -17,6 +17,7 @@ from endpoints.api import (
     ApiResource,
     InvalidRequest,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     format_date,
     nickname,
@@ -125,7 +126,7 @@ class RepositoryLogs(RepositoryParamResource):
     Resource for fetching logs for the specific repository.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("listRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -201,7 +202,7 @@ class OrgLogs(ApiResource):
         List the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -225,7 +226,7 @@ class RepositoryAggregateLogs(RepositoryParamResource):
     Resource for fetching aggregated logs for the specific repository.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getAggregateRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -293,7 +294,7 @@ class OrgAggregateLogs(ApiResource):
         Gets the aggregated logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]

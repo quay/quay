@@ -6,6 +6,8 @@ import logging
 
 from flask import request
 
+from .permission_models_interface import DeleteException, SaveException
+from .permission_models_pre_oci import pre_oci_model as model
 from endpoints.api import (
     RepositoryParamResource,
     log_action,
@@ -18,9 +20,6 @@ from endpoints.api import (
 )
 from endpoints.exception import NotFound
 
-from .permission_models_interface import DeleteException, SaveException
-from .permission_models_pre_oci import pre_oci_model as model
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +30,7 @@ class RepositoryTeamPermissionList(RepositoryParamResource):
     Resource for repository team permissions.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("listRepoTeamPermissions")
     def get(self, namespace_name, repository_name):
         """
@@ -51,7 +50,7 @@ class RepositoryUserPermissionList(RepositoryParamResource):
     Resource for repository user permissions.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("listRepoUserPermissions")
     def get(self, namespace_name, repository_name):
         """
@@ -70,7 +69,7 @@ class RepositoryUserTransitivePermission(RepositoryParamResource):
     team.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getUserTransitivePermission")
     def get(self, namespace_name, repository_name, username):
         """
@@ -114,7 +113,7 @@ class RepositoryUserPermission(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getUserPermissions")
     def get(self, namespace_name, repository_name, username):
         """
@@ -209,7 +208,7 @@ class RepositoryTeamPermission(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getTeamPermissions")
     def get(self, namespace_name, repository_name, teamname):
         """

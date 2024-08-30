@@ -120,7 +120,14 @@ describe('Repository Settings - Permissions', () => {
   it('Adds user/robot/team permission', () => {
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('user');
+      // avoiding flaky test case by not chaining commands belows
+      cy.get('#entity-search-input', {timeout: 4000}).as('entity-search-input');
+      cy.get('@entity-search-input')
+        .find('input', {timeout: 4000})
+        .as('search-input');
+      cy.get('@search-input').type('user');
+      cy.get('@search-input').should('have.value', 'user');
+
       cy.get('button:contains("user2")').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
@@ -134,7 +141,14 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('test');
+      // avoiding flaky test case by not chaining commands belows
+      cy.get('#entity-search-input', {timeout: 4000}).as('entity-search-input');
+      cy.get('@entity-search-input')
+        .find('input', {timeout: 4000})
+        .as('search-input');
+      cy.get('@search-input').type('test');
+      cy.get('@search-input').should('have.value', 'test');
+
       cy.contains('testorg+testrobot2').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
@@ -151,7 +165,14 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('test');
+      // avoiding flaky test case by not chaining commands belows
+      cy.get('#entity-search-input', {timeout: 4000}).as('entity-search-input');
+      cy.get('@entity-search-input')
+        .find('input', {timeout: 4000})
+        .as('search-input');
+      cy.get('@search-input').type('test');
+      cy.get('@search-input').should('have.value', 'test');
+
       cy.contains('testteam2').click();
       cy.contains('admin').click();
       cy.contains('Read').click();

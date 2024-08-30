@@ -12,6 +12,7 @@ from auth.permissions import (
 from data.model import InvalidRobotException
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     log_action,
     max_json_size,
@@ -186,10 +187,11 @@ class OrgRobotList(ApiResource):
         List the organization's robots.
         """
         permission = OrganizationMemberPermission(orgname)
-        if permission.can() or allow_if_superuser():
-            include_token = AdministerOrganizationPermission(orgname).can() and parsed_args.get(
-                "token", True
-            )
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+            include_token = (
+                AdministerOrganizationPermission(orgname).can()
+                or allow_if_global_readonly_superuser()
+            ) and parsed_args.get("token", True)
             include_permissions = AdministerOrganizationPermission(
                 orgname
             ).can() and parsed_args.get("permissions", False)
@@ -225,7 +227,7 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
             return robot.to_dict(include_metadata=True, include_token=True)
 
@@ -324,7 +326,7 @@ class OrgRobotPermissions(ApiResource):
         Returns the list of repository permissions for the org's robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
             permissions = model.list_robot_permissions(robot.name)
 

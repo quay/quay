@@ -73,7 +73,7 @@ py-bitbucket @ git+https://github.com/quay/py-bitbucket.git@3ba167408d92eb4ba2ca
 PyGithub==2.1.1
 PyJWT==2.8.0
 pymemcache==3.0.0
-PyMySQL==0.9.3
+PyMySQL==1.1.1
 pyOpenSSL==23.2.0
 pyparsing==2.4.6
 pyrsistent==0.18.0
@@ -116,13 +116,13 @@ tzlocal==5.0.1
 ua-parser==0.18.0
 urllib3==1.26.19
 webencodings==0.5.1
-WebOb==1.8.6
+WebOb==1.8.8
 websocket-client==1.7.0
 Werkzeug==2.3.6
 xhtml2pdf==0.2.6
 
 # Leverage wheels for faster builds
-setuptools==68.2.2
+setuptools==71.1.0
 wheel==0.38.4
 
 # Indirect dependencies
@@ -150,6 +150,6 @@ tqdm==4.66.4
 typing_extensions==4.8.0
 tzdata==2023.3
 wrapt==1.13.3
-zipp==3.17.0
+zipp==3.19.2
 zope.event==5.0
 zope.interface==5.4.0

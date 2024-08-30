@@ -132,6 +132,7 @@ const response = {
     USER_LOG_ACCESS: false,
     USER_METADATA: false,
     USER_RENAME: false,
+    IMAGE_EXPIRY_TRIGGER: true,
   },
   oauth: {
     GITHUB_TRIGGER_CONFIG: {

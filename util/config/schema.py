@@ -1537,6 +1537,7 @@ CONFIG_SCHEMA = {
             "x-example": False,
         },
         "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
+
             "type": "array",
             "description": "List of default auto-prune policies applied to all organizations and repositories",
             "items": {
@@ -1556,6 +1557,26 @@ CONFIG_SCHEMA = {
                 },
                 "required": ["method", "value"],
             },
+        },
+        "FEATURE_IMAGE_EXPIRY_TRIGGER": {
+            "type": "boolean",
+            "description": "Allows users to set up notifications on image expiry",
+            "x-example": False,
+        },
+        "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": {
+            "type": "number",
+            "description": "Interval in minutes that defines frequency to re-run notifications",
+            "x-example": 5000,
+        },
+        "DISABLE_PUSHES": {
+            "type": "boolean",
+            "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
+            "x-example": False,
+        },
+        "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
+            "type": "string",
+            "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
+            "x-example": "5m",
         },
     },
 }

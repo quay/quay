@@ -32,9 +32,10 @@ class GarbageCollectionWorker(Worker):
         self.add_operation(
             self._garbage_collection_repos, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
         )
-        self.add_operation(
-            self._scan_notifications, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
-        )
+        if features.IMAGE_EXPIRY_TRIGGER:
+            self.add_operation(
+                self._scan_notifications, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
+            )
 
     def _scan_notifications(self):
         # scan for tags that are expiring based on configured RepositoryNotifications
@@ -104,6 +105,11 @@ if __name__ == "__main__":
 
     if not features.GARBAGE_COLLECTION:
         logger.debug("Garbage collection is disabled; skipping")
+        while True:
+            time.sleep(100000)
+
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Pushes to the registry are disabled; skipping startup")
         while True:
             time.sleep(100000)
 

@@ -602,6 +602,12 @@ export function useLogDescriptions() {
     disable_team_sync: function (metadata: Metadata) {
       return `Team syncing disabled for ${metadata.team}`;
     },
+    login_success: function (metadata: Metadata) {
+      return `Successful login`;
+    },
+    oauth_token_assigned: function (metadata) {
+      return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
+    },
   };
 
   return descriptions;

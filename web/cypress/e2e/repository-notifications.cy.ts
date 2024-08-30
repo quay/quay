@@ -12,6 +12,7 @@ describe('Repository Settings - Notifications', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
         res.body.features['MAILING'] = true;
+        res.body.features['IMAGE_EXPIRY_TRIGGER'] = true;
         return res;
       }),
     ).as('getConfig');
@@ -396,6 +397,22 @@ describe('Repository Settings - Notifications', () => {
         'Slack Notification',
       );
       cy.get(`[data-label="status"]`).should('have.text', 'Enabled');
+    });
+  });
+
+  it('Incorrect form for repo image expiry notification', () => {
+    cy.contains('Create notification').click();
+    cy.get('#create-notification-form').within(() => {
+      cy.contains('Select event').click();
+      cy.contains('Image expiry trigger').click();
+      cy.get('#days-to-image-expiry').type('-5');
+      cy.contains('Select method').click();
+      cy.contains('Slack Notification').click();
+      cy.get('#slack-webhook-url-field').type(
+        'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
+      );
+      cy.get('#notification-title').type('image expiry notification');
+      cy.contains('button', 'Submit').should('be.disabled');
     });
   });
 });

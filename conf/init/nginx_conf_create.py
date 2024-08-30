@@ -102,6 +102,7 @@ def generate_server_config(config):
     signing_enabled = config.get("FEATURE_SIGNING", False)
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
+    manifests_endpoint_read_timeout = config.get("MANIFESTS_ENDPOINT_READ_TIMEOUT", None)
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),
@@ -111,6 +112,7 @@ def generate_server_config(config):
         maximum_layer_size=maximum_layer_size,
         enable_rate_limits=enable_rate_limits,
         static_dir=STATIC_DIR,
+        manifests_endpoint_read_timeout=manifests_endpoint_read_timeout,
     )
 
 

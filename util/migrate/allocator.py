@@ -1,11 +1,20 @@
 import logging
+import os
 import random
 from threading import Event
 
 from bintrees import RBTree
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+# Read the DEBUGLOG environment variable
+debug_log = os.getenv("DEBUGLOG", "false").lower() == "true"
+
+# Set the logging level based on DEBUGLOG
+if debug_log:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 
 class NoAvailableKeysError(ValueError):
@@ -50,7 +59,9 @@ class CompletedKeys(object):
             if max_prev_completed >= start_index:
                 # we are going to merge with the range before us
                 logger.debug(
-                    "Merging with the prev range: %s-%s", prev_start, prev_start + prev_length
+                    "Merging with the prev range: %s-%s",
+                    prev_start,
+                    prev_start + prev_length,
                 )
                 to_discard.add(prev_start)
                 num_completed = max(num_completed - (max_prev_completed - start_index), 0)
@@ -63,7 +74,9 @@ class CompletedKeys(object):
         for merge_start, merge_length in self._slabs.iter_items(start_index, past_last_index + 1):
             if merge_start in to_discard:
                 logger.debug(
-                    "Already merged with block %s-%s", merge_start, merge_start + merge_length
+                    "Already merged with block %s-%s",
+                    merge_start,
+                    merge_start + merge_length,
                 )
                 continue
 
@@ -134,7 +147,9 @@ class CompletedKeys(object):
         return random.randint(hole_start, rand_max_bound)
 
 
-def yield_random_entries(batch_query, primary_key_field, batch_size, max_id, min_id=0):
+def yield_random_entries(
+    batch_query, primary_key_field, batch_size, max_id, min_id=0, worker_name=""
+):
     """
     This method will yield items from random blocks in the database.
 
@@ -159,17 +174,21 @@ def yield_random_entries(batch_query, primary_key_field, batch_size, max_id, min
             )
 
             if len(all_candidates) == 0:
-                logger.info(
-                    "No candidates, marking entire block completed %s-%s", start_index, end_index
+                logger.debug(
+                    "No candidates, marking entire block completed %s-%s by worker %s",
+                    start_index,
+                    end_index,
+                    worker_name,
                 )
                 allocator.mark_completed(start_index, end_index)
                 continue
 
-            logger.info(
-                "Found %s candidates, processing block start: %d end: %d",
+            logger.debug(
+                "Found %s candidates, processing block start: %d end: %d by worker %s",
                 len(all_candidates),
                 start_index,
                 end_index,
+                worker_name,
             )
             batch_completed = 0
             for candidate in all_candidates:
@@ -177,12 +196,20 @@ def yield_random_entries(batch_query, primary_key_field, batch_size, max_id, min
                 yield candidate, abort_early, allocator.num_remaining - batch_completed
                 batch_completed += 1
                 if abort_early.is_set():
-                    logger.info("Overlap with another worker, aborting")
+                    logger.debug(
+                        "Overlap with another worker, aborting by worker %s",
+                        worker_name,
+                    )
                     break
 
             completed_through = candidate.id + 1
-            logger.info("Marking id range as completed: %s-%s", start_index, completed_through)
+            logger.debug(
+                "Marking id range as completed: %s-%s by worker %s",
+                start_index,
+                completed_through,
+                worker_name,
+            )
             allocator.mark_completed(start_index, completed_through)
 
     except NoAvailableKeysError:
-        logger.info("No more work")
+        logger.debug("No more work by worker %s", worker_name)
