@@ -25,14 +25,29 @@ def test_get_org_policies(initialized_db, app):
         assert response["policies"][0]["value"] == "5d"
 
 
-def test_create_org_policy(initialized_db, app):
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ({"method": "creation_date", "value": "2w"}),
+        ({"method": "creation_date", "value": "2w", "tagPattern": "match.*"}),
+        (
+            {
+                "method": "creation_date",
+                "value": "2w",
+                "tagPattern": "match.*",
+                "tagPatternMatches": False,
+            }
+        ),
+    ],
+)
+def test_create_org_policy(policy, initialized_db, app):
     with client_with_identity("devtable", app) as cl:
         response = conduct_api_call(
             cl,
             OrgAutoPrunePolicies,
             "POST",
             {"orgname": "sellnsmall"},
-            {"method": "creation_date", "value": "2w"},
+            policy,
             201,
         ).json
         assert response["uuid"] is not None
@@ -52,9 +67,21 @@ def test_create_org_policy(initialized_db, app):
                 log = l
                 break
         assert log is not None
-        assert json.loads(log.metadata_json)["method"] == "creation_date"
-        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["method"] == policy.get("method")
+        assert json.loads(log.metadata_json)["value"] == policy.get("value")
         assert json.loads(log.metadata_json)["namespace"] == "sellnsmall"
+        assert json.loads(log.metadata_json)["tag_pattern"] == policy.get("tagPattern")
+        assert json.loads(log.metadata_json)["tag_pattern_matches"] == policy.get(
+            "tagPatternMatches", True
+        )
+
+        # Assert policy information is correct
+        response = conduct_api_call(cl, OrgAutoPrunePolicies, "GET", {"orgname": "sellnsmall"}).json
+        assert len(response["policies"]) == 1
+        assert response["policies"][0]["method"] == policy.get("method")
+        assert response["policies"][0]["value"] == policy.get("value")
+        assert response["policies"][0]["tagPattern"] == policy.get("tagPattern")
+        assert response["policies"][0]["tagPatternMatches"] == policy.get("tagPatternMatches", True)
 
 
 def test_create_org_policy_already_existing(initialized_db, app):
@@ -98,7 +125,22 @@ def test_get_org_policy(initialized_db, app):
         assert response["value"] == "5d"
 
 
-def test_update_org_policy(initialized_db, app):
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ({"method": "creation_date", "value": "2w"}),
+        ({"method": "creation_date", "value": "2w", "tagPattern": "match.*"}),
+        (
+            {
+                "method": "creation_date",
+                "value": "2w",
+                "tagPattern": "match.*",
+                "tagPatternMatches": False,
+            }
+        ),
+    ],
+)
+def test_update_org_policy(policy, initialized_db, app):
     policies = model.autoprune.get_namespace_autoprune_policies_by_orgname("buynlarge")
     assert len(policies) == 1
     policy_uuid = policies[0].uuid
@@ -108,7 +150,7 @@ def test_update_org_policy(initialized_db, app):
             OrgAutoPrunePolicy,
             "PUT",
             {"orgname": "buynlarge", "policy_uuid": policy_uuid},
-            {"method": "creation_date", "value": "2w"},
+            policy,
             expected_code=204,
         )
 
@@ -128,9 +170,22 @@ def test_update_org_policy(initialized_db, app):
                 log = l
                 break
         assert log is not None
-        assert json.loads(log.metadata_json)["method"] == "creation_date"
-        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["method"] == policy.get("method")
+        assert json.loads(log.metadata_json)["value"] == policy.get("value")
         assert json.loads(log.metadata_json)["namespace"] == "buynlarge"
+        assert json.loads(log.metadata_json)["tag_pattern"] == policy.get("tagPattern")
+        assert json.loads(log.metadata_json)["tag_pattern_matches"] == policy.get(
+            "tagPatternMatches", True
+        )
+
+        # Assert policy information is correct
+        response = conduct_api_call(
+            cl, OrgAutoPrunePolicy, "GET", {"orgname": "buynlarge", "policy_uuid": policy_uuid}
+        ).json
+        assert response["method"] == policy.get("method")
+        assert response["value"] == policy.get("value")
+        assert response["tagPattern"] == policy.get("tagPattern")
+        assert response["tagPatternMatches"] == policy.get("tagPatternMatches", True)
 
 
 def test_update_org_policy_nonexistent_policy(initialized_db, app):
@@ -191,20 +246,35 @@ def test_delete_org_policy_nonexistent_policy(initialized_db, app):
 
 def test_get_user_policies(initialized_db, app):
     with client_with_identity("devtable", app) as cl:
-        response = conduct_api_call(cl, UserAutoPrunePolicies, "GET", {"orgname": "devtable"}).json
+        response = conduct_api_call(cl, UserAutoPrunePolicies, "GET", {}).json
         assert len(response["policies"]) == 1
         assert response["policies"][0]["method"] == "number_of_tags"
         assert response["policies"][0]["value"] == 10
 
 
-def test_create_user_policy(initialized_db, app):
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ({"method": "creation_date", "value": "2w"}),
+        ({"method": "creation_date", "value": "2w", "tagPattern": "match.*"}),
+        (
+            {
+                "method": "creation_date",
+                "value": "2w",
+                "tagPattern": "match.*",
+                "tagPatternMatches": False,
+            }
+        ),
+    ],
+)
+def test_create_user_policy(policy, initialized_db, app):
     with client_with_identity("freshuser", app) as cl:
         response = conduct_api_call(
             cl,
             UserAutoPrunePolicies,
             "POST",
-            {"orgname": "freshuser"},
-            {"method": "creation_date", "value": "2w"},
+            None,
+            policy,
             201,
         ).json
         assert response["uuid"] is not None
@@ -224,9 +294,21 @@ def test_create_user_policy(initialized_db, app):
                 log = l
                 break
         assert log is not None
-        assert json.loads(log.metadata_json)["method"] == "creation_date"
-        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["method"] == policy.get("method")
+        assert json.loads(log.metadata_json)["value"] == policy.get("value")
         assert json.loads(log.metadata_json)["namespace"] == "freshuser"
+        assert json.loads(log.metadata_json)["tag_pattern"] == policy.get("tagPattern")
+        assert json.loads(log.metadata_json)["tag_pattern_matches"] == policy.get(
+            "tagPatternMatches", True
+        )
+
+        # Assert policy information is correct
+        response = conduct_api_call(cl, UserAutoPrunePolicies, "GET", {}).json
+        assert len(response["policies"]) == 1
+        assert response["policies"][0]["method"] == policy.get("method")
+        assert response["policies"][0]["value"] == policy.get("value")
+        assert response["policies"][0]["tagPattern"] == policy.get("tagPattern")
+        assert response["policies"][0]["tagPatternMatches"] == policy.get("tagPatternMatches", True)
 
 
 def test_create_user_policy_already_existing(initialized_db, app):
@@ -235,7 +317,7 @@ def test_create_user_policy_already_existing(initialized_db, app):
             cl,
             UserAutoPrunePolicies,
             "POST",
-            {"orgname": "devtable"},
+            None,
             {"method": "creation_date", "value": "2w"},
             expected_code=400,
         ).json
@@ -257,7 +339,22 @@ def test_get_user_policy(initialized_db, app):
         assert response["value"] == 10
 
 
-def test_update_user_policy(initialized_db, app):
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ({"method": "creation_date", "value": "2w"}),
+        ({"method": "creation_date", "value": "2w", "tagPattern": "match.*"}),
+        (
+            {
+                "method": "creation_date",
+                "value": "2w",
+                "tagPattern": "match.*",
+                "tagPatternMatches": False,
+            }
+        ),
+    ],
+)
+def test_update_user_policy(policy, initialized_db, app):
     policies = model.autoprune.get_namespace_autoprune_policies_by_orgname("devtable")
     assert len(policies) == 1
     policy_uuid = policies[0].uuid
@@ -266,15 +363,15 @@ def test_update_user_policy(initialized_db, app):
             cl,
             UserAutoPrunePolicy,
             "PUT",
-            {"orgname": "devtable", "policy_uuid": policy_uuid},
-            {"method": "creation_date", "value": "2w"},
+            {"policy_uuid": policy_uuid},
+            policy,
             204,
         )
         assert response is not None
 
         # Make another request asserting it was updated
         get_response = conduct_api_call(
-            cl, UserAutoPrunePolicy, "GET", {"orgname": "devtable", "policy_uuid": policy_uuid}
+            cl, UserAutoPrunePolicy, "GET", {"policy_uuid": policy_uuid}
         ).json
         assert get_response["method"] == "creation_date"
         assert get_response["value"] == "2w"
@@ -288,9 +385,22 @@ def test_update_user_policy(initialized_db, app):
                 log = l
                 break
         assert log is not None
-        assert json.loads(log.metadata_json)["method"] == "creation_date"
-        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["method"] == policy.get("method")
+        assert json.loads(log.metadata_json)["value"] == policy.get("value")
         assert json.loads(log.metadata_json)["namespace"] == "devtable"
+        assert json.loads(log.metadata_json)["tag_pattern"] == policy.get("tagPattern")
+        assert json.loads(log.metadata_json)["tag_pattern_matches"] == policy.get(
+            "tagPatternMatches", True
+        )
+
+        # Assert policy information is correct
+        response = conduct_api_call(
+            cl, UserAutoPrunePolicy, "GET", {"policy_uuid": policy_uuid}
+        ).json
+        assert response["method"] == policy.get("method")
+        assert response["value"] == policy.get("value")
+        assert response["tagPattern"] == policy.get("tagPattern")
+        assert response["tagPatternMatches"] == policy.get("tagPatternMatches", True)
 
 
 def test_update_user_policy_nonexistent_policy(initialized_db, app):
@@ -358,7 +468,22 @@ def test_get_repo_policies(initialized_db, app):
         assert response["policies"][0]["value"] == 10
 
 
-def test_create_repo_policy(initialized_db, app):
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ({"method": "creation_date", "value": "2w"}),
+        ({"method": "creation_date", "value": "2w", "tagPattern": "match.*"}),
+        (
+            {
+                "method": "creation_date",
+                "value": "2w",
+                "tagPattern": "match.*",
+                "tagPatternMatches": False,
+            }
+        ),
+    ],
+)
+def test_create_repo_policy(policy, initialized_db, app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "testorgforautoprune/autoprunerepo"}
         response = conduct_api_call(
@@ -366,7 +491,7 @@ def test_create_repo_policy(initialized_db, app):
             RepositoryAutoPrunePolicies,
             "POST",
             params,
-            {"method": "creation_date", "value": "2w"},
+            policy,
             201,
         ).json
         assert response["uuid"] is not None
@@ -388,9 +513,21 @@ def test_create_repo_policy(initialized_db, app):
                 log = l
                 break
         assert log is not None
-        assert json.loads(log.metadata_json)["method"] == "creation_date"
-        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["method"] == policy.get("method")
+        assert json.loads(log.metadata_json)["value"] == policy.get("value")
         assert json.loads(log.metadata_json)["namespace"] == "testorgforautoprune"
+        assert json.loads(log.metadata_json)["tag_pattern"] == policy.get("tagPattern")
+        assert json.loads(log.metadata_json)["tag_pattern_matches"] == policy.get(
+            "tagPatternMatches", True
+        )
+
+        # Assert policy information is correct
+        response = conduct_api_call(cl, RepositoryAutoPrunePolicies, "GET", params).json
+        assert len(response["policies"]) == 1
+        assert response["policies"][0]["method"] == policy.get("method")
+        assert response["policies"][0]["value"] == policy.get("value")
+        assert response["policies"][0]["tagPattern"] == policy.get("tagPattern")
+        assert response["policies"][0]["tagPatternMatches"] == policy.get("tagPatternMatches", True)
 
 
 def test_create_repo_policy_already_existing(initialized_db, app):
@@ -435,7 +572,22 @@ def test_get_repo_policy(initialized_db, app):
         assert response["value"] == 10
 
 
-def test_update_repo_policy(initialized_db, app):
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ({"method": "creation_date", "value": "2w"}),
+        ({"method": "creation_date", "value": "2w", "tagPattern": "match.*"}),
+        (
+            {
+                "method": "creation_date",
+                "value": "2w",
+                "tagPattern": "match.*",
+                "tagPatternMatches": False,
+            }
+        ),
+    ],
+)
+def test_update_repo_policy(policy, initialized_db, app):
     policies = model.autoprune.get_repository_autoprune_policies_by_repo_name("devtable", "simple")
     assert len(policies) == 1
     policy_uuid = policies[0].uuid
@@ -446,7 +598,7 @@ def test_update_repo_policy(initialized_db, app):
             RepositoryAutoPrunePolicy,
             "PUT",
             params_for_update,
-            {"method": "creation_date", "value": "2w"},
+            policy,
             expected_code=204,
         )
 
@@ -465,9 +617,20 @@ def test_update_repo_policy(initialized_db, app):
                 log = l
                 break
         assert log is not None
-        assert json.loads(log.metadata_json)["method"] == "creation_date"
-        assert json.loads(log.metadata_json)["value"] == "2w"
+        assert json.loads(log.metadata_json)["method"] == policy.get("method")
+        assert json.loads(log.metadata_json)["value"] == policy.get("value")
         assert json.loads(log.metadata_json)["namespace"] == "devtable"
+        assert json.loads(log.metadata_json)["tag_pattern"] == policy.get("tagPattern")
+        assert json.loads(log.metadata_json)["tag_pattern_matches"] == policy.get(
+            "tagPatternMatches", True
+        )
+
+        # Assert policy information is correct
+        response = conduct_api_call(cl, RepositoryAutoPrunePolicy, "GET", params).json
+        assert response["method"] == policy.get("method")
+        assert response["value"] == policy.get("value")
+        assert response["tagPattern"] == policy.get("tagPattern")
+        assert response["tagPatternMatches"] == policy.get("tagPatternMatches", True)
 
 
 def test_update_repo_policy_nonexistent_policy(initialized_db, app):
@@ -530,4 +693,41 @@ def test_delete_repo_policy_nonexistent_policy(initialized_db, app):
             "DELETE",
             params_for_delete,
             expected_code=404,
+        )
+
+
+@pytest.mark.parametrize(
+    "tag_pattern, expected, class_obj, params",
+    [
+        ("match", 201, OrgAutoPrunePolicies, {"orgname": "sellnsmall"}),
+        ("", 400, OrgAutoPrunePolicies, {"orgname": "sellnsmall"}),
+        (123, 400, OrgAutoPrunePolicies, {"orgname": "sellnsmall"}),
+        ("match", 201, UserAutoPrunePolicies, None),
+        ("", 400, UserAutoPrunePolicies, None),
+        (123, 400, UserAutoPrunePolicies, None),
+        (
+            "match",
+            201,
+            RepositoryAutoPrunePolicies,
+            {"repository": "testorgforautoprune/autoprunerepo"},
+        ),
+        ("", 400, RepositoryAutoPrunePolicies, {"repository": "testorgforautoprune/autoprunerepo"}),
+        (
+            123,
+            400,
+            RepositoryAutoPrunePolicies,
+            {"repository": "testorgforautoprune/autoprunerepo"},
+        ),
+    ],
+)
+def test_valid_tag_patterm(tag_pattern, expected, class_obj, params, initialized_db, app):
+    user = "freshuser" if class_obj.__name__ == "UserAutoPrunePolicies" else "devtable"
+    with client_with_identity(user, app) as cl:
+        conduct_api_call(
+            cl,
+            class_obj,
+            "POST",
+            params,
+            {"method": "creation_date", "value": "2w", "tagPattern": tag_pattern},
+            expected,
         )

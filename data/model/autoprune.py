@@ -1,5 +1,6 @@
 import json
 import logging.config
+import re
 from enum import Enum
 
 from data.database import AutoPruneTaskStatus
@@ -56,7 +57,13 @@ class NamespaceAutoPrunePolicy:
         return self._db_row
 
     def get_view(self):
-        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+        return {
+            "uuid": self.uuid,
+            "method": self.method,
+            "value": self.config.get("value"),
+            "tagPattern": self.config.get("tag_pattern"),
+            "tagPatternMatches": self.config.get("tag_pattern_matches"),
+        }
 
 
 class RepositoryAutoPrunePolicy:
@@ -79,7 +86,13 @@ class RepositoryAutoPrunePolicy:
         return self._db_row
 
     def get_view(self):
-        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+        return {
+            "uuid": self.uuid,
+            "method": self.method,
+            "value": self.config.get("value"),
+            "tagPattern": self.config.get("tag_pattern"),
+            "tagPatternMatches": self.config.get("tag_pattern_matches"),
+        }
 
 
 def valid_value(method, value):
@@ -116,6 +129,18 @@ def assert_valid_namespace_autoprune_policy(policy_config):
     if not valid_value(method, policy_config.get("value")):
         raise InvalidNamespaceAutoPrunePolicy("Invalid value given for method type")
 
+    if policy_config.get("tag_pattern") is not None:
+        if not isinstance(policy_config.get("tag_pattern"), str):
+            raise InvalidNamespaceAutoPrunePolicy("tag_pattern must be string")
+
+        if policy_config.get("tag_pattern") == "":
+            raise InvalidNamespaceAutoPrunePolicy("tag_pattern cannot be empty")
+
+    if policy_config.get("tag_pattern_matches") is not None and not isinstance(
+        policy_config.get("tag_pattern_matches"), bool
+    ):
+        raise InvalidNamespaceAutoPrunePolicy("tag_pattern_matches must be bool")
+
 
 def assert_valid_repository_autoprune_policy(policy_config):
     """
@@ -128,6 +153,18 @@ def assert_valid_repository_autoprune_policy(policy_config):
 
     if not valid_value(method, policy_config.get("value")):
         raise InvalidRepositoryAutoPrunePolicy("Invalid value given for method type")
+
+    if policy_config.get("tag_pattern") is not None:
+        if not isinstance(policy_config.get("tag_pattern"), str):
+            raise InvalidRepositoryAutoPrunePolicy("tag_pattern must be string")
+
+        if policy_config.get("tag_pattern") == "":
+            raise InvalidRepositoryAutoPrunePolicy("tag_pattern cannot be empty")
+
+    if policy_config.get("tag_pattern_matches") is not None and not isinstance(
+        policy_config.get("tag_pattern_matches"), bool
+    ):
+        raise InvalidRepositoryAutoPrunePolicy("tag_pattern_matches must be bool")
 
 
 def get_namespace_autoprune_policies_by_orgname(orgname):
@@ -550,6 +587,17 @@ def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_lim
         )
         if len(tags) == 0:
             break
+
+        if policy_config.get("tag_pattern") is not None:
+            if policy_config.get("tag_pattern_matches") is None or policy_config.get(
+                "tag_pattern_matches"
+            ):
+                tags = [tag for tag in tags if re.match(policy_config.get("tag_pattern"), tag.name)]
+            else:
+                tags = [
+                    tag for tag in tags if not re.search(policy_config.get("tag_pattern"), tag.name)
+                ]
+
         all_tags.extend(tags)
         page += 1
 
@@ -584,6 +632,17 @@ def fetch_tags_expiring_by_creation_date_policy(repo_id, policy_config, tag_page
         )
         if len(tags) == 0:
             break
+
+        if policy_config.get("tag_pattern") is not None:
+            if policy_config.get("tag_pattern_matches") is None or policy_config.get(
+                "tag_pattern_matches"
+            ):
+                tags = [tag for tag in tags if re.match(policy_config.get("tag_pattern"), tag.name)]
+            else:
+                tags = [
+                    tag for tag in tags if not re.search(policy_config.get("tag_pattern"), tag.name)
+                ]
+
         all_tags.extend(tags)
         page += 1
     return all_tags

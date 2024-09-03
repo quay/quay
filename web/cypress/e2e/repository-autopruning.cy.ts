@@ -196,4 +196,24 @@ describe('Repository settings - Repository autoprune policies', () => {
     );
     cy.get('[data-testid="registry-autoprune-policy-value"]').contains('10');
   });
+
+  it('creates policy with tag filter', () => {
+    cy.visit('/repository/testorg/testrepo?tab=settings');
+    cy.contains('Repository Auto-Prune Policies').click();
+    cy.get('[data-testid="repository-auto-prune-method"]').select(
+      'By age of tags',
+    );
+    cy.get('input[aria-label="tag creation date value"]').should(
+      'have.value',
+      '7',
+    );
+    cy.get('select[aria-label="tag creation date unit"]').contains('days');
+    cy.get('input[aria-label="tag creation date value"]').type(
+      '2{leftArrow}{backspace}',
+    );
+    cy.get('select[aria-label="tag creation date unit"]').select('weeks');
+    cy.get('input[aria-label="tag pattern"]').type('v1.*');
+    cy.get('select[aria-label="tag pattern matches"]').select('does not match');
+    cy.contains('Save').click();
+  });
 });
