@@ -15,8 +15,6 @@ debug_log = os.getenv("DEBUGLOG", "false").lower() == "true"
 # Define the logging format to include worker_name and stream_type
 log_format = f"%(asctime)s [%(process)d] [%(levelname)s] [%(name)s] %(message)s"
 
-# Set the logging level and format based on DEBUGLOG
-
 # Set up logging
 logging.basicConfig(
     level=logging.DEBUG if debug_log else logging.INFO,
