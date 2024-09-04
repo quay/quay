@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 # Read the DEBUGLOG environment variable
 debug_log = os.getenv("DEBUGLOG", "false").lower() == "true"
 
-
 # Define the logging format to include worker_name and stream_type
 log_format = f"%(asctime)s [%(process)d] [%(levelname)s] [%(name)s] %(message)s"
 
@@ -21,7 +20,6 @@ logging.basicConfig(
     format=log_format,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-
 
 class NoAvailableKeysError(ValueError):
     pass

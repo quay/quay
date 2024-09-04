@@ -52,7 +52,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 export const validateTeamName = (name: string) => {
-  return /^[a-z][a-z0-9]+$/.test(name);
+  return /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
 };
 
 export function parseRepoNameFromUrl(url: string): string {
