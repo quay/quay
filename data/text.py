@@ -62,11 +62,7 @@ def match_like(field, search_query):
 
 
 def regex_mysql(query, field, pattern, matches=True):
-    return (
-        query.where(fn.REGEXP(field, pattern))
-        if matches
-        else query.where(~fn.REGEXP(field, pattern))
-    )
+    return query.where(field.regexp(pattern)) if matches else query.where(~field.regexp(pattern))
 
 
 def regex_postgres(query, field, pattern, matches=True):
