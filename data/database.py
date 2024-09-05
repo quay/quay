@@ -49,7 +49,7 @@ from data.readreplica import (
     ReadReplicaSupportedModel,
     disallow_replica_use,
 )
-from data.text import match_like, match_mysql, regex_mysql, regex_postgres, regex_sqlite
+from data.text import match_like, match_mysql, regex_search, regex_sqlite
 from util.metrics.prometheus import (
     db_close_calls,
     db_connect_calls,
@@ -90,11 +90,7 @@ SCHEME_MATCH_FUNCTION = {
 }
 
 SCHEME_REGEX_FUNCTION = {
-    "mysql": regex_mysql,
-    "mysql+pymysql": regex_mysql,
     "sqlite": regex_sqlite,
-    "postgresql": regex_postgres,
-    "postgresql+psycopg2": regex_postgres,
 }
 
 
@@ -515,7 +511,7 @@ def configure(config_object, testing=False):
     )
     db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
     db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])
-    db_regex_search.initialize(SCHEME_REGEX_FUNCTION[parsed_write_uri.drivername])
+    db_regex_search.initialize(SCHEME_REGEX_FUNCTION.get(parsed_write_uri.drivername, regex_search))
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"
