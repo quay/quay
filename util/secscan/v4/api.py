@@ -23,7 +23,7 @@ from util.metrics.prometheus import secscan_index_layer_size, secscan_request_du
 logger = logging.getLogger(__name__)
 
 DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
-DEFAULT_REQUEST_TIMEOUT = 180
+DEFAULT_REQUEST_TIMEOUT = 30
 INDEX_REQUEST_TIMEOUT = 600
 
 
