@@ -16,7 +16,8 @@
                   <!-- Dropdown menu -->
                   <ul class="dropdown-select-menu pull-right" role="menu">
                     <li ng-repeat="event in events">
-                      <a ng-click="setEvent(event)">
+                      <!-- skipping `Image expiry trigger` as form implemented in new ui -->
+                      <a ng-click="setEvent(event)" ng-if="event.title != 'Image expiry trigger'">
                         <i class="fa fa-lg" ng-class="event.icon"></i> {{ event.title }}
                       </a>
                     </li>
@@ -186,7 +187,7 @@
       <div class="co-alert co-alert-danger" ng-show="status == 'error'">
         {{ errorMessage }}
       </div>
-      
+
       <button type="submit" class="btn btn-primary"
               ng-disabled="createForm.$invalid || !currentMethod.id || !currentEvent.id || creating">
         Create Notification
