@@ -1,28 +1,20 @@
 import logging
 import os
 import random
-import time
 from threading import Event
 
 from bintrees import RBTree
 
 logger = logging.getLogger(__name__)
 
-###### Read the DEBUGLOG environment variable
+# Read the DEBUGLOG environment variable
 debug_log = os.getenv("DEBUGLOG", "false").lower() == "true"
 
-
-###### Define the logging format to include worker_name and stream_type
-log_format = f"%(asctime)s [%(process)d] [%(levelname)s] [%(name)s] %(message)s"
-
-# Set the logging level and format based on DEBUGLOG
-
-# Set up logging
-logging.basicConfig(
-    level=logging.DEBUG if debug_log else logging.INFO,
-    format=log_format,
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# Set the logging level based on DEBUGLOG
+if debug_log:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 
 class NoAvailableKeysError(ValueError):
@@ -67,7 +59,9 @@ class CompletedKeys(object):
             if max_prev_completed >= start_index:
                 # we are going to merge with the range before us
                 logger.debug(
-                    "Merging with the prev range: %s-%s", prev_start, prev_start + prev_length
+                    "Merging with the prev range: %s-%s",
+                    prev_start,
+                    prev_start + prev_length,
                 )
                 to_discard.add(prev_start)
                 num_completed = max(num_completed - (max_prev_completed - start_index), 0)
@@ -80,7 +74,9 @@ class CompletedKeys(object):
         for merge_start, merge_length in self._slabs.iter_items(start_index, past_last_index + 1):
             if merge_start in to_discard:
                 logger.debug(
-                    "Already merged with block %s-%s", merge_start, merge_start + merge_length
+                    "Already merged with block %s-%s",
+                    merge_start,
+                    merge_start + merge_length,
                 )
                 continue
 
@@ -200,7 +196,10 @@ def yield_random_entries(
                 yield candidate, abort_early, allocator.num_remaining - batch_completed
                 batch_completed += 1
                 if abort_early.is_set():
-                    logger.debug("Overlap with another worker, aborting by worker %s", worker_name)
+                    logger.debug(
+                        "Overlap with another worker, aborting by worker %s",
+                        worker_name,
+                    )
                     break
 
             completed_through = candidate.id + 1

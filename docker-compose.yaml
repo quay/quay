@@ -85,7 +85,7 @@ services:
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "true"
-      DEBUGLOG: "false"
+      DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp
       WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
