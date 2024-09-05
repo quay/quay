@@ -1,3 +1,6 @@
+import inspect
+import re
+
 from peewee import SQL, Field, NodeList, fn
 
 
@@ -56,3 +59,24 @@ def match_like(field, search_query):
     escaped_query = _escape_wildcard(search_query)
     clause = NodeList(("%" + escaped_query + "%", SQL("ESCAPE '!'")))
     return Field.__pow__(field, clause)
+
+
+def regex_mysql(query, field, pattern, matches=True):
+    return (
+        query.where(fn.REGEXP(field, pattern))
+        if matches
+        else query.where(~fn.REGEXP(field, pattern))
+    )
+
+
+def regex_postgres(query, field, pattern, matches=True):
+    return query.where(field.regexp(pattern)) if matches else query.where(~field.regexp(pattern))
+
+
+def regex_sqlite(query, field, pattern, matches=True):
+    rows = query.execute()
+    return (
+        [row for row in rows if re.search(pattern, getattr(row, field.name))]
+        if matches
+        else [row for row in rows if not re.search(pattern, getattr(row, field.name))]
+    )

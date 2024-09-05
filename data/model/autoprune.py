@@ -583,20 +583,15 @@ def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_lim
     page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo_id, int(policy_config["value"]), tag_page_limit, page
+            repo_id,
+            int(policy_config["value"]),
+            tag_page_limit,
+            page,
+            policy_config.get("tag_pattern"),
+            policy_config.get("tag_pattern_matches"),
         )
         if len(tags) == 0:
             break
-
-        if policy_config.get("tag_pattern") is not None:
-            if policy_config.get("tag_pattern_matches") is None or policy_config.get(
-                "tag_pattern_matches"
-            ):
-                tags = [tag for tag in tags if re.match(policy_config.get("tag_pattern"), tag.name)]
-            else:
-                tags = [
-                    tag for tag in tags if not re.search(policy_config.get("tag_pattern"), tag.name)
-                ]
 
         all_tags.extend(tags)
         page += 1
@@ -628,20 +623,15 @@ def fetch_tags_expiring_by_creation_date_policy(repo_id, policy_config, tag_page
     page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo_id, time_ms, tag_page_limit, page
+            repo_id,
+            time_ms,
+            tag_page_limit,
+            page,
+            policy_config.get("tag_pattern"),
+            policy_config.get("tag_pattern_matches"),
         )
         if len(tags) == 0:
             break
-
-        if policy_config.get("tag_pattern") is not None:
-            if policy_config.get("tag_pattern_matches") is None or policy_config.get(
-                "tag_pattern_matches"
-            ):
-                tags = [tag for tag in tags if re.match(policy_config.get("tag_pattern"), tag.name)]
-            else:
-                tags = [
-                    tag for tag in tags if not re.search(policy_config.get("tag_pattern"), tag.name)
-                ]
 
         all_tags.extend(tags)
         page += 1
