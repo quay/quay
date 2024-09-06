@@ -2,6 +2,7 @@ import unittest
 
 import pytest
 from mock import patch
+from requests.exceptions import Timeout
 
 from app import instance_keys, storage
 from config import build_requests_session
@@ -101,3 +102,11 @@ def test_vulnerability_report_incompatible_api_response(api, initialized_db):
             layers = registry_model.list_manifest_layers(manifest, storage, True)
 
             api.vulnerability_report(manifest.digest)
+
+
+def test_vulnerability_report_timeout(api, initialized_db):
+    with fake_security_scanner() as security_scanner:
+        with pytest.raises(APIRequestFailure):
+            with patch.object(api._client, "request", side_effect=Timeout):
+                manifest = manifest_for("devtable", "simple", "latest")
+                api.vulnerability_report(manifest.digest)
