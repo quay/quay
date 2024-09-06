@@ -65,7 +65,6 @@ def handle_readonly(ex):
 
 
 @app.errorhandler(NotImplementedError)
-@crossorigin()
 def handle_not_implemented_error(ex):
     logger.exception(ex)
     response = jsonify({"message": str(ex)})
