@@ -637,6 +637,10 @@ class SuperUserManagement(ApiResource):
                     "description": "The new e-mail address for the user",
                 },
                 "enabled": {"type": "boolean", "description": "Whether the user is enabled"},
+                "is_superuser": {
+                    "type": "boolean",
+                    "description": "Whether the user should have superuser privileges",
+                },
             },
         },
     }
@@ -762,6 +766,22 @@ class SuperUserManagement(ApiResource):
 
                 config_object["SUPER_USERS"] = list(superusers_set)
                 config_provider.save_config(config_object)
+
+            if "is_superuser" in user_data:
+                if is_superuser:
+                    log_action(
+                        "make_superuser",
+                        username,
+                        {"username": username, "authorized_user": authed_user.username},
+                    )
+                    pre_oci_model.make_superuser(username)
+                    usermanager.register_superuser(username)
+                if is_superuser == False:
+                    log_action(
+                        "remove_superuser",
+                        username,
+                        {"username": username, "authorized_user": authed_user.username},
+                    )
 
             return_value = user.to_dict()
             if user_data.get("password") is not None:

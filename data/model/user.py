@@ -1472,6 +1472,42 @@ def get_quay_user_from_federated_login_name(username):
     return get_namespace_user_by_user_id(user_id) if user_id else None
 
 
+def convert_user_to_superuser(username):
+    """
+    Converts the requested user to a superuser.
+    """
+    with db_transaction():
+        user = db_for_update(User.select().where(User.username == username)).get()
+        user.is_restricted_user = False
+        user.is_superuser = True
+        for robot in db_for_update(
+            _list_entity_robots(user.username, include_metadata=False, include_token=False)
+        ):
+            robot.is_restricted_user = False
+            robot.save()
+
+        user.save()
+    return user
+
+
+def convert_superuser_to_user(username, restricted=False):
+    """
+    Converts the requested superuser to a normal user.
+    """
+    with db_transaction():
+        user = db_for_update(User.select().where(User.username == username)).get()
+        user.is_restricted_user = restricted
+        user.is_superuser = False
+        for robot in db_for_update(
+            _list_entity_robots(user.username, include_metadata=False, include_token=False)
+        ):
+            robot.is_restricted_user = restricted
+            robot.save()
+
+        user.save()
+    return user
+
+
 class LoginWrappedDBUser(UserMixin):
     def __init__(self, user_uuid, db_user=None):
         self._uuid = user_uuid

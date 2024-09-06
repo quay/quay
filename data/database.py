@@ -692,6 +692,13 @@ class User(BaseModel):
     creation_date = DateTimeField(default=datetime.utcnow, null=True)
     last_accessed = DateTimeField(null=True, index=True)
 
+    # Move superuser definitions from config.yaml to database for easier manipulation
+    is_superuser = BooleanField(default=False)
+    is_restricted_user = BooleanField(default=False)
+
+    # Namespace default repo visibility
+    private_repos_on_push = BooleanField(default=True)
+
     def delete_instance(self, recursive=False, delete_nullable=False):
         # If we are deleting a robot account, only execute the subset of queries necessary.
         if self.robot:
@@ -2059,6 +2066,19 @@ class TagNotificationSuccess(BaseModel):
     notification = ForeignKeyField(RepositoryNotification, index=True, null=False)
     tag = ForeignKeyField(Tag, index=True, null=False)
     method = ForeignKeyField(ExternalNotificationMethod, null=False)
+
+
+class Policy(BaseModel):
+    id = AutoField(primary_key=True, index=True)
+    namespace_id = IntegerField(null=False, unique=False)
+    repository_id = IntegerField(null=True, unique=False)
+    policy_json = JSONField(null=False)
+    created_date = DateTimeField(default=datetime.utcnow(), null=False)
+
+
+class Policykind(BaseModel):
+    id = AutoField(primary_key=True, index=True)
+    name = TextField(null=False)
 
 
 # Defines a map from full-length index names to the legacy names used in our code

@@ -225,6 +225,7 @@ root_logger = logging.getLogger()
 
 app.request_class = RequestWithId
 
+
 # Register custom converters.
 app.url_map.converters["regex"] = RegexConverter
 app.url_map.converters["repopath"] = RepositoryPathConverter
@@ -261,6 +262,12 @@ gitlab_trigger = GitLabOAuthService(app.config, "GITLAB_TRIGGER_CONFIG")
 
 oauth_login = OAuthLoginManager(app.config)
 oauth_apps = [github_trigger, gitlab_trigger]
+
+# Configure the database. We need to move the database configuration before intializing user proxy
+if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
+    raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
+
+database.configure(app.config)
 
 authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY, oauth_login)
 usermanager = UserManager(app, authentication)
@@ -323,12 +330,6 @@ if os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE") is None and app.config.
     raise Exception(
         "Missing storage preference, did you perhaps forget to define QUAY_DISTRIBUTED_STORAGE_PREFERENCE variable?"
     )
-
-# Configure the database.
-if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
-    raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
-
-database.configure(app.config)
 
 model.config.app_config = app.config
 model.config.store = storage

@@ -1,9 +1,7 @@
 from multiprocessing.sharedctypes import Array
 
+from data.database import User
 from util.validation import MAX_USERNAME_LENGTH
-
-SUPER_USERS_CONFIG = "SUPER_USERS"
-RESTRICTED_USERS_WHITELIST_CONFIG = "RESTRICTED_USERS_WHITELIST"
 
 
 class UserManager(object):
@@ -24,14 +22,21 @@ class ConfigUserManager(UserManager):
     """
 
     def __init__(self, app):
-        super_usernames = app.config.get(SUPER_USERS_CONFIG, [])
-        super_usernames_str = ",".join(super_usernames)
+        self.super_usernames = [
+            user.username for user in User.select().where(User.is_superuser == True)
+        ]
+        # super_usernames_str = ",".join(super_usernames)
 
-        self._super_max_length = len(super_usernames_str) + MAX_USERNAME_LENGTH + 1
-        self._superusers_array = Array("c", self._super_max_length, lock=True)
-        self._superusers_array.value = super_usernames_str.encode("utf8")
+        # self._super_max_length = len(super_usernames_str) + MAX_USERNAME_LENGTH + 1
+        # self._superusers_array = Array("c", self._super_max_length, lock=True)
+        # self._superusers_array.value = super_usernames_str.encode("utf8")
 
-        restricted_usernames_whitelist = app.config.get(RESTRICTED_USERS_WHITELIST_CONFIG, None)
+        restricted_usernames_whitelist = [
+            user.username
+            for user in User.select().where(
+                (User.is_restricted_user == False) & (User.robot == False)
+            )
+        ] or []
         if restricted_usernames_whitelist:
             restricted_usernames_whitelist_str = ",".join(restricted_usernames_whitelist)
 
@@ -52,12 +57,22 @@ class ConfigUserManager(UserManager):
         self._global_readonly_array = Array("c", self._global_readonly_max_length, lock=True)
         self._global_readonly_array.value = global_readonly_usernames_str.encode("utf8")
 
+    def _update_superuser_list(self):
+        for user in User.select(User.username).where(User.is_superuser == True):
+            if user.username not in self.super_usernames:
+                self.super_usernames.append(user.username)
+        return self.super_usernames
+
     def is_superuser(self, username: str) -> bool:
         """
         Returns if the given username represents a super user.
         """
-        usernames = self._superusers_array.value.decode("utf8").split(",")
-        return username in usernames
+        # First, update the array.
+        # We need to do this for every call because we want the super user list to be synced across containers.
+        for user in User.select(User.username).where(User.is_superuser == True):
+            if user.username not in self.super_usernames:
+                self.super_usernames.append(user.username)
+        return username in self.super_usernames
 
     def register_superuser(self, username: str) -> None:
         """
@@ -65,14 +80,26 @@ class ConfigUserManager(UserManager):
 
         Note that this does *not* change any underlying config files.
         """
-        usernames = self._superusers_array.value.decode("utf8").split(",")
-        usernames.append(username)
-        new_string = ",".join(usernames)
+        # usernames = self._superusers_array.value.decode("utf8").split(",")
+        # usernames.append(username)
+        # new_string = ",".join(usernames)
 
-        if len(new_string) <= self._max_length:
-            self._superusers_array.value = new_string.encode("utf8")
-        else:
-            raise Exception("Maximum superuser count reached. Please report this to support.")
+        # if len(new_string) <= self._max_length:
+        #     self._superusers_array.value = new_string.encode("utf8")
+        # else:
+        #     raise Exception("Maximum superuser count reached. Please report this to support.")
+        if username not in self.super_usernames:
+            self.super_usernames.append(username)
+
+    def remove_superuser(self, username: str) -> None:
+        """
+        Removes a registered superuser from the list of super users.
+        """
+        # usernames = self._superusers_array.value.decode("utf8").split(",")
+        # usernames.remove(username)
+        # new_string = ",".join(usernames)
+        # self._superusers_array.value = new_string.encode("utf8")
+        self.super_usernames.remove(username)
 
     def has_superusers(self) -> bool:
         """
@@ -104,6 +131,15 @@ class ConfigUserManager(UserManager):
             return True
 
         return bool(self._restricted_users_array.value)
+
+    def register_restricted_user(self, username: str) -> None:
+        """
+        Registers a new restricted user for the duration of the container.
+        """
+        usernames = self._restricted_users_array.value.decode("utf8").split(",")
+        usernames.append(username)
+        new_string = ",".join(usernames)
+        self._superusers_array.value = new_string.encode("utf8")
 
     def is_global_readonly_superuser(self, username: str) -> bool:
         """

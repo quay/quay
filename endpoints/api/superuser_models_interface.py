@@ -416,3 +416,33 @@ class SuperuserDataInterface(object):
         """
         Returns RepositoryBuild.
         """
+
+    @abstractmethod
+    def make_superuser(self, username):
+        """
+        Converts a user to a superuser.
+        """
+
+    @abstractmethod
+    def remove_superuser(self, username):
+        """
+        Removes superuser privileges from superuser.
+        """
+
+    @abstractmethod
+    def change_namespace_push_visibility(self, namespace):
+        """
+        Changes the namespace wide push visiblity to either public or private.
+        """
+
+    @abstractmethod
+    def add_restricted_user(self, username):
+        """
+        Adds a restricted namespace.
+        """
+
+    @abstractmethod
+    def remove_restricted_user(self, username):
+        """
+        Removes restrictions on namespace.
+        """
