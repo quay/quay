@@ -232,6 +232,8 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
     :type verified: boolean
     :type enabled: boolean
     :type robot: User
+    :type is_superuser: boolean
+    :type is_restricted_user: boolean
     """
 
     def to_dict(self):
@@ -244,6 +246,8 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             "avatar": avatar.get_data_for_user(self),
             "super_user": usermanager.is_superuser(self.username),
             "enabled": self.enabled,
+            "is_superuser": self.is_superuser,
+            "is_restricted_user": self.is_restricted_user,
         }
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:
             user_data["quotas"] = (
@@ -261,6 +265,7 @@ class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
     :type username: string
     :type email: string
     :type quotas: [UserOrganizationQuota] | None
+    :type is_restricted_user: boolean
     """
 
     def to_dict(self):
@@ -268,6 +273,7 @@ class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
             "name": self.username,
             "email": self.email,
             "avatar": avatar.get_data_for_org(self),
+            "is_restricted_user": self.is_restricted_user,
         }
 
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:
@@ -424,7 +430,7 @@ class SuperuserDataInterface(object):
         """
 
     @abstractmethod
-    def remove_superuser(self, username):
+    def remove_superuser(self, username, restricted=False):
         """
         Removes superuser privileges from superuser.
         """
