@@ -223,7 +223,21 @@ class ServiceKey(
         }
 
 
-class User(namedtuple("User", ["username", "email", "verified", "enabled", "robot", "quotas"])):
+class User(
+    namedtuple(
+        "User",
+        [
+            "username",
+            "email",
+            "verified",
+            "enabled",
+            "robot",
+            "quotas",
+            "is_superuser",
+            "is_restricted_user",
+        ],
+    )
+):
     """
     User represents a single user.
 
@@ -232,8 +246,6 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
     :type verified: boolean
     :type enabled: boolean
     :type robot: User
-    :type is_superuser: boolean
-    :type is_restricted_user: boolean
     """
 
     def to_dict(self):
@@ -258,7 +270,9 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
         return user_data
 
 
-class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
+class Organization(
+    namedtuple("Organization", ["username", "email", "quotas", "is_restricted_usedr"])
+):
     """
     Organization represents a single org.
 
@@ -356,6 +370,30 @@ class SuperuserDataInterface(object):
         """
 
     @abstractmethod
+    def add_superuser(self, username):
+        """
+        Sets user as superuser.
+        """
+
+    @abstractmethod
+    def del_superuser(self, username):
+        """
+        Removes user as superuser.
+        """
+
+    @abstractmethod
+    def add_restricted_user(self, username):
+        """
+        Sets user as restricted.
+        """
+
+    @abstractmethod
+    def del_restricted_user(self, username):
+        """
+        Removes restrictions from user.
+        """
+
+    @abstractmethod
     def take_ownership(self, namespace, authed_user):
         """
         Returns id of entity and whether the entity was a user.
@@ -421,34 +459,4 @@ class SuperuserDataInterface(object):
     def get_repository_build(self, uuid):
         """
         Returns RepositoryBuild.
-        """
-
-    @abstractmethod
-    def make_superuser(self, username):
-        """
-        Converts a user to a superuser.
-        """
-
-    @abstractmethod
-    def remove_superuser(self, username, restricted=False):
-        """
-        Removes superuser privileges from superuser.
-        """
-
-    @abstractmethod
-    def change_namespace_push_visibility(self, namespace):
-        """
-        Changes the namespace wide push visiblity to either public or private.
-        """
-
-    @abstractmethod
-    def add_restricted_user(self, username):
-        """
-        Adds a restricted namespace.
-        """
-
-    @abstractmethod
-    def remove_restricted_user(self, username):
-        """
-        Removes restrictions on namespace.
         """

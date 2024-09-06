@@ -22,21 +22,14 @@ class ConfigUserManager(UserManager):
     """
 
     def __init__(self, app):
-        self.super_usernames = [
-            user.username for user in User.select().where(User.is_superuser == True)
-        ]
+        self.super_usernames = []
         # super_usernames_str = ",".join(super_usernames)
 
         # self._super_max_length = len(super_usernames_str) + MAX_USERNAME_LENGTH + 1
         # self._superusers_array = Array("c", self._super_max_length, lock=True)
         # self._superusers_array.value = super_usernames_str.encode("utf8")
 
-        restricted_usernames_whitelist = [
-            user.username
-            for user in User.select().where(
-                (User.is_restricted_user == False) & (User.robot == False)
-            )
-        ] or []
+        restricted_usernames_whitelist = []
         if restricted_usernames_whitelist:
             restricted_usernames_whitelist_str = ",".join(restricted_usernames_whitelist)
 

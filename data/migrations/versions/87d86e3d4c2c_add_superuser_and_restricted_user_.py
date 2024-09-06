@@ -39,6 +39,18 @@ def upgrade(op, tables, tester):
         ),
     )
 
+    # insert new actions to log
+    op.bulk_insert(
+        tables.logentrykind,
+        [
+            {"name": "add_superuser"},
+            {"name": "remove_superuser"},
+            {"name": "change_namespace_repo_visiblity"},
+            {"name": "add_restricted_user"},
+            {"name": "remove_restricted_user"},
+        ],
+    )
+
 
 def downgrade(op, tables, tester):
     with op.batch_alter_table("user") as batch_op:
