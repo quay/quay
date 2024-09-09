@@ -27,18 +27,21 @@ class ManifestSubjectBackfillWorker(Worker):
     def __init__(self):
         super().__init__()
         self.add_operation(self._backfill_manifest_subject, WORKER_FREQUENCY)
+        self.add_operation(self._backfill_manifest_artifact_type, WORKER_FREQUENCY)
 
     def _backfill_manifest_subject(self):
         try:
             Manifest.select().where(
-                Manifest.subject_backfilled == False | Manifest.subject_backfilled >> None
+                (Manifest.subject_backfilled == False) | (Manifest.subject_backfilled >> None),
             ).get()
         except Manifest.DoesNotExist:
             logger.debug("Manifest subject backfill worker has completed; skipping")
             return False
 
         iterator = yield_random_entries(
-            lambda: Manifest.select().where(Manifest.subject_backfilled == False),
+            lambda: Manifest.select().where(
+                (Manifest.subject_backfilled == False) | (Manifest.subject_backfilled >> None)
+            ),
             Manifest.id,
             250,
             Manifest.select(fn.Max(Manifest.id)).scalar(),
@@ -69,7 +72,69 @@ class ManifestSubjectBackfillWorker(Worker):
                     subject=subject,
                     subject_backfilled=True,
                 )
-                .where(Manifest.id == manifest_row.id, Manifest.subject_backfilled == False)
+                .where(
+                    Manifest.id == manifest_row.id,
+                    (Manifest.subject_backfilled == False) | (Manifest.subject_backfilled >> None),
+                )
+                .execute()
+            )
+            if updated != 1:
+                logger.debug("Another worker preempted this worker")
+                abt.set()
+                continue
+
+        return True
+
+    def _backfill_manifest_artifact_type(self):
+        try:
+            Manifest.select().where(
+                (Manifest.artifact_type_backfilled == False)
+                | (Manifest.artifact_type_backfilled >> None),
+            ).get()
+        except Manifest.DoesNotExist:
+            logger.debug("Manifest artifact_type backfill worker has completed; skipping")
+            return False
+
+        iterator = yield_random_entries(
+            lambda: Manifest.select().where(
+                (Manifest.artifact_type_backfilled == False)
+                | (Manifest.artifact_type_backfilled >> None)
+            ),
+            Manifest.id,
+            250,
+            Manifest.select(fn.Max(Manifest.id)).scalar(),
+            1,
+        )
+
+        for manifest_row, abt, _ in iterator:
+            if manifest_row.artifact_type_backfilled:
+                logger.debug("Another worker preempted this worker")
+                abt.set()
+                continue
+
+            logger.debug("Setting artifact_type for manifest %s", manifest_row.id)
+            manifest_bytes = Bytes.for_string_or_unicode(manifest_row.manifest_bytes)
+
+            try:
+                parsed = parse_manifest_from_bytes(
+                    manifest_bytes, manifest_row.media_type.name, validate=False
+                )
+                artifact_type = parsed.artifact_type
+            except ManifestException as me:
+                logger.warning(
+                    "Got exception when trying to parse manifest %s: %s", manifest_row.id, me
+                )
+
+            updated = (
+                Manifest.update(
+                    artifact_type=artifact_type,
+                    artifact_type_backfilled=True,
+                )
+                .where(
+                    Manifest.id == manifest_row.id,
+                    (Manifest.artifact_type_backfilled == False)
+                    | (Manifest.artifact_type_backfilled >> None),
+                )
                 .execute()
             )
             if updated != 1:

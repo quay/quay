@@ -24,11 +24,13 @@ import {
   useNamespaceAutoPrunePolicies,
   useUpdateNamespaceAutoPrunePolicy,
 } from 'src/hooks/UseNamespaceAutoPrunePolicies';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {isNullOrUndefined} from 'src/libs/utils';
 import {
   AutoPruneMethod,
   NamespaceAutoPrunePolicy,
 } from 'src/resources/NamespaceAutoPruneResource';
+import ReadonlyAutoprunePolicy from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruningReadonlyPolicy';
 
 // Must match convert_to_timedelta from backend
 export const shorthandTimeUnits = {
@@ -46,6 +48,7 @@ export default function AutoPruning(props: AutoPruning) {
   const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
   const {addAlert} = useAlerts();
+  const config = useQuayConfig();
   const {
     error,
     isSuccess: successFetchingPolicies,
@@ -205,6 +208,15 @@ export default function AutoPruning(props: AutoPruning) {
 
   return (
     <>
+      <Conditional
+        if={config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY != null}
+      >
+        <ReadonlyAutoprunePolicy
+          testId="registry-autoprune-policy"
+          title="Registry Auto-Pruning Policy"
+          policies={[config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY]}
+        />
+      </Conditional>
       <Title headingLevel="h2" style={{paddingBottom: '.5em'}}>
         Auto-Pruning Policies
       </Title>

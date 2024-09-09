@@ -605,6 +605,9 @@ export function useLogDescriptions() {
     login_success: function (metadata: Metadata) {
       return `Successful login`;
     },
+    oauth_token_assigned: function (metadata) {
+      return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
+    },
   };
 
   return descriptions;

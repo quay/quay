@@ -10,7 +10,7 @@ on:
         default: 'master'
       tag:
         description: 'the tag to be released'
-        rdequired: true
+        required: true
       jira:
         description: 'PROJQUAY jira release issue'
         required: true
@@ -33,6 +33,11 @@ jobs:
           chmod u+x /tmp/git-chglog
           echo "creating change log for tag: ${{ github.event.inputs.tag }}"
           /tmp/git-chglog --next-tag "${{ github.event.inputs.tag }}" --tag-filter-pattern "v3.*" -o CHANGELOG.md v3.6.0-alpha.4..
+      - name: Modify changelog URL to point to current y-stream
+        run: |
+          echo "modifying changelog URL to point to current y-stream release."
+          QUAY_VERSION=$(echo ${{ github.event.inputs.branch }} | cut -d'-' -f2)
+          sed -in --regexp-extended "s/\/[0-9\.]+\//\/$QUAY_VERSION\//" CHANGELOG.md
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3.5.1
         with:

@@ -240,4 +240,7 @@ export const logKinds = {
   create_repository_autoprune_policy: 'Create Repository Autoprune Policy',
   update_repository_autoprune_policy: 'Update Repository Autoprune Policy',
   delete_repository_autoprune_policy: 'Delete Repository Autoprune Policy',
+  oauth_token_assigned: 'OAuth token assigned',
+  enable_team_sync: 'Enable Team Sync',
+  disable_team_sync: 'Disable Team Sync',
 };

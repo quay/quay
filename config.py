@@ -53,6 +53,8 @@ CLIENT_WHITELIST = [
     "UI_DELAY_AFTER_WRITE_SECONDS",
     "FEATURE_ASSIGN_OAUTH_TOKEN",
     "FEATURE_IMAGE_EXPIRY_TRIGGER",
+    "FEATURE_AUTO_PRUNE",
+    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY",
 ]
 
 
@@ -775,7 +777,7 @@ class DefaultConfig(ImmutableConfig):
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_HELM_OCI_SUPPORT = True
 
-    FEATURE_REFERRERS_API = False
+    FEATURE_REFERRERS_API = True
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
@@ -792,7 +794,7 @@ class DefaultConfig(ImmutableConfig):
 
     # TEMP FEATURE: Backfill the sizes and subjects of manifests.
     FEATURE_MANIFEST_SIZE_BACKFILL = True
-    FEATURE_MANIFEST_SUBJECT_BACKFILL = False
+    FEATURE_MANIFEST_SUBJECT_BACKFILL = True
 
     # Repos created by push default to private visibility
     CREATE_PRIVATE_REPO_ON_PUSH = True
@@ -895,3 +897,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Allows users to set up notifications on image expiry, can remove flag once feature is tested
     FEATURE_IMAGE_EXPIRY_TRIGGER = False
+
+    # Disable pushes while allowing other registry operations.
+    # Defaults to "False".
+    DISABLE_PUSHES = False

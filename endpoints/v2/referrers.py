@@ -15,7 +15,7 @@ from endpoints.decorators import (
     route_show_if,
 )
 from endpoints.v2 import require_repo_read, v2_bp
-from endpoints.v2.errors import ManifestUnknown, NameUnknown
+from endpoints.v2.errors import ManifestInvalid, ManifestUnknown, NameUnknown
 from image.oci.index import OCIIndexBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
@@ -43,10 +43,10 @@ def list_manifest_referrers(namespace_name, repo_name, manifest_ref, registry_mo
 
     try:
         manifest = registry_model.lookup_manifest_by_digest(
-            repository_ref, manifest_ref, raise_on_error=True
+            repository_ref, manifest_ref, raise_on_error=True, allow_hidden=True
         )
     except ManifestDoesNotExist as e:
-        raise ManifestUnknown(str(e))
+        raise ManifestInvalid(str(e))
 
     artifact_type = request.args.get("artifactType", None)
 
@@ -66,7 +66,7 @@ def _build_referrers_index_for_manifests(referrers):
 
     for referrer in referrers:
         parsed_referrer = referrer.get_parsed_manifest()
-        index_builder.add_manifest(parsed_referrer)
+        index_builder.add_manifest_for_referrers_index(parsed_referrer)
 
     index = index_builder.build()
     return index

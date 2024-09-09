@@ -837,8 +837,8 @@ def assign_user_to_app():
     application = get_oauth_application_for_client_id(client_id)
     if not application:
         abort(404)
-
-    if not is_org_admin(current_user.db_user(), application.organization):
+    current_db_user = current_user.db_user()
+    if not is_org_admin(current_db_user, application.organization):
         abort(403)
 
     assign_token_to_user(
@@ -848,6 +848,18 @@ def assign_user_to_app():
         scope,
         response_type,
     )
+
+    log_action(
+        "oauth_token_assigned",
+        application.organization.username,
+        {
+            "assigning_user": current_db_user.username,
+            "assigned_user": user.username,
+            "application": application.name,
+            "client_id": application.client_id,
+        },
+    )
+
     return render_page_template_with_routedata(
         "message.html", message="Token assigned successfully"
     )

@@ -217,14 +217,14 @@ class V4SecurityScanner(SecurityScannerInterface):
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
             return (
-                Manifest.select(Manifest, ManifestSecurityStatus)
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
                 .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
                 .where(ManifestSecurityStatus.id >> None)
             )
 
         def index_error_query():
             return (
-                Manifest.select(Manifest, ManifestSecurityStatus)
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.index_status == IndexStatus.FAILED,
@@ -235,7 +235,7 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         def needs_reindexing_query(indexer_hash):
             return (
-                Manifest.select(Manifest, ManifestSecurityStatus)
+                Manifest.select(Manifest, ManifestSecurityStatus, can_use_read_replica=True)
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
@@ -289,7 +289,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 86400)
         )
 
-        end_index = Manifest.select(fn.Max(Manifest.id)).scalar()
+        end_index = Manifest.select(fn.Max(Manifest.id), can_use_read_replica=True).scalar()
         if end_index is None:
             end_index = 0
         start_index = max(end_index - batch_size, 1)
@@ -317,12 +317,12 @@ class V4SecurityScanner(SecurityScannerInterface):
             seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 86400)
         )
 
-        max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
+        max_id = Manifest.select(fn.Max(Manifest.id), can_use_read_replica=True).scalar()
 
         start_index = (
             start_token.min_id
             if start_token is not None
-            else Manifest.select(fn.Min(Manifest.id)).scalar()
+            else Manifest.select(fn.Min(Manifest.id), can_use_read_replica=True).scalar()
         )
 
         if max_id is None or start_index is None or start_index > max_id:
@@ -595,7 +595,9 @@ class V4SecurityScanner(SecurityScannerInterface):
 
     def garbage_collect_manifest_report(self, manifest_digest):
         def manifest_digest_exists():
-            query = Manifest.select().where(Manifest.digest == manifest_digest)
+            query = Manifest.select(can_use_read_replica=True).where(
+                Manifest.digest == manifest_digest
+            )
 
             try:
                 query.get()
