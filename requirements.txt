@@ -28,7 +28,7 @@ dumb-init==1.2.5.post1
 elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
 Flask==2.3.2
-Flask-Login==0.6.2
+Flask-Login==0.6.3
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.10
@@ -118,7 +118,7 @@ urllib3==1.26.18
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==1.7.0
-Werkzeug==2.3.6
+Werkzeug==3.0.3
 xhtml2pdf==0.2.6
 
 # Leverage wheels for faster builds
