@@ -101,6 +101,7 @@ def generate_mock_oidc_token(
         "aud": audience,
         "exp": int(exp.timestamp()),
         "iat": int(iat.timestamp()),
+        "nbf": int(iat.timestamp()),
         "nonce": str(uuid.uuid4()),
         "name": "Mock User",
         "preferred_username": "mockuser",
