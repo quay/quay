@@ -7,8 +7,8 @@ import requests
 from data import model
 from endpoints.api import api
 from endpoints.api.robot import (
-    FederatedOrgRobot,
     OrgRobot,
+    OrgRobotFederation,
     OrgRobotList,
     UserRobot,
     UserRobotList,
@@ -169,12 +169,73 @@ def test_duplicate_robot_creation(app):
         assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"
 
 
+def test_robot_federation_create(app):
+    with client_with_identity("devtable", app) as cl:
+        # Create the robot with the specified body.
+        conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "POST",
+            {
+                "orgname": "buynlarge",
+                "robot_shortname": "coolrobot",
+            },
+            [{"issuer": "issuer1", "subject": "subject1"}],
+            expected_code=200,
+        )
+
+        # Ensure the create succeeded.
+        resp = conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "GET",
+            {
+                "orgname": "buynlarge",
+                "robot_shortname": "coolrobot",
+            },
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 1
+        assert resp.json[0].get("issuer") == "issuer1"
+        assert resp.json[0].get("subject") == "subject1"
+
+        resp = conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "DELETE",
+            {
+                "orgname": "buynlarge",
+                "robot_shortname": "coolrobot",
+            },
+            expected_code=204,
+        )
+
+        resp = conduct_api_call(
+            cl,
+            OrgRobotFederation,
+            "GET",
+            {
+                "orgname": "buynlarge",
+                "robot_shortname": "coolrobot",
+            },
+            expected_code=200,
+        )
+
+        assert len(resp.json) == 0
+
+
 @pytest.mark.parametrize(
     "fed_config, raises_error, error_message",
     [
         ([{"issuer": "issuer1", "subject": "subject1"}], False, None),
         (
             [{"bad_key": "issuer1", "subject": "subject1"}],
+            True,
+            "Missing one or more required fields",
+        ),
+        (
+            [{"issuer": "issuer1", "subject": "subject1"}, {}],
             True,
             "Missing one or more required fields",
         ),
@@ -196,7 +257,7 @@ def test_parse_federation_config(app, fed_config, raises_error, error_message):
     with app.app_context():
         if raises_error:
             with pytest.raises(Exception) as ex:
-                parsed = FederatedOrgRobot()._parse_federation_config(request)
+                parsed = OrgRobotFederation()._parse_federation_config(request)
             assert error_message in str(ex.value)
         else:
-            parsed = FederatedOrgRobot()._parse_federation_config(request)
+            parsed = OrgRobotFederation()._parse_federation_config(request)

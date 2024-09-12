@@ -422,7 +422,7 @@ class RegenerateOrgRobot(ApiResource):
     "robot_shortname", "The short name for the robot, without any user or organization prefix"
 )
 @related_user_resource(UserRobot)
-class FederatedOrgRobot(ApiResource):
+class OrgRobotFederation(ApiResource):
 
     schemas = {
         "CreateRobotFederation": CREATE_ROBOT_FEDERATION_SCHEMA,
@@ -449,7 +449,7 @@ class FederatedOrgRobot(ApiResource):
             robot = lookup_robot(robot_username)
             create_robot_federation_config(robot, fed_config)
             log_action(
-                "create_robot_federation_config",
+                "create_robot_federation",
                 orgname,
                 {"config": fed_config, "robot": robot_shortname},
             )
@@ -465,7 +465,7 @@ class FederatedOrgRobot(ApiResource):
             robot = lookup_robot(robot_username)
             delete_robot_federation_config(robot)
             log_action(
-                "delete_robot_federation_config",
+                "delete_robot_federation",
                 orgname,
                 {"robot": robot_shortname},
             )

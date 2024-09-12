@@ -6825,7 +6825,7 @@ SECURITY_TESTS: List[
         403,
     ),
     (
-        FederatedOrgRobot,
+        OrgRobotFederation,
         "GET",
         {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
         None,
@@ -6833,7 +6833,7 @@ SECURITY_TESTS: List[
         403,
     ),
     (
-        FederatedOrgRobot,
+        OrgRobotFederation,
         "POST",
         {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
         {"subject": "testsubject", "issuer": "testissuer"},
@@ -6841,7 +6841,7 @@ SECURITY_TESTS: List[
         400,
     ),
     (
-        FederatedOrgRobot,
+        OrgRobotFederation,
         "DELETE",
         {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
         None,
