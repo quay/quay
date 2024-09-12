@@ -4,7 +4,6 @@ from unittest.mock import Mock
 import pytest
 from mock import patch
 
-import app
 from auth.scopes import READ_REPO
 from auth.test.mock_oidc_server import MOCK_PUBLIC_KEY, generate_mock_oidc_token
 from data import model
@@ -346,7 +345,6 @@ def test_robot(initialized_db):
 
 
 def test_jwt_robot_token(initialized_db):
-    # Create a robot account.
     user = get_user("devtable")
     org = create_organization("foobar", "foobar@devtable.com", user)
     create_robot("foo", org)
