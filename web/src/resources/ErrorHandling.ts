@@ -18,7 +18,7 @@ export class BulkOperationError<T> extends Error {
 }
 
 export class ResourceError extends Error {
-  error: Error;
+  error: AxiosError;
   resource: string;
   constructor(message: string, resource: string, error: AxiosError) {
     super(message);
@@ -28,7 +28,10 @@ export class ResourceError extends Error {
   }
 }
 
-export function throwIfError(responses: PromiseSettledResult<void>[], message?: string) {
+export function throwIfError(
+  responses: PromiseSettledResult<void>[],
+  message?: string,
+) {
   // Aggregate failed responses
   const errResponses = responses.filter(
     (r) => r.status == 'rejected',
@@ -46,14 +49,29 @@ export function throwIfError(responses: PromiseSettledResult<void>[], message?: 
 }
 
 // Convert error to human readble output
-export function addDisplayError(message: string, error: Error | AxiosError) {
-  const errorDetails =
-    error instanceof AxiosError ? getErrorMessage(error) : error.message;
-  return message + ', ' + errorDetails + '.';
+export function addDisplayError(
+  message: string,
+  error: Error | AxiosError | ResourceError,
+): string {
+  return message + ': ' + getDisplayError(error) + '.';
+}
+
+// Extract error details for human readble output
+export function getDisplayError(
+  error: Error | AxiosError | ResourceError,
+): string {
+  if (error instanceof ResourceError) {
+    return getErrorMessage(error.error);
+  } else if (error instanceof AxiosError) {
+    return getErrorMessage(error);
+  } else {
+    return error.message;
+  }
 }
 
 interface ErrorResponse {
   error_message?: string;
+  detail?: string;
 }
 
 // Only handling the codes related to network errors. HTTP based errors
@@ -78,7 +96,9 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
 
   if (error.response.status) {
     let message = `HTTP${error.response.status}`;
-    if (error.response.data?.error_message) {
+    if (error.response.data?.detail) {
+      message = message + ` - ${error.response.data?.detail}`;
+    } else if (error.response.data?.error_message) {
       message = message + ` - ${error.response.data?.error_message}`;
     }
     return message;

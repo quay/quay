@@ -18,23 +18,24 @@ from data.database import (
 from data.model import (
     QuotaExceededException,
     TagDoesNotExist,
+    TagImmutableException,
     namespacequota,
     oci,
     user,
 )
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.oci.manifest import get_or_create_manifest
-from data.model.organization import create_organization
+from data.model.organization import create_organization, has_immutable_tags
 from data.model.proxy_cache import create_proxy_cache_config
 from data.model.repository import create_repository
 from data.model.storage import get_layer_path
+from data.model.test.test_repository import _create_tag
 from data.model.user import get_user
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestType
 from data.registry_model.registry_proxy_model import ProxyModel
 from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
@@ -253,6 +254,46 @@ class TestRegistryProxyModelGetSchema1ParsedManifest:
                 self.upstream_repository,
                 self.tag,
                 storage,
+                raise_on_error=True,
+            )
+
+
+class TestRegistryProxyModelCreateProxyCacheConfig:
+    orgname = "quayio-cache"
+    upstream_registry = "quay.io"
+    expiration_s = 3600
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        self.user = get_user("devtable")
+        self.org = create_organization(self.orgname, "{self.orgname}@devtable.com", self.user)
+        self.org.save()
+
+    def test_create_proxy_cache_config(self):
+        config = create_proxy_cache_config(
+            org_name=self.orgname,
+            upstream_registry=self.upstream_registry,
+            expiration_s=self.expiration_s,
+        )
+        assert config is not None
+        assert config.organization.username == self.orgname
+        assert config.upstream_registry == self.upstream_registry
+        assert config.expiration_s == self.expiration_s
+
+    def test_create_proxy_cache_config_with_immutable_tags(self):
+        assert not has_immutable_tags(self.orgname)
+
+        repo = create_repository(
+            self.orgname, "somenewrepo", None, repo_kind="image", visibility="public"
+        )
+        tag = _create_tag(repo, "tag4")
+        registry_model.set_tag_immutable(tag)
+
+        with pytest.raises(TagImmutableException):
+            create_proxy_cache_config(
+                org_name=self.orgname,
+                upstream_registry=self.upstream_registry,
+                expiration_s=self.expiration_s,
                 raise_on_error=True,
             )
 

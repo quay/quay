@@ -1,12 +1,15 @@
-import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {BulkOperationError, ResourceError} from 'src/resources/ErrorHandling';
 import {
+  Tag,
+  bulkDeleteTags,
   bulkSetExpiration,
   createTag,
+  getTags,
   permanentlyDeleteTag,
-  bulkDeleteTags,
+  restoreTag,
+  setTagsMutability,
 } from 'src/resources/TagResource';
-import {getTags, restoreTag} from 'src/resources/TagResource';
 
 export function useAllTags(org: string, repo: string) {
   // TODO: Returns the first 50 tags due to performance concerns.
@@ -17,7 +20,7 @@ export function useAllTags(org: string, repo: string) {
     isError: errorLoadingTags,
     error: errorTagsDetails,
     dataUpdatedAt,
-  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], ({signal}) =>
+  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], () =>
     getTags(org, repo, 1, 50, null, false),
   );
 
@@ -55,7 +58,7 @@ export function useSetExpiration(org: string, repo: string) {
     isError: errorSetExpiration,
     error: errorSetExpirationDetails,
   } = useMutation(
-    async ({tags, expiration}: {tags: string[]; expiration: number}) =>
+    async ({tags, expiration}: {tags: Tag[]; expiration: number}) =>
       bulkSetExpiration(org, repo, tags, expiration),
   );
 
@@ -75,7 +78,7 @@ export function useDeleteTag(org: string, repo: string) {
     isError: errorDeleteTags,
     error: errorDeleteTagDetails,
   } = useMutation(
-    async ({tags, force}: {tags: string[]; force: boolean}) =>
+    async ({tags, force}: {tags: Tag[]; force: boolean}) =>
       bulkDeleteTags(org, repo, tags, force),
     {},
   );
@@ -117,7 +120,7 @@ export function useRestoreTag(org: string, repo: string) {
 export function usePermanentlyDeleteTag(org: string, repo: string) {
   const queryClient = useQueryClient();
   const {mutate, isError, isSuccess} = useMutation(
-    async ({tag, digest}: {tag: string; digest: string}) =>
+    async ({tag, digest}: {tag: Tag; digest: string}) =>
       permanentlyDeleteTag(org, repo, tag, digest),
     {
       onSuccess: () => {
@@ -136,5 +139,34 @@ export function usePermanentlyDeleteTag(org: string, repo: string) {
     permanentlyDeleteTag: mutate,
     success: isSuccess,
     error: isError,
+  };
+}
+
+export function useSetTagsImmutability(org: string, repo: string) {
+  const queryClient = useQueryClient();
+  const {mutate, isError, isSuccess, error} = useMutation(
+    async ({tags, immutable}: {tags: Tag[]; immutable: boolean}) =>
+      setTagsMutability(
+        tags.map((tag) => ({org, repo, tag: tag.name})),
+        immutable,
+      ),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries([
+          'namespace',
+          org,
+          'repo',
+          repo,
+          'alltags',
+        ]);
+      },
+    },
+  );
+
+  return {
+    setTagImmutability: mutate,
+    success: isSuccess,
+    error: isError,
+    errorDetails: error as BulkOperationError<ResourceError>,
   };
 }

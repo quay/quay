@@ -2,7 +2,7 @@ import json
 import logging.config
 from enum import Enum
 
-from data.database import AutoPruneTaskStatus
+from data.database import AutoPruneTaskStatus, DeletedNamespace
 from data.database import NamespaceAutoPrunePolicy as NamespaceAutoPrunePolicyTable
 from data.database import Repository
 from data.database import RepositoryAutoPrunePolicy as RepositoryAutoPrunePolicyTable
