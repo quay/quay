@@ -272,12 +272,12 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
         namespace = get_active_namespace_user_by_username(orgname)
         namespace_id = namespace.id
 
-        if namespace_has_autoprune_policy(namespace_id):
-            raise NamespaceAutoPrunePolicyAlreadyExists(
-                "Policy for this namespace already exists, delete existing to create new policy"
-            )
-
         assert_valid_namespace_autoprune_policy(policy_config)
+
+        if duplicate_namespace_policy(namespace_id, policy_config):
+            raise NamespaceAutoPrunePolicyAlreadyExists(
+                "Existing policy with same values for this namespace, duplicate policies are not permitted"
+            )
 
         new_policy = NamespaceAutoPrunePolicyTable.create(
             namespace=namespace_id, policy=json.dumps(policy_config)
@@ -448,6 +448,21 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
                 f"Policy not found for repository: {repo_name} with uuid: {uuid}"
             )
         return True
+
+
+def duplicate_namespace_policy(namespace_id, policy_config):
+    result = NamespaceAutoPrunePolicyTable.select().where(
+        NamespaceAutoPrunePolicyTable.namespace == namespace_id
+    )
+
+    for r in result:
+        db_policy = json.loads(r.policy)
+        if (
+            db_policy["method"] == policy_config["method"]
+            and db_policy["value"] == policy_config["value"]
+        ):
+            return True
+    return False
 
 
 def namespace_has_autoprune_policy(namespace_id):
@@ -669,7 +684,7 @@ def execute_policies_for_repo(
 ):
     """
     Executes both repository and namespace level policies for the given repository. The policies
-    are applied in a serial fashion and are run asynchronosly in the background.
+    are applied in a serial fashion and are run asynchronously in the background.
     """
     for ns_policy in ns_policies:
 

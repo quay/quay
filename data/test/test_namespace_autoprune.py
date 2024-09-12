@@ -56,7 +56,7 @@ class TestNameSpaceAutoprune:
             )
         assert str(excerror.value) == "Username does not exist: non-existant org"
 
-    def test_policy_creation_for_org_with_policy(self):
+    def test_duplicate_policy_creation_for_org_with_policy(self):
         create_namespace_autoprune_policy(ORG1_NAME, self.number_of_tags_policy, create_task=False)
         with pytest.raises(NamespaceAutoPrunePolicyAlreadyExists) as excerror:
             create_namespace_autoprune_policy(
@@ -64,7 +64,7 @@ class TestNameSpaceAutoprune:
             )
         assert (
             str(excerror.value)
-            == "Policy for this namespace already exists, delete existing to create new policy"
+            == "Existing policy with same values for this namespace, duplicate policies are not permitted"
         )
 
     def test_get_policies_by_orgname(self):
