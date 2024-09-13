@@ -5,11 +5,18 @@ import time
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app import storage
 from data import model
 from data.database import AutoPruneTaskStatus, ImageStorageLocation, Tag
 from data.model.oci.manifest import get_or_create_manifest
-from data.model.oci.tag import list_repository_tag_history, retarget_tag
+from data.model.oci.tag import (
+    get_tag,
+    list_alive_tags,
+    list_repository_tag_history,
+    retarget_tag,
+)
 from data.model.user import get_active_namespaces
 from data.queue import WorkQueue
 from digest.digest_tools import sha256_digest
@@ -58,8 +65,8 @@ def _create_manifest(namespace, repo):
     return get_or_create_manifest(repo, v2_manifest, storage)
 
 
-def _create_tag(repo, manifest, start=None):
-    name = "tag-%s" % str(uuid.uuid4())
+def _create_tag(repo, manifest, start=None, name=None):
+    name = "tag-%s" % str(uuid.uuid4()) if name is None else name
     now_ms = int(time.time() * 1000) if start is None else start
     created = Tag.create(
         name=name,
@@ -671,3 +678,179 @@ def test_registry_prune_invalid_policy(initialized_db):
         except model.InvalidNamespaceAutoPrunePolicy as ex:
             errored = True
         assert errored
+
+
+@pytest.mark.parametrize(
+    "tags, expected, matches",
+    [
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test1", "test2", "test3", "test4", "test5"],
+            True,
+        ),
+        (
+            ["match1", "match2", "test1", "test2", "test3"],
+            ["match1", "match2", "test1", "test2", "test3"],
+            True,
+        ),
+        (
+            ["match1", "match2", "match3", "test1", "test2"],
+            ["match1", "match2", "match3", "test1", "test2"],
+            True,
+        ),
+        (
+            ["match1", "match2", "match3", "match4", "test1"],
+            ["match1", "match2", "match3", "test1"],
+            True,
+        ),
+        (["match1", "match2", "match3", "match4", "match5"], ["match1", "match2", "match3"], True),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test1", "test2", "test3"],
+            False,
+        ),
+        (
+            ["match1", "match2", "test1", "test2", "test3"],
+            ["match1", "match2", "test1"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "test1", "test2"],
+            ["match1", "match2", "match3"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "match4", "test1"],
+            ["match1", "match2", "match3", "match4"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "match4", "match5"],
+            ["match1", "match2", "match3", "match4", "match5"],
+            False,
+        ),
+    ],
+)
+def test_prune_by_tag_count_with_tag_filter(tags, expected, matches, initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    new_repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "repo1",
+        {
+            "method": "number_of_tags",
+            "value": 3,
+            "tag_pattern": "match.*",
+            "tag_pattern_matches": matches,
+        },
+        create_task=True,
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    now_ms = int(time.time() * 1000)
+    for i, tag in enumerate(tags):
+        creation_time = now_ms - i
+        _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
+
+    _assert_repo_tag_count(repo1, 5)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, len(expected))
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
+    assert task1.status == "success"
+    for tag in list_alive_tags(repo1):
+        assert tag.name in expected
+        expected.remove(tag.name)
+
+    assert len(expected) == 0
+
+
+@pytest.mark.parametrize(
+    "tags, expected, matches",
+    [
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test1", "test2", "test3", "test4", "test5"],
+            True,
+        ),
+        (["match1", "match2", "test1", "test2", "test3"], ["test1", "test2", "test3"], True),
+        (["match1", "match2", "match3", "test1", "test2"], ["test1", "test2"], True),
+        (["match1", "match2", "match3", "match4", "test1"], ["match4", "test1"], True),
+        (["match1", "match2", "match3", "match4", "match5"], ["match4", "match5"], True),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test4", "test5"],
+            False,
+        ),
+        (["match1", "test1", "test2", "test3", "test4"], ["match1", "test3", "test4"], False),
+        (
+            ["match1", "match2", "test1", "test2", "test3"],
+            ["match1", "match2", "test2", "test3"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "test1", "test2"],
+            ["match1", "match2", "match3", "test1", "test2"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "match4", "test1"],
+            ["match1", "match2", "match3", "match4", "test1"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "match4", "match5"],
+            ["match1", "match2", "match3", "match4", "match5"],
+            False,
+        ),
+    ],
+)
+def test_prune_by_creation_date_with_tag_filter(tags, expected, matches, initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    new_repo1_policy = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "repo1",
+        {
+            "method": "creation_date",
+            "value": "5d",
+            "tag_pattern": "match.*",
+            "tag_pattern_matches": matches,
+        },
+        create_task=True,
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    for i, tag in enumerate(tags):
+        # Set the first 3 tags to be old enough to be pruned
+        # We do the -1 to ensure that the creation time is less than the current time
+        creation_time = _past_timestamp_ms("5d") - 1 if i < 3 else None
+        _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
+
+    _assert_repo_tag_count(repo1, 5)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, len(expected))
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(new_repo1_policy.namespace_id)
+    assert task1.status == "success"
+    for tag in list_alive_tags(repo1):
+        assert tag.name in expected
+        expected.remove(tag.name)
+
+    assert len(expected) == 0

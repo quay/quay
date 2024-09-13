@@ -1,5 +1,6 @@
 import json
 import logging.config
+import re
 from enum import Enum
 
 from data.database import AutoPruneTaskStatus
@@ -56,7 +57,13 @@ class NamespaceAutoPrunePolicy:
         return self._db_row
 
     def get_view(self):
-        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+        return {
+            "uuid": self.uuid,
+            "method": self.method,
+            "value": self.config.get("value"),
+            "tagPattern": self.config.get("tag_pattern"),
+            "tagPatternMatches": self.config.get("tag_pattern_matches"),
+        }
 
 
 class RepositoryAutoPrunePolicy:
@@ -79,7 +86,13 @@ class RepositoryAutoPrunePolicy:
         return self._db_row
 
     def get_view(self):
-        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+        return {
+            "uuid": self.uuid,
+            "method": self.method,
+            "value": self.config.get("value"),
+            "tagPattern": self.config.get("tag_pattern"),
+            "tagPatternMatches": self.config.get("tag_pattern_matches"),
+        }
 
 
 def valid_value(method, value):
@@ -116,6 +129,18 @@ def assert_valid_namespace_autoprune_policy(policy_config):
     if not valid_value(method, policy_config.get("value")):
         raise InvalidNamespaceAutoPrunePolicy("Invalid value given for method type")
 
+    if policy_config.get("tag_pattern") is not None:
+        if not isinstance(policy_config.get("tag_pattern"), str):
+            raise InvalidNamespaceAutoPrunePolicy("tag_pattern must be string")
+
+        if policy_config.get("tag_pattern") == "":
+            raise InvalidNamespaceAutoPrunePolicy("tag_pattern cannot be empty")
+
+    if policy_config.get("tag_pattern_matches") is not None and not isinstance(
+        policy_config.get("tag_pattern_matches"), bool
+    ):
+        raise InvalidNamespaceAutoPrunePolicy("tag_pattern_matches must be bool")
+
 
 def assert_valid_repository_autoprune_policy(policy_config):
     """
@@ -128,6 +153,18 @@ def assert_valid_repository_autoprune_policy(policy_config):
 
     if not valid_value(method, policy_config.get("value")):
         raise InvalidRepositoryAutoPrunePolicy("Invalid value given for method type")
+
+    if policy_config.get("tag_pattern") is not None:
+        if not isinstance(policy_config.get("tag_pattern"), str):
+            raise InvalidRepositoryAutoPrunePolicy("tag_pattern must be string")
+
+        if policy_config.get("tag_pattern") == "":
+            raise InvalidRepositoryAutoPrunePolicy("tag_pattern cannot be empty")
+
+    if policy_config.get("tag_pattern_matches") is not None and not isinstance(
+        policy_config.get("tag_pattern_matches"), bool
+    ):
+        raise InvalidRepositoryAutoPrunePolicy("tag_pattern_matches must be bool")
 
 
 def get_namespace_autoprune_policies_by_orgname(orgname):
@@ -546,10 +583,16 @@ def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_lim
     page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo_id, int(policy_config["value"]), tag_page_limit, page
+            repo_id,
+            int(policy_config["value"]),
+            tag_page_limit,
+            page,
+            policy_config.get("tag_pattern"),
+            policy_config.get("tag_pattern_matches"),
         )
         if len(tags) == 0:
             break
+
         all_tags.extend(tags)
         page += 1
 
@@ -580,10 +623,16 @@ def fetch_tags_expiring_by_creation_date_policy(repo_id, policy_config, tag_page
     page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo_id, time_ms, tag_page_limit, page
+            repo_id,
+            time_ms,
+            tag_page_limit,
+            page,
+            policy_config.get("tag_pattern"),
+            policy_config.get("tag_pattern_matches"),
         )
         if len(tags) == 0:
             break
+
         all_tags.extend(tags)
         page += 1
     return all_tags

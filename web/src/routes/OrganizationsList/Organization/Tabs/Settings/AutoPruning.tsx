@@ -12,6 +12,7 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
@@ -47,6 +48,8 @@ export default function AutoPruning(props: AutoPruning) {
   const [tagCount, setTagCount] = useState<number>(20);
   const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
   const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
+  const [tagPattern, setTagPattern] = useState<string>(null);
+  const [tagPatternMatches, setTagPatternMatches] = useState<boolean>(true);
   const {addAlert} = useAlerts();
   const config = useQuayConfig();
   const {
@@ -83,6 +86,8 @@ export default function AutoPruning(props: AutoPruning) {
         const policy: NamespaceAutoPrunePolicy = nsPolicies[0];
         setMethod(policy.method);
         setUuid(policy.uuid);
+        setTagPattern(policy.tagPattern);
+        setTagPatternMatches(policy.tagPatternMatches);
         switch (policy.method) {
           case AutoPruneMethod.TAG_NUMBER: {
             setTagCount(policy.value as number);
@@ -110,6 +115,8 @@ export default function AutoPruning(props: AutoPruning) {
         setTagCount(20);
         setTagCreationDateUnit('d');
         setTagCreationDateValue(7);
+        setTagPattern(null);
+        setTagPatternMatches(true);
       }
     }
   }, [successFetchingPolicies, dataUpdatedAt]);
@@ -192,9 +199,23 @@ export default function AutoPruning(props: AutoPruning) {
         return;
     }
     if (isNullOrUndefined(uuid)) {
-      createPolicy({method: method, value: value});
+      const policy: NamespaceAutoPrunePolicy = {method: method, value: value};
+      if (tagPattern != null) {
+        policy.tagPattern = tagPattern;
+        policy.tagPatternMatches = tagPatternMatches;
+      }
+      createPolicy(policy);
     } else {
-      updatePolicy({uuid: uuid, method: method, value: value});
+      const policy: NamespaceAutoPrunePolicy = {
+        uuid: uuid,
+        method: method,
+        value: value,
+      };
+      if (tagPattern != null) {
+        policy.tagPattern = tagPattern;
+        policy.tagPatternMatches = tagPatternMatches;
+      }
+      updatePolicy(policy);
     }
   };
 
@@ -350,7 +371,58 @@ export default function AutoPruning(props: AutoPruning) {
             </FormHelperText>
           </FormGroup>
         </Conditional>
-
+        <Conditional if={method !== AutoPruneMethod.NONE}>
+          <FormGroup label="Tag pattern" isInline>
+            <div style={{display: 'flex'}}>
+              <FormSelect
+                style={{width: '10em'}}
+                id="selection"
+                value={tagPatternMatches ? 'matches' : 'doesnotmatch'}
+                onChange={(e, val) => {
+                  setTagPatternMatches(val === 'matches');
+                }}
+                aria-label="tag pattern matches"
+              >
+                <FormSelectOption key={0} value="matches" label="match" />
+                <FormSelectOption
+                  key={1}
+                  value="doesnotmatch"
+                  label="does not match"
+                />
+              </FormSelect>
+            </div>
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>
+                  {tagPatternMatches
+                    ? 'Only tags matching the given regex pattern will be pruned'
+                    : 'Only tags not matching the given regex pattern will be pruned'}
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+          <FormGroup isInline>
+            <div style={{display: 'flex'}}>
+              <TextInput
+                style={{width: '25em'}}
+                value={tagPattern}
+                onChange={(e, val) =>
+                  val !== '' ? setTagPattern(val) : setTagPattern(null)
+                }
+                aria-label="tag pattern"
+                data-testid="tag-pattern"
+              />
+            </div>
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>
+                  The regex pattern to match tags against. Defaults to all tags
+                  if left empty.
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          </FormGroup>
+        </Conditional>
         <ActionGroup>
           <Flex
             justifyContent={{default: 'justifyContentFlexEnd'}}
