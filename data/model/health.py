@@ -10,13 +10,18 @@ logger = logging.getLogger(__name__)
 def sql_timeout(app_config, database, timeout):
     # Apply the context manager only if PostgreSQL is used as db schema
     if "postgresql" in app_config["DB_URI"]:
-        database.execute_sql("SET statement_timeout=%s", (timeout,))
+        logger.debug("Checking for existence of team roles, timeout 5000 ms.")
+        database.execute_sql("SET statement_timeout=%s;", (timeout,))
         try:
             yield database
         finally:
-            database.execute_sql("SET statement_timeout=0")
+            database.execute_sql("SET statement_timeout=%s;", (0,))
     else:
-        pass
+        logger.debug("Checking for existence of team roles.")
+        try:
+            yield database
+        finally:
+            pass
 
 
 def check_health(app_config):
@@ -35,7 +40,6 @@ def check_health(app_config):
     # We will connect to the db, check that it contains some team role kinds
     try:
         with sql_timeout(app_config, db, 5000):
-            logger.debug("Checking for existence of team roles, timeout 5000 ms.")
             okay = bool(list(TeamRole.select().limit(1)))
             return (okay, "Could not execute query, timeout reached" if not okay else None)
     except Exception as ex:
