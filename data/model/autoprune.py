@@ -272,12 +272,12 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
         namespace = get_active_namespace_user_by_username(orgname)
         namespace_id = namespace.id
 
-        assert_valid_namespace_autoprune_policy(policy_config)
-
-        if duplicate_namespace_policy(namespace_id, policy_config):
+        if namespace_has_autoprune_policy(namespace_id):
             raise NamespaceAutoPrunePolicyAlreadyExists(
-                "Existing policy with same values for this namespace, duplicate policies are not permitted"
+                "Policy for this namespace already exists, delete existing to create new policy"
             )
+
+        assert_valid_namespace_autoprune_policy(policy_config)
 
         new_policy = NamespaceAutoPrunePolicyTable.create(
             namespace=namespace_id, policy=json.dumps(policy_config)
@@ -450,13 +450,26 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
         return True
 
 
-def duplicate_namespace_policy(namespace_id, policy_config):
-    result = NamespaceAutoPrunePolicyTable.select().where(
-        NamespaceAutoPrunePolicyTable.namespace == namespace_id
+def duplicate_repository_policy(repository_id, policy_config):
+    """
+    Check if a policy configuration already exists for a given repository.
+
+    Args:
+        repository_id (int): The ID of the repository.
+        policy_config (dict): The policy configuration to check for duplication.
+
+    Returns:
+        bool: True if a duplicate policy exists, False otherwise.
+    """
+    # Query the repository auto-prune policies for the given repository ID
+    result = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.repository_id == repository_id
     )
 
     for r in result:
+        # Deserialize the JSON policy field
         db_policy = json.loads(r.policy)
+        # Check if the method and value match the provided policy configuration
         if (
             db_policy["method"] == policy_config["method"]
             and db_policy["value"] == policy_config["value"]
@@ -561,6 +574,9 @@ def delete_autoprune_task(task):
 
 
 def prune_tags(tags, repo, namespace):
+    """
+    Prune all the tags that have been flagged by the auto-pruning policies.
+    """
     for tag in tags:
         try:
             tag = oci.tag.delete_tag(repo.id, tag.name)
@@ -578,7 +594,7 @@ def prune_tags(tags, repo, namespace):
                 )
         except Exception as err:
             raise Exception(
-                f"Error deleting tag with name: {tag.name} with repository id: {repo.id} with error as: {str(err)}"
+                f"Error deleting tag with name: {tag.name} from repository id: {repo.id}. Error: {str(err)}"
             )
 
 
@@ -683,19 +699,27 @@ def execute_policies_for_repo(
     ns_policies, repo, namespace_id, tag_page_limit=100, include_repo_policies=True
 ):
     """
-    Executes both repository and namespace level policies for the given repository. The policies
-    are applied in a serial fashion and are run asynchronously in the background.
+    Executes both repository and namespace level policies for the given repository.
+    The policies are applied with a logical OR, so once an image is flagged for deletion,
+    it cannot be saved by another policy. Namespace-level (org-level) policies are executed first.
     """
+    # Step 1: Execute all namespace-level (org-level) policies first.
+    images_to_prune = set()  # Use a set to track images marked for pruning (logical OR).
+
     for ns_policy in ns_policies:
+        tags_to_prune = fetch_tags_for_repo_policies([ns_policy], repo.id)
+        images_to_prune.update(tags_to_prune)  # Add tags to prune to the set.
 
-        if include_repo_policies:
-            repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-            # note: currently only one policy is configured per repo
-            for repo_policy in repo_policies:
-                execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+    # Step 2: If repo-level policies should be applied, execute them.
+    if include_repo_policies:
+        repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
 
-        # execute associated namespace policy
-        execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
+        for repo_policy in repo_policies:
+            tags_to_prune = fetch_tags_for_repo_policies([repo_policy], repo.id)
+            images_to_prune.update(tags_to_prune)  # Logical OR: add new tags to prune.
+
+    # Step 3: Prune all flagged tags in one go.
+    prune_tags(images_to_prune, repo, namespace)
 
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
@@ -741,9 +765,9 @@ def execute_namespace_policies(
     """
     Executes the given policies for the repositories in the provided namespace.
     """
-
     if not ns_policies:
         return
+
     page_token = None
 
     while True:
@@ -761,48 +785,63 @@ def execute_namespace_policies(
 
 
 def fetch_tags_for_repo_policies(policies, repo_id):
-    all_tags = []
+    """
+    Fetch tags based on all policies provided for a repository.
+    Handles multiple policies and returns tags to be pruned based on all the policies.
+    """
+    all_tags = set()  # Using a set to handle logical OR across multiple policies
     for policy in policies:
         if policy.method == AutoPruneMethod.NUMBER_OF_TAGS.value:
             tags = fetch_tags_expiring_by_tag_count_policy(repo_id, policy.config)
+
         elif policy.method == AutoPruneMethod.CREATION_DATE.value:
             tags = fetch_tags_expiring_by_creation_date_policy(repo_id, policy.config)
+
         if len(tags):
-            all_tags.extend(tags)
-    return all_tags
+            all_tags.update(tags)  # Logical OR: add new tags to prune.
+
+    return list(all_tags)
 
 
 def fetch_tags_for_namespace_policies(ns_policies, namespace_id):
+    """
+    Fetch tags across all repositories in a namespace, applying multiple namespace-level policies.
+    """
     page_token = None
-    all_tags = []
+    all_tags = set()  # Use a set for OR behavior
     while True:
         repos, page_token = get_paginated_repositories_for_namespace(namespace_id, page_token)
         for repo in repos:
-
+            # Apply namespace-level policies
             for ns_policy in ns_policies:
                 repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
                 repo_tags = fetch_tags_for_repo_policies(repo_policies, repo.id)
-                if len(repo_tags):
-                    all_tags.extend(repo_tags)
+                all_tags.update(repo_tags)
 
                 namespace_tags = fetch_tags_for_repo_policies([ns_policy], repo.id)
-                if len(namespace_tags):
-                    all_tags.extend(namespace_tags)
+                all_tags.update(namespace_tags)
+
         if page_token is None:
             break
 
-    return all_tags
+    return list(all_tags)
 
 
 def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id):
-    all_tags = []
+    """
+    Fetch all the tags in a repository that are expiring due to the auto-prune policies
+    for both the repository and the namespace.
+    """
+    all_tags = set()  # Use a set for logical OR
+
+    # Step 1: Fetch repository-level policies
     repo_policies = get_repository_autoprune_policies_by_repo_id(repo_id)
     repo_tags = fetch_tags_for_repo_policies(repo_policies, repo_id)
-    if len(repo_tags):
-        all_tags.extend(repo_tags)
+    all_tags.update(repo_tags)
 
+    # Step 2: Fetch namespace-level policies
     namespace_policies = get_namespace_autoprune_policies_by_id(namespace_id)
     namespace_tags = fetch_tags_for_namespace_policies(namespace_policies, namespace_id)
-    if len(namespace_tags):
-        all_tags.extend(namespace_tags)
-    return all_tags
+    all_tags.update(namespace_tags)
+
+    return list(all_tags)
