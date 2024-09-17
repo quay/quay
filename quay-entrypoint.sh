@@ -78,6 +78,7 @@ case "$QUAYENTRY" in
         echo ""; echo "Startup timestamp: "; date; echo ""
         : "${MIGRATION_VERSION:=$2}"
         : "${MIGRATION_VERSION:?Missing version argument}"
+        "${QUAYPATH}/conf/init/client_certs.sh" || exit
         echo "Entering migration mode to version: ${MIGRATION_VERSION}"
         PYTHONPATH="${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
         ;;
