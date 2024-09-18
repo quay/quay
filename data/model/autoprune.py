@@ -469,6 +469,18 @@ def duplicate_repository_policy(repository_id, policy_config):
     for r in result:
         # Deserialize the JSON policy field
         db_policy = json.loads(r.policy)
+
+        # Check if the method and value match the provided policy configuration
+
+
+def duplicate_namespace_policy(namespace_id, policy_config):
+    result = NamespaceAutoPrunePolicyTable.select().where(
+        NamespaceAutoPrunePolicyTable.namespace == namespace_id
+    )
+
+    for r in result:
+        # Deserialize the JSON policy field
+        db_policy = json.loads(r.policy)
         # Check if the method and value match the provided policy configuration
         if (
             db_policy["method"] == policy_config["method"]
@@ -703,6 +715,7 @@ def execute_policies_for_repo(
     The policies are applied with a logical OR, so once an image is flagged for deletion,
     it cannot be saved by another policy. Namespace-level (org-level) policies are executed first.
     """
+
     # Step 1: Execute all namespace-level (org-level) policies first.
     images_to_prune = set()  # Use a set to track images marked for pruning (logical OR).
 
