@@ -343,7 +343,6 @@ DROP INDEX IF EXISTS public.namespacegeorestriction_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id;
 DROP INDEX IF EXISTS public.namespaceautoprunepolicy_uuid;
-DROP INDEX IF EXISTS public.namespaceautoprunepolicy_namespace_id;
 DROP INDEX IF EXISTS public.messages_uuid;
 DROP INDEX IF EXISTS public.messages_severity;
 DROP INDEX IF EXISTS public.messages_media_type_id;
@@ -10716,13 +10715,6 @@ CREATE INDEX messages_severity ON public.messages USING btree (severity);
 --
 
 CREATE INDEX messages_uuid ON public.messages USING btree (uuid);
-
-
---
--- Name: namespaceautoprunepolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
---
-
-CREATE UNIQUE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
 
 
 --
