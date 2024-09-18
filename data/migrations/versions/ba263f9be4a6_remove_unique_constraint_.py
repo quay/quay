@@ -18,7 +18,6 @@ def upgrade(op, tables, tester):
     op.drop_index(
         "namespaceautoprunepolicy_namespace_id",
         "namespaceautoprunepolicy",
-        if_exists=True,
     )
     op.create_index(
         "namespaceautoprunepolicy_namespace_id",
