@@ -3,12 +3,16 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.11.5"></a>
-## [v3.11.5] - 2024-08-08
+<a name="v3.11.6"></a>
+## [v3.11.6] - 2024-09-12
 ### Api
 - [439784d6](https://github.com/quay/quay/commit/439784d60d4644b6072c053abf12df4266408a7a): adding endpoints to FEATURE_SUPERUSERS_FULL_ACCESS (PROJQUAY-7307) ([#2941](https://github.com/quay/quay/issues/2941))
 ### Cherrypick
 - [01e3bcce](https://github.com/quay/quay/commit/01e3bcce7b93d0352701028c4b19c4a56945d1ac): merging f24176 from master (PROJQUAY-7033) ([#2801](https://github.com/quay/quay/issues/2801))
+### Deps
+- [735bea8a](https://github.com/quay/quay/commit/735bea8a96ebf47881d093999be0293b34b1b0ca): Bump jinja2 (PROJQUAY-7288) ([#3220](https://github.com/quay/quay/issues/3220))
+- [3418f528](https://github.com/quay/quay/commit/3418f528a1a2934c9b80af94928bd6fad5321715): Bump gunicorn to 22.0.0 (PROJQUAY-7018) ([#3176](https://github.com/quay/quay/issues/3176))
+- [3128737a](https://github.com/quay/quay/commit/3128737a61507b4f69df6438e8553a84b88ad12b): bump requests library to 2.32.2 (PROJQUAY-7259) ([#3177](https://github.com/quay/quay/issues/3177))
 ### Docs
 - [4ab61f7b](https://github.com/quay/quay/commit/4ab61f7b9b87472f82afca292f41a86724c600f1): Point CHANGELOG.md to proper release notes (PROJQUAY-7604) ([#3125](https://github.com/quay/quay/issues/3125))
 ### [Redhat-3.11] Api
@@ -19,16 +23,19 @@
 ### [Redhat-3.11] Autoprune
 - [d084d6b8](https://github.com/quay/quay/commit/d084d6b882fa0b1b84968b4ac563fd687bc88b76): add alembic script to remove unique constraint on index (PROJQUAY-6782) ([#2732](https://github.com/quay/quay/issues/2732))
 ### [Redhat-3.11] Build(Deps)
+- [1e725c3a](https://github.com/quay/quay/commit/1e725c3a1648ec0ad32812c7949777e69cf03abd): bump webob from 1.8.6 to 1.8.8 ([#3221](https://github.com/quay/quay/issues/3221))
 - [5805b65e](https://github.com/quay/quay/commit/5805b65e701ecefa2c10cb189d927a9ce0a83f2c): bump setuptools from 68.2.2 to 71.1.0 ([#3075](https://github.com/quay/quay/issues/3075))
 ### [Redhat-3.11] Chore
 - [bd04b8bc](https://github.com/quay/quay/commit/bd04b8bcc2c4965d33fb0f81d94bf58d040828e0): change docker-compose to 'docker compose' ([#3116](https://github.com/quay/quay/issues/3116))
 - [7d94ff01](https://github.com/quay/quay/commit/7d94ff015eed8dc03cbd935a6668d1e985ec893c): Update alembic migration script to support sqlite db (PROJQUAY-7314) ([#2947](https://github.com/quay/quay/issues/2947))
 - [ae76d6f3](https://github.com/quay/quay/commit/ae76d6f33596195598351356258ca18c70768968): remove unused jwt image ([#2948](https://github.com/quay/quay/issues/2948))
 ### [Redhat-3.11] Deps
+- [e33e505d](https://github.com/quay/quay/commit/e33e505de627225aa14351398b1f39ece9752139): Bump werkzeug to 3.0.3 (PROJQUAY-7142) ([#3211](https://github.com/quay/quay/issues/3211))
 - [c0714be1](https://github.com/quay/quay/commit/c0714be111804dceb2f53e3d34e791de05571ee5): bump PyMySQL version (PROJQUAY-7251) ([#3115](https://github.com/quay/quay/issues/3115))
 ### [Redhat-3.11] Feat(Oidc)
 - [d2ee37f0](https://github.com/quay/quay/commit/d2ee37f074fa8836cba4ab8f61d38db59e6c893a): add OIDC_DISABLE_USER_ENDPOINT parameter (PROJQUAY-6908) ([#2774](https://github.com/quay/quay/issues/2774))
 ### [Redhat-3.11] Nginx
+- [c9404545](https://github.com/quay/quay/commit/c94045450e227a056bcf7627255acc056ba61c74): dropping x-forwarded-host (PROJQUAY-7561) ([#3204](https://github.com/quay/quay/issues/3204))
 - [c56638f2](https://github.com/quay/quay/commit/c56638f2fa5701367da698e014f9e4f873298775): add rule to route /updateuser to old ui (PROJQUAY-6722) ([#2747](https://github.com/quay/quay/issues/2747))
 ### [Redhat-3.11] Oidc
 - [025945c0](https://github.com/quay/quay/commit/025945c0439e120130be62ff6042d5713e6ae1eb): ask for group object id for azure oauth login (PROJQUAY-6917) ([#2837](https://github.com/quay/quay/issues/2837))
@@ -36,6 +43,8 @@
 - [be53ca4c](https://github.com/quay/quay/commit/be53ca4c75911927489b5ad17c09750d72bb88a0): use federated login service to sync quay teams (PROJQUAY-6741) ([#2726](https://github.com/quay/quay/issues/2726))
 ### [Redhat-3.11] Storage
 - [6722a23d](https://github.com/quay/quay/commit/6722a23dd23849fe35f3c28d3aec70776c473352): Increase GCP timeout (PROJQUAY-6819) ([#2745](https://github.com/quay/quay/issues/2745))
+### [Redhat-3.11] Task
+- [98a633ee](https://github.com/quay/quay/commit/98a633ee7bb3b033f6c53b39d8516207bf636692): Temporary remove s390x support (PROJQUAY-7673) ([#3210](https://github.com/quay/quay/issues/3210))
 ### [Redhat-3.11] Teamsync
 - [e035b73b](https://github.com/quay/quay/commit/e035b73b194802455e50a6ba9f3f5823ffb0c620): run team sync worker for teams synced via ldap or keystone (PROJQUAY-6762) ([#2852](https://github.com/quay/quay/issues/2852))
 ### [Redhat-3.11] Ui
@@ -51,6 +60,13 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.12.2"></a>
+## [v3.12.2] - 2024-08-27
+### [Redhat-3.12] Storage(StorageClasses)
+- [31f2e408](https://github.com/quay/quay/commit/31f2e408bcb842a5bcba871d2f71387ce95d7180): Presign v2/v4 stsfix (PROJQUAY-7689) ([#3167](https://github.com/quay/quay/issues/3167))
+### [Redhat-3.12] Task
+- [0c32cc02](https://github.com/quay/quay/commit/0c32cc024792c385ae5d55869a8c06481255f017): Temporary remove s390x support (PROJQUAY-7673) ([#3157](https://github.com/quay/quay/issues/3157))
 
 <a name="v3.12.1"></a>
 ## [v3.12.1] - 2024-08-12
@@ -248,6 +264,9 @@
 - [3e43a5f5](https://github.com/quay/quay/commit/3e43a5f50e025af0b1188388cb91eaec0060ba5a): fix for negative integers in image expiry days (PROJQUAY-7442) ([#3014](https://github.com/quay/quay/issues/3014))
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
+
+<a name="v3.11.5"></a>
+## [v3.11.5] - 2024-08-26
 
 <a name="v3.11.4"></a>
 ## [v3.11.4] - 2024-08-08
@@ -2394,10 +2413,12 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.11.5...HEAD
-[v3.11.5]: https://github.com/quay/quay/compare/v3.12.1...v3.11.5
+[Unreleased]: https://github.com/quay/quay/compare/v3.11.6...HEAD
+[v3.11.6]: https://github.com/quay/quay/compare/v3.12.2...v3.11.6
+[v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.4...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.5...v3.12.0
+[v3.11.5]: https://github.com/quay/quay/compare/v3.11.4...v3.11.5
 [v3.11.4]: https://github.com/quay/quay/compare/v3.11.3...v3.11.4
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
