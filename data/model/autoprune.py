@@ -304,12 +304,12 @@ def create_repository_autoprune_policy(orgname, repo_name, policy_config, create
         if repo is None:
             raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
 
-        if repository_has_autoprune_policy(repo.id):
-            raise RepositoryAutoPrunePolicyAlreadyExists(
-                "Policy for this repository already exists, delete existing to create new policy"
-            )
-
         assert_valid_repository_autoprune_policy(policy_config)
+
+        if duplicate_repository_policy(repo.id, policy_config):
+            raise RepositoryAutoPrunePolicyAlreadyExists(
+                "Existing policy with same values for this repository, duplicate policies are not permitted"
+            )
 
         new_policy = RepositoryAutoPrunePolicyTable.create(
             namespace=namespace_id, repository=repo.id, policy=json.dumps(policy_config)
@@ -450,6 +450,17 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
         return True
 
 
+def check_existing_policy(db_policy, policy_config):
+    if (
+        db_policy["method"] == policy_config["method"]
+        and db_policy["value"] == policy_config["value"]
+        and db_policy["tag_pattern"] == policy_config.get("tag_pattern", None)
+        and db_policy["tag_pattern_matches"] == policy_config.get("tag_pattern_matches", True)
+    ):
+        return True
+    return False
+
+
 def duplicate_namespace_policy(namespace_id, policy_config):
     result = NamespaceAutoPrunePolicyTable.select().where(
         NamespaceAutoPrunePolicyTable.namespace == namespace_id
@@ -457,10 +468,19 @@ def duplicate_namespace_policy(namespace_id, policy_config):
 
     for r in result:
         db_policy = json.loads(r.policy)
-        if (
-            db_policy["method"] == policy_config["method"]
-            and db_policy["value"] == policy_config["value"]
-        ):
+        if check_existing_policy(db_policy, policy_config):
+            return True
+    return False
+
+
+def duplicate_repository_policy(repo_id, policy_config):
+    result = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.repository == repo_id
+    )
+
+    for r in result:
+        db_policy = json.loads(r.policy)
+        if check_existing_policy(db_policy, policy_config):
             return True
     return False
 

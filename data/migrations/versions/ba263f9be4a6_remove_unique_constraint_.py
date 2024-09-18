@@ -1,4 +1,4 @@
-"""remove unique constraint namespaceautoprunepolicy
+"""remove unique constraint for autoprunepolicy
 
 Revision ID: ba263f9be4a6
 Revises: a32e17bfad20
@@ -25,11 +25,28 @@ def upgrade(op, tables, tester):
         ["namespace_id"],
     )
 
+    op.drop_index(
+        "repositoryautoprunepolicy_repository_id",
+        "repositoryautoprunepolicy",
+    )
+    op.create_index(
+        "repositoryautoprunepolicy_repository_id",
+        "repositoryautoprunepolicy",
+        ["repository_id"],
+    )
+
 
 def downgrade(op, tables, tester):
     op.create_index(
         "namespaceautoprunepolicy_namespace_id",
         "namespaceautoprunepolicy",
         ["namespace_id"],
+        unique=True,
+    )
+
+    op.create_index(
+        "repositoryautoprunepolicy_repository_id",
+        "repositoryautoprunepolicy",
+        ["repository_id"],
         unique=True,
     )
