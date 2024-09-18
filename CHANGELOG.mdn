@@ -3,8 +3,23 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.3"></a>
+## [v3.12.3] - 2024-09-12
+### [Redhat-3.12] Build(Deps)
+- [fadc0890](https://github.com/quay/quay/commit/fadc08905639263c769ce337f45b663a95521fa0): bump webob from 1.8.6 to 1.8.8 ([#3222](https://github.com/quay/quay/issues/3222))
+### [Redhat-3.12] Deps
+- [89ec9414](https://github.com/quay/quay/commit/89ec94141db531324a61edf04f42f6ff9533ef4c): Bump werkzeug to 3.0.3 (PROJQUAY-7142) ([#3212](https://github.com/quay/quay/issues/3212))
+### [Redhat-3.12] Logging
+- [3ddee70e](https://github.com/quay/quay/commit/3ddee70e7337a3981d7cb75c38e65a3ef9a21972): hide entries when debuglog is set to false and add missing worker names (PROJQUAY-6562) ([#3206](https://github.com/quay/quay/issues/3206))
+### [Redhat-3.12] Nginx
+- [29281539](https://github.com/quay/quay/commit/29281539dc1e29502d88da275c0af396187cbd48): dropping x-forwarded-host (PROJQUAY-7561) ([#3205](https://github.com/quay/quay/issues/3205))
+### [Redhat-3.12] Ui
+- [0a462de9](https://github.com/quay/quay/commit/0a462de9b1fe648662e126646cb1a9eeca3eec07): removing image expiry trigger option for old ui (PROJQUAY-7735) ([#3174](https://github.com/quay/quay/issues/3174))
+
 <a name="v3.12.2"></a>
-## [v3.12.2] - 2024-08-22
+## [v3.12.2] - 2024-08-27
+### [Redhat-3.12] Storage(StorageClasses)
+- [31f2e408](https://github.com/quay/quay/commit/31f2e408bcb842a5bcba871d2f71387ce95d7180): Presign v2/v4 stsfix (PROJQUAY-7689) ([#3167](https://github.com/quay/quay/issues/3167))
 ### [Redhat-3.12] Task
 - [0c32cc02](https://github.com/quay/quay/commit/0c32cc024792c385ae5d55869a8c06481255f017): Temporary remove s390x support (PROJQUAY-7673) ([#3157](https://github.com/quay/quay/issues/3157))
 
@@ -204,6 +219,9 @@
 - [3e43a5f5](https://github.com/quay/quay/commit/3e43a5f50e025af0b1188388cb91eaec0060ba5a): fix for negative integers in image expiry days (PROJQUAY-7442) ([#3014](https://github.com/quay/quay/issues/3014))
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
+
+<a name="v3.11.5"></a>
+## [v3.11.5] - 2024-08-26
 
 <a name="v3.11.4"></a>
 ## [v3.11.4] - 2024-08-08
@@ -2350,10 +2368,12 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.3...HEAD
+[v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.4...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.5...v3.12.0
+[v3.11.5]: https://github.com/quay/quay/compare/v3.11.4...v3.11.5
 [v3.11.4]: https://github.com/quay/quay/compare/v3.11.3...v3.11.4
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
