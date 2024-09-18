@@ -270,7 +270,6 @@ DROP INDEX IF EXISTS public.repositorybuild_pull_robot_id;
 DROP INDEX IF EXISTS public.repositorybuild_logs_archived;
 DROP INDEX IF EXISTS public.repositorybuild_access_token_id;
 DROP INDEX IF EXISTS public.repositoryautoprunepolicy_uuid;
-DROP INDEX IF EXISTS public.repositoryautoprunepolicy_repository_id;
 DROP INDEX IF EXISTS public.repositoryautoprunepolicy_namespace_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_repository_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_email_repository_id;
@@ -11245,13 +11244,6 @@ CREATE INDEX repositoryauthorizedemail_repository_id ON public.repositoryauthori
 --
 
 CREATE INDEX repositoryautoprunepolicy_namespace_id ON public.repositoryautoprunepolicy USING btree (namespace_id);
-
-
---
--- Name: repositoryautoprunepolicy_repository_id; Type: INDEX; Schema: public; Owner: quay
---
-
-CREATE UNIQUE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
 
 
 --

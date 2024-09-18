@@ -100,8 +100,8 @@ export default function AutoPrunePolicyForm(props: AutoPrunePolicyForm) {
       >
         <FormSelect
           placeholder=""
-          aria-label="namespace-auto-prune-method"
-          data-testid="namespace-auto-prune-method"
+          aria-label="auto-prune-method"
+          data-testid="auto-prune-method"
           value={method}
           onChange={(_, val) => setMethod(val as AutoPruneMethod)}
         >
@@ -143,7 +143,7 @@ export default function AutoPrunePolicyForm(props: AutoPrunePolicyForm) {
             inputAriaLabel="number of tags"
             minusBtnAriaLabel="minus"
             plusBtnAriaLabel="plus"
-            data-testid="namespace-auto-prune-tag-count"
+            data-testid="auto-prune-tag-count"
           />
           <FormHelperText>
             <HelperText>
@@ -183,7 +183,7 @@ export default function AutoPrunePolicyForm(props: AutoPrunePolicyForm) {
               inputAriaLabel="tag creation date value"
               minusBtnAriaLabel="minus"
               plusBtnAriaLabel="plus"
-              data-testid="namespace-auto-prune-tag-creation-date-value"
+              data-testid="auto-prune-tag-creation-date-value"
               style={{paddingRight: '1em'}}
             />
             <FormSelect
