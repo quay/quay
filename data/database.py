@@ -1776,6 +1776,7 @@ class Tag(BaseModel):
     manifest_id: int
     lifetime_start_ms = BigIntegerField(default=get_epoch_timestamp_ms)
     lifetime_end_ms = BigIntegerField(null=True, index=True)
+    immutable = BooleanField(default=False)
     hidden = BooleanField(default=False)
     reversion = BooleanField(default=False)
     tag_kind = EnumField(TagKind)
@@ -1792,6 +1793,9 @@ class Tag(BaseModel):
             (("repository", "lifetime_end_ms"), False),
             # This unique index prevents deadlocks when concurrently moving and deleting tags
             (("repository", "name", "lifetime_end_ms"), True),
+            (("repository", "immutable"), False),
+            (("manifest", "immutable"), False),
+            (("manifest", "lifetime_end_ms"), False),
         )
 
 
