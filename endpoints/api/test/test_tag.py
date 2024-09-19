@@ -51,7 +51,7 @@ def test_change_tag_expiration(app):
         assert tag.lifetime_end_ts == updated_expiration
 
         request_body = {
-            "expiration": tag.lifetime_start_ts - 1,  # Attempt tet expiration to the past
+            "expiration": 0,  # Attempt tet expiration to the past
         }
 
         conduct_api_call(cl, RepositoryTag, "put", params, request_body, 400)

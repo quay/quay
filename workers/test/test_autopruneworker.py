@@ -65,8 +65,8 @@ def _create_manifest(namespace, repo):
     return get_or_create_manifest(repo, v2_manifest, storage)
 
 
-def _create_tag(repo, manifest, start=None, immutable=False):
-    name = "tag-%s" % str(uuid.uuid4())
+def _create_tag(repo, manifest, start=None, name=None, immutable=False):
+    name = "tag-%s" % str(uuid.uuid4()) if name is None else name
     now_ms = int(time.time() * 1000) if start is None else start
     created = Tag.create(
         name=name,
@@ -88,7 +88,7 @@ def _create_tags(repo, manifest, count, start_time_before=None, immutable=False)
             if start_time_before is not None
             else None
         )
-        _create_tag(repo, manifest, start_time, immutable)
+        _create_tag(repo, manifest, start_time, immutable=immutable)
 
 
 def _assert_repo_tag_count(repo, count, assert_start_after=None, should_all_be_immutable=False):
