@@ -270,6 +270,7 @@ DROP INDEX IF EXISTS public.repositorybuild_pull_robot_id;
 DROP INDEX IF EXISTS public.repositorybuild_logs_archived;
 DROP INDEX IF EXISTS public.repositorybuild_access_token_id;
 DROP INDEX IF EXISTS public.repositoryautoprunepolicy_uuid;
+DROP INDEX IF EXISTS public.repositoryautoprunepolicy_repository_id;
 DROP INDEX IF EXISTS public.repositoryautoprunepolicy_namespace_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_repository_id;
 DROP INDEX IF EXISTS public.repositoryauthorizedemail_email_repository_id;
@@ -345,6 +346,7 @@ DROP INDEX IF EXISTS public.namespacegeorestriction_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id_restricted_region_iso_code;
 DROP INDEX IF EXISTS public.namespacegeorestriction_namespace_id;
 DROP INDEX IF EXISTS public.namespaceautoprunepolicy_uuid;
+DROP INDEX IF EXISTS public.namespaceautoprunepolicy_namespace_id;
 DROP INDEX IF EXISTS public.messages_uuid;
 DROP INDEX IF EXISTS public.messages_severity;
 DROP INDEX IF EXISTS public.messages_media_type_id;
@@ -5740,7 +5742,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-5b8dc452f5c3
+ba263f9be4a6
 \.
 
 
@@ -10722,6 +10724,13 @@ CREATE INDEX messages_uuid ON public.messages USING btree (uuid);
 
 
 --
+-- Name: namespaceautoprunepolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
+
+
+--
 -- Name: namespaceautoprunepolicy_uuid; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -11244,6 +11253,13 @@ CREATE INDEX repositoryauthorizedemail_repository_id ON public.repositoryauthori
 --
 
 CREATE INDEX repositoryautoprunepolicy_namespace_id ON public.repositoryautoprunepolicy USING btree (namespace_id);
+
+
+--
+-- Name: repositoryautoprunepolicy_repository_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
 
 
 --

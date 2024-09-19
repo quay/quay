@@ -455,7 +455,8 @@ def check_existing_policy(db_policy, policy_config):
         db_policy["method"] == policy_config["method"]
         and db_policy["value"] == policy_config["value"]
         and db_policy.get("tag_pattern", None) == policy_config.get("tag_pattern", None)
-        and db_policy.get("tag_pattern_matches", True) == policy_config.get("tag_pattern_matches", True)
+        and db_policy.get("tag_pattern_matches", True)
+        == policy_config.get("tag_pattern_matches", True)
     ):
         return True
     return False

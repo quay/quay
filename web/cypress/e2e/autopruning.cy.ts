@@ -12,9 +12,7 @@ describe('Namespace settings - autoprune policies', () => {
   });
 
   const attemptCreateTagNumberPolicy = (cy) => {
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By number of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
     cy.get('input[aria-label="number of tags"]').should('have.value', '20');
     // Since we're using an older version of numberinput, the field can never be empty and will
     // always include a 0. Here we backspace to remove that 0.
@@ -23,9 +21,7 @@ describe('Namespace settings - autoprune policies', () => {
   };
 
   const attemptCreateCreationDatePolicy = (cy) => {
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By age of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By age of tags');
     cy.get('input[aria-label="tag creation date value"]').should(
       'have.value',
       '7',
@@ -169,9 +165,7 @@ describe('Namespace settings - autoprune policies', () => {
   it('creates policy with tag filter', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By age of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By age of tags');
     cy.get('input[aria-label="tag creation date value"]').should(
       'have.value',
       '7',
@@ -216,6 +210,7 @@ describe('Namespace settings - autoprune policies', () => {
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1').should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {
@@ -237,6 +232,7 @@ describe('Namespace settings - autoprune policies', () => {
     // Create initial policy
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1').should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {
@@ -245,9 +241,7 @@ describe('Namespace settings - autoprune policies', () => {
 
     // Update second policy
     cy.get('#autoprune-policy-form-1').within(() => {
-      cy.get('[data-testid="auto-prune-method"]').select(
-        'By number of tags',
-      );
+      cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
       cy.contains('Save').click();
     });
     cy.contains('Successfully updated auto-prune policy');
@@ -263,6 +257,7 @@ describe('Namespace settings - autoprune policies', () => {
     // Create initial policy
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1').should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {

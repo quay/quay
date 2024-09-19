@@ -12,18 +12,14 @@ describe('Repository settings - Repository autoprune policies', () => {
   });
 
   const attemptCreateTagNumberRepoPolicy = (cy) => {
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By number of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
     cy.get('input[aria-label="number of tags"]').should('have.value', '20');
     cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
     cy.contains('Save').click();
   };
 
   const attemptCreateCreationDateRepoPolicy = (cy) => {
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By age of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By age of tags');
     cy.get('input[aria-label="tag creation date value"]').should(
       'have.value',
       '7',
@@ -161,9 +157,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     // Create namespace policy
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By number of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
     cy.get('input[aria-label="number of tags"]').should('have.value', '20');
     // Since we're using an older version of numberinput, the field can never be empty and will
     // always include a 0. Here we backspace to remove that 0.
@@ -200,9 +194,7 @@ describe('Repository settings - Repository autoprune policies', () => {
   it('creates policy with tag filter', () => {
     cy.visit('/repository/testorg/testrepo?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
-    cy.get('[data-testid="auto-prune-method"]').select(
-      'By age of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By age of tags');
     cy.get('input[aria-label="tag creation date value"]').should(
       'have.value',
       '7',
@@ -228,6 +220,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1').should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {
@@ -248,18 +241,23 @@ describe('Repository settings - Repository autoprune policies', () => {
 
     // Create initial policy
     attemptCreateTagNumberRepoPolicy(cy);
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
+
     cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1').should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {
       attemptCreateCreationDateRepoPolicy(cy);
     });
+    cy.get('input[aria-label="tag creation date value"]').should(
+      'have.value',
+      '2',
+    );
 
     // Update second policy
     cy.get('#autoprune-policy-form-1').within(() => {
-      cy.get('[data-testid="auto-prune-method"]').select(
-        'By number of tags',
-      );
+      cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
       cy.contains('Save').click();
     });
     cy.contains('Successfully updated repository auto-prune policy');
@@ -274,7 +272,10 @@ describe('Repository settings - Repository autoprune policies', () => {
 
     // Create initial policy
     attemptCreateTagNumberRepoPolicy(cy);
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
+
     cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1').should('be.visible');
 
     // Create second policy
     cy.get('#autoprune-policy-form-1').within(() => {
@@ -292,5 +293,4 @@ describe('Repository settings - Repository autoprune policies', () => {
     // second policy form should not exist
     cy.get('#autoprune-policy-form-1').should('not.exist');
   });
-
 });
