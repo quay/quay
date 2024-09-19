@@ -30,7 +30,7 @@ jobs:
         run: |
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "version=${BRANCH_NAME/${{ env.BRANCH_PREFIX }}/}" >> $GITHUB_OUTPUT
-      
+
       - name: Setup SSH config for builders
         env:
           BUILDER_AARCH64_SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
@@ -56,7 +56,7 @@ jobs:
           touch ~/.ssh/id_builder_s390x
           chmod 600 ~/.ssh/id_builder_s390x
           echo "$BUILDER_S390X_SSH_KEY" > ~/.ssh/id_builder_s390x
-          
+
           touch ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           cat >~/.ssh/known_hosts <<END
