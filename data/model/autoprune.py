@@ -707,14 +707,12 @@ def execute_policies_for_repo(
     Executes both repository and namespace level policies for the given repository. The policies
     are applied in a serial fashion and are run asynchronously in the background.
     """
+    if include_repo_policies:
+        repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
+        for repo_policy in repo_policies:
+            execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+
     for ns_policy in ns_policies:
-
-        if include_repo_policies:
-            repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-            # note: currently only one policy is configured per repo
-            for repo_policy in repo_policies:
-                execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
-
         # execute associated namespace policy
         execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
 

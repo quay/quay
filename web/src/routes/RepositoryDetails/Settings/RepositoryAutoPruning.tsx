@@ -90,7 +90,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
     if (successFetchingRepoPolicies) {
       if (repoPolicies.length > 0) {
         setPolicies(repoPolicies);
-      } else {
+      } else if (policies.length == 0) {
         addNewPolicy();
       }
     }

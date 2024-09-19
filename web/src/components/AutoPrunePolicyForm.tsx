@@ -11,6 +11,7 @@ import {
   HelperTextItem,
   NumberInput,
   TextInput,
+  Title,
 } from '@patternfly/react-core';
 import {
   AutoPruneMethod,
@@ -92,6 +93,9 @@ export default function AutoPrunePolicyForm(props: AutoPrunePolicyForm) {
 
   return (
     <Form id={`autoprune-policy-form-${props.index}`} maxWidth="70%">
+      <Title headingLevel="h3" style={{paddingTop: '1em'}}>
+        Policy {props.index + 1}
+      </Title>
       <FormGroup
         isInline
         label="Prune Policy - select a method to prune tags"
@@ -265,7 +269,7 @@ export default function AutoPrunePolicyForm(props: AutoPrunePolicyForm) {
           </FormHelperText>
         </FormGroup>
       </Conditional>
-      <ActionGroup>
+      <ActionGroup style={{margin: '0'}}>
         <Flex justifyContent={{default: 'justifyContentFlexEnd'}} width="100%">
           <Button variant="primary" type="submit" onClick={saveForm}>
             Save
