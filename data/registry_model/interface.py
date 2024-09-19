@@ -378,6 +378,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
+    def set_tags_immutable_for_manifest(self, manifest):
+        """
+        Sets the immutable flag on all tags that point to the given manifest.
+        """
+
+    @abstractmethod
     def get_schema1_parsed_manifest(
         self, manifest, namespace_name, repo_name, tag_name, storage, raise_on_error=False
     ):

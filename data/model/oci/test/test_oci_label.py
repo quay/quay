@@ -1,9 +1,8 @@
-from test.fixtures import *
-
 import pytest
 from playhouse.test_utils import assert_query_count
 
-from data.database import Manifest, ManifestLabel
+from data.database import Manifest, ManifestLabel, Tag
+from data.model import TagImmutableException
 from data.model.oci.label import (
     DataModelException,
     create_manifest_label,
@@ -11,6 +10,8 @@ from data.model.oci.label import (
     get_manifest_label,
     list_manifest_labels,
 )
+from data.model.oci.tag import get_tag, set_tag_immmutable
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -45,6 +46,26 @@ def test_create_manifest_label(key, value, source_type, expected_error, initiali
 
     with assert_query_count(1):
         assert get_manifest_label(label.uuid, manifest) == label
+
+
+def test_create_manifest_label_with_immutable_tags(initialized_db):
+    tag = Tag.get()
+    repo = tag.repository
+
+    assert tag.lifetime_end_ms is None
+
+    with assert_query_count(2):
+        assert set_tag_immmutable(repo, tag.name) == tag
+
+    immutable_tag = get_tag(repo, tag.name)
+
+    assert immutable_tag
+    assert immutable_tag.manifest
+
+    manifest = immutable_tag.manifest
+
+    with pytest.raises(TagImmutableException):
+        label = create_manifest_label(manifest, "foo", "bar", "manifest", raise_on_error=True)
 
 
 def test_list_manifest_labels(initialized_db):
@@ -92,8 +113,31 @@ def test_delete_manifest_label(initialized_db):
             assert get_manifest_label(manifest_label.label.uuid, manifest_label.manifest) is None
         else:
             with pytest.raises(DataModelException):
-                delete_manifest_label(manifest_label.label.uuid, manifest_label.manifest)
+                delete_manifest_label(
+                    manifest_label.label.uuid, manifest_label.manifest, raise_on_error=True
+                )
 
         found = True
 
     assert found
+
+
+def test_delete_manifest_label_with_immutable_tags(initialized_db):
+    tag = Tag.get()
+    repo = tag.repository
+
+    assert tag.lifetime_end_ms is None
+
+    label = create_manifest_label(tag.manifest, "foo", "1", "manifest")
+
+    assert label is not None
+
+    assert set_tag_immmutable(repo, tag.name) == tag
+
+    immutable_tag = get_tag(repo, tag.name)
+
+    assert immutable_tag
+    assert immutable_tag.manifest
+
+    with pytest.raises(TagImmutableException):
+        delete_manifest_label(label.uuid, immutable_tag.manifest, raise_on_error=True)

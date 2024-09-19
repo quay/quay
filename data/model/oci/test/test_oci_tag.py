@@ -35,6 +35,8 @@ from data.model.oci.tag import (
     remove_tag_from_timemachine,
     retarget_tag,
     set_tag_expiration_for_manifest,
+    set_tag_immmutable,
+    set_tag_mutable,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.repository import create_repository, get_repository
@@ -340,6 +342,31 @@ def test_get_expired_tag(namespace_name, repo_name, tag_name, expected, initiali
         assert bool(get_expired_tag(repo, tag_name)) == expected
 
 
+def test_set_tag_immutability(initialized_db):
+    tag = Tag.get()
+    repo = tag.repository
+
+    assert get_tag(repo, tag.name) == tag
+    assert tag.lifetime_end_ms is None
+
+    with assert_query_count(2):
+        assert set_tag_immmutable(repo, tag.name) == tag
+
+    immutable_tag = get_tag(repo, tag.name)
+    assert immutable_tag == tag
+    assert immutable_tag.immutable
+    assert immutable_tag.lifetime_end_ms is None
+
+    with assert_query_count(2):
+        assert set_tag_mutable(repo, tag.name) == tag
+        assert not tag.immutable
+
+    mutable_tag = get_tag(repo, tag.name)
+    assert mutable_tag == tag
+    assert not mutable_tag.immutable
+    assert tag.lifetime_end_ms is None
+
+
 def test_delete_tag(initialized_db):
     found = False
     with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
@@ -356,6 +383,31 @@ def test_delete_tag(initialized_db):
             found = True
 
     assert found
+
+
+def test_delete_tag_immutable_tag(initialized_db):
+    tag = Tag.get()
+    repo = tag.repository
+
+    assert get_tag(repo, tag.name) == tag
+    assert tag.lifetime_end_ms is None
+
+    with assert_query_count(2):
+        assert set_tag_immmutable(repo, tag.name) == tag
+
+    immutable_tag = get_tag(repo, tag.name)
+    assert immutable_tag == tag
+    assert immutable_tag.immutable
+    assert immutable_tag.lifetime_end_ms is None
+
+    with assert_query_count(1):
+        try:
+            delete_tag(repo, tag.name) == tag
+            assert False, "Expected assertion error"
+        except AssertionError:
+            pass
+
+    assert get_tag(repo, tag.name) is not None
 
 
 def test_delete_tag_manifest_list(initialized_db):
@@ -427,6 +479,24 @@ def test_delete_tags_for_manifest_same_manifest(initialized_db):
         assert get_tag(new_repo, "another2") is None
 
 
+def test_delete_tags_for_manifests_immutable_tag(initialized_db):
+    new_repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(new_repo, "1")
+
+    # Add some tag history, moving a tag back and forth between two manifests.
+    mutable_tag = retarget_tag("latest", manifest)
+    immutable_tag = retarget_tag("immutable", manifest)
+
+    set_tag_immmutable(new_repo.id, immutable_tag.name)
+
+    deleted_tags = delete_tags_for_manifest(manifest)
+
+    assert deleted_tags is None
+
+    assert get_tag(new_repo.id, mutable_tag.name) is not None
+    assert get_tag(new_repo.id, immutable_tag.name) is not None
+
+
 @pytest.mark.parametrize(
     "timedelta, expected_timedelta",
     [
@@ -460,6 +530,16 @@ def test_change_tag_expiration(timedelta, expected_timedelta, initialized_db):
     assert updated_tag.lifetime_end_ms is None
 
 
+def test_change_tag_expiration_immutable_tag(initialized_db):
+    tag = Tag.get()
+    assert tag.lifetime_end_ms is None
+    assert set_tag_immmutable(tag.repository, tag.name) == tag
+
+    original_end_ms, okay = change_tag_expiration(tag, datetime.utcnow() + timedelta(weeks=1))
+    assert not okay
+    assert original_end_ms is None
+
+
 def test_set_tag_expiration_for_manifest(initialized_db):
     tag = Tag.get()
     manifest = tag.manifest
@@ -469,6 +549,22 @@ def test_set_tag_expiration_for_manifest(initialized_db):
 
     updated_tag = Tag.get(id=tag.id)
     assert updated_tag.lifetime_end_ms is not None
+
+
+def test_set_tag_expiration_for_manifest_immutable_tag(initialized_db):
+    tag = Tag.get()
+    manifest = tag.manifest
+    assert manifest is not None
+    set_tag_immmutable(tag.repository, tag.name)
+
+    updated_tags = set_tag_expiration_for_manifest(manifest, datetime.utcnow() + timedelta(weeks=1))
+
+    assert updated_tags is None
+
+    updated_tag_from_db = Tag.get(id=tag.id)
+    assert updated_tag_from_db is not None
+    assert updated_tag_from_db.lifetime_end_ms is None
+    assert updated_tag_from_db.immutable
 
 
 def test_create_temporary_tag_if_necessary(initialized_db):
@@ -563,6 +659,22 @@ def test_retarget_tag_wrong_name(initialized_db):
     assert len(results) == 2
 
 
+def test_retarget_immutable_tag(initialized_db):
+    repo = get_repository("devtable", "history")
+    results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
+    assert len(results) == 2
+
+    tag = results[0]
+    assert tag.lifetime_end_ms is None
+    assert set_tag_immmutable(tag.repository, tag.name) == tag
+
+    created = retarget_tag("latest", results[1].manifest, is_reversion=True)
+    assert created is None
+
+    results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
+    assert len(results) == 2
+
+
 def test_lookup_unrecoverable_tags(initialized_db):
     # Ensure no existing tags are found.
     for repo in Repository.select():
@@ -636,6 +748,25 @@ def test_remove_tag_from_timemachine_alive(initialized_db):
 
     tag = Tag.select().where(Tag.id == tag.id).get()
     assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+    assert not tag.hidden
+
+
+def test_remove_immutable_tag_from_timemachine_alive(initialized_db):
+    org = get_user("devtable")
+    repo = get_repository("devtable", "history")
+    tag = get_tag(repo, "latest")
+    assert tag.lifetime_end_ms is None or tag.lifetime_end_ms > get_epoch_timestamp_ms()
+    assert tag is not None
+    assert org.removed_tag_expiration_s > 0
+    assert set_tag_immmutable(repo, tag.name) == tag
+
+    tag_lifetime_end_ms = tag.lifetime_end_ms
+
+    updated = remove_tag_from_timemachine(repo.id, "latest", tag.manifest, is_alive=True)
+    assert not updated
+
+    tag = Tag.select().where(Tag.id == tag.id).get()
+    assert tag.lifetime_end_ms == tag_lifetime_end_ms
     assert not tag.hidden
 
 

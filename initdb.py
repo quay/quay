@@ -224,7 +224,9 @@ def __create_manifest_and_tags(
         )
 
 
-def __generate_repository(user_obj, name, description, is_public, permissions, structure):
+def __generate_repository(
+    user_obj, name, description, is_public, permissions, structure, builder=None
+):
     repo = model.repository.create_repository(user_obj.username, name, user_obj)
 
     if is_public:
@@ -240,9 +242,9 @@ def __generate_repository(user_obj, name, description, is_public, permissions, s
     tag_map = {}
     if isinstance(structure, list):
         for leaf in structure:
-            __create_manifest_and_tags(repo, leaf, user_obj.username, tag_map)
+            __create_manifest_and_tags(repo, leaf, user_obj.username, tag_map, builder=builder)
     else:
-        __create_manifest_and_tags(repo, structure, user_obj.username, tag_map)
+        __create_manifest_and_tags(repo, structure, user_obj.username, tag_map, builder=builder)
 
     return repo
 
@@ -446,6 +448,7 @@ def initialize_database():
     LogEntryKind.create(name="manifest_label_delete")
 
     LogEntryKind.create(name="change_tag_expiration")
+    LogEntryKind.create(name="change_tag_immutability")
     LogEntryKind.create(name="toggle_repo_trigger")
 
     LogEntryKind.create(name="create_app_specific_token")

@@ -43,9 +43,8 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.api.user import PrivateRepositories, User
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import NotFound, PreconditionFailed, Unauthorized
 from proxy import Proxy, UpstreamRegistryError
-from util.marketplace import MarketplaceSubscriptionApi
 from util.names import parse_robot_username
 from util.request import get_request_ip
 
@@ -976,7 +975,7 @@ class OrganizationProxyCacheConfig(ApiResource):
         data = {k: v for k, v in data.items() if (v is not None or not "")}
 
         try:
-            config = model.proxy_cache.create_proxy_cache_config(**data)
+            config = model.proxy_cache.create_proxy_cache_config(**data, raise_on_error=True)
             if config is not None:
                 log_action(
                     "create_proxy_cache_config",
@@ -988,6 +987,8 @@ class OrganizationProxyCacheConfig(ApiResource):
                     },
                 )
                 return "Created", 201
+        except model.TagImmutableException as e:
+            raise PreconditionFailed(str(e))
         except model.DataModelException as e:
             logger.error("Error while creating Proxy cache configuration as: %s", str(e))
 

@@ -1,9 +1,12 @@
+import json
 import os
-from datetime import timedelta
+from io import BytesIO
 
 import pytest
 
-from data.database import BlobUpload, QuotaRepositorySize, Repository
+from app import storage
+from data.database import BlobUpload, QuotaRepositorySize, Repository, RepositoryState
+from data.model import TagImmutableException
 from data.model.repository import (
     create_repository,
     get_estimated_repository_count,
@@ -11,8 +14,13 @@ from data.model.repository import (
     get_repository,
     get_repository_sizes,
     get_size_during_upload,
+    set_repository_state,
 )
 from data.model.storage import get_image_location_for_name
+from data.registry_model import registry_model
+from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
+from data.registry_model.datatypes import RepositoryReference
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *
 
 
@@ -142,3 +150,58 @@ def test_get_repository_sizes(initialized_db):
         repo2.id: 92,
         repo3.id: 0,
     }
+
+
+def test_set_immutable_tag_and_change_state(initialized_db):
+    # Create a repository and some tags
+    repo = create_repository(
+        "devtable", "somenewrepo", None, repo_kind="image", visibility="public"
+    )
+    _ = _create_tag(repo, "tag1")
+    tag = _create_tag(repo, "tag2")
+    _ = _create_tag(repo, "tag3")
+
+    # Set one of the tags to immutable
+    registry_model.set_tag_immutable(tag)
+
+    # Attempt to change the repository state to "mirror" and expect it to fail with a exception
+    with pytest.raises(TagImmutableException):
+        set_repository_state(repo, RepositoryState.MIRROR, raise_on_error=True)
+
+
+def _create_tag(repo, name):
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
+    with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        app_config = {"TESTING": True}
+        config_json = json.dumps(
+            {
+                "config": {
+                    "author": "Repo Mirror",
+                },
+                "rootfs": {"type": "layers", "diff_ids": []},
+                "history": [
+                    {
+                        "created": "2019-07-30T18:37:09.284840891Z",
+                        "created_by": "base",
+                        "author": "Repo Mirror",
+                    },
+                ],
+            }
+        )
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+        assert blob
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(blob.digest, blob.compressed_size)
+    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    manifest = builder.build()
+
+    manifest, tag = registry_model.create_manifest_and_retarget_tag(
+        repo_ref, manifest, name, storage, raise_on_error=True
+    )
+    assert tag
+    assert tag.name == name
+
+    return tag

@@ -4,6 +4,7 @@ from data.database import (
     Namespace,
     Repository,
     RepositoryPermission,
+    Tag,
     Team,
     TeamMember,
     TeamRole,
@@ -203,5 +204,21 @@ def is_org_admin(user, org):
         .switch(Team)
         .join(TeamRole)
         .where(Team.organization == org, TeamRole.name == "admin", TeamMember.user == user)
+        .exists()
+    )
+
+
+def has_immutable_tags(org_name):
+    """
+    Returns true if the given organization has any repositories containing tags that are set to immutable.
+
+    """
+    return (
+        Tag.select()
+        .join(Repository)
+        .join(User)
+        .where(User.username == org_name)
+        .where(User.organization == True)
+        .where(Tag.immutable == True)
         .exists()
     )
