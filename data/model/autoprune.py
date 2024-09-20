@@ -272,12 +272,12 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
         namespace = get_active_namespace_user_by_username(orgname)
         namespace_id = namespace.id
 
-        if namespace_has_autoprune_policy(namespace_id):
-            raise NamespaceAutoPrunePolicyAlreadyExists(
-                "Policy for this namespace already exists, delete existing to create new policy"
-            )
-
         assert_valid_namespace_autoprune_policy(policy_config)
+
+        if duplicate_namespace_policy(namespace_id, policy_config):
+            raise NamespaceAutoPrunePolicyAlreadyExists(
+                "Existing policy with same values for this namespace, duplicate policies are not permitted"
+            )
 
         new_policy = NamespaceAutoPrunePolicyTable.create(
             namespace=namespace_id, policy=json.dumps(policy_config)
@@ -304,12 +304,12 @@ def create_repository_autoprune_policy(orgname, repo_name, policy_config, create
         if repo is None:
             raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
 
-        if repository_has_autoprune_policy(repo.id):
-            raise RepositoryAutoPrunePolicyAlreadyExists(
-                "Policy for this repository already exists, delete existing to create new policy"
-            )
-
         assert_valid_repository_autoprune_policy(policy_config)
+
+        if duplicate_repository_policy(repo.id, policy_config):
+            raise RepositoryAutoPrunePolicyAlreadyExists(
+                "Existing policy with same values for this repository, duplicate policies are not permitted"
+            )
 
         new_policy = RepositoryAutoPrunePolicyTable.create(
             namespace=namespace_id, repository=repo.id, policy=json.dumps(policy_config)
@@ -448,6 +448,42 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
                 f"Policy not found for repository: {repo_name} with uuid: {uuid}"
             )
         return True
+
+
+def check_existing_policy(db_policy, policy_config):
+    if (
+        db_policy["method"] == policy_config["method"]
+        and db_policy["value"] == policy_config["value"]
+        and db_policy.get("tag_pattern", None) == policy_config.get("tag_pattern", None)
+        and db_policy.get("tag_pattern_matches", True)
+        == policy_config.get("tag_pattern_matches", True)
+    ):
+        return True
+    return False
+
+
+def duplicate_namespace_policy(namespace_id, policy_config):
+    result = NamespaceAutoPrunePolicyTable.select().where(
+        NamespaceAutoPrunePolicyTable.namespace == namespace_id
+    )
+
+    for r in result:
+        db_policy = json.loads(r.policy)
+        if check_existing_policy(db_policy, policy_config):
+            return True
+    return False
+
+
+def duplicate_repository_policy(repo_id, policy_config):
+    result = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.repository == repo_id
+    )
+
+    for r in result:
+        db_policy = json.loads(r.policy)
+        if check_existing_policy(db_policy, policy_config):
+            return True
+    return False
 
 
 def namespace_has_autoprune_policy(namespace_id):
@@ -669,16 +705,14 @@ def execute_policies_for_repo(
 ):
     """
     Executes both repository and namespace level policies for the given repository. The policies
-    are applied in a serial fashion and are run asynchronosly in the background.
+    are applied in a serial fashion and are run asynchronously in the background.
     """
+    if include_repo_policies:
+        repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
+        for repo_policy in repo_policies:
+            execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+
     for ns_policy in ns_policies:
-
-        if include_repo_policies:
-            repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-            # note: currently only one policy is configured per repo
-            for repo_policy in repo_policies:
-                execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
-
         # execute associated namespace policy
         execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
 

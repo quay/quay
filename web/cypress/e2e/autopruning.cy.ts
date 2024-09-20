@@ -12,9 +12,7 @@ describe('Namespace settings - autoprune policies', () => {
   });
 
   const attemptCreateTagNumberPolicy = (cy) => {
-    cy.get('[data-testid="namespace-auto-prune-method"]').select(
-      'By number of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
     cy.get('input[aria-label="number of tags"]').should('have.value', '20');
     // Since we're using an older version of numberinput, the field can never be empty and will
     // always include a 0. Here we backspace to remove that 0.
@@ -23,9 +21,7 @@ describe('Namespace settings - autoprune policies', () => {
   };
 
   const attemptCreateCreationDatePolicy = (cy) => {
-    cy.get('[data-testid="namespace-auto-prune-method"]').select(
-      'By age of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By age of tags');
     cy.get('input[aria-label="tag creation date value"]').should(
       'have.value',
       '7',
@@ -38,10 +34,32 @@ describe('Namespace settings - autoprune policies', () => {
     cy.contains('Save').click();
   };
 
+  const createMultiplePolicies = (cy) => {
+    // Create initial policy
+    attemptCreateTagNumberPolicy(cy);
+    cy.contains('Successfully created auto-prune policy');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '25');
+
+    cy.contains('Add Policy').click();
+    cy.get('#autoprune-policy-form-1', {timeout: 3000}).should('be.visible');
+
+    // Create second policy
+    cy.get('#autoprune-policy-form-1').within(() => {
+      attemptCreateCreationDatePolicy(cy);
+    });
+
+    cy.contains('Successfully created auto-prune policy');
+    cy.get('input[aria-label="tag creation date value"]').should(
+      'have.value',
+      '2',
+    );
+    cy.get('select[aria-label="tag creation date unit"]').contains('weeks');
+  };
+
   it('creates policy based on number of tags', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     // Create policy
     attemptCreateTagNumberPolicy(cy);
@@ -52,7 +70,7 @@ describe('Namespace settings - autoprune policies', () => {
   it('creates policy based on creation date', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     // Create policy
     attemptCreateCreationDatePolicy(cy);
@@ -67,7 +85,7 @@ describe('Namespace settings - autoprune policies', () => {
   it('updates policy', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     // Create initial policy
     attemptCreateTagNumberPolicy(cy);
@@ -87,7 +105,7 @@ describe('Namespace settings - autoprune policies', () => {
   it('deletes policy', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     // Create initial policy
     attemptCreateTagNumberPolicy(cy);
@@ -95,7 +113,7 @@ describe('Namespace settings - autoprune policies', () => {
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
     // Delete policy
-    cy.get('[data-testid="namespace-auto-prune-method"]').select('None');
+    cy.get('[data-testid="auto-prune-method"]').select('None');
     cy.contains('Save').click();
     cy.contains('Successfully deleted auto-prune policy');
   });
@@ -129,7 +147,7 @@ describe('Namespace settings - autoprune policies', () => {
     );
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     attemptCreateTagNumberPolicy(cy);
     attemptCreateCreationDatePolicy(cy);
@@ -144,13 +162,13 @@ describe('Namespace settings - autoprune policies', () => {
     );
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').contains('None');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
 
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Successfully created auto-prune policy');
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
-    cy.get('[data-testid="namespace-auto-prune-method"]').select('None');
+    cy.get('[data-testid="auto-prune-method"]').select('None');
     cy.contains('Save').click();
     cy.contains('Could not delete auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
@@ -169,9 +187,7 @@ describe('Namespace settings - autoprune policies', () => {
   it('creates policy with tag filter', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="namespace-auto-prune-method"]').select(
-      'By age of tags',
-    );
+    cy.get('[data-testid="auto-prune-method"]').select('By age of tags');
     cy.get('input[aria-label="tag creation date value"]').should(
       'have.value',
       '7',
@@ -204,4 +220,47 @@ describe('Namespace settings - autoprune policies', () => {
   //     cy.get('input[aria-label="tag creation date value"]').should('have.value', '2');
   //     cy.get('div[aria-label="tag creation date unit"]').contains('weeks');
   // });
+
+  it('create multiple policies', () => {
+    cy.visit('/organization/testorg?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
+
+    createMultiplePolicies(cy);
+  });
+
+  it('update with multiple policies', () => {
+    cy.visit('/organization/testorg?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+
+    createMultiplePolicies(cy);
+
+    // Update second policy
+    cy.get('#autoprune-policy-form-1').within(() => {
+      cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
+      cy.contains('Save').click();
+    });
+    cy.contains('Successfully updated auto-prune policy');
+    cy.get('#autoprune-policy-form-1').within(() => {
+      cy.get('input[aria-label="number of tags"]').should('have.value', '20');
+    });
+  });
+
+  it('delete with multiple policies', () => {
+    cy.visit('/organization/testorg?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+
+    createMultiplePolicies(cy);
+
+    // Delete second policy
+    cy.get('#autoprune-policy-form-1').within(() => {
+      cy.get('[data-testid="auto-prune-method"]').select('None');
+      cy.contains('Save').click();
+    });
+
+    cy.contains('Successfully deleted auto-prune policy');
+
+    // second policy form should not exist
+    cy.get('#autoprune-policy-form-1').should('not.exist');
+  });
 });

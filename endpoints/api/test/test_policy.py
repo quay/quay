@@ -92,12 +92,9 @@ def test_create_org_policy_already_existing(initialized_db, app):
             "POST",
             {"orgname": "buynlarge"},
             {"method": "creation_date", "value": "2w"},
-            expected_code=400,
+            expected_code=201,
         ).json
-        assert (
-            response["error_message"]
-            == "Policy for this namespace already exists, delete existing to create new policy"
-        )
+        assert response["uuid"] is not None
 
 
 def test_create_org_policy_nonexistent_method(initialized_db, app):
@@ -319,12 +316,9 @@ def test_create_user_policy_already_existing(initialized_db, app):
             "POST",
             None,
             {"method": "creation_date", "value": "2w"},
-            expected_code=400,
+            expected_code=201,
         ).json
-        assert (
-            response["error_message"]
-            == "Policy for this namespace already exists, delete existing to create new policy"
-        )
+        assert response["uuid"] is not None
 
 
 def test_get_user_policy(initialized_db, app):
@@ -539,12 +533,9 @@ def test_create_repo_policy_already_existing(initialized_db, app):
             "POST",
             params,
             {"method": "creation_date", "value": "2w"},
-            expected_code=400,
+            expected_code=201,
         ).json
-        assert (
-            response["error_message"]
-            == "Policy for this repository already exists, delete existing to create new policy"
-        )
+        assert response["uuid"] is not None
 
 
 def test_create_repo_policy_nonexistent_method(initialized_db, app):

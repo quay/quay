@@ -854,3 +854,114 @@ def test_prune_by_creation_date_with_tag_filter(tags, expected, matches, initial
         expected.remove(tag.name)
 
     assert len(expected) == 0
+
+
+def test_multiple_policies_for_namespace(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    ns_policy1 = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall",
+        {
+            "method": "creation_date",
+            "value": "3d",
+            "tag_pattern": ".*",
+            "tag_pattern_matches": True,
+        },
+        create_task=True,
+    )
+
+    ns_policy2 = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "number_of_tags", "value": 5}, create_task=True
+    )
+
+    ns_policy3 = model.autoprune.create_namespace_autoprune_policy(
+        "sellnsmall", {"method": "creation_date", "value": "2d"}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "latest", None, repo_kind="image", visibility="public"
+    )
+
+    repo2 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+
+    _create_tags(repo1, manifest_repo1.manifest, 2)
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="4d")
+    _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="1d")
+    _create_tags(repo2, manifest_repo2.manifest, 3)
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="4d")
+    _create_tags(repo2, manifest_repo2.manifest, 2, start_time_before="1d")
+
+    _assert_repo_tag_count(repo1, 7)
+    _assert_repo_tag_count(repo2, 7)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo2, 5)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy1.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy2.namespace_id)
+    assert task2.status == "success"
+
+    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(ns_policy3.namespace_id)
+    assert task3.status == "success"
+
+
+def test_multiple_policies_for_repository(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    repo1_policy1 = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "repo1",
+        {
+            "method": "creation_date",
+            "value": "3d",
+            "tag_pattern": ".*",
+            "tag_pattern_matches": True,
+        },
+        create_task=True,
+    )
+
+    repo1_policy2 = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 3}, create_task=True
+    )
+
+    repo1_policy3 = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+
+    _create_tags(repo1, manifest_repo1.manifest, 2)
+    _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="4d")
+    _create_tags(repo1, manifest_repo1.manifest, 3, start_time_before="1d")
+
+    _assert_repo_tag_count(repo1, 7)
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, 3)
+
+    task1 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy1.namespace_id)
+    assert task1.status == "success"
+
+    task2 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy2.namespace_id)
+    assert task2.status == "success"
+
+    task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy3.namespace_id)
+    assert task3.status == "success"

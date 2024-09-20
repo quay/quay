@@ -1,19 +1,4 @@
-import {
-  ActionGroup,
-  Button,
-  Flex,
-  Form,
-  FormGroup,
-  FormSelect,
-  FormSelectOption,
-  NumberInput,
-  Spinner,
-  Title,
-  FormHelperText,
-  HelperText,
-  HelperTextItem,
-  TextInput,
-} from '@patternfly/react-core';
+import {Button, Spinner, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
 import Conditional from 'src/components/empty/Conditional';
@@ -32,6 +17,7 @@ import {
   NamespaceAutoPrunePolicy,
 } from 'src/resources/NamespaceAutoPruneResource';
 import ReadonlyAutoprunePolicy from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruningReadonlyPolicy';
+import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
 
 // Must match convert_to_timedelta from backend
 export const shorthandTimeUnits = {
@@ -43,13 +29,7 @@ export const shorthandTimeUnits = {
 };
 
 export default function AutoPruning(props: AutoPruning) {
-  const [uuid, setUuid] = useState<string>(null);
-  const [method, setMethod] = useState<AutoPruneMethod>(AutoPruneMethod.NONE);
-  const [tagCount, setTagCount] = useState<number>(20);
-  const [tagCreationDateUnit, setTagCreationDateUnit] = useState<string>('d');
-  const [tagCreationDateValue, setTagCreationDateValue] = useState<number>(7);
-  const [tagPattern, setTagPattern] = useState<string>(null);
-  const [tagPatternMatches, setTagPatternMatches] = useState<boolean>(true);
+  const [policies, setPolicies] = useState([]);
   const {addAlert} = useAlerts();
   const config = useQuayConfig();
   const {
@@ -80,43 +60,10 @@ export default function AutoPruning(props: AutoPruning) {
 
   useEffect(() => {
     if (successFetchingPolicies) {
-      // Currently we only support one policy per namespace but
-      // this will change in the future.
       if (nsPolicies.length > 0) {
-        const policy: NamespaceAutoPrunePolicy = nsPolicies[0];
-        setMethod(policy.method);
-        setUuid(policy.uuid);
-        setTagPattern(policy.tagPattern);
-        setTagPatternMatches(policy.tagPatternMatches);
-        switch (policy.method) {
-          case AutoPruneMethod.TAG_NUMBER: {
-            setTagCount(policy.value as number);
-            break;
-          }
-          case AutoPruneMethod.TAG_CREATION_DATE: {
-            const tagAgeValue = (policy.value as string).match(/\d+/g);
-            const tagAgeUnit = (policy.value as string).match(/[a-zA-Z]+/g);
-            if (tagAgeValue.length > 0 && tagAgeUnit.length > 0) {
-              setTagCreationDateValue(Number(tagAgeValue[0]));
-              setTagCreationDateUnit(tagAgeUnit[0]);
-            } else {
-              // Shouldn't ever happen but leave it here just in case
-              console.error('Invalid tag age value');
-            }
-            break;
-          }
-        }
+        setPolicies(nsPolicies);
       } else {
-        // If no policy was returned it's possible this was
-        // after the deletion of the policy, in which all the state
-        // has to be reset
-        setUuid(null);
-        setMethod(AutoPruneMethod.NONE);
-        setTagCount(20);
-        setTagCreationDateUnit('d');
-        setTagCreationDateValue(7);
-        setTagPattern(null);
-        setTagPatternMatches(true);
+        addNewPolicy();
       }
     }
   }, [successFetchingPolicies, dataUpdatedAt]);
@@ -178,29 +125,28 @@ export default function AutoPruning(props: AutoPruning) {
     }
   }, [errorDeletePolicy]);
 
-  const onSave = (e) => {
-    e.preventDefault();
-    let value = null;
-    switch (method) {
-      case AutoPruneMethod.TAG_NUMBER:
-        value = tagCount;
-        break;
-      case AutoPruneMethod.TAG_CREATION_DATE:
-        value = `${String(tagCreationDateValue)}${tagCreationDateUnit}`;
-        break;
-      case AutoPruneMethod.NONE:
-        // Delete the policy is done by setting the method to none
-        if (!isNullOrUndefined(uuid)) {
-          deletePolicy(uuid);
-        }
-        return;
-      default:
-        // Reaching here indicates programming error, component should always be aware of valid methods
-        return;
+  const addNewPolicy = () => {
+    setPolicies([
+      ...policies,
+      {
+        method: AutoPruneMethod.NONE,
+        uuid: null,
+        value: null,
+        tagPattern: null,
+        tagPatternMatches: true,
+      },
+    ]);
+  };
+
+  const onSave = (method, value, uuid, tagPattern, tagPatternMatches) => {
+    if (method == AutoPruneMethod.NONE && !isNullOrUndefined(uuid)) {
+      deletePolicy(uuid);
+      return;
     }
+
     if (isNullOrUndefined(uuid)) {
       const policy: NamespaceAutoPrunePolicy = {method: method, value: value};
-      if (tagPattern != null) {
+      if (tagPattern != '') {
         policy.tagPattern = tagPattern;
         policy.tagPatternMatches = tagPatternMatches;
       }
@@ -211,7 +157,7 @@ export default function AutoPruning(props: AutoPruning) {
         method: method,
         value: value,
       };
-      if (tagPattern != null) {
+      if (tagPattern != '') {
         policy.tagPattern = tagPattern;
         policy.tagPatternMatches = tagPatternMatches;
       }
@@ -245,195 +191,19 @@ export default function AutoPruning(props: AutoPruning) {
         Auto-pruning policies automatically delete tags across all repositories
         within this organization by a given method.
       </p>
-      <Form id="autpruning-form" maxWidth="70%">
-        <FormGroup
-          isInline
-          label="Prune Policy - select a method to prune tags"
-          fieldId="method"
-          isRequired
-        >
-          <FormSelect
-            placeholder=""
-            aria-label="namespace-auto-prune-method"
-            data-testid="namespace-auto-prune-method"
-            value={method}
-            onChange={(_, val) => setMethod(val as AutoPruneMethod)}
-          >
-            <FormSelectOption
-              key={1}
-              value={AutoPruneMethod.NONE}
-              label="None"
-            />
-            <FormSelectOption
-              key={2}
-              value={AutoPruneMethod.TAG_NUMBER}
-              label="By number of tags"
-            />
-            <FormSelectOption
-              key={3}
-              value={AutoPruneMethod.TAG_CREATION_DATE}
-              label="By age of tags"
-            />
-          </FormSelect>
-          <FormHelperText>
-            <HelperText>
-              <HelperTextItem>The method used to prune tags.</HelperTextItem>
-            </HelperText>
-          </FormHelperText>
-        </FormGroup>
-        <Conditional if={method === AutoPruneMethod.TAG_NUMBER}>
-          <FormGroup label="The number of tags to keep." fieldId="" isRequired>
-            <NumberInput
-              value={tagCount}
-              onMinus={() => {
-                tagCount > 1 ? setTagCount(tagCount - 1) : setTagCount(1);
-              }}
-              onChange={(e) => {
-                const input = (e.target as HTMLInputElement).value;
-                const value = Number(input);
-                if (value > 0 && /^\d+$/.test(input)) {
-                  setTagCount(value);
-                }
-              }}
-              onPlus={() => {
-                setTagCount(tagCount + 1);
-              }}
-              inputAriaLabel="number of tags"
-              minusBtnAriaLabel="minus"
-              plusBtnAriaLabel="plus"
-              data-testid="namespace-auto-prune-tag-count"
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  All tags sorted by earliest creation date will be deleted
-                  until the repository total falls below the threshold
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-        </Conditional>
-        <Conditional if={method === AutoPruneMethod.TAG_CREATION_DATE}>
-          <FormGroup
-            label="Delete tags older than given timespan."
-            fieldId=""
-            isRequired
-            isInline
-          >
-            <div style={{display: 'flex'}}>
-              <NumberInput
-                value={tagCreationDateValue}
-                onMinus={() => {
-                  tagCreationDateValue > 1
-                    ? setTagCreationDateValue(tagCreationDateValue - 1)
-                    : setTagCreationDateValue(1);
-                }}
-                onChange={(e) => {
-                  const input = (e.target as HTMLInputElement).value;
-                  const value = Number(input);
-                  if (value > 0 && /^\d+$/.test(input)) {
-                    setTagCreationDateValue(value);
-                  }
-                }}
-                onPlus={() => {
-                  setTagCreationDateValue(tagCreationDateValue + 1);
-                }}
-                inputAriaLabel="tag creation date value"
-                minusBtnAriaLabel="minus"
-                plusBtnAriaLabel="plus"
-                data-testid="namespace-auto-prune-tag-creation-date-value"
-                style={{paddingRight: '1em'}}
-              />
-              <FormSelect
-                placeholder=""
-                aria-label="tag creation date unit"
-                data-testid="tag-auto-prune-creation-date-timeunit"
-                value={tagCreationDateUnit}
-                onChange={(_, val) => setTagCreationDateUnit(val)}
-                style={{width: '10em'}}
-              >
-                {Object.keys(shorthandTimeUnits).map((key) => (
-                  <FormSelectOption
-                    key={key}
-                    value={key}
-                    label={shorthandTimeUnits[key]}
-                  />
-                ))}
-              </FormSelect>
-            </div>
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  All tags with a creation date earlier than the selected time
-                  period will be deleted
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-        </Conditional>
-        <Conditional if={method !== AutoPruneMethod.NONE}>
-          <FormGroup label="Tag pattern" isInline>
-            <div style={{display: 'flex'}}>
-              <FormSelect
-                style={{width: '10em'}}
-                id="selection"
-                value={tagPatternMatches ? 'matches' : 'doesnotmatch'}
-                onChange={(e, val) => {
-                  setTagPatternMatches(val === 'matches');
-                }}
-                aria-label="tag pattern matches"
-              >
-                <FormSelectOption key={0} value="matches" label="match" />
-                <FormSelectOption
-                  key={1}
-                  value="doesnotmatch"
-                  label="does not match"
-                />
-              </FormSelect>
-            </div>
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  {tagPatternMatches
-                    ? 'Only tags matching the given regex pattern will be pruned'
-                    : 'Only tags not matching the given regex pattern will be pruned'}
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-          <FormGroup isInline>
-            <div style={{display: 'flex'}}>
-              <TextInput
-                style={{width: '25em'}}
-                value={tagPattern}
-                onChange={(e, val) =>
-                  val !== '' ? setTagPattern(val) : setTagPattern(null)
-                }
-                aria-label="tag pattern"
-                data-testid="tag-pattern"
-              />
-            </div>
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  The regex pattern to match tags against. Defaults to all tags
-                  if left empty.
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-        </Conditional>
-        <ActionGroup>
-          <Flex
-            justifyContent={{default: 'justifyContentFlexEnd'}}
-            width="100%"
-          >
-            <Button variant="primary" type="submit" onClick={onSave}>
-              Save
-            </Button>
-          </Flex>
-        </ActionGroup>
-      </Form>
+      {policies.map((policy, index) => (
+        <AutoPrunePolicyForm
+          onSave={onSave}
+          policy={policy}
+          index={index}
+          key={index}
+          successFetchingPolicies={successFetchingPolicies}
+        />
+      ))}
+      <br />
+      <Button variant="primary" type="submit" onClick={addNewPolicy}>
+        Add Policy
+      </Button>
     </>
   );
 }
