@@ -1,4 +1,4 @@
-import billOfMaterials from "../../../bill-of-materials.json"
+import billOfMaterials from "../../bill-of-materials.json"
 
 (function() {
   /**

@@ -1,6 +1,6 @@
 SHELL := /bin/bash
-DOCKER ?= docker
-DOCKER_COMPOSE ?= $(DOCKER)-compose
+DOCKER ?= podman
+DOCKER_COMPOSE ?= $(DOCKER) compose
 
 export PATH := ./venv/bin:$(PATH)
 
@@ -98,8 +98,9 @@ test_postgres:
 	$(TEST_ENV) py.test --timeout=7200 --verbose --ignore=endpoints/appr/test/ -x $(TESTS)
 	$(DOCKER) rm -f $(CONTAINER) || true
 
-WEBPACK := node_modules/.bin/webpack
-$(WEBPACK): package.json
+WEBPACK := static/node_modules/.bin/webpack
+$(WEBPACK): static/package.json
+	cd static
 	npm install webpack
 	npm install
 
@@ -175,9 +176,10 @@ build-image-quay: .build-image-quay-stamp
 	$(DOCKER_COMPOSE) build quay
 	touch $@
 
-node_modules: node_modules/.npm-install-stamp
+node_modules: static/node_modules/.npm-install-stamp
 
-node_modules/.npm-install-stamp: package.json package-lock.json | build-image-local-dev-frontend
+static/node_modules/.npm-install-stamp: static/package.json static/package-lock.json | build-image-local-dev-frontend
+	cd static
 	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
 # if npm install fails for some reason, it may have already created
 # node_modules, so we cannot rely on the directory timestamps and should mark

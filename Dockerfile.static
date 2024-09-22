@@ -1,0 +1,9 @@
+FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
+WORKDIR /opt/app-root/src
+COPY --chown=1001:0 static  .
+# RUN mv static/*.js .
+# RUN mv static/*.json .
+# RUN npm install 
+# RUN npm run build
+ENTRYPOINT /bin/bash
+
