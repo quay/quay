@@ -14,7 +14,7 @@ from util.security.registry_jwt import CLAIM_TUF_ROOTS, decode_bearer_token
 def get_robot_password(username):
     parent_name, robot_shortname = username.split("+", 1)
     parent = get_user(parent_name)
-    _, token, _ = get_robot_and_metadata(robot_shortname, parent)
+    _, token, _, _ = get_robot_and_metadata(robot_shortname, parent)
     return token
 
 

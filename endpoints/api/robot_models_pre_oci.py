@@ -1,3 +1,5 @@
+from typing import Optional
+
 import features
 from app import avatar
 from data import model
@@ -9,6 +11,7 @@ from data.database import (
 )
 from data.database import Team as TeamTable
 from data.database import User
+from endpoints.api import format_date
 from endpoints.api.robot_models_interface import (
     Permission,
     Robot,
@@ -16,6 +19,7 @@ from endpoints.api.robot_models_interface import (
     RobotWithPermissions,
     Team,
 )
+from datetime import datetime, timedelta
 
 
 class RobotPreOCIModel(RobotInterface):
@@ -44,9 +48,14 @@ class RobotPreOCIModel(RobotInterface):
             if robot_name not in robots:
                 robot_dict = {}
                 token = None
+
                 if include_token:
                     if robot_tuple.get(RobotAccountToken.token):
                         token = robot_tuple.get(RobotAccountToken.token).decrypt()
+
+                expiration = robot_tuple.get(RobotAccountToken.expiration)
+                if expiration:
+                    expiration = format_date(expiration)
 
                 robot_dict = {
                     "name": robot_name,
@@ -59,6 +68,7 @@ class RobotPreOCIModel(RobotInterface):
                     "unstructured_metadata": robot_tuple.get(
                         RobotAccountMetadata.unstructured_json
                     ),
+                    "expiration": expiration,
                 }
 
                 if include_permissions:
@@ -76,6 +86,7 @@ class RobotPreOCIModel(RobotInterface):
                         robot_dict["teams"],
                         robot_dict["repositories"],
                         robot_dict["description"],
+                        robot_dict["expiration"],
                     )
                 else:
                     robots[robot_name] = Robot(
@@ -85,6 +96,7 @@ class RobotPreOCIModel(RobotInterface):
                         robot_dict["last_accessed"],
                         robot_dict["description"],
                         robot_dict["unstructured_metadata"],
+                        robot_dict["expiration"],
                     )
 
             if include_permissions:
@@ -113,12 +125,15 @@ class RobotPreOCIModel(RobotInterface):
                     cur_robot_teams,
                     cur_robot_repos,
                     robots[robot_name].description,
+                    robots[robot_name].expiration,
                 )
 
         return list(robots.values())
 
-    def regenerate_user_robot_token(self, robot_shortname, owning_user):
-        robot, password, metadata = model.user.regenerate_robot_token(robot_shortname, owning_user)
+    def regenerate_user_robot_token(self, robot_shortname, owning_user, expiration=None):
+        robot, password, metadata = model.user.regenerate_robot_token(
+            robot_shortname, owning_user, expiration
+        )
         return Robot(
             robot.username,
             password,
@@ -126,11 +141,14 @@ class RobotPreOCIModel(RobotInterface):
             robot.last_accessed,
             metadata.description,
             metadata.unstructured_json,
+            expiration,
         )
 
-    def regenerate_org_robot_token(self, robot_shortname, orgname):
+    def regenerate_org_robot_token(self, robot_shortname, orgname, expiration=None):
         parent = model.organization.get_organization(orgname)
-        robot, password, metadata = model.user.regenerate_robot_token(robot_shortname, parent)
+        robot, password, metadata = model.user.regenerate_robot_token(
+            robot_shortname, parent, expiration
+        )
         return Robot(
             robot.username,
             password,
@@ -138,12 +156,20 @@ class RobotPreOCIModel(RobotInterface):
             robot.last_accessed,
             metadata.description,
             metadata.unstructured_json,
+            expiration,
         )
 
     def delete_robot(self, robot_username):
         model.user.delete_robot(robot_username)
 
-    def create_user_robot(self, robot_shortname, owning_user, description, unstructured_metadata):
+    def create_user_robot(
+        self,
+        robot_shortname: str,
+        owning_user: User,
+        description: str,
+        unstructured_metadata: dict,
+        expiration: Optional[datetime] = None,
+    ) -> Robot:
         robot, password = model.user.create_robot(
             robot_shortname, owning_user, description or "", unstructured_metadata
         )
@@ -154,12 +180,15 @@ class RobotPreOCIModel(RobotInterface):
             robot.last_accessed,
             description or "",
             unstructured_metadata,
+            expiration,
         )
 
-    def create_org_robot(self, robot_shortname, orgname, description, unstructured_metadata):
+    def create_org_robot(
+        self, robot_shortname, orgname, description, unstructured_metadata, expiration=None
+    ):
         parent = model.organization.get_organization(orgname)
         robot, password = model.user.create_robot(
-            robot_shortname, parent, description or "", unstructured_metadata
+            robot_shortname, parent, description or "", unstructured_metadata, expiration
         )
         return Robot(
             robot.username,
@@ -168,11 +197,14 @@ class RobotPreOCIModel(RobotInterface):
             robot.last_accessed,
             description or "",
             unstructured_metadata,
+            expiration,
         )
 
     def get_org_robot(self, robot_shortname, orgname):
         parent = model.organization.get_organization(orgname)
-        robot, password, metadata = model.user.get_robot_and_metadata(robot_shortname, parent)
+        robot, password, expiration, metadata = model.user.get_robot_and_metadata(
+            robot_shortname, parent
+        )
         return Robot(
             robot.username,
             password,
@@ -180,10 +212,13 @@ class RobotPreOCIModel(RobotInterface):
             robot.last_accessed,
             metadata.description,
             metadata.unstructured_json,
+            expiration,
         )
 
     def get_user_robot(self, robot_shortname, owning_user):
-        robot, password, metadata = model.user.get_robot_and_metadata(robot_shortname, owning_user)
+        robot, password, expiration, metadata = model.user.get_robot_and_metadata(
+            robot_shortname, owning_user
+        )
         return Robot(
             robot.username,
             password,
@@ -191,6 +226,7 @@ class RobotPreOCIModel(RobotInterface):
             robot.last_accessed,
             metadata.description,
             metadata.unstructured_json,
+            expiration,
         )
 
     def robot_has_mirror(self, robot_username):

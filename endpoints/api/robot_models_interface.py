@@ -50,6 +50,7 @@ class RobotWithPermissions(
             "teams",
             "repository_names",
             "description",
+            "expiration",
         ],
     )
 ):
@@ -63,6 +64,7 @@ class RobotWithPermissions(
     :type teams: [Team]
     :type repository_names: [string]
     :type description: string
+    :type expiration: datetime|None
     """
 
     def to_dict(self, include_token=False):
@@ -76,6 +78,9 @@ class RobotWithPermissions(
             "repositories": self.repository_names,
             "description": self.description,
         }
+
+        if self.expiration:
+            data["expiration"] = format_date(self.expiration)
 
         if include_token:
             data["token"] = self.password
@@ -93,6 +98,7 @@ class Robot(
             "last_accessed",
             "description",
             "unstructured_metadata",
+            "expiration",
         ],
     )
 ):
@@ -105,6 +111,7 @@ class Robot(
     :type last_accessed: datetime|None
     :type description: string
     :type unstructured_metadata: dict
+    :type expiration: datetime|None
     """
 
     def to_dict(self, include_metadata=False, include_token=False):
@@ -122,6 +129,9 @@ class Robot(
 
         if include_metadata:
             data["unstructured_metadata"] = self.unstructured_metadata
+
+        if self.expiration:
+            data["expiration"] = format_date(self.expiration)
 
         return data
 
@@ -151,7 +161,9 @@ class RobotInterface(object):
         """
 
     @abstractmethod
-    def create_user_robot(self, robot_shortname, owning_user):
+    def create_user_robot(
+        self, robot_shortname, owning_user, description, metadata, expiration=None
+    ):
         """
 
         Returns:
@@ -160,7 +172,7 @@ class RobotInterface(object):
         """
 
     @abstractmethod
-    def create_org_robot(self, robot_shortname, orgname):
+    def create_org_robot(self, robot_shortname, orgname, expiration=None):
         """
 
         Returns:
@@ -178,7 +190,7 @@ class RobotInterface(object):
         """
 
     @abstractmethod
-    def regenerate_user_robot_token(self, robot_shortname, owning_user):
+    def regenerate_user_robot_token(self, robot_shortname, owning_user, expiration=None):
         """
 
         Returns:
@@ -187,7 +199,7 @@ class RobotInterface(object):
         """
 
     @abstractmethod
-    def regenerate_org_robot_token(self, robot_shortname, orgname):
+    def regenerate_org_robot_token(self, robot_shortname, orgname, expiration=None):
         """
 
         Returns:
