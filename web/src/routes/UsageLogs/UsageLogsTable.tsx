@@ -44,6 +44,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     isError: errorLogs,
     fetchNextPage,
     hasNextPage,
+    error,
   } = useInfiniteQuery({
     queryKey: [
       'usageLogs',
@@ -69,7 +70,9 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
   });
 
   if (loadingLogs) return <Spinner />;
-  if (errorLogs) return <RequestError message="Unable to retrieve logs" />;
+  if (errorLogs) {
+    return <RequestError message={error.message} />;
+  }
 
   return (
     <>
