@@ -116,7 +116,6 @@ function RobotFederationForm(props: RobotFederationFormProps) {
     <>
       <Form>
         {federationFormState.map((config, index) => {
-          console.log('form state entry', config, index);
           return (
             <RobotFederationFormEntry
               issuer={config.issuer}
