@@ -23,11 +23,14 @@ import Settings from './Tabs/Settings/Settings';
 import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import OAuthApplicationsList from './Tabs/OAuthApplications/OAuthApplicationsList';
+import CreateOAuthApplicationDrawer from './Tabs/OAuthApplications/CreateOAuthApplicationDrawer';
 
 export enum OrganizationDrawerContentType {
   None,
   AddNewTeamMemberDrawer,
   CreatePermissionSpecificUser,
+  CreateOAuthApplicationDrawer,
 }
 
 export default function Organization() {
@@ -97,6 +100,14 @@ export default function Organization() {
         drawerContent={drawerContent}
       />
     ),
+    [OrganizationDrawerContentType.CreateOAuthApplicationDrawer]: (
+      <CreateOAuthApplicationDrawer
+        orgName={organizationName}
+        closeDrawer={closeDrawer}
+        drawerRef={drawerRef}
+        drawerContent={drawerContent}
+      />
+    ),
   };
 
   const repositoriesSubNav = [
@@ -128,6 +139,16 @@ export default function Organization() {
       name: 'Default permissions',
       component: (
         <DefaultPermissionsList
+          orgName={organizationName}
+          setDrawerContent={setDrawerContent}
+        />
+      ),
+      visible: !isUserOrganization && organization?.is_admin,
+    },
+    {
+      name: 'OAuth Applications',
+      component: (
+        <OAuthApplicationsList
           orgName={organizationName}
           setDrawerContent={setDrawerContent}
         />
