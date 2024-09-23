@@ -385,7 +385,6 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   };
 
   const fetchTokensModal = (robotAccount) => {
-    console.log(`fetch tokens modal ${robotAccount.name}, ${isTokenModalOpen}`);
     setTokenModalOpen(!isTokenModalOpen);
     setRobotForModalView(robotAccount);
   };
