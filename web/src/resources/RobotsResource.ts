@@ -48,6 +48,11 @@ export interface IRobotToken {
   unstructured_metadata: object;
 }
 
+export interface IRobotFederationConfig {
+  issuer: string;
+  subject: string;
+}
+
 export async function fetchAllRobots(orgnames: string[], signal: AbortSignal) {
   return await Promise.all(
     orgnames.map((org) => fetchRobotsForNamespace(org, false, signal)),
@@ -302,6 +307,37 @@ export async function regenerateRobotToken(
   const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
   const updatePermsUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/regenerate`;
   const response: AxiosResponse = await axios.post(updatePermsUrl, {});
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function fetchRobotFederationConfig(
+  orgName: string,
+  robotName: string,
+  signal: AbortSignal,
+) {
+  const robot = robotName.replace(orgName + '+', '');
+  const userOrOrgPath = `organization/${orgName}`;
+  const getRobotFederationConfigUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/federation`;
+  const response: AxiosResponse = await axios.get(getRobotFederationConfigUrl, {
+    signal,
+  });
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function createRobotFederationConfig(
+  orgName: string,
+  robotName: string,
+  federationConfig: IRobotFederationConfig[],
+) {
+  const robot = robotName.replace(orgName + '+', '');
+  const userOrOrgPath = `organization/${orgName}`;
+  const createRobotFederationConfigUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/federation`;
+  const response: AxiosResponse = await axios.post(
+    createRobotFederationConfigUrl,
+    federationConfig,
+  );
   assertHttpCode(response.status, 200);
   return response.data;
 }

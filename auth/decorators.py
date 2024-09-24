@@ -10,6 +10,7 @@ from auth.oauth import validate_bearer_auth
 from auth.signedgrant import validate_signed_grant
 from auth.validateresult import AuthKind
 from util.http import abort
+from util.security.federated_robot_auth import validate_federated_auth
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ process_auth = _auth_decorator(handlers=[validate_signed_grant, validate_basic_a
 process_auth_or_cookie = _auth_decorator(handlers=[validate_basic_auth, validate_session_cookie])
 process_basic_auth = _auth_decorator(handlers=[validate_basic_auth], pass_result=True)
 process_basic_auth_no_pass = _auth_decorator(handlers=[validate_basic_auth])
+process_federated_auth = _auth_decorator(handlers=[validate_federated_auth], pass_result=True)
 
 
 def require_session_login(func):
