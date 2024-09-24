@@ -118,6 +118,7 @@ CONFIG_SCHEMA = {
             "enum": ["normal", "readonly"],
             "x-example": "readonly",
         },
+        # Hosting.
         "PREFERRED_URL_SCHEME": {
             "type": "string",
             "description": "The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`",
@@ -134,6 +135,7 @@ CONFIG_SCHEMA = {
             "description": "If TLS is supported, but terminated at a layer before Quay, must be true.",
             "x-example": True,
         },
+        # SSL/TLS.
         "SSL_CIPHERS": {
             "type": "array",
             "description": "If specified, the nginx-defined list of SSL ciphers to enabled and disabled",
@@ -197,6 +199,7 @@ CONFIG_SCHEMA = {
             "description": "Maximum number of pages the user can paginate in search before they are limited. Defaults to 10",
             "x-example": 10,
         },
+        # E-mail.
         "FEATURE_MAILING": {
             "type": "boolean",
             "description": "Whether emails are enabled. Defaults to True",
@@ -232,6 +235,7 @@ CONFIG_SCHEMA = {
             "description": "If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `admin@example.com`.",
             "x-example": "support@myco.com",
         },
+        # Database.
         "DB_URI": {
             "type": "string",
             "description": "The URI at which to access the database, including any credentials.",
@@ -279,6 +283,7 @@ CONFIG_SCHEMA = {
             "description": "If true, any action in which the audit log entry cannot be written will still succeed. Useful if using an external logging service that may be down intermittently and the registry should continue to work. Defaults to False.",
             "x-example": False,
         },
+        # Storage.
         "FEATURE_STORAGE_REPLICATION": {
             "type": "boolean",
             "description": "Whether to automatically replicate between storage engines. Defaults to False",
@@ -378,6 +383,7 @@ CONFIG_SCHEMA = {
             "description": "If builds are enabled, the path in storage in which to place the archived build logs.",
             "x-example": "archives/buildlogs",
         },
+        # Authentication.
         "AUTHENTICATION_TYPE": {
             "type": "string",
             "description": "The authentication engine to use for credential authentication.",
@@ -397,6 +403,7 @@ CONFIG_SCHEMA = {
             "uniqueItems": True,
             "items": {"type": "string"},
         },
+        # Redis.
         "BUILDLOGS_REDIS": {
             "type": "object",
             "description": "Connection information for Redis for build logs caching",
@@ -441,6 +448,7 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        # OAuth configuration.
         "GITHUB_LOGIN_CONFIG": {
             "type": ["object", "null"],
             "description": "Configuration for using GitHub (Enterprise) as an external login provider",
@@ -595,6 +603,7 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Root URL for documentation links",
         },
+        # Health.
         "HEALTH_CHECKER": {
             "description": "The configured health check.",
             "x-example": (
@@ -607,6 +616,7 @@ CONFIG_SCHEMA = {
             "description": "The prefix applied to all exposed Prometheus metrics. Defaults to `quay`",
             "x-example": "myregistry",
         },
+        # Misc configuration.
         "BLACKLIST_V2_SPEC": {
             "type": "string",
             "description": "The Docker CLI versions to which Quay will respond that V2 is *unsupported*. Defaults to `<1.6.0`",
@@ -651,6 +661,7 @@ CONFIG_SCHEMA = {
             "description": "If enabled, only API calls marked as being made by an XHR will be allowed from browsers. Defaults to True.",
             "x-example": False,
         },
+        # Time machine and tag expiration settings.
         "FEATURE_CHANGE_TAG_EXPIRATION": {
             "type": "boolean",
             "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True.",
@@ -666,6 +677,7 @@ CONFIG_SCHEMA = {
             "description": "The options that users can select for expiration of tags in their namespace (if enabled)",
             "items": {"type": "string", "pattern": "^[0-9]+(w|m|d|h|s)$"},
         },
+        # Team syncing.
         "FEATURE_TEAM_SYNCING": {
             "type": "boolean",
             "description": "Whether to allow for team membership to be synced from a backing group in the authentication engine (LDAP or Keystone)",
@@ -682,6 +694,7 @@ CONFIG_SCHEMA = {
             "description": "If enabled, non-superusers can setup syncing on teams to backing LDAP or Keystone. Defaults To False.",
             "x-example": True,
         },
+        # Security scanning.
         "FEATURE_SECURITY_SCANNER": {
             "type": "boolean",
             "description": "Whether to turn of/off the security scanner. Defaults to False",
@@ -719,11 +732,13 @@ CONFIG_SCHEMA = {
             "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
             "x-example": "PSK",
         },
+        # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",
             "description": "The number of seconds between checking for repository mirror candidates. Defaults to 30.",
             "x-example": 30,
         },
+        # Build
         "FEATURE_GITHUB_BUILD": {
             "type": "boolean",
             "description": "Whether to support GitHub build triggers. Defaults to False",
@@ -759,11 +774,13 @@ CONFIG_SCHEMA = {
             "description": "If not None, the number of successive failures that can occur before a build trigger is automatically disabled. Defaults to 100.",
             "x-example": 50,
         },
+        # Nested repository names
         "FEATURE_EXTENDED_REPOSITORY_NAMES": {
             "type": "boolean",
             "description": "Whether repository names can have nested paths (/)",
             "x-example": True,
         },
+        # Login
         "FEATURE_GITHUB_LOGIN": {
             "type": "boolean",
             "description": "Whether GitHub login is supported. Defaults to False",
@@ -774,6 +791,7 @@ CONFIG_SCHEMA = {
             "description": "Whether Google login is supported. Defaults to False",
             "x-example": False,
         },
+        # Recaptcha
         "FEATURE_RECAPTCHA": {
             "type": "boolean",
             "description": "Whether Recaptcha is necessary for user login and recovery. Defaults to False",
@@ -788,12 +806,14 @@ CONFIG_SCHEMA = {
             "type": ["string", "null"],
             "description": "If recaptcha is enabled, the secret key for the Recaptcha service",
         },
+        # Pass through recaptcha for whitelisted users to support org/user creation via API
         "RECAPTCHA_WHITELISTED_USERS": {
             "type": "array",
             "description": "Quay usernames of those users allowed to create org/user via API bypassing recaptcha security check",
             "uniqueItems": True,
             "items": {"type": "string"},
         },
+        # External application tokens.
         "FEATURE_APP_SPECIFIC_TOKENS": {
             "type": "boolean",
             "description": "If enabled, users can create tokens for use by the Docker CLI. Defaults to True",
@@ -809,131 +829,157 @@ CONFIG_SCHEMA = {
             "description": "Duration of time expired external app tokens will remain before being garbage collected. Defaults to 1d.",
             "pattern": "^[0-9]+(w|m|d|h|s)$",
         },
+        # Feature Flag: Garbage collection.
         "FEATURE_GARBAGE_COLLECTION": {
             "type": "boolean",
             "description": "Whether garbage collection of repositories is enabled. Defaults to True",
             "x-example": False,
         },
+        # Feature Flag: Rate limits.
         "FEATURE_RATE_LIMITS": {
             "type": "boolean",
             "description": "Whether to enable rate limits on API and registry endpoints. Defaults to False",
             "x-example": True,
         },
+        # Feature Flag: Aggregated log retrieval.
         "FEATURE_AGGREGATED_LOG_COUNT_RETRIEVAL": {
             "type": "boolean",
             "description": "Whether to allow retrieval of aggregated log counts. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: Log export.
         "FEATURE_LOG_EXPORT": {
             "type": "boolean",
             "description": "Whether to allow exporting of action logs. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: User last accessed.
         "FEATURE_USER_LAST_ACCESSED": {
             "type": "boolean",
             "description": "Whether to record the last time a user was accessed. Defaults to True",
             "x-example": True,
         },
+        #  # Feature Flag: Permanent Sessions.
         "FEATURE_PERMANENT_SESSIONS": {
             "type": "boolean",
             "description": "Whether sessions are permanent. Defaults to True",
             "x-example": True,
         },
+        #  # Feature Flag: Super User Support.
         "FEATURE_SUPER_USERS": {
             "type": "boolean",
             "description": "Whether super users are supported. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: Use FIPS compliant cryptography.
         "FEATURE_FIPS": {
             "type": "boolean",
             "description": "If set to true, Quay will run using FIPS compliant hash functions. Defaults to False",
             "x-example": True,
         },
+        # Feature Flag: Anonymous Users.
         "FEATURE_ANONYMOUS_ACCESS": {
             "type": "boolean",
             "description": " Whether to allow anonymous users to browse and pull public repositories. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: User Creation.
         "FEATURE_USER_CREATION": {
             "type": "boolean",
             "description": "Whether users can be created (by non-super users). Defaults to True",
             "x-example": True,
         },
+         # Feature Flag: Invite Only User Creation.
         "FEATURE_INVITE_ONLY_USER_CREATION": {
             "type": "boolean",
             "description": "Whether users being created must be invited by another user. Defaults to False",
             "x-example": False,
         },
+         # Feature Flag: Encrypted Basic Auth.
         "FEATURE_REQUIRE_ENCRYPTED_BASIC_AUTH": {
             "type": "boolean",
             "description": "Whether non-encrypted passwords (as opposed to encrypted tokens) can be used for basic auth. Defaults to False",
             "x-example": False,
         },
+        # Feature Flag: Direct Login.
         "FEATURE_DIRECT_LOGIN": {
             "type": "boolean",
             "description": "Whether users can directly login to the UI. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: Advertising V2.
         "FEATURE_ADVERTISE_V2": {
             "type": "boolean",
             "description": "Whether the v2/ endpoint is visible. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: Log Rotation.
         "FEATURE_ACTION_LOG_ROTATION": {
             "type": "boolean",
             "description": "Whether or not to rotate old action logs to storage. Defaults to False",
             "x-example": False,
         },
+        # Feature Flag: Library Support.
         "FEATURE_LIBRARY_SUPPORT": {
             "type": "boolean",
             "description": 'Whether to allow for "namespace-less" repositories when pulling and pushing from Docker. Defaults to True',
             "x-example": True,
         },
+        # Feature Flag: Require Team Invite.
         "FEATURE_REQUIRE_TEAM_INVITE": {
             "type": "boolean",
             "description": "Whether to require invitations when adding a user to a team. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: Collecting and Supporting Metadata.
         "FEATURE_USER_METADATA": {
             "type": "boolean",
             "description": "Whether to collect and support user metadata. Defaults to False",
             "x-example": False,
         },
+        # Feature Flag: Public Reposiotires in _catalog Endpoint.
         "FEATURE_PUBLIC_CATALOG": {
             "type": "boolean",
             "description": "If set to true, the _catalog endpoint returns public repositories. Otherwise, only private repositories can be returned. Defaults to False",
             "x-example": False,
         },
+        # Feature Flag: Reader Build Logs.
         "FEATURE_READER_BUILD_LOGS": {
             "type": "boolean",
             "description": "If set to true, build logs may be read by those with read access to the repo, rather than only write access or admin access. Defaults to False",
             "x-example": False,
         },
+        # Feature Flag: Usernames Autocomplete.
         "FEATURE_PARTIAL_USER_AUTOCOMPLETE": {
             "type": "boolean",
             "description": "If set to true, autocompletion will apply to partial usernames. Defaults to True",
             "x-example": True,
         },
+        # Feature Flag: User log access.
         "FEATURE_USER_LOG_ACCESS": {
             "type": "boolean",
             "description": "If set to true, users will have access to audit logs for their namespace. Defaults to False",
             "x-example": True,
         },
+        # Feature Flag: User renaming.
         "FEATURE_USER_RENAME": {
             "type": "boolean",
             "description": "If set to true, users can rename their own namespace. Defaults to False",
             "x-example": True,
         },
+        # Feature Flag: Username confirmation.
         "FEATURE_USERNAME_CONFIRMATION": {
             "type": "boolean",
             "description": "If set to true, users can confirm their generated usernames. Defaults to True",
             "x-example": False,
         },
+        # Feature Flag: V1 push restriction.
         "FEATURE_RESTRICTED_V1_PUSH": {
             "type": "boolean",
             "description": "If set to true, only namespaces listed in V1_PUSH_WHITELIST support V1 push. Defaults to True",
             "x-example": False,
         },
+        # Feature Flag: Support Repository Mirroring.
         "FEATURE_REPO_MIRROR": {
             "type": "boolean",
             "description": "Whether to enable support for repository mirroring. Defaults to False",
@@ -954,11 +1000,13 @@ CONFIG_SCHEMA = {
             "description": "Enables rolling repository back to previous state in the event the mirror fails. Defaults to false",
             "x-example": "true",
         },
+        # Feature Flag: V1 push restriction.
         "V1_PUSH_WHITELIST": {
             "type": "array",
             "description": "The array of namespace names that support V1 push if FEATURE_RESTRICTED_V1_PUSH is set to true.",
             "x-example": ["some", "namespaces"],
         },
+        # Logs model
         "LOGS_MODEL": {
             "type": "string",
             "description": "Logs model for action logs",
@@ -1203,11 +1251,13 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        # Feature Flag: Blacklist Email Domains
         "FEATURE_BLACKLISTED_EMAILS": {
             "type": "boolean",
             "description": "If set to true, no new User accounts may be created if their email domain is blacklisted.",
             "x-example": False,
         },
+        # Blacklisted Email Domains
         "BLACKLISTED_EMAIL_DOMAINS": {
             "type": "array",
             "description": "The array of email-address domains that is used if FEATURE_BLACKLISTED_EMAILS is set to true.",
@@ -1218,6 +1268,7 @@ CONFIG_SCHEMA = {
             "description": "The time after which a fresh login requires users to reenter their password",
             "x-example": "5m",
         },
+        # Webhook blacklist.
         "WEBHOOK_HOSTNAME_BLACKLIST": {
             "type": "array",
             "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
@@ -1233,11 +1284,13 @@ CONFIG_SCHEMA = {
             "description": "Whether new push to a non-existent organization creates it. Defaults to False.",
             "x-example": False,
         },
+        # Allow first user to be initialized via API
         "FEATURE_USER_INITIALIZE": {
             "type": "boolean",
             "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
             "x-example": False,
         },
+        # OCI artifact types
         "ALLOWED_OCI_ARTIFACT_TYPES": {
             "type": "object",
             "description": "The set of allowed OCI artifact mimetypes and the assiciated layer types",
@@ -1253,11 +1306,13 @@ CONFIG_SCHEMA = {
             "description": "Enables OCI 1.1's referrers API",
             "x-example": False,
         },
+        # Clean partial uploads during S3 multipart upload
         "CLEAN_BLOB_UPLOAD_FOLDER": {
             "type": "boolean",
             "description": "Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads",
             "x-example": False,
         },
+        # Enable Quota Management
         "FEATURE_QUOTA_MANAGEMENT": {
             "type": "boolean",
             "description": "Enables configuration, caching, and validation for quota management feature",
@@ -1404,6 +1459,7 @@ CONFIG_SCHEMA = {
             "description": "Endpoint for internal RH marketplace API",
             "x-example": "https://internal-rh-marketplace-endpoint",
         },
+        # Custom terms of service
         "TERMS_OF_SERVICE_URL": {
             "type": "string",
             "description": "Enable customizing of terms of service for on-prem installations",
