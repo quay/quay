@@ -1351,7 +1351,7 @@ class DumpConfig(ApiResource):
                     continue
                 try:
                     # obfuscate passwords
-                    if CONFIG_SCHEMA['properties'].get(k, False) != False:
+                    if CONFIG_SCHEMA["properties"].get(k, False) != False:
                         cfg[k] = obfuscate(v, key=k)
                     else:
                         warn[k] = obfuscate(v, key=k)
