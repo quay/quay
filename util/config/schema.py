@@ -889,13 +889,13 @@ CONFIG_SCHEMA = {
             "description": "Whether users can be created (by non-super users). Defaults to True",
             "x-example": True,
         },
-         # Feature Flag: Invite Only User Creation.
+        # Feature Flag: Invite Only User Creation.
         "FEATURE_INVITE_ONLY_USER_CREATION": {
             "type": "boolean",
             "description": "Whether users being created must be invited by another user. Defaults to False",
             "x-example": False,
         },
-         # Feature Flag: Encrypted Basic Auth.
+        # Feature Flag: Encrypted Basic Auth.
         "FEATURE_REQUIRE_ENCRYPTED_BASIC_AUTH": {
             "type": "boolean",
             "description": "Whether non-encrypted passwords (as opposed to encrypted tokens) can be used for basic auth. Defaults to False",
