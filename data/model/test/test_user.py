@@ -1,9 +1,11 @@
 from datetime import datetime
+from unittest.mock import Mock
 
 import pytest
 from mock import patch
 
 from auth.scopes import READ_REPO
+from auth.test.mock_oidc_server import MOCK_PUBLIC_KEY, generate_mock_oidc_token
 from data import model
 from data.database import DeletedNamespace, EmailConfirmation, FederatedLogin, User
 from data.fields import Credential
@@ -46,6 +48,7 @@ from data.model.user import (
 from data.queue import WorkQueue
 from test.fixtures import *
 from test.helpers import check_transitive_modifications
+from util.security.instancekeys import InstanceKeys
 from util.security.token import encode_public_private_token
 from util.timedeltastring import convert_to_timedelta
 
@@ -332,13 +335,31 @@ def test_robot(initialized_db):
     assert creds["username"] == "foobar+foo"
     assert creds["password"] == token
 
-    assert verify_robot("foobar+foo", token) == robot
+    assert verify_robot("foobar+foo", token, None) == robot
 
     with pytest.raises(InvalidRobotException):
-        assert verify_robot("foobar+foo", "someothertoken")
+        assert verify_robot("foobar+foo", "someothertoken", None)
 
     with pytest.raises(InvalidRobotException):
-        assert verify_robot("foobar+unknownbot", token)
+        assert verify_robot("foobar+unknownbot", token, None)
+
+
+def test_jwt_robot_token(initialized_db):
+    user = get_user("devtable")
+    org = create_organization("foobar", "foobar@devtable.com", user)
+    create_robot("foo", org)
+
+    mock_oidc_token = generate_mock_oidc_token(
+        issuer="quay", audience="quay-aud", subject="foobar+foo"
+    )
+    robot, token = create_robot("foo", user)
+
+    mock_instance_keys = Mock(InstanceKeys)
+    mock_instance_keys.service_name = "quay"
+    mock_instance_keys.get_service_key_public_key = Mock(return_value=MOCK_PUBLIC_KEY)
+
+    with patch("data.model.config.app_config", {"SERVER_HOSTNAME": "quay-aud"}):
+        verify_robot("foobar+foo", mock_oidc_token, mock_instance_keys)
 
 
 def test_get_estimated_robot_count(initialized_db):

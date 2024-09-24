@@ -8,6 +8,7 @@ import bcrypt
 from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
+from auth.auth_context import get_authenticated_context
 from data.database import (
     AutoPruneTaskStatus,
     DeletedNamespace,
@@ -67,6 +68,13 @@ from data.text import prefix_search
 from util.backoff import exponential_backoff
 from util.bytes import Bytes
 from util.names import format_robot_username, parse_robot_username
+from util.security.jwtutil import is_jwt
+from util.security.registry_jwt import (
+    InvalidBearerTokenException,
+    build_context_and_subject,
+    decode_bearer_token,
+    generate_bearer_token,
+)
 from util.security.token import decode_public_private_token, encode_public_private_token
 from util.timedeltastring import convert_to_timedelta
 from util.validation import (
@@ -79,8 +87,8 @@ from util.validation import (
 
 logger = logging.getLogger(__name__)
 
-
 EXPONENTIAL_BACKOFF_SCALE = timedelta(seconds=1)
+TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour
 
 
 def hash_password(password, salt=None):
@@ -373,6 +381,41 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
         raise DataModelException(ex)
 
 
+def get_robot_federation_config(robot):
+    federated_robot = FederatedLogin.select().where(FederatedLogin.user == robot).get()
+    assert federated_robot
+
+    metadata = {}
+    try:
+        metadata = json.loads(federated_robot.metadata_json)
+    except Exception as e:
+        logger.debug("Error parsing metadata: %s", e)
+
+    return metadata.get("federation_config", [])
+
+
+def create_robot_federation_config(robot, fed_config):
+    federated_robot = FederatedLogin.select().where(FederatedLogin.user == robot).get()
+    assert federated_robot
+
+    metadata = {}
+    try:
+        metadata = json.loads(federated_robot.metadata_json)
+    except Exception as e:
+        logger.debug("Error parsing metadata: %s", e)
+
+    try:
+        metadata["federation_config"] = fed_config
+        federated_robot.metadata_json = json.dumps(metadata)
+        federated_robot.save()
+    except Exception as e:
+        raise DataModelException(e)
+
+
+def delete_robot_federation_config(robot):
+    create_robot_federation_config(robot, [])
+
+
 def get_or_create_robot_metadata(robot):
     defaults = dict(description="", unstructured_json={})
     metadata, _ = RobotAccountMetadata.get_or_create(robot_account=robot, defaults=defaults)
@@ -425,6 +468,24 @@ def lookup_robot_and_metadata(robot_username):
     return robot, get_or_create_robot_metadata(robot)
 
 
+def verify_robot_jwt_token(robot_username, jwt_token, instance_keys):
+    # a robot token can be either an ephemeral JWT token
+    # or an external OIDC token
+    # throws an exception if we cannot decode/verify the token
+
+    decoded_token = decode_bearer_token(jwt_token, instance_keys, config.app_config)
+    assert decoded_token
+
+    sub = decoded_token.get("sub")
+    aud = decoded_token.get("aud")
+
+    if sub != robot_username:
+        raise InvalidRobotCredentialException("Token does not match robot")
+
+    if aud != config.app_config["SERVER_HOSTNAME"]:
+        raise InvalidRobotCredentialException("Invalid audience for robot token")
+
+
 def get_matching_robots(name_prefix, username, limit=10):
     admined_orgs = (
         _basequery.get_user_organizations(username)
@@ -445,11 +506,12 @@ def get_matching_robots(name_prefix, username, limit=10):
     return User.select().where(prefix_checks).limit(limit)
 
 
-def verify_robot(robot_username, password):
+def verify_robot(robot_username, password, instance_keys):
     if config.app_config.get("ROBOTS_DISALLOW", False):
         if not robot_username in config.app_config.get("ROBOTS_WHITELIST", []):
             msg = "Robot account have been disabled. Please contact your administrator."
             raise InvalidRobotException(msg)
+
     try:
         password.encode("ascii")
     except UnicodeEncodeError:
@@ -473,12 +535,18 @@ def verify_robot(robot_username, password):
         raise DeactivatedRobotOwnerException(
             "Robot %s owner %s is disabled" % (robot_username, owner.username)
         )
+
     # Lookup the token for the robot.
     try:
-        token_data = RobotAccountToken.get(robot_account=robot)
-        if not token_data.token.matches(password):
-            msg = "Could not find robot with username: %s and supplied password." % robot_username
-            raise InvalidRobotCredentialException(msg)
+        if is_jwt(password):
+            verify_robot_jwt_token(robot_username, password, instance_keys)
+        else:
+            token_data = RobotAccountToken.get(robot_account=robot)
+            if not token_data.token.matches(password):
+                msg = (
+                    "Could not find robot with username: %s and supplied password." % robot_username
+                )
+                raise InvalidRobotCredentialException(msg)
     except RobotAccountToken.DoesNotExist:
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotCredentialException(msg)
@@ -512,6 +580,15 @@ def regenerate_robot_token(robot_shortname, parent):
         robot.save()
 
     return robot, password, metadata
+
+
+def generate_temp_robot_jwt_token(instance_keys):
+    context, subject = build_context_and_subject(get_authenticated_context())
+    audience_param = config.app_config["SERVER_HOSTNAME"]
+    token = generate_bearer_token(
+        audience_param, subject, context, {}, TMP_ROBOT_TOKEN_VALIDITY_LIFETIME_S, instance_keys
+    )
+    return token
 
 
 def delete_robot(robot_username):

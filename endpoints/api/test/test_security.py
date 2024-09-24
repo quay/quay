@@ -69,11 +69,11 @@ EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
 SECURITY_TESTS: List[
     Tuple[
         Type[ApiResource],
-        str,
-        Optional[Dict[str, Any]],
-        Optional[Dict[str, Any]],
-        Optional[str],
-        int,
+        str,  # HTTP method
+        Optional[Dict[str, Any]],  # Query params
+        Optional[Dict[str, Any]],  # Body params
+        Optional[str],  # Identity
+        int,  # Expected HTTP status code
     ]
 ] = [
     (AppTokens, "GET", {}, {}, None, 401),
@@ -6823,6 +6823,30 @@ SECURITY_TESTS: List[
         None,
         "reader",
         403,
+    ),
+    (
+        OrgRobotFederation,
+        "GET",
+        {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
+        None,
+        "reader",
+        403,
+    ),
+    (
+        OrgRobotFederation,
+        "POST",
+        {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
+        {"subject": "testsubject", "issuer": "testissuer"},
+        "testuser",
+        400,
+    ),
+    (
+        OrgRobotFederation,
+        "DELETE",
+        {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
+        None,
+        "testuser",
+        401,
     ),
 ]
 

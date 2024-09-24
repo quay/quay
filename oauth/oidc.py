@@ -2,6 +2,7 @@ import json
 import logging
 import time
 import urllib.parse
+from posixpath import join
 
 import jwt
 from authlib.jose import JsonWebKey, KeySet
@@ -225,7 +226,7 @@ class OIDCLoginService(OAuthService):
         if not oidc_server.startswith("https://") and not is_debugging:
             raise DiscoveryFailureException("OIDC server must be accessed over SSL")
 
-        discovery_url = urllib.parse.urljoin(oidc_server, OIDC_WELLKNOWN)
+        discovery_url = join(oidc_server, OIDC_WELLKNOWN)
         discovery = self._http_client.get(discovery_url, timeout=5, verify=is_debugging is False)
         if discovery.status_code // 100 != 2:
             logger.debug(
