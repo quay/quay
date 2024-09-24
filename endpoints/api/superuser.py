@@ -55,11 +55,11 @@ from endpoints.api.superuser_models_pre_oci import (
     ServiceKeyDoesNotExist,
     pre_oci_model,
 )
+from util.config.schema import CONFIG_SCHEMA
 from util.parsing import truthy_bool
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name
-from util.config.schema import CONFIG_SCHEMA
 
 logger = logging.getLogger(__name__)
 
