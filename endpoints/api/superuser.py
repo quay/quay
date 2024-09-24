@@ -1365,9 +1365,8 @@ class SuperUserDumpConfig(ApiResource):
                 # but to ensure we do not raise an Exception
                 app.logger.error(f"Cannot parse json, error {jsonerr}")
                 return dict(config=str(cfg), warning=str(warn), env=dict(os.environ))
+
         # requesting Scope only doesn't restrict so we need superuserpermissions.can
         if SuperUserPermission().can():
             return process_config()
         raise Unauthorized()
-
-
