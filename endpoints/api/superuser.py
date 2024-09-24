@@ -1310,7 +1310,7 @@ class DumpConfig(ApiResource):
 
         def obfuscate(data, key=None, obf=False):
             # obfuscate sensitive data
-            if key != None:
+            if key is not None:
                 return obfuscate({key: data})[key]
             if isinstance(data, dict):
                 odata = {}
@@ -1351,16 +1351,19 @@ class DumpConfig(ApiResource):
                     continue
                 try:
                     # obfuscate passwords
-                    if CONFIG_SCHEMA["properties"].get(k, False) != False:
+                    if not CONFIG_SCHEMA["properties"].get(k, False) is False:
                         cfg[k] = obfuscate(v, key=k)
                     else:
                         warn[k] = obfuscate(v, key=k)
-                except:
+                except Exception as procerr:
+                    app.logger.error(f"Cannot parse config, error {procerr}")
                     continue
             try:
                 return jsonify(dict(config=cfg, warning=warn, env=dict(os.environ))), 200
             except TypeError as jsonerr:
-                # we shouldn't populate keys with methods/class/functions but to ensure we do not raise an Exception
+                # we shouldn't populate keys with methods/class/functions
+                # but to ensure we do not raise an Exception
+                app.logger.error(f"Cannot parse json, error {jsonerr}")
                 return jsonify(dict(config=str(cfg), warning=str(warn), env=dict(os.environ))), 200
 
         return process_config()
