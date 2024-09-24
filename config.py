@@ -901,3 +901,6 @@ class DefaultConfig(ImmutableConfig):
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
+
+    # Enabled superuser API to dump config,env,schema and drifts(unknown like typos)
+    FEATURE_SUPERUSER_CONFIGDUMP = False

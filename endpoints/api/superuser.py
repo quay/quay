@@ -55,6 +55,7 @@ from endpoints.api.superuser_models_pre_oci import (
     ServiceKeyDoesNotExist,
     pre_oci_model,
 )
+from util.config.schema import CONFIG_SCHEMA
 from util.parsing import truthy_bool
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
@@ -1293,4 +1294,84 @@ class SuperUserRepositoryBuildResource(ApiResource):
 
             return build.to_dict()
 
+        raise Unauthorized()
+
+
+@resource("/v1/superuser/config")
+@show_if(features.SUPER_USERS)
+@show_if(features.SUPERUSER_CONFIGDUMP)
+class SuperUserDumpConfig(ApiResource):
+    # NOTE: any changes made here must also be reflected in the nginx config
+    # this API returns a complete set of options. ! NOTE ! changing options listed
+    # but not documented is not supported
+
+    @require_fresh_login
+    @require_scope(scopes.SUPERUSER)
+    def get(self):
+        cfg = {}
+        warn = {}
+
+        def obfuscate(data, key=None, obf=False):
+            # obfuscate sensitive data
+            if key is not None:
+                return obfuscate({key: data})[key]
+            if isinstance(data, dict):
+                odata = {}
+                for k in data.keys():
+                    if k.lower() in (
+                        "password",
+                        "db_uri",
+                        "secret_key",
+                        "access_key",
+                        "enable_health_debug_secret",
+                        "client_secret",
+                        "s3_access_key",
+                        "s3_secret_key",
+                        "cloudfront_key_id",
+                        "sts_user_access_key",
+                        "sts_user_secret_key",
+                        "ldap_admin_passwd",
+                        "page_token_key",
+                        "security_scanner_v4_psk",
+                        "database_secret_key",
+                    ):
+                        odata[k] = obfuscate(data[k], obf=True)
+                    else:
+                        odata[k] = obfuscate(data[k])
+                return odata
+            elif isinstance(data, list):
+                return list(map(lambda x: obfuscate(x), data))
+            elif isinstance(data, str):
+                if obf:
+                    return f"{('*' * len(data))[:10]} ({len(data)})"
+                return data
+            elif any([isinstance(data, bool), isinstance(data, int)]):
+                return data
+
+        def process_config():
+            for k, v in app.config.items():
+                if not type(v) in (list, dict, tuple, int, str, bool):
+                    continue
+                try:
+                    # obfuscate passwords
+                    if not CONFIG_SCHEMA["properties"].get(k, False) is False:
+                        cfg[k] = obfuscate(v, key=k)
+                    else:
+                        warn[k] = obfuscate(v, key=k)
+                except Exception as procerr:
+                    logger.error(f"Cannot parse config, error {procerr}")
+                    continue
+            try:
+                return dict(config=cfg, warning=warn, env=dict(os.environ), schema=CONFIG_SCHEMA)
+            except TypeError as jsonerr:
+                # we shouldn't populate keys with methods/class/functions
+                # but to ensure we do not raise an Exception
+                logger.error(f"Cannot parse json, error {jsonerr}")
+                return dict(
+                    config=str(cfg), warning=str(warn), env=dict(os.environ), schema=CONFIG_SCHEMA
+                )
+
+        # requesting Scope only doesn't restrict so we need superuserpermissions.can
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+            return process_config()
         raise Unauthorized()
