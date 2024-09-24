@@ -1299,7 +1299,7 @@ class SuperUserRepositoryBuildResource(ApiResource):
 
 @resource("/v1/superuser/config")
 @show_if(features.SUPER_USERS)
-class DumpConfig(ApiResource):
+class SuperUserDumpConfig(ApiResource):
     # NOTE: any changes made here must also be reflected in the nginx config
 
     @require_fresh_login
@@ -1365,5 +1365,9 @@ class DumpConfig(ApiResource):
                 # but to ensure we do not raise an Exception
                 app.logger.error(f"Cannot parse json, error {jsonerr}")
                 return dict(config=str(cfg), warning=str(warn), env=dict(os.environ))
+        # requesting Scope only doesn't restrict so we need superuserpermissions.can
+        if SuperUserPermission().can():
+            return process_config()
+        raise Unauthorized()
 
-        return process_config()
+
