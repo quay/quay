@@ -7,6 +7,8 @@ export interface RepositoryAutoPrunePolicy {
   method: AutoPruneMethod;
   uuid?: string;
   value?: string | number;
+  tagPattern?: string;
+  tagPatternMatches?: boolean;
 }
 
 export async function fetchRepositoryAutoPrunePolicies(

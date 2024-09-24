@@ -211,7 +211,10 @@ DROP INDEX IF EXISTS public.tag_repository_id_name_hidden;
 DROP INDEX IF EXISTS public.tag_repository_id_name;
 DROP INDEX IF EXISTS public.tag_repository_id_lifetime_start_ms;
 DROP INDEX IF EXISTS public.tag_repository_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_repository_id_immutable;
 DROP INDEX IF EXISTS public.tag_repository_id;
+DROP INDEX IF EXISTS public.tag_manifest_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_manifest_id_immutable;
 DROP INDEX IF EXISTS public.tag_manifest_id;
 DROP INDEX IF EXISTS public.tag_linked_tag_id;
 DROP INDEX IF EXISTS public.tag_lifetime_end_ms;
@@ -4204,7 +4207,8 @@ CREATE TABLE public.tag (
     hidden boolean DEFAULT false NOT NULL,
     reversion boolean DEFAULT false NOT NULL,
     tag_kind_id integer NOT NULL,
-    linked_tag_id integer
+    linked_tag_id integer,
+    immutable boolean DEFAULT false NOT NULL
 );
 
 
@@ -5738,7 +5742,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-a32e17bfad20
+ba263f9be4a6
 \.
 
 
@@ -6419,6 +6423,7 @@ COPY public.logentrykind (id, name) FROM stdin;
 112	disable_team_sync
 113	oauth_token_assigned
 114	oauth_token_revoked
+115	change_tag_immutability
 \.
 
 
@@ -8290,7 +8295,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 114, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 115, true);
 
 
 --
@@ -10722,7 +10727,7 @@ CREATE INDEX messages_uuid ON public.messages USING btree (uuid);
 -- Name: namespaceautoprunepolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
 --
 
-CREATE UNIQUE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
+CREATE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
 
 
 --
@@ -11254,7 +11259,7 @@ CREATE INDEX repositoryautoprunepolicy_namespace_id ON public.repositoryautoprun
 -- Name: repositoryautoprunepolicy_repository_id; Type: INDEX; Schema: public; Owner: quay
 --
 
-CREATE UNIQUE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
+CREATE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
 
 
 --
@@ -11643,10 +11648,31 @@ CREATE INDEX tag_manifest_id ON public.tag USING btree (manifest_id);
 
 
 --
+-- Name: tag_manifest_id_immutable; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_manifest_id_immutable ON public.tag USING btree (manifest_id, immutable);
+
+
+--
+-- Name: tag_manifest_id_lifetime_end_ms; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_manifest_id_lifetime_end_ms ON public.tag USING btree (manifest_id, lifetime_end_ms);
+
+
+--
 -- Name: tag_repository_id; Type: INDEX; Schema: public; Owner: quay
 --
 
 CREATE INDEX tag_repository_id ON public.tag USING btree (repository_id);
+
+
+--
+-- Name: tag_repository_id_immutable; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_repository_id_immutable ON public.tag USING btree (repository_id, immutable);
 
 
 --

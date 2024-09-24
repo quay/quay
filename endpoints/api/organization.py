@@ -106,11 +106,11 @@ def org_view(o, teams):
         view["tag_expiration_s"] = o.removed_tag_expiration_s
         view["is_free_account"] = o.stripe_id is None
 
+    if is_admin or is_member:
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA:
             quotas = model.namespacequota.get_namespace_quota_list(o.username)
             view["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
             view["quota_report"] = model.namespacequota.get_quota_for_view(o.username)
-
     return view
 
 

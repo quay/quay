@@ -71,14 +71,14 @@ class TestRepositoryAutoprune:
             )
         assert str(excerror.value) == "Repository does not exist: nonexistentrepo"
 
-    def test_repo_policy_creation_for_repo_with_policy(self):
+    def test_duplicate_repo_policy_creation_for_repo_with_policy(self):
         with pytest.raises(RepositoryAutoPrunePolicyAlreadyExists) as excerror:
             create_repository_autoprune_policy(
                 ORG3_NAME, REPO3_NAME, self.number_of_tags_policy, create_task=True
             )
         assert (
             str(excerror.value)
-            == "Policy for this repository already exists, delete existing to create new policy"
+            == "Existing policy with same values for this repository, duplicate policies are not permitted"
         )
 
     def test_get_repo_policies_by_reponame(self):

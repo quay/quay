@@ -15,6 +15,7 @@ from data.database import (
     Tag,
     User,
     db_random_func,
+    db_regex_search,
     db_transaction,
     get_epoch_timestamp_ms,
 )
@@ -780,7 +781,7 @@ def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
 
 
 def fetch_paginated_autoprune_repo_tags_by_number(
-    repo_id, max_tags_allowed: int, items_per_page, page
+    repo_id, max_tags_allowed: int, items_per_page, page, tag_pattern=None, tag_pattern_matches=True
 ):
     """
     Fetch repository's active tags sorted by creation date & are more than max_tags_allowed
@@ -801,6 +802,13 @@ def fetch_paginated_autoprune_repo_tags_by_number(
             .offset(tags_offset)
             .limit(items_per_page)
         )
+        if tag_pattern is not None:
+            query = db_regex_search(
+                Tag.select(query.c.name).from_(query),
+                query.c.name,
+                tag_pattern,
+                matches=tag_pattern_matches,
+            )
         return list(query)
     except Exception as err:
         raise Exception(
@@ -809,7 +817,12 @@ def fetch_paginated_autoprune_repo_tags_by_number(
 
 
 def fetch_paginated_autoprune_repo_tags_older_than_ms(
-    repo_id, tag_lifetime_ms: int, items_per_page=100, page: int = 1
+    repo_id,
+    tag_lifetime_ms: int,
+    items_per_page=100,
+    page: int = 1,
+    tag_pattern=None,
+    tag_pattern_matches=True,
 ):
     """
     Return repository's active tags older than tag_lifetime_ms
@@ -828,6 +841,8 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
             .offset(tags_offset)  # type: ignore[func-returns-value]
             .limit(items_per_page)
         )
+        if tag_pattern is not None:
+            query = db_regex_search(query, Tag.name, tag_pattern, matches=tag_pattern_matches)
         return list(query)
     except Exception as err:
         raise Exception(

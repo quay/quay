@@ -54,6 +54,14 @@ class OrgAutoPrunePolicies(ApiResource):
                     "type": ["integer", "string"],
                     "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
                 },
+                "tagPattern": {
+                    "type": "string",
+                    "description": "Tags only matching this pattern will be pruned",
+                },
+                "tagPatternMatches": {
+                    "type": "boolean",
+                    "description": "Determine whether pruned tags should or should not match the tagPattern",
+                },
             },
         },
     }
@@ -90,6 +98,10 @@ class OrgAutoPrunePolicies(ApiResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
+        tag_pattern = app_data.get("tagPattern", None)
+        if tag_pattern is not None and isinstance(tag_pattern, str):
+            tag_pattern = tag_pattern.strip()
+        tag_pattern_matches = app_data.get("tagPatternMatches", True)
 
         if method is None or value is None:
             request_error(message="Missing the following parameters: method, value")
@@ -97,6 +109,8 @@ class OrgAutoPrunePolicies(ApiResource):
         policy_config = {
             "method": method,
             "value": value,
+            "tag_pattern": tag_pattern,
+            "tag_pattern_matches": tag_pattern_matches,
         }
 
         try:
@@ -116,6 +130,8 @@ class OrgAutoPrunePolicies(ApiResource):
             {
                 "method": policy_config["method"],
                 "value": policy_config["value"],
+                "tag_pattern": policy_config.get("tag_pattern"),
+                "tag_pattern_matches": policy_config.get("tag_pattern_matches"),
                 "namespace": orgname,
             },
         )
@@ -145,6 +161,14 @@ class OrgAutoPrunePolicy(ApiResource):
                 "value": {
                     "type": ["integer", "string"],
                     "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
+                },
+                "tagPattern": {
+                    "type": "string",
+                    "description": "Tags only matching this pattern will be pruned",
+                },
+                "tagPatternMatches": {
+                    "type": "boolean",
+                    "description": "Determine whether pruned tags should or should not match the tagPattern",
                 },
             },
         },
@@ -184,6 +208,10 @@ class OrgAutoPrunePolicy(ApiResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
+        tag_pattern = app_data.get("tagPattern", None)
+        if tag_pattern is not None and isinstance(tag_pattern, str):
+            tag_pattern = tag_pattern.strip()
+        tag_pattern_matches = app_data.get("tagPatternMatches", True)
 
         if method is None or value is None:
             request_error(message="Missing the following parameters: method, value")
@@ -191,6 +219,8 @@ class OrgAutoPrunePolicy(ApiResource):
         policy_config = {
             "method": method,
             "value": value,
+            "tag_pattern": tag_pattern,
+            "tag_pattern_matches": tag_pattern_matches,
         }
 
         try:
@@ -212,6 +242,8 @@ class OrgAutoPrunePolicy(ApiResource):
             {
                 "method": policy_config["method"],
                 "value": policy_config["value"],
+                "tag_pattern": policy_config.get("tag_pattern"),
+                "tag_pattern_matches": policy_config.get("tag_pattern_matches"),
                 "namespace": orgname,
             },
         )
@@ -268,6 +300,14 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
                     "type": ["integer", "string"],
                     "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
                 },
+                "tagPattern": {
+                    "type": "string",
+                    "description": "Tags only matching this pattern will be pruned",
+                },
+                "tagPatternMatches": {
+                    "type": "boolean",
+                    "description": "Determine whether pruned tags should or should not match the tagPattern",
+                },
             },
         },
     }
@@ -312,6 +352,10 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
+        tag_pattern = app_data.get("tagPattern", None)
+        if tag_pattern is not None and isinstance(tag_pattern, str):
+            tag_pattern = tag_pattern.strip()
+        tag_pattern_matches = app_data.get("tagPatternMatches", True)
 
         if method is None or value is None:
             request_error(message="Missing the following parameters: method, value")
@@ -319,6 +363,8 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
         policy_config = {
             "method": method,
             "value": value,
+            "tag_pattern": tag_pattern,
+            "tag_pattern_matches": tag_pattern_matches,
         }
 
         try:
@@ -340,6 +386,8 @@ class RepositoryAutoPrunePolicies(RepositoryParamResource):
             {
                 "method": policy_config["method"],
                 "value": policy_config["value"],
+                "tag_pattern": policy_config.get("tag_pattern"),
+                "tag_pattern_matches": policy_config.get("tag_pattern_matches"),
                 "namespace": namespace,
                 "repo": repository,
             },
@@ -371,6 +419,14 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
                 "value": {
                     "type": ["integer", "string"],
                     "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
+                },
+                "tagPattern": {
+                    "type": "string",
+                    "description": "Tags only matching this pattern will be pruned",
+                },
+                "tagPatternMatches": {
+                    "type": "boolean",
+                    "description": "Determine whether pruned tags should or should not match the tagPattern",
                 },
             },
         },
@@ -410,6 +466,10 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
+        tag_pattern = app_data.get("tagPattern", None)
+        if tag_pattern is not None and isinstance(tag_pattern, str):
+            tag_pattern = tag_pattern.strip()
+        tag_pattern_matches = app_data.get("tagPatternMatches", True)
 
         if method is None or value is None:
             request_error(message="Missing the following parameters: method, value")
@@ -417,6 +477,8 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
         policy_config = {
             "method": method,
             "value": value,
+            "tag_pattern": tag_pattern,
+            "tag_pattern_matches": tag_pattern_matches,
         }
 
         try:
@@ -440,6 +502,8 @@ class RepositoryAutoPrunePolicy(RepositoryParamResource):
             {
                 "method": policy_config["method"],
                 "value": policy_config["value"],
+                "tag_pattern": policy_config.get("tag_pattern"),
+                "tag_pattern_matches": policy_config.get("tag_pattern_matches"),
                 "namespace": namespace,
                 "repo": repository,
             },
@@ -502,6 +566,14 @@ class UserAutoPrunePolicies(ApiResource):
                     "type": ["integer", "string"],
                     "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
                 },
+                "tagPattern": {
+                    "type": "string",
+                    "description": "Tags only matching this pattern will be pruned",
+                },
+                "tagPatternMatches": {
+                    "type": "boolean",
+                    "description": "Determine whether pruned tags should or should not match the tagPattern",
+                },
             },
         },
     }
@@ -530,6 +602,10 @@ class UserAutoPrunePolicies(ApiResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
+        tag_pattern = app_data.get("tagPattern", None)
+        if tag_pattern is not None and isinstance(tag_pattern, str):
+            tag_pattern = tag_pattern.strip()
+        tag_pattern_matches = app_data.get("tagPatternMatches", True)
 
         if method is None or value is None:
             request_error(message="Missing the following parameters: method, value")
@@ -537,7 +613,10 @@ class UserAutoPrunePolicies(ApiResource):
         policy_config = {
             "method": method,
             "value": value,
+            "tag_pattern": tag_pattern,
+            "tag_pattern_matches": tag_pattern_matches,
         }
+
         try:
             policy = model.autoprune.create_namespace_autoprune_policy(
                 user.username, policy_config, create_task=True
@@ -556,6 +635,8 @@ class UserAutoPrunePolicies(ApiResource):
                 "method": policy_config["method"],
                 "value": policy_config["value"],
                 "namespace": user.username,
+                "tag_pattern": policy_config.get("tag_pattern"),
+                "tag_pattern_matches": policy_config.get("tag_pattern_matches"),
             },
         )
 
@@ -583,6 +664,14 @@ class UserAutoPrunePolicy(ApiResource):
                 "value": {
                     "type": ["integer", "string"],
                     "description": "The value to use for the pruning method (number of tags e.g. 10, time delta e.g. 7d (7 days))",
+                },
+                "tagPattern": {
+                    "type": "string",
+                    "description": "Tags only matching this pattern will be pruned",
+                },
+                "tagPatternMatches": {
+                    "type": "boolean",
+                    "description": "Determine whether pruned tags should or should not match the tagPattern",
                 },
             },
         },
@@ -614,6 +703,10 @@ class UserAutoPrunePolicy(ApiResource):
         app_data = request.get_json()
         method = app_data.get("method", None)
         value = app_data.get("value", None)
+        tag_pattern = app_data.get("tagPattern", None)
+        if tag_pattern is not None and isinstance(tag_pattern, str):
+            tag_pattern = tag_pattern.strip()
+        tag_pattern_matches = app_data.get("tagPatternMatches", True)
 
         if method is None or value is None:
             request_error(message="Missing the following parameters: method, value")
@@ -621,6 +714,8 @@ class UserAutoPrunePolicy(ApiResource):
         policy_config = {
             "method": method,
             "value": value,
+            "tag_pattern": tag_pattern,
+            "tag_pattern_matches": tag_pattern_matches,
         }
 
         try:
@@ -643,6 +738,8 @@ class UserAutoPrunePolicy(ApiResource):
                 "method": policy_config["method"],
                 "value": policy_config["value"],
                 "namespace": user.username,
+                "tag_pattern": policy_config.get("tag_pattern"),
+                "tag_pattern_matches": policy_config.get("tag_pattern_matches"),
             },
         )
 
