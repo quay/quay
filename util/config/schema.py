@@ -148,6 +148,7 @@ CONFIG_SCHEMA = {
             "x-example": ["TLSv1.1", "TLSv1.2"],
             "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_protocols",
         },
+        # User-visible configuration.
         "REGISTRY_TITLE": {
             "type": "string",
             "description": "If specified, the long-form title for the registry. Defaults to `Red Hat Quay`.",
@@ -611,6 +612,7 @@ CONFIG_SCHEMA = {
                 {"access_key": "foo", "secret_key": "bar"},
             ),
         },
+        # Metrics.
         "PROMETHEUS_NAMESPACE": {
             "type": "string",
             "description": "The prefix applied to all exposed Prometheus metrics. Defaults to `quay`",
@@ -859,13 +861,13 @@ CONFIG_SCHEMA = {
             "description": "Whether to record the last time a user was accessed. Defaults to True",
             "x-example": True,
         },
-        #  # Feature Flag: Permanent Sessions.
+        # Feature Flag: Permanent Sessions.
         "FEATURE_PERMANENT_SESSIONS": {
             "type": "boolean",
             "description": "Whether sessions are permanent. Defaults to True",
             "x-example": True,
         },
-        #  # Feature Flag: Super User Support.
+        # Feature Flag: Super User Support.
         "FEATURE_SUPER_USERS": {
             "type": "boolean",
             "description": "Whether super users are supported. Defaults to True",
