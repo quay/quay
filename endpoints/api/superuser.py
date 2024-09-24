@@ -1359,11 +1359,11 @@ class DumpConfig(ApiResource):
                     app.logger.error(f"Cannot parse config, error {procerr}")
                     continue
             try:
-                return jsonify(dict(config=cfg, warning=warn, env=dict(os.environ))), 200
+                return dict(config=cfg, warning=warn, env=dict(os.environ))
             except TypeError as jsonerr:
                 # we shouldn't populate keys with methods/class/functions
                 # but to ensure we do not raise an Exception
                 app.logger.error(f"Cannot parse json, error {jsonerr}")
-                return jsonify(dict(config=str(cfg), warning=str(warn), env=dict(os.environ))), 200
+                return dict(config=str(cfg), warning=str(warn), env=dict(os.environ))
 
         return process_config()
