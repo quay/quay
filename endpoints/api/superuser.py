@@ -1367,6 +1367,6 @@ class SuperUserDumpConfig(ApiResource):
                 return dict(config=str(cfg), warning=str(warn), env=dict(os.environ))
 
         # requesting Scope only doesn't restrict so we need superuserpermissions.can
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             return process_config()
         raise Unauthorized()
