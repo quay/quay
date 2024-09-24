@@ -138,7 +138,7 @@ SECURITY_TESTS: List[
     (SuperUserDumpConfig, "GET", None, None, None, 401),
     (SuperUserDumpConfig, "GET", None, None, "freshuser", 403),
     (SuperUserDumpConfig, "GET", None, None, "reader", 403),
-    (SuperUserDumpConfig, "GET", None, None, "devtable", 404),
+    (SuperUserDumpConfig, "GET", None, None, "devtable", 403),
     (SuperUserDumpConfig, "GET", None, None, "globalreadonlysuperuser", 200),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "freshuser", 403),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "reader", 403),
