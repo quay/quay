@@ -1,17 +1,16 @@
 """Add export logs auditing
 
 Revision ID: 8e97c2cfee57
-Revises: a32e17bfad20
+Revises: 9085e82074f2
 Create Date: 2024-08-19 13:56:50.063519
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "8e97c2cfee57"
-down_revision = "a32e17bfad20"
+down_revision = "9085e82074f2"
 
 import sqlalchemy as sa
-from sqlalchemy import String
 
 
 def upgrade(op, tables, tester):
@@ -27,11 +26,11 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name == op.inline_literal("export_logs_success")
+            tables.logentrykind.c.name == op.inline_literal("export_logs_success")
         )
     )
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name == op.inline_literal("export_logs_failure")
+            tables.logentrykind.c.name == op.inline_literal("export_logs_failure")
         )
     )
