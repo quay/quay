@@ -11,6 +11,7 @@ revision = "8e97c2cfee57"
 down_revision = "a32e17bfad20"
 
 import sqlalchemy as sa
+from sqlalchemy import String
 
 
 def upgrade(op, tables, tester):
@@ -26,8 +27,11 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
     op.execute(
         tables.logentrykind.delete().where(
-            tables.logentrykind.name
-            == op.inline_literal("export_logs_success") | tables.logentrykind.name
-            == op.inline_literal("export_logs_failure")
+            tables.logentrykind.name == op.inline_literal("export_logs_success")
+        )
+    )
+    op.execute(
+        tables.logentrykind.delete().where(
+            tables.logentrykind.name == op.inline_literal("export_logs_failure")
         )
     )
