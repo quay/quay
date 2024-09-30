@@ -181,6 +181,8 @@ describe('Repository settings - Repository autoprune policies', () => {
     // Create namespace policy
     cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
     cy.get('input[aria-label="number of tags"]').should('have.value', '20');
+    cy.get('input[aria-label="tag pattern"]').type('v1.*');
+    cy.get('select[aria-label="tag pattern matches"]').select('does not match');
     // Since we're using an older version of numberinput, the field can never be empty and will
     // always include a 0. Here we backspace to remove that 0.
     cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
@@ -202,6 +204,12 @@ describe('Repository settings - Repository autoprune policies', () => {
       'Number of Tags:',
     );
     cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
+    cy.get('[data-testid="namespace-autoprune-policy-tag-pattern"]').contains(
+      'v1.*',
+    );
+    cy.get(
+      '[data-testid="namespace-autoprune-policy-tag-pattern-matches"]',
+    ).contains('False');
   });
 
   it('shows the registry autoprune policy', () => {

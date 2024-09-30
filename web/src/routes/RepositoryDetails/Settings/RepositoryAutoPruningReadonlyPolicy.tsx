@@ -7,6 +7,7 @@ import {
   Gallery,
   Title,
 } from '@patternfly/react-core';
+import {isNullOrUndefined} from 'src/libs/utils';
 import {
   AutoPruneMethod,
   NamespaceAutoPrunePolicy,
@@ -24,70 +25,96 @@ export default function ReadonlyAutoprunePolicy(
       >
         {props.title}
       </Title>
-      <Gallery>
-        <DataList
-          className="pf-v5-u-mb-lg"
-          aria-label={`Auto prune policy for ${props.title}`}
-          isCompact
-        >
-          <DataListItem aria-labelledby="simple-item1">
-            {props.policies.map((policy, index) => (
-              <DataListItemRow key={`policy-list-${index}`}>
-                <DataListItemCells
-                  dataListCells={[
-                    <DataListCell
-                      key={`policy-method-${index}`}
-                      data-testid={`${props.testId}-method`}
-                    >
-                      <span id="simple-item1">
-                        <b>{getAutoPrunePolicyType(policy.method)}:</b>
-                      </span>
-                    </DataListCell>,
-                    <DataListCell
-                      key={`policy-value-${index}`}
-                      data-testid={`${props.testId}-value`}
-                    >
-                      <span id="simple-item1">
-                        <b>{policy?.value}</b>
-                      </span>
-                    </DataListCell>,
-                    <DataListCell
-                      key={`policy-matches-${index}`}
-                      data-testid={`${props.testId}-tag-pattern-matches`}
-                      style={
-                        policy?.tagPattern != null
-                          ? {display: 'block'}
-                          : {display: 'none'}
-                      }
-                    >
-                      <span id="simple-item1">
-                        <b>
-                          {policy?.tagPatternMatches
-                            ? `matches`
-                            : `does not match`}
-                        </b>
-                      </span>
-                    </DataListCell>,
-                    <DataListCell
-                      key={`policy-tag-pattern-${index}`}
-                      data-testid={`${props.testId}-tag-pattern`}
-                      style={
-                        policy?.tagPattern != null
-                          ? {display: 'block'}
-                          : {display: 'none'}
-                      }
-                    >
-                      <span id="simple-item1">
-                        <b>{policy?.tagPattern}</b>
-                      </span>
-                    </DataListCell>,
-                  ]}
-                />
-              </DataListItemRow>
-            ))}
-          </DataListItem>
-        </DataList>
-      </Gallery>
+      <DataList
+        className="pf-v5-u-mb-lg"
+        aria-label={`Auto prune policy for ${props.title}`}
+        isCompact
+      >
+        <DataListItem aria-labelledby="autoprune-policies-header">
+          <DataListItemRow>
+            <DataListItemCells
+              dataListCells={[
+                <DataListCell key="policy-method-header">
+                  <span>
+                    <b>Method</b>
+                  </span>
+                </DataListCell>,
+                <DataListCell key="policy-value-header">
+                  <span>
+                    <b>Value</b>
+                  </span>
+                </DataListCell>,
+                <DataListCell key="policy-tag-pattern">
+                  <span>
+                    <b>Tag Pattern</b>
+                  </span>
+                </DataListCell>,
+                <DataListCell key="policy-tag-pattern-matches">
+                  <span>
+                    <b>Tag Pattern Matches</b>
+                  </span>
+                </DataListCell>,
+              ]}
+            />
+          </DataListItemRow>
+        </DataListItem>
+        <DataListItem aria-labelledby="simple-item1">
+          {props.policies.map((policy, index) => (
+            <DataListItemRow key={`policy-list-${index}`}>
+              <DataListItemCells
+                dataListCells={[
+                  <DataListCell
+                    key={`policy-method-${index}`}
+                    data-testid={`${props.testId}-method`}
+                  >
+                    <span id="simple-item1">
+                      <b>{getAutoPrunePolicyType(policy.method)}:</b>
+                    </span>
+                  </DataListCell>,
+                  <DataListCell
+                    key={`policy-value-${index}`}
+                    data-testid={`${props.testId}-value`}
+                  >
+                    <span id="simple-item1">
+                      <b>{policy?.value}</b>
+                    </span>
+                  </DataListCell>,
+                  <DataListCell
+                    key={`policy-matches-${index}`}
+                    data-testid={`${props.testId}-tag-pattern-matches`}
+                    style={
+                      policy?.tagPattern != null
+                        ? {display: 'block'}
+                        : {display: 'none'}
+                    }
+                  >
+                    <span id="simple-item1">
+                      <b>
+                        {policy?.tagPatternMatches
+                          ? `matches`
+                          : `does not match`}
+                      </b>
+                    </span>
+                  </DataListCell>,
+                  <DataListCell
+                    key={`policy-tag-pattern-${index}`}
+                    data-testid={`${props.testId}-tag-pattern`}
+                    style={
+                      policy?.tagPattern != null
+                        ? {display: 'block'}
+                        : {display: 'none'}
+                    }
+                  >
+                    <span id="simple-item1">
+                      <b>{policy?.tagPattern}</b>
+                    </span>
+                  </DataListCell>,
+                ]}
+              />
+            </DataListItemRow>
+          ))}
+        </DataListItem>
+      </DataList>
     </>
   );
 }
