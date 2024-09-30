@@ -315,7 +315,7 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
             return False
 
         # Delete the tag.
-        tag.delete_instance()
+        oci_tag.delete_tag(tag.repository, tag.name)
 
     gc_table_rows_deleted.labels(table="Tag").inc()
 
