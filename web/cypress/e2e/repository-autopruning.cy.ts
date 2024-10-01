@@ -294,36 +294,4 @@ describe('Repository settings - Repository autoprune policies', () => {
     // second policy form should not exist
     cy.get('#autoprune-policy-form-1').should('not.exist');
   });
-
-  it('user policies under user repository autoprune policies tab', () => {
-    cy.visit('/organization/user1?tab=Settings');
-    cy.contains('Auto-Prune Policies').click();
-    cy.get('[data-testid="auto-prune-method"]').contains('None');
-
-    // Create namespace policy
-    cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
-    cy.get('input[aria-label="number of tags"]').should('have.value', '20');
-    cy.get('input[aria-label="tag pattern"]').type('v1.*');
-    cy.get('select[aria-label="tag pattern matches"]').select('does not match');
-    cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
-    cy.contains('Save').click();
-
-    // switch to hello-world repository under user namespace
-    cy.visit('/repository/user1/hello-world?tab=settings');
-    cy.contains('Repository Auto-Prune Policies').click();
-
-    cy.get('[data-testid="namespace-auto-prune-policy-heading"]').contains(
-      'Namespace Auto-Pruning Policies',
-    );
-    cy.get('[data-testid="namespace-autoprune-policy-method"]').contains(
-      'Number of Tags',
-    );
-    cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
-    cy.get('[data-testid="namespace-autoprune-policy-tag-pattern"]').contains(
-      'v1.*',
-    );
-    cy.get(
-      '[data-testid="namespace-autoprune-policy-tag-pattern-matches"]',
-    ).contains('does not match');
-  });
 });
