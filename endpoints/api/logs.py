@@ -361,6 +361,7 @@ def _log_export_success(user_or_org_name, repository, export_id, request, kind):
                 "date/time": datetime.utcnow(),
                 "repo": repository,
                 "export_id": export_id,
+                "message": "queued for export",
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
             },
@@ -374,6 +375,7 @@ def _log_export_success(user_or_org_name, repository, export_id, request, kind):
             {
                 "date/time": datetime.utcnow(),
                 "export_id": export_id,
+                "message": "queued for export",
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
             },
@@ -386,6 +388,7 @@ def _log_export_success(user_or_org_name, repository, export_id, request, kind):
             {
                 "date/time": datetime.utcnow(),
                 "export_id": export_id,
+                "message": "queued for export",
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
             },
