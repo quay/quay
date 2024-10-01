@@ -31,37 +31,60 @@ export default function ReadonlyAutoprunePolicy(
           isCompact
         >
           <DataListItem aria-labelledby="simple-item1">
-            <DataListItemRow>
-              <DataListItemCells
-                dataListCells={
-                  props.policies
-                    ? [
-                        <DataListCell
-                          key="policy-method"
-                          data-testid={`${props.testId}-method`}
-                        >
-                          <span id="simple-item1">
-                            <b>
-                              {getAutoPrunePolicyType(
-                                props.policies[0]?.method,
-                              )}
-                              :
-                            </b>
-                          </span>
-                        </DataListCell>,
-                        <DataListCell
-                          key="policy-value"
-                          data-testid={`${props.testId}-value`}
-                        >
-                          <span id="simple-item1">
-                            <b>{props.policies[0]?.value}</b>
-                          </span>
-                        </DataListCell>,
-                      ]
-                    : []
-                }
-              />
-            </DataListItemRow>
+            {props.policies.map((policy, index) => (
+              <DataListItemRow key={`policy-list-${index}`}>
+                <DataListItemCells
+                  dataListCells={[
+                    <DataListCell
+                      key={`policy-method-${index}`}
+                      data-testid={`${props.testId}-method`}
+                    >
+                      <span id="simple-item1">
+                        <b>{getAutoPrunePolicyType(policy.method)}:</b>
+                      </span>
+                    </DataListCell>,
+                    <DataListCell
+                      key={`policy-value-${index}`}
+                      data-testid={`${props.testId}-value`}
+                    >
+                      <span id="simple-item1">
+                        <b>{policy?.value}</b>
+                      </span>
+                    </DataListCell>,
+                    <DataListCell
+                      key={`policy-matches-${index}`}
+                      data-testid={`${props.testId}-tag-pattern-matches`}
+                      style={
+                        policy?.tagPattern != null
+                          ? {display: 'block'}
+                          : {display: 'none'}
+                      }
+                    >
+                      <span id="simple-item1">
+                        <b>
+                          {policy?.tagPatternMatches
+                            ? `matches`
+                            : `does not match`}
+                        </b>
+                      </span>
+                    </DataListCell>,
+                    <DataListCell
+                      key={`policy-tag-pattern-${index}`}
+                      data-testid={`${props.testId}-tag-pattern`}
+                      style={
+                        policy?.tagPattern != null
+                          ? {display: 'block'}
+                          : {display: 'none'}
+                      }
+                    >
+                      <span id="simple-item1">
+                        <b>{policy?.tagPattern}</b>
+                      </span>
+                    </DataListCell>,
+                  ]}
+                />
+              </DataListItemRow>
+            ))}
           </DataListItem>
         </DataList>
       </Gallery>
