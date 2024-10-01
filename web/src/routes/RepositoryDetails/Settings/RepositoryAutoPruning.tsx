@@ -73,26 +73,38 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
     props.repoName,
   );
 
-  const addNewPolicy = () => {
-    setPolicies([
-      ...policies,
-      {
-        method: AutoPruneMethod.NONE,
-        uuid: null,
-        value: null,
-        tagPattern: null,
-        tagPatternMatches: true,
-      },
-    ]);
+  const addNewPolicy = (clear_existing = false) => {
+    if (clear_existing) {
+      setPolicies([
+        {
+          method: AutoPruneMethod.NONE,
+          uuid: null,
+          value: null,
+          tagPattern: null,
+          tagPatternMatches: true,
+        },
+      ]);
+    } else {
+      setPolicies([
+        ...policies,
+        {
+          method: AutoPruneMethod.NONE,
+          uuid: null,
+          value: null,
+          tagPattern: null,
+          tagPatternMatches: true,
+        },
+      ]);
+    }
   };
 
   useEffect(() => {
     if (successFetchingRepoPolicies) {
-      if (repoPolicies.length > 0) {
-        setPolicies(repoPolicies);
-      } else if (policies.length == 0) {
-        addNewPolicy();
+      if (repoPolicies.length == 0) {
+        addNewPolicy(true);
+        return;
       }
+      setPolicies(repoPolicies);
     }
   }, [
     successFetchingRepoPolicies,
@@ -227,7 +239,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
         />
       ))}
       <br />
-      <Button variant="primary" type="submit" onClick={addNewPolicy}>
+      <Button variant="primary" type="submit" onClick={() => addNewPolicy()}>
         Add Policy
       </Button>
     </>
