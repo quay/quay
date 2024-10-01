@@ -611,19 +611,19 @@ angular.module('quay').directive('logsView', function () {
         export_logs_success: function (metadata) {
           if (metadata.repo) {
             if (metadata.url) {
-              return `Logs export successful: id ${metadata.export_id}, url: ${metadata.url}, repository: ${metadata.repo}`;
+              return `Logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, repository: ${metadata.repo}`;
             } else if (metadata.email) {
-              return `Logs export successful: id ${metadata.export_id}, email: ${obfuscate_email(metadata.email)}, repository: ${metadata.repo}`;
+              return `Logs export queued for delivery: id ${metadata.export_id}, email: ${obfuscate_email(metadata.email)}, repository: ${metadata.repo}`;
             } else {
-              return `Logs export successful: id ${metadata.export_id}, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}, repository: ${metadata.repo}`;
+              return `Logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}, repository: ${metadata.repo}`;
             }
           } else {
             if (metadata.url) {
-              return `User/organization logs export successful: id ${metadata.export_id}, url: ${metadata.url}`;
+              return `User/organization logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}`;
             } else if (metadata.email) {
-              return `User/organization logs export successful: id ${metadata.export_id}, email: ${obfuscate_email(metadata.email)}`;
+              return `User/organization logs export queued for delivery: id ${metadata.export_id}, email: ${obfuscate_email(metadata.email)}`;
             } else {
-              return `User/organization logs export successful: id ${metadata.export_id}, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}`;
+              return `User/organization logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}`;
             }
           }
         },
@@ -733,7 +733,7 @@ angular.module('quay').directive('logsView', function () {
         'login_failure': 'Login failure',
         'autoprune_tag_delete': 'Autoprune worker tag deletion',
         'oauth_token_assigned': 'OAuth token assigned',
-        'export_logs_success': 'Export logs successful',
+        'export_logs_success': 'Export logs queued for delivery',
         'export_logs_failure': 'Export logs failure',
 
         // Note: these are deprecated.
