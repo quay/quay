@@ -60,11 +60,11 @@ export default function AutoPruning(props: AutoPruning) {
 
   useEffect(() => {
     if (successFetchingPolicies) {
-      if (nsPolicies.length > 0) {
-        setPolicies(nsPolicies);
-      } else {
-        addNewPolicy();
+      if (nsPolicies.length == 0) {
+        addNewPolicy(true);
+        return;
       }
+      setPolicies(nsPolicies);
     }
   }, [successFetchingPolicies, dataUpdatedAt]);
 
@@ -125,17 +125,29 @@ export default function AutoPruning(props: AutoPruning) {
     }
   }, [errorDeletePolicy]);
 
-  const addNewPolicy = () => {
-    setPolicies([
-      ...policies,
-      {
-        method: AutoPruneMethod.NONE,
-        uuid: null,
-        value: null,
-        tagPattern: null,
-        tagPatternMatches: true,
-      },
-    ]);
+  const addNewPolicy = (clear_existing = false) => {
+    if (clear_existing) {
+      setPolicies([
+        {
+          method: AutoPruneMethod.NONE,
+          uuid: null,
+          value: null,
+          tagPattern: null,
+          tagPatternMatches: true,
+        },
+      ]);
+    } else {
+      setPolicies([
+        ...policies,
+        {
+          method: AutoPruneMethod.NONE,
+          uuid: null,
+          value: null,
+          tagPattern: null,
+          tagPatternMatches: true,
+        },
+      ]);
+    }
   };
 
   const onSave = (method, value, uuid, tagPattern, tagPatternMatches) => {
@@ -201,7 +213,7 @@ export default function AutoPruning(props: AutoPruning) {
         />
       ))}
       <br />
-      <Button variant="primary" type="submit" onClick={addNewPolicy}>
+      <Button variant="primary" type="submit" onClick={() => addNewPolicy()}>
         Add Policy
       </Button>
     </>
