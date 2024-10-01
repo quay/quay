@@ -262,5 +262,17 @@ describe('Namespace settings - autoprune policies', () => {
 
     // second policy form should not exist
     cy.get('#autoprune-policy-form-1').should('not.exist');
+
+    // Delete first policy
+    cy.get('#autoprune-policy-form-0').within(() => {
+      cy.get('[data-testid="auto-prune-method"]').select('None');
+      cy.contains('Save').click();
+    });
+
+    cy.contains('Successfully deleted auto-prune policy');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
+
+    // second policy form should not exist
+    cy.get('#autoprune-policy-form-1').should('not.exist');
   });
 });
