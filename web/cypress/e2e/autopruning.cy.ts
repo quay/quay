@@ -275,4 +275,40 @@ describe('Namespace settings - autoprune policies', () => {
     // second policy form should not exist
     cy.get('#autoprune-policy-form-1').should('not.exist');
   });
+
+  it('display multiple namespace auto-pruning policies', () => {
+    cy.visit('/organization/testorg?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+
+    createMultiplePolicies(cy);
+
+    cy.visit('/repository/testorg/testrepo?tab=settings');
+    cy.contains('Auto-Prune Policies').click();
+
+    cy.get('[data-testid="namespace-autoprune-policy-method"]').each(
+      ($el, index) => {
+        switch (index) {
+          case 0:
+            cy.wrap($el).should('have.text', 'Number of Tags:');
+            break;
+          case 1:
+            cy.wrap($el).should('have.text', 'Age of Tags:');
+            break;
+        }
+      },
+    );
+
+    cy.get('[data-testid="namespace-autoprune-policy-value"]').each(
+      ($el, index) => {
+        switch (index) {
+          case 0:
+            cy.wrap($el).should('have.text', '25');
+            break;
+          case 1:
+            cy.wrap($el).should('have.text', '2w');
+            break;
+        }
+      },
+    );
+  });
 });
