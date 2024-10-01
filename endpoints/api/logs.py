@@ -16,6 +16,7 @@ from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     InvalidRequest,
+    InvalidTime,
     RepositoryParamResource,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
@@ -336,7 +337,7 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
 
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
-        abort(400)
+        raise InvalidLogsDateRangeError("Invalid time span selected")
     export_id = logs_model.queue_logs_export(
         start_time,
         end_time,
@@ -350,6 +351,79 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
         raise InvalidRequest("Invalid export request")
 
     return export_id
+
+
+def _log_export_success(user_or_org_name, repository, export_id, request, kind):
+    if kind == "reposiotory":
+        log_action(
+            "export_logs_success",
+            user_or_org_name,
+            {
+                "repo": repository,
+                "export_id": export_id,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
+            },
+            repo_name=repository,
+        )
+
+    if kind == "user":
+        log_action(
+            "export_logs_success",
+            user_or_org_name,
+            {
+                "export_id": export_id,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
+            },
+        )
+
+    if kind == "organization":
+        log_action(
+            "export_logs_success",
+            user_or_org_name,
+            {
+                "export_id": export_id,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
+            },
+        )
+
+
+def _log_export_failure(user_or_org_name, repository, request, ex, kind):
+    if kind == "repo":
+        log_action(
+            "export_logs_failure",
+            user_or_org_name,
+            {
+                "repo": repository,
+                "error": ex,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
+            },
+        )
+
+    if kind == "user":
+        log_action(
+            "export_logs_failure",
+            user_or_org_name,
+            {
+                "error": ex,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
+            },
+        )
+
+    if kind == "org":
+        log_action(
+            "export_logs_failure",
+            user_or_org_name,
+            {
+                "error": ex,
+                "url": request.get_json().get("callback_url") or None,
+                "email": request.get_json().get("callback_email") or None,
+            },
+        )
 
 
 @resource("/v1/repository/<apirepopath:repository>/exportlogs")
@@ -388,21 +462,15 @@ class ExportRepositoryLogs(RepositoryParamResource):
 
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
-        export_id = _queue_logs_export(
-            start_time, end_time, request.get_json(), namespace, repository_name=repository
-        )
+        try:
+            export_id = _queue_logs_export(
+                start_time, end_time, request.get_json(), namespace, repository_name=repository
+            )
+        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
+            _log_export_failure(namespace, repository, request, ex, "repo")
+            abort(400, ex)
 
-        log_action(
-            "export_logs_success",
-            namespace,
-            {
-                "repo": repository,
-                "export_id": export_id,
-                "url": request.get_json().get("callback_url") or None,
-                "email": request.get_json().get("callback_email") or None,
-            },
-            repo_name=repository,
-        )
+        _log_export_success(namespace, repository, export_id, request, "repo")
 
         return {
             "export_id": export_id,
@@ -433,17 +501,13 @@ class ExportUserLogs(ApiResource):
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
 
-        export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
+        try:
+            export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
+        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
+            _log_export_failure(user.username, None, request, ex, "user")
+            abort(400, ex)
 
-        log_action(
-            "export_logs_success",
-            user.username,
-            {
-                "export_id": export_id,
-                "url": request.get_json().get("callback_url") or None,
-                "email": request.get_json().get("callback_email") or None,
-            },
-        )
+        _log_export_success(user.username, None, export_id, request, "user")
 
         return {
             "export_id": export_id,
@@ -476,29 +540,17 @@ class ExportOrgLogs(ApiResource):
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
-            export_id = _queue_logs_export(start_time, end_time, request.get_json(), orgname)
+            try:
+                export_id = _queue_logs_export(start_time, end_time, request.get_json(), orgname)
+            except (InvalidRequest, InvalidLogsDateRangeError) as ex:
+                _log_export_failure(orgname, None, request, ex, "org")
+                abort(400, ex)
 
-            log_action(
-                "export_logs_success",
-                orgname,
-                {
-                    "export_id": export_id,
-                    "url": request.get_json().get("callback_url") or None,
-                    "email": request.get_json().get("callback_email") or None,
-                },
-            )
+            _log_export_success(orgname, None, export_id, request, "org")
 
             return {
                 "export_id": export_id,
             }
 
-        log_action(
-            "export_logs_failure",
-            orgname,
-            {
-                "error": "unauthorized",
-                "url": request.get_json().get("callback_url") or None,
-                "email": request.get_json().get("callback_email") or None,
-            },
-        )
+        _log_export_failure(orgname, None, request, "unauthorized", "org")
         raise Unauthorized()
