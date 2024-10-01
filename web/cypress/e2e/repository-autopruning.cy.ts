@@ -38,7 +38,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.contains('Successfully created repository auto-prune policy');
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
-    cy.contains('Add Policy').click();
+    cy.contains('Add Policy').trigger('click');
     cy.get('#autoprune-policy-form-1', {timeout: 3000}).should('be.visible');
 
     // Create second policy
