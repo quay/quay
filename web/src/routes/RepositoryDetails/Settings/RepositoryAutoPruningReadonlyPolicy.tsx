@@ -7,6 +7,7 @@ import {
   Gallery,
   Title,
 } from '@patternfly/react-core';
+import Conditional from 'src/components/empty/Conditional';
 import {isNullOrUndefined} from 'src/libs/utils';
 import {
   AutoPruneMethod,
@@ -44,14 +45,14 @@ export default function ReadonlyAutoprunePolicy(
                     <b>Value</b>
                   </span>
                 </DataListCell>,
-                <DataListCell key="policy-tag-pattern">
-                  <span>
-                    <b>Tag Pattern</b>
-                  </span>
-                </DataListCell>,
                 <DataListCell key="policy-tag-pattern-matches">
                   <span>
                     <b>Tag Pattern Matches</b>
+                  </span>
+                </DataListCell>,
+                <DataListCell key="policy-tag-pattern">
+                  <span>
+                    <b>Tag Pattern</b>
                   </span>
                 </DataListCell>,
               ]}
@@ -68,7 +69,7 @@ export default function ReadonlyAutoprunePolicy(
                     data-testid={`${props.testId}-method`}
                   >
                     <span id="simple-item1">
-                      <b>{getAutoPrunePolicyType(policy.method)}:</b>
+                      <b>{getAutoPrunePolicyType(policy.method)}</b>
                     </span>
                   </DataListCell>,
                   <DataListCell
@@ -82,28 +83,21 @@ export default function ReadonlyAutoprunePolicy(
                   <DataListCell
                     key={`policy-matches-${index}`}
                     data-testid={`${props.testId}-tag-pattern-matches`}
-                    style={
-                      policy?.tagPattern != null
-                        ? {display: 'block'}
-                        : {display: 'none'}
-                    }
                   >
-                    <span id="simple-item1">
-                      <b>
-                        {policy?.tagPatternMatches
-                          ? `matches`
-                          : `does not match`}
-                      </b>
-                    </span>
+                    <Conditional if={!isNullOrUndefined(policy.tagPattern)}>
+                      <span id="simple-item1">
+                        <b>
+                          {isNullOrUndefined(policy?.tagPatternMatches) ||
+                          policy.tagPatternMatches
+                            ? `matches`
+                            : `does not match`}
+                        </b>
+                      </span>
+                    </Conditional>
                   </DataListCell>,
                   <DataListCell
                     key={`policy-tag-pattern-${index}`}
                     data-testid={`${props.testId}-tag-pattern`}
-                    style={
-                      policy?.tagPattern != null
-                        ? {display: 'block'}
-                        : {display: 'none'}
-                    }
                   >
                     <span id="simple-item1">
                       <b>{policy?.tagPattern}</b>
