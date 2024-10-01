@@ -353,11 +353,12 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
 
 
 def _log_export_success(user_or_org_name, repository, export_id, request, kind):
-    if kind == "reposiotory":
+    if kind == "repo":
         log_action(
             "export_logs_success",
             user_or_org_name,
             {
+                "date/time": datetime.utcnow(),
                 "repo": repository,
                 "export_id": export_id,
                 "url": request.get_json().get("callback_url") or None,
@@ -371,17 +372,19 @@ def _log_export_success(user_or_org_name, repository, export_id, request, kind):
             "export_logs_success",
             user_or_org_name,
             {
+                "date/time": datetime.utcnow(),
                 "export_id": export_id,
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
             },
         )
 
-    if kind == "organization":
+    if kind == "org":
         log_action(
             "export_logs_success",
             user_or_org_name,
             {
+                "date/time": datetime.utcnow(),
                 "export_id": export_id,
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
@@ -395,6 +398,7 @@ def _log_export_failure(user_or_org_name, repository, request, ex, kind):
             "export_logs_failure",
             user_or_org_name,
             {
+                "date/time": datetime.utcnow(),
                 "repo": repository,
                 "error": ex,
                 "url": request.get_json().get("callback_url") or None,
@@ -407,6 +411,7 @@ def _log_export_failure(user_or_org_name, repository, request, ex, kind):
             "export_logs_failure",
             user_or_org_name,
             {
+                "date/time": datetime.utcnow(),
                 "error": ex,
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
@@ -418,6 +423,7 @@ def _log_export_failure(user_or_org_name, repository, request, ex, kind):
             "export_logs_failure",
             user_or_org_name,
             {
+                "date/time": datetime.utcnow(),
                 "error": ex,
                 "url": request.get_json().get("callback_url") or None,
                 "email": request.get_json().get("callback_email") or None,
