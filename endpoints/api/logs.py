@@ -16,7 +16,6 @@ from data.registry_model import registry_model
 from endpoints.api import (
     ApiResource,
     InvalidRequest,
-    InvalidTime,
     RepositoryParamResource,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
