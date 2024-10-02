@@ -179,7 +179,7 @@ describe('Namespace settings - autoprune policies', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
     cy.get('[data-testid="registry-autoprune-policy-method"]').contains(
-      'Number of Tags:',
+      'Number of Tags',
     );
     cy.get('[data-testid="registry-autoprune-policy-value"]').contains('10');
   });
@@ -289,10 +289,10 @@ describe('Namespace settings - autoprune policies', () => {
       ($el, index) => {
         switch (index) {
           case 0:
-            cy.wrap($el).should('have.text', 'Number of Tags:');
+            cy.wrap($el).should('have.text', 'Number of Tags');
             break;
           case 1:
-            cy.wrap($el).should('have.text', 'Age of Tags:');
+            cy.wrap($el).should('have.text', 'Age of Tags');
             break;
         }
       },
