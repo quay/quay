@@ -243,4 +243,6 @@ export const logKinds = {
   oauth_token_assigned: 'OAuth token assigned',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
+  export_logs_success: 'Export logs queued for delivery',
+  export_logs_failure: 'Export logs failure',
 };
