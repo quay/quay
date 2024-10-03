@@ -640,7 +640,9 @@ export function useLogDescriptions() {
       }
     },
     export_logs_failure: function (metadata: Metadata) {
-      return `Export logs failure: ${metadata.error}`;
+      return `Export logs failure: ${metadata.error}, ${
+        metadata.repo ? `requested repository: ${metadata.repo}` : ''
+      }`;
     },
   };
 
