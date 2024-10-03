@@ -483,6 +483,9 @@ def initialize_database():
     LogEntryKind.create(name="oauth_token_assigned")
     LogEntryKind.create(name="oauth_token_revoked")
 
+    LogEntryKind.create(name="export_logs_success")
+    LogEntryKind.create(name="export_logs_failure")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
