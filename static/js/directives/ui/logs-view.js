@@ -628,7 +628,7 @@ angular.module('quay').directive('logsView', function () {
           }
         },
         export_logs_failure: function (metadata) {
-          return `Export logs failure: ${metadata.error}`;
+          return `Export logs failure: ${metadata.error}, ${metadata.repo ? `requested repository: ${metadata.repo}` : ''}`;
         },
       };
 
