@@ -615,7 +615,6 @@ class SuperUserSendRecoveryEmail(ApiResource):
 
 @resource("/v1/superuser/users/<username>")
 @path_param("username", "The username of the user being managed")
-@internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserManagement(ApiResource):
     """
