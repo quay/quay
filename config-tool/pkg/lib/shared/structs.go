@@ -27,7 +27,7 @@ type DistributedStorageArgs struct {
 	AccessKey   string `default:"" validate:"" json:"access_key,omitempty" yaml:"access_key,omitempty"`
 	SecretKey   string `default:"" validate:"" json:"secret_key,omitempty" yaml:"secret_key,omitempty"`
 	BucketName  string `default:"" validate:"" json:"bucket_name,omitempty" yaml:"bucket_name,omitempty"`
-
+	Region      string `default:"us-east-1" validate: "" json:"region_name,omitempty" yaml:"region_name,omitempty"`
 	Signature string `default:"s3v2" validate: "" json:"signature_version,omitempty" yaml:"signature_version,omitempty"`
 	// Args for S3Storage
 	S3Bucket    string `default:"" validate:"" json:"s3_bucket,omitempty" yaml:"s3_bucket,omitempty"`
