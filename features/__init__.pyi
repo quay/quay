@@ -219,6 +219,3 @@ REFERRERS_API: FeatureNameValue
 
 SUPERUSERS_FULL_ACCESS: FeatureNameValue
 ASSIGN_OAUTH_TOKEN: FeatureNameValue
-
-# Feature Flag: If set to true, supports setting notifications on image expiry
-IMAGE_EXPIRY_TRIGGER: FeatureNameValue
