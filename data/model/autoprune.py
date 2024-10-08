@@ -25,7 +25,7 @@ from data.model import (
     repository,
     user,
 )
-from data.model.user import get_active_namespace_user_by_username
+from data.model.user import get_active_namespace_user_by_username, get_active_namespaces
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
@@ -719,7 +719,10 @@ def execute_policies_for_repo(
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
     try:
-        query = Repository.select(Repository.name, Repository.id,).where(
+        query = Repository.select(
+            Repository.name,
+            Repository.id,
+        ).where(
             Repository.state == RepositoryState.NORMAL,
             Repository.namespace_user == namespace_id,
         )
@@ -813,8 +816,37 @@ def fetch_tags_for_namespace_policies(ns_policies, namespace_id):
     return all_tags
 
 
-def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id):
+def fetch_default_policy_expiring_tags(default_autoprune_policy):
+    assert_valid_namespace_autoprune_policy(default_autoprune_policy)
+
+    tags = []
+    page_token = None
+    while True:
+        namespaces, page_token = modelutil.paginate(
+            get_active_namespaces(),
+            User,
+            page_token=page_token,
+            limit=50,
+        )
+
+        for namespace in namespaces:
+            namespace_tags = fetch_tags_for_namespace_policies(
+                [NamespaceAutoPrunePolicy(policy_dict=default_autoprune_policy)], namespace.id
+            )
+            tags.extend(namespace_tags)
+
+        if not page_token:
+            break
+    return tags
+
+
+def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id, default_autoprune_policy):
     all_tags = []
+    if default_autoprune_policy is not None:
+        default_policy_tags = fetch_default_policy_expiring_tags(default_autoprune_policy)
+        if len(default_policy_tags) > 0:
+            all_tags.extend(default_policy_tags)
+
     repo_policies = get_repository_autoprune_policies_by_repo_id(repo_id)
     repo_tags = fetch_tags_for_repo_policies(repo_policies, repo_id)
     if len(repo_tags):
