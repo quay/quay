@@ -7,12 +7,12 @@ from flask import abort, request
 
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
-from data.model import repository as repository_model
+from auth.permissions import ModifyRepositoryPermission
+from data.model import TagImmutableException
 from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
-    deprecated,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
@@ -28,7 +28,12 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import InvalidRequest, NotFound
+from endpoints.exception import (
+    InvalidRequest,
+    NotFound,
+    PreconditionFailed,
+    Unauthorized,
+)
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
 
@@ -48,6 +53,7 @@ def _tag_dict(tag):
     tag_info["manifest_digest"] = tag.manifest_digest
     tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
     tag_info["size"] = tag.manifest_layers_size
+    tag_info["immutable"] = tag.immutable
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         last_modified = format_date(datetime.utcfromtimestamp(tag.lifetime_start_ts))
@@ -58,6 +64,89 @@ def _tag_dict(tag):
         tag_info["expiration"] = expiration
 
     return tag_info
+
+
+def _set_tag_immutable(tag_ref, repository, namespace):
+    if not ModifyRepositoryPermission(namespace, repository).can():
+        raise Unauthorized()
+
+    if tag_ref.immutable:
+        return True
+
+    try:
+        registry_model.set_tag_immutable(tag_ref, raise_on_error=True)
+    except TagImmutableException as e:
+        raise PreconditionFailed(str(e))
+
+    log_action(
+        "change_tag_immutability",
+        namespace,
+        {
+            "username": get_authenticated_user().username,
+            "repo": repository,
+            "tag": tag_ref.name,
+            "namespace": namespace,
+            "immutable": True,
+        },
+        repo_name=repository,
+    )
+
+    return True
+
+
+def _set_tag_mutable(tag_ref, repository, namespace):
+    if not ModifyRepositoryPermission(namespace, repository).can():
+        raise Unauthorized()
+
+    if not tag_ref.immutable:
+        return True
+
+    try:
+        registry_model.set_tag_mutable(tag_ref, raise_on_error=True)
+    except TagImmutableException as e:
+        raise PreconditionFailed(str(e))
+
+    log_action(
+        "change_tag_immutability",
+        namespace,
+        {
+            "username": get_authenticated_user().username,
+            "repo": repository,
+            "tag": tag_ref.name,
+            "namespace": namespace,
+            "immutable": False,
+        },
+        repo_name=repository,
+    )
+
+    return True
+
+
+def _set_tag_expiration(tag_ref, repository, namespace, expiration_date):
+    try:
+        existing_end_ts, ok = registry_model.change_repository_tag_expiration(
+            tag_ref, expiration_date, raise_on_error=True
+        )
+        if ok:
+            if not (existing_end_ts is None and expiration_date is None):
+                log_action(
+                    "change_tag_expiration",
+                    namespace,
+                    {
+                        "username": get_authenticated_user().username,
+                        "repo": repository,
+                        "tag": tag_ref.name,
+                        "namespace": namespace,
+                        "expiration_date": expiration_date,
+                        "old_expiration_date": existing_end_ts,
+                    },
+                    repo_name=repository,
+                )
+            return True
+        else:
+            return False
+    except TagImmutableException as e:
+        raise PreconditionFailed(str(e))
 
 
 @resource("/v1/repository/<apirepopath:repository>/tag/")
@@ -135,6 +224,10 @@ class RepositoryTag(RepositoryParamResource):
                     "type": ["number", "null"],
                     "description": "(If specified) The expiration for the image",
                 },
+                "immutable": {
+                    "type": ["boolean"],
+                    "description": "(If specified) Whether that should be immutable",
+                },
             },
         },
     }
@@ -156,46 +249,74 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        if "expiration" in request.get_json():
-            tag_ref = registry_model.get_repo_tag(repo_ref, tag)
-            if tag_ref is None:
-                raise NotFound()
+        immutable_is_given = "immutable" in request.get_json()
+        expiration_is_given = "expiration" in request.get_json()
 
+        if immutable_is_given:
+            immutable = request.get_json().get("immutable")
+
+            if immutable is not True and immutable is not False:
+                raise InvalidRequest("Invalid value for immutable. Must be true or false.")
+
+        if expiration_is_given:
             expiration = request.get_json().get("expiration")
             expiration_date = None
             if expiration is not None:
                 try:
                     expiration_date = datetime.utcfromtimestamp(float(expiration))
                 except ValueError:
-                    abort(400)
+                    raise InvalidRequest("Invalid value for expiration. Must be a timestamp.")
 
                 if expiration_date <= datetime.now():
-                    abort(400)
+                    raise InvalidRequest("Expiration date cannot be in the past.")
 
-            existing_end_ts, ok = registry_model.change_repository_tag_expiration(
-                tag_ref, expiration_date
-            )
-            if ok:
-                if not (existing_end_ts is None and expiration_date is None):
-                    log_action(
-                        "change_tag_expiration",
-                        namespace,
-                        {
-                            "username": get_authenticated_user().username,
-                            "repo": repository,
-                            "tag": tag,
-                            "namespace": namespace,
-                            "expiration_date": expiration_date,
-                            "old_expiration_date": existing_end_ts,
-                        },
-                        repo_name=repository,
+        if immutable_is_given or expiration_is_given:
+            tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+            if tag_ref is None:
+                raise NotFound()
+
+        if immutable_is_given and expiration_is_given:
+            if immutable is True and expiration_date is not None:
+                raise InvalidRequest("Cannot set immutable and expiration at the same time.")
+
+            if (
+                immutable is False and expiration_date is not None
+            ):  # user wants to clear immutable and set expiration
+                if _set_tag_mutable(tag_ref, repository, namespace) is False:
+                    abort(500, "Could not set tag %s to mutable" % tag)
+
+                tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+
+                if _set_tag_expiration(tag_ref, repository, namespace, expiration_date) is False:
+                    raise InvalidRequest(
+                        "Could not update tag expiration; Tag has probably changed"
                     )
-            else:
+
+            elif (
+                immutable is True and expiration_date is None
+            ):  # user wants to clear expiration and set immutable
+                if _set_tag_expiration(tag_ref, repository, namespace, expiration_date) is False:
+                    raise InvalidRequest(
+                        "Could not update tag expiration; Tag has probably changed"
+                    )
+
+                tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+
+                if _set_tag_immutable(tag_ref, repository, namespace) is False:
+                    abort(500, "Could not set tag %s to immutable" % tag)
+
+        elif immutable_is_given:
+            if immutable is True:
+                if _set_tag_immutable(tag_ref, repository, namespace) is False:
+                    abort(500, "Could not set tag %s to immutable" % tag)
+            elif immutable is False:
+                if _set_tag_mutable(tag_ref, repository, namespace) is False:
+                    abort(500, "Could not set tag %s to mutable" % tag)
+        elif expiration_is_given:
+            if _set_tag_expiration(tag_ref, repository, namespace, expiration_date) is False:
                 raise InvalidRequest("Could not update tag expiration; Tag has probably changed")
 
         if "manifest_digest" in request.get_json():
-            existing_tag = registry_model.get_repo_tag(repo_ref, tag)
-
             manifest_digest = None
 
             manifest_digest = request.get_json()["manifest_digest"]
@@ -205,6 +326,13 @@ class RepositoryTag(RepositoryParamResource):
 
             if manifest is None:
                 raise NotFound()
+
+            existing_tag = registry_model.get_repo_tag(repo_ref, tag)
+
+            if existing_tag is not None and existing_tag.immutable:
+                raise PreconditionFailed(
+                    "Cannot point tag %s to manifest %s, tag is immutable" % (tag, manifest_digest)
+                )
 
             existing_manifest = (
                 registry_model.get_manifest_for_tag(existing_tag) if existing_tag else None
@@ -248,9 +376,13 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag)
-        if tag_ref is None:
-            raise NotFound()
+        try:
+            tag_ref = registry_model.delete_tag(model_cache, repo_ref, tag, raise_on_error=True)
+
+            if tag_ref is None:
+                raise NotFound()
+        except TagImmutableException:  # TODO: add log audit handling
+            raise PreconditionFailed("Cannot delete tag %s because it is immutable" % tag)
 
         username = get_authenticated_user().username
         log_action(
@@ -320,14 +452,20 @@ class RestoreTag(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        if not registry_model.retarget_tag(
-            repo_ref,
-            tag,
-            manifest,
-            storage,
-            docker_v2_signing_key,
-            is_reversion=True,
-        ):
+        try:
+            if not registry_model.retarget_tag(
+                repo_ref,
+                tag,
+                manifest,
+                storage,
+                docker_v2_signing_key,
+                is_reversion=True,
+                raise_on_error=True,
+            ):
+                raise InvalidRequest("Could not restore tag")
+        except TagImmutableException as e:  # TODO add log audit handling
+            raise PreconditionFailed("Cannot restore tag %s because it is immutable" % tag)
+        except Exception:
             raise InvalidRequest("Could not restore tag")
 
         log_action("revert_tag", namespace, log_data, repo_name=repository)
@@ -387,6 +525,10 @@ class TagTimeMachineDelete(RepositoryParamResource):
             existing_tag = registry_model.get_repo_tag(repo_ref, tag)
             if existing_tag is None:
                 raise NotFound()
+
+            if existing_tag.immutable:
+                raise PreconditionFailed("Cannot delete tag %s because it is immutable" % tag)
+
             manifest_ref = existing_tag.manifest
         else:
             manifest_ref = registry_model.lookup_manifest_by_digest(

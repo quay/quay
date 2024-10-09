@@ -70,9 +70,9 @@ class PreOCIModel(RepositoryDataInterface):
         repo = model.repository.get_repository(namespace_name, repository_name)
         model.repository.set_repository_visibility(repo, visibility)
 
-    def set_repository_state(self, namespace_name, repository_name, state):
+    def set_repository_state(self, namespace_name, repository_name, state, raise_on_error=False):
         repo = model.repository.get_repository(namespace_name, repository_name)
-        model.repository.set_repository_state(repo, state)
+        model.repository.set_repository_state(repo, state, raise_on_error)
 
     def get_repo_list(
         self,

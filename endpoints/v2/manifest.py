@@ -12,6 +12,7 @@ from data.model import (
     QuotaExceededException,
     RepositoryDoesNotExist,
     TagDoesNotExist,
+    TagImmutableException,
     namespacequota,
 )
 from data.model.oci.manifest import CreateManifestException
@@ -40,6 +41,7 @@ from endpoints.v2.errors import (
     NameUnknown,
     QuotaExceeded,
     TagExpired,
+    TagImmutable,
 )
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -395,7 +397,13 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         if manifest is None:
             raise ManifestUnknown()
 
-        tags = registry_model.delete_tags_for_manifest(model_cache, manifest)
+        try:
+            tags = registry_model.delete_tags_for_manifest(
+                model_cache, manifest, raise_on_error=True
+            )
+        except TagImmutableException as e:
+            raise TagImmutable(message=str(e))
+
         if not tags:
             raise ManifestUnknown()
 
@@ -493,6 +501,11 @@ def _write_manifest(
         raise ManifestInvalid(detail={"message": str(rte)})
     except QuotaExceededException as qee:
         raise QuotaExceeded()
+    except TagImmutableException as tie:
+        raise TagImmutable(
+            message="Could not create manifest pointing to immutable tag %s " % tag_name,
+            detail={"message": str(tie)},
+        )
 
     if manifest is None:
         raise ManifestInvalid()
