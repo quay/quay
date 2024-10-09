@@ -34,7 +34,16 @@ def _create_user(user):
 
     quotas = _get_namespace_quotas(user)
 
-    return User(user.username, user.email, user.verified, user.enabled, user.robot, quotas)
+    return User(
+        user.username,
+        user.email,
+        user.verified,
+        user.enabled,
+        user.robot,
+        quotas,
+        user.is_superuser,
+        user.is_restricted_user,
+    )
 
 
 def _create_key(key):
@@ -198,6 +207,22 @@ class PreOCIModel(SuperuserDataInterface):
     def update_enabled(self, username, enabled):
         user = model.user.get_nonrobot_user(username)
         model.user.update_enabled(user, bool(enabled))
+
+    def add_superuser(self, username):
+        user = model.user.get_nonrobot_user(username)
+        model.user.add_superuser(user)
+
+    def del_superuser(self, username, restricted):
+        user = model.user.get_nonrobot_user(username)
+        model.user.del_superuser(user, restricted=restricted)
+
+    def add_restricted_user(self, username):
+        user = model.user.get_nonrobot_user(username)
+        model.user.add_restricted_user(user)
+
+    def del_restricted_user(self, username):
+        user = model.user.get_nonrobot_user(username)
+        model.user.del_restricted_user(user)
 
     def update_email(self, username, email, auto_verify):
         user = model.user.get_nonrobot_user(username)
