@@ -2,6 +2,7 @@ import logging.config
 import os
 import sys
 import time
+from typing import Any, Dict, List
 
 import features
 from app import app
@@ -26,6 +27,7 @@ from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
+
 POLL_PERIOD = app.config.get("AUTO_PRUNING_POLL_PERIOD", 30)
 DEFAULT_POLICY_POLL_PERIOD = app.config.get(
     "AUTO_PRUNING_DEFAULT_POLICY_POLL_PERIOD", 60 * 60 * 24
@@ -51,11 +53,9 @@ class AutoPruneWorker(Worker):
             self.add_operation(self.prune_registry, DEFAULT_POLICY_POLL_PERIOD)
 
     def prune_registry(self, skip_lock_for_testing=False):
-        logger.info("processing default org autoprune policy")
+        logger.info("Processing default registry autoprune policy")
         default_namespace_autoprune_policy = app.config["DEFAULT_NAMESPACE_AUTOPRUNE_POLICY"]
-
         assert_valid_namespace_autoprune_policy(default_namespace_autoprune_policy)
-
         if skip_lock_for_testing:
             self._prune_registry(default_namespace_autoprune_policy)
         else:
@@ -66,82 +66,79 @@ class AutoPruneWorker(Worker):
                 ):
                     self._prune_registry(default_namespace_autoprune_policy)
             except LockNotAcquiredException:
-                logger.debug("Could not acquire global lock for registry wide auto-pruning")
+                logger.debug("Could not acquire global lock for registry-wide auto-pruning")
 
-    def _prune_registry(self, policy):
-        page_token = None
-        while True:
-            namespaces, page_token = modelutil.paginate(
-                get_active_namespaces(),
-                User,
-                page_token=page_token,
-                limit=DEFAULT_POLICY_FETCH_NAMESPACES_LIMIT,
+
+def _prune_registry(self, policies: List[Dict[str, Any]]):
+    page_token = None
+    while True:
+        namespaces, page_token = modelutil.paginate(
+            get_active_namespaces(),
+            User,
+            page_token=page_token,
+            limit=DEFAULT_POLICY_FETCH_NAMESPACES_LIMIT,
+        )
+        for namespace in namespaces:
+            logger.info("Executing default autoprune policy on namespace %s", namespace)
+            execute_namespace_policies(
+                policies,
+                namespace,
+                FETCH_REPOSITORIES_PAGE_LIMIT,
+                FETCH_TAGS_PAGE_LIMIT,
+                include_repo_policies=False,
             )
+        if not page_token:
+            break
 
-            for namespace in namespaces:
-                logger.info("executing default autoprune policy on namespace %s", namespace)
-                execute_namespace_policies(
-                    [NamespaceAutoPrunePolicy(policy_dict=policy)],
-                    namespace,
-                    FETCH_REPOSITORIES_PAGE_LIMIT,
-                    FETCH_TAGS_PAGE_LIMIT,
-                    include_repo_policies=False,
+
+def prune(self):
+    for _ in range(BATCH_SIZE):
+        autoprune_task = fetch_autoprune_task(TASK_RUN_MINIMUM_INTERVAL_MS)
+        if not autoprune_task:
+            logger.info("No autoprune tasks found, exiting...")
+            return
+        logger.info(
+            "Processing autoprune task %s for namespace %s",
+            autoprune_task.id,
+            autoprune_task.namespace,
+        )
+        repo_policies = []
+        try:
+            ns_policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
+            if not ns_policies:
+                repo_policies = get_repository_autoprune_policies_by_namespace_id(
+                    autoprune_task.namespace
                 )
-
-            if not page_token:
-                break
-
-    def prune(self):
-        for _ in range(BATCH_SIZE):
-            autoprune_task = fetch_autoprune_task(TASK_RUN_MINIMUM_INTERVAL_MS)
-            if not autoprune_task:
-                logger.info("no autoprune tasks found, exiting...")
-                return
-
-            logger.info(
-                "processing autoprune task %s for namespace %s",
-                autoprune_task.id,
-                autoprune_task.namespace,
-            )
-            repo_policies = []
-            try:
-                ns_policies = get_namespace_autoprune_policies_by_id(autoprune_task.namespace)
-                if not ns_policies:
-                    repo_policies = get_repository_autoprune_policies_by_namespace_id(
-                        autoprune_task.namespace
-                    )
-                    if not repo_policies:
-                        logger.info(
-                            "deleting autoprune task %s for namespace %s",
-                            autoprune_task.id,
-                            autoprune_task.namespace,
-                        )
-                        delete_autoprune_task(autoprune_task)
-                        continue
-
-                execute_namespace_policies(
-                    ns_policies,
-                    autoprune_task.namespace,
-                    FETCH_REPOSITORIES_PAGE_LIMIT,
-                    FETCH_TAGS_PAGE_LIMIT,
-                )
-
-                # case: only repo policies exists & no namespace policy
-                for policy in repo_policies:
-                    repo_id = policy.repository_id
-                    repo = get_repository_by_policy_repo_id(repo_id)
+                if not repo_policies:
                     logger.info(
-                        "processing autoprune task %s for repository %s",
+                        "Deleting autoprune task %s for namespace %s",
                         autoprune_task.id,
-                        repo.name,
+                        autoprune_task.namespace,
                     )
-                    execute_policy_on_repo(
-                        policy, repo_id, autoprune_task.namespace, tag_page_limit=100
-                    )
-
-                update_autoprune_task(autoprune_task, task_status="success")
-            except Exception as err:
-                update_autoprune_task(autoprune_task, task_status=f"failure: {str(err)}")
+                    delete_autoprune_task(autoprune_task)
+                    continue
+            # Process namespace policies
+            execute_namespace_policies(
+                ns_policies,
+                autoprune_task.namespace,
+                FETCH_REPOSITORIES_PAGE_LIMIT,
+                FETCH_TAGS_PAGE_LIMIT,
+            )
+            # Process repository policies
+            for policy in repo_policies:
+                repo_id = policy.repository_id
+                repo = get_repository_by_policy_repo_id(repo_id)
+                logger.info(
+                    "Processing autoprune task %s for repository %s",
+                    autoprune_task.id,
+                    repo.name,
+                )
+                execute_policy_on_repo(
+                    policy, repo_id, autoprune_task.namespace, tag_page_limit=100
+                )
+            update_autoprune_task(autoprune_task, task_status="success")
+        except Exception as err:
+            update_autoprune_task(autoprune_task, task_status=f"failure: {str(err)}")
 
 
 def create_gunicorn_worker():
