@@ -711,22 +711,27 @@ def test_registry_prune_invalid_policy(initialized_db):
         ),
         (
             ["match1", "match2", "test1", "test2", "test3"],
-            ["match1", "match2", "test1"],
+            ["match1", "match2", "test1", "test2", "test3"],
             False,
         ),
         (
             ["match1", "match2", "match3", "test1", "test2"],
-            ["match1", "match2", "match3"],
+            ["match1", "match2", "match3", "test1", "test2"],
             False,
         ),
         (
             ["match1", "match2", "match3", "match4", "test1"],
-            ["match1", "match2", "match3", "match4"],
+            ["match1", "match2", "match3", "match4", "test1"],
             False,
         ),
         (
             ["match1", "match2", "match3", "match4", "match5"],
             ["match1", "match2", "match3", "match4", "match5"],
+            False,
+        ),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test1", "test2", "test3"],
             False,
         ),
     ],
