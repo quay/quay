@@ -61,12 +61,16 @@ def match_like(field, search_query):
     return Field.__pow__(field, clause)
 
 
-def regex_search(query, field, pattern, matches=True):
-    return query.where(field.regexp(pattern)) if matches else query.where(~field.regexp(pattern))
+def regex_search(query, field, pattern, offset, matches=True):
+    return (
+        query.where(field.regexp(pattern)).offset(offset)
+        if matches
+        else query.where(~field.regexp(pattern)).offset(offset)
+    )
 
 
-def regex_sqlite(query, field, pattern, matches=True):
-    rows = query.execute()
+def regex_sqlite(query, field, pattern, offset, matches=True):
+    rows = query.offset(offset).execute()
     return (
         [row for row in rows if re.search(pattern, getattr(row, field.name))]
         if matches
