@@ -668,6 +668,9 @@ export function useLogDescriptions() {
         metadata.repo ? `requested repository: ${metadata.repo}` : ''
       }`;
     },
+    create_robot_federation: function (metadata: Metadata) {
+      return `Create robot federation for robot ${metadata.robot}`;
+    },
   };
 
   return descriptions;
