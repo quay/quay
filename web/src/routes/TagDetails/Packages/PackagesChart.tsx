@@ -9,9 +9,12 @@ import {
   TitleSizes,
 } from '@patternfly/react-core';
 import {BundleIcon} from '@patternfly/react-icons';
-import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
 import {getSeverityColor} from 'src/libs/utils';
 import {VulnerabilityStats} from '../SecurityReport/SecurityReportChart';
+import {
+  Feature,
+  VulnerabilitySeverity,
+} from 'src/resources/ManifestSecurityResource';
 
 function PackageMessage(props: PackageMessageProps) {
   if (props.vulnLevel === 'None') {
