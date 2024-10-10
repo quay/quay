@@ -156,7 +156,7 @@ class ElasticsearchLogs(object):
 
             try:
                 force_template_update = ELASTICSEARCH_FORCE_INDEX_TEMPLATE_UPDATE.lower() == "true"
-                self._client.indices.get_template(self._index_prefix)
+                self._client.indices.get_template(name=self._index_prefix)
                 LogEntry.init(
                     self._index_prefix,
                     self._index_settings,
