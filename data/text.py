@@ -70,9 +70,10 @@ def regex_search(query, field, pattern, offset, matches=True):
 
 
 def regex_sqlite(query, field, pattern, offset, matches=True):
-    rows = query.offset(offset).execute()
-    return (
+    rows = query.execute()
+    result = (
         [row for row in rows if re.search(pattern, getattr(row, field.name))]
         if matches
         else [row for row in rows if not re.search(pattern, getattr(row, field.name))]
     )
+    return result[offset:]
