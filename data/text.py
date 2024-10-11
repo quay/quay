@@ -70,6 +70,7 @@ def regex_search(query, field, pattern, offset, limit, matches=True):
 
 
 def regex_sqlite(query, field, pattern, offset, limit, matches=True):
+    # fetching all rows of the query here irrespective of limit and offset as sqlite does not support regexes.
     rows = query.execute()
     result = (
         [row for row in rows if re.search(pattern, getattr(row, field.name))]

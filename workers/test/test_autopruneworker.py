@@ -689,24 +689,87 @@ def test_registry_prune_invalid_policy(initialized_db):
             True,
         ),
         (
-            ["match1", "match2", "test1", "test2", "test3"],
-            ["match1", "match2", "test1", "test2", "test3"],
+            ["match1", "match2", "test1", "test2", "test3", "test4"],
+            ["match1", "match2", "test1", "test2", "test3", "test4"],
             True,
         ),
         (
-            ["match1", "match2", "match3", "test1", "test2"],
-            ["match1", "match2", "match3", "test1", "test2"],
+            ["match1", "match2", "match3", "test1", "test2", "test3", "test4"],
+            ["match1", "match2", "match3", "test1", "test2", "test3", "test4"],
             True,
         ),
         (
-            ["match1", "match2", "match3", "match4", "test1"],
-            ["match1", "match2", "match3", "test1"],
+            ["match1", "match2", "match3", "match4", "test1", "test2", "test3", "test4"],
+            ["match1", "match2", "match3", "test1", "test2", "test3", "test4"],
             True,
         ),
-        (["match1", "match2", "match3", "match4", "match5"], ["match1", "match2", "match3"], True),
+        (
+            [
+                "match1",
+                "match2",
+                "test1",
+                "test2",
+                "test3",
+                "test4",
+                "match3",
+                "match4",
+            ],
+            ["match1", "match2", "test1", "test2", "test3", "test4", "match3"],
+            True,
+        ),
+        (
+            ["match1", "match2", "match3", "test1", "test2", "test3", "test4", "match4", "match5"],
+            ["match1", "match2", "match3", "test1", "test2", "test3", "test4"],
+            True,
+        ),
+        (
+            [
+                "match1",
+                "test1",
+                "match2",
+                "test2",
+                "match3",
+                "test3",
+                "match4",
+                "test4",
+                "match5",
+                "test5",
+            ],
+            ["match1", "test1", "match2", "test2", "match3", "test3", "test4", "test5"],
+            True,
+        ),
+        (
+            [
+                "match1",
+                "test1",
+                "match2",
+                "test2",
+                "match3",
+                "test3",
+                "match4",
+                "test4",
+                "match5",
+                "test5",
+                "match6",
+                "match7",
+                "match8",
+            ],
+            ["match1", "test1", "match2", "test2", "match3", "test3", "test4", "test5"],
+            True,
+        ),
         (
             ["test1", "test2", "test3", "test4", "test5"],
             ["test1", "test2", "test3"],
+            False,
+        ),
+        (
+            ["test1", "match1", "test2", "match2", "test3", "match3", "test4", "test5", "match4"],
+            ["test1", "match1", "test2", "match2", "test3", "match3", "match4"],
+            False,
+        ),
+        (
+            ["match1", "match2", "match3", "match4", "match5", "test1", "test2", "test3", "test4"],
+            ["match1", "match2", "match3", "match4", "match5", "test1", "test2", "test3"],
             False,
         ),
         (
@@ -732,6 +795,22 @@ def test_registry_prune_invalid_policy(initialized_db):
         (
             ["test1", "test2", "test3", "test4", "test5"],
             ["test1", "test2", "test3"],
+            False,
+        ),
+        (
+            [
+                "match1",
+                "test1",
+                "match2",
+                "test2",
+                "match3",
+                "test3",
+                "match4",
+                "test4",
+                "match5",
+                "test5",
+            ],
+            ["match1", "test1", "match2", "test2", "match3", "test3", "match4", "match5"],
             False,
         ),
     ],
@@ -762,7 +841,7 @@ def test_prune_by_tag_count_with_tag_filter(tags, expected, matches, initialized
         creation_time = now_ms - i
         _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
 
-    _assert_repo_tag_count(repo1, 5)
+    _assert_repo_tag_count(repo1, len(tags))
 
     worker = AutoPruneWorker()
     worker.prune()
