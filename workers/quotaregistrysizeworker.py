@@ -39,10 +39,14 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     # Registry size is only viewable by superusers, don't calculate if not used
-    if not any(
+    if not all(
         [
-            features.SUPER_USERS,
-            len(app.config.get("SUPER_USERS", [])) == 0,
+            any(
+                [
+                    features.SUPER_USERS,
+                    len(app.config.get("SUPER_USERS", [])) == 0,
+                ]
+            ),
             app.config.get("LDAP_SUPERUSER_FILTER", False),
         ]
     ):
