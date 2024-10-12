@@ -19,7 +19,7 @@ def test_registrysizeworker_recovery(initialized_db):
     app.config.update({"ACCOUNT_RECOVERY_MODE": True})
     app.config.update({"SUPER_USERS": ["someone"]})
 
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+    if not app.config.get("ACCOUNT_RECOVERY_MODE", False):
         with patch(
             "workers.quotaregistrysizeworker.calculate_registry_size", MagicMock()
         ) as mock_calculate_registry_size:
