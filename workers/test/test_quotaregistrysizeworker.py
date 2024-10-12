@@ -1,8 +1,8 @@
-from test.fixtures import *
 from unittest.mock import MagicMock, patch
+
 import app
 import features
-
+from test.fixtures import *
 from workers.quotaregistrysizeworker import QuotaRegistrySizeWorker
 
 
