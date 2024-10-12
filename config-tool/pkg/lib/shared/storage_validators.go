@@ -30,6 +30,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 	var secretKey string
 	var isSecure bool
 	var bucketName string
+	var region string = "us-east-1"
 	var token string = ""
 
 	switch storageType {
@@ -60,6 +61,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		endpoint = args.Hostname
 		isSecure = args.IsSecure
 		bucketName = args.BucketName
+		region = args.Region
 
 		// Append port if present
 		if args.Port != 0 {
@@ -70,7 +72,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -94,6 +96,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
 		isSecure = true
+		region = "us-east-1"
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
@@ -140,7 +143,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			token = value.SessionToken
 
 		}
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -178,6 +181,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		token = *assumeRoleOutput.Credentials.SessionToken
 		bucketName = args.S3Bucket
 		isSecure = true
+		region = "us-east-1"
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
@@ -192,7 +196,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -221,7 +225,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -296,7 +300,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		// Validate bucket settings
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName, region); !ok {
 			errors = append(errors, err)
 		}
 
@@ -398,7 +402,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 }
 
-func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string) (bool, ValidationError) {
+func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string, region string) (bool, ValidationError) {
 
 	// Set transport
 	tr, err := minio.DefaultTransport(true)
@@ -422,6 +426,7 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 		Creds:     credentials.NewStaticV4(accessKey, secretKey, token),
 		Secure:    isSecure,
 		Transport: tr,
+		Region:    region,
 	})
 	if err != nil {
 		newError := ValidationError{
