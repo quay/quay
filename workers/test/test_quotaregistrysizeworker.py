@@ -32,7 +32,7 @@ def test_registrysizeworker_no_quotamanagement(initialized_db):
     # we expect to fail since we do not have quota management enabled
     features.QUOTA_MANAGEMENT = False
     app.config.update({"SUPER_USERS": ["someone"]})
-    if not features.QUOTA_MANAGEMENT:
+    if features.QUOTA_MANAGEMENT:
         with patch(
             "workers.quotaregistrysizeworker.calculate_registry_size", MagicMock()
         ) as mock_calculate_registry_size:
@@ -44,7 +44,7 @@ def test_registrysizeworker_no_quotamanagement(initialized_db):
 def test_registrysizeworker_no_superusers(initialized_db):
     # we expect to fail since we do not have any superusers
     app.config.update({"SUPER_USERS": [""]})
-    if not features.QUOTA_MANAGEMENT:
+    if features.QUOTA_MANAGEMENT:
         with patch(
             "workers.quotaregistrysizeworker.calculate_registry_size", MagicMock()
         ) as mock_calculate_registry_size:
