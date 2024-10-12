@@ -893,7 +893,7 @@ class DefaultConfig(ImmutableConfig):
     ROBOTS_WHITELIST: Optional[List[str]] = []
 
     FEATURE_ASSIGN_OAUTH_TOKEN = True
-    DEFAULT_NAMESPACE_AUTOPRUNE_POLICY: Optional[Dict[str, str]] = None
+    DEFAULT_NAMESPACE_AUTOPRUNE_POLICY: Optional[List[Dict[str, str]]] = None
 
     # Allows users to set up notifications on image expiry, can remove flag once feature is tested
     FEATURE_IMAGE_EXPIRY_TRIGGER = False
