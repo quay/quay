@@ -39,7 +39,13 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     # Registry size is only viewable by superusers, don't calculate if not used
-    if not features.SUPER_USERS or len(app.config.get("SUPER_USERS", [])) == 0:
+    if not any(
+        [
+            features.SUPER_USERS,
+            len(app.config.get("SUPER_USERS", [])) == 0,
+            app.config.get("LDAP_SUPERUSER_FILTER", False),
+        ]
+    ):
         logger.debug("Super users disabled or none specified; skipping quotaregistrysizeworker")
         while True:
             time.sleep(100000)
