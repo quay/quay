@@ -1,11 +1,6 @@
 import {PageSection, PageSectionVariants, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useLocation, useSearchParams} from 'react-router-dom';
-import {useResetRecoilState} from 'recoil';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import RequestError from 'src/components/errors/RequestError';
@@ -29,8 +24,6 @@ export default function TagDetails() {
   const [searchParams] = useSearchParams();
   const [digest, setDigest] = useState<string>('');
   const [err, setErr] = useState<string>();
-  const resetSecurityDetails = useResetRecoilState(SecurityDetailsState);
-  const resetSecurityError = useResetRecoilState(SecurityDetailsErrorState);
   const [tagDetails, setTagDetails] = useState<Tag>({
     name: '',
     is_manifest_list: false,
@@ -55,8 +48,6 @@ export default function TagDetails() {
 
   useEffect(() => {
     (async () => {
-      resetSecurityDetails();
-      resetSecurityError();
       try {
         const resp: TagsResponse = await getTags(org, repo, 1, 100, tag);
 

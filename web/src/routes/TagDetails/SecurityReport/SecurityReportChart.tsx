@@ -10,7 +10,10 @@ import {
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {getSeverityColor} from 'src/libs/utils';
-import {Feature, VulnerabilitySeverity} from 'src/resources/TagResource';
+import {
+  Feature,
+  VulnerabilitySeverity,
+} from 'src/resources/ManifestSecurityResource';
 import './SecurityReportChart.css';
 
 function VulnerabilitySummary(props: VulnerabilityStatsProps) {
