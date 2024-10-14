@@ -672,7 +672,7 @@ export function useLogDescriptions() {
       return `Create robot federation for robot ${metadata.robot}`;
     },
     delete_robot_federation: function (metadata: Metadata) {
-      return `Create robot federation for robot ${metadata.robot}`;
+      return `Delete robot federation for robot ${metadata.robot}`;
     },
     federated_robot_token_exchange: function (metadata: Metadata) {
       return `Federated robot token exchange robot:${metadata.robot}, issuer:${metadata.issuer}, subject:${metadata.subject}`;
