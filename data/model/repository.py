@@ -308,6 +308,7 @@ def get_visible_repositories(
     start_id=None,
     limit=None,
     is_superuser=False,
+    return_all=False,
 ):
     """
     Returns the repositories visible to the given user (if any).
@@ -350,6 +351,7 @@ def get_visible_repositories(
         include_public,
         start_id=start_id,
         is_superuser=is_superuser,
+        return_all=return_all,
     )
 
     if limit is not None:

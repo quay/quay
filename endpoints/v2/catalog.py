@@ -43,6 +43,7 @@ def catalog_search(start_id, limit, pagination_callback):
             start_id=start_id,
             limit=limit + 1,
             is_superuser=allow_if_superuser() or allow_if_global_readonly_superuser(),
+            return_all=True,
         )
         # NOTE: The repository ID is in `rid` (not `id`) here, as per the requirements of
         # the `get_visible_repositories` call.
