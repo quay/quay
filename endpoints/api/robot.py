@@ -415,7 +415,6 @@ class RegenerateOrgRobot(ApiResource):
         raise Unauthorized()
 
 
-# TODO: Add log action event for federation config changes
 @resource("/v1/organization/<orgname>/robots/<robot_shortname>/federation")
 @path_param("orgname", "The name of the organization")
 @path_param(
@@ -482,6 +481,8 @@ class OrgRobotFederation(ApiResource):
             subject = item.get("subject")
             if not issuer or not subject:
                 raise request_error(message="Missing one or more required fields (issuer, subject)")
+            if not (issuer.startswith("http://") or issuer.startswith("https://")):
+                raise request_error(message="Issuer must be a URL (http:// or https://)")
             entry = {"issuer": issuer, "subject": subject}
 
             if f"{issuer}:{subject}" in seen:
