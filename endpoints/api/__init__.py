@@ -490,7 +490,7 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
-    return features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
+    return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
 def allow_if_global_readonly_superuser():

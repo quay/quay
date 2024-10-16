@@ -8,6 +8,7 @@ from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data import model
 from data.cache import cache_key
+from endpoints.api import allow_if_global_readonly_superuser, allow_if_superuser
 from endpoints.decorators import (
     anon_protect,
     disallow_for_account_recovery_mode,
@@ -41,6 +42,8 @@ def catalog_search(start_id, limit, pagination_callback):
             include_public=include_public,
             start_id=start_id,
             limit=limit + 1,
+            is_superuser=allow_if_superuser() or allow_if_global_readonly_superuser(),
+            return_all=True,
         )
         # NOTE: The repository ID is in `rid` (not `id`) here, as per the requirements of
         # the `get_visible_repositories` call.
