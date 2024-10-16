@@ -1049,3 +1049,111 @@ def test_multiple_policies_for_repository(initialized_db):
 
     task3 = model.autoprune.fetch_autoprune_task_by_namespace_id(repo1_policy3.namespace_id)
     assert task3.status == "success"
+
+
+@pytest.mark.parametrize(
+    "tags, expected, plcy1, plcy2",
+    [
+        (
+            ["test1", "test2", "check1", "test3", "check2"],
+            ["test1", "test2", "test3", "check2"],
+            ["creation_date", "5m", "^c", True],
+            ["number_of_tags", 4, None, None],
+        ),
+        (
+            ["test1", "test2", "check1", "test3", "check2"],
+            ["test1", "test2", "test3", "check2"],
+            ["number_of_tags", 4, None, None],
+            ["creation_date", "5m", "^c", True],
+        ),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test4", "test5"],
+            ["creation_date", "5m", None, None],
+            ["number_of_tags", 4, None, None],
+        ),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test4", "test5"],
+            ["number_of_tags", 4, None, None],
+            ["creation_date", "5m", None, None],
+        ),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test4", "test5"],
+            ["number_of_tags", 2, None, None],
+            ["number_of_tags", 3, None, None],
+        ),
+        (
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["test4", "test5"],
+            ["number_of_tags", 3, None, None],
+            ["number_of_tags", 2, None, None],
+        ),
+        (
+            ["test1", "test2", "check1", "test3", "check2"],
+            ["check1", "test3", "check2"],
+            ["number_of_tags", 4, None, None],
+            ["creation_date", "5m", "^c", False],
+        ),
+        (
+            ["test1", "test2", "check1", "test3", "check2"],
+            ["check1", "test3", "check2"],
+            ["creation_date", "5m", "^c", False],
+            ["number_of_tags", 4, None, None],
+        ),
+    ],
+)
+def test_policy_order(tags, expected, plcy1, plcy2, initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        model.autoprune.SKIP_LOCKED = False
+
+    repo1 = model.repository.create_repository(
+        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    policy1 = model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "repo1",
+        {
+            "method": plcy1[0],
+            "value": plcy1[1],
+            "tag_pattern": plcy1[2],
+            "tag_pattern_matches": plcy1[3],
+        },
+        create_task=True,
+    )
+
+    model.autoprune.create_repository_autoprune_policy(
+        "sellnsmall",
+        "repo1",
+        {
+            "method": plcy2[0],
+            "value": plcy2[1],
+            "tag_pattern": plcy2[2],
+            "tag_pattern_matches": plcy2[3],
+        },
+    )
+
+    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    for i, tag in enumerate(tags):
+        # Set the first 3 tags to be old enough to be pruned
+        # We do the -1 to ensure that the creation time is less than the current time
+        creation_time = _past_timestamp_ms("5m") - 1 if i < 3 else None
+        _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
+
+    _assert_repo_tag_count(repo1, len(tags))
+
+    worker = AutoPruneWorker()
+    worker.prune()
+
+    _assert_repo_tag_count(repo1, len(expected))
+
+    task = model.autoprune.fetch_autoprune_task_by_namespace_id(policy1.namespace_id)
+    assert task.status == "success"
+
+    for tag in list_alive_tags(repo1):
+        assert tag.name in expected
+        expected.remove(tag.name)
+
+    assert len(expected) == 0
