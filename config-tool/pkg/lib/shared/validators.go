@@ -477,7 +477,7 @@ func ValidateBitbucketOAuth(clientID, clientSecret string) bool {
 
 }
 
-// ValidateDatabaseConnection checks that the Bitbucker OAuth credentials are correct
+// ValidateDatabaseConnection checks whether database is available
 func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocals, autorollback bool, sslmode, sslrootcert, fgName string) error {
 
 	// Convert uri into correct format
@@ -552,11 +552,19 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		log.Debugf("Pinging database at %s dsn:", dsn)
+		log.Debugf("Pinging database at hostname: %s.", fullHostName)
 		err = db.PingContext(ctx)
 		if err != nil {
 			return err
 		}
+
+		var version string
+		row := db.QueryRow("SELECT version()")
+		err = row.Scan(&version)
+		if err != nil {
+			return err
+		}
+		log.Debugf("Database version: %s", version)
 
 		// Database is Postgres
 	} else if scheme == "postgresql" {
@@ -601,7 +609,7 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		}
 
 		// Connect and defer closing
-		log.Debugf("Pinging database at %s", dsn)
+		log.Debugf("Pinging database at hostname: %s.", fullHostName)
 		conn, err := pgx.Connect(ctx, dsn)
 		if err != nil {
 			return err
@@ -615,6 +623,7 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		if err != nil {
 			return err
 		}
+		log.Debugf("Database version: %s", version)
 
 		// Extract major version number using regex
 		var re = regexp.MustCompile(`^(\d+)`)
