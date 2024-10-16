@@ -41,6 +41,8 @@ from data.database import (
     MediaType,
     NotificationKind,
     OAuthAuthorizationCode,
+    Policy,
+    Policykind,
     ProxyCacheConfig,
     QuayRegion,
     QuayService,
@@ -482,6 +484,9 @@ def initialize_database():
 
     LogEntryKind.create(name="oauth_token_assigned")
     LogEntryKind.create(name="oauth_token_revoked")
+    LogEntryKind.create(name="policy_change_create")
+    LogEntryKind.create(name="policy_change_delete")
+    LogEntryKind.create(name="policy_change_update")
 
     LogEntryKind.create(name="export_logs_success")
     LogEntryKind.create(name="export_logs_failure")
@@ -582,6 +587,13 @@ def initialize_database():
     DisableReason.create(name="successive_build_internal_errors")
 
     TagKind.create(name="tag")
+
+    Policykind.create(name="is_superuser")
+    Policykind.create(name="create_repo_visibility")
+    Policykind.create(name="enable_org_creation")
+    Policykind.create(name="robot_account_creation")
+    Policykind.create(name="whitelist_org_robot_account_creation")
+    Policykind.create(name="tag_immutability")
 
 
 def wipe_database():
