@@ -706,15 +706,26 @@ def execute_policies_for_repo(
     """
     Executes both repository and namespace level policies for the given repository. The policies
     are applied in a serial fashion and are run asynchronously in the background.
-    """
-    if include_repo_policies:
-        repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-        for repo_policy in repo_policies:
-            execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
 
-    for ns_policy in ns_policies:
-        # execute associated namespace policy
-        execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
+    With multiple policy support, need to keep results consistent when running policies with different methods.
+    Eg: On a repo with 5 tags, policy1 has method CREATION_DATE and 2 tags are applicable to be pruned here.
+        policy2 has method NUMBER_OF_TAGS, value: 4.
+        If policy2 is run first, 1 tag is deleted from policy 1 and 2 tags from policy2.
+        If policy1 is run first, 2 tags are deleted from policy 1 and none from policy2.
+    """
+    policies = ns_policies.copy()
+    if include_repo_policies:
+        policies.extend(get_repository_autoprune_policies_by_repo_id(repo.id))
+
+    # Prune by age of tags first
+    for policy in policies:
+        if policy.method == AutoPruneMethod.CREATION_DATE.value:
+            execute_policy_on_repo(policy, repo.id, namespace_id, tag_page_limit)
+
+    # Then prune by number of tags
+    for policy in policies:
+        if policy.method == AutoPruneMethod.NUMBER_OF_TAGS.value:
+            execute_policy_on_repo(policy, repo.id, namespace_id, tag_page_limit)
 
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):
