@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import buildman_pb2 as buildman__pb2
+import buildman.buildman_pb.buildman_pb2 as buildman__pb2
 
 GRPC_GENERATED_VERSION = '1.67.0'
 GRPC_VERSION = grpc.__version__
