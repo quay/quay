@@ -2,7 +2,13 @@ from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import (
+    ClassVar as _ClassVar,
+    Iterable as _Iterable,
+    Mapping as _Mapping,
+    Optional as _Optional,
+    Union as _Union,
+)
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -15,6 +21,7 @@ class Phase(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     PUSHING: _ClassVar[Phase]
     COMPLETE: _ClassVar[Phase]
     ERROR: _ClassVar[Phase]
+
 WAITING: Phase
 UNPACKING: Phase
 PULLING: Phase
@@ -40,14 +47,30 @@ class BuildJobArgs(_message.Message):
     def __init__(self, register_jwt: _Optional[str] = ...) -> None: ...
 
 class BuildPack(_message.Message):
-    __slots__ = ("job_jwt", "package_url", "git_package", "context", "dockerfile_path", "repository", "registry", "pull_token", "push_token", "tag_names", "base_image")
+    __slots__ = (
+        "job_jwt",
+        "package_url",
+        "git_package",
+        "context",
+        "dockerfile_path",
+        "repository",
+        "registry",
+        "pull_token",
+        "push_token",
+        "tag_names",
+        "base_image",
+    )
+
     class BaseImage(_message.Message):
         __slots__ = ("username", "password")
         USERNAME_FIELD_NUMBER: _ClassVar[int]
         PASSWORD_FIELD_NUMBER: _ClassVar[int]
         username: str
         password: str
-        def __init__(self, username: _Optional[str] = ..., password: _Optional[str] = ...) -> None: ...
+        def __init__(
+            self, username: _Optional[str] = ..., password: _Optional[str] = ...
+        ) -> None: ...
+
     class GitPackage(_message.Message):
         __slots__ = ("url", "sha", "private_key")
         URL_FIELD_NUMBER: _ClassVar[int]
@@ -56,7 +79,13 @@ class BuildPack(_message.Message):
         url: str
         sha: str
         private_key: str
-        def __init__(self, url: _Optional[str] = ..., sha: _Optional[str] = ..., private_key: _Optional[str] = ...) -> None: ...
+        def __init__(
+            self,
+            url: _Optional[str] = ...,
+            sha: _Optional[str] = ...,
+            private_key: _Optional[str] = ...,
+        ) -> None: ...
+
     JOB_JWT_FIELD_NUMBER: _ClassVar[int]
     PACKAGE_URL_FIELD_NUMBER: _ClassVar[int]
     GIT_PACKAGE_FIELD_NUMBER: _ClassVar[int]
@@ -79,7 +108,20 @@ class BuildPack(_message.Message):
     push_token: str
     tag_names: _containers.RepeatedScalarFieldContainer[str]
     base_image: BuildPack.BaseImage
-    def __init__(self, job_jwt: _Optional[str] = ..., package_url: _Optional[str] = ..., git_package: _Optional[_Union[BuildPack.GitPackage, _Mapping]] = ..., context: _Optional[str] = ..., dockerfile_path: _Optional[str] = ..., repository: _Optional[str] = ..., registry: _Optional[str] = ..., pull_token: _Optional[str] = ..., push_token: _Optional[str] = ..., tag_names: _Optional[_Iterable[str]] = ..., base_image: _Optional[_Union[BuildPack.BaseImage, _Mapping]] = ...) -> None: ...
+    def __init__(
+        self,
+        job_jwt: _Optional[str] = ...,
+        package_url: _Optional[str] = ...,
+        git_package: _Optional[_Union[BuildPack.GitPackage, _Mapping]] = ...,
+        context: _Optional[str] = ...,
+        dockerfile_path: _Optional[str] = ...,
+        repository: _Optional[str] = ...,
+        registry: _Optional[str] = ...,
+        pull_token: _Optional[str] = ...,
+        push_token: _Optional[str] = ...,
+        tag_names: _Optional[_Iterable[str]] = ...,
+        base_image: _Optional[_Union[BuildPack.BaseImage, _Mapping]] = ...,
+    ) -> None: ...
 
 class HeartbeatRequest(_message.Message):
     __slots__ = ("job_jwt",)
@@ -95,6 +137,7 @@ class HeartbeatResponse(_message.Message):
 
 class SetPhaseRequest(_message.Message):
     __slots__ = ("job_jwt", "sequence_number", "phase", "pull_metadata")
+
     class PullMetadata(_message.Message):
         __slots__ = ("registry_url", "base_image", "base_image_tag", "pull_username")
         REGISTRY_URL_FIELD_NUMBER: _ClassVar[int]
@@ -105,7 +148,14 @@ class SetPhaseRequest(_message.Message):
         base_image: str
         base_image_tag: str
         pull_username: str
-        def __init__(self, registry_url: _Optional[str] = ..., base_image: _Optional[str] = ..., base_image_tag: _Optional[str] = ..., pull_username: _Optional[str] = ...) -> None: ...
+        def __init__(
+            self,
+            registry_url: _Optional[str] = ...,
+            base_image: _Optional[str] = ...,
+            base_image_tag: _Optional[str] = ...,
+            pull_username: _Optional[str] = ...,
+        ) -> None: ...
+
     JOB_JWT_FIELD_NUMBER: _ClassVar[int]
     SEQUENCE_NUMBER_FIELD_NUMBER: _ClassVar[int]
     PHASE_FIELD_NUMBER: _ClassVar[int]
@@ -114,7 +164,13 @@ class SetPhaseRequest(_message.Message):
     sequence_number: int
     phase: Phase
     pull_metadata: SetPhaseRequest.PullMetadata
-    def __init__(self, job_jwt: _Optional[str] = ..., sequence_number: _Optional[int] = ..., phase: _Optional[_Union[Phase, str]] = ..., pull_metadata: _Optional[_Union[SetPhaseRequest.PullMetadata, _Mapping]] = ...) -> None: ...
+    def __init__(
+        self,
+        job_jwt: _Optional[str] = ...,
+        sequence_number: _Optional[int] = ...,
+        phase: _Optional[_Union[Phase, str]] = ...,
+        pull_metadata: _Optional[_Union[SetPhaseRequest.PullMetadata, _Mapping]] = ...,
+    ) -> None: ...
 
 class SetPhaseResponse(_message.Message):
     __slots__ = ("success", "sequence_number")
@@ -134,7 +190,13 @@ class LogMessageRequest(_message.Message):
     sequence_number: int
     log_message: str
     phase: str
-    def __init__(self, job_jwt: _Optional[str] = ..., sequence_number: _Optional[int] = ..., log_message: _Optional[str] = ..., phase: _Optional[str] = ...) -> None: ...
+    def __init__(
+        self,
+        job_jwt: _Optional[str] = ...,
+        sequence_number: _Optional[int] = ...,
+        log_message: _Optional[str] = ...,
+        phase: _Optional[str] = ...,
+    ) -> None: ...
 
 class LogMessageResponse(_message.Message):
     __slots__ = ("success", "sequence_number")
@@ -154,7 +216,13 @@ class CachedTagRequest(_message.Message):
     base_image_name: str
     base_image_tag: str
     base_image_id: str
-    def __init__(self, job_jwt: _Optional[str] = ..., base_image_name: _Optional[str] = ..., base_image_tag: _Optional[str] = ..., base_image_id: _Optional[str] = ...) -> None: ...
+    def __init__(
+        self,
+        job_jwt: _Optional[str] = ...,
+        base_image_name: _Optional[str] = ...,
+        base_image_tag: _Optional[str] = ...,
+        base_image_id: _Optional[str] = ...,
+    ) -> None: ...
 
 class CachedTag(_message.Message):
     __slots__ = ("CachedTag",)
