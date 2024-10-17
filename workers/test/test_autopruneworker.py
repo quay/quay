@@ -38,7 +38,7 @@ def _populate_blob(content, namespace, repo):
     return blob, digest
 
 
-def _create_manifest(namespace, repo):
+def create_manifest(namespace, repo):
     layer_json = json.dumps(
         {
             "id": "somelegacyid",
@@ -65,7 +65,7 @@ def _create_manifest(namespace, repo):
     return get_or_create_manifest(repo, v2_manifest, storage)
 
 
-def _create_tag(repo, manifest, start=None, name=None):
+def create_tag(repo, manifest, start=None, name=None):
     name = "tag-%s" % str(uuid.uuid4()) if name is None else name
     now_ms = int(time.time() * 1000) if start is None else start
     created = Tag.create(
@@ -87,7 +87,7 @@ def _create_tags(repo, manifest, count, start_time_before=None):
             if start_time_before is not None
             else None
         )
-        _create_tag(repo, manifest, start_time)
+        create_tag(repo, manifest, start_time)
 
 
 def _assert_repo_tag_count(repo, count, assert_start_after=None):
@@ -119,9 +119,9 @@ def test_namespace_prune_multiple_repos_by_tag_count(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
-    manifest_repo3 = _create_manifest("sellnsmall", repo3)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
+    manifest_repo3 = create_manifest("sellnsmall", repo3)
 
     _create_tags(repo1, manifest_repo1.manifest, 10)
     _create_tags(repo2, manifest_repo2.manifest, 3)
@@ -158,9 +158,9 @@ def test_namespace_prune_multiple_repos_by_creation_date(initialized_db):
     repo3 = model.repository.create_repository(
         "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
     )
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
-    manifest_repo3 = _create_manifest("sellnsmall", repo3)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
+    manifest_repo3 = create_manifest("sellnsmall", repo3)
 
     _create_tags(repo1, manifest_repo1.manifest, 5)
     _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
@@ -268,8 +268,8 @@ def test_repository_prune_multiple_repos_by_tag_count(initialized_db):
         "buynlarge", "repo2", {"method": "number_of_tags", "value": 4}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("buynlarge", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("buynlarge", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 10)
     _create_tags(repo2, manifest_repo2.manifest, 3)
@@ -314,9 +314,9 @@ def test_repository_prune_multiple_repos_by_creation_date(initialized_db):
         "library", "repo3", {"method": "creation_date", "value": "24h"}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("buynlarge", repo2)
-    manifest_repo3 = _create_manifest("library", repo3)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("buynlarge", repo2)
+    manifest_repo3 = create_manifest("library", repo3)
 
     _create_tags(repo1, manifest_repo1.manifest, 5)
     _create_tags(repo1, manifest_repo1.manifest, 5, start_time_before="7d")
@@ -383,8 +383,8 @@ def test_nspolicy_tagcount_less_than_repopolicy_tagcount(initialized_db):
         "sellnsmall", "repo1", {"method": "number_of_tags", "value": 4}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 5)
     _create_tags(repo2, manifest_repo2.manifest, 8)
@@ -424,8 +424,8 @@ def test_repopolicy_tagcount_less_than_nspolicy_tagcount(initialized_db):
         "sellnsmall", "repo1", {"method": "number_of_tags", "value": 2}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 5)
     _create_tags(repo2, manifest_repo2.manifest, 8)
@@ -466,8 +466,8 @@ def test_nspolicy_timespan_older_than_repopolicy_timespan(initialized_db):
         "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 3)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="5d")
@@ -514,8 +514,8 @@ def test_repopolicy_timespan_older_than_nspolicy_timespan(initialized_db):
         "sellnsmall", "repo1", {"method": "creation_date", "value": "5d"}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 3)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="5d")
@@ -562,8 +562,8 @@ def test_nspolicy_tagcount_repopolicy_creation_date_reconcile(initialized_db):
         "sellnsmall", "repo1", {"method": "creation_date", "value": "3d"}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 1)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="3d")
@@ -608,8 +608,8 @@ def test_nspolicy_creation_date_repopolicy_tagcount_reconcile(initialized_db):
         "sellnsmall", "repo1", {"method": "number_of_tags", "value": 6}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 2)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="3d")
@@ -835,11 +835,11 @@ def test_prune_by_tag_count_with_tag_filter(tags, expected, matches, initialized
         create_task=True,
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
     now_ms = int(time.time() * 1000)
     for i, tag in enumerate(tags):
         creation_time = now_ms - i
-        _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
+        create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
 
     _assert_repo_tag_count(repo1, len(tags))
 
@@ -917,12 +917,12 @@ def test_prune_by_creation_date_with_tag_filter(tags, expected, matches, initial
         create_task=True,
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
     for i, tag in enumerate(tags):
         # Set the first 3 tags to be old enough to be pruned
         # We do the -1 to ensure that the creation time is less than the current time
         creation_time = _past_timestamp_ms("5d") - 1 if i < 3 else None
-        _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
+        create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
 
     _assert_repo_tag_count(repo1, 5)
 
@@ -971,8 +971,8 @@ def test_multiple_policies_for_namespace(initialized_db):
         "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
-    manifest_repo2 = _create_manifest("sellnsmall", repo2)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
+    manifest_repo2 = create_manifest("sellnsmall", repo2)
 
     _create_tags(repo1, manifest_repo1.manifest, 2)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="4d")
@@ -1028,7 +1028,7 @@ def test_multiple_policies_for_repository(initialized_db):
         "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
 
     _create_tags(repo1, manifest_repo1.manifest, 2)
     _create_tags(repo1, manifest_repo1.manifest, 2, start_time_before="4d")
@@ -1135,12 +1135,12 @@ def test_policy_order(tags, expected, plcy1, plcy2, initialized_db):
         },
     )
 
-    manifest_repo1 = _create_manifest("sellnsmall", repo1)
+    manifest_repo1 = create_manifest("sellnsmall", repo1)
     for i, tag in enumerate(tags):
         # Set the first 3 tags to be old enough to be pruned
         # We do the -1 to ensure that the creation time is less than the current time
         creation_time = _past_timestamp_ms("5m") - 1 if i < 3 else None
-        _create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
+        create_tag(repo1, manifest_repo1.manifest, start=creation_time, name=tag)
 
     _assert_repo_tag_count(repo1, len(tags))
 
