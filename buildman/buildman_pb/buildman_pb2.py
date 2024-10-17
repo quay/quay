@@ -9,61 +9,57 @@ from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import runtime_version as _runtime_version
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 _runtime_version.ValidateProtobufRuntimeVersion(
-    _runtime_version.Domain.PUBLIC,
-    5,
-    27,
-    2,
-    '',
-    'buildman.proto'
+    _runtime_version.Domain.PUBLIC, 5, 27, 2, "", "buildman.proto"
 )
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x62uildman.proto\x12\x0b\x62uildman_pb\"\r\n\x0bPingRequest\"\x1a\n\tPingReply\x12\r\n\x05reply\x18\x01 \x01(\t\"$\n\x0c\x42uildJobArgs\x12\x14\n\x0cregister_jwt\x18\x01 \x01(\t\"\xaa\x03\n\tBuildPack\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x15\n\x0bpackage_url\x18\x02 \x01(\tH\x00\x12\x38\n\x0bgit_package\x18\x03 \x01(\x0b\x32!.buildman_pb.BuildPack.GitPackageH\x00\x12\x0f\n\x07\x63ontext\x18\x04 \x01(\t\x12\x17\n\x0f\x64ockerfile_path\x18\x05 \x01(\t\x12\x12\n\nrepository\x18\x06 \x01(\t\x12\x10\n\x08registry\x18\x07 \x01(\t\x12\x12\n\npull_token\x18\x08 \x01(\t\x12\x12\n\npush_token\x18\t \x01(\t\x12\x11\n\ttag_names\x18\n \x03(\t\x12\x34\n\nbase_image\x18\x0b \x01(\x0b\x32 .buildman_pb.BuildPack.BaseImage\x1a/\n\tBaseImage\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x1a;\n\nGitPackage\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\x0b\n\x03sha\x18\x02 \x01(\t\x12\x13\n\x0bprivate_key\x18\x03 \x01(\tB\x0c\n\nbuild_pack\"#\n\x10HeartbeatRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\"\"\n\x11HeartbeatResponse\x12\r\n\x05reply\x18\x01 \x01(\x08\"\x89\x02\n\x0fSetPhaseRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12!\n\x05phase\x18\x03 \x01(\x0e\x32\x12.buildman_pb.Phase\x12@\n\rpull_metadata\x18\x04 \x01(\x0b\x32).buildman_pb.SetPhaseRequest.PullMetadata\x1ag\n\x0cPullMetadata\x12\x14\n\x0cregistry_url\x18\x01 \x01(\t\x12\x12\n\nbase_image\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rpull_username\x18\x04 \x01(\t\"<\n\x10SetPhaseResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\"a\n\x11LogMessageRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12\x13\n\x0blog_message\x18\x03 \x01(\t\x12\r\n\x05phase\x18\x04 \x01(\t\">\n\x12LogMessageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\"k\n\x10\x43\x61\x63hedTagRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0f\x62\x61se_image_name\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rbase_image_id\x18\x04 \x01(\t\"\x1e\n\tCachedTag\x12\x11\n\tCachedTag\x18\x01 \x01(\t*d\n\x05Phase\x12\x0b\n\x07WAITING\x10\x00\x12\r\n\tUNPACKING\x10\x01\x12\x0b\n\x07PULLING\x10\x02\x12\x0c\n\x08\x42UILDING\x10\x03\x12\x0b\n\x07PUSHING\x10\x04\x12\x0c\n\x08\x43OMPLETE\x10\x05\x12\t\n\x05\x45RROR\x10\x06\x32\xd4\x03\n\x0c\x42uildManager\x12:\n\x04Ping\x12\x18.buildman_pb.PingRequest\x1a\x16.buildman_pb.PingReply\"\x00\x12G\n\x10RegisterBuildJob\x12\x19.buildman_pb.BuildJobArgs\x1a\x16.buildman_pb.BuildPack\"\x00\x12P\n\tHeartbeat\x12\x1d.buildman_pb.HeartbeatRequest\x1a\x1e.buildman_pb.HeartbeatResponse\"\x00(\x01\x30\x01\x12I\n\x08SetPhase\x12\x1c.buildman_pb.SetPhaseRequest\x1a\x1d.buildman_pb.SetPhaseResponse\"\x00\x12S\n\nLogMessage\x12\x1e.buildman_pb.LogMessageRequest\x1a\x1f.buildman_pb.LogMessageResponse\"\x00(\x01\x30\x01\x12M\n\x12\x44\x65termineCachedTag\x12\x1d.buildman_pb.CachedTagRequest\x1a\x16.buildman_pb.CachedTag\"\x00\x42+Z)github.com/quay/quay/buildman/buildman_pbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x0e\x62uildman.proto\x12\x0b\x62uildman_pb"\r\n\x0bPingRequest"\x1a\n\tPingReply\x12\r\n\x05reply\x18\x01 \x01(\t"$\n\x0c\x42uildJobArgs\x12\x14\n\x0cregister_jwt\x18\x01 \x01(\t"\xaa\x03\n\tBuildPack\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x15\n\x0bpackage_url\x18\x02 \x01(\tH\x00\x12\x38\n\x0bgit_package\x18\x03 \x01(\x0b\x32!.buildman_pb.BuildPack.GitPackageH\x00\x12\x0f\n\x07\x63ontext\x18\x04 \x01(\t\x12\x17\n\x0f\x64ockerfile_path\x18\x05 \x01(\t\x12\x12\n\nrepository\x18\x06 \x01(\t\x12\x10\n\x08registry\x18\x07 \x01(\t\x12\x12\n\npull_token\x18\x08 \x01(\t\x12\x12\n\npush_token\x18\t \x01(\t\x12\x11\n\ttag_names\x18\n \x03(\t\x12\x34\n\nbase_image\x18\x0b \x01(\x0b\x32 .buildman_pb.BuildPack.BaseImage\x1a/\n\tBaseImage\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x1a;\n\nGitPackage\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\x0b\n\x03sha\x18\x02 \x01(\t\x12\x13\n\x0bprivate_key\x18\x03 \x01(\tB\x0c\n\nbuild_pack"#\n\x10HeartbeatRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t""\n\x11HeartbeatResponse\x12\r\n\x05reply\x18\x01 \x01(\x08"\x89\x02\n\x0fSetPhaseRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12!\n\x05phase\x18\x03 \x01(\x0e\x32\x12.buildman_pb.Phase\x12@\n\rpull_metadata\x18\x04 \x01(\x0b\x32).buildman_pb.SetPhaseRequest.PullMetadata\x1ag\n\x0cPullMetadata\x12\x14\n\x0cregistry_url\x18\x01 \x01(\t\x12\x12\n\nbase_image\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rpull_username\x18\x04 \x01(\t"<\n\x10SetPhaseResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05"a\n\x11LogMessageRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12\x13\n\x0blog_message\x18\x03 \x01(\t\x12\r\n\x05phase\x18\x04 \x01(\t">\n\x12LogMessageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05"k\n\x10\x43\x61\x63hedTagRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0f\x62\x61se_image_name\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rbase_image_id\x18\x04 \x01(\t"\x1e\n\tCachedTag\x12\x11\n\tCachedTag\x18\x01 \x01(\t*d\n\x05Phase\x12\x0b\n\x07WAITING\x10\x00\x12\r\n\tUNPACKING\x10\x01\x12\x0b\n\x07PULLING\x10\x02\x12\x0c\n\x08\x42UILDING\x10\x03\x12\x0b\n\x07PUSHING\x10\x04\x12\x0c\n\x08\x43OMPLETE\x10\x05\x12\t\n\x05\x45RROR\x10\x06\x32\xd4\x03\n\x0c\x42uildManager\x12:\n\x04Ping\x12\x18.buildman_pb.PingRequest\x1a\x16.buildman_pb.PingReply"\x00\x12G\n\x10RegisterBuildJob\x12\x19.buildman_pb.BuildJobArgs\x1a\x16.buildman_pb.BuildPack"\x00\x12P\n\tHeartbeat\x12\x1d.buildman_pb.HeartbeatRequest\x1a\x1e.buildman_pb.HeartbeatResponse"\x00(\x01\x30\x01\x12I\n\x08SetPhase\x12\x1c.buildman_pb.SetPhaseRequest\x1a\x1d.buildman_pb.SetPhaseResponse"\x00\x12S\n\nLogMessage\x12\x1e.buildman_pb.LogMessageRequest\x1a\x1f.buildman_pb.LogMessageResponse"\x00(\x01\x30\x01\x12M\n\x12\x44\x65termineCachedTag\x12\x1d.buildman_pb.CachedTagRequest\x1a\x16.buildman_pb.CachedTag"\x00\x42+Z)github.com/quay/quay/buildman/buildman_pbb\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'buildman_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, "buildman_pb2", _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
-  _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'Z)github.com/quay/quay/buildman/buildman_pb'
-  _globals['_PHASE']._serialized_start=1248
-  _globals['_PHASE']._serialized_end=1348
-  _globals['_PINGREQUEST']._serialized_start=31
-  _globals['_PINGREQUEST']._serialized_end=44
-  _globals['_PINGREPLY']._serialized_start=46
-  _globals['_PINGREPLY']._serialized_end=72
-  _globals['_BUILDJOBARGS']._serialized_start=74
-  _globals['_BUILDJOBARGS']._serialized_end=110
-  _globals['_BUILDPACK']._serialized_start=113
-  _globals['_BUILDPACK']._serialized_end=539
-  _globals['_BUILDPACK_BASEIMAGE']._serialized_start=417
-  _globals['_BUILDPACK_BASEIMAGE']._serialized_end=464
-  _globals['_BUILDPACK_GITPACKAGE']._serialized_start=466
-  _globals['_BUILDPACK_GITPACKAGE']._serialized_end=525
-  _globals['_HEARTBEATREQUEST']._serialized_start=541
-  _globals['_HEARTBEATREQUEST']._serialized_end=576
-  _globals['_HEARTBEATRESPONSE']._serialized_start=578
-  _globals['_HEARTBEATRESPONSE']._serialized_end=612
-  _globals['_SETPHASEREQUEST']._serialized_start=615
-  _globals['_SETPHASEREQUEST']._serialized_end=880
-  _globals['_SETPHASEREQUEST_PULLMETADATA']._serialized_start=777
-  _globals['_SETPHASEREQUEST_PULLMETADATA']._serialized_end=880
-  _globals['_SETPHASERESPONSE']._serialized_start=882
-  _globals['_SETPHASERESPONSE']._serialized_end=942
-  _globals['_LOGMESSAGEREQUEST']._serialized_start=944
-  _globals['_LOGMESSAGEREQUEST']._serialized_end=1041
-  _globals['_LOGMESSAGERESPONSE']._serialized_start=1043
-  _globals['_LOGMESSAGERESPONSE']._serialized_end=1105
-  _globals['_CACHEDTAGREQUEST']._serialized_start=1107
-  _globals['_CACHEDTAGREQUEST']._serialized_end=1214
-  _globals['_CACHEDTAG']._serialized_start=1216
-  _globals['_CACHEDTAG']._serialized_end=1246
-  _globals['_BUILDMANAGER']._serialized_start=1351
-  _globals['_BUILDMANAGER']._serialized_end=1819
+    _globals["DESCRIPTOR"]._loaded_options = None
+    _globals["DESCRIPTOR"]._serialized_options = b"Z)github.com/quay/quay/buildman/buildman_pb"
+    _globals["_PHASE"]._serialized_start = 1248
+    _globals["_PHASE"]._serialized_end = 1348
+    _globals["_PINGREQUEST"]._serialized_start = 31
+    _globals["_PINGREQUEST"]._serialized_end = 44
+    _globals["_PINGREPLY"]._serialized_start = 46
+    _globals["_PINGREPLY"]._serialized_end = 72
+    _globals["_BUILDJOBARGS"]._serialized_start = 74
+    _globals["_BUILDJOBARGS"]._serialized_end = 110
+    _globals["_BUILDPACK"]._serialized_start = 113
+    _globals["_BUILDPACK"]._serialized_end = 539
+    _globals["_BUILDPACK_BASEIMAGE"]._serialized_start = 417
+    _globals["_BUILDPACK_BASEIMAGE"]._serialized_end = 464
+    _globals["_BUILDPACK_GITPACKAGE"]._serialized_start = 466
+    _globals["_BUILDPACK_GITPACKAGE"]._serialized_end = 525
+    _globals["_HEARTBEATREQUEST"]._serialized_start = 541
+    _globals["_HEARTBEATREQUEST"]._serialized_end = 576
+    _globals["_HEARTBEATRESPONSE"]._serialized_start = 578
+    _globals["_HEARTBEATRESPONSE"]._serialized_end = 612
+    _globals["_SETPHASEREQUEST"]._serialized_start = 615
+    _globals["_SETPHASEREQUEST"]._serialized_end = 880
+    _globals["_SETPHASEREQUEST_PULLMETADATA"]._serialized_start = 777
+    _globals["_SETPHASEREQUEST_PULLMETADATA"]._serialized_end = 880
+    _globals["_SETPHASERESPONSE"]._serialized_start = 882
+    _globals["_SETPHASERESPONSE"]._serialized_end = 942
+    _globals["_LOGMESSAGEREQUEST"]._serialized_start = 944
+    _globals["_LOGMESSAGEREQUEST"]._serialized_end = 1041
+    _globals["_LOGMESSAGERESPONSE"]._serialized_start = 1043
+    _globals["_LOGMESSAGERESPONSE"]._serialized_end = 1105
+    _globals["_CACHEDTAGREQUEST"]._serialized_start = 1107
+    _globals["_CACHEDTAGREQUEST"]._serialized_end = 1214
+    _globals["_CACHEDTAG"]._serialized_start = 1216
+    _globals["_CACHEDTAG"]._serialized_end = 1246
+    _globals["_BUILDMANAGER"]._serialized_start = 1351
+    _globals["_BUILDMANAGER"]._serialized_end = 1819
 # @@protoc_insertion_point(module_scope)
