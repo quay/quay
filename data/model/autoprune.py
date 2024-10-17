@@ -1,5 +1,6 @@
 import json
 import logging.config
+import re
 from enum import Enum
 
 from data.database import AutoPruneTaskStatus
@@ -56,7 +57,13 @@ class NamespaceAutoPrunePolicy:
         return self._db_row
 
     def get_view(self):
-        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+        return {
+            "uuid": self.uuid,
+            "method": self.method,
+            "value": self.config.get("value"),
+            "tagPattern": self.config.get("tag_pattern"),
+            "tagPatternMatches": self.config.get("tag_pattern_matches"),
+        }
 
 
 class RepositoryAutoPrunePolicy:
@@ -79,7 +86,13 @@ class RepositoryAutoPrunePolicy:
         return self._db_row
 
     def get_view(self):
-        return {"uuid": self.uuid, "method": self.method, "value": self.config.get("value")}
+        return {
+            "uuid": self.uuid,
+            "method": self.method,
+            "value": self.config.get("value"),
+            "tagPattern": self.config.get("tag_pattern"),
+            "tagPatternMatches": self.config.get("tag_pattern_matches"),
+        }
 
 
 def valid_value(method, value):
@@ -116,6 +129,18 @@ def assert_valid_namespace_autoprune_policy(policy_config):
     if not valid_value(method, policy_config.get("value")):
         raise InvalidNamespaceAutoPrunePolicy("Invalid value given for method type")
 
+    if policy_config.get("tag_pattern") is not None:
+        if not isinstance(policy_config.get("tag_pattern"), str):
+            raise InvalidNamespaceAutoPrunePolicy("tag_pattern must be string")
+
+        if policy_config.get("tag_pattern") == "":
+            raise InvalidNamespaceAutoPrunePolicy("tag_pattern cannot be empty")
+
+    if policy_config.get("tag_pattern_matches") is not None and not isinstance(
+        policy_config.get("tag_pattern_matches"), bool
+    ):
+        raise InvalidNamespaceAutoPrunePolicy("tag_pattern_matches must be bool")
+
 
 def assert_valid_repository_autoprune_policy(policy_config):
     """
@@ -128,6 +153,18 @@ def assert_valid_repository_autoprune_policy(policy_config):
 
     if not valid_value(method, policy_config.get("value")):
         raise InvalidRepositoryAutoPrunePolicy("Invalid value given for method type")
+
+    if policy_config.get("tag_pattern") is not None:
+        if not isinstance(policy_config.get("tag_pattern"), str):
+            raise InvalidRepositoryAutoPrunePolicy("tag_pattern must be string")
+
+        if policy_config.get("tag_pattern") == "":
+            raise InvalidRepositoryAutoPrunePolicy("tag_pattern cannot be empty")
+
+    if policy_config.get("tag_pattern_matches") is not None and not isinstance(
+        policy_config.get("tag_pattern_matches"), bool
+    ):
+        raise InvalidRepositoryAutoPrunePolicy("tag_pattern_matches must be bool")
 
 
 def get_namespace_autoprune_policies_by_orgname(orgname):
@@ -235,12 +272,12 @@ def create_namespace_autoprune_policy(orgname, policy_config, create_task=False)
         namespace = get_active_namespace_user_by_username(orgname)
         namespace_id = namespace.id
 
-        if namespace_has_autoprune_policy(namespace_id):
-            raise NamespaceAutoPrunePolicyAlreadyExists(
-                "Policy for this namespace already exists, delete existing to create new policy"
-            )
-
         assert_valid_namespace_autoprune_policy(policy_config)
+
+        if duplicate_namespace_policy(namespace_id, policy_config):
+            raise NamespaceAutoPrunePolicyAlreadyExists(
+                "Existing policy with same values for this namespace, duplicate policies are not permitted"
+            )
 
         new_policy = NamespaceAutoPrunePolicyTable.create(
             namespace=namespace_id, policy=json.dumps(policy_config)
@@ -267,12 +304,12 @@ def create_repository_autoprune_policy(orgname, repo_name, policy_config, create
         if repo is None:
             raise InvalidRepositoryException("Repository does not exist: %s" % repo_name)
 
-        if repository_has_autoprune_policy(repo.id):
-            raise RepositoryAutoPrunePolicyAlreadyExists(
-                "Policy for this repository already exists, delete existing to create new policy"
-            )
-
         assert_valid_repository_autoprune_policy(policy_config)
+
+        if duplicate_repository_policy(repo.id, policy_config):
+            raise RepositoryAutoPrunePolicyAlreadyExists(
+                "Existing policy with same values for this repository, duplicate policies are not permitted"
+            )
 
         new_policy = RepositoryAutoPrunePolicyTable.create(
             namespace=namespace_id, repository=repo.id, policy=json.dumps(policy_config)
@@ -413,6 +450,42 @@ def delete_repository_autoprune_policy(orgname, repo_name, uuid):
         return True
 
 
+def check_existing_policy(db_policy, policy_config):
+    if (
+        db_policy["method"] == policy_config["method"]
+        and db_policy["value"] == policy_config["value"]
+        and db_policy.get("tag_pattern", None) == policy_config.get("tag_pattern", None)
+        and db_policy.get("tag_pattern_matches", True)
+        == policy_config.get("tag_pattern_matches", True)
+    ):
+        return True
+    return False
+
+
+def duplicate_namespace_policy(namespace_id, policy_config):
+    result = NamespaceAutoPrunePolicyTable.select().where(
+        NamespaceAutoPrunePolicyTable.namespace == namespace_id
+    )
+
+    for r in result:
+        db_policy = json.loads(r.policy)
+        if check_existing_policy(db_policy, policy_config):
+            return True
+    return False
+
+
+def duplicate_repository_policy(repo_id, policy_config):
+    result = RepositoryAutoPrunePolicyTable.select().where(
+        RepositoryAutoPrunePolicyTable.repository == repo_id
+    )
+
+    for r in result:
+        db_policy = json.loads(r.policy)
+        if check_existing_policy(db_policy, policy_config):
+            return True
+    return False
+
+
 def namespace_has_autoprune_policy(namespace_id):
     return (
         NamespaceAutoPrunePolicyTable.select(1)
@@ -546,10 +619,16 @@ def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_lim
     page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_by_number(
-            repo_id, int(policy_config["value"]), tag_page_limit, page
+            repo_id,
+            int(policy_config["value"]),
+            tag_page_limit,
+            page,
+            policy_config.get("tag_pattern"),
+            policy_config.get("tag_pattern_matches"),
         )
         if len(tags) == 0:
             break
+
         all_tags.extend(tags)
         page += 1
 
@@ -580,10 +659,16 @@ def fetch_tags_expiring_by_creation_date_policy(repo_id, policy_config, tag_page
     page = 1
     while True:
         tags = oci.tag.fetch_paginated_autoprune_repo_tags_older_than_ms(
-            repo_id, time_ms, tag_page_limit, page
+            repo_id,
+            time_ms,
+            tag_page_limit,
+            page,
+            policy_config.get("tag_pattern"),
+            policy_config.get("tag_pattern_matches"),
         )
         if len(tags) == 0:
             break
+
         all_tags.extend(tags)
         page += 1
     return all_tags
@@ -620,18 +705,27 @@ def execute_policies_for_repo(
 ):
     """
     Executes both repository and namespace level policies for the given repository. The policies
-    are applied in a serial fashion and are run asynchronosly in the background.
+    are applied in a serial fashion and are run asynchronously in the background.
+
+    With multiple policy support, need to keep results consistent when running policies with different methods.
+    Eg: On a repo with 5 tags, policy1 has method CREATION_DATE and 2 tags are applicable to be pruned here.
+        policy2 has method NUMBER_OF_TAGS, value: 4.
+        If policy2 is run first, 1 tag is deleted from policy 1 and 2 tags from policy2.
+        If policy1 is run first, 2 tags are deleted from policy 1 and none from policy2.
     """
-    for ns_policy in ns_policies:
+    policies = ns_policies.copy()
+    if include_repo_policies:
+        policies.extend(get_repository_autoprune_policies_by_repo_id(repo.id))
 
-        if include_repo_policies:
-            repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-            # note: currently only one policy is configured per repo
-            for repo_policy in repo_policies:
-                execute_policy_on_repo(repo_policy, repo.id, namespace_id, tag_page_limit)
+    # Prune by age of tags first
+    for policy in policies:
+        if policy.method == AutoPruneMethod.CREATION_DATE.value:
+            execute_policy_on_repo(policy, repo.id, namespace_id, tag_page_limit)
 
-        # execute associated namespace policy
-        execute_policy_on_repo(ns_policy, repo.id, namespace_id, tag_page_limit)
+    # Then prune by number of tags
+    for policy in policies:
+        if policy.method == AutoPruneMethod.NUMBER_OF_TAGS.value:
+            execute_policy_on_repo(policy, repo.id, namespace_id, tag_page_limit)
 
 
 def get_paginated_repositories_for_namespace(namespace_id, page_token=None, page_size=50):

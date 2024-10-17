@@ -46,7 +46,9 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     },
   );
 
+  // tslint:disable-next-line:curly
   if (loadingAggregateLogs) return <Spinner />;
+  // tslint:disable-next-line:curly
   if (errorFetchingLogs) return <RequestError message="Unable to get logs" />;
 
   let maxRange = 0;
@@ -61,6 +63,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
           x: new Date(log.datetime),
           y: log.count,
         });
+        // tslint:disable-next-line:curly
         if (log.count > maxRange) maxRange = log.count;
       });
       return logData;
@@ -88,6 +91,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
         </FlexItem>
       </Flex>
     );
+    // tslint:disable-next-line:curly
   } else
     return (
       <Flex grow={{default: 'grow'}}>

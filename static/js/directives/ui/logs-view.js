@@ -608,6 +608,28 @@ angular.module('quay').directive('logsView', function () {
         'oauth_token_assigned': function (metadata) {
           return 'OAuth token assigned to user {assigned_user} by {assigning_user} for application {application}[[with client id {client_id}]]';
         },
+        export_logs_success: function (metadata) {
+          if (metadata.repo) {
+            if (metadata.url) {
+              return `Logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, repository: ${metadata.repo}`;
+            } else if (metadata.email) {
+              return `Logs export queued for delivery: id ${metadata.export_id}, email: ${obfuscate_email(metadata.email)}, repository: ${metadata.repo}`;
+            } else {
+              return `Logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}, repository: ${metadata.repo}`;
+            }
+          } else {
+            if (metadata.url) {
+              return `User/organization logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}`;
+            } else if (metadata.email) {
+              return `User/organization logs export queued for delivery: id ${metadata.export_id}, email: ${obfuscate_email(metadata.email)}`;
+            } else {
+              return `User/organization logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}`;
+            }
+          }
+        },
+        export_logs_failure: function (metadata) {
+          return `Export logs failure: ${metadata.error}, ${metadata.repo ? `requested repository: ${metadata.repo}` : ''}`;
+        },
       };
 
       var logKinds = {
@@ -711,6 +733,8 @@ angular.module('quay').directive('logsView', function () {
         'login_failure': 'Login failure',
         'autoprune_tag_delete': 'Autoprune worker tag deletion',
         'oauth_token_assigned': 'OAuth token assigned',
+        'export_logs_success': 'Export logs queued for delivery',
+        'export_logs_failure': 'Export logs failure',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',
@@ -892,3 +916,8 @@ angular.module('quay').directive('logsView', function () {
 
   return directiveDefinitionObject;
 });
+
+function obfuscate_email(email) {
+  const email_array = email.split('@');
+  return email_array[0].substring(0, 2)+'*'.repeat(email_array[0].length - 2)+'@'+email_array[1];
+}

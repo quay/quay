@@ -1,5 +1,3 @@
-import base64
-import json
 import logging
 from collections import namedtuple
 
@@ -18,16 +16,6 @@ OAuthResult = namedtuple(
 )
 
 logger = logging.getLogger(__name__)
-
-
-def is_jwt(token):
-    try:
-        headers = jwt.get_unverified_header(token)
-        return headers.get("typ", "").lower() == "jwt"
-    except jwt.exceptions.DecodeError:
-        pass
-
-    return False
 
 
 def get_jwt_issuer(token):

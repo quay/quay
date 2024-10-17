@@ -8,6 +8,7 @@ from app import app
 from data.database import User
 from data.model import modelutil
 from data.model.autoprune import (
+    AutoPruneMethod,
     NamespaceAutoPrunePolicy,
     assert_valid_namespace_autoprune_policy,
     delete_autoprune_task,
@@ -41,6 +42,21 @@ TASK_RUN_MINIMUM_INTERVAL_MS = (
 FETCH_TAGS_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_TAGS_PAGE_LIMIT", 100)
 FETCH_REPOSITORIES_PAGE_LIMIT = app.config.get("AUTOPRUNE_FETCH_REPOSITORIES_PAGE_LIMIT", 50)
 TIMEOUT = app.config.get("AUTOPRUNE_DEFAULT_POLICY_TIMEOUT", 60 * 60)  # 1hr
+
+
+def execute_repo_policies_for_method(autoprune_task, repo_policies, policy_method):
+    for policy in repo_policies:
+        if policy.method != policy_method:
+            continue
+
+        repo_id = policy.repository_id
+        repo = get_repository_by_policy_repo_id(repo_id)
+        logger.info(
+            "processing autoprune task %s for repository %s",
+            autoprune_task.id,
+            repo.name,
+        )
+        execute_policy_on_repo(policy, repo_id, autoprune_task.namespace, tag_page_limit=100)
 
 
 class AutoPruneWorker(Worker):
@@ -127,17 +143,14 @@ class AutoPruneWorker(Worker):
                 )
 
                 # case: only repo policies exists & no namespace policy
-                for policy in repo_policies:
-                    repo_id = policy.repository_id
-                    repo = get_repository_by_policy_repo_id(repo_id)
-                    logger.info(
-                        "processing autoprune task %s for repository %s",
-                        autoprune_task.id,
-                        repo.name,
-                    )
-                    execute_policy_on_repo(
-                        policy, repo_id, autoprune_task.namespace, tag_page_limit=100
-                    )
+                # Prune by age of tags first
+                execute_repo_policies_for_method(
+                    autoprune_task, repo_policies, AutoPruneMethod.CREATION_DATE.value
+                )
+                # Then prune by number of tags
+                execute_repo_policies_for_method(
+                    autoprune_task, repo_policies, AutoPruneMethod.NUMBER_OF_TAGS.value
+                )
 
                 update_autoprune_task(autoprune_task, task_status="success")
             except Exception as err:

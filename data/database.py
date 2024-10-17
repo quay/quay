@@ -49,7 +49,7 @@ from data.readreplica import (
     ReadReplicaSupportedModel,
     disallow_replica_use,
 )
-from data.text import match_like, match_mysql
+from data.text import match_like, match_mysql, regex_search, regex_sqlite
 from util.metrics.prometheus import (
     db_close_calls,
     db_connect_calls,
@@ -87,6 +87,10 @@ SCHEME_MATCH_FUNCTION = {
     "sqlite": match_like,
     "postgresql": match_like,
     "postgresql+psycopg2": match_like,
+}
+
+SCHEME_REGEX_FUNCTION = {
+    "sqlite": regex_sqlite,
 }
 
 
@@ -329,6 +333,7 @@ db = Proxy()
 read_only_config = Proxy()
 db_random_func = CallableProxy()
 db_match_func = CallableProxy()
+db_regex_search = CallableProxy()
 db_for_update = CallableProxy()
 db_transaction = CallableProxy()
 db_disallow_replica_use = CallableProxy()
@@ -506,6 +511,7 @@ def configure(config_object, testing=False):
     )
     db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
     db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])
+    db_regex_search.initialize(SCHEME_REGEX_FUNCTION.get(parsed_write_uri.drivername, regex_search))
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"
@@ -1770,6 +1776,7 @@ class Tag(BaseModel):
     manifest_id: int
     lifetime_start_ms = BigIntegerField(default=get_epoch_timestamp_ms)
     lifetime_end_ms = BigIntegerField(null=True, index=True)
+    immutable = BooleanField(default=False)
     hidden = BooleanField(default=False)
     reversion = BooleanField(default=False)
     tag_kind = EnumField(TagKind)
@@ -1786,6 +1793,9 @@ class Tag(BaseModel):
             (("repository", "lifetime_end_ms"), False),
             # This unique index prevents deadlocks when concurrently moving and deleting tags
             (("repository", "name", "lifetime_end_ms"), True),
+            (("repository", "immutable"), False),
+            (("manifest", "immutable"), False),
+            (("manifest", "lifetime_end_ms"), False),
         )
 
 

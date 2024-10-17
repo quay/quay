@@ -1,3 +1,4 @@
+import {isNullOrUndefined} from 'src/libs/utils';
 import {useEvents} from './UseEvents';
 
 export function useLogDescriptions() {
@@ -36,6 +37,21 @@ export function useLogDescriptions() {
       default:
         return '';
     }
+  };
+
+  const autoPrunePolicyDescription = (metadata: Metadata) => {
+    let policyMessage = `${metadata.method}:${metadata.value}`;
+    if (!isNullOrUndefined(metadata.tag_pattern)) {
+      policyMessage += `, tagPattern:${
+        metadata.tag_pattern
+      }, tagPatternMatches:${
+        isNullOrUndefined(metadata.tag_pattern_matches) ||
+        metadata.tag_pattern_matches
+          ? 'true'
+          : 'false'
+      }`;
+    }
+    return policyMessage;
   };
 
   const descriptions = {
@@ -294,19 +310,27 @@ export function useLogDescriptions() {
       return `Tag ${metadata.tag} pruned in repository ${metadata.namespace}/${metadata.repo} by ${metadata.performer}`;
     },
     create_namespace_autoprune_policy: function (metadata: Metadata) {
-      return `Created namespace autoprune policy: "${metadata.method}:${metadata.value}" for namespace: ${metadata.namespace}`;
+      return `Created namespace autoprune policy: "${autoPrunePolicyDescription(
+        metadata,
+      )}" for namespace: ${metadata.namespace}`;
     },
     update_namespace_autoprune_policy: function (metadata: Metadata) {
-      return `Updated namespace autoprune policy: "${metadata.method}:${metadata.value}" for namespace: ${metadata.namespace}`;
+      return `Updated namespace autoprune policy: "${autoPrunePolicyDescription(
+        metadata,
+      )}" for namespace: ${metadata.namespace}`;
     },
     delete_namespace_autoprune_policy: function (metadata: Metadata) {
       return `Deleted namespace autoprune policy for namespace:${metadata.namespace}`;
     },
     create_repository_autoprune_policy: function (metadata: Metadata) {
-      return `Created repository autoprune policy: "${metadata.method}:${metadata.value}" for repository: ${metadata.namespace}/${metadata.repo}`;
+      return `Created repository autoprune policy: "${autoPrunePolicyDescription(
+        metadata,
+      )}" for repository: ${metadata.namespace}/${metadata.repo}`;
     },
     update_repository_autoprune_policy: function (metadata: Metadata) {
-      return `Updated repository autoprune policy: "${metadata.method}:${metadata.value}" for repository: ${metadata.namespace}/${metadata.repo}`;
+      return `Updated repository autoprune policy: "${autoPrunePolicyDescription(
+        metadata,
+      )}" for repository: ${metadata.namespace}/${metadata.repo}`;
     },
     delete_repository_autoprune_policy: function (metadata: Metadata) {
       return `Deleted repository autoprune policy for repository: ${metadata.namespace}/${metadata.repo}`;
@@ -608,7 +632,62 @@ export function useLogDescriptions() {
     oauth_token_assigned: function (metadata) {
       return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
     },
+    export_logs_success: function (metadata: Metadata) {
+      if (metadata.repo) {
+        if (metadata.url) {
+          return `Logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}, repository: ${metadata.repo}`;
+        } else if (metadata.email) {
+          return `Logs export queued for delivery: id ${
+            metadata.export_id
+          }, email: ${obfuscate_email(metadata.email)}, repository: ${
+            metadata.repo
+          }`;
+        } else {
+          return `Logs export queued for delivery: id ${
+            metadata.export_id
+          }, url: ${metadata.url}, email: ${obfuscate_email(
+            metadata.email,
+          )}, repository: ${metadata.repo}`;
+        }
+      } else {
+        if (metadata.url) {
+          return `User/organization logs export queued for delivery: id ${metadata.export_id}, url: ${metadata.url}`;
+        } else if (metadata.email) {
+          return `User/organization logs export queued for delivery: id ${
+            metadata.export_id
+          }, email: ${obfuscate_email(metadata.email)}`;
+        } else {
+          return `User/organization logs export queued for delivery: id ${
+            metadata.export_id
+          }, url: ${metadata.url}, email: ${obfuscate_email(metadata.email)}`;
+        }
+      }
+    },
+    export_logs_failure: function (metadata: Metadata) {
+      return `Export logs failure: ${metadata.error}, ${
+        metadata.repo ? `requested repository: ${metadata.repo}` : ''
+      }`;
+    },
+    create_robot_federation: function (metadata: Metadata) {
+      return `Create robot federation for robot ${metadata.robot}`;
+    },
+    delete_robot_federation: function (metadata: Metadata) {
+      return `Delete robot federation for robot ${metadata.robot}`;
+    },
+    federated_robot_token_exchange: function (metadata: Metadata) {
+      return `Federated robot token exchange robot:${metadata.robot}, issuer:${metadata.issuer}, subject:${metadata.subject}`;
+    },
   };
 
   return descriptions;
+}
+
+function obfuscate_email(email: Array) {
+  const email_array = email.split('@');
+  return (
+    email_array[0].substring(0, 2) +
+    '*'.repeat(email_array[0].length - 2) +
+    '@' +
+    email_array[1]
+  );
 }
