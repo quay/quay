@@ -1,6 +1,8 @@
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
 import moment from 'moment';
 import {ITeamMember} from 'src/hooks/UseMembers';
+import axios from 'src/libs/axios';
+import logo from 'src/assets/quay.svg';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
@@ -164,4 +166,28 @@ export const escapeHtmlString = function (text) {
     .replace(/'/g, '&#039;');
 
   return adjusted;
+};
+
+export const isAbsoluteUrl = (str: string): boolean => {
+  // checks if url is absolute or relative path based on the presence of http protocol in the path.
+  const urlRegex = new RegExp('https?');
+  return urlRegex.test(str);
+};
+
+export const fetchBrandLogo = (quayConfig): string => {
+  if (
+    quayConfig &&
+    quayConfig.config?.BRANDING &&
+    quayConfig.config.BRANDING?.logo
+  ) {
+    return isAbsoluteUrl(quayConfig.config.BRANDING.logo)
+      ? `${quayConfig.config.BRANDING.logo}`
+      : `${axios.defaults.baseURL}${quayConfig.config.BRANDING.logo}`;
+  }
+
+  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
+    return `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
+  }
+
+  return logo;
 };
