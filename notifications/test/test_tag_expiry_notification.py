@@ -7,6 +7,7 @@ import pytest
 
 import util
 from app import notification_queue
+from data import model
 from data.database import (
     ExternalNotificationMethod,
     TagNotificationSuccess,
@@ -17,15 +18,22 @@ from data.model.oci.tag import (
     delete_tag,
     fetch_repo_tags_for_image_expiry_expiry_event,
     list_alive_tags,
+    list_repository_tag_history,
     set_tag_end_ms,
 )
 from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
 from notifications.notificationevent import RepoImageExpiryEvent
 from test.fixtures import *
 from util.notification import *
+from util.timedeltastring import convert_to_timedelta
+from workers.test.test_autopruneworker import create_manifest, create_tag
 
 namespace = "buynlarge"
 repo = "orgrepo"
+
+
+def _past_timestamp_ms(time_delta):
+    return int(time.time() * 1000) - convert_to_timedelta(time_delta).total_seconds() * 1000
 
 
 @pytest.fixture
@@ -290,3 +298,260 @@ def test_list_repo_notifications(initial_set):
         namespace, repo, event_name=RepoImageExpiryEvent.event_name()
     )
     assert len(email_notification) == 3
+
+
+@pytest.mark.parametrize(
+    "tags, expected, policy1, policy2",
+    [
+        (
+            [
+                "test1",
+                "test2",
+                "test3",
+                "test4",
+                "test5",
+                "test6",
+                "test7",
+                "test8",
+                "test9",
+                "test10",
+            ],
+            ["test1", "test2", "test3", "test4", "test5"],
+            ["creation_date", "4d"],
+            ["number_of_tags", 5],
+        ),
+        (
+            [
+                "test1",
+                "test2",
+                "test3",
+                "test4",
+                "test5",
+                "test6",
+                "test7",
+                "test8",
+                "test9",
+                "test10",
+            ],
+            ["test1", "test2", "test3", "test4", "test5", "test6", "test7"],
+            ["number_of_tags", 3],
+            ["number_of_tags", 5],
+        ),
+    ],
+)
+def test_notifications_with_namespace_autoprune_policy(
+    tags, expected, policy1, policy2, initialized_db
+):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        util.notification.SKIP_LOCKED = False
+    slack = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "slack")
+    image_expiry_event = ExternalNotificationEvent.get(
+        ExternalNotificationEvent.name == "repo_image_expiry"
+    )
+    ns = model.user.get_namespace_user(namespace)
+
+    # deleting existing autoprune policies
+    existing_policies = model.autoprune.get_namespace_autoprune_policies_by_id(ns.id)
+    for policy in existing_policies:
+        model.autoprune.delete_namespace_autoprune_policy(namespace, policy.uuid)
+
+    model.autoprune.create_namespace_autoprune_policy(
+        namespace, {"method": policy1[0], "value": policy1[1]}, create_task=True
+    )
+    model.autoprune.create_namespace_autoprune_policy(
+        namespace, {"method": policy2[0], "value": policy2[1]}, create_task=True
+    )
+
+    repo1 = model.repository.create_repository(
+        namespace, "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    manifest_repo = create_manifest(namespace, repo1)
+
+    for i, tag in enumerate(tags):
+        # Set the first 4 tags to be old enough to be eligible for pruning
+        # We do the -1 to ensure that the creation time is less than the current time
+        # + i * 10000 is to ensure time difference between consecutive tags
+        creation_time = (
+            _past_timestamp_ms("4d") - 1 + i * 1000
+            if i < 4
+            else int(time.time() * 1000) + i * 10000
+        )
+        create_tag(repo1, manifest_repo.manifest, start=creation_time, name=tag)
+
+    active_tags, _ = list_repository_tag_history(repo1, 1, 100, active_tags_only=True)
+    assert len(active_tags) == len(tags)
+
+    notification.create_repo_notification(
+        repo1,
+        image_expiry_event.name,
+        slack.name,
+        {"url": "http://example.com"},
+        {"days": 10},
+        title="Image(s) will expire in 10 days",
+    )
+    scan_for_image_expiry_notifications(image_expiry_event.name)
+    time.sleep(2)
+
+    job = notification_queue.get()
+    assert job is not None
+    job = json.loads(job["body"])
+
+    notified_tags = job["event_data"]["tags"]
+    assert len(notified_tags) == len(expected)
+    for tag_name in expected:
+        assert tag_name in notified_tags
+
+
+@pytest.mark.parametrize(
+    "tags, expected, policy1, policy2",
+    [
+        (
+            [
+                "test1",
+                "test2",
+                "test3",
+                "test4",
+                "test5",
+            ],
+            ["test1", "test2", "test3"],
+            ["creation_date", "4d"],
+            ["number_of_tags", 2],
+        ),
+        (
+            [
+                "test1",
+                "test2",
+                "test3",
+                "test4",
+                "test5",
+            ],
+            ["test1", "test2", "test3"],
+            ["number_of_tags", 2],
+            ["number_of_tags", 3],
+        ),
+    ],
+)
+def test_notifications_with_repository_autoprune_policy(
+    tags, expected, policy1, policy2, initialized_db
+):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        util.notification.SKIP_LOCKED = False
+    slack = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "slack")
+    image_expiry_event = ExternalNotificationEvent.get(
+        ExternalNotificationEvent.name == "repo_image_expiry"
+    )
+    ns = model.user.get_namespace_user(namespace)
+
+    # deleting existing autoprune policies
+    existing_policies = model.autoprune.get_namespace_autoprune_policies_by_id(ns.id)
+    for policy in existing_policies:
+        model.autoprune.delete_namespace_autoprune_policy(namespace, policy.uuid)
+
+    repo1 = model.repository.create_repository(
+        namespace, "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    model.autoprune.create_namespace_autoprune_policy(
+        namespace, {"method": "number_of_tags", "value": 3}, create_task=True
+    )
+
+    model.autoprune.create_repository_autoprune_policy(
+        namespace,
+        "repo1",
+        {
+            "method": policy1[0],
+            "value": policy1[1],
+        },
+    )
+
+    model.autoprune.create_repository_autoprune_policy(
+        namespace,
+        "repo1",
+        {
+            "method": policy2[0],
+            "value": policy2[1],
+        },
+    )
+
+    manifest_repo = create_manifest(namespace, repo1)
+
+    for i, tag in enumerate(tags):
+        # Set the first 2 tags to be old enough to be eligible for pruning
+        # We do the -1 to ensure that the creation time is less than the current time
+        # + i * 10000 is to ensure time difference between consecutive tags
+        creation_time = (
+            (_past_timestamp_ms("4d") - 1) + i * 10000
+            if i < 2
+            else int(time.time() * 1000) + i * 10000
+        )
+        create_tag(repo1, manifest_repo.manifest, start=creation_time, name=tag)
+
+    active_tags, _ = list_repository_tag_history(repo1, 1, 100, active_tags_only=True)
+    assert len(active_tags) == len(tags)
+
+    notification.create_repo_notification(
+        repo1,
+        image_expiry_event.name,
+        slack.name,
+        {"url": "http://example.com"},
+        {"days": 5},
+        title="Image(s) will expire in 5 days",
+    )
+    scan_for_image_expiry_notifications(image_expiry_event.name)
+    time.sleep(2)
+
+    job = notification_queue.get()
+    assert job is not None
+    job = json.loads(job["body"])
+
+    notified_tags = job["event_data"]["tags"]
+    assert len(notified_tags) == len(expected)
+    for tag_name in expected:
+        assert tag_name in notified_tags
+
+
+def test_notifications_with_no_tags_expiring_by_autoprune_policy(initialized_db):
+    if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
+        util.notification.SKIP_LOCKED = False
+    slack = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "slack")
+    image_expiry_event = ExternalNotificationEvent.get(
+        ExternalNotificationEvent.name == "repo_image_expiry"
+    )
+    ns = model.user.get_namespace_user(namespace)
+
+    # deleting existing autoprune policies
+    existing_policies = model.autoprune.get_namespace_autoprune_policies_by_id(ns.id)
+    for policy in existing_policies:
+        model.autoprune.delete_namespace_autoprune_policy(namespace, policy.uuid)
+
+    repo1 = model.repository.create_repository(
+        namespace, "repo1", None, repo_kind="image", visibility="public"
+    )
+
+    model.autoprune.create_namespace_autoprune_policy(
+        namespace, {"method": "creation_date", "value": "4d"}, create_task=True
+    )
+
+    manifest_repo = create_manifest(namespace, repo1)
+    tags = ["test1", "test2", "test3", "test4"]
+
+    for i, tag in enumerate(tags):
+        create_tag(repo1, manifest_repo.manifest, name=tag)
+
+    active_tags, _ = list_repository_tag_history(repo1, 1, 100, active_tags_only=True)
+    assert len(active_tags) == len(tags)
+
+    notification.create_repo_notification(
+        repo1,
+        image_expiry_event.name,
+        slack.name,
+        {"url": "http://example.com"},
+        {"days": 5},
+        title="Image(s) will expire in 5 days",
+    )
+    scan_for_image_expiry_notifications(image_expiry_event.name)
+    time.sleep(2)
+
+    job = notification_queue.get()
+    assert job is None
