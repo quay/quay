@@ -603,7 +603,9 @@ def prune_tags(tags, repo, namespace):
             )
 
 
-def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_limit=100):
+def fetch_tags_expiring_by_tag_count_policy(
+    repo_id, policy_config, tag_page_limit=100, exclude_tags=None
+):
     """
     Fetch tags in the given repository based on the number of tags specified in the policy config.
     """
@@ -625,6 +627,7 @@ def fetch_tags_expiring_by_tag_count_policy(repo_id, policy_config, tag_page_lim
             page,
             policy_config.get("tag_pattern"),
             policy_config.get("tag_pattern_matches"),
+            exclude_tags,
         )
         if len(tags) == 0:
             break
@@ -792,47 +795,52 @@ def execute_namespace_policies(
 
 def fetch_tags_for_repo_policies(policies, repo_id):
     all_tags = []
+    all_tag_names = set()
+    creation_date_tags = []
+
+    # first fetch by CREATION_DATE
     for policy in policies:
-        if policy.method == AutoPruneMethod.NUMBER_OF_TAGS.value:
-            tags = fetch_tags_expiring_by_tag_count_policy(repo_id, policy.config)
-        elif policy.method == AutoPruneMethod.CREATION_DATE.value:
-            tags = fetch_tags_expiring_by_creation_date_policy(repo_id, policy.config)
-        if len(tags):
-            all_tags.extend(tags)
-    return all_tags
+        if policy.method != AutoPruneMethod.CREATION_DATE.value:
+            continue
+        tags = fetch_tags_expiring_by_creation_date_policy(repo_id, policy.config)
+        if len(tags) < 1:
+            continue
 
+        for tag in tags:
+            if tag.name not in all_tag_names:
+                all_tags.append(tag)
+                all_tag_names.add(tag.name)
+                creation_date_tags.append(tag)
 
-def fetch_tags_for_namespace_policies(ns_policies, namespace_id):
-    page_token = None
-    all_tags = []
-    while True:
-        repos, page_token = get_paginated_repositories_for_namespace(namespace_id, page_token)
-        for repo in repos:
+    # then fetch by NUMBER_OF_TAGS
+    for policy in policies:
+        if policy.method != AutoPruneMethod.NUMBER_OF_TAGS.value:
+            continue
+        tags = fetch_tags_expiring_by_tag_count_policy(
+            repo_id, policy.config, tag_page_limit=100, exclude_tags=creation_date_tags
+        )
+        if len(tags) < 1:
+            continue
 
-            for ns_policy in ns_policies:
-                repo_policies = get_repository_autoprune_policies_by_repo_id(repo.id)
-                repo_tags = fetch_tags_for_repo_policies(repo_policies, repo.id)
-                if len(repo_tags):
-                    all_tags.extend(repo_tags)
-
-                namespace_tags = fetch_tags_for_repo_policies([ns_policy], repo.id)
-                if len(namespace_tags):
-                    all_tags.extend(namespace_tags)
-        if page_token is None:
-            break
+        for tag in tags:
+            if tag.name not in all_tag_names:
+                all_tags.append(tag)
+                all_tag_names.add(tag.name)
 
     return all_tags
 
 
 def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id):
     all_tags = []
+    namespace_policies = get_namespace_autoprune_policies_by_id(namespace_id)
+    # fetch tags to be pruned for the repository based on namespace policies
+    namespace_tags = fetch_tags_for_repo_policies(namespace_policies, repo_id)
+    if len(namespace_tags):
+        all_tags.extend(namespace_tags)
+
     repo_policies = get_repository_autoprune_policies_by_repo_id(repo_id)
     repo_tags = fetch_tags_for_repo_policies(repo_policies, repo_id)
     if len(repo_tags):
         all_tags.extend(repo_tags)
 
-    namespace_policies = get_namespace_autoprune_policies_by_id(namespace_id)
-    namespace_tags = fetch_tags_for_namespace_policies(namespace_policies, namespace_id)
-    if len(namespace_tags):
-        all_tags.extend(namespace_tags)
     return all_tags
