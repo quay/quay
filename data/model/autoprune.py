@@ -793,7 +793,7 @@ def execute_namespace_policies(
             break
 
 
-def fetch_tags_for_repo_policies(policies, repo_id):
+def fetch_tags_for_repo_policies(policies, repo_id, notification_config):
     all_tags = []
     all_tag_names = set()
     creation_date_tags = []
@@ -802,6 +802,11 @@ def fetch_tags_for_repo_policies(policies, repo_id):
     for policy in policies:
         if policy.method != AutoPruneMethod.CREATION_DATE.value:
             continue
+
+        # skip policies that have expiry greater that notification's configuration
+        if convert_to_timedelta(policy.config["value"]).days > notification_config["days"]:
+            continue
+
         tags = fetch_tags_expiring_by_creation_date_policy(repo_id, policy.config)
         if len(tags) < 1:
             continue
@@ -830,17 +835,8 @@ def fetch_tags_for_repo_policies(policies, repo_id):
     return all_tags
 
 
-def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id):
-    all_tags = []
-    namespace_policies = get_namespace_autoprune_policies_by_id(namespace_id)
-    # fetch tags to be pruned for the repository based on namespace policies
-    namespace_tags = fetch_tags_for_repo_policies(namespace_policies, repo_id)
-    if len(namespace_tags):
-        all_tags.extend(namespace_tags)
-
-    repo_policies = get_repository_autoprune_policies_by_repo_id(repo_id)
-    repo_tags = fetch_tags_for_repo_policies(repo_policies, repo_id)
-    if len(repo_tags):
-        all_tags.extend(repo_tags)
-
-    return all_tags
+def fetch_tags_expiring_due_to_auto_prune_policies(repo_id, namespace_id, notification_config):
+    all_policies = []
+    all_policies.extend(get_namespace_autoprune_policies_by_id(namespace_id))
+    all_policies.extend(get_repository_autoprune_policies_by_repo_id(repo_id))
+    return fetch_tags_for_repo_policies(all_policies, repo_id, notification_config)

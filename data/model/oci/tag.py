@@ -807,9 +807,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
         )
 
         if exclude_tags and len(exclude_tags) > 0:
-            query = query.select(Tag.id, Tag.name).where(
-                Tag.name.not_in([tag.name for tag in exclude_tags])
-            )
+            query.where(Tag.name.not_in([tag.name for tag in exclude_tags]))
 
         if tag_pattern is not None:
             query = db_regex_search(
