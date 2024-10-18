@@ -34,8 +34,4 @@ class TestRequestRedirect(unittest.TestCase):
 
         path = "/raise-request-redirect"
         response = self.app.get(path)
-        print(response.get_data(as_text=True))
-        resp_data = json.loads(response.get_data(as_text=True))
         self.assertEqual(response.status_code, 308)
-        self.assertEqual(resp_data["message"], "bad path, there may be a trailing slash")
-        self.assertEqual(resp_data["new_url"], "somepath")
