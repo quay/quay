@@ -3,8 +3,34 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.4"></a>
+## [v3.12.4] - 2024-10-16
+### [Redhat-3.12] Api
+- [4c7b5f13](https://github.com/quay/quay/commit/4c7b5f13d1f7540630f178e2bac7cac9afdd8e37): allowing superuser to read catalog endpoint (PROJQUAY-8023) ([#3333](https://github.com/quay/quay/issues/3333))
+### [Redhat-3.12] Bug
+- [5377be16](https://github.com/quay/quay/commit/5377be160db7ea0d210af5d048d1a8cb4fd7ea44): fixing NaN value error for quota displayed on member org page (PROJQUAY-6465) ([#3329](https://github.com/quay/quay/issues/3329))
+### [Redhat-3.12] Build(Deps)
+- [a7d7f0e9](https://github.com/quay/quay/commit/a7d7f0e9896ef18eb0e2dc27291c29fc18e94b3f): bump cookie and express in /web ([#3320](https://github.com/quay/quay/issues/3320))
+- [a02401bc](https://github.com/quay/quay/commit/a02401bc871159b747eeca8cad47e520173d9b5c): reverting back the support for s390x which has been removed temporarily(PROJECTQUAY-7960) ([#3294](https://github.com/quay/quay/issues/3294))
+- [1667706d](https://github.com/quay/quay/commit/1667706d84ba9e0df308cdcadb13404e1d3abd1c): bump google.golang.org/protobuf from 1.31.0 to 1.33.0 in /config-tool ([#3291](https://github.com/quay/quay/issues/3291))
+- [a6f29694](https://github.com/quay/quay/commit/a6f2969405c2e50cc0a1b404cd62698e6432927e): bump body-parser and express ([#3287](https://github.com/quay/quay/issues/3287))
+- [00bb6e9b](https://github.com/quay/quay/commit/00bb6e9bfad1139b3cb24054e6dd1cb3187fdec7): bump body-parser and express in /web ([#3272](https://github.com/quay/quay/issues/3272))
+- [46ab6b9f](https://github.com/quay/quay/commit/46ab6b9f3ba14cda521379e7dac9b054cb7d9462): bump socket.io-parser and karma ([#3258](https://github.com/quay/quay/issues/3258))
+### [Redhat-3.12] Build(Deps-Dev)
+- [93eecc74](https://github.com/quay/quay/commit/93eecc7465d2eb5e20cb77fbe415f43c8a854ad1): bump webpack from 5.88.2 to 5.95.0 in /config-tool/pkg/lib/editor ([#3301](https://github.com/quay/quay/issues/3301))
+- [64dca5c6](https://github.com/quay/quay/commit/64dca5c6188b112fcff01cce2899496833ad21aa): bump webpack from 5.76.0 to 5.95.0 in /web ([#3286](https://github.com/quay/quay/issues/3286))
+### [Redhat-3.12] Chore
+- [6191138d](https://github.com/quay/quay/commit/6191138dc6976c7e37c74d848062f7615c6839c9): Bump config-tool to go 1.21 ([#3283](https://github.com/quay/quay/issues/3283))
+### [Redhat-3.12] Deps
+- [2e9f48e5](https://github.com/quay/quay/commit/2e9f48e519ac6b3c50aa6cda551e8f461ba251b0): bump jsrsasign (PROJQUAY-6615) ([#3289](https://github.com/quay/quay/issues/3289))
+- [e96d5675](https://github.com/quay/quay/commit/e96d56754be894490545f19ec3ca2946b67b05fd): bump certifi (PROJQUAY-7620) ([#3244](https://github.com/quay/quay/issues/3244))
+### [Redhat-3.12] Gc
+- [edba8f7a](https://github.com/quay/quay/commit/edba8f7a5ad4121cf280c26992afdbc705fa99cc): fix fk constraint violation tag delete (PROJQUAY-8006) ([#3328](https://github.com/quay/quay/issues/3328))
+### [Redhat-3.12] Validator
+- [902e074c](https://github.com/quay/quay/commit/902e074c6944b24bfff3f54362b72e5c91cb6761): Remove logging of database password (PROJQUAY-8059) ([#3337](https://github.com/quay/quay/issues/3337))
+
 <a name="v3.12.3"></a>
-## [v3.12.3] - 2024-09-12
+## [v3.12.3] - 2024-09-18
 ### [Redhat-3.12] Build(Deps)
 - [fadc0890](https://github.com/quay/quay/commit/fadc08905639263c769ce337f45b663a95521fa0): bump webob from 1.8.6 to 1.8.8 ([#3222](https://github.com/quay/quay/issues/3222))
 ### [Redhat-3.12] Deps
@@ -219,6 +245,22 @@
 - [3e43a5f5](https://github.com/quay/quay/commit/3e43a5f50e025af0b1188388cb91eaec0060ba5a): fix for negative integers in image expiry days (PROJQUAY-7442) ([#3014](https://github.com/quay/quay/issues/3014))
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
+
+<a name="v3.11.6"></a>
+## [v3.11.6] - 2024-09-18
+### Deps
+- [735bea8a](https://github.com/quay/quay/commit/735bea8a96ebf47881d093999be0293b34b1b0ca): Bump jinja2 (PROJQUAY-7288) ([#3220](https://github.com/quay/quay/issues/3220))
+- [3418f528](https://github.com/quay/quay/commit/3418f528a1a2934c9b80af94928bd6fad5321715): Bump gunicorn to 22.0.0 (PROJQUAY-7018) ([#3176](https://github.com/quay/quay/issues/3176))
+- [3128737a](https://github.com/quay/quay/commit/3128737a61507b4f69df6438e8553a84b88ad12b): bump requests library to 2.32.2 (PROJQUAY-7259) ([#3177](https://github.com/quay/quay/issues/3177))
+### [Redhat-3.11] Build(Deps)
+- [d59bf796](https://github.com/quay/quay/commit/d59bf79677e3916ce2825cf7dc84ede3e5dad885): bump authlib from 1.2.1 to 1.3.1 ([#3238](https://github.com/quay/quay/issues/3238))
+- [1e725c3a](https://github.com/quay/quay/commit/1e725c3a1648ec0ad32812c7949777e69cf03abd): bump webob from 1.8.6 to 1.8.8 ([#3221](https://github.com/quay/quay/issues/3221))
+### [Redhat-3.11] Deps
+- [e33e505d](https://github.com/quay/quay/commit/e33e505de627225aa14351398b1f39ece9752139): Bump werkzeug to 3.0.3 (PROJQUAY-7142) ([#3211](https://github.com/quay/quay/issues/3211))
+### [Redhat-3.11] Nginx
+- [c9404545](https://github.com/quay/quay/commit/c94045450e227a056bcf7627255acc056ba61c74): dropping x-forwarded-host (PROJQUAY-7561) ([#3204](https://github.com/quay/quay/issues/3204))
+### [Redhat-3.11] Task
+- [98a633ee](https://github.com/quay/quay/commit/98a633ee7bb3b033f6c53b39d8516207bf636692): Temporary remove s390x support (PROJQUAY-7673) ([#3210](https://github.com/quay/quay/issues/3210))
 
 <a name="v3.11.5"></a>
 ## [v3.11.5] - 2024-08-26
@@ -2368,11 +2410,13 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.3...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.4...HEAD
+[v3.12.4]: https://github.com/quay/quay/compare/v3.12.3...v3.12.4
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.5...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.6...v3.12.0
+[v3.11.6]: https://github.com/quay/quay/compare/v3.11.5...v3.11.6
 [v3.11.5]: https://github.com/quay/quay/compare/v3.11.4...v3.11.5
 [v3.11.4]: https://github.com/quay/quay/compare/v3.11.3...v3.11.4
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
