@@ -1553,11 +1553,6 @@ CONFIG_SCHEMA = {
                 },
             },
         },
-        "FEATURE_IMAGE_EXPIRY_TRIGGER": {
-            "type": "boolean",
-            "description": "Allows users to set up notifications on image expiry",
-            "x-example": False,
-        },
         "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": {
             "type": "number",
             "description": "Interval in minutes that defines frequency to re-run notifications",
