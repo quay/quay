@@ -618,7 +618,9 @@ describe('Repository Details Page', () => {
     cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
 
     cy.get('#expiration-time-picker').click();
-    cy.contains(formattedTime).scrollIntoView().click();
+    cy.contains(formattedTime.replace(/ AM| PM/, ''))
+      .scrollIntoView()
+      .click();
     cy.get('#expiration-time-picker-input').clear();
     cy.get('#expiration-time-picker-input').type(
       formattedTime2.replace(/ AM| PM/, ''),
