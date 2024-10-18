@@ -1,6 +1,6 @@
 import logging
 
-from flask import jsonify, make_response, redirect
+from flask import jsonify, make_response
 from werkzeug.routing.exceptions import RequestRedirect
 
 from app import app
