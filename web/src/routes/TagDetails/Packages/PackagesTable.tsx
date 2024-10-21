@@ -4,7 +4,7 @@ import {
   Feature,
   VulnerabilitySeverity,
   VulnerabilityOrder,
-} from 'src/resources/TagResource';
+} from 'src/resources/ManifestSecurityResource';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {
   PageSection,
@@ -58,6 +58,7 @@ function getVulnerabilitiesCount(
     [VulnerabilitySeverity.Negligible]: 0,
     [VulnerabilitySeverity.Unknown]: 0,
     [VulnerabilitySeverity.None]: 0,
+    Pending: 0,
   };
 
   for (let i = 0; i < vulnerabilities.length; i++) {
