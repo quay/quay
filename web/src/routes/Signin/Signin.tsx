@@ -15,6 +15,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {AxiosError} from 'axios';
 import './Signin.css';
 import {addDisplayError} from 'src/resources/ErrorHandling';
+import {fetchBrandLogo} from 'src/libs/utils';
 
 export function Signin() {
   const [username, setUsername] = useState('');
@@ -25,11 +26,6 @@ export function Signin() {
 
   const navigate = useNavigate();
   const quayConfig = useQuayConfig();
-
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
-  }
 
   const onLoginButtonClick = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
@@ -92,7 +88,7 @@ export function Signin() {
   return (
     <LoginPage
       className={'pdf-u-background-color-100 pf-v5-u-text-align-left'}
-      brandImgSrc={logoUrl}
+      brandImgSrc={fetchBrandLogo(quayConfig)}
       brandImgAlt="Red Hat Quay"
       backgroundImgSrc="assets/images/rh_login.jpeg"
       textContent="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
