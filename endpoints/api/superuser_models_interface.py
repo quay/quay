@@ -223,7 +223,21 @@ class ServiceKey(
         }
 
 
-class User(namedtuple("User", ["username", "email", "verified", "enabled", "robot", "quotas"])):
+class User(
+    namedtuple(
+        "User",
+        [
+            "username",
+            "email",
+            "verified",
+            "enabled",
+            "robot",
+            "quotas",
+            "is_superuser",
+            "is_restricted_user",
+        ],
+    )
+):
     """
     User represents a single user.
 
@@ -244,6 +258,8 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             "avatar": avatar.get_data_for_user(self),
             "super_user": usermanager.is_superuser(self.username),
             "enabled": self.enabled,
+            "is_superuser": self.is_superuser,
+            "is_restricted_user": self.is_restricted_user,
         }
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:
             user_data["quotas"] = (
@@ -254,13 +270,16 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
         return user_data
 
 
-class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
+class Organization(
+    namedtuple("Organization", ["username", "email", "quotas", "is_restricted_usedr"])
+):
     """
     Organization represents a single org.
 
     :type username: string
     :type email: string
     :type quotas: [UserOrganizationQuota] | None
+    :type is_restricted_user: boolean
     """
 
     def to_dict(self):
@@ -268,6 +287,7 @@ class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
             "name": self.username,
             "email": self.email,
             "avatar": avatar.get_data_for_org(self),
+            "is_restricted_user": self.is_restricted_user,
         }
 
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA and self.quotas is not None:
@@ -347,6 +367,30 @@ class SuperuserDataInterface(object):
     def update_enabled(self, username, enabled):
         """
         Returns None.
+        """
+
+    @abstractmethod
+    def add_superuser(self, username):
+        """
+        Sets user as superuser.
+        """
+
+    @abstractmethod
+    def del_superuser(self, username):
+        """
+        Removes user as superuser.
+        """
+
+    @abstractmethod
+    def add_restricted_user(self, username):
+        """
+        Sets user as restricted.
+        """
+
+    @abstractmethod
+    def del_restricted_user(self, username):
+        """
+        Removes restrictions from user.
         """
 
     @abstractmethod

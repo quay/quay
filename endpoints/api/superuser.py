@@ -636,6 +636,10 @@ class SuperUserManagement(ApiResource):
                     "description": "The new e-mail address for the user",
                 },
                 "enabled": {"type": "boolean", "description": "Whether the user is enabled"},
+                "is_superuser": {
+                    "type": "boolean",
+                    "description": "Whether the user should have superuser privileges",
+                },
             },
         },
     }
@@ -762,6 +766,39 @@ class SuperUserManagement(ApiResource):
                 config_object["SUPER_USERS"] = list(superusers_set)
                 config_provider.save_config(config_object)
 
+            if "is_superuser" in user_data:
+                if user_data["is_superuser"]:
+                    pre_oci_model.add_superuser(username)
+                    usermanager.register_superuser(username)
+                    log_action(
+                        "add_superuser",
+                        username,
+                        {"username": username, "authorized_user": authed_user.username},
+                    )
+                else:
+                    pre_oci_model.del_superuser(username, features.RESTRICTED_USERS)
+                    usermanager.remove_superuser(username)
+                    log_action(
+                        "remove_superuser",
+                        username,
+                        {"username": username, "authorized_user": authed_user.username},
+                    )
+
+            if "is_restricted_user" in user_data:
+                if user_data["is_restricted_user"]:
+                    pre_oci_model.add_restricted_user(username)
+                    log_action(
+                        "add_restricted_user",
+                        username,
+                        {"username": username, "authorized_user": authed_user.username},
+                    )
+                else:
+                    pre_oci_model.del_restricted_user(username)
+                    log_action(
+                        "remove_restricted_user",
+                        username,
+                        {"username": username, "authorized_user": authed_user.username},
+                    )
             return_value = user.to_dict()
             if user_data.get("password") is not None:
                 password = user_data.get("password")
