@@ -110,7 +110,7 @@ def scan_for_image_expiry_notifications(event_name, batch_size=BATCH_SIZE):
             repo_id, config["days"], notified_tags
         )
         autoprune_tags = fetch_tags_expiring_due_to_auto_prune_policies(
-            repo_id, repository.namespace_user
+            repo_id, repository.namespace_user, config
         )
 
         if len(autoprune_tags):
