@@ -124,10 +124,22 @@ export default function CreateRepositoryModalTemplate(
   // namespace list includes both the orgs list and the user namespace
   const namespaceSelectionList = () => {
     const userSelection = (
-      <SelectOption key={props.username} value={props.username}></SelectOption>
+      <SelectOption
+        key={props.username}
+        value={props.username}
+        data-testid={`user-${props.username}`}
+      >
+        {props.username}
+      </SelectOption>
     );
     const orgsSelectionList = props.organizations.map((orgs, idx) => (
-      <SelectOption key={idx} value={orgs.name}></SelectOption>
+      <SelectOption
+        key={idx}
+        value={orgs.name}
+        data-testid={`org-${orgs.name}`}
+      >
+        {orgs.name}
+      </SelectOption>
     ));
 
     return [userSelection, ...orgsSelectionList];
@@ -193,6 +205,7 @@ export default function CreateRepositoryModalTemplate(
                         }
                         isExpanded={currentOrganization.isDropdownOpen}
                         isDisabled={props.orgName !== null}
+                        data-testid="selected-namespace-dropdown"
                       >
                         {currentOrganization.name}
                       </MenuToggle>
