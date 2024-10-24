@@ -18,18 +18,20 @@ import {RepositoryAutoPrunePolicy} from 'src/resources/RepositoryAutoPruneResour
 import ReadonlyAutoprunePolicy from './RepositoryAutoPruningReadonlyPolicy';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 
 export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [policies, setPolicies] = useState([]);
   const {addAlert} = useAlerts();
   const {organization} = useOrganization(props.organizationName);
+  const {user} = useCurrentUser();
   const config = useQuayConfig();
 
   const {isSuccess: successFetchingPolicies, nsPolicies} =
     useNamespaceAutoPrunePolicies(
       props.organizationName,
       props.isUser,
-      organization?.is_admin || false,
+      organization?.is_admin || user?.username == props.organizationName,
     );
 
   const {
@@ -215,7 +217,14 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
           policies={[config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY]}
         />
       </Conditional>
-      <Conditional if={nsPolicies?.length > 0 && organization?.is_admin}>
+      <Conditional
+        if={
+          nsPolicies?.length > 0 &&
+          (props.isUser
+            ? user?.username == props.organizationName
+            : organization?.is_admin)
+        }
+      >
         <ReadonlyAutoprunePolicy
           testId="namespace-autoprune-policy"
           title="Namespace Auto-Pruning Policies"
