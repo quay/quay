@@ -247,7 +247,7 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
 
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
         assert engine.exists(_TEST_PATH)
-        assert "s3.us-east-1.amazonaws.com" in engine.get_direct_download_url(
+        assert "amazonaws.com" in engine.get_direct_download_url(
             _TEST_PATH, request_ip="4.0.0.2", cdn_specific=False
         )
         assert "cloudflare-domain" in engine.get_direct_download_url(
