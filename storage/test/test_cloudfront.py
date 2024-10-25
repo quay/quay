@@ -225,24 +225,31 @@ def test_direct_download_with_repo_name(test_aws_ip, aws_ip_range_data, ipranges
 
 
 @mock_s3
-def test_direct_download_cdn_specific(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
+def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, app):
     ipresolver = IPResolver(app)
-    context = StorageContext("nyc", None, config_provider, ipresolver)
+    if ipranges_populated:
+        ipresolver.sync_token = test_ip_range_cache["sync_token"]
+        ipresolver.amazon_ranges = test_ip_range_cache["all_amazon"]
+        context = StorageContext("nyc", None, config_provider, ipresolver)
 
-    # Create a test bucket and put some test content.
-    boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
+        # Create a test bucket and put some test content.
+        boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
 
-    engine = CloudFlareS3Storage(
-        context,
-        "cloudflare-domain",
-        "test/data/test.pem",
-        "some/path",
-        _TEST_BUCKET,
-        _TEST_REGION,
-        None,
-    )
+        engine = CloudFlareS3Storage(
+            context,
+            "cloudflare-domain",
+            "test/data/test.pem",
+            "some/path",
+            _TEST_BUCKET,
+            _TEST_REGION,
+            None,
+        )
 
-    engine.put_content(_TEST_PATH, _TEST_CONTENT)
-    assert engine.exists(_TEST_PATH)
-    url = engine.get_direct_download_url(_TEST_PATH, request_ip="4.0.0.2", cdn_specific=True)
-    assert "cloudflare-domain" in url
+        engine.put_content(_TEST_PATH, _TEST_CONTENT)
+        assert engine.exists(_TEST_PATH)
+        assert "s3.us-east-1.amazonaws.com" in engine.get_direct_download_url(
+            _TEST_PATH, request_ip="4.0.0.2", cdn_specific=False
+        )
+        assert "cloudflare-domain" in engine.get_direct_download_url(
+            _TEST_PATH, request_ip="4.0.0.2", cdn_specific=True
+        )
