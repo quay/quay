@@ -901,3 +901,7 @@ class DefaultConfig(ImmutableConfig):
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
+
+    # Specific namespaces that be exceptions to the s3-cloudflare optimization
+    # used for registry-proxy namespaces
+    CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []

@@ -49,11 +49,14 @@ class CloudFlareS3Storage(S3Storage):
         if self.cloudflare_privatekey is None or request_ip is None:
             return s3_presigned_url
 
-        logger.debug('Got direct download request for path "%s" with IP "%s"', path, request_ip)
-
         if is_in_network_request(self._context, request_ip, self.region):
-            logger.debug("Request is from within the network, returning S3 URL")
-            return s3_presigned_url
+            if kwargs.get("cdn_specific", False):
+                logger.debug(
+                    "Request came from within network but namespace is protected: %s", path
+                )
+            else:
+                logger.debug("Request is from within the network, returning S3 URL")
+                return s3_presigned_url
 
         s3_url_parsed = urllib.parse.urlparse(s3_presigned_url)
 
