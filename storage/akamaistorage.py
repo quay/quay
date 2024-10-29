@@ -1,6 +1,8 @@
 import logging
 import urllib.parse
-from akamai.edgeauth import EdgeAuth, EdgeAuthError
+
+# ignoring the below type check as mypy fails with "missing library stubs or py.typed marker" error
+from akamai.edgeauth import EdgeAuth, EdgeAuthError  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +18,15 @@ class AkamaiS3Storage(S3Storage):
     """
 
     def __init__(
-            self,
-            context,
-            akamai_domain,
-            akamai_shared_secret,
-            storage_path,
-            s3_bucket,
-            s3_region,
-            *args,
-            **kwargs,
+        self,
+        context,
+        akamai_domain,
+        akamai_shared_secret,
+        storage_path,
+        s3_bucket,
+        s3_region,
+        *args,
+        **kwargs,
     ):
         super(AkamaiS3Storage, self).__init__(
             context, storage_path, s3_bucket, s3_region=s3_region, *args, **kwargs
@@ -41,7 +43,7 @@ class AkamaiS3Storage(S3Storage):
         )
 
     def get_direct_download_url(
-            self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         # If CloudFront could not be loaded, fall back to normal S3.
         s3_presigned_url = super(AkamaiS3Storage, self).get_direct_download_url(
@@ -72,7 +74,6 @@ class AkamaiS3Storage(S3Storage):
             akamai_url_parsed = akamai_url_parsed._replace(
                 query=f"{akamai_url_parsed.query}&{TOKEN_QUERY_STRING}={self.et.generate_url_token(to_sign)}"
             )
-
 
         except EdgeAuthError as e:
             logger.error(f"Failed to generate Akamai token: {e}")
