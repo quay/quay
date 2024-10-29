@@ -128,7 +128,7 @@ export function parseTimeDuration(input: string): Duration {
     return moment.duration(NaN);
   }
 
-  const durationRegex = /^(\d+)([smhdw])$/i; // suffixes supported by Quay
+  const durationRegex = /^(\d+)([smhdwy])$/i; // suffixes supported by Quay
   const match = input.match(durationRegex);
 
   if (!match) {
