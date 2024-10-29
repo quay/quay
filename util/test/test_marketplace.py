@@ -53,48 +53,6 @@ mocked_user_service_response = [
     },
 ]
 
-mocked_organization_only_response = [
-    {
-        "id": "12345678",
-        "accountRelationships": [
-            {
-                "emails": [{"address": "example@example.com", "status": "enabled"}],
-                "accountId": "fakeid",
-                "startDate": "2022-09-19T04:18:19.228Z",
-                "id": "fakeid",
-                "account": {
-                    "id": "222222222",
-                    "cdhPartyNumber": "11111111",
-                    "ebsAccountNumber": "102030",
-                    "name": "Red Hat",
-                    "displayName": "Red Hat",
-                    "status": "enabled",
-                    "type": "organization",
-                },
-            }
-        ],
-    },
-    {
-        "id": "87654321",
-        "accountRelationships": [
-            {
-                "emails": [{"address": "example@example.com", "status": "enabled"}],
-                "accountId": "fakeid",
-                "startDate": "2022-09-20T14:31:09.974Z",
-                "id": "fakeid",
-                "account": {
-                    "id": "fakeid",
-                    "cdhPartyNumber": "0000000",
-                    "ebsAccountNumber": "1234567",
-                    "name": "Test Org",
-                    "status": "enabled",
-                    "type": "organization",
-                },
-            }
-        ],
-    },
-]
-
 mocked_subscription_response = [
     {
         "id": 1,
@@ -194,6 +152,60 @@ mocked_expired_sub = [
     },
 ]
 
+mocked_terminated_sub = [
+    {
+        "id": 41619474,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdByUserName": None,
+        "createdDate": 1708616554000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateUserName": None,
+        "lastUpdateDate": 1708616554000,
+        "externalCreatedDate": None,
+        "externalLastUpdateDate": None,
+        "activeStartDate": None,
+        "activeEndDate": None,
+        "inactiveDate": None,
+        "signedDate": None,
+        "terminatedDate": 1645544830000,
+        "renewedDate": None,
+        "parentSubscriptionProductId": None,
+        "externalOrderSystemName": "SUBSCRIPTION",
+        "externalOrderNumber": None,
+        "status": None,
+        "sku": "MW02701",
+        "childrenIds": [41619475],
+        "serviceable": False,
+    },
+    {
+        "id": 41619475,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdByUserName": None,
+        "createdDate": 1645544830000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateUserName": None,
+        "lastUpdateDate": 1645544830000,
+        "externalCreatedDate": None,
+        "externalLastUpdateDate": None,
+        "activeStartDate": 1645544830000,
+        "activeEndDate": 4869471324000,
+        "inactiveDate": None,
+        "signedDate": None,
+        "terminatedDate": None,
+        "renewedDate": None,
+        "parentSubscriptionProductId": 41619474,
+        "externalOrderSystemName": "SUBSCRIPTION",
+        "externalOrderNumber": None,
+        "status": "active",
+        "oracleInventoryOrgId": None,
+        "sku": "SVCMW02701",
+        "childrenIds": None,
+        "serviceable": True,
+    },
+]
+
 
 class TestMarketplace(unittest.TestCase):
     @patch("requests.request")
@@ -219,11 +231,7 @@ class TestMarketplace(unittest.TestCase):
         requests_mock.return_value.content = json.dumps(mocked_user_service_response)
 
         customer_id = user_api.lookup_customer_id("example@example.com")
-        assert customer_id == 000000000
-
-        requests_mock.return_value.content = json.dumps(mocked_organization_only_response)
-        customer_id = user_api.lookup_customer_id("example@example.com")
-        assert customer_id is None
+        assert customer_id == [222222222, 00000000]
 
     @patch("requests.request")
     def test_subscription_lookup(self, requests_mock):
@@ -241,3 +249,10 @@ class TestMarketplace(unittest.TestCase):
         subscription_details = subscription_api.get_subscription_details(12345)
         assert subscription_details["sku"] == "MW02701"
         assert subscription_details["expiration_date"] == 1645544830000
+        assert subscription_details["terminated_date"] is None
+
+        requests_mock.return_value.content = json.dumps(mocked_terminated_sub)
+        subscription_details = subscription_api.get_subscription_details(12345)
+        assert subscription_details["sku"] == "MW02701"
+        assert subscription_details["expiration_date"] == 4869471324000
+        assert subscription_details["terminated_date"] == 1645544830000

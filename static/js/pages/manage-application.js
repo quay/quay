@@ -17,8 +17,11 @@
     $scope.Config = Config;
     $scope.OAuthService = OAuthService;
     $scope.updating = false;
-
+    $scope.currentEntity = null;
+    $scope.selectedUser = null;
+    $scope.customUser = false;
     $scope.genScopes = {};
+
 
     UserService.updateUserIn($scope);
 
@@ -92,6 +95,48 @@
       }, ApiService.errorDisplay('Could not reset client secret'));
     };
 
+    $scope.generateUrl = function() {
+      if($scope.application == null){
+        return "";
+      }
+
+      var base = $scope.selectedUser !== null ? '/oauth/authorize/assignuser?username=' + $scope.selectedUser.name + '&' : '/oauth/authorize?' ;
+      var url = base + 'response_type=token&client_id=' + $scope.application.client_id + '&scope=' +  $scope.getScopes($scope.genScopes).join(' ') + '&redirect_uri=' + Config.getUrl(Config['LOCAL_OAUTH_HANDLER']);
+      return Config.getUrl(url);
+    }
+
+    $scope.setSelectedUser = function(entity){
+      $scope.selectedUser = entity;
+    }
+
+    $scope.getScopeInfo = function() {
+      var selectedScopes = $scope.getScopes($scope.genScopes);
+      var scopeDetails = [];
+      for (var i = 0; i < selectedScopes.length; ++i) {
+        var scope = selectedScopes[i];
+        if(OAuthService.SCOPES[scope] !== undefined){
+          var scopeInfo = OAuthService.SCOPES[scope];
+          scopeInfo.index = i; // Add index for rendering list
+          scopeDetails.push(scopeInfo)
+        }
+      }
+      return scopeDetails;
+    }
+
+    $scope.hasDangerousScope = function() {
+      return $scope.getScopeInfo().some(function(scope){
+        return scope.dangerous;
+      })
+    }
+
+    $scope.confirmAssignUser = function(){
+      $('#confirmAssignAuthorizationModal').modal({});
+    }
+
+    $scope.closeConfirmAssignUser = function(){
+      $('#confirmAssignAuthorizationModal').modal('hide');
+    }
+
     var loadOrganization = function() {
       $scope.orgResource = ApiService.getOrganizationAsResource({'orgname': orgname}).get(function(org) {
         $scope.organization = org;
@@ -115,6 +160,15 @@
         return resp;
       });
     };
+
+    $scope.assignUser = function(){
+      $scope.customUser = true;
+    }
+
+    $scope.cancelAssignUser = function(){
+      $scope.selectedUser = null;
+      $scope.customUser = false;
+    }
 
 
     // Load the organization and application info.

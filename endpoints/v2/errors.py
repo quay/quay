@@ -126,6 +126,13 @@ class TagInvalid(V2RegistryException):
         super(TagInvalid, self).__init__("TAG_INVALID", "manifest tag did not match URI", detail)
 
 
+class TooManyTagsRequested(V2RegistryException):
+    def __init__(self, message, detail=None):
+        super(TooManyTagsRequested, self).__init__(
+            "TOO_MANY_TAGS_REQUESTED", message or "too many tags requested", detail, 413
+        )
+
+
 class LayerTooLarge(V2RegistryException):
     def __init__(self, uploaded=None, max_allowed=None):
         detail = {}
@@ -208,3 +215,12 @@ class ReadOnlyMode(V2RegistryException):
             + "are currently suspended."
         )
         super(ReadOnlyMode, self).__init__("DENIED", message, detail, 405, is_read_only=True)
+
+
+class PushesDisabled(V2RegistryException):
+    def __init__(self, detail=None):
+        message = (
+            "Pushes to the registry are currently disabled. Please contact"
+            + " the administrator for more information."
+        )
+        super(PushesDisabled, self).__init__("METHOD NOT ALLOWED", message, {}, 405)

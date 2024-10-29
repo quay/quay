@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 logger = logging.getLogger(__name__)
 
-from storage.cloud import S3Storage
+from storage.cloud import S3Storage, is_in_network_request
 
 
 class CloudFlareS3Storage(S3Storage):
@@ -33,6 +33,7 @@ class CloudFlareS3Storage(S3Storage):
             context, storage_path, s3_bucket, s3_region=s3_region, *args, **kwargs
         )
 
+        self.context = context
         self.cloudflare_domain = cloudflare_domain
         self.cloudflare_privatekey = self._load_private_key(cloudflare_privatekey_filename)
         self.region = s3_region
@@ -40,7 +41,7 @@ class CloudFlareS3Storage(S3Storage):
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
-        # If CloudFront could not be loaded, fall back to normal S3.
+        # If CloudFlare could not be loaded, fall back to normal S3.
         s3_presigned_url = super(CloudFlareS3Storage, self).get_direct_download_url(
             path, request_ip, expires_in, requires_cors, head
         )
@@ -48,7 +49,14 @@ class CloudFlareS3Storage(S3Storage):
         if self.cloudflare_privatekey is None or request_ip is None:
             return s3_presigned_url
 
-        logger.debug('Got direct download request for path "%s" with IP "%s"', path, request_ip)
+        if is_in_network_request(self._context, request_ip, self.region):
+            if kwargs.get("cdn_specific", False):
+                logger.debug(
+                    "Request came from within network but namespace is protected: %s", path
+                )
+            else:
+                logger.debug("Request is from within the network, returning S3 URL")
+                return s3_presigned_url
 
         s3_url_parsed = urllib.parse.urlparse(s3_presigned_url)
 

@@ -10,6 +10,7 @@ import {useEffect, useState} from 'react';
 import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
+import {NotificationEventConfig} from 'src/hooks/UseEvents';
 
 export default function CreateQuayNotification(props: CreateQuayNotification) {
   const [title, setTitle] = useState<string>('');
@@ -24,6 +25,7 @@ export default function CreateQuayNotification(props: CreateQuayNotification) {
   const isFormComplete =
     props.method != undefined &&
     props.event != undefined &&
+    props.isValidateConfig() &&
     selectedEntity != null;
 
   const createNotification = async () => {
@@ -32,7 +34,7 @@ export default function CreateQuayNotification(props: CreateQuayNotification) {
         target: selectedEntity,
       },
       event: props.event?.type,
-      event_config: {},
+      event_config: props.eventConfig,
       method: props.method?.type,
       title: title,
     });
@@ -90,6 +92,8 @@ interface CreateQuayNotification {
   repo: string;
   event: NotificationEvent;
   method: NotificationMethod;
+  eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

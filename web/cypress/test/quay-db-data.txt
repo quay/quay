@@ -34,6 +34,9 @@ ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_role_id
 ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_organization_id_user;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_tag_kind_id_tagkind;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_tag_id;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_notification_id;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_method_id;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
@@ -89,6 +92,8 @@ ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_userid;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS fk_organizationrhskus_orgid;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS fk_oauthauthorizationcode_application_id_oauthapplication;
+ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS fk_oauthassignedtoken_assigned_user_user;
+ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS fk_oauthassignedtoken_application_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS fk_oauthapplication_organization_id_user;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_authorized_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS fk_oauthaccesstoken_application_id_oauthapplication;
@@ -206,7 +211,10 @@ DROP INDEX IF EXISTS public.tag_repository_id_name_hidden;
 DROP INDEX IF EXISTS public.tag_repository_id_name;
 DROP INDEX IF EXISTS public.tag_repository_id_lifetime_start_ms;
 DROP INDEX IF EXISTS public.tag_repository_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_repository_id_immutable;
 DROP INDEX IF EXISTS public.tag_repository_id;
+DROP INDEX IF EXISTS public.tag_manifest_id_lifetime_end_ms;
+DROP INDEX IF EXISTS public.tag_manifest_id_immutable;
 DROP INDEX IF EXISTS public.tag_manifest_id;
 DROP INDEX IF EXISTS public.tag_linked_tag_id;
 DROP INDEX IF EXISTS public.tag_lifetime_end_ms;
@@ -319,6 +327,9 @@ DROP INDEX IF EXISTS public.organizationrhskus_subscription_id_org_id;
 DROP INDEX IF EXISTS public.organizationrhskus_subscription_id;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_code_name;
 DROP INDEX IF EXISTS public.oauthauthorizationcode_application_id;
+DROP INDEX IF EXISTS public.oauthassignedtoken_uuid;
+DROP INDEX IF EXISTS public.oauthassignedtoken_assigned_user;
+DROP INDEX IF EXISTS public.oauthassignedtoken_application_id;
 DROP INDEX IF EXISTS public.oauthapplication_organization_id;
 DROP INDEX IF EXISTS public.oauthapplication_client_id;
 DROP INDEX IF EXISTS public.oauthaccesstoken_uuid;
@@ -365,12 +376,16 @@ DROP INDEX IF EXISTS public.manifestblob_repository_id;
 DROP INDEX IF EXISTS public.manifestblob_manifest_id_blob_id;
 DROP INDEX IF EXISTS public.manifestblob_manifest_id;
 DROP INDEX IF EXISTS public.manifestblob_blob_id;
+DROP INDEX IF EXISTS public.manifest_subject_backfilled;
+DROP INDEX IF EXISTS public.manifest_repository_id_subject;
 DROP INDEX IF EXISTS public.manifest_repository_id_media_type_id;
 DROP INDEX IF EXISTS public.manifest_repository_id_digest;
 DROP INDEX IF EXISTS public.manifest_repository_id_config_media_type;
+DROP INDEX IF EXISTS public.manifest_repository_id_artifact_type;
 DROP INDEX IF EXISTS public.manifest_repository_id;
 DROP INDEX IF EXISTS public.manifest_media_type_id;
 DROP INDEX IF EXISTS public.manifest_digest;
+DROP INDEX IF EXISTS public.manifest_artifact_type_backfilled;
 DROP INDEX IF EXISTS public.loginservice_name;
 DROP INDEX IF EXISTS public.logentrykind_name;
 DROP INDEX IF EXISTS public.logentry_repository_id_datetime_kind_id;
@@ -395,6 +410,7 @@ DROP INDEX IF EXISTS public.logentry2_kind_id;
 DROP INDEX IF EXISTS public.logentry2_datetime;
 DROP INDEX IF EXISTS public.logentry2_account_id_datetime;
 DROP INDEX IF EXISTS public.logentry2_account_id;
+DROP INDEX IF EXISTS public.last_ran_repositorynotification;
 DROP INDEX IF EXISTS public.labelsourcetype_name;
 DROP INDEX IF EXISTS public.label_uuid;
 DROP INDEX IF EXISTS public.label_source_type_id;
@@ -502,6 +518,7 @@ ALTER TABLE IF EXISTS ONLY public.tagmanifestlabelmap DROP CONSTRAINT IF EXISTS 
 ALTER TABLE IF EXISTS ONLY public.tagmanifestlabel DROP CONSTRAINT IF EXISTS pk_tagmanifestlabel;
 ALTER TABLE IF EXISTS ONLY public.tagmanifest DROP CONSTRAINT IF EXISTS pk_tagmanifest;
 ALTER TABLE IF EXISTS ONLY public.tagkind DROP CONSTRAINT IF EXISTS pk_tagkind;
+ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS pk_tag_notification_success;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS pk_tag;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS pk_star;
 ALTER TABLE IF EXISTS ONLY public.servicekeyapproval DROP CONSTRAINT IF EXISTS pk_servicekeyapproval;
@@ -537,6 +554,7 @@ ALTER TABLE IF EXISTS ONLY public.proxycacheconfig DROP CONSTRAINT IF EXISTS pk_
 ALTER TABLE IF EXISTS ONLY public.permissionprototype DROP CONSTRAINT IF EXISTS pk_permissionprototype;
 ALTER TABLE IF EXISTS ONLY public.organizationrhskus DROP CONSTRAINT IF EXISTS pk_organizationrhskus;
 ALTER TABLE IF EXISTS ONLY public.oauthauthorizationcode DROP CONSTRAINT IF EXISTS pk_oauthauthorizationcode;
+ALTER TABLE IF EXISTS ONLY public.oauthassignedtoken DROP CONSTRAINT IF EXISTS pk_oauthassignedtoken;
 ALTER TABLE IF EXISTS ONLY public.oauthapplication DROP CONSTRAINT IF EXISTS pk_oauthapplication;
 ALTER TABLE IF EXISTS ONLY public.oauthaccesstoken DROP CONSTRAINT IF EXISTS pk_oauthaccesstoken;
 ALTER TABLE IF EXISTS ONLY public.notificationkind DROP CONSTRAINT IF EXISTS pk_notificationkind;
@@ -603,6 +621,7 @@ ALTER TABLE IF EXISTS public.teammemberinvite ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.teammember ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.team ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagtorepositorytag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagnotificationsuccess ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifesttomanifest ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifestlabelmap ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifestlabel ALTER COLUMN id DROP DEFAULT;
@@ -643,6 +662,7 @@ ALTER TABLE IF EXISTS public.proxycacheconfig ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.permissionprototype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.organizationrhskus ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthauthorizationcode ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.oauthassignedtoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthapplication ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.oauthaccesstoken ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.notificationkind ALTER COLUMN id DROP DEFAULT;
@@ -722,6 +742,8 @@ DROP SEQUENCE IF EXISTS public.team_id_seq;
 DROP TABLE IF EXISTS public.team;
 DROP SEQUENCE IF EXISTS public.tagtorepositorytag_id_seq;
 DROP TABLE IF EXISTS public.tagtorepositorytag;
+DROP SEQUENCE IF EXISTS public.tagnotificationsuccess_id_seq;
+DROP TABLE IF EXISTS public.tagnotificationsuccess;
 DROP SEQUENCE IF EXISTS public.tagmanifesttomanifest_id_seq;
 DROP TABLE IF EXISTS public.tagmanifesttomanifest;
 DROP SEQUENCE IF EXISTS public.tagmanifestlabelmap_id_seq;
@@ -802,6 +824,8 @@ DROP SEQUENCE IF EXISTS public.organizationrhskus_id_seq;
 DROP TABLE IF EXISTS public.organizationrhskus;
 DROP SEQUENCE IF EXISTS public.oauthauthorizationcode_id_seq;
 DROP TABLE IF EXISTS public.oauthauthorizationcode;
+DROP SEQUENCE IF EXISTS public.oauthassignedtoken_id_seq;
+DROP TABLE IF EXISTS public.oauthassignedtoken;
 DROP SEQUENCE IF EXISTS public.oauthapplication_id_seq;
 DROP TABLE IF EXISTS public.oauthapplication;
 DROP SEQUENCE IF EXISTS public.oauthaccesstoken_id_seq;
@@ -2316,7 +2340,11 @@ CREATE TABLE public.manifest (
     media_type_id integer NOT NULL,
     manifest_bytes text NOT NULL,
     config_media_type character varying(255),
-    layers_compressed_size bigint
+    layers_compressed_size bigint,
+    subject character varying(255),
+    subject_backfilled boolean,
+    artifact_type character varying(255),
+    artifact_type_backfilled boolean
 );
 
 
@@ -2830,6 +2858,45 @@ ALTER TABLE public.oauthapplication_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.oauthapplication_id_seq OWNED BY public.oauthapplication.id;
+
+
+--
+-- Name: oauthassignedtoken; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.oauthassignedtoken (
+    id integer NOT NULL,
+    uuid character varying(255) NOT NULL,
+    assigned_user_id integer NOT NULL,
+    application_id integer NOT NULL,
+    redirect_uri character varying(255),
+    scope character varying(255) NOT NULL,
+    response_type character varying(255)
+);
+
+
+ALTER TABLE public.oauthassignedtoken OWNER TO quay;
+
+--
+-- Name: oauthassignedtoken_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.oauthassignedtoken_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.oauthassignedtoken_id_seq OWNER TO quay;
+
+--
+-- Name: oauthassignedtoken_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.oauthassignedtoken_id_seq OWNED BY public.oauthassignedtoken.id;
 
 
 --
@@ -3360,7 +3427,6 @@ CREATE TABLE public.repomirrorconfig (
     mirror_type integer NOT NULL,
     internal_robot_id integer NOT NULL,
     external_registry_username character varying(4096),
-    external_registry_password character varying(4096),
     external_registry_config text NOT NULL,
     sync_interval integer DEFAULT 60 NOT NULL,
     sync_start_date timestamp without time zone,
@@ -3369,7 +3435,8 @@ CREATE TABLE public.repomirrorconfig (
     sync_status integer NOT NULL,
     sync_transaction_id character varying(36),
     root_rule_id integer NOT NULL,
-    external_reference text NOT NULL
+    external_reference text NOT NULL,
+    external_registry_password character varying(9000)
 );
 
 
@@ -3728,7 +3795,8 @@ CREATE TABLE public.repositorynotification (
     title character varying(255),
     config_json text NOT NULL,
     event_config_json text NOT NULL,
-    number_of_failures integer DEFAULT 0 NOT NULL
+    number_of_failures integer DEFAULT 0 NOT NULL,
+    last_ran_ms bigint
 );
 
 
@@ -4139,7 +4207,8 @@ CREATE TABLE public.tag (
     hidden boolean DEFAULT false NOT NULL,
     reversion boolean DEFAULT false NOT NULL,
     tag_kind_id integer NOT NULL,
-    linked_tag_id integer
+    linked_tag_id integer,
+    immutable boolean DEFAULT false NOT NULL
 );
 
 
@@ -4346,6 +4415,42 @@ ALTER TABLE public.tagmanifesttomanifest_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.tagmanifesttomanifest_id_seq OWNED BY public.tagmanifesttomanifest.id;
+
+
+--
+-- Name: tagnotificationsuccess; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.tagnotificationsuccess (
+    id integer NOT NULL,
+    notification_id integer NOT NULL,
+    tag_id integer NOT NULL,
+    method_id integer NOT NULL
+);
+
+
+ALTER TABLE public.tagnotificationsuccess OWNER TO quay;
+
+--
+-- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.tagnotificationsuccess_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.tagnotificationsuccess_id_seq OWNER TO quay;
+
+--
+-- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.tagnotificationsuccess_id_seq OWNED BY public.tagnotificationsuccess.id;
 
 
 --
@@ -5223,6 +5328,13 @@ ALTER TABLE ONLY public.oauthapplication ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: oauthassignedtoken id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken ALTER COLUMN id SET DEFAULT nextval('public.oauthassignedtoken_id_seq'::regclass);
+
+
+--
 -- Name: oauthauthorizationcode id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5503,6 +5615,13 @@ ALTER TABLE ONLY public.tagmanifesttomanifest ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: tagnotificationsuccess id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess ALTER COLUMN id SET DEFAULT nextval('public.tagnotificationsuccess_id_seq'::regclass);
+
+
+--
 -- Name: tagtorepositorytag id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5623,7 +5742,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-b4da5b09c8df
+8e97c2cfee57
 \.
 
 
@@ -5801,6 +5920,7 @@ COPY public.externalnotificationevent (id, name) FROM stdin;
 8	repo_mirror_sync_started
 9	repo_mirror_sync_success
 10	repo_mirror_sync_failed
+11	repo_image_expiry
 \.
 
 
@@ -5880,6 +6000,7 @@ COPY public.imagestoragelocation (id, name) FROM stdin;
 7	local
 8	s3_us_west_1
 9	default
+10	default2
 \.
 
 
@@ -6298,6 +6419,16 @@ COPY public.logentrykind (id, name) FROM stdin;
 108	create_repository_autoprune_policy
 109	update_repository_autoprune_policy
 110	delete_repository_autoprune_policy
+111	enable_team_sync
+112	disable_team_sync
+113	oauth_token_assigned
+114	oauth_token_revoked
+115	change_tag_immutability
+116	create_robot_federation
+117	delete_robot_federation
+118	federated_robot_token_exchange
+119	export_logs_success
+120	export_logs_failure
 \.
 
 
@@ -6313,6 +6444,7 @@ COPY public.loginservice (id, name) FROM stdin;
 5	keystone
 6	dex
 7	jwtauthn
+8	oidc
 \.
 
 
@@ -6320,19 +6452,19 @@ COPY public.loginservice (id, name) FROM stdin;
 -- Data for Name: manifest; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.manifest (id, repository_id, digest, media_type_id, manifest_bytes, config_media_type, layers_compressed_size) FROM stdin;
-1	1	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479
-2	1	sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:c0218de6585df06a66d67b25237bdda42137c727c367373a32639710c7a9fa94"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3684,\n         "digest": "sha256:b921b04d0447ddcd82a9220d887cd146f6ef39e20a938ee5e19a90fc3323e030"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3684
-3	1	sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:1ec996c686eb87d8f091080ec29dd1862b39b5822ddfd8f9a1e2c9288fad89fe"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2993,\n         "digest": "sha256:9b157615502ddff86482f7fe2fa7a074db74a62fce12b4e8507827ac8f08d0ce"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2993
-4	1	sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1485,\n      "digest": "sha256:46331d942d6350436f64e614d75725f6de3bb5c63e266e236e04389820a234c4"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3208,\n         "digest": "sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3208
-5	1	sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1468,\n      "digest": "sha256:36d89aa75357c8f99e359f8cabc0aae667d47d8f25ed51cbe66e148e3a77e19c"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2736,\n         "digest": "sha256:7f0d4fad461d1ac69488092b5914b5ec642133c0fb884539045de33fbcd2eadb"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2736
-6	1	sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1473,\n      "digest": "sha256:5004e9d559e7a75f42249ddeca4d5764fa4db05592a7a9a641e4ac37cc619ba1"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 4092,\n         "digest": "sha256:bbc6052697e5fdcd1b311e0b3f65189ffbe354cf8ae97e7a55d588e855097174"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	4092
-7	1	sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:61fff98d5ca765a4351964c8f4b5fb1a0d2c48458026f5452a389eb52d146fe8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3929,\n         "digest": "sha256:33450689bfb495ed64ead935c9933f1d6b3e42fe369b8de9680cf4ff9d89ce5c"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3929
-8	1	sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:b3593dab05491cdf5ee88c29bee36603c0df0bc34798eed5067f6e1335a9d391"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3000,\n         "digest": "sha256:3caa6dc69d0b73f21d29bfa75356395f2695a7abad34f010656740e90ddce399"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3000
-9	1	sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3276,\n         "digest": "sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3276
-10	1	sha256:7693efac53eb85ff1afb03f7f2560015c57ac2175707f1f141f31161634c9dba	15	{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525}],"mediaType":"application\\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}	\N	0
-11	155	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479
-12	1	sha256:7e9b6e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1470,\n      "digest": "sha256:9c7a54a9a43cca047013b82af109fe963fde787f63f9e016fdc3384500c2823d"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2457,\n         "digest": "sha256:719385e32844401d57ecfd3eacab360bf551a1491c05b85806ed8f1b08d792f6"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2457
+COPY public.manifest (id, repository_id, digest, media_type_id, manifest_bytes, config_media_type, layers_compressed_size, subject, subject_backfilled, artifact_type, artifact_type_backfilled) FROM stdin;
+2	1	sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:c0218de6585df06a66d67b25237bdda42137c727c367373a32639710c7a9fa94"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3684,\n         "digest": "sha256:b921b04d0447ddcd82a9220d887cd146f6ef39e20a938ee5e19a90fc3323e030"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3684	\N	t	\N	t
+4	1	sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1485,\n      "digest": "sha256:46331d942d6350436f64e614d75725f6de3bb5c63e266e236e04389820a234c4"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3208,\n         "digest": "sha256:7050e35b49f5e348c4809f5eff915842962cb813f32062d3bbdd35c750dd7d01"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3208	\N	t	\N	t
+5	1	sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1468,\n      "digest": "sha256:36d89aa75357c8f99e359f8cabc0aae667d47d8f25ed51cbe66e148e3a77e19c"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2736,\n         "digest": "sha256:7f0d4fad461d1ac69488092b5914b5ec642133c0fb884539045de33fbcd2eadb"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2736	\N	t	\N	t
+6	1	sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1473,\n      "digest": "sha256:5004e9d559e7a75f42249ddeca4d5764fa4db05592a7a9a641e4ac37cc619ba1"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 4092,\n         "digest": "sha256:bbc6052697e5fdcd1b311e0b3f65189ffbe354cf8ae97e7a55d588e855097174"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	4092	\N	t	\N	t
+7	1	sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:61fff98d5ca765a4351964c8f4b5fb1a0d2c48458026f5452a389eb52d146fe8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3929,\n         "digest": "sha256:33450689bfb495ed64ead935c9933f1d6b3e42fe369b8de9680cf4ff9d89ce5c"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3929	\N	t	\N	t
+8	1	sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1471,\n      "digest": "sha256:b3593dab05491cdf5ee88c29bee36603c0df0bc34798eed5067f6e1335a9d391"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3000,\n         "digest": "sha256:3caa6dc69d0b73f21d29bfa75356395f2695a7abad34f010656740e90ddce399"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3000	\N	t	\N	t
+9	1	sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:df5477cea5582b0ae6a31de2d1c9bbacb506091f42a3b0fe77a209006f409fd8"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 3276,\n         "digest": "sha256:abc70fcc95b2f52b325d69cc5c259dd9babb40a9df152e88b286fada1d3248bd"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	3276	\N	t	\N	t
+10	1	sha256:7693efac53eb85ff1afb03f7f2560015c57ac2175707f1f141f31161634c9dba	15	{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:432f982638b3aefab73cc58ab28f5c16e96fdb504e8c134fc58dff4bae8bf338","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:eb11b1a194ff8e236a01eff392c4e1296a53b0fb4780d8b0382f7996a15d5392","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525}],"mediaType":"application\\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}	\N	0	\N	t	\N	t
+11	155	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479	\N	t	\N	t
+1	1	sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1469,\n      "digest": "sha256:feb5d9fea6a5e9606aa995e879d862b825965ba48de054caab5ef356dc6b3412"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2479,\n         "digest": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2479	\N	t	\N	t
+3	1	sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1482,\n      "digest": "sha256:1ec996c686eb87d8f091080ec29dd1862b39b5822ddfd8f9a1e2c9288fad89fe"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2993,\n         "digest": "sha256:9b157615502ddff86482f7fe2fa7a074db74a62fce12b4e8507827ac8f08d0ce"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2993	\N	t	\N	t
+12	1	sha256:7e9b6e7ba2842c91cf49f3e214d04a7a496f8214356f41d81a6e6dcad11f11e3	16	{\n   "schemaVersion": 2,\n   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",\n   "config": {\n      "mediaType": "application/vnd.docker.container.image.v1+json",\n      "size": 1470,\n      "digest": "sha256:9c7a54a9a43cca047013b82af109fe963fde787f63f9e016fdc3384500c2823d"\n   },\n   "layers": [\n      {\n         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",\n         "size": 2457,\n         "digest": "sha256:719385e32844401d57ecfd3eacab360bf551a1491c05b85806ed8f1b08d792f6"\n      }\n   ]\n}	application/vnd.docker.container.image.v1+json	2457	\N	t	\N	t
 \.
 
 
@@ -6491,6 +6623,7 @@ COPY public.notificationkind (id, name) FROM stdin;
 16	repo_mirror_sync_failed
 17	quota_warning
 18	quota_error
+19	assigned_authorization
 \.
 
 
@@ -6507,6 +6640,14 @@ COPY public.oauthaccesstoken (id, uuid, application_id, authorized_user_id, scop
 --
 
 COPY public.oauthapplication (id, client_id, redirect_uri, application_uri, organization_id, name, description, gravatar_email, secure_client_secret, fully_migrated) FROM stdin;
+\.
+
+
+--
+-- Data for Name: oauthassignedtoken; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.oauthassignedtoken (id, uuid, assigned_user_id, application_id, redirect_uri, scope, response_type) FROM stdin;
 \.
 
 
@@ -6574,8 +6715,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2024-02-20 14:01:29.891875	t	2024-02-20 16:56:29.836048	5	ff6a0b72-d8cc-4efe-ad83-70225ac325e1
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2024-02-20 14:01:34.91615	t	2024-02-20 16:56:34.901017	5	6e996e00-e92b-45a9-962f-7e7f3cdb9e63
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2024-09-30 17:51:28.055159	t	2024-09-30 20:46:28.041972	5	245c3f97-bac6-4742-93eb-2b61f948c6b9
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2024-09-30 17:51:33.074743	t	2024-09-30 20:46:33.062514	5	daa3897c-92bf-4678-a49a-8dbf4efed18c
 \.
 
 
@@ -6633,7 +6774,7 @@ COPY public.redhatsubscriptions (id, user_id, account_number) FROM stdin;
 -- Data for Name: repomirrorconfig; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_password, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference) FROM stdin;
+COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference, external_registry_password) FROM stdin;
 \.
 
 
@@ -7022,12 +7163,12 @@ COPY public.repositorykind (id, name) FROM stdin;
 -- Data for Name: repositorynotification; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.repositorynotification (id, uuid, repository_id, event_id, method_id, title, config_json, event_config_json, number_of_failures) FROM stdin;
-1	a5a83554-b024-4522-8b63-509266b1e45e	5	1	2		{"flow_api_token": "testtoken"}	{}	0
-2	2a4aeb62-3bea-4bb7-83ca-75a34dec3367	5	2	3	hipchat-notification	{"notification_token": "testtoken", "room_id": "123"}	{}	0
-3	70a8f966-1dc1-47b8-9b51-3cf71d0f9ad2	5	6	5	slack-notification	{"url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"}	{}	3
-4	1efd38da-6ab4-4e09-822d-3b1742a00b1c	5	8	6	webhook-notification	{"url": "https://doesnotexist", "template": "{\\"foo\\":\\"bar\\"}"}	{}	3
-5	1d07e6db-be20-405a-8780-9d83bf1d16da	5	9	1	email-notification	{"email": "user1@redhat.com"}	{}	3
+COPY public.repositorynotification (id, uuid, repository_id, event_id, method_id, title, config_json, event_config_json, number_of_failures, last_ran_ms) FROM stdin;
+1	a5a83554-b024-4522-8b63-509266b1e45e	5	1	2		{"flow_api_token": "testtoken"}	{}	0	\N
+2	2a4aeb62-3bea-4bb7-83ca-75a34dec3367	5	2	3	hipchat-notification	{"notification_token": "testtoken", "room_id": "123"}	{}	0	\N
+3	70a8f966-1dc1-47b8-9b51-3cf71d0f9ad2	5	6	5	slack-notification	{"url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"}	{}	3	\N
+4	1efd38da-6ab4-4e09-822d-3b1742a00b1c	5	8	6	webhook-notification	{"url": "https://doesnotexist", "template": "{\\"foo\\":\\"bar\\"}"}	{}	3	\N
+5	1d07e6db-be20-405a-8780-9d83bf1d16da	5	9	1	email-notification	{"email": "user1@redhat.com"}	{}	3	\N
 \.
 
 
@@ -7573,6 +7714,7 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
+3	https://quaydev.io:443	SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg	quay	{"n": "vMcd7RirlR3JKPZLiQ5mgWLcSTyV7Gdiy3eu27qHp6k7zAuI435m_1q6wj8x040WQJhCPxCDuq1_2YxCHof7DxXWvazJrROEEU8jDbst7N90jupr9Y7XKvIckrCgClCRgJrMipNiso5uSKV3WSu7Typ0AQU8eaa-fCMVpGuH9XrtFeUPxpTZZFnGkJVt5oWin5fxjOwLDGQO_Te0LNah5O0L14hd84-9TFhdkBCVKvYyhq4u0eA8YruuURGpDdB4Wc9DSUkqRbHvUvBu5fgx8TGR9t5QF2mIo8J6GOj3ccEG0xnMwrVEjlE1txDvhl7E6dqtyeyggmCL0O7C3-1YfQ", "e": "AQAB", "kty": "RSA", "kid": "SWe5UENywVJhTOLDAV_DFpN_7Y4tdFqMAROiWsdulrg"}	{"created_by": "CLI tool"}	2024-07-16 21:55:25.70086	2024-07-16 23:55:25.65144	\N	3
 \.
 
 
@@ -7581,6 +7723,8 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 --
 
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
+2	\N	ServiceKeyApprovalType.AUTOMATIC	2024-06-07 15:53:13.57574	
+3	\N	ServiceKeyApprovalType.AUTOMATIC	2024-07-16 21:55:25.709753	
 \.
 
 
@@ -7596,23 +7740,23 @@ COPY public.star (id, user_id, repository_id, created) FROM stdin;
 -- Data for Name: tag; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, hidden, reversion, tag_kind_id, linked_tag_id) FROM stdin;
-2	$temp-14b356fd-6475-4036-8a51-6222469ec319	1	2	1667589325995	1667592925995	t	f	1	\N
-3	$temp-4a1787d7-7f4c-4bb8-84d7-23e518be2e07	1	3	1667589327671	1667592927671	t	f	1	\N
-4	$temp-9f0521e7-4e36-4934-b467-0358b158faad	1	4	1667589329223	1667592929223	t	f	1	\N
-5	$temp-aa3c515a-80ce-47ab-b21f-1285e17d03ba	1	5	1667589330949	1667592930949	t	f	1	\N
-6	$temp-2eb4b1d2-65da-4161-97cf-762d9bb4fe93	1	6	1667589332577	1667592932577	t	f	1	\N
-7	$temp-4ddefd63-fdcb-43d6-8740-be334338e846	1	7	1667589334341	1667592934341	t	f	1	\N
-8	$temp-7c67ad17-2b65-49b2-a9ce-e018689ce7f2	1	8	1667589335850	1667592935850	t	f	1	\N
-9	$temp-64f33f3a-8551-49da-b36c-e4ab3a47c247	1	9	1667589337525	1667592937525	t	f	1	\N
-10	manifestlist	1	10	1667589337924	\N	f	f	1	\N
-11	latest	155	11	1687976145896	\N	f	f	1	\N
-1	latest	1	1	1667589234345	1690479044462	f	f	1	\N
-12	$temp-224d812a-ca19-4ccb-92c2-9a04a21924a7	1	1	1690479048789	1690479348789	t	f	1	\N
-13	latest	1	1	1690479048814	1690479058287	f	t	1	\N
-15	$temp-cfb6beff-645a-479d-be37-73ce2631b3c7	1	1	1690479070649	1690479370649	t	f	1	\N
-14	latest	1	12	1690479058287	1690479070667	f	f	1	\N
-16	latest	1	1	1690479070667	\N	f	t	1	\N
+COPY public.tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifetime_end_ms, hidden, reversion, tag_kind_id, linked_tag_id, immutable) FROM stdin;
+2	$temp-14b356fd-6475-4036-8a51-6222469ec319	1	2	1667589325995	1667592925995	t	f	1	\N	f
+3	$temp-4a1787d7-7f4c-4bb8-84d7-23e518be2e07	1	3	1667589327671	1667592927671	t	f	1	\N	f
+4	$temp-9f0521e7-4e36-4934-b467-0358b158faad	1	4	1667589329223	1667592929223	t	f	1	\N	f
+5	$temp-aa3c515a-80ce-47ab-b21f-1285e17d03ba	1	5	1667589330949	1667592930949	t	f	1	\N	f
+6	$temp-2eb4b1d2-65da-4161-97cf-762d9bb4fe93	1	6	1667589332577	1667592932577	t	f	1	\N	f
+7	$temp-4ddefd63-fdcb-43d6-8740-be334338e846	1	7	1667589334341	1667592934341	t	f	1	\N	f
+8	$temp-7c67ad17-2b65-49b2-a9ce-e018689ce7f2	1	8	1667589335850	1667592935850	t	f	1	\N	f
+9	$temp-64f33f3a-8551-49da-b36c-e4ab3a47c247	1	9	1667589337525	1667592937525	t	f	1	\N	f
+10	manifestlist	1	10	1667589337924	\N	f	f	1	\N	f
+11	latest	155	11	1687976145896	\N	f	f	1	\N	f
+1	latest	1	1	1667589234345	1690479044462	f	f	1	\N	f
+12	$temp-224d812a-ca19-4ccb-92c2-9a04a21924a7	1	1	1690479048789	1690479348789	t	f	1	\N	f
+13	latest	1	1	1690479048814	1690479058287	f	t	1	\N	f
+15	$temp-cfb6beff-645a-479d-be37-73ce2631b3c7	1	1	1690479070649	1690479370649	t	f	1	\N	f
+14	latest	1	12	1690479058287	1690479070667	f	f	1	\N	f
+16	latest	1	1	1690479070667	\N	f	t	1	\N	f
 \.
 
 
@@ -7654,6 +7798,14 @@ COPY public.tagmanifestlabelmap (id, tag_manifest_id, manifest_id, label_id, tag
 --
 
 COPY public.tagmanifesttomanifest (id, tag_manifest_id, manifest_id, broken) FROM stdin;
+\.
+
+
+--
+-- Data for Name: tagnotificationsuccess; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.tagnotificationsuccess (id, notification_id, tag_id, method_id) FROM stdin;
 \.
 
 
@@ -8043,7 +8195,7 @@ SELECT pg_catalog.setval('public.emailconfirmation_id_seq', 1, false);
 -- Name: externalnotificationevent_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.externalnotificationevent_id_seq', 10, true);
+SELECT pg_catalog.setval('public.externalnotificationevent_id_seq', 11, true);
 
 
 --
@@ -8078,7 +8230,7 @@ SELECT pg_catalog.setval('public.imagestorage_id_seq', 21, true);
 -- Name: imagestoragelocation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.imagestoragelocation_id_seq', 9, true);
+SELECT pg_catalog.setval('public.imagestoragelocation_id_seq', 10, true);
 
 
 --
@@ -8148,14 +8300,14 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 110, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 120, true);
 
 
 --
 -- Name: loginservice_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.loginservice_id_seq', 7, true);
+SELECT pg_catalog.setval('public.loginservice_id_seq', 8, true);
 
 
 --
@@ -8232,14 +8384,14 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 2, true);
 
 
 --
 -- Name: notificationkind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notificationkind_id_seq', 18, true);
+SELECT pg_catalog.setval('public.notificationkind_id_seq', 19, true);
 
 
 --
@@ -8254,6 +8406,13 @@ SELECT pg_catalog.setval('public.oauthaccesstoken_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.oauthapplication_id_seq', 1, false);
+
+
+--
+-- Name: oauthassignedtoken_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.oauthassignedtoken_id_seq', 1, false);
 
 
 --
@@ -8477,14 +8636,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 1, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 3, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 3, true);
 
 
 --
@@ -8534,6 +8693,13 @@ SELECT pg_catalog.setval('public.tagmanifestlabelmap_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.tagmanifesttomanifest_id_seq', 1, false);
+
+
+--
+-- Name: tagnotificationsuccess_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.tagnotificationsuccess_id_seq', 1, false);
 
 
 --
@@ -9051,6 +9217,14 @@ ALTER TABLE ONLY public.oauthapplication
 
 
 --
+-- Name: oauthassignedtoken pk_oauthassignedtoken; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken
+    ADD CONSTRAINT pk_oauthassignedtoken PRIMARY KEY (id);
+
+
+--
 -- Name: oauthauthorizationcode pk_oauthauthorizationcode; Type: CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -9328,6 +9502,14 @@ ALTER TABLE ONLY public.star
 
 ALTER TABLE ONLY public.tag
     ADD CONSTRAINT pk_tag PRIMARY KEY (id);
+
+
+--
+-- Name: tagnotificationsuccess pk_tag_notification_success; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT pk_tag_notification_success PRIMARY KEY (id);
 
 
 --
@@ -10099,6 +10281,13 @@ CREATE UNIQUE INDEX labelsourcetype_name ON public.labelsourcetype USING btree (
 
 
 --
+-- Name: last_ran_repositorynotification; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX last_ran_repositorynotification ON public.repositorynotification USING btree (last_ran_ms);
+
+
+--
 -- Name: logentry2_account_id; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -10267,6 +10456,13 @@ CREATE UNIQUE INDEX loginservice_name ON public.loginservice USING btree (name);
 
 
 --
+-- Name: manifest_artifact_type_backfilled; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX manifest_artifact_type_backfilled ON public.manifest USING btree (artifact_type_backfilled);
+
+
+--
 -- Name: manifest_digest; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -10288,6 +10484,13 @@ CREATE INDEX manifest_repository_id ON public.manifest USING btree (repository_i
 
 
 --
+-- Name: manifest_repository_id_artifact_type; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX manifest_repository_id_artifact_type ON public.manifest USING btree (repository_id, artifact_type);
+
+
+--
 -- Name: manifest_repository_id_config_media_type; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -10306,6 +10509,20 @@ CREATE UNIQUE INDEX manifest_repository_id_digest ON public.manifest USING btree
 --
 
 CREATE INDEX manifest_repository_id_media_type_id ON public.manifest USING btree (repository_id, media_type_id);
+
+
+--
+-- Name: manifest_repository_id_subject; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX manifest_repository_id_subject ON public.manifest USING btree (repository_id, subject);
+
+
+--
+-- Name: manifest_subject_backfilled; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX manifest_subject_backfilled ON public.manifest USING btree (subject_backfilled);
 
 
 --
@@ -10515,7 +10732,7 @@ CREATE INDEX messages_uuid ON public.messages USING btree (uuid);
 -- Name: namespaceautoprunepolicy_namespace_id; Type: INDEX; Schema: public; Owner: quay
 --
 
-CREATE UNIQUE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
+CREATE INDEX namespaceautoprunepolicy_namespace_id ON public.namespaceautoprunepolicy USING btree (namespace_id);
 
 
 --
@@ -10628,6 +10845,27 @@ CREATE INDEX oauthapplication_client_id ON public.oauthapplication USING btree (
 --
 
 CREATE INDEX oauthapplication_organization_id ON public.oauthapplication USING btree (organization_id);
+
+
+--
+-- Name: oauthassignedtoken_application_id; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX oauthassignedtoken_application_id ON public.oauthassignedtoken USING btree (application_id);
+
+
+--
+-- Name: oauthassignedtoken_assigned_user; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX oauthassignedtoken_assigned_user ON public.oauthassignedtoken USING btree (assigned_user_id);
+
+
+--
+-- Name: oauthassignedtoken_uuid; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX oauthassignedtoken_uuid ON public.oauthassignedtoken USING btree (uuid);
 
 
 --
@@ -11026,7 +11264,7 @@ CREATE INDEX repositoryautoprunepolicy_namespace_id ON public.repositoryautoprun
 -- Name: repositoryautoprunepolicy_repository_id; Type: INDEX; Schema: public; Owner: quay
 --
 
-CREATE UNIQUE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
+CREATE INDEX repositoryautoprunepolicy_repository_id ON public.repositoryautoprunepolicy USING btree (repository_id);
 
 
 --
@@ -11415,10 +11653,31 @@ CREATE INDEX tag_manifest_id ON public.tag USING btree (manifest_id);
 
 
 --
+-- Name: tag_manifest_id_immutable; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_manifest_id_immutable ON public.tag USING btree (manifest_id, immutable);
+
+
+--
+-- Name: tag_manifest_id_lifetime_end_ms; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_manifest_id_lifetime_end_ms ON public.tag USING btree (manifest_id, lifetime_end_ms);
+
+
+--
 -- Name: tag_repository_id; Type: INDEX; Schema: public; Owner: quay
 --
 
 CREATE INDEX tag_repository_id ON public.tag USING btree (repository_id);
+
+
+--
+-- Name: tag_repository_id_immutable; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE INDEX tag_repository_id_immutable ON public.tag USING btree (repository_id, immutable);
 
 
 --
@@ -12296,6 +12555,22 @@ ALTER TABLE ONLY public.oauthapplication
 
 
 --
+-- Name: oauthassignedtoken fk_oauthassignedtoken_application_oauthapplication; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken
+    ADD CONSTRAINT fk_oauthassignedtoken_application_oauthapplication FOREIGN KEY (application_id) REFERENCES public.oauthapplication(id);
+
+
+--
+-- Name: oauthassignedtoken fk_oauthassignedtoken_assigned_user_user; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.oauthassignedtoken
+    ADD CONSTRAINT fk_oauthassignedtoken_assigned_user_user FOREIGN KEY (assigned_user_id) REFERENCES public."user"(id);
+
+
+--
 -- Name: oauthauthorizationcode fk_oauthauthorizationcode_application_id_oauthapplication; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -12733,6 +13008,30 @@ ALTER TABLE ONLY public.tag
 
 ALTER TABLE ONLY public.tag
     ADD CONSTRAINT fk_tag_manifest_id_manifest FOREIGN KEY (manifest_id) REFERENCES public.manifest(id);
+
+
+--
+-- Name: tagnotificationsuccess fk_tag_notification_success_method_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT fk_tag_notification_success_method_id FOREIGN KEY (method_id) REFERENCES public.externalnotificationmethod(id);
+
+
+--
+-- Name: tagnotificationsuccess fk_tag_notification_success_notification_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT fk_tag_notification_success_notification_id FOREIGN KEY (notification_id) REFERENCES public.repositorynotification(id);
+
+
+--
+-- Name: tagnotificationsuccess fk_tag_notification_success_tag_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagnotificationsuccess
+    ADD CONSTRAINT fk_tag_notification_success_tag_id FOREIGN KEY (tag_id) REFERENCES public.tag(id);
 
 
 --

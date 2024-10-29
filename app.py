@@ -252,7 +252,6 @@ billing = Billing(app)
 sentry = Sentry(app)
 build_logs = BuildLogs(app)
 userevents = UserEventsBuilderModule(app)
-instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 

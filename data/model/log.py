@@ -11,7 +11,13 @@ from data.model import DataModelException, config, user
 
 logger = logging.getLogger(__name__)
 
-ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING = ["pull_repo"]
+ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING = [
+    "pull_repo",
+    "login_failure",
+    "pull_repo_failed",
+    "login_success",
+    "logout_success",
+]
 
 
 def _logs_query(
@@ -266,8 +272,11 @@ def log_action(
     try:
         LogEntry3.create(**log_data)
     except PeeweeException as ex:
-        strict_logging_disabled = config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
-        if strict_logging_disabled and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING:
+        strict_logging_disabled = config.app_config.get("ALLOW_WITHOUT_STRICT_LOGGING") or (
+            config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+            and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
+        )
+        if strict_logging_disabled:
             logger.exception("log_action failed", extra=({"exception": ex}).update(log_data))
         else:
             raise

@@ -74,8 +74,4 @@ def handle_not_implemented_error(ex):
 
 @app.errorhandler(RequestRedirect)
 def handle_bad_redirect(ex):
-    response = jsonify(
-        {"message": "bad path, there may be a trailing slash", "new_url": ex.new_url}
-    )
-    response.status_code = 308
-    return response
+    return ex.get_response()

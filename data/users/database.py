@@ -89,6 +89,9 @@ class DatabaseUsers(object):
     def is_superuser(self, username):
         raise NotImplementedError()
 
+    def is_global_readonly_superuser(self, username):
+        raise NotImplementedError()
+
     def has_superusers(self):
         raise NotImplementedError()
 

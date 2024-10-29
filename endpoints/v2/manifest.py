@@ -25,6 +25,7 @@ from endpoints.api import (
 )
 from endpoints.decorators import (
     anon_protect,
+    check_pushes_disabled,
     check_readonly,
     disallow_for_account_recovery_mode,
     inject_registry_model,
@@ -273,6 +274,7 @@ def _doesnt_accept_schema_v1():
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
@@ -297,6 +299,7 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:
@@ -359,7 +362,6 @@ def _parse_manifest(content_type, request_data):
         return parse_manifest_from_bytes(
             Bytes.for_string_or_unicode(request_data),
             content_type,
-            ignore_unknown_mediatypes=app.config.get("IGNORE_UNKNOWN_MEDIATYPES"),
         )
     except ManifestException as me:
         logger.exception("failed to parse manifest when writing by tagname")
@@ -374,6 +376,7 @@ def _parse_manifest(content_type, request_data):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
+@check_pushes_disabled
 def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     """
     Delete the manifest specified by the digest.
@@ -399,6 +402,38 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         for tag in tags:
             track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
+        return Response(status=202)
+
+
+@v2_bp.route(MANIFEST_TAGNAME_ROUTE, methods=["DELETE"])
+@disallow_for_account_recovery_mode
+@parse_repository_name()
+@process_registry_jwt_auth(scopes=["pull", "push"])
+@log_unauthorized_delete
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@anon_protect
+@check_readonly
+@check_pushes_disabled
+def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
+    """
+    Deletes the manifest specified by the tag.
+    """
+    with db_disallow_replica_use():
+        repository_ref = registry_model.lookup_repository(
+            namespace_name, repo_name, model_cache=model_cache
+        )
+        if repository_ref is None:
+            raise NameUnknown("repository not found")
+
+        tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
+        if tag is None:
+            raise ManifestUnknown()
+
+        deleted_tag = registry_model.delete_tag(model_cache, repository_ref, manifest_ref)
+        if not deleted_tag:
+            raise ManifestUnknown()
+
+        track_and_log("delete_tag", repository_ref, tag=deleted_tag.name, digest=manifest_ref)
         return Response(status=202)
 
 

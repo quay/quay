@@ -7,10 +7,14 @@ from endpoints.decorators import (
     anon_protect,
     disallow_for_account_recovery_mode,
     parse_repository_name,
-    route_show_if,
 )
-from endpoints.v2 import paginate, require_repo_read, v2_bp
-from endpoints.v2.errors import NameUnknown
+from endpoints.v2 import (
+    _MAX_RESULTS_PER_PAGE,
+    oci_tag_paginate,
+    require_repo_read,
+    v2_bp,
+)
+from endpoints.v2.errors import NameUnknown, TooManyTagsRequested
 
 
 @v2_bp.route("/<repopath:repository>/tags/list", methods=["GET"])
@@ -19,23 +23,28 @@ from endpoints.v2.errors import NameUnknown
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read(allow_for_superuser=True)
 @anon_protect
-@paginate()
-def list_all_tags(namespace_name, repo_name, start_id, limit, pagination_callback):
+@oci_tag_paginate()
+def list_all_tags(namespace_name, repo_name, last_pagination_tag_name, limit, pagination_callback):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    # NOTE: We add 1 to the limit because that's how pagination_callback knows if there are
-    # additional tags.
-    tags = registry_model.lookup_cached_active_repository_tags(
-        model_cache, repository_ref, start_id, limit + 1
-    )
+    tags = []
+    has_more = False
+
+    if limit > 0:
+        tags, has_more = registry_model.lookup_cached_active_repository_tags(
+            model_cache, repository_ref, last_pagination_tag_name, limit
+        )
+
     response = jsonify(
         {
-            "name": "{0}/{1}".format(namespace_name, repo_name),
+            "name": f"{namespace_name}/{repo_name}",
             "tags": [tag.name for tag in tags][0:limit],
         }
     )
 
-    pagination_callback(tags, response)
+    if limit > 0:
+        pagination_callback(tags, has_more, response)
+
     return response

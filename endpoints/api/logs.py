@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from flask import abort, request
 
 import features
-from app import app, avatar, export_action_logs_queue
+from app import app, avatar, export_action_logs_queue, usermanager
 from auth import scopes
-from auth.auth_context import get_authenticated_user
+from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.permissions import AdministerOrganizationPermission
 from data.logs_model import logs_model
 from data.logs_model.shared import InvalidLogsDateRangeError
@@ -17,7 +17,10 @@ from endpoints.api import (
     ApiResource,
     InvalidRequest,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     format_date,
+    log_action,
     nickname,
     page_support,
     parse_args,
@@ -124,7 +127,7 @@ class RepositoryLogs(RepositoryParamResource):
     Resource for fetching logs for the specific repository.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("listRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -200,7 +203,7 @@ class OrgLogs(ApiResource):
         List the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -224,7 +227,7 @@ class RepositoryAggregateLogs(RepositoryParamResource):
     Resource for fetching aggregated logs for the specific repository.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("getAggregateRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -292,7 +295,7 @@ class OrgAggregateLogs(ApiResource):
         Gets the aggregated logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -333,7 +336,7 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
 
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
-        abort(400)
+        raise InvalidLogsDateRangeError("Invalid time span selected")
     export_id = logs_model.queue_logs_export(
         start_time,
         end_time,
@@ -347,6 +350,45 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
         raise InvalidRequest("Invalid export request")
 
     return export_id
+
+
+def _log_export_success(user_or_org_name, export_id, request, repository=None):
+
+    metadata = {
+        "date/time": datetime.utcnow(),
+        "export_id": export_id,
+        "message": "queued for export",
+        "url": request.get_json().get("callback_url") or None,
+        "email": request.get_json().get("callback_email") or None,
+    }
+
+    if repository:
+        metadata["repo"] = repository
+
+    log_action(
+        "export_logs_success",
+        user_or_org_name,
+        metadata,
+    )
+
+
+def _log_export_failure(user_or_org_name, request, ex, repository=None):
+
+    metadata = {
+        "date/time": datetime.utcnow(),
+        "error": ex,
+        "url": request.get_json().get("callback_url") or None,
+        "email": request.get_json().get("callback_email") or None,
+    }
+
+    if repository:
+        metadata["repo"] = repository
+
+    log_action(
+        "export_logs_failure",
+        user_or_org_name,
+        metadata,
+    )
 
 
 @resource("/v1/repository/<apirepopath:repository>/exportlogs")
@@ -370,13 +412,21 @@ class ExportRepositoryLogs(RepositoryParamResource):
         Queues an export of the logs for the specified repository.
         """
         if registry_model.lookup_repository(namespace, repository) is None:
+            _log_export_failure(namespace, request, "non-existent repository", repository)
             raise NotFound()
 
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
-        export_id = _queue_logs_export(
-            start_time, end_time, request.get_json(), namespace, repository_name=repository
-        )
+        try:
+            export_id = _queue_logs_export(
+                start_time, end_time, request.get_json(), namespace, repository_name=repository
+            )
+        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
+            _log_export_failure(namespace, request, ex, repository)
+            abort(400, ex)
+
+        _log_export_success(namespace, export_id, request, repository)
+
         return {
             "export_id": export_id,
         }
@@ -401,11 +451,19 @@ class ExportUserLogs(ApiResource):
         """
         Returns the aggregated logs for the current user.
         """
+        user = get_authenticated_user()
+
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
 
-        user = get_authenticated_user()
-        export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
+        try:
+            export_id = _queue_logs_export(start_time, end_time, request.get_json(), user.username)
+        except (InvalidRequest, InvalidLogsDateRangeError) as ex:
+            _log_export_failure(user.username, request, ex, None)
+            abort(400, ex)
+
+        _log_export_success(user.username, export_id, request, None)
+
         return {
             "export_id": export_id,
         }
@@ -433,13 +491,21 @@ class ExportOrgLogs(ApiResource):
         Exports the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
-            export_id = _queue_logs_export(start_time, end_time, request.get_json(), orgname)
+            try:
+                export_id = _queue_logs_export(start_time, end_time, request.get_json(), orgname)
+            except (InvalidRequest, InvalidLogsDateRangeError) as ex:
+                _log_export_failure(orgname, request, ex, None)
+                abort(400, ex)
+
+            _log_export_success(orgname, export_id, request, None)
+
             return {
                 "export_id": export_id,
             }
 
+        _log_export_failure(orgname, request, "unauthorized", None)
         raise Unauthorized()

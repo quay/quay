@@ -9,6 +9,7 @@ from flask import Blueprint, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
+from werkzeug.routing.exceptions import RequestRedirect
 
 import features
 from .__init__models_pre_oci import pre_oci_model as model
@@ -63,6 +64,12 @@ class ApiExceptionHandlingApi(Api):
     @crossorigin()
     def handle_error(self, error):
         return super(ApiExceptionHandlingApi, self).handle_error(error)
+
+    def _should_use_fr_error_handler(self):
+        try:
+            return super(ApiExceptionHandlingApi, self)._should_use_fr_error_handler()
+        except RequestRedirect:
+            return False
 
 
 api = ApiExceptionHandlingApi()
@@ -309,7 +316,11 @@ def disallow_for_non_normal_repositories(func):
 
 
 def require_repo_permission(permission_class, scope, allow_public=False):
-    def _require_permission(allow_for_superuser=False, disallow_for_restricted_user=False):
+    def _require_permission(
+        allow_for_superuser=False,
+        disallow_for_restricted_user=False,
+        allow_for_global_readonly_superuser=False,
+    ):
         def wrapper(func):
             @add_method_metadata("oauth2_scope", scope)
             @wraps(func)
@@ -344,6 +355,9 @@ def require_repo_permission(permission_class, scope, allow_public=False):
 
                     if user is not None and SuperUserPermission().can():
                         return func(self, namespace, repository, *args, **kwargs)
+
+                if allow_for_global_readonly_superuser and allow_if_global_readonly_superuser():
+                    return func(self, namespace, repository, *args, **kwargs)
 
                 raise Unauthorized()
 
@@ -483,7 +497,22 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
-    return app.config.get("FEATURE_SUPERUSERS_FULL_ACCESS", False) and SuperUserPermission().can()
+    return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
+
+
+def allow_if_global_readonly_superuser():
+    if (
+        app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None) is None
+        and app.config.get("GLOBAL_READONLY_SUPER_USERS", None) is None
+    ):
+        return False
+
+    context = get_authenticated_context()
+    return (
+        context is not None
+        and context.authed_user is not None
+        and usermanager.is_global_readonly_superuser(context.authed_user.username)
+    )
 
 
 def verify_not_prod(func):

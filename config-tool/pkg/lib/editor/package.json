@@ -34,7 +34,7 @@
     "highlight.js": "^11.8.0",
     "jquery": "3.5.0",
     "js-yaml": "^3.14.0",
-    "jsrsasign": "^10.5.25",
+    "jsrsasign": "^11.1.0",
     "jszip": "^3.8.0",
     "moment": "^2.29",
     "moment-timezone": "^0.5.35",
@@ -82,7 +82,7 @@
     "ts-node": "^3.0.6",
     "tslint": "^5.4.3",
     "typescript": "3.6.3",
-    "webpack": "^5.88.1",
+    "webpack": "^5.95.0",
     "webpack-bundle-analyzer": "4.9.0",
     "webpack-cli": "4.10.0"
   },

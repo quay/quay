@@ -11,6 +11,7 @@ import {
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
+import {NotificationEventConfig} from 'src/hooks/UseEvents';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 
 export default function CreateSlackNotification(
@@ -35,6 +36,7 @@ export default function CreateSlackNotification(
     props.method != undefined &&
     props.event != undefined &&
     url != '' &&
+    props.isValidateConfig() &&
     isValidWebhookURL(url);
 
   const createNotification = async () => {
@@ -43,7 +45,7 @@ export default function CreateSlackNotification(
         url: url,
       },
       event: props.event?.type,
-      event_config: {},
+      event_config: props.eventConfig,
       method: props.method?.type,
       title: title,
     });
@@ -109,6 +111,8 @@ interface CreateSlackNotificationProps {
   repo: string;
   event: NotificationEvent;
   method: NotificationMethod;
+  eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

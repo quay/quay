@@ -11,6 +11,7 @@ from auth.permissions import AdministerOrganizationPermission
 from data import model
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     log_action,
     nickname,
@@ -145,7 +146,7 @@ class PermissionPrototypeList(ApiResource):
         List the existing prototypes for this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:

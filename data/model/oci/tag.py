@@ -1,3 +1,4 @@
+import datetime
 import logging
 import uuid
 from calendar import timegm
@@ -14,10 +15,12 @@ from data.database import (
     Tag,
     User,
     db_random_func,
+    db_regex_search,
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import config, modelutil, user
+from data.model import config, user
+from data.model.notification import delete_tag_notifications_for_tag
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -129,21 +132,30 @@ def tag_names_for_manifest(manifest_id, limit=None):
     return [tag.name for tag in filter_to_alive_tags(query)]
 
 
-def lookup_alive_tags_shallow(repository_id, start_pagination_id=None, limit=None):
+def lookup_alive_tags_shallow(repository_id, last_pagination_tag_name=None, limit=None):
     """
-    Returns a list of the tags alive in the specified repository. Note that the tags returned.
-
-    *only* contain their ID and name. Also note that the Tags are returned ordered by ID.
+    Returns a list of the tags alive in the specified repository and
+    has_more to indicate whethere further pagination is required.
+    Note that the tags returned *only* contain their ID and name.
+    The tags are returned ordered by tag name to comply with OCI spec.
     """
-    query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.id)
+    query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.name)
 
-    if start_pagination_id is not None:
-        query = query.where(Tag.id >= start_pagination_id)
+    if last_pagination_tag_name is not None:
+        query = query.where(Tag.name > last_pagination_tag_name)
 
     if limit is not None:
-        query = query.limit(limit)
+        query = query.limit(limit + 1)
 
-    return filter_to_alive_tags(query)
+    tags = filter_to_alive_tags(query)
+
+    has_more = len(tags) > limit if limit is not None else False
+
+    # If there are more tags, remove the extra one and return the rest
+    if has_more:
+        tags = tags[:-1]
+
+    return tags, has_more
 
 
 def list_alive_tags(repository_id):
@@ -326,14 +338,18 @@ def get_expired_tag(repository_id, tag_name):
         return None
 
 
-def create_temporary_tag_if_necessary(manifest, expiration_sec):
+def create_temporary_tag_if_necessary(manifest, expiration_sec, skip_expiration=False):
     """
     Creates a temporary tag pointing to the given manifest, with the given expiration in seconds,
     unless there is an existing tag that will keep the manifest around.
     """
     tag_name = "$temp-%s" % str(uuid.uuid4())
     now_ms = get_epoch_timestamp_ms()
-    end_ms = now_ms + (expiration_sec * 1000)
+    if skip_expiration:
+        # Skip expiration for hidden tags used for OCI artifacts referring to a subject manifest
+        end_ms = None
+    else:
+        end_ms = now_ms + (expiration_sec * 1000)
 
     # Check if there is an existing tag on the manifest that won't expire within the
     # timeframe. If so, no need for a temporary tag.
@@ -477,6 +493,9 @@ def _delete_tag(tag, now_ms):
     Deletes the given tag by marking it as expired.
     """
     with db_transaction():
+        # clean notifications for tag expiry
+        delete_tag_notifications_for_tag(tag)
+
         updated = (
             Tag.update(lifetime_end_ms=now_ms)
             .where(Tag.id == tag.id, Tag.lifetime_end_ms == tag.lifetime_end_ms)
@@ -613,6 +632,9 @@ def set_tag_end_ms(tag, end_ms):
     """
 
     with db_transaction():
+        # clean notifications for tag expiry
+        delete_tag_notifications_for_tag(tag)
+
         updated = (
             Tag.update(lifetime_end_ms=end_ms)
             .where(Tag.id == tag)
@@ -758,15 +780,23 @@ def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
             ).execute()
 
 
-def fetch_paginated_autoprune_repo_tags_by_number(repo_id, max_tags_allowed: int, limit):
+def fetch_paginated_autoprune_repo_tags_by_number(
+    repo_id,
+    max_tags_allowed: int,
+    items_per_page,
+    page,
+    tag_pattern=None,
+    tag_pattern_matches=True,
+    exclude_tags=None,
+):
     """
     Fetch repository's active tags sorted by creation date & are more than max_tags_allowed
     """
     try:
+        tags_offset = max_tags_allowed + ((page - 1) * items_per_page)
         now_ms = get_epoch_timestamp_ms()
         query = (
-            Tag.select(Tag.name)
-            .where(
+            Tag.select(Tag.id, Tag.name).where(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 Tag.hidden == False,
@@ -774,9 +804,22 @@ def fetch_paginated_autoprune_repo_tags_by_number(repo_id, max_tags_allowed: int
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
             .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
-            .offset(max_tags_allowed)
-            .limit(limit)
         )
+
+        if exclude_tags and len(exclude_tags) > 0:
+            query.where(Tag.name.not_in([tag.name for tag in exclude_tags]))
+
+        if tag_pattern is not None:
+            query = db_regex_search(
+                Tag.select(query.c.name).from_(query),
+                query.c.name,
+                tag_pattern,
+                tags_offset,
+                items_per_page,
+                matches=tag_pattern_matches,
+            )
+        else:
+            query = query.offset(tags_offset).limit(items_per_page)
         return list(query)
     except Exception as err:
         raise Exception(
@@ -784,24 +827,66 @@ def fetch_paginated_autoprune_repo_tags_by_number(repo_id, max_tags_allowed: int
         )
 
 
-def fetch_paginated_autoprune_repo_tags_older_than_ms(repo_id, tag_lifetime_ms: int, limit=100):
+def fetch_paginated_autoprune_repo_tags_older_than_ms(
+    repo_id,
+    tag_lifetime_ms: int,
+    items_per_page=100,
+    page: int = 1,
+    tag_pattern=None,
+    tag_pattern_matches=True,
+):
     """
     Return repository's active tags older than tag_lifetime_ms
     """
     try:
+        tags_offset = items_per_page * (page - 1)
         now_ms = get_epoch_timestamp_ms()
-        query = (
-            Tag.select(Tag.name)
-            .where(
-                Tag.repository_id == repo_id,
-                (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
-                (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
-                Tag.hidden == False,
-            )
-            .limit(limit)  # type: ignore[func-returns-value]
+        query = Tag.select(Tag.id, Tag.name).where(
+            Tag.repository_id == repo_id,
+            (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+            (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
+            Tag.hidden == False,
         )
+        if tag_pattern is not None:
+            query = db_regex_search(
+                query,
+                Tag.name,
+                tag_pattern,
+                tags_offset,
+                items_per_page,
+                matches=tag_pattern_matches,
+            )
+        else:
+            query = query.offset(tags_offset).limit(items_per_page)  # type: ignore[func-returns-value]
         return list(query)
     except Exception as err:
         raise Exception(
             f"Error fetching repository tags by creation date for repository id: {repo_id} with error as: {str(err)}"
+        )
+
+
+def fetch_repo_tags_for_image_expiry_expiry_event(repo_id, days, notified_tags):
+    """
+    notified_tags refer to the tags that were already notified for the event
+    Return query to fetch repository's distinct active tags that are expiring in x number days
+    """
+    try:
+        future_ms = (datetime.datetime.now() + datetime.timedelta(days=days)).timestamp() * 1000
+        now_ms = get_epoch_timestamp_ms()
+        query = (
+            Tag.select(Tag.id, Tag.name)
+            .where(
+                Tag.repository_id == repo_id,
+                (~(Tag.lifetime_end_ms >> None)),  # filter for tags where expiry is set
+                Tag.lifetime_end_ms > now_ms,  # filter expired tags
+                Tag.lifetime_end_ms <= future_ms,
+                Tag.hidden == False,
+                Tag.id.not_in(notified_tags),
+            )
+            .distinct()
+        )
+        return list(query)
+    except Exception as err:
+        raise Exception(
+            f"Error fetching repository tags repository id: {repo_id} with error as: {str(err)}"
         )

@@ -50,6 +50,13 @@ from buildtrigger.triggerutil import TriggerProviderException
 from config import frontend_visible_config
 from data import model
 from data.database import User, db, random_string_generator
+from data.model.oauth import (
+    assign_token_to_user,
+    get_oauth_application_for_client_id,
+    get_token_assignment,
+)
+from data.model.organization import is_org_admin
+from data.model.user import get_nonrobot_user, get_user
 from endpoints.api import log_action
 from endpoints.api.discovery import swagger_route_data
 from endpoints.common import (
@@ -644,6 +651,14 @@ def authorize_application():
     response_type = request.form.get("response_type", "code")
     scope = request.form.get("scope", None)
     state = request.form.get("state", None)
+    assignment_uuid = request.form.get("assignment_uuid", None)
+
+    # assignment currently only supported for token response type
+    if response_type != "token" and assignment_uuid is not None:
+        abort(400)
+
+    if not features.ASSIGN_OAUTH_TOKEN and assignment_uuid is not None:
+        abort(400)
 
     # Add the access token.
     if response_type == "token":
@@ -651,6 +666,7 @@ def authorize_application():
             response_type,
             client_id,
             redirect_uri,
+            assignment_uuid,
             scope=scope,
             state=state,
         )
@@ -705,10 +721,32 @@ def request_authorization_code():
     redirect_uri = request.args.get("redirect_uri", None)
     scope = request.args.get("scope", None)
     state = request.args.get("state", None)
+    assignment_uuid = request.args.get("assignment_uuid", None)
 
-    if not current_user.is_authenticated or not provider.validate_has_scopes(
-        client_id, current_user.db_user().username, scope
+    if not get_authenticated_user():
+        abort(401)
+        return
+
+    if not features.ASSIGN_OAUTH_TOKEN and assignment_uuid is not None:
+        abort(400)
+
+    # assignment currently only supported for token response type
+    if response_type != "token" and assignment_uuid is not None:
+        abort(400)
+
+    oauth_app = provider.get_application_for_client_id(client_id)
+    if not oauth_app:
+        abort(404)
+
+    # check if user is org admin, if not check for user_assignment_id, then check that user belongs that assignment, if none exit with 401
+    if (
+        not is_org_admin(current_user.db_user(), oauth_app.organization)
+        and get_token_assignment(assignment_uuid, current_user.db_user(), oauth_app.organization)
+        is None
     ):
+        abort(403)
+
+    if not provider.validate_has_scopes(client_id, current_user.db_user().username, scope):
         if not provider.validate_redirect_uri(client_id, redirect_uri):
             current_app = provider.get_application_for_client_id(client_id)
             if not current_app:
@@ -724,10 +762,7 @@ def request_authorization_code():
             abort(404)
             return
 
-        # Load the application information.
-        oauth_app = provider.get_application_for_client_id(client_id)
         app_email = oauth_app.avatar_email or oauth_app.organization.email
-
         oauth_app_view = {
             "name": oauth_app.name,
             "description": oauth_app.description,
@@ -753,6 +788,7 @@ def request_authorization_code():
             scope=scope,
             csrf_token_val=generate_csrf_token(),
             state=state,
+            assignment_uuid=assignment_uuid,
         )
 
     if response_type == "token":
@@ -760,6 +796,7 @@ def request_authorization_code():
             response_type,
             client_id,
             redirect_uri,
+            assignment_uuid,
             scope=scope,
             state=state,
         )
@@ -771,6 +808,61 @@ def request_authorization_code():
             scope=scope,
             state=state,
         )
+
+
+@web.route("/oauth/authorize/assignuser", methods=["POST"])
+@no_cache
+@param_required("client_id")
+@param_required("redirect_uri")
+@param_required("scope")
+@param_required("username")
+@process_auth_or_cookie
+def assign_user_to_app():
+    response_type = request.args.get("response_type", "code")
+    client_id = request.args.get("client_id", None)
+    redirect_uri = request.args.get("redirect_uri", None)
+    scope = request.args.get("scope", None)
+    username = request.args.get("username", None)
+
+    if not features.ASSIGN_OAUTH_TOKEN:
+        abort(404)
+
+    if not current_user.is_authenticated:
+        abort(401)
+
+    user = get_nonrobot_user(username)
+    if not user or not user.enabled:
+        abort(404)
+
+    application = get_oauth_application_for_client_id(client_id)
+    if not application:
+        abort(404)
+    current_db_user = current_user.db_user()
+    if not is_org_admin(current_db_user, application.organization):
+        abort(403)
+
+    assign_token_to_user(
+        application,
+        user,
+        redirect_uri,
+        scope,
+        response_type,
+    )
+
+    log_action(
+        "oauth_token_assigned",
+        application.organization.username,
+        {
+            "assigning_user": current_db_user.username,
+            "assigned_user": user.username,
+            "application": application.name,
+            "client_id": application.client_id,
+        },
+    )
+
+    return render_page_template_with_routedata(
+        "message.html", message="Token assigned successfully"
+    )
 
 
 @web.route("/oauth/access_token", methods=["POST"])

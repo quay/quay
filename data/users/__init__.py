@@ -69,6 +69,9 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
         network_timeout = config.get("LDAP_NETWORK_TIMEOUT")
         ldap_user_filter = config.get("LDAP_USER_FILTER", None)
         ldap_superuser_filter = config.get("LDAP_SUPERUSER_FILTER", None)
+        ldap_global_readonly_superuser_filter = config.get(
+            "LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None
+        )
         ldap_restricted_user_filter = config.get("LDAP_RESTRICTED_USER_FILTER", None)
         ldap_referrals = int(config.get("LDAP_FOLLOW_REFERRALS", True))
 
@@ -89,6 +92,7 @@ def get_users_handler(config, _, override_config_dir, oauth_login):
             network_timeout=network_timeout,
             ldap_user_filter=ldap_user_filter,
             ldap_superuser_filter=ldap_superuser_filter,
+            ldap_global_readonly_superuser_filter=ldap_global_readonly_superuser_filter,
             ldap_restricted_user_filter=ldap_restricted_user_filter,
             ldap_referrals=ldap_referrals,
         )
@@ -362,6 +366,9 @@ class UserAuthentication(object):
     def is_superuser(self, username):
         return self.state.is_superuser(username)
 
+    def is_global_readonly_superuser(self, username):
+        return self.state.is_global_readonly_superuser(username)
+
     def has_superusers(self):
         return self.state.has_superusers()
 
@@ -437,4 +444,6 @@ class FederatedUserManager(ConfigUserManager):
         return self.federated_users.has_restricted_users() or super().has_restricted_users()
 
     def is_global_readonly_superuser(self, username: str) -> bool:
-        return super().is_global_readonly_superuser(username)
+        return self.federated_users.is_global_readonly_superuser(
+            username
+        ) or super().is_global_readonly_superuser(username)

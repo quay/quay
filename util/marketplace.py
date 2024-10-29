@@ -22,17 +22,12 @@ class RedHatUserApi(object):
 
     def get_account_number(self, user):
         email = user.email
-        account_number = entitlements.get_web_customer_id(user.id)
-        if account_number is None:
-            account_number = self.lookup_customer_id(email)
-            if account_number:
-                # store in database for next lookup
-                entitlements.save_web_customer_id(user, account_number)
-        return account_number
+        account_numbers = self.lookup_customer_id(email)
+        return account_numbers
 
     def lookup_customer_id(self, email):
         """
-        Send request to internal api for customer id (ebs acc number)
+        Send request to internal api for customer id (web customer id)
         """
         request_body_dict = {
             "by": {"emailStartsWith": email},
@@ -68,14 +63,15 @@ class RedHatUserApi(object):
         if not info:
             logger.debug("request to %s did not return any data", self.user_endpoint)
             return None
+
+        customer_ids = []
         for account in info:
-            if account["accountRelationships"][0]["account"]["type"] == "person":
-                customer_id = account["accountRelationships"][0]["account"].get("id")
-                # convert str response from api to int value
-                if customer_id.isdigit():
-                    customer_id = int(customer_id)
-                return customer_id
-        return None
+            customer_id = account["accountRelationships"][0]["account"].get("id")
+            # convert str response from api to int value
+            if customer_id.isdigit():
+                customer_id = int(customer_id)
+            customer_ids.append(customer_id)
+        return customer_ids
 
 
 class RedHatSubscriptionApi(object):
@@ -212,7 +208,12 @@ class RedHatSubscriptionApi(object):
 
             subscription_sku = info[0]["sku"]
             expiration_date = info[1]["activeEndDate"]
-            return {"sku": subscription_sku, "expiration_date": expiration_date}
+            terminated_date = info[0]["terminatedDate"]
+            return {
+                "sku": subscription_sku,
+                "expiration_date": expiration_date,
+                "terminated_date": terminated_date,
+            }
         except requests.exceptions.SSLError:
             raise requests.exceptions.SSLError
         except requests.exceptions.ReadTimeout:
@@ -310,6 +311,21 @@ TEST_USER = {
         "effectiveStartDate": 1707368400000,
         "effectiveEndDate": 3813177600000,
     },
+    "terminated_subscription": {
+        "id": 22222222,
+        "masterEndSystemName": "SUBSCRIPTION",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1675957362000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1675957362000,
+        "installBaseStartDate": 1707368400000,
+        "installBaseEndDate": 1707368399000,
+        "webCustomerId": 123456,
+        "subscriptionNumber": "12399889",
+        "quantity": 1,
+        "effectiveStartDate": 1707368400000,
+        "effectiveEndDate": 3813177600000,
+    },
 }
 STRIPE_USER = {"account_number": 11111, "email": "stripe_user@test.com", "username": "stripe_user"}
 FREE_USER = {
@@ -326,11 +342,11 @@ class FakeUserApi(RedHatUserApi):
 
     def lookup_customer_id(self, email):
         if email == TEST_USER["email"]:
-            return TEST_USER["account_number"]
+            return [TEST_USER["account_number"]]
         if email == FREE_USER["email"]:
-            return FREE_USER["account_number"]
+            return [FREE_USER["account_number"]]
         if email == STRIPE_USER["email"]:
-            return STRIPE_USER["account_number"]
+            return [STRIPE_USER["account_number"]]
         return None
 
 
@@ -359,11 +375,17 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
     def get_subscription_details(self, subscription_id):
         valid_ids = [subscription["id"] for subscription in TEST_USER["subscriptions"]]
         if subscription_id in valid_ids:
-            return {"sku": "MW02701", "expiration_date": 3813177600000}
+            return {"sku": "MW02701", "expiration_date": 3813177600000, "terminated_date": None}
         elif subscription_id == 80808080:
-            return {"sku": "MW02701", "expiration_date": 1645544830000}
+            return {"sku": "MW02701", "expiration_date": 1645544830000, "terminated_date": None}
         elif subscription_id == 87654321:
-            return {"sku": "MW00584MO", "expiration_date": 3813177600000}
+            return {"sku": "MW00584MO", "expiration_date": 3813177600000, "terminated_date": None}
+        elif subscription_id == 22222222:
+            return {
+                "sku": "MW00584MO",
+                "expiration_date": 3813177600000,
+                "terminated_date": 1645544830000,
+            }
         else:
             return None
 

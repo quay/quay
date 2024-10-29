@@ -69,6 +69,8 @@ const response = {
   },
   external_login: [],
   features: {
+    REFERRERS_API: false,
+    MANIFEST_SUBJECT_BACKFILL: false,
     SUPERUSERS_FULL_ACCESS: true,
     ACTION_LOG_ROTATION: false,
     ADVERTISE_V2: true,
@@ -130,6 +132,7 @@ const response = {
     USER_LOG_ACCESS: false,
     USER_METADATA: false,
     USER_RENAME: false,
+    IMAGE_EXPIRY_TRIGGER: true,
   },
   oauth: {
     GITHUB_TRIGGER_CONFIG: {

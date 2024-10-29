@@ -54,22 +54,25 @@ def test_log_action_unknown_action(action_kind):
     ],
 )
 @pytest.mark.parametrize(
-    "unlogged_pulls_ok,action_kind,db_exception,throws",
+    "unlogged_ok,unlogged_pulls_ok,action_kind,db_exception,throws",
     [
-        (False, "pull_repo", None, False),
-        (False, "push_repo", None, False),
-        (False, "pull_repo", PeeweeException, True),
-        (False, "push_repo", PeeweeException, True),
-        (True, "pull_repo", PeeweeException, False),
-        (True, "push_repo", PeeweeException, True),
-        (True, "pull_repo", Exception, True),
-        (True, "push_repo", Exception, True),
+        (False, False, "pull_repo", None, False),
+        (False, False, "push_repo", None, False),
+        (False, False, "pull_repo", PeeweeException, True),
+        (False, False, "push_repo", PeeweeException, True),
+        (False, True, "pull_repo", PeeweeException, False),
+        (False, True, "push_repo", PeeweeException, True),
+        (False, True, "pull_repo", Exception, True),
+        (False, True, "push_repo", Exception, True),
+        (True, False, "push_repo", Exception, True),
+        (True, True, "push_repo", Exception, True),
     ],
 )
 def test_log_action(
     user_or_org_name,
     account_id,
     account,
+    unlogged_ok,
     unlogged_pulls_ok,
     action_kind,
     db_exception,
@@ -87,6 +90,7 @@ def test_log_action(
     }
     app_config["SERVICE_LOG_ACCOUNT_ID"] = account_id
     app_config["ALLOW_PULLS_WITHOUT_STRICT_LOGGING"] = unlogged_pulls_ok
+    app_config["ALLOW_WITHOUT_STRICT_LOGGING"] = unlogged_ok
 
     logentry.create.side_effect = db_exception
 

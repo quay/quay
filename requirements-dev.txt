@@ -1,8 +1,8 @@
 -r requirements.txt
 git+https://github.com/quay/mockldap.git@136253ca136fc7898944a4b37893a99440f7335e#egg=mockldap
 git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
-bencode.py==2.1.0
-black==22.3.0
+bencode.py==4.0.0
+black==24.4.2
 flake8==4.0.1
 boto3-stubs==1.14.9.0
 fakeredis==1.6.1
@@ -35,7 +35,7 @@ types-cryptography==3.3.23.2
 types-Deprecated==1.2.9.3
 types-beautifulsoup4==4.12.0.6
 types-docutils==0.20.0.3
-types-enum34==1.1.1
+types-enum34==1.1.8
 types-freezegun==1.1.10
 types-futures==3.3.1
 types-geoip2==3.0.0
@@ -53,9 +53,9 @@ types-PyYAML==5.4.12
 types-redis==3.5.14
 types-requests==2.25.11
 types-setuptools==68.2.0.0
-types-six==1.16.21.9
+types-six==1.16.21.20240513
 types-stripe==3.5.2.14
 types-termcolor==1.1.2
-types-toposort==1.10.0.0
-types-tzlocal==5.1.0.0
+types-toposort==1.10.0.1
+types-tzlocal==5.1.0.1
 typing==3.7.4.3

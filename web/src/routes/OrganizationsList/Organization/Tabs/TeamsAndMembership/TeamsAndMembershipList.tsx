@@ -54,7 +54,7 @@ export default function TeamsAndMembershipList() {
       nameLabel="Provide a name for your new team:"
       descriptionLabel="Provide an optional description for your new team"
       helperText="Enter a description to provide extra information to your teammates about this team:"
-      nameHelperText="Choose a name to inform your teammates about this team. Must match ^[a-z][a-z0-9]+$."
+      nameHelperText="Choose a name to inform your teammates about this team. Must match ^([a-z0-9]+(?:[._-][a-z0-9]+)*)$"
       isModalOpen={isTeamModalOpen}
       handleModalToggle={() => {
         setIsTeamModalOpen(!isTeamModalOpen);

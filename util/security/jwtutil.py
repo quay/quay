@@ -1,3 +1,4 @@
+import logging
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
@@ -6,7 +7,7 @@ from authlib.jose import ECKey, JsonWebKey, RSAKey
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
-from jwt import PyJWT
+from jwt import PyJWT, get_unverified_header
 from jwt.exceptions import (
     DecodeError,
     ExpiredSignatureError,
@@ -18,6 +19,8 @@ from jwt.exceptions import (
     InvalidTokenError,
     MissingRequiredClaimError,
 )
+
+logger = logging.getLogger(__name__)
 
 # TOKEN_REGEX defines a regular expression for matching JWT bearer tokens.
 TOKEN_REGEX = re.compile(r"\ABearer (([a-zA-Z0-9+\-_/]+\.)+[a-zA-Z0-9+\-_/]+)\Z")
@@ -140,3 +143,13 @@ def jwk_dict_to_public_key(jwk_dict):
         ).public_key(default_backend())
 
     raise Exception("Unsupported kind of JWK: %s", str(type(jwk)))
+
+
+def is_jwt(token):
+    try:
+        headers = get_unverified_header(token)
+        return headers.get("typ", "").lower() == "jwt"
+    except DecodeError:
+        pass
+
+    return False

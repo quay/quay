@@ -114,7 +114,6 @@ class OCIIndex(ManifestListInterface):
                     "description": "The manifests field contains a list of manifests for specific platforms",
                     "items": get_descriptor_schema(
                         allowed_media_types=ALLOWED_MEDIA_TYPES,
-                        ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
                         additional_properties={
                             INDEX_PLATFORM_KEY: {
                                 "type": "object",
@@ -164,10 +163,7 @@ class OCIIndex(ManifestListInterface):
                         additional_required=[],
                     ),
                 },
-                INDEX_SUBJECT_KEY: get_descriptor_schema(
-                    [],
-                    ignore_unknown_mediatypes=True,
-                ),
+                INDEX_SUBJECT_KEY: get_descriptor_schema([]),
                 INDEX_ANNOTATIONS_KEY: {
                     "type": "object",
                     "description": "The annotations, if any, on this index",
@@ -181,12 +177,11 @@ class OCIIndex(ManifestListInterface):
         }
         return METASCHEMA
 
-    def __init__(self, manifest_bytes, ignore_unknown_mediatypes=False):
+    def __init__(self, manifest_bytes):
         assert isinstance(manifest_bytes, Bytes)
 
         self._layers = None
         self._manifest_bytes = manifest_bytes
-        self._ignore_unknown_mediatypes = ignore_unknown_mediatypes
 
         try:
             self._parsed = json.loads(manifest_bytes.as_unicode())
@@ -270,6 +265,11 @@ class OCIIndex(ManifestListInterface):
     def local_blob_digests(self):
         return self.blob_digests
 
+    @property
+    def annotations(self):
+        """Returns the annotations on the manifest list itself."""
+        return self._parsed.get(INDEX_ANNOTATIONS_KEY) or {}
+
     def get_blob_digests_for_translation(self):
         return self.blob_digests
 
@@ -302,7 +302,6 @@ class OCIIndex(ManifestListInterface):
                 INDEX_DIGEST_KEY,
                 INDEX_SIZE_KEY,
                 INDEX_MEDIATYPE_KEY,
-                ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
             )
             for m in manifests
         ]
@@ -415,7 +414,7 @@ class OCIIndexBuilder(object):
         self.manifests = []
         self.annotations = {}
 
-    def add_manifest(self, manifest, architecture, os):
+    def add_manifest(self, manifest, architecture=None, os=None):
         """
         Adds a manifest to the list.
         """
@@ -428,27 +427,63 @@ class OCIIndexBuilder(object):
             os,
         )
 
+    def add_manifest_for_referrers_index(self, manifest):
+        """
+        Adds a manifest to the list.
+        """
+        assert manifest.media_type in ALLOWED_MEDIA_TYPES
+        self.add_manifest_digest(
+            manifest.digest,
+            len(manifest.bytes.as_encoded_str()),
+            manifest.media_type,
+            None,
+            None,
+            manifest.artifact_type,
+            manifest.annotations,
+        )
+
     def add_annotation(self, key, value):
         """
         Adds an annotation to the index
         """
         self.annotations[key] = value
 
-    def add_manifest_digest(self, manifest_digest, manifest_size, media_type, architecture, os):
+    def add_manifest_digest(
+        self,
+        manifest_digest,
+        manifest_size,
+        media_type,
+        architecture,
+        os,
+        artifact_type=None,
+        annotations=None,
+    ):
         """
         Adds a manifest to the list.
         """
+        platform_dict = {}
+        if architecture:
+            platform_dict[INDEX_ARCHITECTURE_KEY] = architecture
+
+        if os:
+            platform_dict[INDEX_OS_KEY] = os
+
         self.manifests.append(
             (
                 manifest_digest,
                 manifest_size,
                 media_type,
-                {
-                    INDEX_ARCHITECTURE_KEY: architecture,
-                    INDEX_OS_KEY: os,
-                },
+                platform_dict,
+                artifact_type,
+                annotations,
             )
         )
+        if annotations:
+            for k, v in annotations.items():
+                self.annotations[k] = v
+
+    def set_subject(self, digest, size, mediatype):
+        self.subject = OCIManifestDescriptor(digest=digest, size=size, mediatype=mediatype)
 
     def build(self):
         """
@@ -459,16 +494,25 @@ class OCIIndexBuilder(object):
         manifest_list_dict = {
             INDEX_VERSION_KEY: 2,
             INDEX_MEDIATYPE_KEY: OCI_IMAGE_INDEX_CONTENT_TYPE,
-            INDEX_MANIFESTS_KEY: [
-                {
-                    INDEX_MEDIATYPE_KEY: manifest[2],
-                    INDEX_DIGEST_KEY: manifest[0],
-                    INDEX_SIZE_KEY: manifest[1],
-                    INDEX_PLATFORM_KEY: manifest[3],
-                }
-                for manifest in self.manifests
-            ],
+            INDEX_MANIFESTS_KEY: [],
         }
+
+        for manifest in self.manifests:
+            manifest_dict = {
+                INDEX_MEDIATYPE_KEY: manifest[2],
+                INDEX_DIGEST_KEY: manifest[0],
+                INDEX_SIZE_KEY: manifest[1],
+            }
+            if manifest[3]:
+                manifest_dict[INDEX_PLATFORM_KEY] = manifest[3]
+
+            if manifest[4]:
+                manifest_dict[INDEX_ARTIFACT_TYPE_KEY] = manifest[4]
+
+            if manifest[5]:
+                manifest_dict[INDEX_ANNOTATIONS_KEY] = manifest[5]
+
+            manifest_list_dict[INDEX_MANIFESTS_KEY].append(manifest_dict)
 
         if self.annotations:
             manifest_list_dict[INDEX_ANNOTATIONS_KEY] = self.annotations
