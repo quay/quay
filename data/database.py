@@ -427,11 +427,16 @@ def _db_from_url(
     allow_pooling=True,
     allow_retry=True,
     is_read_replica=False,
+    builder_host_override=None,
 ):
     parsed_url = make_url(url)
 
     if parsed_url.host:
         db_kwargs["host"] = parsed_url.host
+        service_name = os.getenv("SUPERVISOR_PROCESS_NAME")
+        if service_name == "builder" and builder_host_override is not None:
+            db_kwargs["host"] = builder_host_override
+        logger.info("Setting database host to %s for worker %s", db_kwargs["host"], service_name)
     if parsed_url.port:
         db_kwargs["port"] = parsed_url.port
     if parsed_url.username:
@@ -498,7 +503,14 @@ def configure(config_object, testing=False):
     db_kwargs = dict(config_object["DB_CONNECTION_ARGS"])
     write_db_uri = config_object["DB_URI"]
     allow_pooling = config_object.get("DB_CONNECTION_POOLING", True)
-    db.initialize(_db_from_url(write_db_uri, db_kwargs, allow_pooling=allow_pooling))
+    db.initialize(
+        _db_from_url(
+            write_db_uri,
+            db_kwargs,
+            allow_pooling=allow_pooling,
+            builder_host_override=config_object.get("BUILDER_DB_HOST_OVERRIDE", None),
+        )
+    )
 
     parsed_write_uri = make_url(write_db_uri)
     db_random_func.initialize(SCHEME_RANDOM_FUNCTION[parsed_write_uri.drivername])
