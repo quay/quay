@@ -2,9 +2,9 @@ import logging
 from typing import List
 
 import ldap
+import pytest
 
 from data.users.externalldap import LDAPUsers, logger
-import pytest
 
 
 class ExceptionLogHandler(logging.StreamHandler):
@@ -241,7 +241,7 @@ def test_ldap_catchall_exception_verify_credentials():
     assert exceptHandler.content == []
     logger.setLevel(logging.DEBUG)
     with pytest.raises(IOError) as excinfo:
-        verify_credentials("someone", "changeme")
+        user.verify_credentials("someone", "changeme")
     assert str(excinfo.value) == "debuglog level only"
     assert exceptHandler.content[0] == "debuglog level only"
     # reset content from log
