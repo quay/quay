@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import logging
 import random
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import Type, TypeVar
+from typing import Any, Type, TypeVar
 
 from peewee import SENTINEL, Model, ModelSelect, OperationalError, Proxy
 
 from data.decorators import is_deprecated_model
+
+logger = logging.getLogger(__name__)
 
 TReadReplicaSupportedModel = TypeVar(
     "TReadReplicaSupportedModel", bound="ReadReplicaSupportedModel"
@@ -108,7 +111,7 @@ class ReadReplicaSupportedModel(Model):
         return cls._read_only_config().is_readonly
 
     @classmethod
-    def _select_database(cls):
+    def _select_database(cls, can_use_read_replica=False):
         """
         Selects a read replica database if we're configured to support read replicas.
 
@@ -116,6 +119,7 @@ class ReadReplicaSupportedModel(Model):
         """
         # Select the master DB if read replica support is not enabled.
         read_only_config = cls._read_only_config()
+
         if not read_only_config.read_replicas:
             return cls._meta.database
 
@@ -127,6 +131,9 @@ class ReadReplicaSupportedModel(Model):
         if getattr(cls._meta.database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0) > 0:
             return cls._meta.database
 
+        if not can_use_read_replica:
+            return cls._meta.database
+
         # Otherwise, return a read replica database with auto-retry onto the main database.
         replicas = read_only_config.read_replicas
         selected_read_replica = replicas[random.randrange(len(replicas))]
@@ -134,11 +141,37 @@ class ReadReplicaSupportedModel(Model):
 
     @classmethod
     def select(
-        cls: Type[TReadReplicaSupportedModel], *args, **kwargs
+        cls: Type[TReadReplicaSupportedModel], *args, **kwargs: Any
     ) -> ModelSelect[TReadReplicaSupportedModel]:
+
+        can_use_read_replica = None
+        if "can_use_read_replica" in kwargs:
+            can_use_read_replica = kwargs.get("can_use_read_replica")
+            del kwargs["can_use_read_replica"]
+
         query = super(ReadReplicaSupportedModel, cls).select(*args, **kwargs)
-        query._database = cls._select_database()
+        query._database = cls._select_database(can_use_read_replica)
         return query
+
+    @classmethod
+    def get(
+        cls: Type[TReadReplicaSupportedModel], *args, **kwargs: Any
+    ) -> TReadReplicaSupportedModel:
+        can_use_read_replica = None
+        if "can_use_read_replica" in kwargs:
+            can_use_read_replica = kwargs.get("can_use_read_replica")
+            del kwargs["can_use_read_replica"]
+
+        sq = cls.select(can_use_read_replica=can_use_read_replica)
+        if args:
+            # Handle simple lookup using just the primary key.
+            if len(args) == 1 and isinstance(args[0], int):
+                sq = sq.where(cls._meta.primary_key == args[0])
+            else:
+                sq = sq.where(*args)
+        if kwargs:
+            sq = sq.filter(**kwargs)
+        return sq.get()
 
     @classmethod
     def insert(cls, *args, **kwargs):

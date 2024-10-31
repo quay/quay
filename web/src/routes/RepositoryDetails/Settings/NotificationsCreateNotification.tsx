@@ -13,27 +13,43 @@ import {
 } from '@patternfly/react-core';
 import './NotificationsCreateNotification.css';
 import Conditional from 'src/components/empty/Conditional';
-import {NotificationEvent, useEvents} from 'src/hooks/UseEvents';
+import {
+  NotificationEvent,
+  NotificationEventConfig,
+  useEvents,
+} from 'src/hooks/UseEvents';
 import {
   NotificationMethod,
   useNotificationMethods,
 } from 'src/hooks/UseNotificationMethods';
-import {NotificationMethodType} from 'src/resources/NotificationResource';
+import {
+  NotificationEventType,
+  NotificationMethodType,
+} from 'src/resources/NotificationResource';
 import CreateEmailNotification from './NotificationsCreateNotificationEmail';
 import CreateFlowdockNotification from './NotificationsCreateNotificationFlowdock';
 import CreateHipchatNotification from './NotificationsCreateNotificationHipchat';
 import CreateQuayNotification from './NotificationsCreateNotificationQuay';
 import CreateSlackNotification from './NotificationsCreateNotificationSlack';
 import CreateWebhookNotification from './NotificationsCreateNotificationWebhook';
+import RepoEventExpiry from './RepoEventExpiry';
 
 export default function CreateNotification(props: CreateNotificationProps) {
   const [isEventOpen, setIsEventOpen] = useState(false);
   const [isMethodOpen, setIsMethodOpen] = useState(false);
   const [event, setEvent] = useState<NotificationEvent>();
   const [method, setMethod] = useState<NotificationMethod>();
+  const [eventConfig, setEventConfig] = useState<NotificationEventConfig>({});
   const {events} = useEvents();
   const {notificationMethods} = useNotificationMethods();
   const [error, setError] = useState<string>('');
+
+  const isValidateConfig = () => {
+    if (event?.type == NotificationEventType.imageExpiry) {
+      return eventConfig?.days != undefined && eventConfig?.days > 0;
+    }
+    return true;
+  };
 
   return (
     <>
@@ -78,6 +94,12 @@ export default function CreateNotification(props: CreateNotificationProps) {
             </DropdownList>
           </Dropdown>
         </FormGroup>
+        <Conditional if={event?.type == NotificationEventType.imageExpiry}>
+          <RepoEventExpiry
+            eventConfig={eventConfig}
+            setEventConfig={setEventConfig}
+          />
+        </Conditional>
         <FormGroup
           fieldId="method"
           label="Then issue a notification"
@@ -117,6 +139,8 @@ export default function CreateNotification(props: CreateNotificationProps) {
             repo={props.repo}
             event={event}
             method={method}
+            eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -129,6 +153,8 @@ export default function CreateNotification(props: CreateNotificationProps) {
             repo={props.repo}
             event={event}
             method={method}
+            eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -139,6 +165,8 @@ export default function CreateNotification(props: CreateNotificationProps) {
             repo={props.repo}
             event={event}
             method={method}
+            eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -149,6 +177,8 @@ export default function CreateNotification(props: CreateNotificationProps) {
             repo={props.repo}
             event={event}
             method={method}
+            eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -159,6 +189,8 @@ export default function CreateNotification(props: CreateNotificationProps) {
             repo={props.repo}
             event={event}
             method={method}
+            eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />
@@ -169,6 +201,8 @@ export default function CreateNotification(props: CreateNotificationProps) {
             repo={props.repo}
             event={event}
             method={method}
+            eventConfig={eventConfig}
+            isValidateConfig={isValidateConfig}
             closeDrawer={props.closeDrawer}
             setError={setError}
           />

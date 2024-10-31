@@ -3,9 +3,16 @@
 }
 
 .quay-screenshot {
-  justify-content: flex-end;
   min-height: 214px;
-  min-width: 401px;
-  background-size: "cover";
+  min-width: 390px;
+  background-size: contain;
+  background-image: url(src/assets/vul-dark.png);
+  box-shadow: inset 5px 0px 9px -5px rgba(3, 3, 3, 0.25);
+}
+
+.quay-screenshot-dark {
+  min-height: 214px;
+  min-width: 390px;
+  background-size: contain;
   background-image: url(src/assets/vul.png);
 }

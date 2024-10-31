@@ -11,9 +11,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "28.8.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "pyopenssl",
@@ -21,9 +21,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "17.5.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "cffi",
@@ -31,9 +31,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.11.5",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "ncurses-terminfo-base",
@@ -41,9 +41,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "6.0_p20171125-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "musl-utils",
@@ -51,9 +51,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.1.18-r3",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libcrypto1.0",
@@ -61,9 +61,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.0.2o-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libstdc++",
@@ -71,9 +71,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "6.4.0-r5",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "scanelf",
@@ -81,9 +81,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "1.2.2-r1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "alpine-baselayout",
@@ -91,9 +91,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "3.0.5-r2",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libressl2.6-libssl",
@@ -101,9 +101,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "2.6.3-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "pip",
@@ -154,7 +154,9 @@
               }
             }
           }
-        ]
+        ],
+        "BaseScores": [7.5, 7.5],
+        "CVEIds": []
       },
       {
         "Name": "expat",
@@ -205,7 +207,9 @@
               }
             }
           }
-        ]
+        ],
+        "BaseScores": [7.5, 7.5],
+        "CVEIds": ["CVE-2018-20843", "CVE-2019-15903"]
       },
       {
         "Name": "pyparsing",
@@ -213,9 +217,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "2.2.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libbz2",
@@ -223,9 +227,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.0.6-r6",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "click",
@@ -233,9 +237,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "6.7",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "wsproto",
@@ -243,9 +247,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.11.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "ncurses-terminfo",
@@ -253,9 +257,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "6.0_p20171125-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "ncurses-libs",
@@ -263,9 +267,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "6.0_p20171125-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "pyperclip",
@@ -273,9 +277,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.6.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "mitmproxy",
@@ -347,7 +351,9 @@
               }
             }
           }
-        ]
+        ],
+        "BaseScores": [8.8, 8.8],
+        "CVEIds": []
       },
       {
         "Name": "xz-libs",
@@ -355,9 +361,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "5.2.3-r1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "certifi",
@@ -365,9 +371,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "2018.4.16",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libressl2.6-libcrypto",
@@ -375,9 +381,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "2.6.3-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "sortedcontainers",
@@ -385,9 +391,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.5.10",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "ruamel.yaml",
@@ -395,9 +401,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.15.37",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "brotlipy",
@@ -405,9 +411,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.7.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "asn1crypto",
@@ -415,9 +421,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.24.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "gdbm",
@@ -425,9 +431,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.13-r1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "urwid",
@@ -435,9 +441,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "2.0.1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "readline",
@@ -445,9 +451,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "7.0.003-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "six",
@@ -455,9 +461,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.11.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libc-utils",
@@ -465,9 +471,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "0.7.1-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "sqlite-libs",
@@ -475,9 +481,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "3.21.0-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "h2",
@@ -485,9 +491,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "3.0.1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "openssl",
@@ -643,6 +649,16 @@
               }
             }
           }
+        ],
+        "BaseScores": [5.9, 4.7, 3.7, 7.5, 5.9, 5.9, 4.7],
+        "CVEIds": [
+                     "CVE-2018-0732",
+                     "CVE-2018-0734",
+                     "CVE-2018-0737",
+                     "CVE-2018-5407",
+                     "CVE-2019-1547",
+                     "CVE-2019-1559",
+                     "CVE-2019-1563"
         ]
       },
       {
@@ -651,9 +667,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "3.0.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "ldap3",
@@ -661,9 +677,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "2.5",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libssl1.0",
@@ -671,9 +687,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.0.2o-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "passlib",
@@ -681,9 +697,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.7.1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "pycparser",
@@ -691,9 +707,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "2.18",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "kaitaistruct",
@@ -701,9 +717,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.8",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "libgcc",
@@ -711,9 +727,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "6.4.0-r5",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "python3",
@@ -869,6 +885,16 @@
               }
             }
           }
+        ],
+        "BaseScores": [7.5, 7.5, 7.5, 7.5, 9.8, 7.5, 6.1],
+        "CVEIds": [
+          "CVE-2018-1060",
+          "CVE-2018-1061",
+          "CVE-2018-14647",
+          "CVE-2018-20406",
+          "CVE-2019-16056",
+          "CVE-2019-16935",
+          "CVE-2019-9636"
         ]
       },
       {
@@ -877,9 +903,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "5.0.2",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "pyasn1",
@@ -887,9 +913,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.4.2",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "alpine-keys",
@@ -897,9 +923,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "2.1-r1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "hyperframe",
@@ -907,9 +933,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "5.1.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "su-exec",
@@ -917,9 +943,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.2-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "idna",
@@ -927,9 +953,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "2.6",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "cryptography",
@@ -1022,7 +1048,9 @@
               }
             }
           }
-        ]
+        ],
+        "BaseScores": [9.1, 5.9, 7.5],
+        "CVEIds": []
       },
       {
         "Name": "libffi",
@@ -1030,9 +1058,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "3.2.1-r4",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "blinker",
@@ -1040,9 +1068,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "1.4",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "busybox",
@@ -1050,9 +1078,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "1.27.2-r7",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "musl",
@@ -1082,7 +1110,9 @@
               }
             }
           }
-        ]
+        ],
+        "BaseScores": [9.8],
+        "CVEIds": ["CVE-2019-14697"]
       },
       {
         "Name": "apk-tools",
@@ -1090,9 +1120,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "2.8.2-r0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "zlib",
@@ -1100,9 +1130,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
         "Version": "1.2.11-r1",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       },
       {
         "Name": "h11",
@@ -1110,9 +1140,9 @@
         "NamespaceName": "",
         "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
         "Version": "0.7.0",
-        "Vulnerabilities": [
-
-        ]
+        "Vulnerabilities": [],
+        "BaseScores": [],
+        "CVEIds": []
       }
     ]
   }

@@ -5,6 +5,7 @@ from endpoints.githubtrigger import githubtrigger
 from endpoints.gitlabtrigger import gitlabtrigger
 from endpoints.keyserver import key_server
 from endpoints.oauth.login import oauthlogin
+from endpoints.oauth.robot_identity_federation import federation_bp
 from endpoints.realtime import realtime
 from endpoints.web import web
 from endpoints.webhooks import webhooks
@@ -14,6 +15,7 @@ application.register_blueprint(web)
 application.register_blueprint(githubtrigger, url_prefix="/oauth2")
 application.register_blueprint(gitlabtrigger, url_prefix="/oauth2")
 application.register_blueprint(oauthlogin, url_prefix="/oauth2")
+application.register_blueprint(federation_bp, url_prefix="/oauth2")
 application.register_blueprint(bitbuckettrigger, url_prefix="/oauth1")
 application.register_blueprint(api_bp, url_prefix="/api")
 application.register_blueprint(webhooks, url_prefix="/webhooks")

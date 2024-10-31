@@ -1,17 +1,12 @@
 import {
-  Card,
   Button,
-  Title,
+  Card,
   DataList,
   DataListItem,
-  DataListItemRow,
-  DataListItemCells,
-  DataListCell,
   Label,
   Level,
   LevelItem,
-  Split,
-  SplitItem,
+  Title,
 } from '@patternfly/react-core';
 import {ArrowRightIcon, ExternalLinkAltIcon} from '@patternfly/react-icons';
 
@@ -39,7 +34,7 @@ export default function RecommendedContent() {
               <Button
                 variant="link"
                 component="a"
-                href="https://docs.projectquay.io/quay_io.html"
+                href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html/about_quay_io/index"
               >
                 View Documentation <ExternalLinkAltIcon />
               </Button>
@@ -64,11 +59,7 @@ export default function RecommendedContent() {
             </LevelItem>
 
             <LevelItem style={{textAlign: 'right'}}>
-              <Button
-                variant="link"
-                component="a"
-                href="https://quay.io/repository/"
-              >
+              <Button variant="link" component="a" href="/repository/">
                 Go to repositories <ArrowRightIcon />
               </Button>
             </LevelItem>

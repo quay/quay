@@ -1,9 +1,5 @@
 import logging
 
-from data import model
-from oauth.loginmanager import OAuthLoginManager
-from oauth.oidc import PublicKeyLoadException
-
 logger = logging.getLogger(__name__)
 
 
@@ -71,6 +67,9 @@ class AppTokenInternalAuth(object):
         return (True, None)
 
     def is_superuser(self, username):
+        raise NotImplementedError()
+
+    def is_global_readonly_superuser(self, username):
         raise NotImplementedError()
 
     def has_superusers(self):

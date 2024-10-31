@@ -121,6 +121,7 @@ class LDAPUsers(FederatedUsers):
         force_no_pagination=False,
         ldap_user_filter=None,
         ldap_superuser_filter=None,
+        ldap_global_readonly_superuser_filter=None,
         ldap_restricted_user_filter=None,
         ldap_referrals=_DEFAULT_REFERRALS,
     ):
@@ -144,6 +145,7 @@ class LDAPUsers(FederatedUsers):
         self._force_no_pagination = force_no_pagination
         self._ldap_user_filter = ldap_user_filter
         self._ldap_superuser_filter = ldap_superuser_filter
+        self._ldap_global_readonly_superuser_filter = ldap_global_readonly_superuser_filter
         self._ldap_restricted_user_filter = ldap_restricted_user_filter
         self._ldap_referrals = int(ldap_referrals)
 
@@ -201,6 +203,10 @@ class LDAPUsers(FederatedUsers):
         assert self._ldap_superuser_filter
         return self._add_filter(query, self._ldap_superuser_filter)
 
+    def _add_global_readonly_superuser_filter(self, query):
+        assert self._ldap_global_readonly_superuser_filter
+        return self._add_filter(query, self._ldap_global_readonly_superuser_filter)
+
     def _add_restricted_user_filter(self, query):
         assert self._ldap_restricted_user_filter
         return self._add_filter(query, self._ldap_restricted_user_filter)
@@ -213,6 +219,7 @@ class LDAPUsers(FederatedUsers):
         suffix="",
         filter_superusers=False,
         filter_restricted_users=False,
+        filter_global_readonly_superusers=False,
     ):
         query = "(|({0}={2}{3})({1}={2}{3}))".format(
             self._uid_attr, self._email_attr, escape_filter_chars(username_or_email), suffix
@@ -231,6 +238,11 @@ class LDAPUsers(FederatedUsers):
                 return (None, "Superuser username not found")
 
             query = self._add_superuser_filter(query)
+        elif filter_global_readonly_superusers:
+            if not self._ldap_global_readonly_superuser_filter:
+                return (None, "Global readonly superuser username not found")
+
+            query = self._add_global_readonly_superuser_filter(query)
 
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
         try:
@@ -278,6 +290,7 @@ class LDAPUsers(FederatedUsers):
         suffix="",
         filter_superusers=False,
         filter_restricted_users=False,
+        filter_global_readonly_superusers=False,
     ):
         if not username_or_email:
             return (None, "Empty username/email")
@@ -308,17 +321,6 @@ class LDAPUsers(FederatedUsers):
                 logger.warning(
                     f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
                 )
-            return (None, "Invalid username or password.")
-        except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
-            return (None, "Invalid username or password.")
-
         try:
             with self._ldap.get_connection() as conn:
                 logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
@@ -377,12 +379,17 @@ class LDAPUsers(FederatedUsers):
             return (None, "Invalid username or password.")
 
     def _ldap_single_user_search(
-        self, username_or_email, filter_superusers=False, filter_restricted_users=False
+        self,
+        username_or_email,
+        filter_superusers=False,
+        filter_restricted_users=False,
+        filter_global_readonly_superusers=False,
     ):
         with_dns, err_msg = self._ldap_user_search(
             username_or_email,
             filter_superusers=filter_superusers,
             filter_restricted_users=filter_restricted_users,
+            filter_global_readonly_superusers=filter_global_readonly_superusers,
         )
         if err_msg is not None:
             return (None, err_msg)
@@ -769,6 +776,27 @@ class LDAPUsers(FederatedUsers):
     def has_superusers(self) -> bool:
         has_superusers, _ = self.at_least_one_user_exists(filter_superusers=True)
         return has_superusers
+
+    def is_global_readonly_superuser(self, username_or_email: str) -> bool:
+        if not username_or_email:
+            return False
+
+        logger.debug(
+            "Looking up LDAP global readonly superuser username or email %s", username_or_email
+        )
+        (found_user, err_msg) = self._ldap_single_user_search(
+            username_or_email, filter_global_readonly_superusers=True
+        )
+        if found_user is None:
+            logger.debug(
+                "LDAP global readonly superuser %s not found: %s", username_or_email, err_msg
+            )
+            return False
+
+        logger.debug(
+            "Found global readonly superuser for LDAP username or email %s", username_or_email
+        )
+        return True
 
     def is_restricted_user(self, username_or_email: str) -> bool:
         if not username_or_email:

@@ -12,6 +12,9 @@ from data.database import Tag as TagTable
 from data.database import get_epoch_timestamp_ms
 from data.registry_model.datatype import datatype, optionalinput, requiresinput
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
+from image.oci.index import INDEX_DIGEST_KEY, INDEX_MANIFESTS_KEY, OCIIndex
+from image.oci.manifest import OCI_MANIFEST_ARTIFACT_TYPE_KEY
 from image.shared import ManifestException
 from image.shared.schemas import is_manifest_list_type, parse_manifest_from_bytes
 from util.bytes import Bytes
@@ -334,7 +337,9 @@ class Manifest(
         """
         assert self.internal_manifest_bytes
         return parse_manifest_from_bytes(
-            self.internal_manifest_bytes, self.media_type, validate=validate
+            self.internal_manifest_bytes,
+            self.media_type,
+            validate=validate,
         )
 
     @property
@@ -354,6 +359,17 @@ class Manifest(
         except TagTable.DoesNotExist:
             return None
         return result
+
+    @property
+    def artifact_type(self):
+        """
+        Returns the manifest's artifact type, if any.
+        """
+        parsed = self.get_parsed_manifest()
+        if parsed is None:
+            return None
+
+        return parsed.artifact_type
 
     @property
     def has_been_scanned(self):
@@ -444,6 +460,53 @@ class Manifest(
         return LegacyImage.for_schema1_manifest_layer_index(
             self, schema1, layer_index, self._legacy_id_handler
         )
+
+
+class ManifestIndex(Manifest):
+    """
+    ManifestIndex represents a Manifest of whose content type is that a manifestlist.
+    """
+
+    @classmethod
+    def for_manifest_index(cls, manifest, legacy_id_handler, legacy_image_row=None):
+        if manifest is None:
+            return None
+
+        # NOTE: `manifest_bytes` will be None if not selected by certain join queries.
+        manifest_bytes = (
+            Bytes.for_string_or_unicode(manifest.manifest_bytes)
+            if manifest.manifest_bytes is not None
+            else None
+        )
+        return ManifestIndex(
+            db_id=manifest.id,
+            digest=manifest.digest,
+            internal_manifest_bytes=manifest_bytes,
+            media_type=ManifestTable.media_type.get_name(manifest.media_type_id),
+            _layers_compressed_size=manifest.layers_compressed_size,
+            config_media_type=manifest.config_media_type,
+            inputs=dict(
+                legacy_id_handler=legacy_id_handler,
+                legacy_image_row=legacy_image_row,
+                repository=RepositoryReference.for_id(manifest.repository_id),
+            ),
+        )
+
+    def manifests(self, retriever, legacy_id_handler, legacy_image_row=None):
+        assert self.is_manifest_list and self.media_type == OCI_IMAGE_INDEX_CONTENT_TYPE
+
+        parsed = self.get_parsed_manifest()
+        assert isinstance(parsed, OCIIndex)
+
+        manifests = parsed.manifest_dict[INDEX_MANIFESTS_KEY]
+
+        ret = [
+            Manifest.for_manifest(m, legacy_id_handler)
+            for m in [
+                retriever.get_manifest_with_digest(m_obj[INDEX_DIGEST_KEY]) for m_obj in manifests
+            ]
+        ]
+        return ret
 
 
 class LegacyImage(

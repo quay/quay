@@ -56,7 +56,7 @@ def reduce_as_tree(queries_to_reduce):
 
 def get_existing_repository(namespace_name, repository_name, for_update=False, kind_filter=None):
     query = (
-        Repository.select(Repository, Namespace)
+        Repository.select(Repository, Namespace, can_use_read_replica=True)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
         .where(Namespace.username == namespace_name, Repository.name == repository_name)
         .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
@@ -95,6 +95,7 @@ def filter_to_repos_for_user(
     include_public=True,
     start_id=None,
     is_superuser=False,
+    return_all=False,
 ):
     if not include_public and not user_id:
         return Repository.select().where(Repository.id == "-1")
@@ -121,10 +122,9 @@ def filter_to_repos_for_user(
     if include_public:
         queries.append(query.where(Repository.visibility == get_public_repo_visibility()))
 
-    # If use is a superuser and a namespace was given return the given query,
-    # else filter repositories to those the user has permissions in.
-    # We do not want to return all repositories due to performance impact
-    if user_id is not None and is_superuser and namespace:
+    # If user is a superuser and only return query when filtered to a namespace or explicitly
+    # returning all repositories, otherwise filter to the user's permissions.
+    if user_id is not None and is_superuser and (namespace or return_all):
         queries.append(query)
     elif user_id is not None:
         AdminTeam = Team.alias()
@@ -224,7 +224,9 @@ def update_last_accessed(token_or_user):
         pass
     except PeeweeException as ex:
         # If there is any form of DB exception, only fail if strict logging is enabled.
-        strict_logging_disabled = config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+        strict_logging_disabled = config.app_config.get(
+            "ALLOW_WITHOUT_STRICT_LOGGING"
+        ) or config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
         if strict_logging_disabled:
             data = {
                 "exception": ex,

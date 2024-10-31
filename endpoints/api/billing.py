@@ -3,6 +3,7 @@ Billing information, subscriptions, and plan information.
 """
 import datetime
 import json
+import time
 import uuid
 
 import stripe
@@ -55,16 +56,27 @@ def check_internal_api_for_subscription(namespace_user):
         for subscription in org_subscriptions:
             quantity = 1 if subscription.get("quantity") is None else subscription["quantity"]
             subscription_id = subscription["subscription_id"]
-            sku = marketplace_subscriptions.get_subscription_sku(subscription_id)
+            subscription_details = marketplace_subscriptions.get_subscription_details(
+                subscription_id
+            )
+            sku = subscription_details["sku"]
+            expiration = subscription_details["expiration_date"]
+            terminated = subscription_details["terminated_date"]
+            now_ms = time.time() * 1000
+            if expiration < now_ms or (terminated is not None and terminated < now_ms):
+                organization_skus.remove_subscription_from_org(namespace_user.id, subscription_id)
+                continue
             for x in range(quantity):
                 plans.append(get_plan_using_rh_sku(sku))
         pass
     else:
-        user_account_number = marketplace_users.get_account_number(namespace_user)
-        if user_account_number:
-            plans = marketplace_subscriptions.get_list_of_subscriptions(
-                user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
-            )
+        user_account_numbers = marketplace_users.get_account_number(namespace_user)
+        if user_account_numbers:
+            plans = []
+            for user_account_number in user_account_numbers:
+                plans += marketplace_subscriptions.get_list_of_subscriptions(
+                    user_account_number, filter_out_org_bindings=True, convert_to_stripe_plans=True
+                )
     return plans
 
 
@@ -957,11 +969,21 @@ class OrganizationRhSku(ApiResource):
             if query:
                 subscriptions = list(query.dicts())
                 for subscription in subscriptions:
-                    subscription_sku = marketplace_subscriptions.get_subscription_sku(
+                    subscription_details = marketplace_subscriptions.get_subscription_details(
                         subscription["subscription_id"]
                     )
-                    subscription["sku"] = subscription_sku
-                    subscription["metadata"] = get_plan_using_rh_sku(subscription_sku)
+                    now_ms = time.time() * 1000
+                    expired_at = subscription_details["expiration_date"]
+                    terminated_at = subscription_details["terminated_date"]
+                    if expired_at < now_ms or (
+                        terminated_at is not None and terminated_at < now_ms
+                    ):
+                        model.organization_skus.remove_subscription_from_org(
+                            organization.id, subscription["subscription_id"]
+                        )
+                        continue
+                    subscription["sku"] = subscription_details["sku"]
+                    subscription["metadata"] = get_plan_using_rh_sku(subscription_details["sku"])
                     if subscription.get("quantity") is None:
                         subscription["quantity"] = 1
                 return subscriptions
@@ -985,16 +1007,22 @@ class OrganizationRhSku(ApiResource):
                 if subscription_id is None:
                     break
                 user = get_authenticated_user()
-                account_number = marketplace_users.get_account_number(user)
-                subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+                account_numbers = marketplace_users.get_account_number(user)
+                user_available_subscriptions = []
+                for account_number in account_numbers:
+                    user_available_subscriptions += (
+                        marketplace_subscriptions.get_list_of_subscriptions(account_number)
+                    )
 
                 if subscriptions is None:
                     abort(401, message="no valid subscriptions present")
 
-                user_subscription_ids = [int(subscription["id"]) for subscription in subscriptions]
+                user_subscription_ids = [
+                    int(subscription["id"]) for subscription in user_available_subscriptions
+                ]
                 if int(subscription_id) in user_subscription_ids:
                     quantity = 1
-                    for subscription in subscriptions:
+                    for subscription in user_available_subscriptions:
                         if subscription["id"] == subscription_id:
                             quantity = subscription["quantity"]
                             break
@@ -1089,11 +1117,15 @@ class UserSkuList(ApiResource):
         List the invoices for the current user.
         """
         user = get_authenticated_user()
-        account_number = marketplace_users.get_account_number(user)
-        if not account_number:
+        account_numbers = marketplace_users.get_account_number(user)
+        if not account_numbers:
             raise NotFound()
 
-        user_subscriptions = marketplace_subscriptions.get_list_of_subscriptions(account_number)
+        user_subscriptions = []
+        for account_number in account_numbers:
+            user_subscriptions += marketplace_subscriptions.get_list_of_subscriptions(
+                account_number
+            )
 
         for subscription in user_subscriptions:
             bound_to_org, organization = organization_skus.subscription_bound_to_org(

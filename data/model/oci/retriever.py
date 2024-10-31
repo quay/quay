@@ -24,6 +24,17 @@ class RepositoryContentRetriever(ContentRetriever):
     def for_repository(cls, repository_id, storage):
         return RepositoryContentRetriever(repository_id, storage)
 
+    def get_manifest_with_digest(self, digest):
+        query = (
+            Manifest.select()
+            .where(Manifest.repository == self.repository_id)
+            .where(Manifest.digest == digest)
+        )
+        try:
+            return query.get()
+        except Manifest.DoesNotExist:
+            return None
+
     def get_manifest_bytes_with_digest(self, digest):
         """
         Returns the bytes of the manifest with the given digest or None if none found.

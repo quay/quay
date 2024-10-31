@@ -1146,6 +1146,20 @@
       "ct-default": "",
       "ct-validate": "",
       "ct-fieldgroups": ["LDAP"]
+    },
+    "FEATURE_AUTO_PRUNE": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "If set to true, auto pruning of images is supported. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": ""
+    },
+    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
+      "x-example": {"number_of_tags":  "10"},
+      "type": "object",
+      "description": "Default org wide auto prune policy. Defaults to empty",
+      "ct-default": "",
+      "ct-validate": ""
     }
   }
 }

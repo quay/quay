@@ -550,6 +550,49 @@ describe('Repository Details Page', () => {
   });
 
   it('changes expiration through kebab', () => {
+    const formattedDate = new Date();
+    const currentDateGB = formattedDate.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    // for some reason the date picker is always using UK date formats for the aria labels
+    const currentDateLong = formattedDate.toLocaleDateString(
+      navigator.language,
+      {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      },
+    );
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    nextMonth.setHours(1);
+    nextMonth.setMinutes(0);
+    const formattedTime = nextMonth.toLocaleTimeString(navigator.language, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+    nextMonth.setHours(2);
+    nextMonth.setMinutes(3);
+    const formattedTime2 = nextMonth.toLocaleTimeString(navigator.language, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const oneMonthFormatLong = nextMonth.toLocaleString(navigator.language, {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeStyle: 'short',
+      dateStyle: 'medium',
+    });
+
+    // Start
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
@@ -564,28 +607,34 @@ describe('Repository Details Page', () => {
 
     // Ensure current date can be chosen
     cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get(`[aria-label="${moment().format('D MMMM YYYY')}"]`).click();
+    cy.get(`[aria-label="${currentDateGB}"]`).click();
     cy.get('input[aria-label="Date picker"]').should(
       'have.value',
-      moment().format('dddd, MMMM D, YYYY'),
+      currentDateLong,
     );
 
     cy.get('[aria-label="Toggle date picker"]').click();
     cy.get('button[aria-label="Next month"]').click();
-    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
-    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
+
     cy.get('#expiration-time-picker').click();
-    cy.contains('1:00 AM').click();
+    cy.contains(formattedTime.replace(/ AM| PM/, ''))
+      .scrollIntoView()
+      .click();
     cy.get('#expiration-time-picker-input').clear();
-    cy.get('#expiration-time-picker-input').type('2:03');
+    cy.get('#expiration-time-picker-input').type(
+      formattedTime2.replace(/ AM| PM/, ''),
+    );
+
+    // remove AM/PM suffixes because the TimePicker adds those automatically
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
-    const oneMonthFormat = moment().add(1, 'month').format('MMM D, YYYY');
+
     cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthFormat}, 2:03 AM`,
+      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
     ).should('exist');
 
     // Reset back to Never
@@ -606,6 +655,26 @@ describe('Repository Details Page', () => {
   });
 
   it('changes expiration through tag row', () => {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    nextMonth.setHours(1);
+    nextMonth.setMinutes(0);
+    const formattedTime = nextMonth.toLocaleTimeString(navigator.language, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const oneMonthFormatLong = nextMonth.toLocaleString(navigator.language, {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeStyle: 'short',
+      dateStyle: 'medium',
+    });
+
+    // Start
     cy.visit('/repository/user1/hello-world');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
@@ -618,22 +687,40 @@ describe('Repository Details Page', () => {
       });
     cy.get('[aria-label="Toggle date picker"]').click();
     cy.get('button[aria-label="Next month"]').click();
-    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
-    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
-    cy.contains('1:00 AM').click();
+    cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
-    const oneMonthLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
     cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthLongFormat}, 1:00 AM`,
+      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
     ).should('exist');
   });
 
   it('changes multiple tag expirations', () => {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    nextMonth.setHours(1);
+    nextMonth.setMinutes(0);
+    const formattedTime = nextMonth.toLocaleTimeString(navigator.language, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const oneMonthFormatLong = nextMonth.toLocaleString(navigator.language, {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeStyle: 'short',
+      dateStyle: 'medium',
+    });
+
+    // Start
     cy.visit('/repository/user1/hello-world');
     cy.get('#toolbar-dropdown-checkbox').click();
     cy.get('button').contains('Select page (2)').click();
@@ -647,22 +734,35 @@ describe('Repository Details Page', () => {
       });
     cy.get('[aria-label="Toggle date picker"]').click();
     cy.get('button[aria-label="Next month"]').click();
-    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
-    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
-    cy.contains('1:00 AM').click();
+    cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
-    const tomorrowLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
     cy.contains(
-      `Successfully updated tag expirations to ${tomorrowLongFormat}, 1:00 AM`,
+      `Successfully updated tag expirations to ${oneMonthFormatLong}`,
     ).should('exist');
   });
 
   it('alerts on failure to change expiration', () => {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    nextMonth.setHours(1);
+    nextMonth.setMinutes(0);
+    const formattedTime = nextMonth.toLocaleTimeString(navigator.language, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+    // Start
     cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest', {
       statusCode: 500,
     }).as('getServerFailure');
@@ -673,16 +773,14 @@ describe('Repository Details Page', () => {
     });
     cy.get('[aria-label="Toggle date picker"]').click();
     cy.get('button[aria-label="Next month"]').click();
-    const oneMonth = moment().add(1, 'month').format('D MMMM YYYY');
-    cy.get(`[aria-label="${oneMonth}"]`).click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
-    cy.contains('1:00 AM').click();
+    cy.contains(formattedTime).click();
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
     });
-    const oneMonthLongFormat = moment().add(1, 'month').format('MMM D, YYYY');
     cy.contains(`Could not set expiration for tag latest`).should('exist');
   });
 });

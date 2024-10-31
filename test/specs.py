@@ -670,6 +670,19 @@ def build_v2_index_specs():
         IndexV2TestSpec(
             "v2.write_manifest_by_digest", "PUT", ANOTHER_ORG_REPO, manifest_ref=FAKE_DIGEST
         ).request_status(401, 401, 401, 401, 400),
+        # v2.delete_manifest_by_tag
+        IndexV2TestSpec(
+            "v2.delete_manifest_by_tag", "DELETE", PUBLIC_REPO, manifest_ref=FAKE_MANIFEST
+        ).request_status(401, 401, 401, 401, 401),
+        IndexV2TestSpec(
+            "v2.delete_manifest_by_tag", "DELETE", PRIVATE_REPO, manifest_ref=FAKE_MANIFEST
+        ).request_status(401, 401, 401, 401, 404),
+        IndexV2TestSpec(
+            "v2.delete_manifest_by_tag", "DELETE", ORG_REPO, manifest_ref=FAKE_MANIFEST
+        ).request_status(401, 401, 401, 401, 404),
+        IndexV2TestSpec(
+            "v2.delete_manifest_by_tag", "DELETE", ANOTHER_ORG_REPO, manifest_ref=FAKE_MANIFEST
+        ).request_status(401, 401, 401, 401, 404),
         # v2.delete_manifest_by_digest
         IndexV2TestSpec(
             "v2.delete_manifest_by_digest", "DELETE", PUBLIC_REPO, manifest_ref=FAKE_DIGEST

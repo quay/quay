@@ -1,5 +1,3 @@
-import base64
-import json
 import logging
 from collections import namedtuple
 
@@ -20,16 +18,6 @@ OAuthResult = namedtuple(
 logger = logging.getLogger(__name__)
 
 
-def is_jwt(token):
-    try:
-        headers = jwt.get_unverified_header(token)
-        return headers.get("typ", "").lower() == "jwt"
-    except (jwt.exceptions.DecodeError):
-        pass
-
-    return False
-
-
 def get_jwt_issuer(token):
     """
     Extract the issuer from the JWT token.
@@ -38,6 +26,25 @@ def get_jwt_issuer(token):
     """
     decoded = jwt.decode(token, options={"verify_signature": False})
     return decoded.get("iss", None)
+
+
+def get_username_from_userinfo(user_info, config={}):
+    # Check for a preferred username.
+    if config.get("PREFERRED_USERNAME_CLAIM_NAME"):
+        lusername = user_info.get(config["PREFERRED_USERNAME_CLAIM_NAME"])
+    else:
+        lusername = user_info.get("preferred_username")
+        if lusername is None:
+            # Note: Active Directory provides `unique_name` and `upn`.
+            # https://docs.microsoft.com/en-us/azure/active-directory/develop/v1-id-and-access-tokens
+            lusername = user_info.get("unique_name", user_info.get("upn"))
+
+    if lusername is None:
+        lusername = user_info["sub"]
+
+    if lusername.find("@") >= 0:
+        lusername = lusername[0 : lusername.find("@")]
+    return lusername
 
 
 def get_sub_username_email_from_token(
@@ -74,22 +81,7 @@ def get_sub_username_email_from_token(
             raise OAuthLoginException(
                 "A verified email address is required to login with this service"
             )
-
-    # Check for a preferred username.
-    if config.get("PREFERRED_USERNAME_CLAIM_NAME"):
-        lusername = user_info.get(config["PREFERRED_USERNAME_CLAIM_NAME"])
-    else:
-        lusername = user_info.get("preferred_username")
-        if lusername is None:
-            # Note: Active Directory provides `unique_name` and `upn`.
-            # https://docs.microsoft.com/en-us/azure/active-directory/develop/v1-id-and-access-tokens
-            lusername = user_info.get("unique_name", user_info.get("upn"))
-
-    if lusername is None:
-        lusername = user_info["sub"]
-
-    if lusername.find("@") >= 0:
-        lusername = lusername[0 : lusername.find("@")]
+    lusername = get_username_from_userinfo(user_info, config)
 
     if fetch_groups:
         if config.get("PREFERRED_GROUP_CLAIM_NAME", None) is None:

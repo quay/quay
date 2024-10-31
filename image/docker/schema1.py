@@ -182,7 +182,7 @@ class DockerSchema1Manifest(ManifestInterface):
         ],
     }
 
-    def __init__(self, manifest_bytes, validate=True, ignore_unknown_mediatypes=False):
+    def __init__(self, manifest_bytes, validate=True):
         assert isinstance(manifest_bytes, Bytes)
 
         self._layers = None

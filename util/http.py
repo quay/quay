@@ -26,6 +26,7 @@ def _abort(status_code, data_object, description, headers):
     headers["Access-Control-Allow-Methods"] = options_resp.headers["allow"]
     headers["Access-Control-Max-Age"] = str(21600)
     headers["Access-Control-Allow-Headers"] = ["Authorization", "Content-Type"]
+    headers["Vary"] = "Origin"
 
     resp = make_response(json.dumps(data_object), status_code, headers)
 

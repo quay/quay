@@ -100,6 +100,53 @@ describe('Usage Logs Export', () => {
           },
         },
       },
+      {
+        kind: 'create_namespace_autoprune_policy',
+        metadata: {
+          method: 'number_of_tags',
+          value: 20,
+          tag_pattern: 'v1.*',
+          tag_pattern_matches: true,
+          namespace: 'org1',
+        },
+        ip: '192.168.228.1',
+        datetime: 'Wed, 21 Feb 2024 17:32:46 -0000',
+        performer: {
+          kind: 'user',
+          name: 'mkok',
+          is_robot: false,
+          avatar: {
+            name: 'mkok',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+      {
+        kind: 'create_repository_autoprune_policy',
+        metadata: {
+          method: 'number_of_tags',
+          value: 20,
+          tag_pattern: 'v1.*',
+          tag_pattern_matches: true,
+          namespace: 'org1',
+          repo: 'test',
+        },
+        ip: '192.168.228.1',
+        datetime: 'Wed, 21 Feb 2024 17:32:46 -0000',
+        performer: {
+          kind: 'user',
+          name: 'mkok',
+          is_robot: false,
+          avatar: {
+            name: 'mkok',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
     ],
     next_page:
       'gAAAAABl1jP3IfVFJNPZRJSB9YWXx0D8QXLXYmf8-0zZeqwV2dIM5gAsxdfaxGHUdS5FUsrm_8N1RIqm71EoagF1D9uwXh2agg==',
@@ -181,5 +228,65 @@ describe('Usage Logs Export', () => {
       .contains('td', 'Organization projectquay created')
       .scrollIntoView()
       .should('be.visible');
+    cy.get('table')
+      .contains(
+        'td',
+        'Created namespace autoprune policy: "number_of_tags:20, tagPattern:v1.*, tagPatternMatches:true" for namespace: org1',
+      )
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains(
+        'td',
+        'Created repository autoprune policy: "number_of_tags:20, tagPattern:v1.*, tagPatternMatches:true" for repository: org1/test',
+      )
+      .scrollIntoView()
+      .should('be.visible');
+  });
+
+  it('toggle chart', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/projectquay/aggregatelogs?*',
+      aggregateLogsResp,
+    );
+    cy.visit('/organization/projectquay');
+    cy.contains('Logs').click();
+
+    cy.contains('Hide Chart').click();
+    cy.get('[class=pf-v5-c-chart]').should('not.exist');
+
+    cy.contains('Show Chart').click();
+    cy.get('[class=pf-v5-c-chart]').should('be.visible');
+  });
+
+  it('empty chart', () => {
+    cy.visit('/organization/projectquay');
+    cy.contains('Logs').click();
+    cy.contains('No data to display.').should('be.visible');
+  });
+
+  it('filter logs', () => {
+    cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
+
+    cy.visit('/organization/projectquay');
+    cy.contains('Logs').click();
+
+    cy.get('[id="log-filter-input"]').type('create');
+
+    cy.get('table')
+      .contains('td', 'Create Repository projectquay/testrepo')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains('td', 'Organization projectquay created')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('table')
+      .contains(
+        'td',
+        'Change visibility for repository projectquay/testrepo to private',
+      )
+      .should('not.exist');
   });
 });

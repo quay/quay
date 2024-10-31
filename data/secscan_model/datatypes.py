@@ -1,5 +1,45 @@
+import re
 from collections import namedtuple
 from enum import IntEnum, unique
+
+
+def link_to_cves(input_string):
+    """
+    link_to_cves takes an input string, typically the link field from a clair response
+    parses the string and finds all unique CVEs within the string.
+    """
+    cve_pattern = r"CVE-\d{4}-\d{4,7}"
+    return sorted(list(set(re.findall(cve_pattern, input_string))))
+
+
+def vulns_to_cves(vulnerabilities):
+    """
+    vulns_to_cves takes a list of Vulnerabilities and returns
+    a unique list of CVE Ids sorted alphabetically
+    """
+    seen = set()
+    return sorted(
+        [
+            cve
+            for v in vulnerabilities
+            for cve in link_to_cves(v.Link)
+            if not (cve in seen or seen.add(cve))
+        ]
+    )
+
+
+def vulns_to_base_scores(vulnerabilities):
+    """
+    vulns_to_base_scores takes a list of Vulnerabilities and returns a list of
+    CVE BaseScores for the given Vulnerabilities
+    """
+    return [
+        vulnerability.Metadata.NVD.CVSSv3.Score
+        for vulnerability in vulnerabilities
+        if vulnerability.Metadata.NVD
+        and vulnerability.Metadata.NVD.CVSSv3
+        and vulnerability.Metadata.NVD.CVSSv3.Score
+    ]
 
 
 @unique
@@ -39,7 +79,17 @@ Metadata = namedtuple(
 NVD = namedtuple("NVD", ["CVSSv3"])
 CVSSv3 = namedtuple("CVSSv3", ["Vectors", "Score"], defaults=(None, None))
 Feature = namedtuple(
-    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
+    "Feature",
+    [
+        "Name",
+        "VersionFormat",
+        "NamespaceName",
+        "AddedBy",
+        "Version",
+        "BaseScores",
+        "CVEIds",
+        "Vulnerabilities",
+    ],
 )
 Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
@@ -64,6 +114,8 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                         NamespaceName=f["NamespaceName"],
                         AddedBy=f["AddedBy"],
                         Version=f["Version"],
+                        BaseScores=f["BaseScores"],
+                        CVEIds=f["CVEIds"],
                         Vulnerabilities=[
                             Vulnerability(
                                 Severity=vuln.get("Severity", None),
@@ -111,6 +163,8 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                         "NamespaceName": f.NamespaceName,
                         "AddedBy": f.AddedBy,
                         "Version": f.Version,
+                        "BaseScores": vulns_to_base_scores(f.Vulnerabilities),
+                        "CVEIds": vulns_to_cves(f.Vulnerabilities),
                         "Vulnerabilities": [
                             {
                                 "Severity": v.Severity,

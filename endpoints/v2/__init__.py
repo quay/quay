@@ -1,30 +1,30 @@
 import logging
 import os.path
 from functools import wraps
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 from flask import Blueprint, Response, jsonify, make_response, request, url_for
 from semantic_version import Spec
 
 import features
 from app import app, get_app_url, usermanager
-from auth.auth_context import get_authenticated_context, get_authenticated_user
+from auth.auth_context import get_authenticated_context
 from auth.permissions import (
     AdministerRepositoryPermission,
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
-    SuperUserPermission,
 )
 from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
-from data.model import QuotaExceededException
+from data.model import PushesDisabledException, QuotaExceededException
 from data.readreplica import ReadOnlyModeException
 from data.registry_model import registry_model
-from endpoints.decorators import anon_allowed, anon_protect, route_show_if
+from endpoints.decorators import anon_allowed, route_show_if
 from endpoints.v2.errors import (
     InvalidRequest,
-    NameUnknown,
+    PushesDisabled,
     QuotaExceeded,
     ReadOnlyMode,
+    TooManyTagsRequested,
     Unauthorized,
     Unsupported,
     V2RegistryException,
@@ -65,6 +65,11 @@ def handle_quota_error(error):
     return _format_error_response(QuotaExceeded())
 
 
+@v2_bp.app_errorhandler(PushesDisabledException)
+def handle_pushes_disabled(error):
+    return _format_error_response(PushesDisabled())
+
+
 def _format_error_response(error: V2RegistryException) -> Response:
     response = jsonify({"errors": [error.as_dict()]})
     response.status_code = error.http_status_code
@@ -72,7 +77,9 @@ def _format_error_response(error: V2RegistryException) -> Response:
     return response
 
 
-_MAX_RESULTS_PER_PAGE = app.config.get("V2_PAGINATION_SIZE", 100)
+_MAX_RESULTS_PER_PAGE = max(
+    app.config.get("V2_PAGINATION_SIZE", 100), 100
+)  # minimally server 100 tags per page
 
 
 def paginate(
@@ -116,6 +123,52 @@ def paginate(
 
             kwargs[limit_kwarg_name] = limit
             kwargs[start_id_kwarg_name] = start_id
+            kwargs[callback_kwarg_name] = callback
+            return func(*args, **kwargs)
+
+        return wrapped
+
+    return wrapper
+
+
+def oci_tag_paginate(
+    last_tag_kwarg_name="last_pagination_tag_name",
+    limit_kwarg_name="limit",
+    callback_kwarg_name="pagination_callback",
+):
+    """
+    Decorates a handler validating sane inputs for pagination and adding a Link header of type rel=next
+    according to OCI tag pagination spec via a callback.
+    """
+
+    def wrapper(func):
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                requested_limit = request.args.get("n", _MAX_RESULTS_PER_PAGE, type=int)
+                last_tag_name = request.args.get("last", None, type=str)
+            except ValueError:
+                requested_limit = _MAX_RESULTS_PER_PAGE
+                last_tag_name = None
+
+            limit = max(min(requested_limit, _MAX_RESULTS_PER_PAGE), 0)
+
+            if last_tag_name is not None:
+                last_tag_name = last_tag_name.strip()
+
+            def callback(results, has_more, response):
+                if not has_more:
+                    return
+
+                link_param = urlencode({"n": limit, "last": results[-1].name})
+                link_url = os.path.join(
+                    get_app_url(), url_for(request.endpoint, **request.view_args)
+                )
+                link = '<%s?%s>; rel="next"' % (link_url, link_param)
+                response.headers["Link"] = link
+
+            kwargs[limit_kwarg_name] = limit
+            kwargs[last_tag_kwarg_name] = last_tag_name
             kwargs[callback_kwarg_name] = callback
             return func(*args, **kwargs)
 
@@ -251,4 +304,4 @@ def v2_support_enabled():
     return response
 
 
-from endpoints.v2 import blob, catalog, manifest, tag, v2auth
+from endpoints.v2 import blob, catalog, manifest, referrers, tag, v2auth

@@ -28,7 +28,13 @@ describe('OIDC Team Sync', () => {
     }).as('getPrototypes');
     cy.intercept('GET', '/api/v1/organization/teamsyncorg/aggregatelogs?*', {
       aggregated: [],
+    }).as('getAggregateLogs');
+    cy.intercept('GET', '/api/v1/organization/teamsyncorg/logs?*', {
+      start_time: '',
+      end_time: '',
+      logs: [],
     }).as('getLogs');
+
     cy.intercept(
       'GET',
       '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',
@@ -42,6 +48,9 @@ describe('OIDC Team Sync', () => {
     cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
     cy.get('#team-members-toolbar').within(() =>
       cy.get('button:contains("Enable Team Sync")').click(),
+    );
+    cy.get('#directory-sync-modal').contains(
+      "Enter the group name you'd like to sync membership with:",
     );
     cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
@@ -127,6 +136,7 @@ describe('OIDC Team Sync', () => {
     cy.contains('org:team').should('not.exist');
     cy.contains('Last Updated').should('not.exist');
     cy.contains('tr', 'teamsyncorg+robotacct');
+    cy.contains('Remove Synchronization').should('not.exist');
   });
 
   it('Remove Directory Sync', () => {
@@ -216,5 +226,34 @@ describe('OIDC Team Sync', () => {
       'exist',
     );
     cy.get('button[data-testid="admin-delete-icon"]').should('not.exist');
+  });
+
+  it('Verify oidc azure login modal', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',
+      {
+        fixture: 'teamsync-azure.json',
+      },
+    ).as('getAzureTeamMembers');
+    cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
+    cy.wait('@getAzureTeamMembers');
+    cy.get('button:contains("Enable Team Sync")').click();
+    cy.get('#directory-sync-modal').contains(
+      "Enter the group Object Id you'd like to sync membership with:",
+    );
+  });
+
+  it('Verify Invited tab is disabled for a team that is synced', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/teamsyncorg/team/testteam/members?includePending=true',
+      {
+        fixture: 'teamsynced-members-superuser.json',
+      },
+    ).as('getSycedTeamMembers');
+    cy.visit('/organization/teamsyncorg/teams/testteam?tab=Teamsandmembership');
+    cy.wait('@getSycedTeamMembers');
+    cy.get(`[data-testid="Invited"]`).find('button').should('be.disabled');
   });
 });

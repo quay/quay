@@ -1,3 +1,4 @@
+import json
 import logging
 import ssl
 
@@ -64,7 +65,10 @@ class SplunkLogsProducer(LogProducerInterface):
 
     def send(self, log):
         try:
-            self.index.submit(log, sourcetype="access_combined", host="quay")
+            log_data = json.dumps(log, sort_keys=True, default=str, ensure_ascii=False).encode(
+                "utf-8"
+            )
+            self.index.submit(log_data, sourcetype="access_combined", host="quay")
         except Exception as e:
             logger.exception("SplunkLogsProducer exception sending log to Splunk: %s", e)
             raise LogSendException("SplunkLogsProducer exception sending log to Splunk: %s" % e)

@@ -4,6 +4,7 @@ from mock import patch
 from data import database, model
 from data.users import DatabaseUsers, UserAuthentication, get_users_handler
 from endpoints.oauth.login import _conduct_oauth_login
+from oauth.loginmanager import OAuthLoginManager
 from oauth.oidc import OIDCLoginService
 from oauth.services.github import GithubOAuthService
 from test.analytics import analytics
@@ -38,12 +39,13 @@ def oidc_login_service(app):
 
 
 @pytest.fixture(params=["Database", "LDAP", "OIDC"])
-def auth_system(request):
-    return _get_users_handler(request.param)
+def auth_system(request, oidc_login_service):
+    return _get_users_handler(request.param, oidc_login_service)
 
 
-def _get_users_handler(auth_type):
+def _get_users_handler(auth_type, oidc_login_service):
     config = {}
+    oauth_login = OAuthLoginManager(config)
     if auth_type == "LDAP":
         config["AUTHENTICATION_TYPE"] = auth_type
         config["LDAP_BASE_DN"] = ["dc=quay", "dc=io"]
@@ -60,7 +62,9 @@ def _get_users_handler(auth_type):
         config["LOGIN_SCOPES"] = ["openid", "roles"]
         config["PREFERRED_GROUP_CLAIM_NAME"] = "groups"
 
-    return get_users_handler(config, None, None)
+        oauth_login.services.append(oidc_login_service)
+
+    return get_users_handler(config, None, None, oauth_login)
 
 
 def test_existing_account(app, auth_system, login_service):
@@ -209,7 +213,7 @@ def test_new_account_via_ldap(binding_field, lid, lusername, lemail, expected_er
         config["GITHUB"]["LOGIN_BINDING_FIELD"] = binding_field
 
     external_auth = GithubOAuthService(config, "GITHUB")
-    internal_auth = _get_users_handler("LDAP")
+    internal_auth = _get_users_handler("LDAP", None)
 
     with mock_ldap():
         # Conduct OAuth login.
@@ -254,7 +258,7 @@ def test_existing_account_in_ldap(app):
     config = {"GITHUB": {"LOGIN_BINDING_FIELD": "username"}}
 
     external_auth = GithubOAuthService(config, "GITHUB")
-    internal_auth = _get_users_handler("LDAP")
+    internal_auth = _get_users_handler("LDAP", None)
 
     # Add an existing federated user bound to the LDAP account associated with `someuser`.
     bound_user = model.user.create_federated_user(
@@ -370,7 +374,14 @@ def test_existing_account_in_ldap(app):
     ],
 )
 def test_new_account_via_oidc(
-    binding_field, lid, lusername, lemail, additional_login_info, expected_error, app
+    binding_field,
+    lid,
+    lusername,
+    lemail,
+    additional_login_info,
+    expected_error,
+    app,
+    oidc_login_service,
 ):
     existing_user_count = database.User.select().count()
 
@@ -379,7 +390,7 @@ def test_new_account_via_oidc(
         config["GITHUB"]["LOGIN_BINDING_FIELD"] = binding_field
 
     external_auth = GithubOAuthService(config, "GITHUB")
-    internal_auth = _get_users_handler("OIDC")
+    internal_auth = _get_users_handler("OIDC", oidc_login_service)
 
     result = _conduct_oauth_login(
         app.config,

@@ -51,6 +51,10 @@ CLIENT_WHITELIST = [
     "UI_V2_FEEDBACK_FORM",
     "TERMS_OF_SERVICE_URL",
     "UI_DELAY_AFTER_WRITE_SECONDS",
+    "FEATURE_ASSIGN_OAUTH_TOKEN",
+    "FEATURE_IMAGE_EXPIRY_TRIGGER",
+    "FEATURE_AUTO_PRUNE",
+    "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY",
 ]
 
 
@@ -456,6 +460,9 @@ class DefaultConfig(ImmutableConfig):
     # Allow registry pulls when unable to write to the audit log
     ALLOW_PULLS_WITHOUT_STRICT_LOGGING = False
 
+    # Allow any registry action when unable to write to the audit log
+    ALLOW_WITHOUT_STRICT_LOGGING = False
+
     # Temporary tag expiration in seconds, this may actually be longer based on GC policy
     PUSH_TEMP_TAG_EXPIRATION_SEC = 60 * 60  # One hour per layer
 
@@ -663,6 +670,7 @@ class DefaultConfig(ImmutableConfig):
         "catalog_page_cache_ttl": "60s",
         "namespace_geo_restrictions_cache_ttl": "240s",
         "active_repo_tags_cache_ttl": "120s",
+        "value_size_limit": "1MiB",
     }
 
     # Defines the number of successive failures of a build trigger's build before the trigger is
@@ -765,11 +773,11 @@ class DefaultConfig(ImmutableConfig):
         ],
     }
 
-    IGNORE_UNKNOWN_MEDIATYPES = False
-
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_HELM_OCI_SUPPORT = True
+
+    FEATURE_REFERRERS_API = True
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
@@ -784,8 +792,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
 
-    # TEMP FEATURE: Backfill the sizes of manifests.
+    # TEMP FEATURE: Backfill the sizes and subjects of manifests.
     FEATURE_MANIFEST_SIZE_BACKFILL = True
+    FEATURE_MANIFEST_SUBJECT_BACKFILL = True
 
     # Repos created by push default to private visibility
     CREATE_PRIVATE_REPO_ON_PUSH = True
@@ -809,6 +818,9 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_QUOTA_MANAGEMENT = False
 
     FEATURE_EDIT_QUOTA = True
+
+    # Enables quota verfication on image push
+    FEATURE_VERIFY_QUOTA = True
 
     # Catches and suppresses quota failures during image push and garbage collection
     FEATURE_QUOTA_SUPPRESS_FAILURES = False
@@ -844,6 +856,10 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables notifications about vulnerabilities to be sent for new pushes
     FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = True
 
+    # Set minimal security level for new notifications on detected vulnerabilities. Avoids
+    # creation of large number of notifications after first index. If not defined, defaults to "High".
+    NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX = "High"
+
     FEATURE_SUPERUSERS_FULL_ACCESS = False
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
 
@@ -875,3 +891,17 @@ class DefaultConfig(ImmutableConfig):
 
     # whitelist for ROBOTS_DISALLOW to grant access/usage for mirroring
     ROBOTS_WHITELIST: Optional[List[str]] = []
+
+    FEATURE_ASSIGN_OAUTH_TOKEN = True
+    DEFAULT_NAMESPACE_AUTOPRUNE_POLICY: Optional[Dict[str, str]] = None
+
+    # Allows users to set up notifications on image expiry, can remove flag once feature is tested
+    FEATURE_IMAGE_EXPIRY_TRIGGER = False
+
+    # Disable pushes while allowing other registry operations.
+    # Defaults to "False".
+    DISABLE_PUSHES = False
+
+    # Specific namespaces that be exceptions to the s3-cloudflare optimization
+    # used for registry-proxy namespaces
+    CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []

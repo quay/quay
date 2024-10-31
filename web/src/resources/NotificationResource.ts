@@ -1,6 +1,7 @@
 import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {ResourceError, throwIfError} from './ErrorHandling';
+import {NotificationEventConfig} from 'src/hooks/UseEvents';
 
 export enum NotificationEventType {
   repoPush = 'repo_push',
@@ -13,6 +14,7 @@ export enum NotificationEventType {
   mirrorStarted = 'repo_mirror_sync_started',
   mirrorSuccess = 'repo_mirror_sync_success',
   mirrorFailed = 'repo_mirror_sync_failed',
+  imageExpiry = 'repo_image_expiry',
 }
 
 export enum NotificationMethodType {
@@ -27,7 +29,7 @@ export enum NotificationMethodType {
 export interface RepoNotification {
   config: any;
   event: NotificationEventType;
-  event_config: any;
+  event_config: NotificationEventConfig;
   method: NotificationMethodType;
   title: string;
   number_of_failures?: number;
@@ -40,9 +42,8 @@ interface FetchNotifiationsResponse {
 
 export async function fetchNotifications(org: string, repo: string) {
   const url = `/api/v1/repository/${org}/${repo}/notification/`;
-  const response: AxiosResponse<FetchNotifiationsResponse> = await axios.get(
-    url,
-  );
+  const response: AxiosResponse<FetchNotifiationsResponse> =
+    await axios.get(url);
   return response.data.notifications;
 }
 

@@ -15,10 +15,11 @@ from sqlalchemy.dialects import mysql
 
 
 def upgrade(op, tables, tester):
-    op.alter_column("blobupload", "byte_count", existing_type=sa.Integer(), type_=sa.BigInteger())
-    op.alter_column(
-        "blobupload", "uncompressed_byte_count", existing_type=sa.Integer(), type_=sa.BigInteger()
-    )
+    with op.batch_alter_table("blobupload") as batch_op:
+        batch_op.alter_column("byte_count", existing_type=sa.Integer(), type_=sa.BigInteger())
+        batch_op.alter_column(
+            "uncompressed_byte_count", existing_type=sa.Integer(), type_=sa.BigInteger()
+        )
 
     # ### population of test data ### #
     tester.populate_column("blobupload", "byte_count", tester.TestDataType.BigInteger)
@@ -32,7 +33,8 @@ def downgrade(op, tables, tester):
     tester.populate_column("blobupload", "uncompressed_byte_count", tester.TestDataType.Integer)
     # ### end population of test data ### #
 
-    op.alter_column("blobupload", "byte_count", existing_type=sa.BigInteger(), type_=sa.Integer())
-    op.alter_column(
-        "blobupload", "uncompressed_byte_count", existing_type=sa.BigInteger(), type_=sa.Integer()
-    )
+    with op.batch_alter_table("blobupload") as batch_op:
+        batch_op.alter_column("byte_count", existing_type=sa.BigInteger(), type_=sa.Integer())
+        batch_op.alter_column(
+            "uncompressed_byte_count", existing_type=sa.BigInteger(), type_=sa.Integer()
+        )

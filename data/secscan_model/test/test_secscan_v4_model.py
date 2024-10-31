@@ -2,7 +2,6 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import mock
 import pytest
@@ -23,17 +22,27 @@ from data.database import (
 )
 from data.registry_model import registry_model
 from data.secscan_model.datatypes import (
+    NVD,
+    CVSSv3,
+    Feature,
     Layer,
+    Metadata,
     PaginatedNotificationStatus,
     ScanLookupStatus,
     SecurityInformation,
+    Vulnerability,
+    link_to_cves,
+    vulns_to_base_scores,
+    vulns_to_cves,
 )
 from data.secscan_model.secscan_v4_model import (
     IndexReportState,
+    SecurityInformationLookupResult,
     V4SecurityScanner,
     features_for,
 )
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from test.fixtures import *
 from util.secscan.v4.api import APIRequestFailure
 
 
@@ -551,7 +560,7 @@ def test_features_for():
     expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
     generated = SecurityInformation(
         Layer(
-            "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+            "sha256:4fd9553ca70c7ed6cbb466573fed2d03b0a8dd2c2eba9febf2ce30f8d537ba17",
             "",
             "",
             4,
@@ -744,3 +753,143 @@ def test_enrichments_in_features_for():
     generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
 
     assert generated == expected
+
+
+@pytest.mark.parametrize(
+    "input_string, expected_output",
+    [
+        (
+            "This is a test string with CVE-2021-1234 and CVE-2022-5678",
+            ["CVE-2021-1234", "CVE-2022-5678"],
+        ),
+        ("No CVEs in this string", []),
+        ("CVE-2023-12345 is the only CVE here", ["CVE-2023-12345"]),
+        ("", []),
+    ],
+)
+def test_link_to_cves(input_string, expected_output):
+    assert link_to_cves(input_string) == expected_output
+
+
+@pytest.mark.parametrize(
+    "vulnerabilities, expected_output",
+    [
+        (
+            [
+                Vulnerability(
+                    Severity="High",
+                    NamespaceName="",
+                    Link="CVE-2021-1234",
+                    FixedBy="",
+                    Description="",
+                    Name="",
+                    Metadata=Metadata(
+                        UpdatedBy="",
+                        RepoName="",
+                        RepoLink="",
+                        DistroName="",
+                        DistroVersion="",
+                        NVD=NVD(CVSSv3=CVSSv3()),
+                    ),
+                ),
+                Vulnerability(
+                    Severity="Medium",
+                    NamespaceName="",
+                    Link="CVE-2022-5678",
+                    FixedBy="",
+                    Description="",
+                    Name="",
+                    Metadata=Metadata(
+                        UpdatedBy="",
+                        RepoName="",
+                        RepoLink="",
+                        DistroName="",
+                        DistroVersion="",
+                        NVD=NVD(CVSSv3=CVSSv3()),
+                    ),
+                ),
+                Vulnerability(
+                    Severity="Low",
+                    NamespaceName="",
+                    Link="Not a CVE link",
+                    FixedBy="",
+                    Description="",
+                    Name="",
+                    Metadata=Metadata(
+                        UpdatedBy="",
+                        RepoName="",
+                        RepoLink="",
+                        DistroName="",
+                        DistroVersion="",
+                        NVD=NVD(CVSSv3=CVSSv3()),
+                    ),
+                ),
+            ],
+            ["CVE-2021-1234", "CVE-2022-5678"],
+        ),
+    ],
+)
+def test_vulns_to_cves(vulnerabilities, expected_output):
+    assert vulns_to_cves(vulnerabilities) == expected_output
+
+
+@pytest.mark.parametrize(
+    "vulnerabilities, expected_output",
+    [
+        (
+            [
+                Vulnerability(
+                    Severity="High",
+                    NamespaceName="",
+                    Link="CVE-2021-1234",
+                    FixedBy="",
+                    Description="",
+                    Name="",
+                    Metadata=Metadata(
+                        UpdatedBy="",
+                        RepoName="",
+                        RepoLink="",
+                        DistroName="",
+                        DistroVersion="",
+                        NVD=NVD(CVSSv3=CVSSv3(Score=7.5)),
+                    ),
+                ),
+                Vulnerability(
+                    Severity="Medium",
+                    NamespaceName="",
+                    Link="CVE-2022-5678",
+                    FixedBy="",
+                    Description="",
+                    Name="",
+                    Metadata=Metadata(
+                        UpdatedBy="",
+                        RepoName="",
+                        RepoLink="",
+                        DistroName="",
+                        DistroVersion="",
+                        NVD=NVD(CVSSv3=CVSSv3(Score=None)),
+                    ),
+                ),
+                Vulnerability(
+                    Severity="Low",
+                    NamespaceName="",
+                    Link="Not a CVE link",
+                    FixedBy="",
+                    Description="",
+                    Name="",
+                    Metadata=Metadata(
+                        UpdatedBy="",
+                        RepoName="",
+                        RepoLink="",
+                        DistroName="",
+                        DistroVersion="",
+                        NVD=NVD(CVSSv3=None),
+                    ),
+                ),
+            ],
+            [7.5],
+        ),
+    ],
+)
+def test_vulns_to_base_scores(vulnerabilities, expected_output):
+    assert vulns_to_base_scores(vulnerabilities) == expected_output

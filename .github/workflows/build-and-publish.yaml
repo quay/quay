@@ -30,7 +30,7 @@ jobs:
         run: |
           BRANCH_NAME=${GITHUB_REF#refs/heads/}
           echo "version=${BRANCH_NAME/${{ env.BRANCH_PREFIX }}/}" >> $GITHUB_OUTPUT
-      
+
       - name: Setup SSH config for builders
         env:
           BUILDER_AARCH64_SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
@@ -52,11 +52,11 @@ jobs:
           touch ~/.ssh/id_builder_ppc64le
           chmod 600 ~/.ssh/id_builder_ppc64le
           echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
-          
+
           touch ~/.ssh/id_builder_s390x
           chmod 600 ~/.ssh/id_builder_s390x
           echo "$BUILDER_S390X_SSH_KEY" > ~/.ssh/id_builder_s390x
-          
+
           touch ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           cat >~/.ssh/known_hosts <<END
@@ -74,11 +74,11 @@ jobs:
           Host builder-ppc64le
             IdentityFile "~/.ssh/id_builder_ppc64le"
           $BUILDER_PPC64LE_SSH_CONFIG
-          
+
           Host builder-s390x
             StrictHostKeyChecking no
             HostName $BUILDER_S390X_SSH_HOST
-            User root
+            User wfuser
             IdentityFile "~/.ssh/id_builder_s390x"
           END
 
@@ -110,4 +110,3 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
-

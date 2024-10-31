@@ -25,7 +25,6 @@ def parse_manifest_from_bytes(
     media_type,
     validate=True,
     sparse_manifest_support=False,
-    ignore_unknown_mediatypes=False,
 ):
     """
     Parses and returns a manifest from the given bytes, for the given media type.
@@ -44,10 +43,10 @@ def parse_manifest_from_bytes(
         return DockerSchema2ManifestList(manifest_bytes)
 
     if media_type == OCI_IMAGE_MANIFEST_CONTENT_TYPE:
-        return OCIManifest(manifest_bytes, ignore_unknown_mediatypes=ignore_unknown_mediatypes)
+        return OCIManifest(manifest_bytes)
 
     if media_type == OCI_IMAGE_INDEX_CONTENT_TYPE:
-        return OCIIndex(manifest_bytes, ignore_unknown_mediatypes=ignore_unknown_mediatypes)
+        return OCIIndex(manifest_bytes)
 
     if media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
         return DockerSchema1Manifest(manifest_bytes, validate=validate)

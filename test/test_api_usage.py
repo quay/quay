@@ -25,11 +25,14 @@ from app import (
     notification_queue,
     storage,
 )
+from auth.scopes import READ_REPO, get_scope_information
 from buildtrigger.basehandler import BuildTriggerHandler
 from data import database, model
 from data.database import Repository as RepositoryTable
 from data.database import RepositoryActionCount
 from data.logs_model import logs_model
+from data.model.organization import create_organization
+from data.model.user import get_user
 from data.registry_model import registry_model
 from endpoints.api import api, api_bp
 from endpoints.api.billing import (
@@ -138,6 +141,8 @@ from endpoints.api.user import (
     StarredRepository,
     StarredRepositoryList,
     User,
+    UserAssignedAuthorization,
+    UserAssignedAuthorizations,
     UserAuthorization,
     UserAuthorizationList,
     UserNotification,
@@ -2323,6 +2328,27 @@ class TestListRepos(ApiTestCase):
         self.login(PUBLIC_USER)
         self.assertRepositoryNotVisible("neworg", "somerepo")
 
+    def test_list_repos_globalreadonlysuperuser(self):
+        repository = model.repository.get_repository("orgwithnosuperuser", "repo")
+        assert repository is not None
+        assert repository.visibility.name == "private"
+        self.login("globalreadonlysuperuser")
+        json = self.getJsonResponse(
+            RepositoryList,
+            params=dict(namespace="orgwithnosuperuser", public=False),
+        )
+
+        assert len(json["repositories"]) == 1
+        assert json["repositories"][0]["name"] == "repo"
+
+        # Make sure a normal user can't see the repository
+        self.login(NO_ACCESS_USER)
+        json = self.getJsonResponse(
+            RepositoryList,
+            params=dict(namespace="orgwithnosuperuser", public=False),
+        )
+        assert len(json["repositories"]) == 0
+
 
 class TestViewPublicRepository(ApiTestCase):
     def test_normalview(self):
@@ -3914,6 +3940,12 @@ class TestOrgRobots(ApiTestCase):
 
         self.assertEqual(json["token"], json2["token"])
 
+    def test_get_robots_as_globalreadonlysuperuser(self):
+        self.login("globalreadonlysuperuser")
+        params = dict(orgname=ORGANIZATION)
+        for r in self.getJsonResponse(OrgRobotList, params=params)["robots"]:
+            assert "token" in r
+
 
 class TestLogs(ApiTestCase):
     def test_repo_logs(self):
@@ -4599,6 +4631,81 @@ class TestUserAuthorizations(ApiTestCase):
         )
 
 
+class TestUserAssignedAuthorizations(ApiTestCase):
+    def test_list_authorizations(self):
+        assigned_scope = READ_REPO.scope
+        self.login(PUBLIC_USER)
+        admin = get_user(ADMIN_ACCESS_USER)
+        assigned_user = get_user(PUBLIC_USER)
+        org = create_organization("neworg", "neworg@devtable.com", admin)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assigned_authorization = model.oauth.assign_token_to_user(
+            app, assigned_user, app.redirect_uri, assigned_scope, "token"
+        )
+
+        response = self.getJsonResponse(
+            UserAssignedAuthorizations,
+            expected_code=200,
+        )
+        assert len(response["authorizations"]) == 1
+        authorization = response["authorizations"][0]
+        del authorization["application"]["avatar"]
+        del authorization["application"]["organization"]["avatar"]
+        assert authorization == {
+            "application": {
+                "name": app.name,
+                "clientId": app.client_id,
+                "description": app.description,
+                "url": app.application_uri,
+                "organization": {
+                    "name": org.username,
+                },
+            },
+            "uuid": assigned_authorization.uuid,
+            "redirectUri": assigned_authorization.redirect_uri,
+            "scopes": get_scope_information(assigned_scope),
+            "responseType": assigned_authorization.response_type,
+        }
+
+
+class TestUserAssignedAuthorization(ApiTestCase):
+    def test_delete_assigned_authorization(self):
+        assigned_scope = READ_REPO.scope
+        self.login(PUBLIC_USER)
+        admin = get_user(ADMIN_ACCESS_USER)
+        assigned_user = get_user(PUBLIC_USER)
+        org = create_organization("neworg", "neworg@devtable.com", admin)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assigned_authorization = model.oauth.assign_token_to_user(
+            app, assigned_user, app.redirect_uri, assigned_scope, "token"
+        )
+
+        response = self.getJsonResponse(
+            UserAssignedAuthorizations,
+            expected_code=200,
+        )
+        assert len(response["authorizations"]) == 1
+
+        self.deleteEmptyResponse(
+            UserAssignedAuthorization,
+            params=dict(assigned_authorization_uuid=assigned_authorization.uuid),
+        )
+
+        response = self.getJsonResponse(
+            UserAssignedAuthorizations,
+            expected_code=200,
+        )
+        assert len(response["authorizations"]) == 0
+
+    def test_delete_assigned_authorization_not_found(self):
+        self.login(PUBLIC_USER)
+        self.deleteResponse(
+            UserAssignedAuthorization,
+            params=dict(assigned_authorization_uuid="doesnotexist"),
+            expected_code=404,
+        )
+
+
 class TestSuperUserLogs(ApiTestCase):
     def test_get_logs(self):
         self.login(ADMIN_ACCESS_USER)
@@ -5182,6 +5289,36 @@ class TestOrganizationRhSku(ApiTestCase):
 
         plans = check_internal_api_for_subscription(org)
         assert len(plans) == 1
+
+    def test_expired_attachment(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(80808080, org.id, user.id, 1)
+        json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
+        self.assertEqual(json["privateAllowed"], False)
+
+    def test_reconciled_attachment(self):
+        self.login(SUBSCRIPTION_USER)
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 87654321, "quantity": 1}]},
+            expected_code=401,
+        )
+        json = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+        )
+        self.assertEqual(len(json), 0)
+
+    def test_terminated_attachment(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(22222222, org.id, user.id, 1)
+        json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
+        self.assertEqual(json["privateAllowed"], False)
 
 
 class TestUserSku(ApiTestCase):

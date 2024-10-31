@@ -27,6 +27,7 @@ from data.database import RepositoryState
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_superuser,
     format_date,
     log_action,
     nickname,
@@ -139,7 +140,7 @@ class RepositoryList(ApiResource):
         namespace_name = req["namespace"] if "namespace" in req else owner.username
 
         permission = CreateRepositoryPermission(namespace_name)
-        if permission.can() and not (
+        if (permission.can() or allow_if_superuser()) and not (
             features.RESTRICTED_USERS
             and usermanager.is_restricted_user(owner.username)
             and owner.username == namespace_name
@@ -255,10 +256,10 @@ class RepositoryList(ApiResource):
             popularity,
         )
 
-        repositories_with_view = [repo.to_dict() for repo in repos]
-
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA:
-            model.add_quota_view(repositories_with_view)
+            repositories_with_view = model.add_quota_view(repos)
+        else:
+            repositories_with_view = [repo.to_dict() for repo in repos]
 
         return {"repositories": repositories_with_view}, next_page_token
 

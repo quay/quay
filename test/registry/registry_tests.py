@@ -3,16 +3,6 @@ import binascii
 import hashlib
 import tarfile
 from io import BytesIO
-from test.fixtures import *
-from test.registry.fixtures import *
-from test.registry.liveserverfixture import *
-from test.registry.protocol_fixtures import *
-from test.registry.protocols import (
-    Failures,
-    Image,
-    ProtocolOptions,
-    layer_bytes_for_contents,
-)
 
 import bencode
 import rehash
@@ -26,6 +16,16 @@ from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.oci.index import OCIIndexBuilder
+from test.fixtures import *
+from test.registry.fixtures import *
+from test.registry.liveserverfixture import *
+from test.registry.protocol_fixtures import *
+from test.registry.protocols import (
+    Failures,
+    Image,
+    ProtocolOptions,
+    layer_bytes_for_contents,
+)
 from util.security.registry_jwt import decode_bearer_header
 from util.timedeltastring import convert_to_timedelta
 
@@ -1662,6 +1662,7 @@ def test_catalog_disabled_namespace(
 @pytest.mark.parametrize(
     "page_size",
     [
+        0,
         1,
         2,
         10,
@@ -1692,8 +1693,8 @@ def test_tags(
 
     repo_ref = registry_model.lookup_repository(namespace, repository)
     expected_tags = [tag.name for tag in registry_model.list_all_active_repository_tags(repo_ref)]
-    assert len(results) == len(expected_tags)
-    assert set([r for r in results]) == set(expected_tags)
+    assert len(results) == len(expected_tags) if page_size > 0 else len(results) == 0
+    assert set([r for r in results]) == set(expected_tags) if page_size > 0 else len(results) == 0
 
     # Invoke the tags endpoint again to ensure caching works.
     results = v2_protocol.tags(
@@ -1703,8 +1704,8 @@ def test_tags(
         namespace=namespace,
         repo_name=repository,
     )
-    assert len(results) == len(expected_tags)
-    assert set([r for r in results]) == set(expected_tags)
+    assert len(results) == len(expected_tags) if page_size > 0 else len(results) == 0
+    assert set([r for r in results]) == set(expected_tags) if page_size > 0 else len(results) == 0
 
 
 def test_tags_disabled_namespace(
@@ -1960,15 +1961,17 @@ def test_login(
             "devtable",
             "password",
             ["repository:someinvalid/devtable/simple:pull"],
-            []
-            if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
-            else [
-                {
-                    "type": "repository",
-                    "name": "someinvalid/devtable/simple",
-                    "actions": [],
-                },
-            ],
+            (
+                []
+                if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
+                else [
+                    {
+                        "type": "repository",
+                        "name": "someinvalid/devtable/simple",
+                        "actions": [],
+                    },
+                ]
+            ),
             False if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"] else True,
         ),
         # Pull with no access.
@@ -3099,4 +3102,44 @@ def test_conftest_policy_push(manifest_protocol, openpolicyagent_policy, liveser
         openpolicyagent_policy,
         credentials=credentials,
         expected_failure=None,
+    )
+
+
+def test_attempt_pull_by_tag_reference_for_deleted_tag(
+    manifest_protocol, basic_images, liveserver_session
+):
+    """Test: Delete a tag by specifying the reference in a v2 call"""
+    credentials = ("devtable", "password")
+
+    # Push the new repository
+    result = manifest_protocol.push(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
+    )
+    digests = [str(manifest.digest) for manifest in list(result.manifests.values())]
+    assert len(digests) == 1
+
+    # Ensure we can pull by digest
+    manifest_protocol.pull(
+        liveserver_session, "devtable", "newrepo", digests[0], basic_images, credentials=credentials
+    )
+
+    # Ensure we can pull by tag
+    manifest_protocol.pull(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
+    )
+
+    # Delete the tag by reference
+    manifest_protocol.delete(
+        liveserver_session, "devtable", "newrepo", "latest", credentials=credentials
+    )
+
+    # Attempt to pull from the repository by tag to verify it's not accessible
+    manifest_protocol.pull(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        basic_images,
+        credentials=credentials,
+        expected_failure=Failures.UNKNOWN_TAG,
     )

@@ -49,6 +49,7 @@ class TestConfig(DefaultConfig):
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
+    GLOBAL_READONLY_SUPER_USERS = ["globalreadonlysuperuser"]
 
     LICENSE_USER_LIMIT = 500
     LICENSE_EXPIRATION = datetime.now() + timedelta(weeks=520)
@@ -109,6 +110,7 @@ class TestConfig(DefaultConfig):
 
     FEATURE_QUOTA_MANAGEMENT = True
     FEATURE_EDIT_QUOTA = True
+    FEATURE_VERIFY_QUOTA = True
     FEATURE_QUOTA_SUPPRESS_FAILURES = False
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     FEATURE_PROXY_CACHE = True
@@ -125,3 +127,6 @@ class TestConfig(DefaultConfig):
     ACTION_LOG_AUDIT_DELETE_FAILURES = True
     AUTOPRUNE_FETCH_TAGS_PAGE_LIMIT = 2
     AUTOPRUNE_FETCH_REPOSITORIES_PAGE_LIMIT = 2
+    FEATURE_IMAGE_EXPIRY_TRIGGER = True
+
+    CDN_SPECIFIC_NAMESPACES = ["redhat"]
