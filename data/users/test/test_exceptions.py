@@ -4,6 +4,7 @@ from typing import List
 import ldap
 
 from data.users.externalldap import LDAPUsers, logger
+import pytest
 
 
 class ExceptionLogHandler(logging.StreamHandler):
@@ -234,10 +235,14 @@ def test_ldap_catchall_exception_verify_credentials():
         raise IOError("debuglog level only")
 
     user._ldap.get_connection = raiseException
-    assertRaises(IOError, user.verify_credentials("someone", "changeme"))
+    with pytest.raises(IOError) as excinfo:
+        user.verify_credentials("someone", "changeme"))
+    assert str(excinfo.value) == 'debuglog level only'
     assert exceptHandler.content == []
     logger.setLevel(logging.DEBUG)
-    assertRaises(IOError, user.verify_credentials("someone", "changeme"))
+    with pytest.raises(IOError) as excinfo:
+        verify_credentials("someone", "changeme")
+    assert str(excinfo.value) == 'debuglog level only'
     assert exceptHandler.content[0] == "debuglog level only"
     # reset content from log
     exceptHandler.content = []  # type: List[str]
