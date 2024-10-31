@@ -333,6 +333,7 @@ class LDAPUsers(FederatedUsers):
                         suffix=suffix,
                         filter_superusers=filter_superusers,
                         filter_restricted_users=filter_restricted_users,
+                        filter_global_readonly_superusers=filter_global_readonly_superusers,
                     )
                     if pairs is not None and len(pairs) > 0:
                         break
