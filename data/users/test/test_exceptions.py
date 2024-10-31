@@ -232,6 +232,7 @@ def test_ldap_catchall_exception_verify_credentials():
     )
 
     def raiseException(*args, **kwargs):
+        logger.debug("debuglog level only")
         raise IOError("debuglog level only")
 
     user._ldap.get_connection = raiseException
