@@ -4,7 +4,12 @@ from typing import List
 import ldap
 import pytest
 
-from data.users.externalldap import LDAPUsers, logger
+from data.users.externalldap import (
+    LDAP_CONNECTION_ERRORS,
+    LDAPUsers,
+    _log_ldap_error,
+    logger,
+)
 
 
 class ExceptionLogHandler(logging.StreamHandler):
@@ -125,8 +130,9 @@ def test_ldap_warning_exceptions_ping():
             raise ex(*[{"info": "test", "desc": "test"}])
 
         user._ldap.get_connection = lambda: raiseException(exception[0])
-        assert user.ping() == (False, "test")
-        assert exceptHandler.content[0] == f"{exception[0].__name__} {exception[1]} test"
+        assert user.ping() == (False, f"{exception[0].__name__} {exception[0].errnum} test")
+        assert exceptHandler.content[0] == "Exception when trying to health check LDAP"
+        assert exceptHandler.content[1] == f"{exception[0].__name__} {exception[0].errnum} test"
         # reset content from log
         exceptHandler.content = []  # type: List[str]
 
@@ -247,3 +253,21 @@ def test_ldap_catchall_exception_verify_credentials():
     assert exceptHandler.content[0] == "debuglog level only"
     # reset content from log
     exceptHandler.content = []  # type: List[str]
+
+
+def test_ldap_log_ldap_error():
+    # reset content from log
+    exceptHandler.content = []  # type: List[str]
+
+    for ldapexception in LDAP_CONNECTION_ERRORS:
+        with pytest.raises(ldapexception) as ldaperr:
+            raise ldapexception("Unittest")
+        # pytest.raises ExceptionInfo Object -> value Exception
+        args = _log_ldap_error(ldaperr.value, details=True, additional="Unittest context")
+        assert exceptHandler.content[0] == "Unittest context"
+        assert (
+            exceptHandler.content[1] == f"{ldapexception.__name__} {ldapexception.errnum} Unittest"
+        )
+        assert args == f"{ldapexception.__name__} {ldapexception.errnum} Unittest"
+        # reset content from log
+        exceptHandler.content = []  # type: List[str]

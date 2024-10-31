@@ -20,6 +20,37 @@ _DEFAULT_KEEPALIVE_IDLE = 10
 _DEFAULT_KEEPALIVE_INTERVAL = 5
 _DEFAULT_KEEPALIVE_PROBES = 3
 
+# exception we are interested to catch
+LDAP_CONNECTION_ERRORS = (
+    ldap.AUTH_UNKNOWN,
+    ldap.CONFIDENTIALITY_REQUIRED,
+    ldap.CONSTRAINT_VIOLATION,
+    ldap.INVALID_DN_SYNTAX,
+    ldap.INVALID_SYNTAX,
+    ldap.SERVER_DOWN,
+    ldap.STRONG_AUTH_NOT_SUPPORTED,
+    ldap.STRONG_AUTH_REQUIRED,
+    ldap.UNAVAILABLE,
+    ldap.UNWILLING_TO_PERFORM,
+    ldap.CONTROL_NOT_FOUND,
+    ldap.INAPPROPRIATE_AUTH,
+    ldap.INSUFFICIENT_ACCESS,
+)
+
+
+def _log_ldap_error(exc, level=logging.WARNING, details: bool = False, additional: str = ""):
+    """Log LDAP exception details."""
+    message = ""
+    for arg in exc.args:
+        if isinstance(arg, dict):
+            msg = arg.get("info", arg.get("desc", str(arg)))
+        else:
+            msg = str(arg)
+        message = f"{exc.__class__.__name__} {getattr(exc, 'errnum', 'N/A')} {msg}"
+        logger.log(level, additional) if additional != "" else None
+        logger.log(level, message)
+    return message if details else None
+
 
 class LDAPConnectionBuilder(object):
     def __init__(
@@ -259,28 +290,11 @@ class LDAPUsers(FederatedUsers):
             except ldap.LDAPError:
                 logger.debug("LDAP referral search exception")
                 return (None, "Username not found")
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
             return (None, "Username not found.")
-        except ldap.LDAPError:
-            logger.debug("LDAP search exception")
+        except ldap.LDAPError as ldaperr:
+            _log_ldap_error(ldaperr, additional="LDAP search exception")
             return (None, "Username not found")
 
     def _ldap_user_search(
@@ -302,25 +316,8 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
         try:
             with self._ldap.get_connection() as conn:
                 logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
@@ -333,6 +330,7 @@ class LDAPUsers(FederatedUsers):
                         suffix=suffix,
                         filter_superusers=filter_superusers,
                         filter_restricted_users=filter_restricted_users,
+                        filter_global_readonly_superusers=filter_global_readonly_superusers,
                     )
                     if pairs is not None and len(pairs) > 0:
                         break
@@ -348,34 +346,12 @@ class LDAPUsers(FederatedUsers):
                 # Filter out pairs without DNs. Some LDAP impls will return such pairs.
                 with_dns = [result for result in results if result.dn]
                 return (with_dns, None)
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
         except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
 
     def _ldap_single_user_search(
@@ -431,29 +407,17 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (False, "LDAP Admin dn or password is invalid")
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
-            return (False, args.get("info", args.get("desc")))
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            args = _log_ldap_error(
+                ldaperr, details=True, additional="Exception when trying to health check LDAP"
+            )
+            return (False, str(args))
         except ldap.LDAPError as lde:
-            logger.exception("Exception when trying to health check LDAP")
-            return (False, str(lde))
+            # capture any other error to ensure we can track and fix problems
+            args = _log_ldap_error(
+                ldaperr, details=True, additional="Exception when trying to health check LDAP"
+            )
+            return (False, str(args))
 
         return (True, None)
 
@@ -464,34 +428,12 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
             return (None, "LDAP Admin dn or password is invalid")
         except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
             return (None, "LDAP Admin dn or password is invalid")
 
         has_pagination = not self._force_no_pagination
@@ -531,34 +473,12 @@ class LDAPUsers(FederatedUsers):
 
                     except ldap.LDAPError as lde:
                         return (False, str(lde) or "Could not find DN %s" % user_search_dn)
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
             return (None, "Could not find DN")
         except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
             return (None, "Could not find DN")
 
         return (False, None)
@@ -632,67 +552,23 @@ class LDAPUsers(FederatedUsers):
             except ldap.INVALID_CREDENTIALS:
                 logger.debug("Invalid LDAP credentials")
                 return (None, "Invalid username or password.")
-            except (
-                ldap.AUTH_UNKNOWN,
-                ldap.CONFIDENTIALITY_REQUIRED,
-                ldap.CONSTRAINT_VIOLATION,
-                ldap.INVALID_DN_SYNTAX,
-                ldap.INVALID_SYNTAX,
-                ldap.SERVER_DOWN,
-                ldap.STRONG_AUTH_NOT_SUPPORTED,
-                ldap.STRONG_AUTH_REQUIRED,
-                ldap.UNAVAILABLE,
-                ldap.UNWILLING_TO_PERFORM,
-                ldap.CONTROL_NOT_FOUND,
-                ldap.INAPPROPRIATE_AUTH,
-                ldap.INSUFFICIENT_ACCESS,
-            ) as ldaperr:
-                for args in ldaperr.args:
-                    logger.warning(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
+            except LDAP_CONNECTION_ERRORS as ldaperr:
+                _log_ldap_error(ldaperr)
                 return (None, "Invalid username or password.")
             except Exception as ldaperr:
-                try:  # just in case we are not an LDAP exception
-                    for args in ldaperr.args:
-                        logger.debug(
-                            f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                        )
-                except:
-                    logger.debug(str(ldaperr))
+                # capture any other error to ensure we can track and fix problems
+                _log_ldap_error(ldaperr)
                 return (None, "Invalid username or password.")
 
         except ldap.INVALID_CREDENTIALS:
             logger.debug("Invalid LDAP credentials")
             return (None, "Invalid username or password.")
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
         except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
 
         return self._build_user_information(found_response)
@@ -723,34 +599,12 @@ class LDAPUsers(FederatedUsers):
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
         except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
             return (None, "Invalid username or password.")
 
         group_dn = group_lookup_args["group_dn"]
@@ -855,12 +709,10 @@ class LDAPUsers(FederatedUsers):
                             msgid = conn.search(
                                 user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
                             )
-                    except ldap.LDAPError as lde:
-                        logger.exception(
-                            "Got error when trying to search %s with filter %s: %s",
-                            user_search_dn,
-                            search_flt,
-                            str(lde),
+                    except ldap.LDAPError as ldaperr:
+                        _log_ldap_error(
+                            ldaperr,
+                            additional=f"Got error when trying to search {user_search_dn} with filter {search_flt}",
                         )
                         break
 
@@ -893,12 +745,10 @@ class LDAPUsers(FederatedUsers):
                                 search_flt,
                                 str(nsoe),
                             )
-                        except ldap.LDAPError as lde:
-                            logger.exception(
-                                "Error when trying to lookup results of search %s with filter %s: %s",
-                                user_search_dn,
-                                search_flt,
-                                str(lde),
+                        except ldap.LDAPError as ldaperr:
+                            _log_ldap_error(
+                                ldaperr,
+                                additional=f"Error when trying to lookup results of search {user_search_dn} with filter {serch_flt}",
                             )
                             break
 
@@ -947,30 +797,8 @@ class LDAPUsers(FederatedUsers):
                             # Pagination is not supported.
                             logger.debug("Pagination is not supported for this LDAP server")
                             break
-        except (
-            ldap.AUTH_UNKNOWN,
-            ldap.CONFIDENTIALITY_REQUIRED,
-            ldap.CONSTRAINT_VIOLATION,
-            ldap.INVALID_DN_SYNTAX,
-            ldap.INVALID_SYNTAX,
-            ldap.SERVER_DOWN,
-            ldap.STRONG_AUTH_NOT_SUPPORTED,
-            ldap.STRONG_AUTH_REQUIRED,
-            ldap.UNAVAILABLE,
-            ldap.UNWILLING_TO_PERFORM,
-            ldap.CONTROL_NOT_FOUND,
-            ldap.INAPPROPRIATE_AUTH,
-            ldap.INSUFFICIENT_ACCESS,
-        ) as ldaperr:
-            for args in ldaperr.args:
-                logger.warning(
-                    f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                )
+        except LDAP_CONNECTION_ERRORS as ldaperr:
+            _log_ldap_error(ldaperr)
         except Exception as ldaperr:
-            try:  # just in case we are not an LDAP exception
-                for args in ldaperr.args:
-                    logger.debug(
-                        f"{ldaperr.__class__.__name__} {ldaperr.errnum} {args.get('info', args.get('desc'))}"
-                    )
-            except:
-                logger.debug(str(ldaperr))
+            # capture any other error to ensure we can track and fix problems
+            _log_ldap_error(ldaperr)
