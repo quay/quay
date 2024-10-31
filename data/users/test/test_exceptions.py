@@ -234,10 +234,10 @@ def test_ldap_catchall_exception_verify_credentials():
         raise IOError("debuglog level only")
 
     user._ldap.get_connection = raiseException
-    assert user.verify_credentials("someone", "changeme") == (None, "Invalid username or password.")
+    assertRaises(IOError, user.verify_credentials("someone", "changeme"))
     assert exceptHandler.content == []
     logger.setLevel(logging.DEBUG)
-    assert user.verify_credentials("someone", "changeme") == (None, "Invalid username or password.")
+    assertRaises(IOError, user.verify_credentials("someone", "changeme"))
     assert exceptHandler.content[0] == "debuglog level only"
     # reset content from log
     exceptHandler.content = []  # type: List[str]
