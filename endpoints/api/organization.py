@@ -3,6 +3,7 @@ Manage organizations, members and OAuth applications.
 """
 
 import logging
+import time
 
 import recaptcha2
 from flask import request
@@ -26,6 +27,7 @@ from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     internal_only,
     log_action,
@@ -104,11 +106,11 @@ def org_view(o, teams):
         view["tag_expiration_s"] = o.removed_tag_expiration_s
         view["is_free_account"] = o.stripe_id is None
 
+    if is_admin or is_member:
         if features.QUOTA_MANAGEMENT and features.EDIT_QUOTA:
             quotas = model.namespacequota.get_namespace_quota_list(o.username)
             view["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
             view["quota_report"] = model.namespacequota.get_quota_for_view(o.username)
-
     return view
 
 
@@ -263,7 +265,7 @@ class Organization(ApiResource):
         Change the details for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -330,7 +332,7 @@ class Organization(ApiResource):
         Deletes the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -378,11 +380,21 @@ class OrgPrivateRepositories(ApiResource):
             if features.RH_MARKETPLACE:
                 query = organization_skus.get_org_subscriptions(organization.id)
                 rh_subscriptions = list(query.dicts()) if query is not None else []
+                now_ms = time.time() * 1000
                 for subscription in rh_subscriptions:
-                    subscription_sku = marketplace_subscriptions.get_subscription_sku(
+                    subscription_details = marketplace_subscriptions.get_subscription_details(
                         subscription["subscription_id"]
                     )
-                    equivalent_stripe_plan = get_plan_using_rh_sku(subscription_sku)
+                    expired_at = subscription_details["expiration_date"]
+                    terminated_at = subscription_details["terminated_date"]
+                    if expired_at < now_ms or (
+                        terminated_at is not None and terminated_at < now_ms
+                    ):
+                        organization_skus.remove_subscription_from_org(
+                            organization.id, subscription["subscription_id"]
+                        )
+                        continue
+                    equivalent_stripe_plan = get_plan_using_rh_sku(subscription_details["sku"])
                     if equivalent_stripe_plan:
                         if subscription.get("quantity") is None:
                             quantity = 1
@@ -417,7 +429,11 @@ class OrganizationCollaboratorList(ApiResource):
         List outside collaborators of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can():
+        if (
+            not permission.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         try:
@@ -465,7 +481,7 @@ class OrganizationMemberList(ApiResource):
         List the human members of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -526,7 +542,7 @@ class OrganizationMember(ApiResource):
         Retrieves the details of a member of the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             # Lookup the user.
             member = model.user.get_user(membername)
             if not member:
@@ -576,7 +592,7 @@ class OrganizationMember(ApiResource):
         it from all teams in the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             # Lookup the user.
             user = model.user.get_nonrobot_user(membername)
             if not user:
@@ -687,7 +703,7 @@ class OrganizationApplications(ApiResource):
         List the applications for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -777,7 +793,7 @@ class OrganizationApplicationResource(ApiResource):
         Retrieves the application with the specified client_id under the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -925,7 +941,11 @@ class OrganizationProxyCacheConfig(ApiResource):
         Retrieves the proxy cache configuration of the organization.
         """
         permission = OrganizationMemberPermission(orgname)
-        if not permission.can() and not allow_if_superuser():
+        if (
+            not permission.can()
+            and not allow_if_superuser()
+            and not allow_if_global_readonly_superuser()
+        ):
             raise Unauthorized()
 
         try:

@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives import serialization
 from httmock import HTTMock, urlmatch
 from six.moves.urllib.parse import quote
 
-from oauth.oidc import OAuthLoginException, OIDCLoginService
+from oauth.oidc import OAuthLoginException, OIDCLoginService, PasswordGrantException
 from util.config import URLSchemeAndHostname
 
 
@@ -179,6 +179,35 @@ def authorize_handler(discovery_content):
         return json.dumps(
             {"authorized": True, "scope": params["scope"][0], "state": params["state"][0]}
         )
+
+    return handler
+
+
+@pytest.fixture()
+def token_handler_password_grant(oidc_service):
+    @urlmatch(netloc=r"fakeoidc", path=r"/token")
+    def handler(_, request):
+
+        params = urllib.parse.parse_qs(request.body)
+        if params.get("client_id")[0] != oidc_service.client_id():
+            return {"status_code": 401, "content": "Invalid client id"}
+
+        if params.get("client_secret")[0] != oidc_service.client_secret():
+            return {"status_code": 401, "content": "Invalid client secret"}
+
+        if params.get("grant_type")[0] != "password":
+            return {"status_code": 400, "content": "Invalid authorization type"}
+
+        if params.get("username")[0] != "someusername":
+            return {"status_code": 401, "content": "Invalid login credentials"}
+
+        if params.get("password")[0] != "somepassword":
+            return {"status_code": 401, "content": "Invalid login credentials"}
+
+        content = {
+            "access_token": "sometoken",
+        }
+        return {"status_code": 200, "content": json.dumps(content)}
 
     return handler
 
@@ -406,6 +435,41 @@ def test_exchange_code_validcode(
                 assert lusername == preferred_username
             else:
                 assert lusername == lid
+
+
+def test_password_grant_for_login_exceptions(
+    oidc_service,
+    discovery_handler,
+    token_handler,
+    token_handler_password_grant,
+):
+    with HTTMock(discovery_handler, token_handler):
+        with pytest.raises(PasswordGrantException) as err:
+            oidc_service.password_grant_for_login("username", None)
+            assert err.value == "Missing username or password"
+
+        with pytest.raises(PasswordGrantException) as err:
+            oidc_service.password_grant_for_login(None, "password")
+            assert err.value == "Missing username or password"
+
+        with pytest.raises(PasswordGrantException) as err:
+            oidc_service.password_grant_for_login(None, None)
+            assert err.value == "Missing username or password"
+
+    with HTTMock(discovery_handler, token_handler_password_grant):
+        with pytest.raises(PasswordGrantException) as err:
+            oidc_service.password_grant_for_login("someusername", "wrongpassword")
+            assert err.value == "Got non-2XX response for code exchange: 401"
+
+
+def test_password_grant_for_login(
+    oidc_service,
+    discovery_handler,
+    token_handler_password_grant,
+):
+    with HTTMock(discovery_handler, token_handler_password_grant):
+        response = oidc_service.password_grant_for_login("someusername", "somepassword")
+        assert response.get("access_token") == "sometoken"
 
 
 def test_load_keys_from_url():

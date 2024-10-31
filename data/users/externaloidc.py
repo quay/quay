@@ -1,8 +1,12 @@
 import json
 import logging
+from urllib.parse import urlparse
 
+import app
 from data.model import InvalidTeamException, UserAlreadyInTeam, team
-from data.users.federated import FederatedUsers
+from data.users.federated import FederatedUsers, UserInformation
+from oauth.login_utils import get_username_from_userinfo
+from oauth.oidc import OIDCLoginService
 
 logger = logging.getLogger(__name__)
 
@@ -27,20 +31,65 @@ class OIDCUsers(FederatedUsers):
         self._preferred_group_claim_name = preferred_group_claim_name
         self._requires_email = requires_email
 
+    def service_metadata(self):
+        for service in app.oauth_login.services:
+            if isinstance(service, OIDCLoginService):
+                return {"issuer_domain": urlparse(service.get_issuer()).netloc}
+        return {}
+
     def is_superuser(self, username: str):
         """
         Initiated from FederatedUserManager.is_superuser(), falls back to ConfigUserManager.is_superuser()
         """
         return None
 
+    def is_global_readonly_superuser(self, username: str):
+        """
+        Initiated from FederatedUserManager.is_global_readonly_superuser(), falls back to ConfigUserManager.is_global_readonly_superuser()
+        """
+        return None
+
+    def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
+        """
+        Used by teamSync worker, unsupported for oidc team sync
+        """
+        return (None, "Not supported")
+
     def verify_credentials(self, username_or_email, password):
         """
         Unsupported to login via username/email and password
         """
-        return (
-            None,
-            f"Unsupported login option. Please sign in with the configured {self._federated_service} provider",
-        )
+        if not password:
+            return (None, "Anonymous binding not allowed.")
+
+        if not username_or_email:
+            return (None, "Missing username or email.")
+
+        for service in app.oauth_login.services:
+            if isinstance(service, OIDCLoginService):
+                try:
+                    response = service.password_grant_for_login(username_or_email, password)
+
+                    if response is None:
+                        return (None, "External OIDC Group Sync: Got no user info")
+
+                    user_info = service.get_user_info(
+                        service._http_client, response["access_token"]
+                    )
+
+                    return (
+                        UserInformation(
+                            username=get_username_from_userinfo(user_info, service.config),
+                            email=user_info.get("email"),
+                            id=user_info.get("sub"),
+                        ),
+                        None,
+                    )
+                except Exception as err:
+                    logger.exception(
+                        f"External OIDC Group Sync: Exception while verifying credentials: {err}"
+                    )
+                    return (None, err)
 
     def check_group_lookup_args(self, group_lookup_args, disable_pagination=False):
         """

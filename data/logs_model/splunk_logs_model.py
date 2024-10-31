@@ -5,6 +5,7 @@ from datetime import datetime
 from data import model
 from data.logs_model.interface import ActionLogsDataInterface
 from data.logs_model.logs_producer import LogProducerProxy, LogSendException
+from data.logs_model.logs_producer.splunk_hec_logs_producer import SplunkHECLogsProducer
 from data.logs_model.logs_producer.splunk_logs_producer import SplunkLogsProducer
 from data.logs_model.shared import SharedModel
 from data.model import config
@@ -18,11 +19,19 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
     SplunkLogsModel implements model for establishing connection and sending events to Splunk cluster
     """
 
-    def __init__(self, producer, splunk_config, should_skip_logging=None):
+    def __init__(
+        self, producer, splunk_config=None, splunk_hec_config=None, should_skip_logging=None
+    ):
         self._should_skip_logging = should_skip_logging
         self._logs_producer = LogProducerProxy()
         if producer == "splunk":
+            if splunk_config is None:
+                raise Exception("splunk_config must be provided for 'splunk' producer")
             self._logs_producer.initialize(SplunkLogsProducer(**splunk_config))
+        elif producer == "splunk_hec":
+            if splunk_hec_config is None:
+                raise Exception("splunk_hec_config must be provided for 'splunk_hec' producer")
+            self._logs_producer.initialize(SplunkHECLogsProducer(**splunk_hec_config))
         else:
             raise Exception("Invalid log producer: %s" % producer)
 
@@ -83,11 +92,15 @@ class SplunkLogsModel(SharedModel, ActionLogsDataInterface):
         }
 
         try:
-            self._logs_producer.send(json.dumps(log_data, sort_keys=True, default=str))
+            self._logs_producer.send(log_data)
         except LogSendException as lse:
-            strict_logging_disabled = config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
-            logger.exception("log_action failed", extra=({"exception": lse}).update(log_data))
-            if not (strict_logging_disabled and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING):
+            strict_logging_disabled = config.app_config.get("ALLOW_WITHOUT_STRICT_LOGGING") or (
+                config.app_config.get("ALLOW_PULLS_WITHOUT_STRICT_LOGGING")
+                and kind_name in ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
+            )
+            if strict_logging_disabled:
+                logger.exception("log_action failed", extra=({"exception": lse}).update(log_data))
+            else:
                 raise
 
     def lookup_logs(

@@ -1,5 +1,6 @@
 import React, {useEffect} from 'react';
 import {
+  Button,
   DatePicker,
   Flex,
   FlexItem,
@@ -45,6 +46,8 @@ export default function UsageLogs(props: UsageLogsProps) {
     formatDate(maxDate.toISOString().split('T')[0]),
   );
 
+  const [chartHidden, setChartHidden] = React.useState<boolean>(false);
+
   useEffect(() => {
     queryClient.invalidateQueries({
       queryKey: [
@@ -72,6 +75,14 @@ export default function UsageLogs(props: UsageLogsProps) {
       <Flex direction={{default: 'column'}}>
         <FlexItem>
           <Split hasGutter className="usage-logs-header">
+            <SplitItem>
+              <Button
+                variant="secondary"
+                onClick={() => setChartHidden(!chartHidden)}
+              >
+                {chartHidden ? 'Show Chart' : 'Hide Chart'}
+              </Button>
+            </SplitItem>
             <SplitItem isFilled></SplitItem>
             <SplitItem>
               <DatePicker
@@ -103,13 +114,15 @@ export default function UsageLogs(props: UsageLogsProps) {
           </Split>
         </FlexItem>
         <FlexItem>
-          <UsageLogsGraph
-            starttime={logStartDate}
-            endtime={logEndDate}
-            repo={props.repository}
-            org={props.organization}
-            type={props.type}
-          />
+          {chartHidden ? null : (
+            <UsageLogsGraph
+              starttime={logStartDate}
+              endtime={logEndDate}
+              repo={props.repository}
+              org={props.organization}
+              type={props.type}
+            />
+          )}
         </FlexItem>
         <FlexItem>
           <UsageLogsTable
@@ -227,4 +240,9 @@ export const logKinds = {
   create_repository_autoprune_policy: 'Create Repository Autoprune Policy',
   update_repository_autoprune_policy: 'Update Repository Autoprune Policy',
   delete_repository_autoprune_policy: 'Delete Repository Autoprune Policy',
+  oauth_token_assigned: 'OAuth token assigned',
+  enable_team_sync: 'Enable Team Sync',
+  disable_team_sync: 'Disable Team Sync',
+  export_logs_success: 'Export logs queued for delivery',
+  export_logs_failure: 'Export logs failure',
 };

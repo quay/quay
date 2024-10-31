@@ -10,7 +10,7 @@
            sign-in-started="markStarted()" ng-repeat="provider in EXTERNAL_LOGINS" is-link="true"></div>
     </div>
 
-    <div class="or-bar" quay-show="Features.DIRECT_LOGIN && EXTERNAL_LOGINS.length">or</div>
+    <div class="or-bar" quay-show="Config.AUTHENTICATION_TYPE != 'OIDC' && Features.DIRECT_LOGIN && EXTERNAL_LOGINS.length">or</div>
 
     <span class="cor-loader" ng-show="signingIn"></span>
 
@@ -24,7 +24,7 @@
       Too many attempts have been made to login. Please try again in {{ tryAgainSoon }} second<span ng-if="tryAgainSoon != 1">s</span>.
     </div>
 
-    <div quay-show="Features.DIRECT_LOGIN">
+    <div quay-show="Features.DIRECT_LOGIN && Config.AUTHENTICATION_TYPE != 'OIDC'">
       <input type="text" class="form-control" id="signin-username" name="username"
              placeholder="Username or E-mail Address" ng-model="signInUser.username"
              ng-disabled="tryAgainSoon > 0 || signingIn" autofocus>
@@ -34,7 +34,7 @@
              placeholder="Password" ng-model="signInUser.password">
     </div>
 
-    <button class="btn btn-primary btn-block" type="submit" quay-show="Features.DIRECT_LOGIN" ng-disabled="tryAgainSoon > 0">
+    <button class="btn btn-primary btn-block" type="submit" quay-show="Features.DIRECT_LOGIN && Config.AUTHENTICATION_TYPE != 'OIDC'" ng-disabled="tryAgainSoon > 0">
       Sign in to <span class="registry-name"></span>
     </button>
   </form>

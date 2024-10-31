@@ -1,10 +1,16 @@
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
 from flask_principal import AnonymousIdentity
 from mock import patch
 
-import features
+from data.model.autoprune import create_repository_autoprune_policy
+from data.model.namespacequota import (
+    get_namespace_quota_limit_list,
+    get_namespace_quota_list,
+)
+from data.model.user import get_user
 from endpoints.api import api
 from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
@@ -63,11 +69,11 @@ EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
 SECURITY_TESTS: List[
     Tuple[
         Type[ApiResource],
-        str,
-        Optional[Dict[str, Any]],
-        Optional[Dict[str, Any]],
-        Optional[str],
-        int,
+        str,  # HTTP method
+        Optional[Dict[str, Any]],  # Query params
+        Optional[Dict[str, Any]],  # Body params
+        Optional[str],  # Identity
+        int,  # Expected HTTP status code
     ]
 ] = [
     (AppTokens, "GET", {}, {}, None, 401),
@@ -94,6 +100,14 @@ SECURITY_TESTS: List[
     (OrganizationCollaboratorList, "GET", ORG_PARAMS, None, "freshuser", 403),
     (OrganizationCollaboratorList, "GET", ORG_PARAMS, None, "reader", 403),
     (OrganizationCollaboratorList, "GET", ORG_PARAMS, None, "devtable", 200),
+    (
+        OrganizationCollaboratorList,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (OrganizationTeamSyncing, "POST", TEAM_PARAMS, {}, None, 401),
     (OrganizationTeamSyncing, "POST", TEAM_PARAMS, {}, "freshuser", 403),
     (OrganizationTeamSyncing, "POST", TEAM_PARAMS, {}, "reader", 403),
@@ -110,14 +124,17 @@ SECURITY_TESTS: List[
     (SuperUserRepositoryBuildLogs, "GET", BUILD_PARAMS, None, "freshuser", 403),
     (SuperUserRepositoryBuildLogs, "GET", BUILD_PARAMS, None, "reader", 403),
     (SuperUserRepositoryBuildLogs, "GET", BUILD_PARAMS, None, "devtable", 400),
+    (SuperUserRepositoryBuildLogs, "GET", BUILD_PARAMS, None, "globalreadonlysuperuser", 400),
     (SuperUserRepositoryBuildStatus, "GET", BUILD_PARAMS, None, None, 401),
     (SuperUserRepositoryBuildStatus, "GET", BUILD_PARAMS, None, "freshuser", 403),
     (SuperUserRepositoryBuildStatus, "GET", BUILD_PARAMS, None, "reader", 403),
     (SuperUserRepositoryBuildStatus, "GET", BUILD_PARAMS, None, "devtable", 400),
+    (SuperUserRepositoryBuildStatus, "GET", BUILD_PARAMS, None, "globalreadonlysuperuser", 400),
     (SuperUserRepositoryBuildResource, "GET", BUILD_PARAMS, None, None, 401),
     (SuperUserRepositoryBuildResource, "GET", BUILD_PARAMS, None, "freshuser", 403),
     (SuperUserRepositoryBuildResource, "GET", BUILD_PARAMS, None, "reader", 403),
     (SuperUserRepositoryBuildResource, "GET", BUILD_PARAMS, None, "devtable", 404),
+    (SuperUserRepositoryBuildResource, "GET", BUILD_PARAMS, None, "globalreadonlysuperuser", 404),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "freshuser", 403),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "reader", 403),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "devtable", 404),
@@ -133,6 +150,14 @@ SECURITY_TESTS: List[
     (BuildTrigger, "GET", TRIGGER_PARAMS, {}, "freshuser", 403),
     (BuildTrigger, "GET", TRIGGER_PARAMS, {}, "reader", 403),
     (BuildTrigger, "GET", TRIGGER_PARAMS, {}, "devtable", 404),
+    (
+        BuildTrigger,
+        "GET",
+        {"repository": "buynlarge/orgrepo", "trigger_uuid": "someuuid"},
+        {},
+        "globalreadonlysuperuser",
+        404,
+    ),
     (BuildTrigger, "DELETE", TRIGGER_PARAMS, {}, None, 401),
     (BuildTrigger, "DELETE", TRIGGER_PARAMS, {}, "freshuser", 403),
     (BuildTrigger, "DELETE", TRIGGER_PARAMS, {}, "reader", 403),
@@ -172,6 +197,14 @@ SECURITY_TESTS: List[
         None,
         "devtable",
         403,
+    ),
+    (
+        RepositoryUserTransitivePermission,
+        "GET",
+        {"username": "A2O9", "repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        404,
     ),
     (
         RepositoryUserTransitivePermission,
@@ -637,12 +670,28 @@ SECURITY_TESTS: List[
         "GET",
         {"orgname": "buynlarge", "teamname": "readers"},
         None,
+        "globalreadonlysuperuser",
+        200,
+    ),
+    (
+        TeamPermissions,
+        "GET",
+        {"orgname": "buynlarge", "teamname": "readers"},
+        None,
         "freshuser",
         403,
     ),
     (TeamPermissions, "GET", {"orgname": "buynlarge", "teamname": "readers"}, None, "reader", 403),
     (TeamMemberList, "GET", {"orgname": "buynlarge", "teamname": "readers"}, None, None, 401),
     (TeamMemberList, "GET", {"orgname": "buynlarge", "teamname": "readers"}, None, "devtable", 200),
+    (
+        TeamMemberList,
+        "GET",
+        {"orgname": "buynlarge", "teamname": "readers"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (
         TeamMemberList,
         "GET",
@@ -703,6 +752,14 @@ SECURITY_TESTS: List[
         None,
         "devtable",
         403,
+    ),
+    (
+        RepositoryUserPermission,
+        "GET",
+        {"username": "A2O9", "repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        400,
     ),
     (
         RepositoryUserPermission,
@@ -1189,6 +1246,14 @@ SECURITY_TESTS: List[
         "GET",
         {"repository": "buynlarge/orgrepo", "teamname": "readers"},
         None,
+        "globalreadonlysuperuser",
+        200,
+    ),
+    (
+        RepositoryTeamPermission,
+        "GET",
+        {"repository": "buynlarge/orgrepo", "teamname": "readers"},
+        None,
         "freshuser",
         403,
     ),
@@ -1950,6 +2015,14 @@ SECURITY_TESTS: List[
         {"repository": "devtable/shared", "trigger_uuid": "ZM1W"},
         None,
         "devtable",
+        200,
+    ),
+    (
+        TriggerBuildList,
+        "GET",
+        {"repository": "buynlarge/orgrepo", "trigger_uuid": "ZM1W"},
+        None,
+        "globalreadonlysuperuser",
         200,
     ),
     (
@@ -2558,6 +2631,14 @@ SECURITY_TESTS: List[
         {"build_uuid": "S5J8", "repository": "buynlarge/orgrepo"},
         None,
         "devtable",
+        400,
+    ),
+    (
+        RepositoryBuildLogs,
+        "GET",
+        {"build_uuid": "S5J8", "repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
         400,
     ),
     (
@@ -2782,6 +2863,14 @@ SECURITY_TESTS: List[
         "GET",
         {"orgname": "buynlarge", "membername": "someuser"},
         None,
+        "globalreadonlysuperuser",
+        404,
+    ),
+    (
+        OrganizationMember,
+        "GET",
+        {"orgname": "buynlarge", "membername": "someuser"},
+        None,
         "freshuser",
         403,
     ),
@@ -2813,6 +2902,14 @@ SECURITY_TESTS: List[
     (OrgRobot, "DELETE", {"orgname": "buynlarge", "robot_shortname": "Z7PD"}, None, "reader", 403),
     (OrgRobot, "GET", {"orgname": "buynlarge", "robot_shortname": "Z7PD"}, None, None, 401),
     (OrgRobot, "GET", {"orgname": "buynlarge", "robot_shortname": "Z7PD"}, None, "devtable", 400),
+    (
+        OrgRobot,
+        "GET",
+        {"orgname": "buynlarge", "robot_shortname": "Z7PD"},
+        None,
+        "globalreadonlysuperuser",
+        400,
+    ),
     (OrgRobot, "GET", {"orgname": "buynlarge", "robot_shortname": "Z7PD"}, None, "freshuser", 403),
     (OrgRobot, "GET", {"orgname": "buynlarge", "robot_shortname": "Z7PD"}, None, "reader", 403),
     (OrgRobot, "PUT", {"orgname": "buynlarge", "robot_shortname": "Z7PD"}, {}, None, 401),
@@ -2976,6 +3073,14 @@ SECURITY_TESTS: List[
         "GET",
         {"repository": "buynlarge/orgrepo"},
         None,
+        "globalreadonlysuperuser",
+        200,
+    ),
+    (
+        RepositoryTeamPermissionList,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
         "freshuser",
         403,
     ),
@@ -2988,6 +3093,14 @@ SECURITY_TESTS: List[
         None,
         "devtable",
         403,
+    ),
+    (
+        RepositoryUserPermissionList,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        200,
     ),
     (
         RepositoryUserPermissionList,
@@ -3080,6 +3193,14 @@ SECURITY_TESTS: List[
         "GET",
         {"repository": "public/publicrepo", "trigger_uuid": "D6TI"},
         None,
+        "globalreadonlysuperuser",
+        404,
+    ),
+    (
+        BuildTrigger,
+        "GET",
+        {"repository": "public/publicrepo", "trigger_uuid": "D6TI"},
+        None,
         "freshuser",
         403,
     ),
@@ -3393,6 +3514,14 @@ SECURITY_TESTS: List[
         {"uuid": "QFAT", "repository": "buynlarge/orgrepo"},
         None,
         "devtable",
+        404,
+    ),
+    (
+        RepositoryNotification,
+        "GET",
+        {"uuid": "QFAT", "repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
         404,
     ),
     (
@@ -4036,6 +4165,14 @@ SECURITY_TESTS: List[
     ),
     (PermissionPrototypeList, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (PermissionPrototypeList, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (
+        PermissionPrototypeList,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (PermissionPrototypeList, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (PermissionPrototypeList, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (
@@ -4080,10 +4217,12 @@ SECURITY_TESTS: List[
     (OrgPrivateRepositories, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (OrgRobotList, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrgRobotList, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (OrgRobotList, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (OrgRobotList, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgRobotList, "GET", {"orgname": "buynlarge"}, None, "reader", 200),
     (OrganizationCard, "GET", {"orgname": "buynlarge"}, None, None, 401),
@@ -4133,6 +4272,7 @@ SECURITY_TESTS: List[
     (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
     (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
+    (OrgLogs, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (
         RepositoryVisibility,
         "POST",
@@ -4231,6 +4371,14 @@ SECURITY_TESTS: List[
     ),
     (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, None, 401),
     (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (
+        BuildTriggerList,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, "freshuser", 403),
     (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, "reader", 403),
     (BuildTriggerList, "GET", {"repository": "devtable/shared"}, None, None, 401),
@@ -4243,6 +4391,14 @@ SECURITY_TESTS: List[
     (BuildTriggerList, "GET", {"repository": "buynlarge/orgrepo"}, None, "reader", 403),
     (RepositoryNotificationList, "GET", {"repository": "public/publicrepo"}, None, None, 401),
     (RepositoryNotificationList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (
+        RepositoryNotificationList,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (
         RepositoryNotificationList,
         "GET",
@@ -4713,6 +4869,14 @@ SECURITY_TESTS: List[
     (RepositoryLogs, "GET", {"repository": "buynlarge/orgrepo"}, None, "devtable", 200),
     (RepositoryLogs, "GET", {"repository": "buynlarge/orgrepo"}, None, "freshuser", 403),
     (RepositoryLogs, "GET", {"repository": "buynlarge/orgrepo"}, None, "reader", 403),
+    (
+        RepositoryLogs,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (UserRobot, "DELETE", {"robot_shortname": "robotname"}, None, None, 401),
     (UserRobot, "DELETE", {"robot_shortname": "robotname"}, None, "devtable", 400),
     (UserRobot, "DELETE", {"robot_shortname": "robotname"}, None, "freshuser", 400),
@@ -4779,6 +4943,14 @@ SECURITY_TESTS: List[
         {"orgname": "buynlarge", "robot_shortname": "robotname"},
         None,
         "devtable",
+        400,
+    ),
+    (
+        OrgRobotPermissions,
+        "GET",
+        {"orgname": "buynlarge", "robot_shortname": "robotname"},
+        None,
+        "globalreadonlysuperuser",
         400,
     ),
     (
@@ -4911,6 +5083,14 @@ SECURITY_TESTS: List[
     (ApplicationInformation, "GET", {"client_id": "3LGI"}, None, "reader", 404),
     (OrganizationApplications, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrganizationApplications, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (
+        OrganizationApplications,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (OrganizationApplications, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrganizationApplications, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (OrganizationApplications, "POST", {"orgname": "buynlarge"}, {"name": "foo"}, None, 401),
@@ -4970,6 +5150,14 @@ SECURITY_TESTS: List[
         {"orgname": "buynlarge", "client_id": "deadbeef"},
         None,
         "devtable",
+        200,
+    ),
+    (
+        OrganizationApplicationResource,
+        "GET",
+        {"orgname": "buynlarge", "client_id": "deadbeef"},
+        None,
+        "globalreadonlysuperuser",
         200,
     ),
     (
@@ -5069,6 +5257,35 @@ SECURITY_TESTS: List[
     (UserAuthorization, "GET", {"access_token_uuid": "fake"}, None, "devtable", 404),
     (UserAuthorization, "GET", {"access_token_uuid": "fake"}, None, "freshuser", 404),
     (UserAuthorization, "GET", {"access_token_uuid": "fake"}, None, "reader", 404),
+    (UserAssignedAuthorizations, "GET", None, None, None, 401),
+    (UserAssignedAuthorizations, "GET", None, None, "devtable", 200),
+    (UserAssignedAuthorizations, "GET", None, None, "freshuser", 200),
+    (UserAssignedAuthorizations, "GET", None, None, "reader", 200),
+    (UserAssignedAuthorization, "DELETE", {"assigned_authorization_uuid": "fake"}, None, None, 401),
+    (
+        UserAssignedAuthorization,
+        "DELETE",
+        {"assigned_authorization_uuid": "fake"},
+        None,
+        "devtable",
+        404,
+    ),
+    (
+        UserAssignedAuthorization,
+        "DELETE",
+        {"assigned_authorization_uuid": "fake"},
+        None,
+        "freshuser",
+        404,
+    ),
+    (
+        UserAssignedAuthorization,
+        "DELETE",
+        {"assigned_authorization_uuid": "fake"},
+        None,
+        "reader",
+        404,
+    ),
     (UserAggregateLogs, "GET", None, None, None, 401),
     (UserAggregateLogs, "GET", None, None, "devtable", 200),
     (UserAggregateLogs, "GET", None, None, "freshuser", 200),
@@ -5077,8 +5294,17 @@ SECURITY_TESTS: List[
     (OrgAggregateLogs, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
     (OrgAggregateLogs, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgAggregateLogs, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
+    (OrgAggregateLogs, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (RepositoryAggregateLogs, "GET", {"repository": "devtable/simple"}, None, None, 401),
     (RepositoryAggregateLogs, "GET", {"repository": "devtable/simple"}, None, "devtable", 200),
+    (
+        RepositoryAggregateLogs,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (RepositoryAggregateLogs, "GET", {"repository": "devtable/simple"}, None, "freshuser", 403),
     (RepositoryAggregateLogs, "GET", {"repository": "devtable/simple"}, None, "reader", 403),
     (ExportUserLogs, "POST", None, EXPORTLOGS_PARAMS, None, 401),
@@ -5120,6 +5346,7 @@ SECURITY_TESTS: List[
     (SuperUserAggregateLogs, "GET", None, None, "reader", 403),
     (SuperUserLogs, "GET", None, None, None, 401),
     (SuperUserLogs, "GET", None, None, "devtable", 200),
+    (SuperUserLogs, "GET", None, None, "globalreadonlysuperuser", 200),
     (SuperUserLogs, "GET", None, None, "freshuser", 403),
     (SuperUserLogs, "GET", None, None, "reader", 403),
     (SuperUserSendRecoveryEmail, "POST", {"username": "someuser"}, None, None, 401),
@@ -5136,6 +5363,7 @@ SECURITY_TESTS: List[
     (SuperUserServiceKeyApproval, "POST", {"kid": 1234}, {}, "reader", 403),
     (SuperUserServiceKeyManagement, "GET", None, None, None, 401),
     (SuperUserServiceKeyManagement, "GET", None, None, "devtable", 200),
+    (SuperUserServiceKeyManagement, "GET", None, None, "globalreadonlysuperuser", 200),
     (SuperUserServiceKeyManagement, "GET", None, None, "freshuser", 403),
     (SuperUserServiceKeyManagement, "GET", None, None, "reader", 403),
     (
@@ -5176,6 +5404,7 @@ SECURITY_TESTS: List[
     (SuperUserServiceKey, "DELETE", {"kid": 1234}, None, "reader", 403),
     (SuperUserServiceKey, "GET", {"kid": 1234}, None, None, 401),
     (SuperUserServiceKey, "GET", {"kid": 1234}, None, "devtable", 404),
+    (SuperUserServiceKey, "GET", {"kid": 1234}, None, "globalreadonlysuperuser", 404),
     (SuperUserServiceKey, "GET", {"kid": 1234}, None, "freshuser", 403),
     (SuperUserServiceKey, "GET", {"kid": 1234}, None, "reader", 403),
     (SuperUserServiceKey, "PUT", {"kid": 1234}, {}, None, 401),
@@ -5200,6 +5429,7 @@ SECURITY_TESTS: List[
     (SuperUserOrganizationList, "GET", None, None, "devtable", 200),
     (SuperUserOrganizationList, "GET", None, None, "freshuser", 403),
     (SuperUserOrganizationList, "GET", None, None, "reader", 403),
+    (SuperUserOrganizationList, "GET", None, None, "globalreadonlysuperuser", 200),
     (SuperUserOrganizationManagement, "DELETE", {"name": "buynlarge"}, None, None, 401),
     (SuperUserOrganizationManagement, "DELETE", {"name": "buynlarge"}, None, "devtable", 204),
     (SuperUserOrganizationManagement, "DELETE", {"name": "buynlarge"}, None, "freshuser", 403),
@@ -5210,6 +5440,7 @@ SECURITY_TESTS: List[
     (SuperUserOrganizationManagement, "PUT", {"name": "buynlarge"}, {}, "reader", 403),
     (SuperUserList, "GET", None, None, None, 401),
     (SuperUserList, "GET", None, None, "devtable", 200),
+    (SuperUserList, "GET", None, None, "globalreadonlysuperuser", 200),
     (SuperUserList, "GET", None, None, "freshuser", 403),
     (SuperUserList, "GET", None, None, "reader", 403),
     (SuperUserList, "POST", None, {"username": "foo"}, None, 401),
@@ -5230,6 +5461,7 @@ SECURITY_TESTS: List[
     (SuperUserManagement, "PUT", {"username": "freshuser"}, {}, "reader", 403),
     (SuperUserRegistrySize, "GET", None, None, None, 401),
     (SuperUserRegistrySize, "GET", None, None, "devtable", 200),
+    (SuperUserRegistrySize, "GET", None, None, "globalreadonlysuperuser", 200),
     (SuperUserRegistrySize, "GET", None, None, "freshuser", 403),
     (SuperUserRegistrySize, "GET", None, None, "reader", 403),
     (SuperUserRegistrySize, "POST", None, None, None, 401),
@@ -5639,6 +5871,14 @@ SECURITY_TESTS: List[
     (RepoMirrorResource, "GET", {"repository": "devtable/simple"}, None, "devtable", 404),
     (RepoMirrorResource, "GET", {"repository": "devtable/simple"}, None, "freshuser", 403),
     (RepoMirrorResource, "GET", {"repository": "devtable/simple"}, None, "reader", 403),
+    (
+        RepoMirrorResource,
+        "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        404,
+    ),
     (RepoMirrorResource, "POST", {"repository": "devtable/simple"}, None, None, 401),
     (RepoMirrorResource, "POST", {"repository": "devtable/simple"}, None, "devtable", 400),
     (RepoMirrorResource, "POST", {"repository": "devtable/simple"}, None, "freshuser", 403),
@@ -5687,6 +5927,14 @@ SECURITY_TESTS: List[
         {"orgname": "sellnsmall"},
         None,
         "devtable",
+        200,
+    ),
+    (
+        OrganizationProxyCacheConfig,
+        "GET",
+        {"orgname": "buynlarge"},
+        None,
+        "globalreadonlysuperuser",
         200,
     ),
     (
@@ -5778,6 +6026,7 @@ SECURITY_TESTS: List[
         202,
     ),
     (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, "randomuser", 403),
     (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrganizationQuotaList, "POST", {"orgname": "buynlarge"}, {"limit_bytes": 200000}, None, 401),
@@ -5805,10 +6054,58 @@ SECURITY_TESTS: List[
         "devtable",
         201,
     ),
+    (
+        OrganizationQuotaList,
+        "POST",
+        {"orgname": "titi"},
+        {"limit": "200M"},
+        "devtable",
+        201,
+    ),
+    (
+        OrganizationQuotaList,
+        "POST",
+        {"orgname": "sellnsmall"},
+        {"limit": "512Mi"},
+        "devtable",
+        201,
+    ),
+    (
+        OrganizationQuotaList,
+        "POST",
+        {"orgname": "sellnsmall"},
+        {"limit": "512Mi"},
+        "devtable",
+        201,
+    ),
+    (
+        OrganizationQuotaList,
+        "POST",
+        {"orgname": "proxyorg"},
+        {"limit_bytes": 20000, "limit": "512Mi"},
+        "devtable",
+        400,
+    ),
+    (
+        OrganizationQuotaList,
+        "POST",
+        {"orgname": "proxyorg"},
+        {},
+        "devtable",
+        400,
+    ),
     (OrganizationQuota, "GET", {"orgname": "buynlarge", "quota_id": 1}, None, None, 401),
     (OrganizationQuota, "GET", {"orgname": "buynlarge", "quota_id": 1}, None, "randomuser", 403),
     (OrganizationQuota, "GET", {"orgname": "buynlarge", "quota_id": 1}, None, "devtable", 200),
     (OrganizationQuota, "GET", {"orgname": "buynlarge", "quota_id": 2}, None, "devtable", 404),
+    (
+        OrganizationQuota,
+        "GET",
+        {"orgname": "buynlarge", "quota_id": 2},
+        None,
+        "globalreadonlysuperuser",
+        404,
+    ),
     (OrganizationQuota, "PUT", {"orgname": "buynlarge", "quota_id": 1}, {}, None, 401),
     (OrganizationQuota, "PUT", {"orgname": "buynlarge", "quota_id": 1}, {}, "randomuser", 403),
     (OrganizationQuota, "PUT", {"orgname": "buynlarge", "quota_id": 1}, {}, "devtable", 200),
@@ -5830,6 +6127,14 @@ SECURITY_TESTS: List[
         {"orgname": "buynlarge", "quota_id": 1},
         None,
         "devtable",
+        200,
+    ),
+    (
+        OrganizationQuotaLimitList,
+        "GET",
+        {"orgname": "buynlarge", "quota_id": 1},
+        None,
+        "globalreadonlysuperuser",
         200,
     ),
     (
@@ -5906,6 +6211,14 @@ SECURITY_TESTS: List[
     ),
     (
         OrganizationQuotaLimit,
+        "GET",
+        {"orgname": "buynlarge", "quota_id": 1, "limit_id": 1},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
+    (
+        OrganizationQuotaLimit,
         "PUT",
         {"orgname": "buynlarge", "quota_id": 1, "limit_id": 1},
         {"type": "reject", "threshold_percent": 60},
@@ -5974,6 +6287,14 @@ SECURITY_TESTS: List[
     (SuperUserUserQuotaList, "GET", {"namespace": "nonexistant"}, None, "devtable", 404),
     (SuperUserUserQuotaList, "GET", {"namespace": "randomuser"}, None, "randomuser", 403),
     (SuperUserUserQuotaList, "GET", {"namespace": "randomuser"}, None, "devtable", 200),
+    (
+        SuperUserUserQuotaList,
+        "GET",
+        {"namespace": "randomuser"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
     (SuperUserUserQuotaList, "POST", {"namespace": "randomuser"}, {"limit_bytes": 5000}, None, 401),
     (SuperUserUserQuotaList, "POST", {"namespace": "randomuser"}, None, None, 401),
     (
@@ -5999,6 +6320,38 @@ SECURITY_TESTS: List[
         {"limit_bytes": 5000},
         "devtable",
         201,
+    ),
+    (
+        SuperUserUserQuotaList,
+        "POST",
+        {"namespace": "reader"},
+        {"limit": "5G"},
+        "devtable",
+        201,
+    ),
+    (
+        SuperUserUserQuotaList,
+        "POST",
+        {"namespace": "creator"},
+        {"limit": "1TiB"},
+        "devtable",
+        201,
+    ),
+    (
+        SuperUserUserQuotaList,
+        "POST",
+        {"namespace": "outsideorg"},
+        {"limit": "200 Mi"},
+        "devtable",
+        201,
+    ),
+    (
+        SuperUserUserQuotaList,
+        "POST",
+        {"namespace": "subscriptionsorg"},
+        {"limit_bytes": 100000, "limit": "200 Mi"},
+        "devtable",
+        400,
     ),
     (SuperUserUserQuotaList, "POST", {"namespace": "randomuser"}, None, "devtable", 400),
     (SuperUserUserQuota, "PUT", {"namespace": "randomuser", "quota_id": 2}, {}, "randomuser", 403),
@@ -6070,6 +6423,7 @@ SECURITY_TESTS: List[
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
     (OrgAutoPrunePolicies, "GET", {"orgname": "unknown"}, None, "devtable", 403),
+    (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
     (
@@ -6127,6 +6481,14 @@ SECURITY_TESTS: List[
         None,
         "devtable",
         403,
+    ),
+    (
+        OrgAutoPrunePolicy,
+        "GET",
+        {"orgname": "buynlarge", "policy_uuid": "some_uuid"},
+        None,
+        "globalreadonlysuperuser",
+        404,
     ),
     (
         OrgAutoPrunePolicy,
@@ -6289,6 +6651,14 @@ SECURITY_TESTS: List[
     (
         RepositoryAutoPrunePolicies,
         "GET",
+        {"repository": "buynlarge/orgrepo"},
+        None,
+        "globalreadonlysuperuser",
+        200,
+    ),
+    (
+        RepositoryAutoPrunePolicies,
+        "GET",
         {"repository": "testorgforautoprune/unknown"},
         None,
         "devtable",
@@ -6361,6 +6731,14 @@ SECURITY_TESTS: List[
     (
         RepositoryAutoPrunePolicy,
         "GET",
+        {"repository": "buynlarge/orgrepo", "policy_uuid": "some_uuid"},
+        None,
+        "globalreadonlysuperuser",
+        404,
+    ),
+    (
+        RepositoryAutoPrunePolicy,
+        "GET",
         {"repository": "testorgforautoprune/unknown", "policy_uuid": "some_uuid"},
         None,
         "devtable",
@@ -6445,8 +6823,37 @@ SECURITY_TESTS: List[
         None,
         "reader",
         403,
+    ),
+    (
+        OrgRobotFederation,
+        "GET",
+        {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
+        None,
+        "reader",
+        403,
+    ),
+    (
+        OrgRobotFederation,
+        "POST",
+        {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
+        {"subject": "testsubject", "issuer": "testissuer"},
+        "testuser",
+        400,
+    ),
+    (
+        OrgRobotFederation,
+        "DELETE",
+        {"orgname": "testfederatedorg", "robot_shortname": "testfederatedorg+testfederatedrobot"},
+        None,
+        "testuser",
+        401,
     ),
 ]
+
+
+@contextmanager
+def empty_context():
+    yield None
 
 
 @pytest.mark.parametrize("resource,method,params,body,identity,expected", SECURITY_TESTS)
@@ -6522,3 +6929,226 @@ def test_team_sync_security(is_superuser, allow_nonsuperuser, method, expected, 
                 conduct_api_call(
                     cl, OrganizationTeamSyncing, method, TEAM_PARAMS, {}, expected_status
                 )
+
+
+@pytest.mark.parametrize(
+    "resource, method, query_params, body_params, expected",
+    [
+        (
+            OrgLogs,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            OrgAggregateLogs,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            ExportOrgLogs,
+            "POST",
+            {"orgname": "neworg"},
+            {},
+            200,
+        ),
+        (
+            Organization,
+            "PUT",
+            {"orgname": "neworg"},
+            {"email": "updateemail@bogus.com"},
+            200,
+        ),
+        (
+            Organization,
+            "DELETE",
+            {"orgname": "neworg"},
+            None,
+            204,
+        ),
+        (
+            OrganizationMember,
+            "GET",
+            {"orgname": "neworg", "membername": "newuser"},
+            None,
+            200,
+        ),
+        (
+            OrganizationMember,
+            "DELETE",
+            {"orgname": "neworg", "membername": "randomuser"},
+            None,
+            204,
+        ),
+        (
+            OrganizationQuotaLimitList,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            OrganizationQuotaLimit,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            RepositoryList,
+            "POST",
+            None,
+            {
+                "namespace": "neworg",
+                "repository": "newrepo",
+                "visibility": "public",
+                "description": "",
+                "repo_kind": "image",
+            },
+            201,
+        ),
+        (
+            TeamPermissions,
+            "GET",
+            {"orgname": "neworg", "teamname": "readers"},
+            None,
+            200,
+        ),
+        (
+            TeamMember,
+            "DELETE",
+            {"orgname": "neworg", "teamname": "readers", "membername": "randomuser"},
+            None,
+            204,
+        ),
+        (
+            TeamMemberList,
+            "GET",
+            {"orgname": "neworg", "teamname": "readers"},
+            None,
+            200,
+        ),
+        (
+            PermissionPrototypeList,
+            "GET",
+            {"orgname": "neworg"},
+            None,
+            200,
+        ),
+        (
+            RepositoryAutoPrunePolicies,
+            "GET",
+            {"repository": "neworg/repo"},
+            None,
+            200,
+        ),
+        (
+            RepositoryAutoPrunePolicy,
+            "GET",
+            {"repository": "neworg/repo"},
+            None,
+            200,
+        ),
+        (
+            RepositoryAutoPrunePolicies,
+            "POST",
+            {"repository": "neworg/repo"},
+            {"method": "number_of_tags", "value": 10},
+            201,
+        ),
+        (
+            RepositoryAutoPrunePolicy,
+            "PUT",
+            {"repository": "neworg/repo"},
+            {"method": "number_of_tags", "value": 15},
+            204,
+        ),
+        (
+            RepositoryAutoPrunePolicy,
+            "DELETE",
+            {"repository": "neworg/repo"},
+            None,
+            200,
+        ),
+        (
+            InviteTeamMember,
+            "DELETE",
+            {"orgname": "neworg", "teamname": "owners", "email": "a@example.com"},
+            None,
+            404,
+        ),
+        (
+            BuildTriggerActivate,
+            "POST",
+            {"repository": "neworg/repo", "trigger_uuid": "SWO1"},
+            {"config": {}},
+            404,
+        ),
+        (
+            RepositoryBuildList,
+            "POST",
+            {"repository": "neworg/repo"},
+            {"file_id": "UX7K"},
+            201,
+        ),
+        (
+            RepositoryBuildLogs,
+            "GET",
+            {"build_uuid": "S5J8", "repository": "neworg/repo"},
+            None,
+            400,
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "enabled",
+    [
+        (True),
+        (False),
+    ],
+)
+def test_superuser_full_access_security(
+    resource, method, query_params, body_params, expected, enabled, app
+):
+    setup_org()
+    if resource == OrganizationQuotaLimitList or resource == OrganizationQuotaLimit:
+        quota_list = get_namespace_quota_list(query_params.get("orgname"))
+        query_params["quota_id"] = quota_list[0].id
+        quota_limit = get_namespace_quota_limit_list(quota_list[0])
+        query_params["limit_id"] = quota_limit[0].id
+
+    if resource == RepositoryAutoPrunePolicy:
+        policy = create_repository_autoprune_policy(
+            query_params.get("repository").split("/")[0],
+            query_params.get("repository").split("/")[1],
+            {"method": "number_of_tags", "value": 10},
+            create_task=True,
+        )
+        query_params["policy_uuid"] = policy.uuid
+
+    if not enabled:
+        expected = 403
+
+    with toggle_feature("SUPERUSERS_FULL_ACCESS", enabled):
+        with client_with_identity("devtable", app) as cl:
+            conduct_api_call(cl, resource, method, query_params, body_params, expected)
+
+
+def setup_org():
+    newuser = model.user.create_user("newuser", "password", "newuser+test@devtable.com")
+    newuser.verified = True
+    newuser.save()
+    org = model.organization.create_organization("neworg", "newuser@devtable.com", newuser)
+    org.save()
+
+    team = model.team.create_team("readers", org, "member", "Readers of neworg.")
+    random_user = get_user("randomuser")
+    model.team.add_user_to_team(random_user, team)
+
+    model.repository.create_repository(org.username, "repo", newuser)
+
+    neworg_quota = model.namespacequota.create_namespace_quota(org, 3000)
+    model.namespacequota.create_namespace_quota_limit(neworg_quota, "warning", 50)

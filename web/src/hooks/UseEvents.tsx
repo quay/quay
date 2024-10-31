@@ -6,9 +6,14 @@ import {
   TaskIcon,
   TimesCircleIcon,
   UploadIcon,
+  HistoryIcon,
 } from '@patternfly/react-icons';
 import {NotificationEventType} from 'src/resources/NotificationResource';
 import {useQuayConfig} from './UseQuayConfig';
+
+export interface NotificationEventConfig {
+  days?: number;
+}
 
 export interface NotificationEvent {
   type: NotificationEventType;
@@ -79,6 +84,12 @@ export function useEvents() {
       title: 'Repository mirror unsuccessful',
       icon: <TimesCircleIcon />,
       enabled: config?.features.REPO_MIRROR,
+    },
+    {
+      type: NotificationEventType.imageExpiry,
+      title: 'Image expiry trigger',
+      icon: <HistoryIcon />,
+      enabled: config?.features.IMAGE_EXPIRY_TRIGGER,
     },
   ];
 

@@ -414,7 +414,7 @@ def rollback(
 
 
 def delete_obsolete_tags(mirror, tags):
-    existing_tags = lookup_alive_tags_shallow(mirror.repository.id)
+    existing_tags, _ = lookup_alive_tags_shallow(mirror.repository.id)
     obsolete_tags = list([tag for tag in existing_tags if tag.name not in tags])
 
     for tag in obsolete_tags:

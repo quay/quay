@@ -236,6 +236,10 @@ class _BlobUploadManager(object):
             # Update the chunk upload time and push bytes metrics.
             chunk_upload_duration.labels(list(location_set)[0]).observe(time.time() - start_time)
             pushed_bytes_total.inc(length_written)
+            logger.debug(
+                f"Uploaded {length_written} bytes to blob {self.blob_upload.upload_id} "
+                f"took {time.time() - start_time} seconds"
+            )
 
         # Ensure we have not gone beyond the max layer size.
         new_blob_bytes = self.blob_upload.byte_count + length_written
@@ -357,11 +361,17 @@ class _BlobUploadManager(object):
             else:
                 # We were the first ones to upload this image (at least to this location)
                 # Let's copy it into place
+                start_time = time.time()
                 self.storage.complete_chunked_upload(
                     {self.blob_upload.location_name},
                     self.blob_upload.upload_id,
                     final_blob_location,
                     self.blob_upload.storage_metadata,
+                )
+                logger.debug(
+                    f"Completed chunked upload for blob "
+                    f"{self.blob_upload.upload_id} with digest {computed_digest} "
+                    f"took {time.time() - start_time} seconds"
                 )
 
         return already_existed

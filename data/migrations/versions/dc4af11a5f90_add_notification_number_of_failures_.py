@@ -33,7 +33,8 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    op.drop_column("repositorynotification", "number_of_failures")
+    with op.batch_alter_table("repositorynotification") as batch_op:
+        batch_op.drop_column("number_of_failures")
     op.execute(
         tables.logentrykind.delete().where(
             tables.logentrykind.c.name == op.inline_literal("reset_repo_notification")

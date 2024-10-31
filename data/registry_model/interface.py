@@ -149,7 +149,7 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def lookup_cached_active_repository_tags(
-        self, model_cache, repository_ref, start_pagination_id, limit
+        self, model_cache, repository_ref, last_pagination_tag_name, limit
     ):
         """
         Returns a page of active tags in a repository.
@@ -160,9 +160,9 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def lookup_active_repository_tags(self, repository_ref, start_pagination_id, limit):
+    def lookup_active_repository_tags(self, repository_ref, last_pagination_tag_name, limit):
         """
-        Returns a page of active tags in a repository.
+        Returns a page of active tags in a repository and whether there are more tags to paginate through.
 
         Note that the tags returned by this method are ShallowTag objects, which only contain the
         tag name.

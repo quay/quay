@@ -8,6 +8,7 @@ import {
 } from './ErrorHandling';
 import {IAvatar} from './OrganizationResource';
 import {EntityKind} from './UserResource';
+import {isNullOrUndefined} from 'src/libs/utils';
 
 export interface IRepository {
   namespace: string;
@@ -46,11 +47,24 @@ export async function fetchAllRepos(
   signal: AbortSignal,
   next_page_token = null,
 ): Promise<IRepository[] | IRepository[][]> {
-  const namespacedRepos = await Promise.all(
-    namespaces.map((ns) => {
-      return fetchRepositoriesForNamespace(ns, signal, next_page_token);
-    }),
-  );
+  const namespacedRepos = [];
+
+  if (isNullOrUndefined(namespaces) || namespaces.length === 0) {
+    return [];
+  }
+
+  // Batch the number of requests by arbitrary number BATCH_SIZE
+  // to not overwhelm the browser with too many simultaneous requests
+  const BATCH_SIZE = 100;
+  for (let i = 0; i < namespaces.length; i += BATCH_SIZE) {
+    const batch = namespaces.slice(i, i + BATCH_SIZE);
+    const batchRepos = await Promise.all(
+      batch.map((ns) => {
+        return fetchRepositoriesForNamespace(ns, signal, next_page_token);
+      }),
+    );
+    namespacedRepos.push(...batchRepos);
+  }
 
   // Flatten responses to a single list of all repositories
   if (flatten) {

@@ -251,10 +251,7 @@ analytics = Analytics(app)
 billing = Billing(app)
 sentry = Sentry(app)
 build_logs = BuildLogs(app)
-authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
-usermanager = UserManager(app, authentication)
-instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 
@@ -263,6 +260,9 @@ gitlab_trigger = GitLabOAuthService(app.config, "GITLAB_TRIGGER_CONFIG")
 
 oauth_login = OAuthLoginManager(app.config)
 oauth_apps = [github_trigger, gitlab_trigger]
+
+authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY, oauth_login)
+usermanager = UserManager(app, authentication)
 
 image_replication_queue = WorkQueue(app.config["REPLICATION_QUEUE_NAME"], tf, has_namespace=False)
 dockerfile_build_queue = WorkQueue(

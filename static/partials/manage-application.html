@@ -98,13 +98,29 @@
         <cor-tab-pane id="gen-token">
           <div class="co-alert co-alert-info">
             <div style="margin-bottom: 10px">
-                Click the button below to generate a new <a href="http://tools.ietf.org/html/rfc6749#section-1.4" target="_new">OAuth 2 Access Token</a>.
+                Click the button below to generate a new <a href="http://tools.ietf.org/html/rfc6749#section-1.4" target="_new">OAuth 2 Access Token</a>. Note tokens are used for authentication only.<i class="fa fa-info-circle" data-title="The token is used for authentication only and not authorization. While the token scope permits authentication to the API, additional permissions may be required for authorization. e.g. A token with the create repository scope will not permit creation of a repository without the user being granted the Create Repository team permission." bs-tooltip></i>
             </div>
-
             <div>
               The generated token will act on behalf of user
-              <span class="avatar" data="user.avatar" size="16" style="margin-left: 6px; margin-right: 4px;"></span>
-              <span class="user-name">{{ user.username }}</span>
+              <span class="avatar" data="user.avatar" size="16" style="margin-left: 6px; margin-right: 4px;" ng-if="!customUser"></span>
+              <span class="user-name" ng-if="!customUser">{{ user.username }}</span>
+              <span class="user-name" ng-if="customUser">
+                <div class="entity-search"
+                namespace="organization.name"
+                placeholder="'User'"
+                entity-selected="setSelectedUser(entity)"
+                current-entity="selectedUser"
+                allowed-entities="['user']"
+                pull-right="true"></div>
+              </span>
+              <span ng-show="Config.FEATURE_ASSIGN_OAUTH_TOKEN">
+                  <button class="btn btn-primary"  ng-if="!customUser" ng-click="assignUser()">
+                    Assign another user
+                  </button>
+                  <button class="btn btn-primary"  ng-if="customUser" ng-click="cancelAssignUser()">
+                    Cancel
+                  </button>
+              </span>
             </div>
           </div>
 
@@ -120,10 +136,13 @@
           </table>
 
           <a class="btn btn-success"
-             href="{{ Config.getUrl('/oauth/authorize?response_type=token&client_id=' + application.client_id + '&scope=' +  getScopes(genScopes).join(' ') + '&redirect_uri=' + Config.getUrl(Config['LOCAL_OAUTH_HANDLER'])) }}"
-             ng-disabled="!getScopes(genScopes).length" ng-safenewtab>
+             href="{{ generateUrl() }}"
+             ng-disabled="!getScopes(genScopes).length" ng-safenewtab ng-if="!customUser">
              Generate Access Token
           </a>
+          <button class="btn btn-success" ng-click="confirmAssignUser()" ng-disabled="selectedUser == null || !getScopes(genScopes).length" ng-if="customUser">
+            Assign token
+          </button>
         </cor-tab-pane>
 
         <!-- OAuth tab -->
@@ -180,6 +199,59 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" ng-click="deleteApplication()">Delete Application</button>
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="confirmAssignAuthorizationModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Assign Authorization?</h4>
+      </div>
+      <div class="modal-body">
+        <div class="auth-scopes">
+          <div ng-if="hasDangerousScope()" class="alert alert-danger">Dangerous scopes will be granted to <b><a class="entity-name" ng-safenewtab href="/user/{{selectedUser.name}}"><i class="fa fa-user"></i>{{selectedUser.name}}</a></b>. Please ensure the scopes and the user are correct.</div>
+          <div class="reason">This will prompt user <b><a class="entity-name" ng-safenewtab href="/user/{{selectedUser.name}}"><i class="fa fa-user"></i>{{selectedUser.name}}</a></b> to generate a token with the following permissions:</div>
+          <div class="panel-group">
+            <div class="scope panel panel-default {{ scope.dangerous && 'dangerous'}}" ng-repeat="scope in getScopeInfo() track by $index">
+              <div class="panel-heading">
+                <h4 class="panel-title">
+                    <div class="title-container">
+                      <div class="title {{ !scope.dangerous && 'dangerous'}}" data-toggle="collapse"
+                           data-parent="#scopeGroup" data-target="#description-{{ scope.index }}">
+                        <i class="fa arrow"></i>
+                        <i class="fa {{ scope.icon }} fa-lg"></i>
+                        <a data-toggle="collapse" href="#collapseOne">
+                          {{ scope.scope }}
+                        </a>
+                          <i ng-if="scope.dangerous" class="fa fa-lg fa-exclamation-triangle"
+                             data-title="This scope grants permissions which are potentially dangerous. Be careful when authorizing it!"
+                             data-container="body" bs-tooltip></i>
+                      </div>
+                    </div>
+                </h4>
+              </div>
+              <div id="description-{{ scope.index }}" class="panel-collapse {{ !scope.dangerous ? 'collapse' : 'in'}}">
+                <div class="panel-body">
+                  <div ng-if="scope.dangerous" class="alert alert-warning">This scope grants permissions which are potentially dangerous. Be careful when authorizing it!</div>
+                  {{ scope.description }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+          <form ng-if="selectedUser != null" method="post" action="{{ generateUrl() }}" ng-safenewtab>
+            <button type="submit" class="btn btn-success">
+              Assign token
+            </button>
+            <button type="button" class="btn btn-default" ng-click="closeConfirmAssignUser()">Close</button>
+          </form>
       </div>
     </div><!-- /.modal-content -->
   </div><!-- /.modal-dialog -->

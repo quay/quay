@@ -243,7 +243,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
               data-testid={TableModeType.Invited}
               isSelected={tableMode == TableModeType.Invited}
               onChange={onTableModeChange}
-              isDisabled={!organization.is_admin}
+              isDisabled={!organization.is_admin || teamSyncInfo !== undefined}
             />
           </ToggleGroup>
         </ToolbarItem>
@@ -450,7 +450,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         </Button>,
       );
     }
-    if (pageInReadOnlyMode) {
+    if (pageInReadOnlyMode && teamCanSync) {
       result.push(
         <Button
           onClick={() => setRemoveTeamSyncModalOpen(!isRemoveTeamSyncModalOpen)}
@@ -468,7 +468,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       <Alert
         isInline
         variant="info"
-        title={`This team is synchronized with a group in ${teamCanSync?.service} and its user membership is therefore read-only.`}
+        title={`This team is synchronized with a group in ${teamSyncInfo?.service} and its user membership is therefore read-only.`}
         id="teamsync-readonly-alert"
       />
       <Conditional if={OIDCGroupName != null}>
@@ -517,7 +517,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       onConfirmSync={(groupName) =>
         enableTeamSync(groupName, teamCanSync?.service)
       }
-      secondaryText="Enter the name of the group you'd like sync membership with:"
+      secondaryText={`Enter the group ${
+        teamCanSync?.issuer_domain?.includes('microsoft') ? `Object Id` : `name`
+      } you'd like to sync membership with:`}
       alertText={`Please note that once team syncing is enabled, the membership of users who are already part of the team will be revoked. OIDC group will be the single source of truth. This is a non-reversible action. Team's user membership from within ${config?.config.REGISTRY_TITLE_SHORT} will be read-only.`}
     />
   );
@@ -556,7 +558,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         <Conditional if={isOIDCTeamSyncModalOpen}>
           {OIDCTeamSyncModalHolder}
         </Conditional>
-        <Conditional if={isRemoveTeamSyncModalOpen}>
+        <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync != null}>
           {removeTeamSyncModalHolder}
         </Conditional>
       </>
@@ -605,7 +607,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           >
             {OIDCTeamSyncModalHolder}
           </Conditional>
-          <Conditional if={isRemoveTeamSyncModalOpen}>
+          <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync != null}>
             {removeTeamSyncModalHolder}
           </Conditional>
           <Table aria-label="Selectable table" variant="compact">

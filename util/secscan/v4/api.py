@@ -23,6 +23,7 @@ from util.metrics.prometheus import secscan_index_layer_size, secscan_request_du
 logger = logging.getLogger(__name__)
 
 DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
+DEFAULT_REQUEST_TIMEOUT = 30
 INDEX_REQUEST_TIMEOUT = 600
 
 
@@ -116,10 +117,15 @@ class SecurityScannerAPIInterface(object):
 Action = namedtuple("Action", ["name", "payload"])
 
 actions: Dict[str, Callable[..., Action]] = {
-    "IndexState": lambda: Action("IndexState", ("GET", "/indexer/api/v1/index_state", None)),
-    "Index": lambda manifest: Action("Index", ("POST", "/indexer/api/v1/index_report", manifest)),
+    "IndexState": lambda: Action(
+        "IndexState", ("GET", "/indexer/api/v1/index_state", None, INDEX_REQUEST_TIMEOUT)
+    ),
+    "Index": lambda manifest: Action(
+        "Index", ("POST", "/indexer/api/v1/index_report", manifest, INDEX_REQUEST_TIMEOUT)
+    ),
     "GetIndexReport": lambda manifest_hash: Action(
-        "GetIndexReport", ("GET", "/indexer/api/v1/index_report/" + manifest_hash, None)
+        "GetIndexReport",
+        ("GET", "/indexer/api/v1/index_report/" + manifest_hash, None, INDEX_REQUEST_TIMEOUT),
     ),
     "GetVulnerabilityReport": lambda manifest_hash: Action(
         "GetVulnerabilityReport",
@@ -127,6 +133,7 @@ actions: Dict[str, Callable[..., Action]] = {
             "GET",
             "/matcher/api/v1/vulnerability_report/" + manifest_hash,
             None,
+            DEFAULT_REQUEST_TIMEOUT,
         ),
     ),
     "DeleteNotification": lambda notification_id: Action(
@@ -135,6 +142,7 @@ actions: Dict[str, Callable[..., Action]] = {
             "DELETE",
             "/notifier/api/v1/notification/%s" % (notification_id),
             None,
+            DEFAULT_REQUEST_TIMEOUT,
         ),
     ),
     "GetNotification": lambda notification_id, next_param: Action(
@@ -144,15 +152,12 @@ actions: Dict[str, Callable[..., Action]] = {
             "/notifier/api/v1/notification/%s%s"
             % (notification_id, "?next=" + next_param if next_param else ""),
             None,
+            DEFAULT_REQUEST_TIMEOUT,
         ),
     ),
     "DeleteIndexReport": lambda manifest_hash: Action(
         "DeleteIndexReport",
-        (
-            "DELETE",
-            "/indexer/api/v1/index_report/" + manifest_hash,
-            None,
-        ),
+        ("DELETE", "/indexer/api/v1/index_report/" + manifest_hash, None, INDEX_REQUEST_TIMEOUT),
     ),
 }
 
@@ -320,7 +325,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
     def _perform(self, action):
         request_start_time = time.time()
-        (method, path, body) = action.payload
+        (method, path, body, timeout) = action.payload
         url = urljoin(self.secscan_api_endpoint, path)
 
         headers = {}
@@ -331,13 +336,17 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         logger.debug("%sing security URL %s", method.upper(), url)
         try:
-            resp = self._client.request(
-                method, url, json=body, headers=headers, timeout=INDEX_REQUEST_TIMEOUT
-            )
+            resp = self._client.request(method, url, json=body, headers=headers, timeout=timeout)
         except requests.exceptions.ConnectionError as ce:
             logger.exception("Connection error when trying to connect to security scanner endpoint")
             msg = "Connection error when trying to connect to security scanner endpoint: %s" % str(
                 ce
+            )
+            raise APIRequestFailure(msg)
+        except requests.exceptions.Timeout as te:
+            logger.exception("Security scanner endpoint timed out")
+            msg = "Connection error when trying to connect to security scanner endpoint: %s" % str(
+                te
             )
             raise APIRequestFailure(msg)
 

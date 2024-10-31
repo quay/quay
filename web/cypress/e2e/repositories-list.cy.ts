@@ -62,8 +62,8 @@ describe('Repositories List Page', () => {
     cy.wait('@getRepositories');
     cy.contains('Create Repository').click();
     cy.contains('Create Repository').should('exist');
-    //cy.contains('Select namespace').click();
-    //cy.get('li:contains("user1")').click();
+    cy.get('[data-testid="selected-namespace-dropdown"]').click();
+    cy.get('[data-testid="user-user1"]').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new public repository',
@@ -82,8 +82,8 @@ describe('Repositories List Page', () => {
     cy.visit('/repository');
     cy.contains('Create Repository').click();
     cy.contains('Create Repository').should('exist');
-    //cy.contains('Select namespace').click();
-    //cy.get('li:contains("user1")').click();
+    cy.get('[data-testid="selected-namespace-dropdown"]').click();
+    cy.get('[data-testid="user-user1"]').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new private repository',
@@ -277,5 +277,40 @@ describe('Repositories List Page', () => {
     cy.contains('20 per page').click();
     cy.contains('1 - 20 of 50').should('exist');
     cy.get('td[data-label="Name"]').should('have.length', 20);
+  });
+
+  it('renders many repositories', () => {
+    const repos: IRepository[] = [];
+    for (let i = 0; i < 1000; i++) {
+      const repo = {
+        namespace: 'manyrepositories',
+        name: '',
+        description: 'description',
+        is_public: false,
+        kind: 'image',
+        state: 'NORMAL',
+        quota_report: {
+          quota_bytes: 132459661,
+          configured_quota: 104857600,
+        },
+        last_modified: 1656432090,
+        popularity: 0.0,
+        is_starred: false,
+      };
+      repo.name = `repo${i}`;
+      repos.push(repo);
+    }
+    cy.intercept(
+      'GET',
+      '/api/v1/repository?last_modified=true&namespace=*&public=true',
+      {repositories: []},
+    ).as('getRepositories');
+    cy.intercept(
+      'GET',
+      '/api/v1/repository?last_modified=true&namespace=user1&public=true',
+      {repositories: repos},
+    ).as('getRepositories');
+    cy.visit('/repository');
+    cy.contains('1 - 20 of 1000').should('exist');
   });
 });

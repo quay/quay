@@ -8,7 +8,7 @@ export default function DateTimePicker(props: DateTimePickerProps) {
 
   const dateFormat = (date: Date) => {
     if (!isNullOrUndefined(date)) {
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString(navigator.language, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',

@@ -14,32 +14,28 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
-    op.alter_column(
-        "repomirrorconfig",
-        "external_registry_username",
-        type_=sa.String(length=4096),
-        nullable=True,
-    )
-
-    op.alter_column(
-        "repomirrorconfig",
-        "external_registry_password",
-        type_=sa.String(length=4096),
-        nullable=True,
-    )
+    with op.batch_alter_table("repomirrorconfig") as batch_op:
+        batch_op.alter_column(
+            "external_registry_username",
+            type_=sa.String(length=4096),
+            nullable=True,
+        )
+        batch_op.alter_column(
+            "external_registry_password",
+            type_=sa.String(length=4096),
+            nullable=True,
+        )
 
 
 def downgrade(op, tables, tester):
-    op.alter_column(
-        "repomirrorconfig",
-        "external_registry_username",
-        type_=sa.String(length=2048),
-        nullable=True,
-    )
-
-    op.alter_column(
-        "repomirrorconfig",
-        "external_registry_password",
-        type_=sa.String(length=2048),
-        nullable=True,
-    )
+    with op.batch_alter_table("repomirrorconfig") as batch_op:
+        batch_op.alter_column(
+            "external_registry_username",
+            type_=sa.String(length=2048),
+            nullable=True,
+        )
+        batch_op.alter_column(
+            "external_registry_password",
+            type_=sa.String(length=2048),
+            nullable=True,
+        )

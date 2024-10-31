@@ -127,7 +127,7 @@ def test_list_alive_tags(initialized_db):
 def test_lookup_alive_tags_shallow(initialized_db):
     found = False
     for tag in filter_to_visible_tags(filter_to_alive_tags(Tag.select())):
-        tags = lookup_alive_tags_shallow(tag.repository)
+        tags, _ = lookup_alive_tags_shallow(tag.repository)
         found = True
         assert tag in tags
 
@@ -138,7 +138,7 @@ def test_lookup_alive_tags_shallow(initialized_db):
     tag.hidden = True
     tag.save()
 
-    tags = lookup_alive_tags_shallow(tag.repository)
+    tags, _ = lookup_alive_tags_shallow(tag.repository)
     assert tag not in tags
 
 
@@ -349,7 +349,7 @@ def test_delete_tag(initialized_db):
             assert get_tag(repo, tag.name) == tag
             assert tag.lifetime_end_ms is None
 
-            with assert_query_count(3):
+            with assert_query_count(4):
                 assert delete_tag(repo, tag.name) == tag
 
             assert get_tag(repo, tag.name) is None
@@ -371,7 +371,7 @@ def test_delete_tag_manifest_list(initialized_db):
             assert child_tag.name.startswith("$temp-")
             assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
-        with assert_query_count(8):
+        with assert_query_count(9):
             assert delete_tag(repository.id, tag.name) == tag
 
         # Assert temporary tags pointing to child manifest are now expired
@@ -389,7 +389,7 @@ def test_delete_tags_for_manifest(initialized_db):
             repo = tag.repository
             assert get_tag(repo, tag.name) == tag
 
-            with assert_query_count(5):
+            with assert_query_count(6):
                 assert delete_tags_for_manifest(tag.manifest) == [tag]
 
             assert get_tag(repo, tag.name) is None

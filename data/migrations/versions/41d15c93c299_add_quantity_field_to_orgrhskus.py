@@ -18,4 +18,5 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    op.drop_column("organizationrhskus", "quantity")
+    with op.batch_alter_table("organizationrhskus") as batch_op:
+        batch_op.drop_column("quantity")

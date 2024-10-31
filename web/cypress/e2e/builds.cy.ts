@@ -1031,6 +1031,7 @@ describe('Repository Builds', () => {
 describe('Repository Builds - Create Custom Git Build Triggers', () => {
   beforeEach(() => {
     cy.exec('npm run quay:seed');
+    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -1900,8 +1901,9 @@ describe('Repository Builds - View build logs', () => {
       cy.get('.build-log-timestamp').should('not.exist');
 
       // Copy
-      cy.contains('Copy')
-        .click()
+      cy.get('button:contains("Copy")')
+        .focus()
+        .dblclick()
         .then(() => {
           cy.window().then((win) => {
             win.navigator.clipboard.readText().then((text) => {

@@ -141,9 +141,13 @@ export default function Build() {
     return <RequestError message="Unauthorized" />;
   }
 
-  const onCopy = () => {
+  const onCopy = async () => {
     const logsElement = document.getElementById('build-logs');
-    navigator.clipboard.writeText(logsElement.innerText);
+    try {
+      await navigator.clipboard.writeText(logsElement.innerText);
+    } catch (error) {
+      console.error(error.message);
+    }
   };
 
   return (

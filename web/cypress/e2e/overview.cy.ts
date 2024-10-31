@@ -29,12 +29,12 @@ describe('Overview List Page', () => {
     cy.visit('/overview');
 
     cy.get('#try-quayio-button').click();
-    cy.url().should('eq', 'https://quay.io/');
+    cy.location('pathname').should('eq', '/organization');
 
     cy.visit('/overview');
 
     cy.get('#purchase-quayio-button').click();
-    cy.url().should('eq', 'https://quay.io/plans/');
+    cy.get('#purchase-plans').should('be.visible');
   });
 
   it('Tabs', () => {

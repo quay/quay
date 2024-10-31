@@ -33,6 +33,7 @@ from data.database import (
     db_for_update,
 )
 from data.model import _basequery, blob, config, db_transaction, storage
+from data.model.notification import delete_tag_notifications_for_tag
 from data.model.oci import tag as oci_tag
 from data.model.quota import QuotaOperation, update_quota
 from data.secscan_model import secscan_model
@@ -315,6 +316,7 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
             return False
 
         # Delete the tag.
+        delete_tag_notifications_for_tag(tag)
         tag.delete_instance()
 
     gc_table_rows_deleted.labels(table="Tag").inc()
@@ -347,6 +349,18 @@ def _check_manifest_used(manifest_id):
             ManifestChild.select().where(ManifestChild.child_manifest == manifest_id).get()
             return True
         except ManifestChild.DoesNotExist:
+            pass
+
+        Referrer = Manifest.alias()
+        # Check if the manifest is the subject of another manifest.
+        # Note: Manifest referrers with a valid subject field are created a non expiring
+        # hidden tag, in order to prevent GC from inadvertently removing a referrer.
+        try:
+            Manifest.select().join(Referrer, on=(Manifest.digest == Referrer.subject)).where(
+                Manifest.id == manifest_id
+            ).get()
+            return True
+        except Manifest.DoesNotExist:
             pass
 
     return False

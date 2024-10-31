@@ -22,6 +22,7 @@ angular.module('quay').directive('signinForm', function () {
       $scope.Features = Features;
       $scope.signInUser = {};
       $scope.inAccountRecoveryMode = StateService.inAccountRecoveryMode();
+      $scope.Config = Config;
 
       $scope.markStarted = function() {
         $scope.signingIn = true;

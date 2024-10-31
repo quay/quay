@@ -41,5 +41,7 @@ def convert_to_timedelta(time_val):
         return timedelta(days=num)
     elif time_val.endswith("w"):
         return timedelta(days=num * 7)
+    elif time_val.endswith("y"):
+        return timedelta(days=num * 365)
     else:
         raise ValueError("Unknown suffix on timedelta: %s" % time_val)

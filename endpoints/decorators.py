@@ -13,7 +13,7 @@ import features
 from app import app, ip_resolver, model_cache, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
-from data.model import InvalidProxyCacheConfigException
+from data.model import InvalidProxyCacheConfigException, PushesDisabledException
 from data.model.repo_mirror import get_mirror, get_mirroring_robot
 from data.model.repository import get_repository, get_repository_state
 from data.readreplica import ReadOnlyModeException
@@ -193,6 +193,31 @@ def check_readonly(func):
             return func(*args, **kwargs)
 
         raise ReadOnlyModeException()
+
+    return wrapper
+
+
+def check_pushes_disabled(func):
+    """
+    Validates that a non-GET method is not invoked when the registry has pushes disabled, unless
+    explicitly marked as being allowed.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Skip if a GET method.
+        if request.method == "GET":
+            return func(*args, **kwargs)
+
+        # Skip if pushes are enabled.
+        if not app.config.get("DISABLE_PUSHES", False):
+            return func(*args, **kwargs)
+
+        # Skip if readonly access is allowed.
+        if hasattr(func, "__readonly_call_allowed"):
+            return func(*args, **kwargs)
+
+        raise PushesDisabledException()
 
     return wrapper
 

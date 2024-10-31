@@ -2,11 +2,12 @@ import json
 import logging
 import time
 import urllib.parse
+from posixpath import join
 
 import jwt
 from authlib.jose import JsonWebKey, KeySet
+from cachetools import TTLCache
 from cachetools.func import lru_cache
-from cachetools.ttl import TTLCache
 from requests import request
 
 from oauth.base import (
@@ -26,6 +27,14 @@ OIDC_WELLKNOWN = ".well-known/openid-configuration"
 PUBLIC_KEY_CACHE_TTL = 3600  # 1 hour
 ALLOWED_ALGORITHMS = ["RS256", "RS384"]
 JWT_CLOCK_SKEW_SECONDS = 30
+
+
+class PasswordGrantException(Exception):
+    """
+    Exception raised when authentication through Password Credentials Grant fails.
+    """
+
+    pass
 
 
 class DiscoveryFailureException(Exception):
@@ -86,6 +95,8 @@ class OIDCLoginService(OAuthService):
         return self._get_endpoint("token_endpoint")
 
     def user_endpoint(self):
+        if self.config.get("OIDC_DISABLE_USER_ENDPOINT", False):
+            return None
         return self._get_endpoint("userinfo_endpoint")
 
     def _get_endpoint(self, endpoint_key, **kwargs):
@@ -215,7 +226,7 @@ class OIDCLoginService(OAuthService):
         if not oidc_server.startswith("https://") and not is_debugging:
             raise DiscoveryFailureException("OIDC server must be accessed over SSL")
 
-        discovery_url = urllib.parse.urljoin(oidc_server, OIDC_WELLKNOWN)
+        discovery_url = join(oidc_server, OIDC_WELLKNOWN)
         discovery = self._http_client.get(discovery_url, timeout=5, verify=is_debugging is False)
         if discovery.status_code // 100 != 2:
             logger.debug(
@@ -319,6 +330,43 @@ class OIDCLoginService(OAuthService):
         # Retrieve the public key from the cache. If the cache does not contain the public key,
         # it will internally call _load_public_key to retrieve it and then save it.
         return self._public_key_cache[kid]
+
+    def password_grant_for_login(self, username, password):
+        """
+        OIDC authentication via Password Credentials Grant
+        """
+        if not username or not password:
+            raise PasswordGrantException("Missing username or password")
+
+        payload = {
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "client_id": self.client_id(),
+            "client_secret": self.client_secret(),
+            "scope": " ".join(self.get_login_scopes()),
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        token_url = self.token_endpoint().to_url()
+        response = self._http_client.post(token_url, data=payload, headers=headers, timeout=5)
+
+        if response.status_code // 100 != 2:
+            logger.debug("Got get_access_token response %s", response.text)
+            raise PasswordGrantException(
+                f"Got {response.status_code} response for code exchange: {response.text}"
+            )
+
+        json_data = response.json()
+        if not json_data:
+            raise PasswordGrantException("Got non-JSON response for password credentials grant")
+
+        if not json_data.get("access_token", None):
+            raise PasswordGrantException(
+                "Failed to read access_token in response for password credentials grant"
+            )
+
+        return json_data
 
 
 class _PublicKeyCache(TTLCache):

@@ -194,3 +194,14 @@ def add_user_as_admin(user_obj, org_obj):
         team.add_user_to_team(user_obj, admin_team)
     except team.UserAlreadyInTeam:
         pass
+
+
+def is_org_admin(user, org):
+    return (
+        Team.select()
+        .join(TeamMember)
+        .switch(Team)
+        .join(TeamRole)
+        .where(Team.organization == org, TeamRole.name == "admin", TeamMember.user == user)
+        .exists()
+    )

@@ -1,6 +1,9 @@
 """
 Manage user and organization robot accounts.
 """
+import json
+import logging
+
 from flask import abort, request
 
 from auth import scopes
@@ -9,9 +12,19 @@ from auth.permissions import (
     AdministerOrganizationPermission,
     OrganizationMemberPermission,
 )
+from data.database import FederatedLogin, LoginService
 from data.model import InvalidRobotException
+from data.model.user import (
+    attach_federated_login,
+    create_federated_user,
+    create_robot_federation_config,
+    delete_robot_federation_config,
+    get_robot_federation_config,
+    lookup_robot,
+)
 from endpoints.api import (
     ApiResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     log_action,
     max_json_size,
@@ -47,7 +60,28 @@ CREATE_ROBOT_SCHEMA = {
     },
 }
 
+CREATE_ROBOT_FEDERATION_SCHEMA = {
+    "type": "array",
+    "description": "Federation configuration for the robot",
+    "items": {
+        "type": "object",
+        "properties": {
+            "issuer": {
+                "type": "string",
+                "description": "The issuer of the token",
+            },
+            "subject": {
+                "type": "string",
+                "description": "The subject of the token",
+            },
+        },
+        "required": ["issuer", "subject"],
+    },
+}
+
 ROBOT_MAX_SIZE = 1024 * 1024  # 1 KB.
+
+logger = logging.getLogger(__name__)
 
 
 def robots_list(prefix, include_permissions=False, include_token=False, limit=None):
@@ -186,10 +220,11 @@ class OrgRobotList(ApiResource):
         List the organization's robots.
         """
         permission = OrganizationMemberPermission(orgname)
-        if permission.can() or allow_if_superuser():
-            include_token = AdministerOrganizationPermission(orgname).can() and parsed_args.get(
-                "token", True
-            )
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+            include_token = (
+                AdministerOrganizationPermission(orgname).can()
+                or allow_if_global_readonly_superuser()
+            ) and parsed_args.get("token", True)
             include_permissions = AdministerOrganizationPermission(
                 orgname
             ).can() and parsed_args.get("permissions", False)
@@ -225,7 +260,7 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
             return robot.to_dict(include_metadata=True, include_token=True)
 
@@ -324,7 +359,7 @@ class OrgRobotPermissions(ApiResource):
         Returns the list of repository permissions for the org's robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
             permissions = model.list_robot_permissions(robot.name)
 
@@ -378,3 +413,82 @@ class RegenerateOrgRobot(ApiResource):
             return robot.to_dict(include_token=True)
 
         raise Unauthorized()
+
+
+@resource("/v1/organization/<orgname>/robots/<robot_shortname>/federation")
+@path_param("orgname", "The name of the organization")
+@path_param(
+    "robot_shortname", "The short name for the robot, without any user or organization prefix"
+)
+@related_user_resource(UserRobot)
+class OrgRobotFederation(ApiResource):
+
+    schemas = {
+        "CreateRobotFederation": CREATE_ROBOT_FEDERATION_SCHEMA,
+    }
+
+    @require_scope(scopes.ORG_ADMIN)
+    def get(self, orgname, robot_shortname):
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+            robot_username = format_robot_username(orgname, robot_shortname)
+            robot = lookup_robot(robot_username)
+            return get_robot_federation_config(robot)
+
+        raise Unauthorized()
+
+    @require_scope(scopes.ORG_ADMIN)
+    @validate_json_request("CreateRobotFederation", optional=False)
+    def post(self, orgname, robot_shortname):
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can() or allow_if_superuser():
+            fed_config = self._parse_federation_config(request)
+
+            robot_username = format_robot_username(orgname, robot_shortname)
+            robot = lookup_robot(robot_username)
+            create_robot_federation_config(robot, fed_config)
+            log_action(
+                "create_robot_federation",
+                orgname,
+                {"config": fed_config, "robot": robot_shortname},
+            )
+            return fed_config
+
+        raise Unauthorized()
+
+    @require_scope(scopes.ORG_ADMIN)
+    def delete(self, orgname, robot_shortname):
+        permission = AdministerOrganizationPermission(orgname)
+        if permission.can() or allow_if_superuser():
+            robot_username = format_robot_username(orgname, robot_shortname)
+            robot = lookup_robot(robot_username)
+            delete_robot_federation_config(robot)
+            log_action(
+                "delete_robot_federation",
+                orgname,
+                {"robot": robot_shortname},
+            )
+            return "", 204
+        raise Unauthorized()
+
+    def _parse_federation_config(self, request):
+        fed_config = list()
+        seen = set()
+        for item in request.json:
+            if not item:
+                raise request_error(message="Missing one or more required fields (issuer, subject)")
+            issuer = item.get("issuer")
+            subject = item.get("subject")
+            if not issuer or not subject:
+                raise request_error(message="Missing one or more required fields (issuer, subject)")
+            if not (issuer.startswith("http://") or issuer.startswith("https://")):
+                raise request_error(message="Issuer must be a URL (http:// or https://)")
+            entry = {"issuer": issuer, "subject": subject}
+
+            if f"{issuer}:{subject}" in seen:
+                raise request_error(message="Duplicate federation config entry")
+
+            seen.add(f"{issuer}:{subject}")
+            fed_config.append(entry)
+
+        return list(fed_config)

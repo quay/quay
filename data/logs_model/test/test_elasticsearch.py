@@ -10,6 +10,7 @@ from dateutil.parser import parse
 from httmock import HTTMock, urlmatch
 from mock import Mock, patch
 
+from .mock_elasticsearch import *
 from data.logs_model import LogsModelProxy, configure
 from data.logs_model.elastic_logs import (
     INDEX_DATE_FORMAT,
@@ -17,8 +18,6 @@ from data.logs_model.elastic_logs import (
     ElasticsearchLogs,
 )
 from data.model.log import _json_serialize
-
-from .mock_elasticsearch import *
 
 FAKE_ES_HOST = "fakees"
 FAKE_ES_HOST_PATTERN = r"fakees.*"
@@ -210,16 +209,27 @@ def mock_elasticsearch():
 
 @pytest.mark.parametrize(
     """
-  unlogged_pulls_ok, kind_name, namespace_name, repository, repository_name,
+  unlogged_ok,unlogged_pulls_ok, kind_name, namespace_name, repository, repository_name,
   timestamp,
   index_response, expected_request, throws
   """,
     [
         # Invalid inputs
         pytest.param(
-            False, "non-existing", None, None, None, None, None, None, True, id="Invalid Kind"
+            False,
+            False,
+            "non-existing",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            True,
+            id="Invalid Kind",
         ),
         pytest.param(
+            False,
             False,
             "pull_repo",
             "user1",
@@ -234,6 +244,7 @@ def mock_elasticsearch():
         # Remote exceptions
         pytest.param(
             False,
+            False,
             "pull_repo",
             "user1",
             Mock(id=1),
@@ -245,6 +256,7 @@ def mock_elasticsearch():
             id="Throw on pull log failure",
         ),
         pytest.param(
+            False,
             True,
             "pull_repo",
             "user1",
@@ -256,8 +268,35 @@ def mock_elasticsearch():
             False,
             id="Ok on pull log failure",
         ),
+        pytest.param(
+            True,
+            False,
+            "pull_repo",
+            "user1",
+            Mock(id=1),
+            None,
+            parse("2017-03-08T03:30"),
+            FAILURE_400,
+            INDEX_REQUEST_2017_03_08,
+            False,
+            id="Ok on pull log failure",
+        ),
+        pytest.param(
+            True,
+            False,
+            "push_repo",
+            "user1",
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+            FAILURE_400,
+            INDEX_REQUEST_2019_01_01,
+            False,
+            id="Ok on push log failure",
+        ),
         # Success executions
         pytest.param(
+            False,
             False,
             "pull_repo",
             "user1",
@@ -270,6 +309,7 @@ def mock_elasticsearch():
             id="Log with namespace name and repository",
         ),
         pytest.param(
+            False,
             False,
             "push_repo",
             "user1",
@@ -284,6 +324,7 @@ def mock_elasticsearch():
     ],
 )
 def test_log_action(
+    unlogged_ok,
     unlogged_pulls_ok,
     kind_name,
     namespace_name,
@@ -302,6 +343,7 @@ def test_log_action(
     mock_elasticsearch.template = Mock(return_value=DEFAULT_TEMPLATE_RESPONSE)
     mock_elasticsearch.index = Mock(return_value=index_response)
     app_config["ALLOW_PULLS_WITHOUT_STRICT_LOGGING"] = unlogged_pulls_ok
+    app_config["ALLOW_WITHOUT_STRICT_LOGGING"] = unlogged_ok
     configure(app_config)
 
     performer = Mock(id=1)

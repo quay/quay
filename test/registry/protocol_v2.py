@@ -1,13 +1,7 @@
 import hashlib
 import json
+import re
 from enum import Enum, unique
-from test.registry.protocols import (
-    Failures,
-    ProtocolOptions,
-    PullResult,
-    PushResult,
-    RegistryProtocol,
-)
 from typing import Dict
 
 from image.docker.schema1 import (
@@ -25,6 +19,13 @@ from image.shared.schemas import (
     MANIFEST_LIST_TYPES,
     is_manifest_list_type,
     parse_manifest_from_bytes,
+)
+from test.registry.protocols import (
+    Failures,
+    ProtocolOptions,
+    PullResult,
+    PushResult,
+    RegistryProtocol,
 )
 from util.bytes import Bytes
 
@@ -928,9 +929,18 @@ class V2Protocol(RegistryProtocol):
             if not response.headers.get("Link"):
                 return results
 
-            link_url = response.headers["Link"]
-            v2_index = link_url.find("/v2/")
-            url = link_url[v2_index:]
+            link_header = response.headers["Link"]
+
+            # parse the link header to get all link relations into a list of tuples (url, rel)
+            pattern = re.compile(r'<([^>]+)>;\s*rel="([^"]+)"')
+            matches = pattern.findall(link_header)
+
+            # search for the URL where rel="next"
+            next_url = next((url for url, rel in matches if rel == "next"), None)
+
+            # we always send a next link, so we should always find one
+            assert next_url is not None
+            url = next_url
 
         return results
 

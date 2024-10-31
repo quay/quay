@@ -16,11 +16,10 @@ High-level features include:
 
 - Docker Registry Protocol [v2]
 - Docker Manifest Schema [v2.1], [v2.2]
-- [AppC Image Discovery] via on-demand transcoding
-- Image Squashing via on-demand transcoding
+- OCI spec v1.1 support [oci]
 - Authentication provided by [LDAP], [Keystone], [OIDC], [Google], and [GitHub]
 - ACLs, team management, and auditability logs
-- Geo-replicated storage provided by local filesystems, [S3], [GCS], [Swift], and [Ceph]
+- Geo-replicated storage provided by local filesystems, [S3], [GCS], [Swift], [Ceph] and [ODF]
 - Continuous Integration integrated with [GitHub], [Bitbucket], [GitLab], and [git]
 - Security Vulnerability Analysis via [Clair]
 - [Swagger]-compliant HTTP API
@@ -28,7 +27,7 @@ High-level features include:
 [v2]: https://docs.docker.com/registry/spec/api/
 [v2.1]: https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-1.md
 [v2.2]: https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-2.md
-[AppC Image Discovery]: https://github.com/appc/spec/blob/master/spec/discovery.md
+[oci]: https://github.com/opencontainers/distribution-spec/tree/v1.1.0-rc1?tab=readme-ov-file#oci-distribution-specification
 [LDAP]: https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol
 [Keystone]: http://docs.openstack.org/developer/keystone
 [OIDC]: https://en.wikipedia.org/wiki/OpenID_Connect
@@ -38,6 +37,7 @@ High-level features include:
 [GCS]: https://cloud.google.com/storage
 [Swift]: http://swift.openstack.org
 [Ceph]: http://docs.ceph.com/docs/master/radosgw/config
+[ODF]: https://www.redhat.com/en/technologies/cloud-computing/openshift-data-foundation
 [GitHub]: https://github.com
 [Bitbucket]: https://bitbucket.com
 [GitLab]: https://gitlab.com
@@ -63,12 +63,13 @@ High-level features include:
 
 * Mailing List: [quay-sig@googlegroups.com]
 * IRC: #quay on [libera.chat]
-* Bug tracking: [JBoss JIRA]
+* Bug tracking: [Red Hat JIRA]
 * Security Issues: [security@redhat.com]
+* Community meetings held the first Wednesday of every month 11:00 AM EST: [meeting link](https://meet.google.com/rsj-atvk-zth)
 
 [quay-sig@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-sig
 [libera.chat]: https://web.libera.chat/?channel=#quay
-[JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
+[Red Hat JIRA]: https://issues.redhat.com/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com
 
 ## License

@@ -14,7 +14,10 @@
           </div>
 
           <a class="co-modify-link" ng-href="{{ getEntityPrefix() }}/billing">{{ currentPlan.privateRepos }} private repositories</a>
-          <div class="help-text">Up to {{ currentPlan.privateRepos + currentMarketplace}} private repositories, unlimited public repositories</div>
+          <div class="help-text">
+            {{ (currentPlan.privateRepos + currentMarketplace) >= 9223372036854776000 ? 'unlimited' : 'Up to ' + (currentPlan.privateRepos + currentMarketplace) }}
+            private repositories, unlimited public repositories
+          </div>
         </td>
       </tr>
       <tr ng-show="currentCard">

@@ -378,6 +378,15 @@ def _lookup_repo_storages_by_content_checksum(repo, checksums, model_class):
         queries.append(ImageStorage.select(SQL("*")).from_(candidate_subq))
 
     assert queries
+
+    # Prevent crash on gunicorn (PROJQUAY-7603)
+    # If the number of queries is too large, the UNION query
+    # generated crashes gunicorn, instead run each query
+    # individually
+    if len(queries) > 1000:
+        result = [next(iter(q.execute()), None) for q in queries]
+        return [r for r in result if r is not None]
+
     return _basequery.reduce_as_tree(queries)
 
 

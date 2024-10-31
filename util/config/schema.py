@@ -93,6 +93,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "RESET_CHILD_MANIFEST_EXPIRATION",
     "PERMANENTLY_DELETE_TAGS",
     "FEATURE_RH_MARKETPLACE",
+    "CDN_SPECIFIC_NAMESPACES",
 }
 
 CONFIG_SCHEMA = {
@@ -270,12 +271,20 @@ CONFIG_SCHEMA = {
             },
             "required": ["threadlocals", "autorollback"],
         },
+        "DB_CONNECTION_POOLING": {"type": "boolean", "description": "Allow pooling for DB"},
         "ALLOW_PULLS_WITHOUT_STRICT_LOGGING": {
             "type": "boolean",
             "description": "If true, pulls in which the pull audit log entry cannot be written will "
             + "still succeed. Useful if the database can fallback into a read-only state "
             + "and it is desired for pulls to continue during that time. Defaults to False.",
             "x-example": True,
+        },
+        "ALLOW_WITHOUT_STRICT_LOGGING": {
+            "type": "boolean",
+            "description": "If true, any action in which the audit log entry cannot be written will "
+            + "still succeed. Useful if using an external logging service that may be down "
+            + "intermittently and the registry should continue to work. Defaults to False.",
+            "x-example": False,
         },
         # Storage.
         "FEATURE_STORAGE_REPLICATION": {
@@ -1044,12 +1053,11 @@ CONFIG_SCHEMA = {
         "LOGS_MODEL_CONFIG": {
             "type": "object",
             "description": "Logs model config for action logs",
-            "x-reference": "https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_settings.html",
             "properties": {
                 "producer": {
                     "type": "string",
                     "description": "Logs producer",
-                    "enum": ["kafka", "elasticsearch", "kinesis_stream", "splunk"],
+                    "enum": ["kafka", "elasticsearch", "kinesis_stream", "splunk", "splunk_hec"],
                     "x-example": "kafka",
                 },
                 "elasticsearch_config": {
@@ -1216,6 +1224,68 @@ CONFIG_SCHEMA = {
                         },
                     },
                 },
+                "splunk_hec_config": {
+                    "type": "object",
+                    "description": "Logs model config for splunk HTTP event collector action logs configuration",
+                    "x-reference": "https://docs.splunk.com/Documentation/SplunkCloud/latest/Data/UsetheHTTPEventCollector#More_information_on_HEC_for_developers",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "Splunk cluster endpoint",
+                            "x-example": "host.splunk.example",
+                        },
+                        "port": {
+                            "type": "number",
+                            "description": "Splunk management cluster endpoint port",
+                            "x-example": 8080,
+                            "default": 443,
+                        },
+                        "hec_token": {
+                            "type": "string",
+                            "description": "HEC token for splunk.",
+                            "x-example": "1ad4d7bb-eed9-443a-897d-29e3b27df7a8",
+                        },
+                        "url_scheme": {
+                            "type": "string",
+                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL"
+                            "*at all*, this *must* be `https`",
+                            "enum": ["http", "https"],
+                            "x-example": "https",
+                            "default": "https",
+                        },
+                        "verify_ssl": {
+                            "type": "boolean",
+                            "description": "Enable (True) or disable (False) SSL verification for https connections."
+                            "Defaults to True",
+                            "x-example": True,
+                            "default": True,
+                        },
+                        "ssl_ca_path": {
+                            "type": "string",
+                            "description": "*Relative container path* to a single .pem file containing a CA "
+                            "certificate for SSL verification",
+                            "x-example": "conf/stack/ssl-ca-cert.pem",
+                        },
+                        "index": {
+                            "type": "string",
+                            "description": "The splunk index to use (overrides the token's default index).",
+                            "x-example": "main",
+                        },
+                        "splunk_host": {
+                            "type": "string",
+                            "description": "The host name to log this event with (Defaults to the configured server hostname).",
+                            "x-example": "quay.dev",
+                            "default": "configured server hostname",
+                        },
+                        "splunk_sourcetype": {
+                            "type": "string",
+                            "description": "The name of the Splunk sourcetype to use.",
+                            "x-example": "quay-sourcetype",
+                            "default": "access_combined",
+                        },
+                    },
+                    "required": ["host", "hec_token"],
+                },
             },
         },
         # Feature Flag: Blacklist Email Domains
@@ -1268,9 +1338,9 @@ CONFIG_SCHEMA = {
                 ],
             },
         },
-        "IGNORE_UNKNOWN_MEDIATYPES": {
+        "FEATURE_REFERRERS_API": {
             "type": "boolean",
-            "description": "If set to true, ignore ALLOWED_OCI_ARTIFACT_TYPES",
+            "description": "Enables OCI 1.1's referrers API",
             "x-example": False,
         },
         # Clean partial uploads during S3 multipart upload
@@ -1330,10 +1400,20 @@ CONFIG_SCHEMA = {
             "description": "Allow editing of quota configurations",
             "x-example": True,
         },
+        "FEATURE_VERIFY_QUOTA": {
+            "type": "boolean",
+            "description": "Allow verification of quota on image push",
+            "x-example": True,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
             "x-example": False,
+        },
+        "FEATURE_MANIFEST_SUBJECT_BACKFILL": {
+            "type": "boolean",
+            "description": "Enable the backfill worker to index existing manifest subjects",
+            "x-example": True,
         },
         "UI_V2_FEEDBACK_FORM": {
             "type": "string",
@@ -1446,6 +1526,53 @@ CONFIG_SCHEMA = {
             "type": "int",
             "description": "Number of seconds to wait after a write operation in the UI",
             "x-example": 3,
+        },
+        "NOTIFICATION_MIN_SEVERITY_ON_NEW_INDEX": {
+            "type": "string",
+            "description": "Set minimal security level for new notifications on detected vulnerabilities. Avoids creation of large number of notifications after first index.",
+            "x-example": "High",
+        },
+        "FEATURE_ASSIGN_OAUTH_TOKEN": {
+            "type": "boolean",
+            "description": "Allows organization administrators to assign OAuth tokens to other users",
+            "x-example": False,
+        },
+        "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
+            "type": "object",
+            "description": "Default auto-prune policy applied to all organizations and repositories",
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "description": "The method to prune tags by",
+                    "enum": ["number_of_tags", "creation_date"],
+                    "x-example": "number_of_tags",
+                },
+                "value": {
+                    "type": ["string", "number"],
+                    "description": "The value for the configured method. For number_of_tags it is a number denoting the number of tags to keep, for creation_date it is a string with the duration to keep tags for",
+                    "x-example": "2d",
+                },
+            },
+        },
+        "FEATURE_IMAGE_EXPIRY_TRIGGER": {
+            "type": "boolean",
+            "description": "Allows users to set up notifications on image expiry",
+            "x-example": False,
+        },
+        "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES": {
+            "type": "number",
+            "description": "Interval in minutes that defines frequency to re-run notifications",
+            "x-example": 5000,
+        },
+        "DISABLE_PUSHES": {
+            "type": "boolean",
+            "description": "Only disables pushes of new content to the registry, while retaining all other functionality. Differs from read only mode because database is not set as read-only.",
+            "x-example": False,
+        },
+        "MANIFESTS_ENDPOINT_READ_TIMEOUT": {
+            "type": "string",
+            "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
+            "x-example": "5m",
         },
     },
 }

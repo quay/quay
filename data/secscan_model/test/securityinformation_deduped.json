@@ -11,7 +11,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.2.53-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "alembic",
@@ -19,7 +21,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.3.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "aniso8601",
@@ -27,7 +31,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "apscheduler",
@@ -35,7 +41,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.6.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "attrs",
@@ -43,7 +51,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "19.3.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "audit-libs",
@@ -51,7 +61,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.0.7-2.el8.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "authlib",
@@ -59,7 +71,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.0.0a1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "aws-sam-translator",
@@ -67,7 +81,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.20.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "azure-core",
@@ -75,7 +91,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.8.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "azure-storage-blob",
@@ -83,7 +101,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "12.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "babel",
@@ -91,7 +111,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.9.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "basesystem",
@@ -99,7 +121,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "11-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "bash",
@@ -107,7 +131,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.4.20-4.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "bcrypt",
@@ -115,7 +141,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.1.7",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "beautifulsoup4",
@@ -123,7 +151,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.8.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "bintrees",
@@ -131,7 +161,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "bitmath",
@@ -139,7 +171,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.3.3.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "blinker",
@@ -147,7 +181,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "boto3",
@@ -155,7 +191,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.21.42",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "botocore",
@@ -163,7 +201,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.24.42",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "brotli",
@@ -171,7 +211,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.0.6-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "bzip2-libs",
@@ -179,7 +221,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.0.6-26.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ca-certificates",
@@ -187,7 +231,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2021.2.50-80.0.el8_4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cachetools",
@@ -195,7 +241,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "certifi",
@@ -203,7 +251,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2019.11.28",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cffi",
@@ -211,7 +261,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.14.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "chardet",
@@ -219,7 +271,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.0.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "charset-normalizer",
@@ -227,7 +281,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.0.12",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "chkconfig",
@@ -235,7 +291,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.19.1-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "click",
@@ -243,7 +301,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "7.1.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cnr-server",
@@ -251,7 +311,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.2.7.post1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "containers-common",
@@ -259,7 +321,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2:1-35.module+el8.6.0+15917+093ca6f8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "coreutils-single",
@@ -267,7 +331,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.30-12.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cracklib",
@@ -275,7 +341,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9.6-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cracklib-dicts",
@@ -283,7 +351,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9.6-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "criu",
@@ -291,7 +361,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.15-3.module+el8.6.0+15875+dc9a2b96",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "crypto-policies",
@@ -299,7 +371,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "20211116-1.gitae470d6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "crypto-policies-scripts",
@@ -307,7 +381,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "20211116-1.gitae470d6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cryptography",
@@ -315,7 +391,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.3.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cryptsetup-libs",
@@ -323,7 +401,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.3.7-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "curl",
@@ -331,7 +411,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "7.61.1-22.el8_6.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cyrus-sasl-lib",
@@ -339,7 +421,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.1.27-6.el8_5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "cython",
@@ -347,7 +431,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.0.0a9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "datetime",
@@ -355,7 +441,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus",
@@ -363,7 +451,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.12.8-18.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus-common",
@@ -371,7 +461,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.12.8-18.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus-daemon",
@@ -379,7 +471,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.12.8-18.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus-glib",
@@ -387,7 +481,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.110-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus-libs",
@@ -395,7 +491,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.12.8-18.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus-python",
@@ -403,7 +501,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.2.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dbus-tools",
@@ -411,7 +511,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.12.8-18.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "debtcollector",
@@ -419,7 +521,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.22.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "decorator",
@@ -427,7 +531,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.4.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "decorator",
@@ -435,7 +541,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.2.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dejavu-fonts-common",
@@ -443,7 +551,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.35-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dejavu-sans-fonts",
@@ -451,7 +561,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.35-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "deprecated",
@@ -459,7 +571,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.2.7",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "device-mapper",
@@ -467,7 +581,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8:1.02.181-3.el8_6.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "device-mapper-libs",
@@ -475,7 +591,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8:1.02.181-3.el8_6.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dmidecode",
@@ -483,7 +601,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:3.3-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dnf",
@@ -491,7 +611,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.7.0-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dnf-data",
@@ -499,7 +621,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.7.0-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dnf-plugin-subscription-manager",
@@ -507,7 +631,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dnsmasq",
@@ -515,7 +641,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.79-21.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "dumb-init",
@@ -523,7 +651,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.2.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "elasticsearch",
@@ -531,7 +661,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "7.0.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "elasticsearch-dsl",
@@ -539,7 +671,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "7.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "elfutils-default-yama-scope",
@@ -547,7 +681,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.186-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "elfutils-libelf",
@@ -555,7 +691,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.186-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "elfutils-libs",
@@ -563,7 +701,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.186-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ethtool",
@@ -571,7 +711,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.14",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "expat",
@@ -579,7 +721,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.2.5-8.el8_6.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "file-libs",
@@ -587,7 +731,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "5.33-20.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "filesystem",
@@ -595,7 +741,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.8-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "findutils",
@@ -603,7 +751,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:4.6.0-20.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "flask",
@@ -611,7 +761,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.1.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "flask-cors",
@@ -619,7 +771,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.0.9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "flask-login",
@@ -627,7 +781,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.4.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "flask-mail",
@@ -635,7 +791,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.9.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "flask-principal",
@@ -643,7 +801,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "flask-restful",
@@ -651,7 +811,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.3.9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "fontconfig",
@@ -659,7 +821,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.13.1-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "fontpackages-filesystem",
@@ -667,7 +831,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.44-22.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "freetype",
@@ -675,7 +841,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.9.1-4.el8_3.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "furl",
@@ -683,7 +851,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "fuse-common",
@@ -691,7 +861,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.3.0-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "fuse-overlayfs",
@@ -699,7 +871,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.9-1.module+el8.6.0+15917+093ca6f8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "fuse3",
@@ -707,7 +881,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.3.0-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "fuse3-libs",
@@ -715,7 +891,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.3.0-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "futures",
@@ -723,7 +901,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.1.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gawk",
@@ -731,7 +911,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.2.1-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gd",
@@ -739,7 +921,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.2.5-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gdb-gdbserver",
@@ -747,7 +931,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.2-18.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gdbm",
@@ -755,7 +941,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.18-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gdbm-libs",
@@ -763,7 +951,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.18-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "geoip2",
@@ -771,7 +961,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gevent",
@@ -779,7 +971,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "21.8.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "glib2",
@@ -787,7 +981,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.56.4-158.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "glibc",
@@ -795,7 +991,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.28-189.5.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "glibc-common",
@@ -803,7 +1001,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.28-189.5.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "glibc-minimal-langpack",
@@ -811,7 +1011,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.28-189.5.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gmp",
@@ -819,7 +1021,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:6.1.2-10.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gnupg2",
@@ -849,7 +1053,9 @@
                             }
                         }
                     }
-                ]
+                ],
+                "BaseScores": [],
+                "CVEIds": ["CVE-2022-34903"]
             },
             {
                 "Name": "gnutls",
@@ -857,7 +1063,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.6.16-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gobject-introspection",
@@ -865,7 +1073,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.56.1-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gpg-pubkey",
@@ -873,7 +1083,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "fd431d51-4ae0493b",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gpg-pubkey",
@@ -881,7 +1093,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "d4082792-5b32db75",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gpgme",
@@ -889,7 +1103,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.13.1-11.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "greenlet",
@@ -897,7 +1113,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.1.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "grep",
@@ -905,7 +1123,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.1-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "groff-base",
@@ -913,7 +1133,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.22.3-18.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "grpcio",
@@ -921,7 +1143,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.30.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gunicorn",
@@ -929,7 +1153,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "20.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "gzip",
@@ -937,7 +1163,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.9-13.el8_5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "hashids",
@@ -945,7 +1173,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.2.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "html5lib",
@@ -953,7 +1183,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.0.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "idna",
@@ -961,7 +1193,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "idna",
@@ -969,7 +1203,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ima-evm-utils",
@@ -977,7 +1213,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.3.2-12.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "importlib-metadata",
@@ -985,7 +1223,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "info",
@@ -993,7 +1233,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "6.5-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "iniparse",
@@ -1001,7 +1243,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "iptables-libs",
@@ -1009,7 +1253,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.8.4-22.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "iso8601",
@@ -1017,7 +1263,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.1.12",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "isodate",
@@ -1025,7 +1273,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.6.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "itsdangerous",
@@ -1033,7 +1283,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jansson",
@@ -1041,7 +1293,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.14-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jasmine-core",
@@ -1049,7 +1303,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:55d1c0fb65e634002b0c983896141d5f7fe976672630e402d451e1478d8a7588",
                 "Version": "2.8.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jasmine-core",
@@ -1057,7 +1313,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:55d1c0fb65e634002b0c983896141d5f7fe976672630e402d451e1478d8a7588",
                 "Version": "3.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jbigkit-libs",
@@ -1065,7 +1323,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.1-14.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jinja2",
@@ -1073,7 +1333,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.11.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jmespath",
@@ -1081,7 +1343,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.9.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "json-c",
@@ -1089,7 +1353,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.13.1-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "json-glib",
@@ -1097,7 +1363,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.4.4-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jsonpath-rw",
@@ -1105,7 +1373,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jsonpickle",
@@ -1113,7 +1383,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jsonpointer",
@@ -1121,7 +1393,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "jsonschema",
@@ -1129,7 +1403,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.2.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "kafka-python",
@@ -1137,7 +1413,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.4.7",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "keystoneauth1",
@@ -1145,7 +1423,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.18.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "keyutils-libs",
@@ -1153,7 +1433,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.5.10-9.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "kmod",
@@ -1161,7 +1443,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "25-19.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "kmod-libs",
@@ -1169,7 +1453,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "25-19.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "krb5-libs",
@@ -1177,7 +1463,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.18.2-14.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "langpacks-en",
@@ -1185,7 +1473,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.0-12.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libX11",
@@ -1193,7 +1483,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.6.8-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libX11-common",
@@ -1201,7 +1493,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.6.8-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libXau",
@@ -1209,7 +1503,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.0.9-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libXpm",
@@ -1217,7 +1513,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.5.12-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libacl",
@@ -1225,7 +1523,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.2.53-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libarchive",
@@ -1233,7 +1533,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.3.3-3.el8_5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libassuan",
@@ -1241,7 +1543,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.5.1-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libattr",
@@ -1249,7 +1553,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.4.48-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libblkid",
@@ -1257,7 +1563,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.32.1-35.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libcap",
@@ -1265,7 +1573,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.48-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libcap-ng",
@@ -1273,7 +1583,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.7.11-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libcom_err",
@@ -1281,7 +1593,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.45.6-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libcomps",
@@ -1289,7 +1603,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.1.18",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libcomps",
@@ -1297,7 +1613,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.1.18-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libcurl",
@@ -1305,7 +1623,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "7.61.1-22.el8_6.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libdb",
@@ -1313,7 +1633,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "5.3.28-42.el8_4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libdb-utils",
@@ -1321,7 +1643,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "5.3.28-42.el8_4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libdnf",
@@ -1329,7 +1653,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.63.0-8.1.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libevent",
@@ -1337,7 +1663,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.1.8-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libfdisk",
@@ -1345,7 +1673,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.32.1-35.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libffi",
@@ -1353,7 +1683,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.1-23.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libgcc",
@@ -1361,7 +1693,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.5.0-10.1.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libgcrypt",
@@ -1369,7 +1703,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.8.5-7.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libgpg-error",
@@ -1377,7 +1713,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.31-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libibverbs",
@@ -1385,7 +1723,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "37.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libidn2",
@@ -1393,7 +1733,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.2.0-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libjpeg-turbo",
@@ -1401,7 +1743,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.5.3-12.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libksba",
@@ -1409,7 +1753,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.3.5-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libmnl",
@@ -1417,7 +1763,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.0.4-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libmodulemd",
@@ -1425,7 +1773,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.13.0-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libmount",
@@ -1433,7 +1783,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.32.1-35.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libnet",
@@ -1441,7 +1793,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.1.6-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libnftnl",
@@ -1449,7 +1803,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.1.5-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libnghttp2",
@@ -1457,7 +1813,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.33.0-3.el8_2.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libnl3",
@@ -1465,7 +1823,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.5.0-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libnsl2",
@@ -1473,7 +1833,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.2.0-2.20180605git4a062cf.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpcap",
@@ -1481,7 +1843,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "14:1.9.1-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpkgconf",
@@ -1489,7 +1853,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.4.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpng",
@@ -1497,7 +1863,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2:1.6.34-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpq",
@@ -1505,7 +1873,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "13.5-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpq-devel",
@@ -1513,7 +1883,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "13.5-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpsl",
@@ -1521,7 +1893,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.20.2-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libpwquality",
@@ -1529,7 +1903,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.4.4-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "librepo",
@@ -1537,7 +1913,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.14.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libreport-filesystem",
@@ -1545,7 +1923,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9.5-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "librhsm",
@@ -1553,7 +1933,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.0.3-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libseccomp",
@@ -1561,7 +1943,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.5.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libselinux",
@@ -1569,7 +1953,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libsemanage",
@@ -1577,7 +1963,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libsepol",
@@ -1585,7 +1973,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libsigsegv",
@@ -1593,7 +1983,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.11-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libslirp",
@@ -1601,7 +1993,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4.4.0-1.module+el8.6.0+15875+dc9a2b96",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libsmartcols",
@@ -1609,7 +2003,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.32.1-35.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libsolv",
@@ -1617,7 +2013,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.7.20-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libssh",
@@ -1625,7 +2023,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.9.6-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libssh-config",
@@ -1633,7 +2033,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.9.6-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libstdc++",
@@ -1641,7 +2043,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.5.0-10.1.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libtasn1",
@@ -1649,7 +2053,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.13-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libtiff",
@@ -1657,7 +2063,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4.0.9-21.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libtirpc",
@@ -1665,7 +2073,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.1.4-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libunistring",
@@ -1673,7 +2083,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.9.9-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libusbx",
@@ -1681,7 +2093,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.0.23-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libuser",
@@ -1689,7 +2103,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.62-24.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libutempter",
@@ -1697,7 +2113,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.1.6-14.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libuuid",
@@ -1705,7 +2123,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.32.1-35.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libverto",
@@ -1713,7 +2133,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.3.0-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libwebp",
@@ -1721,7 +2143,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.0.0-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libxcb",
@@ -1729,7 +2153,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.13.1-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libxcrypt",
@@ -1737,7 +2163,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.1.1-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libxml2",
@@ -1745,7 +2173,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9.7-13.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libxslt",
@@ -1753,7 +2183,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.1.32-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libyaml",
@@ -1761,7 +2193,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.1.7-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "libzstd",
@@ -1769,7 +2203,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.4.4-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "lua-libs",
@@ -1777,7 +2213,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "5.3.4-12.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "lz4-libs",
@@ -1785,7 +2223,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.8.3-3.el8_4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "mako",
@@ -1793,7 +2233,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.1.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "markupsafe",
@@ -1801,7 +2243,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.1.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "maxminddb",
@@ -1809,7 +2253,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.5.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "memcached",
@@ -1817,7 +2263,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "0:1.5.22-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "mixpanel",
@@ -1825,7 +2273,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.5.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "mpfr",
@@ -1833,7 +2283,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.1.6-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "msgpack",
@@ -1841,7 +2293,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.6.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "msrest",
@@ -1849,7 +2303,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.6.21",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ncurses",
@@ -1857,7 +2313,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "6.1-9.20180224.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ncurses-base",
@@ -1865,7 +2323,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "6.1-9.20180224.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ncurses-libs",
@@ -1873,7 +2333,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "6.1-9.20180224.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ndg-httpsclient",
@@ -1881,7 +2343,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.5.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "netaddr",
@@ -1889,7 +2353,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.7.19",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "netifaces",
@@ -1897,7 +2363,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.10.9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nettle",
@@ -1905,7 +2373,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.4.1-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nftables",
@@ -1913,7 +2383,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:0.9.3-25.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx",
@@ -1921,7 +2393,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-all-modules",
@@ -1929,7 +2403,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-filesystem",
@@ -1937,7 +2413,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-mod-http-image-filter",
@@ -1945,7 +2423,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-mod-http-perl",
@@ -1953,7 +2433,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-mod-http-xslt-filter",
@@ -1961,7 +2443,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-mod-mail",
@@ -1969,7 +2453,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "nginx-mod-stream",
@@ -1977,7 +2463,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.14.1-9.module+el8.0.0+4108+af250afe",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "npth",
@@ -1985,7 +2473,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.5-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "oauthlib",
@@ -1993,7 +2483,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "openldap",
@@ -2001,7 +2493,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.4.46-18.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "openssl",
@@ -2009,7 +2503,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.1.1k-7.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "openssl-libs",
@@ -2017,7 +2513,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:1.1.1k-7.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "orderedmultidict",
@@ -2025,7 +2523,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.0.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "os-service-types",
@@ -2033,7 +2533,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.7.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "oslo.config",
@@ -2041,7 +2543,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "7.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "oslo.i18n",
@@ -2049,7 +2553,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.25.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "oslo.serialization",
@@ -2057,7 +2563,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.29.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "oslo.utils",
@@ -2065,7 +2573,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.12.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "p11-kit",
@@ -2073,7 +2583,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.23.22-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "p11-kit-trust",
@@ -2081,7 +2593,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.23.22-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "packaging",
@@ -2089,7 +2603,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "21.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pam",
@@ -2097,7 +2613,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.3.1-16.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "passwd",
@@ -2105,7 +2623,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.80-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pbr",
@@ -2113,7 +2633,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "5.4.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pcre",
@@ -2121,7 +2643,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.42-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pcre2",
@@ -2129,7 +2653,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "10.32-3.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "peewee",
@@ -2137,7 +2663,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.13.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Carp",
@@ -2145,7 +2673,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.42-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Data-Dumper",
@@ -2153,7 +2683,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.167-399.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Digest",
@@ -2161,7 +2693,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.17-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Digest-MD5",
@@ -2169,7 +2703,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.55-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Encode",
@@ -2177,7 +2713,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4:2.97-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Errno",
@@ -2185,7 +2723,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "0:1.28-421.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Exporter",
@@ -2193,7 +2733,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "5.72-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-File-Path",
@@ -2201,7 +2743,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.15-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-File-Temp",
@@ -2209,7 +2753,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "0.230.600-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Getopt-Long",
@@ -2217,7 +2763,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:2.50-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-HTTP-Tiny",
@@ -2225,7 +2773,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "0.074-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-IO",
@@ -2233,7 +2783,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "0:1.38-421.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-IO-Socket-IP",
@@ -2241,7 +2793,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "0.39-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-IO-Socket-SSL",
@@ -2249,7 +2803,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2.066-4.module+el8.3.0+6446+594cad75",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-MIME-Base64",
@@ -2257,7 +2813,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.15-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Mozilla-CA",
@@ -2265,7 +2823,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "20160104-7.module+el8.3.0+6498+9eecfe51",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Net-SSLeay",
@@ -2273,7 +2833,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.88-2.module+el8.6.0+13392+f0897f98",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-PathTools",
@@ -2281,7 +2843,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.74-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Pod-Escapes",
@@ -2289,7 +2853,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.07-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Pod-Perldoc",
@@ -2297,7 +2863,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.28-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Pod-Simple",
@@ -2305,7 +2873,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:3.35-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Pod-Usage",
@@ -2313,7 +2883,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4:1.69-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Scalar-List-Utils",
@@ -2321,7 +2893,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3:1.49-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Socket",
@@ -2329,7 +2903,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4:2.027-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Storable",
@@ -2337,7 +2913,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:3.11-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Term-ANSIColor",
@@ -2345,7 +2923,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4.06-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Term-Cap",
@@ -2353,7 +2933,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.17-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Text-ParseWords",
@@ -2361,7 +2943,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.30-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Text-Tabs+Wrap",
@@ -2369,7 +2953,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2013.0523-395.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Time-Local",
@@ -2377,7 +2963,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.280-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-URI",
@@ -2385,7 +2973,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.73-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-Unicode-Normalize",
@@ -2393,7 +2983,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.25-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-constant",
@@ -2401,7 +2993,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.33-396.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-interpreter",
@@ -2409,7 +3003,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4:5.26.3-421.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-libnet",
@@ -2417,7 +3013,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.11-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-libs",
@@ -2425,7 +3023,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4:5.26.3-421.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-macros",
@@ -2433,7 +3033,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4:5.26.3-421.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-parent",
@@ -2441,7 +3043,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:0.237-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-podlators",
@@ -2449,7 +3053,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "4.11-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-threads",
@@ -2457,7 +3063,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:2.21-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "perl-threads-shared",
@@ -2465,7 +3073,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.58-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pillow",
@@ -2473,7 +3083,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "9.0.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pip",
@@ -2481,7 +3093,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "19.3.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pip",
@@ -2489,7 +3103,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "21.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pkgconf",
@@ -2497,7 +3113,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.4.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pkgconf-m4",
@@ -2505,7 +3123,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.4.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pkgconf-pkg-config",
@@ -2513,7 +3133,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.4.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "platform-python",
@@ -2543,7 +3165,9 @@
                             }
                         }
                     }
-                ]
+                ],
+                "BaseScores": [],
+                "CVEIds": ["CVE-2015-20107", "CVE-2022-0391"]
             },
             {
                 "Name": "platform-python-setuptools",
@@ -2551,7 +3175,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "39.2.0-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ply",
@@ -2559,7 +3185,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.11",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "popt",
@@ -2567,7 +3195,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.18-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "prometheus-client",
@@ -2575,7 +3205,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.7.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "protobuf",
@@ -2583,7 +3215,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.15.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "protobuf-c",
@@ -2591,7 +3225,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.3.0-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "psutil",
@@ -2599,7 +3235,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "5.9.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "psycopg2-binary",
@@ -2607,7 +3245,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.9.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "publicsuffix-list-dafsa",
@@ -2615,7 +3255,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "20180723-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "py-bitbucket",
@@ -2623,7 +3265,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyasn1",
@@ -2631,7 +3275,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.4.8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyasn1-modules",
@@ -2639,7 +3285,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.2.8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pycparser",
@@ -2647,7 +3295,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.20",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pygithub",
@@ -2655,7 +3305,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.45",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyinotify",
@@ -2663,7 +3315,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.9.6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyjwt",
@@ -2671,7 +3325,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pymemcache",
@@ -2679,7 +3335,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pymysql",
@@ -2687,7 +3345,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.9.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyopenssl",
@@ -2695,7 +3355,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "19.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyparsing",
@@ -2703,7 +3365,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.4.6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pypdf2",
@@ -2711,7 +3375,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.27.6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyrsistent",
@@ -2719,7 +3385,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.18.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pysocks",
@@ -2727,7 +3395,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.6.8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-dateutil",
@@ -2735,7 +3405,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-dateutil",
@@ -2743,7 +3415,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.8.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-editor",
@@ -2751,7 +3425,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.0.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-etcd",
@@ -2759,7 +3435,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.3.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-gitlab",
@@ -2767,7 +3445,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-keystoneclient",
@@ -2775,7 +3455,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.22.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-ldap",
@@ -2783,7 +3465,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-magic",
@@ -2791,7 +3475,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.4.15",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-redis-lock",
@@ -2799,7 +3485,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.7.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python-swiftclient",
@@ -2807,7 +3495,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.8.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-chardet",
@@ -2815,7 +3505,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.0.4-7.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-cloud-what",
@@ -2823,7 +3515,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-dateutil",
@@ -2831,7 +3525,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1:2.6.1-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-dbus",
@@ -2839,7 +3535,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.2.4-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-decorator",
@@ -2847,7 +3545,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.2.1-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-dmidecode",
@@ -2855,7 +3555,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.12.2-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-dnf",
@@ -2863,7 +3565,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.7.0-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-dnf-plugins-core",
@@ -2871,7 +3575,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.0.21-11.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-ethtool",
@@ -2879,7 +3585,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.14-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-gobject-base",
@@ -2887,7 +3595,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.28.3-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-gpg",
@@ -2895,7 +3605,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.13.1-11.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-hawkey",
@@ -2903,7 +3615,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.63.0-8.1.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-idna",
@@ -2911,7 +3625,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.5-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-iniparse",
@@ -2919,7 +3635,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.4-31.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-inotify",
@@ -2927,7 +3645,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.9.6-13.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-libcomps",
@@ -2935,7 +3655,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.1.18-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-libdnf",
@@ -2943,7 +3665,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "0.63.0-8.1.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-librepo",
@@ -2951,7 +3675,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.14.2-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-libs",
@@ -2981,7 +3707,9 @@
                             }
                         }
                     }
-                ]
+                ],
+                "BaseScores": [],
+                "CVEIds": ["CVE-2015-20107", "CVE-2022-0391"]
             },
             {
                 "Name": "python3-libxml2",
@@ -2989,7 +3717,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.9.7-13.el8_6.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-pip-wheel",
@@ -2997,7 +3727,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "9.0.3-22.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-pysocks",
@@ -3005,7 +3737,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.6.8-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-requests",
@@ -3013,7 +3747,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.20.0-2.1.el8_1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-rpm",
@@ -3021,7 +3757,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.14.3-23.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-setuptools-wheel",
@@ -3029,7 +3767,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "39.2.0-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-six",
@@ -3037,7 +3777,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.11.0-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-subscription-manager-rhsm",
@@ -3045,7 +3787,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-syspurpose",
@@ -3053,7 +3797,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python3-urllib3",
@@ -3061,7 +3807,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.24.2-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python38",
@@ -3069,7 +3817,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.8.12-1.module+el8.6.0+12642+c3710b74",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python38-libs",
@@ -3077,7 +3827,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "3.8.12-1.module+el8.6.0+12642+c3710b74",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python38-pip",
@@ -3085,7 +3837,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "19.3.1-5.module+el8.6.0+13002+70cfc74a",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python38-pip-wheel",
@@ -3093,7 +3847,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "19.3.1-5.module+el8.6.0+13002+70cfc74a",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python38-setuptools",
@@ -3101,7 +3857,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "41.6.0-5.module+el8.5.0+12205+a865257a",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "python38-setuptools-wheel",
@@ -3109,7 +3867,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "41.6.0-5.module+el8.5.0+12205+a865257a",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pytz",
@@ -3117,7 +3877,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2019.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "pyyaml",
@@ -3125,7 +3887,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "5.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "raven",
@@ -3133,7 +3897,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "6.10.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "readline",
@@ -3141,7 +3907,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "7.0-10.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "recaptcha2",
@@ -3149,7 +3917,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "redhat-release",
@@ -3157,7 +3927,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.6-0.1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "redis",
@@ -3165,7 +3937,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.5.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "redis-py-cluster",
@@ -3173,7 +3947,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.1.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "rehash",
@@ -3181,7 +3957,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "reportlab",
@@ -3189,7 +3967,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "3.5.55",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "requests",
@@ -3197,7 +3977,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.20.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "requests",
@@ -3205,7 +3987,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.27.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "requests-aws4auth",
@@ -3213,7 +3997,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "requests-file",
@@ -3221,7 +4007,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.4.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "requests-oauthlib",
@@ -3229,7 +4017,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.3.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "rfc3986",
@@ -3237,7 +4027,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.3.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "rootfiles",
@@ -3245,7 +4037,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "8.1-22.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "rpm",
@@ -3253,7 +4047,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.14.3-23.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "rpm-build-libs",
@@ -3261,7 +4057,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.14.3-23.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "rpm-libs",
@@ -3269,7 +4067,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.14.3-23.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "runc",
@@ -3277,7 +4077,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1:1.1.3-2.module+el8.6.0+15917+093ca6f8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "s3transfer",
@@ -3285,7 +4087,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.5.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "sed",
@@ -3293,7 +4097,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.5-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "semantic-version",
@@ -3301,7 +4107,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.8.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "setup",
@@ -3309,7 +4117,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.12.2-6.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "setuptools",
@@ -3317,7 +4127,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "50.3.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "setuptools",
@@ -3325,7 +4137,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "39.2.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "setuptools",
@@ -3333,7 +4147,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "41.6.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "setuptools-scm",
@@ -3341,7 +4157,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.1.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "shadow-utils",
@@ -3349,7 +4167,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2:4.6-16.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "six",
@@ -3357,7 +4177,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.14.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "six",
@@ -3365,7 +4187,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.11.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "skopeo",
@@ -3373,7 +4197,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "2:1.8.0-2.module+el8.6.0+15917+093ca6f8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "slirp4netns",
@@ -3381,7 +4207,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:3aba94eed52924a9707c3be29817a11f7efc8fac7fe75e0c91e48e242f988ccf",
                 "Version": "1.2.0-2.module+el8.6.0+15917+093ca6f8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "soupsieve",
@@ -3389,7 +4217,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.9.5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "sqlalchemy",
@@ -3397,7 +4227,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.4.31",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "sqlite-libs",
@@ -3405,7 +4237,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "3.26.0-15.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "stevedore",
@@ -3413,7 +4247,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.31.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "stringscore",
@@ -3421,7 +4257,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "stripe",
@@ -3429,7 +4267,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.42.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "subscription-manager",
@@ -3437,7 +4277,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "subscription-manager",
@@ -3445,7 +4287,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "subscription-manager-rhsm-certificates",
@@ -3453,7 +4297,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29-3.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "supervisor",
@@ -3461,7 +4307,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "supervisor-logging",
@@ -3469,7 +4317,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.0.9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "supervisor-stdout",
@@ -3477,7 +4327,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.1.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "syspurpose",
@@ -3485,7 +4337,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.28.29",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "systemd",
@@ -3493,7 +4347,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "239-58.el8_6.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "systemd-libs",
@@ -3501,7 +4357,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "239-58.el8_6.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "systemd-pam",
@@ -3509,7 +4367,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "239-58.el8_6.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "tar",
@@ -3517,7 +4377,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2:1.30-5.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "text-unidecode",
@@ -3525,7 +4387,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "tldextract",
@@ -3533,7 +4397,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.2.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "toml",
@@ -3541,7 +4407,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.10.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "toposort",
@@ -3549,7 +4417,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "tpm2-tss",
@@ -3557,7 +4427,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.3.2-4.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "tzdata",
@@ -3565,7 +4437,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2022c-1.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "tzlocal",
@@ -3573,7 +4447,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.0.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ubi8",
@@ -3581,7 +4457,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:0d51f270409c5c21859f12eee7aa77d3969ac3033b7129a2a87648b741ee66ee",
                 "Version": "8.6-903.1661794351",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "ubi8-container",
@@ -3589,7 +4467,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:0d51f270409c5c21859f12eee7aa77d3969ac3033b7129a2a87648b741ee66ee",
                 "Version": "8.6-903.1661794351",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "urllib3",
@@ -3597,7 +4477,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.26.9",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "urllib3",
@@ -3605,7 +4487,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.24.2",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "usermode",
@@ -3613,7 +4497,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.113-2.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "util-linux",
@@ -3621,7 +4507,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.32.1-35.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "vim-minimal",
@@ -3629,7 +4517,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2:8.0.1763-19.el8_6.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "virt-what",
@@ -3637,7 +4527,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.18-13.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "webencodings",
@@ -3645,7 +4537,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.5.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "webob",
@@ -3653,7 +4547,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.8.6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "websocket-client",
@@ -3661,7 +4557,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.57.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "werkzeug",
@@ -3669,7 +4567,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.16.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "wheel",
@@ -3677,7 +4577,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.35.1",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "which",
@@ -3685,7 +4587,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "2.21-17.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "wrapt",
@@ -3693,7 +4597,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "1.13.3",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "xhtml2pdf",
@@ -3701,7 +4607,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.2.4",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "xz-libs",
@@ -3709,7 +4617,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "5.2.4-4.el8_6",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "yapf",
@@ -3717,7 +4627,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "0.29.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "yum",
@@ -3725,7 +4637,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "4.7.0-8.el8",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "zipp",
@@ -3733,7 +4647,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "2.1.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "zlib",
@@ -3741,7 +4657,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:480a8b2c25e9343725938879adac8ebb1c01cfde85975f023ca7aa95bfe7e0da",
                 "Version": "1.2.11-18.el8_5",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "zope.event",
@@ -3749,7 +4667,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "4.5.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             },
             {
                 "Name": "zope.interface",
@@ -3757,7 +4677,9 @@
                 "NamespaceName": "",
                 "AddedBy": "sha256:439e6bc4f7490f382f233003f10ca643d121659230990a4ae9cdff6a94d8c382",
                 "Version": "5.4.0",
-                "Vulnerabilities": []
+                "Vulnerabilities": [],
+                "BaseScores": [],
+                "CVEIds": []
             }
         ]
     }

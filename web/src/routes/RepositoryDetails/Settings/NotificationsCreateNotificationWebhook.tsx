@@ -12,6 +12,7 @@ import {
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useUpdateNotifications} from 'src/hooks/UseUpdateNotifications';
+import {NotificationEventConfig} from 'src/hooks/UseEvents';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 
 export default function CreateWebhookNotification(
@@ -35,6 +36,7 @@ export default function CreateWebhookNotification(
     props.method != undefined &&
     props.event != undefined &&
     url != '' &&
+    props.isValidateConfig() &&
     isValidURL(url);
 
   const createNotification = async () => {
@@ -44,7 +46,7 @@ export default function CreateWebhookNotification(
         template: jsonBody,
       },
       event: props.event?.type,
-      event_config: {},
+      event_config: props.eventConfig,
       method: props.method?.type,
       title: title,
     });
@@ -116,6 +118,8 @@ interface CreateWebhookNotificationProps {
   repo: string;
   event: NotificationEvent;
   method: NotificationMethod;
+  eventConfig: NotificationEventConfig;
+  isValidateConfig: () => boolean;
   closeDrawer: () => void;
   setError: (error: string) => void;
 }

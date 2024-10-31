@@ -7,7 +7,6 @@ import unittest
 import zlib
 from datetime import datetime, timedelta
 from io import BytesIO
-from test.helpers import assert_action_logged
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import jwt
@@ -19,16 +18,21 @@ from parameterized import parameterized, parameterized_class
 
 from app import app
 from data import model
-from data.database import ServiceKeyApprovalType
+from data.database import NotificationKind, ServiceKeyApprovalType
+from data.model.notification import list_notifications
+from data.model.oauth import create_user_access_token
+from data.model.organization import create_organization, get_organization
+from data.model.user import get_user
 from endpoints import keyserver
 from endpoints.api import api, api_bp
 from endpoints.api.user import Signin
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
 from endpoints.keyserver import jwk_with_kid
-from endpoints.test.shared import gen_basic_auth
+from endpoints.test.shared import gen_basic_auth, toggle_feature
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import assert_action_logged
 from util.registry.gzipinputstream import WINDOW_BUFFER_SIZE
 from util.security.token import encode_public_private_token
 
@@ -65,11 +69,15 @@ class EndpointTestCase(unittest.TestCase):
 
     def _add_csrf(self, without_csrf):
         parts = urlparse(without_csrf)
+
         query = parse_qs(parts[4])
+        for k, v in query.items():
+            query[k] = v[0]
 
         self._set_csrf()
         query[CSRF_TOKEN_KEY] = CSRF_TOKEN
-        return urlunparse(list(parts[0:4]) + [urlencode(query)] + list(parts[5:]))
+        url = urlunparse(list(parts[0:4]) + [urlencode(query)] + list(parts[5:]))
+        return url
 
     def _set_csrf(self):
         with self.app.session_transaction() as sess:
@@ -128,7 +136,6 @@ class EndpointTestCase(unittest.TestCase):
         url = url_for(resource_name, **kwargs)
         if with_csrf:
             url = self._add_csrf(url)
-
         post_data = None
         if form:
             post_data = form
@@ -310,6 +317,8 @@ class WebEndpointTestCase(EndpointTestCase):
         self.getResponse("web.receipt", expected_code=404)  # Will 401 if no user.
 
     def test_request_authorization_code(self):
+        self.login("devtable", "password")
+
         # Try for an invalid client.
         self.getResponse(
             "web.request_authorization_code",
@@ -331,6 +340,101 @@ class WebEndpointTestCase(EndpointTestCase):
             scope="repo:read",
             expected_code=200,
         )
+
+    def test_request_authorization_code_assignment_id_with_code(self):
+        self.login("devtable", "password")
+
+        org = model.organization.get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        self.getResponse(
+            "web.request_authorization_code",
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="repo:read",
+            assignment_uuid="assignmentid",
+            response_type="code",
+            expected_code=400,
+        )
+
+    def test_request_authorization_code_not_org_admin(self):
+        self.login("devtable", "password")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        self.getResponse(
+            "web.request_authorization_code",
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="repo:read",
+            expected_code=403,
+        )
+
+    def test_request_authorization_code_assigned_authorization(self):
+        self.login("devtable", "password")
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        response = self.getResponse(
+            "web.request_authorization_code",
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="repo:read",
+            assignment_uuid=assignment.uuid,
+            response_type="token",
+            expected_code=200,
+        )
+        assert "Are you sure you want to authorize this application?" in str(response)
+
+    def test_request_authorization_code_assigned_authorization_disabled(self):
+        self.login("devtable", "password")
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        with toggle_feature("ASSIGN_OAUTH_TOKEN", False):
+            self.getResponse(
+                "web.request_authorization_code",
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="repo:read",
+                assignment_uuid=assignment.uuid,
+                response_type="token",
+                expected_code=400,
+            )
+
+    def test_request_authorization_code_assigned_authorization_with_existing_scopes(self):
+        self.login("devtable", "password")
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        create_user_access_token(devtable, app.client_id, "repo:read")
+        oauth_tokens = list(model.oauth.list_access_tokens_for_user(devtable))
+        filtered_tokens = [token for token in oauth_tokens if token.application == app]
+        assert len(filtered_tokens) == 1
+        self.getResponse(
+            "web.request_authorization_code",
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="repo:read",
+            assignment_uuid=assignment.uuid,
+            response_type="token",
+            expected_code=302,
+        )
+        assert model.oauth.get_assigned_authorization_for_user(devtable, assignment.uuid) is None
+        oauth_tokens = list(model.oauth.list_access_tokens_for_user(devtable))
+        filtered_tokens = [token for token in oauth_tokens if token.application == app]
+        assert len(filtered_tokens) == 2
 
     def test_build_status_badge(self):
         # Try for an invalid repository.
@@ -525,6 +629,101 @@ class OAuthTestCase(EndpointTestCase):
             with_csrf=False,
             expected_code=401,
         )
+
+    def test_authorize_application_assignment_id_with_code(self):
+        # Note: Defined in initdb.py
+        form = {
+            "client_id": "deadbeef",
+            "redirect_uri": "http://localhost:8000/o2c.html",
+            "scope": "user:admin",
+            "assignment_uuid": "assignmentid",
+            "response_type": "code",
+        }
+
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
+        self.postResponse(
+            "web.authorize_application",
+            headers=headers,
+            form=form,
+            with_csrf=True,
+            expected_code=400,
+        )
+
+    def test_authorize_application_not_org_admin(self):
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        form = {
+            "client_id": app.client_id,
+            "redirect_uri": app.redirect_uri,
+            "scope": "user:admin",
+            "assignment_uuid": "assignmentid",
+            "response_type": "token",
+        }
+
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
+        response = self.postResponse(
+            "web.authorize_application",
+            headers=headers,
+            form=form,
+            with_csrf=True,
+            expected_code=302,
+        )
+        assert "unauthorized_client" in response.headers["Location"]
+
+    def test_authorize_application_assigned_authorization(self):
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        tokens = list(model.oauth.list_access_tokens_for_user(devtable))
+        assert len(tokens) == 1
+        form = {
+            "client_id": app.client_id,
+            "redirect_uri": app.redirect_uri,
+            "scope": "user:admin",
+            "assignment_uuid": assignment.uuid,
+            "response_type": "token",
+        }
+
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
+        response = self.postResponse(
+            "web.authorize_application",
+            headers=headers,
+            form=form,
+            with_csrf=True,
+            expected_code=302,
+        )
+        assert len(list(model.oauth.list_access_tokens_for_user(devtable))) == 2
+        assert model.oauth.get_assigned_authorization_for_user(devtable, assignment.uuid) is None
+
+    def test_authorize_application_assigned_authorization_disabled(self):
+        devtable = get_user("devtable")
+        user = get_user("randomuser")
+        org = model.organization.create_organization("testorg", "testorg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assignment = model.oauth.assign_token_to_user(
+            app, devtable, app.redirect_uri, "repo:read", "token"
+        )
+        form = {
+            "client_id": app.client_id,
+            "redirect_uri": app.redirect_uri,
+            "scope": "user:admin",
+            "assignment_uuid": assignment.uuid,
+            "response_type": "token",
+        }
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
+        with toggle_feature("ASSIGN_OAUTH_TOKEN", False):
+            self.postResponse(
+                "web.authorize_application",
+                headers=headers,
+                form=form,
+                with_csrf=True,
+                expected_code=400,
+            )
 
     @parameterized.expand(["token", "code"])
     def test_authorize_nocsrf_correctheader(self, response_type):
@@ -953,6 +1152,117 @@ class KeyServerTestCase(EndpointTestCase):
                 expected_code=204,
                 service="sample_service",
                 kid="kid123",
+            )
+
+
+class AssignOauthAppTestCase(EndpointTestCase):
+    def test_assign_user(self):
+        self.login("devtable", "password")
+        assigned_user = get_user("randomuser")
+        org = get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        assigned_auths = model.oauth.list_assigned_authorizations_for_user(assigned_user)
+        assert len(assigned_auths) == 0
+        notifications = list_notifications(assigned_user)
+        assert len(notifications) == 0
+
+        response = self.postResponse(
+            "web.assign_user_to_app",
+            with_csrf=True,
+            expected_code=200,
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="user:admin",
+            username="randomuser",
+            response_type="token",
+        )
+
+        assert "Token assigned successfully" in response.data.decode("utf-8")
+        assigned_auths = model.oauth.list_assigned_authorizations_for_user(assigned_user)
+        assert len(assigned_auths) == 1
+        assert assigned_auths[0].application == app
+        notifications = list_notifications(assigned_user)
+        assert len(notifications) == 1
+        assert (
+            notifications[0].kind
+            == NotificationKind.select()
+            .where(NotificationKind.name == "assigned_authorization")
+            .get()
+        )
+
+    def test_assign_user_unauthenticated(self):
+        org = get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        self.postResponse(
+            "web.assign_user_to_app",
+            with_csrf=True,
+            expected_code=401,
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="user:admin",
+            username="randomuser",
+            response_type="token",
+        )
+
+    def test_assign_user_user_does_not_exist(self):
+        self.login("devtable", "password")
+        org = get_organization("buynlarge")
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        self.postResponse(
+            "web.assign_user_to_app",
+            with_csrf=True,
+            expected_code=404,
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="user:admin",
+            username="doesnotexist",
+            response_type="token",
+        )
+
+    def test_assign_user_app_does_not_exist(self):
+        self.login("devtable", "password")
+        self.postResponse(
+            "web.assign_user_to_app",
+            with_csrf=True,
+            expected_code=404,
+            client_id="doesnotexist",
+            redirect_uri="http://foo/bar/baz",
+            scope="user:admin",
+            username="randomuser",
+            response_type="token",
+        )
+
+    def test_assign_user_not_org_admin(self):
+        self.login("devtable", "password")
+        user = get_user("randomuser")
+        org = create_organization("neworg", "neworg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        self.postResponse(
+            "web.assign_user_to_app",
+            with_csrf=True,
+            expected_code=403,
+            client_id=app.client_id,
+            redirect_uri=app.redirect_uri,
+            scope="user:admin",
+            username="freshuser",
+            response_type="token",
+        )
+
+    def test_assign_user_disabled(self):
+        self.login("devtable", "password")
+        user = get_user("randomuser")
+        org = create_organization("neworg", "neworg@devtable.com", user)
+        app = model.oauth.create_application(org, "test", "http://foo/bar", "http://foo/bar/baz")
+        with toggle_feature("ASSIGN_OAUTH_TOKEN", False):
+            self.postResponse(
+                "web.assign_user_to_app",
+                with_csrf=True,
+                expected_code=404,
+                client_id=app.client_id,
+                redirect_uri=app.redirect_uri,
+                scope="user:admin",
+                username="freshuser",
+                response_type="token",
             )
 
 

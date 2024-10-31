@@ -16,8 +16,10 @@ from util.migrate import UTF8LongText
 
 
 def upgrade(op, tables, tester):
-    op.alter_column("manifest", "manifest_bytes", existing_type=sa.Text(), type_=UTF8LongText())
+    with op.batch_alter_table("manifest") as batch_op:
+        batch_op.alter_column("manifest_bytes", existing_type=sa.Text(), type_=UTF8LongText())
 
 
 def downgrade(op, tables, tester):
-    op.alter_column("manifest", "manifest_bytes", existing_type=UTF8LongText(), type_=sa.Text())
+    with op.batch_alter_table("manifest") as batch_op:
+        batch_op.alter_column("manifest_bytes", existing_type=UTF8LongText(), type_=sa.Text())

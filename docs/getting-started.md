@@ -139,7 +139,7 @@ Quay is covered by tests using various approaches. Read our [testing guide](/TES
 
 ## Contributing
 
-How great that you want to contribute to Quay! Before starting make sure to check our [contributing guidelines](.github/CONTRIBUTE.md).
+How great that you want to contribute to Quay! Before starting make sure to check our [contributing guidelines](../.github/CONTRIBUTING.md).
 
 # Using Quay
 

@@ -26,6 +26,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v4"
+	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
@@ -476,7 +477,7 @@ func ValidateBitbucketOAuth(clientID, clientSecret string) bool {
 
 }
 
-// ValidateDatabaseConnection checks that the Bitbucker OAuth credentials are correct
+// ValidateDatabaseConnection checks whether database is available
 func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocals, autorollback bool, sslmode, sslrootcert, fgName string) error {
 
 	// Convert uri into correct format
@@ -551,11 +552,19 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		log.Debugf("Pinging database at %s dsn:", dsn)
+		log.Debugf("Pinging database at hostname: %s.", fullHostName)
 		err = db.PingContext(ctx)
 		if err != nil {
 			return err
 		}
+
+		var version string
+		row := db.QueryRow("SELECT version()")
+		err = row.Scan(&version)
+		if err != nil {
+			return err
+		}
+		log.Debugf("Database version: %s", version)
 
 		// Database is Postgres
 	} else if scheme == "postgresql" {
@@ -600,7 +609,7 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		}
 
 		// Connect and defer closing
-		log.Debugf("Pinging database at %s", dsn)
+		log.Debugf("Pinging database at hostname: %s.", fullHostName)
 		conn, err := pgx.Connect(ctx, dsn)
 		if err != nil {
 			return err
@@ -614,6 +623,7 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		if err != nil {
 			return err
 		}
+		log.Debugf("Database version: %s", version)
 
 		// Extract major version number using regex
 		var re = regexp.MustCompile(`^(\d+)`)
@@ -653,6 +663,24 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 			}
 		}
 		return errors.New("if you are using a Postgres database, you must install the pg_trgm extension")
+
+	} else if scheme == "sqlite" {
+		// Open a connection to the SQLite database
+		db, err := sql.Open("sqlite3", dbname)
+		if err != nil {
+			return fmt.Errorf("error connecting to sqlite database: %s", err)
+		}
+		defer db.Close()
+
+		// Try to ping database
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		log.Debugf("Pinging sqlite database at %s db path:", dbname)
+		err = db.PingContext(ctx)
+		if err != nil {
+			return err
+		}
 
 	} else {
 		return errors.New("you must use a valid scheme")
@@ -948,4 +976,23 @@ func ValidateOIDCServer(opts Options, oidcServer, clientID, clientSecret, servic
 
 	return true, ValidationError{}
 
+}
+
+// ValidateDefaultAutoPruneKey validates that DEFAULT_NAMESPACE_AUTOPRUNE_POLICY has key of `number_of_tags` or `creation_date`
+func ValidateDefaultAutoPruneKey(input string, field string, fgName string) (bool, ValidationError) {
+
+	re := regexp.MustCompile(`^number_of_tags|creation_date$`)
+	matches := re.FindAllString(input, -1)
+
+	// If the pattern is not matched
+	if len(matches) != 1 {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must have method key with value `number_of_tags` or `creation_date`",
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
 }

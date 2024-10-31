@@ -8,8 +8,10 @@ from data.database import Repository, RepositoryState, UseThenDisconnect
 from data.model.gc import garbage_collect_repo
 from data.model.repository import get_random_gc_policy
 from data.registry_model import registry_model
+from notifications.notificationevent import RepoImageExpiryEvent
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.metrics.prometheus import gc_iterations
+from util.notification import scan_for_image_expiry_notifications
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
@@ -30,6 +32,14 @@ class GarbageCollectionWorker(Worker):
         self.add_operation(
             self._garbage_collection_repos, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
         )
+        if features.IMAGE_EXPIRY_TRIGGER:
+            self.add_operation(
+                self._scan_notifications, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
+            )
+
+    def _scan_notifications(self):
+        # scan for tags that are expiring based on configured RepositoryNotifications
+        scan_for_image_expiry_notifications(event_name=RepoImageExpiryEvent.event_name())
 
     def _garbage_collection_repos(self, skip_lock_for_testing=False):
         """
@@ -49,10 +59,14 @@ class GarbageCollectionWorker(Worker):
             assert features.GARBAGE_COLLECTION
 
             try:
-                with GlobalLock(
-                    "REPO_GARBAGE_COLLECTION_%s" % repo_ref.id,
-                    lock_ttl=REPOSITORY_GC_TIMEOUT + LOCK_TIMEOUT_PADDING,
-                ) if not skip_lock_for_testing else empty_context():
+                with (
+                    GlobalLock(
+                        "REPO_GARBAGE_COLLECTION_%s" % repo_ref.id,
+                        lock_ttl=REPOSITORY_GC_TIMEOUT + LOCK_TIMEOUT_PADDING,
+                    )
+                    if not skip_lock_for_testing
+                    else empty_context()
+                ):
                     try:
                         repository = Repository.get(id=repo_ref.id)
                     except Repository.DoesNotExist:
@@ -91,6 +105,11 @@ if __name__ == "__main__":
 
     if not features.GARBAGE_COLLECTION:
         logger.debug("Garbage collection is disabled; skipping")
+        while True:
+            time.sleep(100000)
+
+    if app.config.get("DISABLE_PUSHES", False):
+        logger.debug("Pushes to the registry are disabled; skipping startup")
         while True:
             time.sleep(100000)
 

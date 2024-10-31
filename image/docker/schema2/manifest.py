@@ -145,7 +145,7 @@ class DockerSchema2Manifest(ManifestInterface):
         ],
     }
 
-    def __init__(self, manifest_bytes, validate=False, ignore_unknown_mediatypes=False):
+    def __init__(self, manifest_bytes, validate=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._payload = manifest_bytes
