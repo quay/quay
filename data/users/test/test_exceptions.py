@@ -230,10 +230,10 @@ def test_ldap_catchall_exception_verify_credentials():
         network_timeout=1,
     )
 
-    def raiseException():
+    def raiseException(*args, **kwargs):
         raise IOError("debuglog level only")
 
-    user._ldap.get_connection = lambda: raiseException()
+    user._ldap.get_connection = raiseException
     assert user.verify_credentials("someone", "changeme") == (None, "Invalid username or password.")
     assert exceptHandler.content == []
     logger.setLevel(logging.DEBUG)
