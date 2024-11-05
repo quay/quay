@@ -901,3 +901,12 @@ class DefaultConfig(ImmutableConfig):
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
+
+    FEATURE_PULP_PLUGIN = True
+    PULP_PLUGIN_CONFIG = {
+        "base_url": "https://mtls.internal.console.redhat.com",
+        "api_root": "/api/pulp/",
+        "domain": "quay",
+        "cert": "/pulp.crt",
+        "key": "pulp.key",
+    }

@@ -1,6 +1,8 @@
 import json
 import logging
 
+import features
+
 from flask import Blueprint, make_response, redirect
 
 from app import get_app_url
@@ -21,6 +23,9 @@ def app_capabilities():
     manifest_security = "%s/api/v1/repository/{namespace}/{reponame}/manifest/{digest}/security"
     manifest_security_tmpl = manifest_security % get_app_url()
 
+    pulp_rpm_support = "%s/v2/{namespace}/{reponame}/_pulp/rpm"
+    pulp_rpm_support_tmpl = pulp_rpm_support % get_app_url()
+
     metadata = {
         "appName": "io.quay",
         "capabilities": {
@@ -36,6 +41,11 @@ def app_capabilities():
             },
         },
     }
+
+    if features.PULP_PLUGIN:
+        metadata["capabilities"]["io.quay.pulp-rpm-support"] = {
+            "rest-api-template": pulp_rpm_support_tmpl
+        }
 
     resp = make_response(json.dumps(metadata))
     resp.headers["Content-Type"] = "application/json"
