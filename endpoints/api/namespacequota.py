@@ -87,8 +87,11 @@ class OrganizationQuotaList(ApiResource):
                     "properties": {
                         "limit": {
                             "type": "string",
-                            "description": "Human readable storage capacity of the organization",
-                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                            "description": "Human readable storage capacity of the organization"
+                            + "Maximum supported limit is less than 8 EiB",
+                            "pattern": r"^(\d+(|\.\d+)\s?("
+                            + "|".join(bitmath.ALL_UNIT_TYPES)
+                            + ")?)$",
                         },
                     },
                 },
@@ -153,6 +156,10 @@ class OrganizationQuotaList(ApiResource):
         if quotas:
             raise request_error(message="Organization quota for '%s' already exists" % orgname)
 
+        if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
+            # the Postgres maximum of an BigInteger is 9223372036854775807
+            raise request_error(message="Maximum supported Quota is less than 8 EiB")
+
         try:
             model.namespacequota.create_namespace_quota(org, limit_bytes)
             return "Created", 201
@@ -183,8 +190,11 @@ class OrganizationQuota(ApiResource):
                     "properties": {
                         "limit": {
                             "type": "string",
-                            "description": "Human readable storage capacity of the organization",
-                            "pattern": r"^(\d+\s?(B|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB|Ki|Mi|Gi|Ti|Pi|Ei|Zi|Yi|KB|MB|GB|TB|PB|EB|ZB|YB|K|M|G|T|P|E|Z|Y)?)$",
+                            "description": "Human readable storage capacity of the organization"
+                            + "Maximum supported limit is less than 8 EiB",
+                            "pattern": r"^(\d+(|\.\d+)\s?("
+                            + "|".join(bitmath.ALL_UNIT_TYPES)
+                            + ")?)$",
                         },
                     },
                     "required": ["limit"],
@@ -237,6 +247,10 @@ class OrganizationQuota(ApiResource):
                     )
             elif "limit_bytes" in quota_data:
                 limit_bytes = quota_data["limit_bytes"]
+
+            if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
+                # the Postgres maximum of an BigInteger is 9223372036854775807
+                raise request_error(message="Maximum supported Quota is less than 8 EiB")
 
             if limit_bytes:
                 model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
