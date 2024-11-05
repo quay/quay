@@ -1011,21 +1011,29 @@ class OrganizationRhSku(ApiResource):
                 user_available_subscriptions = []
                 for account_number in account_numbers:
                     user_available_subscriptions += (
-                        marketplace_subscriptions.get_list_of_subscriptions(account_number)
+                        marketplace_subscriptions.get_list_of_subscriptions(
+                            account_number, filter_out_org_bindings=True
+                        )
                     )
 
                 if subscriptions is None:
                     abort(401, message="no valid subscriptions present")
 
-                user_subscription_ids = [
-                    int(subscription["id"]) for subscription in user_available_subscriptions
-                ]
-                if int(subscription_id) in user_subscription_ids:
-                    quantity = 1
-                    for subscription in user_available_subscriptions:
-                        if subscription["id"] == subscription_id:
-                            quantity = subscription["quantity"]
-                            break
+                user_subs = {sub["id"]: sub for sub in user_available_subscriptions}
+                if int(subscription_id) in user_subs.keys():
+                    # Check if the sku is being split
+                    quantity = subscription.get("quantity")
+                    base_quantity = user_subs.get(subscription_id).get("quantity", 1)
+                    sku = user_subs.get(subscription_id).get("sku")
+
+                    if quantity is not None:
+                        if sku != "MW02702" and quantity != base_quantity:
+                            abort(403, message="cannot split a non-MW02702 sku")
+                        if quantity > base_quantity:
+                            abort(400, message="quantity cannot exceed available amount")
+                    else:
+                        quantity = base_quantity
+
                     try:
                         model.organization_skus.bind_subscription_to_org(
                             user_id=user.id,
@@ -1127,16 +1135,45 @@ class UserSkuList(ApiResource):
                 account_number
             )
 
+        child_subscriptions = []
         for subscription in user_subscriptions:
-            bound_to_org, organization = organization_skus.subscription_bound_to_org(
-                subscription["id"]
-            )
+            bound_to_org, bindings = organization_skus.subscription_bound_to_org(subscription["id"])
             # fill in information for whether a subscription is bound to an org
+            metadata = get_plan_using_rh_sku(subscription["sku"])
             if bound_to_org:
-                subscription["assigned_to_org"] = organization.username
+                # special case for MW02702, which can be split across orgs
+                if subscription["sku"] == "MW02702":
+                    number_of_bindings = 0
+                    for binding in bindings:
+                        # for each bound org, create a new subscription to add to
+                        # the response body
+                        child_subscription = subscription.copy()
+                        child_subscription["quantity"] = binding["quantity"]
+                        child_subscription[
+                            "assigned_to_org"
+                        ] = model.organization.get_organization_by_id(binding["org_id"]).username
+                        child_subscription["metadata"] = metadata
+                        child_subscriptions.append(child_subscription)
+
+                        number_of_bindings += binding["quantity"]
+
+                    remaining_unbound = subscription["quantity"] - number_of_bindings
+                    if remaining_unbound > 0:
+                        subscription["quantity"] = remaining_unbound
+                        subscription["assigned_to_org"] = None
+                    else:
+                        # all quantities for this subscription are bound, remove it from
+                        # the response body
+                        user_subscriptions.remove(subscription)
+
+                else:
+                    # default case, only one org is bound
+                    subscription["assigned_to_org"] = model.organization.get_organization_by_id(
+                        bindings[0]["org_id"]
+                    ).username
             else:
                 subscription["assigned_to_org"] = None
 
-            subscription["metadata"] = get_plan_using_rh_sku(subscription["sku"])
+            subscription["metadata"] = metadata
 
-        return user_subscriptions
+        return user_subscriptions + child_subscriptions

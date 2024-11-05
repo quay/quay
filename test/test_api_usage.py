@@ -5209,7 +5209,7 @@ class TestOrganizationRhSku(ApiTestCase):
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
             data={"subscriptions": [{"subscription_id": 12345678}]},
-            expected_code=400,
+            expected_code=401,
         )
 
     def test_bind_sku_unauthorized(self):
@@ -5320,18 +5320,66 @@ class TestOrganizationRhSku(ApiTestCase):
         json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
         self.assertEqual(json["privateAllowed"], False)
 
+    def test_splittable_sku(self):
+        self.login(SUBSCRIPTION_USER)
+
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 80808080, "quantity": 3}]},
+            expected_code=201,
+        )
+        org_subs = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+        )
+        self.assertEqual(org_subs[0]["quantity"], 3)
+
+    def test_splittable_quantity(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(80808080, org.id, user.id, 5)
+        # try to attach more than is given after binding a subscription to
+        # an org
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 80808080, "quantity": 10}]},
+            expected_code=400,
+        )
+
 
 class TestUserSku(ApiTestCase):
     def test_get_user_skus(self):
         self.login(SUBSCRIPTION_USER)
         json = self.getJsonResponse(UserSkuList)
-        self.assertEqual(len(json), 2)
+        self.assertEqual(len(json), 3)
 
     def test_quantity(self):
         self.login(SUBSCRIPTION_USER)
         subscription_user = model.user.get_user(SUBSCRIPTION_USER)
         plans = check_internal_api_for_subscription(subscription_user)
-        assert len(plans) == 3
+        assert len(plans) == 13
+
+    def test_split_sku(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(80808080, org.id, user.id, 3)
+
+        user_subs = self.getJsonResponse(resource_name=UserSkuList)
+
+        unassigned_sub = None
+        assigned_sub = None
+        for sub in user_subs:
+            if sub["id"] == 80808080 and sub["assigned_to_org"] is None:
+                unassigned_sub = sub
+            elif sub["id"] == 80808080 and sub["assigned_to_org"] is not None:
+                assigned_sub = sub
+        self.assertIsNotNone(unassigned_sub, "Could not find unassigned remaining subscription")
+        self.assertIsNotNone(assigned_sub, "Could not find assigned subscription")
+        self.assertEqual(7, unassigned_sub["quantity"])
 
 
 if __name__ == "__main__":

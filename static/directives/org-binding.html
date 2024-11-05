@@ -3,7 +3,7 @@
   <div class="cor-loader-inline" ng-show="marketplaceLoading"></div>
   <span ng-show="!organization && !marketplaceLoading">
     <div ng-repeat="subscription in userMarketplaceSubscriptions">
-      {{subscription.quantity}}x {{ subscription.metadata.privateRepos }} private repos
+      {{subscription.quantity}}x {{ subscription.metadata.privateRepos > 15000 ? 'unlimited' : subscription.metadata.privateRepos }} private repos
       {{subscription.assigned_to_org ? "attached to org " + subscription.assigned_to_org : ""}}
     </div>
   </span>
@@ -11,22 +11,29 @@
   <table ng-show="organization && !marketplaceLoading">
     <tr class="indented-row" ng-repeat="subscription in orgMarketplaceSubscriptions">
       <td>
-        {{ subscription.quantity }}x {{ subscription.metadata.privateRepos }} private repos attached to this org
+        {{ subscription.quantity }}x {{ subscription.metadata.privateRepos > 15000 ? 'unlimited' : subscription.metadata.privateRepos }} private repos attached to this org
       </td>
     </tr>
     <tr class="indented-row">
       <td style="padding: 10px">
-        <select class="form-control" ng-model="subscriptionBinding">
-          <option ng-repeat="subscription in availableSubscriptions" value="{{ subscription }}">
-            {{subscription.quantity}}x {{subscription.metadata.privateRepos}} private repos
-          </option>
+        <select class="form-control" ng-model="subscriptionBinding" ng-options="subscription as (subscription.quantity + 'x ' + (subscription.metadata.privateRepos > 15000 ? 'unlimited' : subscription.metadata.privateRepos) + ' private repos') for subscription in availableSubscriptions">
+          <option value="">Select a subscription</option>
         </select>
-        <a class="btn btn-primary" ng-click="bindSku(subscriptionBinding)">Attach subscriptions</a>
+        <input
+          type="number"
+          class="form-control"
+          ng-show="subscriptionBinding.sku === 'MW02702'"
+          ng-model="bindingQuantity"
+          min="1"
+          max="{{subscriptionBinding.quantity}}"
+          ng-init="bindingQuantity = 1"
+        >
+        <a class="btn btn-primary" ng-click="bindSku(subscriptionBinding, subscriptionBinding.sku === 'MW02702' ? bindingQuantity : undefined)">Attach subscriptions</a>
       </td>
       <td style="padding: 10px">
         <select class="form-control" ng-model="subscriptionRemovals">
           <option ng-repeat="orgSubscription in orgMarketplaceSubscriptions" value="{{orgSubscription}}">
-            {{orgSubscription.quantity}}x {{orgSubscription.metadata.privateRepos}} private repos
+            {{orgSubscription.quantity}}x {{orgSubscription.metadata.privateRepos > 15000 ? 'unlimited' : subscription.metadata.privateRepos}} private repos
           </option>
         </select>
         <a class="btn btn-default" ng-click="batchRemoveSku(subscriptionRemovals, numRemovals)">
