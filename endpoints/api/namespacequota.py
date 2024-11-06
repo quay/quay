@@ -254,15 +254,15 @@ class OrganizationQuota(ApiResource):
             elif "limit_bytes" in quota_data:
                 limit_bytes = quota_data["limit_bytes"]
 
-            if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
-                # the Postgres maximum of an BigInteger is 9223372036854775807
-                raise request_error(
-                    message="Invalid limit format",
-                    error_description="Maximum supported Quota is less than 8 EiB",
-                    error_detail="Postgres maximum is 9223372036854775807",
-                )
-
             if limit_bytes:
+                if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
+                    # the Postgres maximum of an BigInteger is 9223372036854775807
+                    raise request_error(
+                        message="Invalid limit format",
+                        error_description="Maximum supported Quota is less than 8 EiB",
+                        error_detail="Postgres maximum is 9223372036854775807",
+                    )
+
                 model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
         except model.DataModelException as ex:
             raise request_error(exception=ex)
