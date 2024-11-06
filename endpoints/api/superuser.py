@@ -64,11 +64,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_immediate_subdirectories(directory):
-    return [
-        name
-        for name in os.listdir(directory)
-        if os.path.isdir(os.path.join(directory, name))
-    ]
+    return [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory, name))]
 
 
 def get_services():
@@ -88,9 +84,7 @@ class SuperUserAggregateLogs(ApiResource):
     @verify_not_prod
     @nickname("listAllAggregateLogs")
     @parse_args()
-    @query_param(
-        "starttime", "Earliest time from which to get logs. (%m/%d/%Y %Z)", type=str
-    )
+    @query_param("starttime", "Earliest time from which to get logs. (%m/%d/%Y %Z)", type=str)
     @query_param("endtime", "Latest time to which to get logs. (%m/%d/%Y %Z)", type=str)
     def get(self, parsed_args):
         """
@@ -120,9 +114,7 @@ class SuperUserLogs(ApiResource):
     @verify_not_prod
     @nickname("listAllLogs")
     @parse_args()
-    @query_param(
-        "starttime", "Earliest time from which to get logs (%m/%d/%Y %Z)", type=str
-    )
+    @query_param("starttime", "Earliest time from which to get logs (%m/%d/%Y %Z)", type=str)
     @query_param("endtime", "Latest time to which to get logs (%m/%d/%Y %Z)", type=str)
     @query_param("page", "The page number for the logs", type=int, default=1)
     @page_support()
@@ -136,16 +128,13 @@ class SuperUserLogs(ApiResource):
             end_time = parsed_args["endtime"]
 
             (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
-            log_entry_page = logs_model.lookup_logs(
-                start_time, end_time, page_token=page_token
-            )
+            log_entry_page = logs_model.lookup_logs(start_time, end_time, page_token=page_token)
             return (
                 {
                     "start_time": format_date(start_time),
                     "end_time": format_date(end_time),
                     "logs": [
-                        log.to_dict(avatar, include_namespace=True)
-                        for log in log_entry_page.logs
+                        log.to_dict(avatar, include_namespace=True) for log in log_entry_page.logs
                     ],
                 },
                 log_entry_page.next_page_token,
@@ -175,9 +164,9 @@ def user_view(user, password=None):
     }
 
     if password is not None:
-        user_data["encrypted_password"] = authentication.encrypt_user_password(
-            password
-        ).decode("ascii")
+        user_data["encrypted_password"] = authentication.encrypt_user_password(password).decode(
+            "ascii"
+        )
 
     return user_data
 
@@ -235,18 +224,14 @@ class SuperUserOrganizationList(ApiResource):
 
             if parsed_args["limit"] is None:
                 return {
-                    "organizations": [
-                        org.to_dict() for org in pre_oci_model.get_organizations()
-                    ]
+                    "organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]
                 }, None
             else:
                 orgs, next_page_token = pre_oci_model.get_organizations_paginated(
                     limit=parsed_args["limit"],
                     page_token=page_token,
                 )
-                return {
-                    "organizations": [org.to_dict() for org in orgs]
-                }, next_page_token
+                return {"organizations": [org.to_dict() for org in orgs]}, next_page_token
 
         raise Unauthorized()
 
@@ -376,15 +361,11 @@ class SuperUserUserQuotaList(ApiResource):
 
             if "limit" in quota_data:
                 try:
-                    limit_bytes = (
-                        bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
-                    )
+                    limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                 except ValueError:
                     units = "|".join(bitmath.ALL_UNIT_TYPES)
                     ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"
-                    raise request_error(
-                        message="Invalid limit format", error_description=ex
-                    )
+                    raise request_error(message="Invalid limit format", error_description=ex)
 
             else:
                 limit_bytes = quota_data["limit_bytes"]
@@ -395,10 +376,7 @@ class SuperUserUserQuotaList(ApiResource):
             if quotas:
                 raise request_error(message="Quota for '%s' already exists" % namespace)
 
-            if (
-                not limit_bytes
-                <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1
-            ):
+            if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
                 # the Postgres maximum of an BigInteger is 9223372036854775807
                 raise request_error(
                     message="Invalid limit format",
@@ -407,9 +385,7 @@ class SuperUserUserQuotaList(ApiResource):
                 )
 
             try:
-                newquota = namespacequota.create_namespace_quota(
-                    namespace_user, limit_bytes
-                )
+                newquota = namespacequota.create_namespace_quota(namespace_user, limit_bytes)
                 return "Created", 201
             except DataModelException as ex:
                 raise request_error(exception=ex)
@@ -482,24 +458,17 @@ class SuperUserUserQuota(ApiResource):
                 if "limit" in quota_data:
                     try:
                         limit_bytes = (
-                            bitmath.parse_string_unsafe(quota_data["limit"])
-                            .to_Byte()
-                            .value
+                            bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                         )
                     except ValueError:
                         units = "|".join(bitmath.ALL_UNIT_TYPES)
                         ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"
-                        raise request_error(
-                            message="Invalid limit format", error_description=ex
-                        )
+                        raise request_error(message="Invalid limit format", error_description=ex)
 
                 elif "limit_bytes" in quota_data:
                     limit_bytes = quota_data["limit_bytes"]
 
-                if (
-                    not limit_bytes
-                    <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1
-                ):
+                if not limit_bytes <= int(bitmath.parse_string_unsafe("8 EiB").to_Byte().value) - 1:
                     # the Postgres maximum of an BigInteger is 9223372036854775807
                     raise request_error(
                         message="Invalid limit format",
@@ -610,10 +579,7 @@ class SuperUserList(ApiResource):
             # Generate a temporary password for the user.
             random = SystemRandom()
             password = "".join(
-                [
-                    random.choice(string.ascii_uppercase + string.digits)
-                    for _ in range(32)
-                ]
+                [random.choice(string.ascii_uppercase + string.digits) for _ in range(32)]
             )
 
             # Create the user.
@@ -644,9 +610,9 @@ class SuperUserList(ApiResource):
                 "username": username,
                 "email": email,
                 "password": password,
-                "encrypted_password": authentication.encrypt_user_password(
-                    password
-                ).decode("ascii"),
+                "encrypted_password": authentication.encrypt_user_password(password).decode(
+                    "ascii"
+                ),
             }
 
         raise Unauthorized()
@@ -796,9 +762,7 @@ class SuperUserManagement(ApiResource):
                 old_email = user.email
                 new_email = user_data["email"]
 
-                pre_oci_model.update_email(
-                    username, user_data["email"], auto_verify=True
-                )
+                pre_oci_model.update_email(username, user_data["email"], auto_verify=True)
 
                 log_action(
                     "user_change_email",
@@ -846,9 +810,9 @@ class SuperUserManagement(ApiResource):
             return_value = user.to_dict()
             if user_data.get("password") is not None:
                 password = user_data.get("password")
-                return_value["encrypted_password"] = (
-                    authentication.encrypt_user_password(password).decode("ascii")
-                )
+                return_value["encrypted_password"] = authentication.encrypt_user_password(
+                    password
+                ).decode("ascii")
             if user_data.get("email") is not None:
                 return_value["email"] = user_data.get("email")
 
@@ -1161,9 +1125,7 @@ class SuperUserServiceKey(ApiResource):
     def get(self, kid):
         if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             try:
-                key = pre_oci_model.get_service_key(
-                    kid, approved_only=False, alive_only=False
-                )
+                key = pre_oci_model.get_service_key(kid, approved_only=False, alive_only=False)
                 return jsonify(key.to_dict())
             except ServiceKeyDoesNotExist:
                 raise NotFound()
@@ -1179,9 +1141,7 @@ class SuperUserServiceKey(ApiResource):
         if SuperUserPermission().can():
             body = request.get_json()
             try:
-                key = pre_oci_model.get_service_key(
-                    kid, approved_only=False, alive_only=False
-                )
+                key = pre_oci_model.get_service_key(kid, approved_only=False, alive_only=False)
             except ServiceKeyDoesNotExist:
                 raise NotFound()
 
@@ -1196,16 +1156,12 @@ class SuperUserServiceKey(ApiResource):
                 expiration_date = body["expiration"]
                 if expiration_date is not None and expiration_date != "":
                     try:
-                        expiration_date = datetime.utcfromtimestamp(
-                            float(expiration_date)
-                        )
+                        expiration_date = datetime.utcfromtimestamp(float(expiration_date))
                     except ValueError as ve:
                         raise InvalidRequest("Invalid expiration date: %s" % ve)
 
                     if expiration_date <= datetime.now():
-                        raise InvalidRequest(
-                            "Cannot have an expiration date in the past"
-                        )
+                        raise InvalidRequest("Cannot have an expiration date in the past")
 
                 key_log_metadata.update(
                     {
@@ -1220,16 +1176,12 @@ class SuperUserServiceKey(ApiResource):
             if "name" in body or "metadata" in body:
                 key_name = body.get("name")
                 if not validate_service_key_name(key_name):
-                    raise InvalidRequest(
-                        "Invalid service key friendly name: %s" % key_name
-                    )
+                    raise InvalidRequest("Invalid service key friendly name: %s" % key_name)
 
                 pre_oci_model.update_service_key(kid, key_name, body.get("metadata"))
                 log_action("service_key_modify", None, key_log_metadata)
 
-            updated_key = pre_oci_model.get_service_key(
-                kid, approved_only=False, alive_only=False
-            )
+            updated_key = pre_oci_model.get_service_key(kid, approved_only=False, alive_only=False)
             return jsonify(updated_key.to_dict())
 
         raise Unauthorized()
