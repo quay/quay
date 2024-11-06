@@ -141,7 +141,7 @@ class OrganizationQuotaList(ApiResource):
                 limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
             except ValueError:
                 units = "|".join(bitmath.ALL_UNIT_TYPES)
-                ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"   # noqa: W605
+                ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"  # noqa: W605
                 raise request_error(message="Invalid limit format", error_description=ex)
 
         else:
@@ -248,7 +248,7 @@ class OrganizationQuota(ApiResource):
                     limit_bytes = bitmath.parse_string_unsafe(quota_data["limit"]).to_Byte().value
                 except ValueError:
                     units = "|".join(bitmath.ALL_UNIT_TYPES)
-                    ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"   # noqa: W605
+                    ex = f"supported units ^(\d+(|\.\d+)\s?({units})?)$"  # noqa: W605
                     raise request_error(message="Invalid limit format", error_description=ex)
 
             elif "limit_bytes" in quota_data:

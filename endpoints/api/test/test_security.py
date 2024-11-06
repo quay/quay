@@ -6349,7 +6349,7 @@ SECURITY_TESTS: List[
         SuperUserUserQuotaList,
         "POST",
         {"namespace": "reader"},
-        {"limit": "5G"},
+        {"limit": "5 GiB"},
         "devtable",
         201,
     ),
