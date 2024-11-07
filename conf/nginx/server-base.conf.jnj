@@ -91,6 +91,7 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     proxy_set_header Host $3;
     proxy_set_header Authorization "";
     proxy_set_header x-forwarded-host "";
+    proxy_set_header forwarded "for=$remote_addr;";
     proxy_ssl_name $3;
     proxy_ssl_server_name on;
 
