@@ -596,7 +596,7 @@ angular.module('quay').directive('repoPanelTags', function () {
             return {
               'raw': manifest,
               'os': manifest.platform.os,
-              'icon': manifest.platform.os === 'darwin' ? 'apple' : manifest.platform.os,
+              'icon': manifest.platform.os === 'darwin' ? 'apple' : (manifest.platform.os === 'unknown' ? 'question' : manifest.platform.os),
               'size': manifest.size,
               'digest': manifest.digest,
               'layers_compressed_size': layers_compressed_size,
