@@ -5358,6 +5358,9 @@ class TestUserSku(ApiTestCase):
 
     def test_quantity(self):
         self.login(SUBSCRIPTION_USER)
+        # make sure there are no bound orgs from pervious splittable test
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.remove_subscription_from_org(org.id, 80808080)
         subscription_user = model.user.get_user(SUBSCRIPTION_USER)
         plans = check_internal_api_for_subscription(subscription_user)
         assert len(plans) == 13
