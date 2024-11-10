@@ -71,8 +71,6 @@ class AkamaiS3Storage(S3Storage):
                     )
 
             to_sign = f"{akamai_url_parsed.path}"
-            logger.debug(f"akamai URL to_sign: {to_sign}, token : {self.akamai_shared_secret}")
-
             akamai_url_parsed = akamai_url_parsed._replace(
                 query=f"{akamai_url_parsed.query}&{TOKEN_QUERY_STRING}={self.et.generate_url_token(to_sign)}"
             )
