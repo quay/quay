@@ -2,6 +2,7 @@ import logging
 
 from flask import has_request_context, request
 
+from storage import AkamaiS3Storage
 from storage.basestorage import BaseStorageV2, InvalidStorageConfigurationException
 from storage.cloud import CloudFrontedS3Storage
 from storage.cloudflarestorage import CloudFlareS3Storage
@@ -16,6 +17,7 @@ VALID_RULE_KEYS = ["namespace", "continent", "host", "target"]
 MULTICDN_STORAGE_PROVIDER_CLASSES = {
     "CloudFrontedS3Storage": CloudFrontedS3Storage,
     "CloudFlareStorage": CloudFlareS3Storage,
+    "AkamaiS3Storage": AkamaiS3Storage,
 }
 
 
