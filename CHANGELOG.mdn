@@ -3,13 +3,23 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.12.5"></a>
+## [v3.12.5] - 2024-11-07
+### [Redhat-3.12] conf(nginx)
+- [5d61cddd](https://github.com/quay/quay/commit/5d61cdddf2d0f2fd4025ae711f1a4325fd659669): change forwarded header removing host (PROJQUAY-8024) ([#3387](https://github.com/quay/quay/pull/3387))
+### [Redhat-3.12] Bug
+- [89b643dd](https://github.com/quay/quay/commit/89b643ddac2af8646e103db8b8234b131604377f): too strict validateTeamName regex (PROJQUAY-7606) ([#3379](https://github.com/quay/quay/pull/3379))
+### [Redhat-3.12] Build(Deps)
+- [3412c5b9](https://github.com/quay/quay/commit/3412c5b90cad82454b62e7473d76423ae32d5108): bump cookie and socket.io in /config-tool/pkg/lib/editor ([#3350](https://github.com/quay/quay/pull/3350))
+
 <a name="v3.12.4"></a>
-## [v3.12.4] - 2024-10-16
+## [v3.12.4] - 2024-10-21
 ### [Redhat-3.12] Api
 - [4c7b5f13](https://github.com/quay/quay/commit/4c7b5f13d1f7540630f178e2bac7cac9afdd8e37): allowing superuser to read catalog endpoint (PROJQUAY-8023) ([#3333](https://github.com/quay/quay/issues/3333))
 ### [Redhat-3.12] Bug
 - [5377be16](https://github.com/quay/quay/commit/5377be160db7ea0d210af5d048d1a8cb4fd7ea44): fixing NaN value error for quota displayed on member org page (PROJQUAY-6465) ([#3329](https://github.com/quay/quay/issues/3329))
 ### [Redhat-3.12] Build(Deps)
+- [3412c5b9](https://github.com/quay/quay/commit/3412c5b90cad82454b62e7473d76423ae32d5108): bump cookie and socket.io in /config-tool/pkg/lib/editor ([#3350](https://github.com/quay/quay/issues/3350))
 - [a7d7f0e9](https://github.com/quay/quay/commit/a7d7f0e9896ef18eb0e2dc27291c29fc18e94b3f): bump cookie and express in /web ([#3320](https://github.com/quay/quay/issues/3320))
 - [a02401bc](https://github.com/quay/quay/commit/a02401bc871159b747eeca8cad47e520173d9b5c): reverting back the support for s390x which has been removed temporarily(PROJECTQUAY-7960) ([#3294](https://github.com/quay/quay/issues/3294))
 - [1667706d](https://github.com/quay/quay/commit/1667706d84ba9e0df308cdcadb13404e1d3abd1c): bump google.golang.org/protobuf from 1.31.0 to 1.33.0 in /config-tool ([#3291](https://github.com/quay/quay/issues/3291))
@@ -1648,7 +1658,7 @@
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc 
+### Doc
 - [34cd7d09](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
@@ -2410,7 +2420,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.5...HEAD
+[v3.12.5]: https://github.com/quay/quay/compare/v3.12.4...v3.12.5
 [v3.12.4]: https://github.com/quay/quay/compare/v3.12.3...v3.12.4
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
