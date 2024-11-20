@@ -154,6 +154,13 @@ RUN set -ex\
 # containers are copied in.
 FROM base AS final
 LABEL maintainer "quay-devel@redhat.com"
+LABEL io.k8s.display-name="Quay Container Registry" \
+  io.k8s.description="Quay is a container registry optimized for building, storing, and distributing container images." \
+  io.openshift.tags="quay,registry,container,images" \
+  com.redhat.component="quay" \
+  name="quay" \
+  summary="quay container registry" \
+  description="Quay lets you build, store, and distribute your containers."
 
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
