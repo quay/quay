@@ -26,6 +26,8 @@ FAKE_AWS_ACCESS_KEY = None
 FAKE_AWS_SECRET_KEY = None
 FAKE_AWS_REGION = None
 
+DEFAULT_SEARCH_SCROLL_SIZE = 1
+
 
 @pytest.fixture()
 def logs_model_config():
@@ -142,6 +144,21 @@ def parse_query(query):
     return {s.split("=")[0]: s.split("=")[1] for s in query.split("&") if s != ""}
 
 
+def add_elastic_headers(response_fn):
+    # Adding special headers to the mocked response
+    # to prevent an UnsupportedProductError exception from occuring
+    # during testing
+    def wrapper(*args, **kwargs):
+        response = response_fn(*args, **kwargs)
+        if isinstance(response, dict):
+            headers = response.get("headers", {})
+            headers["X-Elastic-Product"] = "Elasticsearch"
+            response["headers"] = headers
+        return response
+
+    return wrapper
+
+
 @pytest.fixture()
 def mock_elasticsearch():
     mock = Mock()
@@ -156,6 +173,7 @@ def mock_elasticsearch():
     mock.list_indices.side_effect = NotImplementedError
 
     @urlmatch(netloc=r".*", path=r".*")
+    @add_elastic_headers
     def default(url, req):
         raise Exception(
             "\nurl={}\nmethod={}\nreq.url={}\nheaders={}\nbody={}".format(
@@ -164,14 +182,17 @@ def mock_elasticsearch():
         )
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/_template/.*")
+    @add_elastic_headers
     def template(url, req):
         return mock.template(url.query.split("/")[-1], req.body)
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/logentry_(\*|[0-9\-]+)")
+    @add_elastic_headers
     def list_indices(url, req):
         return mock.list_indices()
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/logentry_[0-9\-]*/_doc")
+    @add_elastic_headers
     def index(url, req):
         index = url.path.split("/")[1]
         body = json.loads(req.body)
@@ -179,10 +200,12 @@ def mock_elasticsearch():
         return mock.index(index, body)
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/logentry_([0-9\-]*|\*)/_count")
+    @add_elastic_headers
     def count(_, req):
         return mock.count(json.loads(req.body))
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/_search/scroll")
+    @add_elastic_headers
     def scroll(url, req):
         if req.method == "DELETE":
             return mock.scroll_delete(json.loads(req.body))
@@ -192,11 +215,12 @@ def mock_elasticsearch():
         raise NotImplementedError()
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/logentry_(\*|[0-9\-]*)/_search")
+    @add_elastic_headers
     def search(url, req):
         if "scroll" in url.query:
             query = parse_query(url.query)
             window_size = query["scroll"]
-            maximum_result_size = int(query["size"])
+            maximum_result_size = int(query.get("size", DEFAULT_SEARCH_SCROLL_SIZE))
             return mock.search_scroll_create(window_size, maximum_result_size, json.loads(req.body))
         elif b"aggs" in req.body:
             return mock.search_aggs(json.loads(req.body))
