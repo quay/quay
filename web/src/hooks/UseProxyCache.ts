@@ -45,7 +45,6 @@ export function useValidateProxyCacheConfig(
   {onSuccess, onError},
 ) {
   const queryClient = useQueryClient();
-  const {user} = useCurrentUser();
 
   const {mutate: proxyCacheConfigValidation} = useMutation(
     async () => {
@@ -67,14 +66,22 @@ export function useValidateProxyCacheConfig(
 }
 
 export function useCreateProxyCacheConfig() {
+  const queryClient = useQueryClient();
   const {
     mutate: createProxyCacheConfigMutation,
     isError: isErrorProxyCacheCreation,
     isSuccess: successProxyCacheCreation,
     error: proxyCacheCreationError,
-  } = useMutation(async (proxyCacheConfig: IProxyCacheConfig) => {
-    return createProxyCacheConfig(proxyCacheConfig);
-  });
+  } = useMutation(
+    async (proxyCacheConfig: IProxyCacheConfig) => {
+      return createProxyCacheConfig(proxyCacheConfig);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['proxycacheconfig']);
+      },
+    },
+  );
 
   return {
     createProxyCacheConfigMutation,
@@ -94,7 +101,12 @@ export function useDeleteProxyCacheConfig(orgName) {
   } = useMutation(
     async () => {
       return deleteProxyCacheConfig(orgName);
-    }
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['proxycacheconfig']);
+      },
+    },
   );
   return {
     deleteProxyCacheConfigMutation,

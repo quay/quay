@@ -41,7 +41,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const [proxyCacheConfig, setProxyCacheConfig] = useState<IProxyCacheConfig>(
     defaultProxyCacheConfig,
   );
-  const {addAlert} = useAlerts();
+  const {addAlert, clearAllAlerts} = useAlerts();
 
   const {fetchedProxyCacheConfig, isLoadingProxyCacheConfig} =
     useFetchProxyCacheConfig(props.organizationName);
@@ -61,7 +61,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           fetchedProxyCacheConfig.upstream_registry_password,
       }));
     } else {
-      // Optionally reset the config if there's no fetchedProxyCacheConfig data
+      // reset the config if there's no fetchedProxyCacheConfig data
       setProxyCacheConfig(defaultProxyCacheConfig);
     }
   }, [fetchedProxyCacheConfig]);
@@ -81,6 +81,13 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
       });
     }
   }, [successProxyCacheCreation]);
+
+  useEffect(() => {
+    // clear alerts when switching tabs
+    return () => {
+      clearAllAlerts();
+    };
+  }, []);
 
   useEffect(() => {
     if (isErrorProxyCacheCreation) {
@@ -233,7 +240,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
       >
         <TextInput
           isDisabled={!!fetchedProxyCacheConfig?.upstream_registry_password}
-          type="text"
+          type="password"
           id="remote-registry-password"
           value={proxyCacheConfig?.upstream_registry_password}
           onChange={(_event, password) =>
