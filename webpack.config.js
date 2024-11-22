@@ -13,6 +13,9 @@ let config = {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    fallback: {
+      process: require.resolve('process/browser'),
+    },
   },
   // Use global variables to maintain compatibility with non-Webpack components
   externals: {
