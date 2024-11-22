@@ -47,7 +47,7 @@ export default function Settings(props: SettingsProps) {
           isUser={props.isUserOrganization}
         />
       ),
-      visible: quayConfig?.features?.AUTO_PRUNE || true,
+      visible: quayConfig?.features?.AUTO_PRUNE,
     },
     {
       name: 'Proxy-Cache config',
@@ -58,7 +58,7 @@ export default function Settings(props: SettingsProps) {
           isUser={props.isUserOrganization}
         />
       ),
-      visible: quayConfig?.features?.FEATURE_PROXY_CACHE || true,
+      visible: quayConfig?.features?.PROXY_CACHE,
     },
   ];
 

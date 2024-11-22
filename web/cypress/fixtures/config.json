@@ -106,7 +106,7 @@
     "NONSUPERUSER_TEAM_SYNCING_SETUP": false,
     "PARTIAL_USER_AUTOCOMPLETE": true,
     "PERMANENT_SESSIONS": true,
-    "PROXY_CACHE": false,
+    "PROXY_CACHE": true,
     "PROXY_STORAGE": false,
     "PUBLIC_CATALOG": false,
     "QUOTA_MANAGEMENT": true,
