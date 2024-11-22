@@ -6,7 +6,7 @@ import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
-import { ProxyCacheConfig } from './ProxyCacheConfig';
+import {ProxyCacheConfig} from './ProxyCacheConfig';
 
 export default function Settings(props: SettingsProps) {
   const organizationName = location.pathname.split('/')[2];
@@ -47,7 +47,7 @@ export default function Settings(props: SettingsProps) {
           isUser={props.isUserOrganization}
         />
       ),
-      visible: quayConfig?.features?.AUTO_PRUNE,
+      visible: quayConfig?.features?.AUTO_PRUNE || true,
     },
     {
       name: 'Proxy-Cache config',
@@ -58,7 +58,7 @@ export default function Settings(props: SettingsProps) {
           isUser={props.isUserOrganization}
         />
       ),
-      visible: quayConfig?.features?.FEATURE_PROXY_CACHE,
+      visible: quayConfig?.features?.FEATURE_PROXY_CACHE || true,
     },
   ];
 
