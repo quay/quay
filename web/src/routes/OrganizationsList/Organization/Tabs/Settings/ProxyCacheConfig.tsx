@@ -192,6 +192,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isDisabled={!!fetchedProxyCacheConfig?.upstream_registry}
           type="text"
           id="form-name"
+          data-testid="remote-registry-input"
           value={proxyCacheConfig?.upstream_registry}
           onChange={(_event, registryName) =>
             handleRemoteRegistryInput(registryName)
@@ -217,6 +218,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isDisabled={!!fetchedProxyCacheConfig?.upstream_registry_username}
           type="text"
           id="remote-registry-username"
+          data-testid="remote-registry-username"
           value={proxyCacheConfig?.upstream_registry_username}
           onChange={(_event, registryUsername) =>
             handleRemoteRegistryUsername(registryUsername)
@@ -242,6 +244,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isDisabled={!!fetchedProxyCacheConfig?.upstream_registry_password}
           type="password"
           id="remote-registry-password"
+          data-testid="remote-registry-password"
           value={proxyCacheConfig?.upstream_registry_password}
           onChange={(_event, password) =>
             handleRemoteRegistryPassword(password)
@@ -262,6 +265,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
         <TextInput
           type="text"
           id="remote-registry-expiration"
+          data-testid="remote-registry-expiration"
           value={proxyCacheConfig?.expiration_s}
           placeholder={tagExpirationForProxyCache.toString()}
           onChange={(_event, inputSecs) =>
@@ -285,6 +289,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           isChecked={proxyCacheConfig?.insecure}
           onChange={handleInsecureProtocol}
           id="controlled-check-2"
+          data-testid="remote-registry-insecure"
         />
         <FormHelperText>
           <HelperText>
@@ -303,6 +308,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
         >
           <Button
             id="save-proxy-cache"
+            data-testid="save-proxy-cache-btn"
             variant="primary"
             type="submit"
             onClick={(event) => {
@@ -320,6 +326,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           <Button
             isDisabled={!fetchedProxyCacheConfig?.upstream_registry}
             id="delete-proxy-cache"
+            data-testid="delete-proxy-cache-btn"
             variant="danger"
             type="submit"
             onClick={(event) => {
