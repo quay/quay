@@ -19,7 +19,10 @@ export async function validateProxyCacheConfig(
   return proxyResponse.data;
 }
 
-export async function deleteProxyCacheConfig(org: string, signal?: AbortSignal) {
+export async function deleteProxyCacheConfig(
+  org: string,
+  signal?: AbortSignal,
+) {
   const proxyCacheConfigUrl = `/api/v1/organization/${org}/proxycache`;
   const proxyResponse = await axios.delete(proxyCacheConfigUrl, {signal});
   assertHttpCode(proxyResponse.status, 201);

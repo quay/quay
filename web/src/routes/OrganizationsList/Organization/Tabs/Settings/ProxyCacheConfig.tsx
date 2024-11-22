@@ -28,12 +28,12 @@ type ProxyCacheConfigProps = {
   isUser: boolean;
 };
 
-const tagExpirationForProxyCache = 86400;
+const tagExpirationInSecsForProxyCache = 86400;
 
 export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const defaultProxyCacheConfig = {
     upstream_registry: '',
-    expiration_s: tagExpirationForProxyCache,
+    expiration_s: tagExpirationInSecsForProxyCache,
     insecure: false,
     org_name: props.organizationName,
   };
@@ -53,7 +53,8 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
         ...prevConfig,
         upstream_registry: fetchedProxyCacheConfig.upstream_registry,
         expiration_s:
-          fetchedProxyCacheConfig.expiration_s || tagExpirationForProxyCache,
+          fetchedProxyCacheConfig.expiration_s ||
+          tagExpirationInSecsForProxyCache,
         insecure: fetchedProxyCacheConfig.insecure || false,
         upstream_registry_username:
           fetchedProxyCacheConfig.upstream_registry_username,
@@ -267,7 +268,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           id="remote-registry-expiration"
           data-testid="remote-registry-expiration"
           value={proxyCacheConfig?.expiration_s}
-          placeholder={tagExpirationForProxyCache.toString()}
+          placeholder={tagExpirationInSecsForProxyCache.toString()}
           onChange={(_event, inputSecs) =>
             handleRemoteRegistryExpiration(inputSecs)
           }
