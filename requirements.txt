@@ -25,6 +25,7 @@ debtcollector==1.22.0
 decorator==5.1.1
 Deprecated==1.2.14
 dumb-init==1.2.5.post1
+elastic-transport==8.15.1
 elasticsearch==8.13.0
 elasticsearch-dsl==8.13.0
 Flask==2.3.2
