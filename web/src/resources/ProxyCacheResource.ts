@@ -14,9 +14,20 @@ export async function validateProxyCacheConfig(
   proxyCacheConfig: IProxyCacheConfig,
 ) {
   const proxyCacheConfigUrl = `/api/v1/organization/${proxyCacheConfig.org_name}/validateproxycache`;
-  const proxyResponse = await axios.post(proxyCacheConfigUrl, proxyCacheConfig);
-  assertHttpCode(proxyResponse.status, 202);
-  return proxyResponse.data;
+  const payload = {
+    ...proxyCacheConfig,
+    upstream_registry_username:
+      proxyCacheConfig.upstream_registry_username || null,
+    upstream_registry_password:
+      proxyCacheConfig.upstream_registry_password || null,
+  };
+  try {
+    const proxyResponse = await axios.post(proxyCacheConfigUrl, payload);
+    assertHttpCode(proxyResponse.status, 202);
+    return proxyResponse.data;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function deleteProxyCacheConfig(
@@ -24,9 +35,13 @@ export async function deleteProxyCacheConfig(
   signal?: AbortSignal,
 ) {
   const proxyCacheConfigUrl = `/api/v1/organization/${org}/proxycache`;
-  const proxyResponse = await axios.delete(proxyCacheConfigUrl, {signal});
-  assertHttpCode(proxyResponse.status, 201);
-  return proxyResponse.data;
+  try {
+    const proxyResponse = await axios.delete(proxyCacheConfigUrl, {signal});
+    assertHttpCode(proxyResponse.status, 201);
+    return proxyResponse.data;
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function createProxyCacheConfig(
@@ -34,18 +49,20 @@ export async function createProxyCacheConfig(
 ) {
   const createProxyCacheConfigUrl = `/api/v1/organization/${proxyCacheConfig.org_name}/proxycache`;
   const payload = {
-    upstream_registry: proxyCacheConfig.upstream_registry,
-    expiration_s: proxyCacheConfig.expiration_s,
-    insecure: proxyCacheConfig.insecure,
-    org_name: proxyCacheConfig.org_name,
-    upstream_registry_username: proxyCacheConfig.upstream_registry_username,
-    upstream_registry_password: proxyCacheConfig.upstream_registry_password,
+    ...proxyCacheConfig,
+    upstream_registry_username:
+      proxyCacheConfig.upstream_registry_username || null,
+    upstream_registry_password:
+      proxyCacheConfig.upstream_registry_password || null,
   };
-
-  const response: AxiosResponse = await axios.post(
-    createProxyCacheConfigUrl,
-    payload,
-  );
-  assertHttpCode(response.status, 201);
-  return response.data;
+  try {
+    const response: AxiosResponse = await axios.post(
+      createProxyCacheConfigUrl,
+      payload,
+    );
+    assertHttpCode(response.status, 201);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 }
