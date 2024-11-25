@@ -4,10 +4,14 @@ import urllib.parse
 
 import pytest
 from httmock import HTTMock, urlmatch
+from mock import patch
 
+from app import app as realapp
+from app import usermanager
 from data import model
 from data.database import TeamMember
 from data.users.externaloidc import OIDCUsers
+from features import FeatureNameValue
 from initdb import finished_database_for_testing, setup_database_for_testing
 from oauth.oidc import OIDCLoginService, PasswordGrantException
 from test.fixtures import *
@@ -320,3 +324,18 @@ def test_service_metadata(discovery_handler, token_handler_password_grant, useri
     with HTTMock(discovery_handler, token_handler_password_grant, userinfo_handler):
         result = oidc_instance.service_metadata()
         assert result["issuer_domain"] == "fakeoidc"
+
+
+def test_user_restrictions(discovery_handler, token_handler_password_grant, userinfo_handler):
+    oidc_instance = OIDCAuthTests().fake_oidc()
+    with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+        with HTTMock(discovery_handler, token_handler_password_grant, userinfo_handler):
+            result, error_msg = oidc_instance.verify_credentials("someusername", "somepassword")
+            assert result.username == "someusername"
+            assert error_msg is None
+            # check if user is super user
+            check_is_superuser = usermanager.is_superuser(result.username)
+            assert check_is_superuser == False
+            # turn on restricted users
+            check_is_restricted_user = usermanager.is_restricted_user(result.username)
+            assert check_is_restricted_user == True
