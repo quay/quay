@@ -56,32 +56,27 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           fetchedProxyCacheConfig.expiration_s ||
           tagExpirationInSecsForProxyCache,
         insecure: fetchedProxyCacheConfig.insecure || false,
-        upstream_registry_username:
-          fetchedProxyCacheConfig.upstream_registry_username,
-        upstream_registry_password:
-          fetchedProxyCacheConfig.upstream_registry_password,
       }));
     } else {
       // reset the config if there's no fetchedProxyCacheConfig data
       setProxyCacheConfig(defaultProxyCacheConfig);
     }
-  }, [fetchedProxyCacheConfig]);
+  }, [fetchedProxyCacheConfig, props.organizationName]);
 
-  const {
-    createProxyCacheConfigMutation,
-    isErrorProxyCacheCreation,
-    successProxyCacheCreation,
-    proxyCacheCreationError,
-  } = useCreateProxyCacheConfig();
-
-  useEffect(() => {
-    if (successProxyCacheCreation) {
+  const {createProxyCacheConfigMutation} = useCreateProxyCacheConfig({
+    onSuccess: () => {
       addAlert({
         variant: AlertVariant.Success,
         title: `Successfully configured proxy cache`,
       });
-    }
-  }, [successProxyCacheCreation]);
+    },
+    onError: (err) => {
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: err,
+      });
+    },
+  });
 
   useEffect(() => {
     // clear alerts when switching tabs
@@ -89,15 +84,6 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
       clearAllAlerts();
     };
   }, []);
-
-  useEffect(() => {
-    if (isErrorProxyCacheCreation) {
-      addAlert({
-        variant: AlertVariant.Failure,
-        title: `Unable to create proxy cache config: ${proxyCacheCreationError}`,
-      });
-    }
-  }, [isErrorProxyCacheCreation]);
 
   const {proxyCacheConfigValidation} = useValidateProxyCacheConfig(
     proxyCacheConfig,
@@ -111,37 +97,29 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
       onError: (err) => {
         addAlert({
           variant: AlertVariant.Failure,
-          title: `Unable to create proxy cache config: ${err}`,
+          title: err,
         });
       },
     },
   );
 
-  const {
-    deleteProxyCacheConfigMutation,
-    successProxyCacheDeletion,
-    isErrorProxyCacheDeletion,
-    proxyCacheDeletionError,
-  } = useDeleteProxyCacheConfig(props.organizationName);
-
-  useEffect(() => {
-    if (successProxyCacheDeletion) {
-      setProxyCacheConfig(defaultProxyCacheConfig);
-      addAlert({
-        variant: AlertVariant.Success,
-        title: `Successfully deleted proxy cache configuration`,
-      });
-    }
-  }, [successProxyCacheDeletion]);
-
-  useEffect(() => {
-    if (isErrorProxyCacheDeletion) {
-      addAlert({
-        variant: AlertVariant.Failure,
-        title: `Unable to delete proxy cache configuration: ${proxyCacheDeletionError}`,
-      });
-    }
-  }, [isErrorProxyCacheDeletion]);
+  const {deleteProxyCacheConfigMutation} = useDeleteProxyCacheConfig(
+    props.organizationName,
+    {
+      onSuccess: () => {
+        addAlert({
+          variant: AlertVariant.Success,
+          title: 'Successfully deleted proxy cache configuration',
+        });
+      },
+      onError: (err) => {
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: err,
+        });
+      },
+    },
+  );
 
   const handleRemoteRegistryInput = (registryName: string) => {
     setProxyCacheConfig((prevConfig) => ({
@@ -194,7 +172,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           type="text"
           id="form-name"
           data-testid="remote-registry-input"
-          value={proxyCacheConfig?.upstream_registry}
+          value={proxyCacheConfig?.upstream_registry || ''}
           onChange={(_event, registryName) =>
             handleRemoteRegistryInput(registryName)
           }
@@ -220,7 +198,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           type="text"
           id="remote-registry-username"
           data-testid="remote-registry-username"
-          value={proxyCacheConfig?.upstream_registry_username}
+          value={proxyCacheConfig?.upstream_registry_username || ''}
           onChange={(_event, registryUsername) =>
             handleRemoteRegistryUsername(registryUsername)
           }
@@ -246,7 +224,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
           type="password"
           id="remote-registry-password"
           data-testid="remote-registry-password"
-          value={proxyCacheConfig?.upstream_registry_password}
+          value={proxyCacheConfig?.upstream_registry_password || ''}
           onChange={(_event, password) =>
             handleRemoteRegistryPassword(password)
           }

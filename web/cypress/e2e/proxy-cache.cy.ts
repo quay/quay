@@ -18,7 +18,7 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
   it('can create proxy cache configuration for an organization', () => {
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.contains('Proxy-Cache config').click();
+    cy.contains('Proxy Cache').click();
     createProxyCacheConfig(cy);
     // verify success alert
     cy.get('.pf-v5-c-alert.pf-m-success')
@@ -28,7 +28,7 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
   it('can delete proxy cache configuration for an organization', () => {
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.contains('Proxy-Cache config').click();
+    cy.contains('Proxy Cache').click();
     createProxyCacheConfig(cy);
     // verify success alert
     cy.get('.pf-v5-c-alert.pf-m-success')

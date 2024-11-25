@@ -6,6 +6,8 @@ import {
   validateProxyCacheConfig,
 } from 'src/resources/ProxyCacheResource';
 import {useCurrentUser} from './UseCurrentUser';
+import {addDisplayError} from 'src/resources/ErrorHandling';
+import {AxiosError} from 'axios';
 
 export interface IProxyCacheConfig {
   upstream_registry: string;
@@ -55,8 +57,8 @@ export function useValidateProxyCacheConfig(
         onSuccess(response);
         queryClient.invalidateQueries(['proxycacheconfig']);
       },
-      onError: (err) => {
-        onError(err);
+      onError: (err: AxiosError) => {
+        onError(addDisplayError('proxy cache validation error', err));
       },
     },
   );
@@ -65,53 +67,45 @@ export function useValidateProxyCacheConfig(
   };
 }
 
-export function useCreateProxyCacheConfig() {
+export function useCreateProxyCacheConfig({onSuccess, onError}) {
   const queryClient = useQueryClient();
-  const {
-    mutate: createProxyCacheConfigMutation,
-    isError: isErrorProxyCacheCreation,
-    isSuccess: successProxyCacheCreation,
-    error: proxyCacheCreationError,
-  } = useMutation(
+  const {mutate: createProxyCacheConfigMutation} = useMutation(
     async (proxyCacheConfig: IProxyCacheConfig) => {
       return createProxyCacheConfig(proxyCacheConfig);
     },
     {
       onSuccess: () => {
+        onSuccess();
         queryClient.invalidateQueries(['proxycacheconfig']);
+      },
+      onError: (err: AxiosError) => {
+        onError(addDisplayError('proxy cache creation error', err));
       },
     },
   );
 
   return {
     createProxyCacheConfigMutation,
-    isErrorProxyCacheCreation,
-    successProxyCacheCreation,
-    proxyCacheCreationError,
   };
 }
 
-export function useDeleteProxyCacheConfig(orgName) {
+export function useDeleteProxyCacheConfig(orgName, {onSuccess, onError}) {
   const queryClient = useQueryClient();
-  const {
-    mutate: deleteProxyCacheConfigMutation,
-    isError: isErrorProxyCacheDeletion,
-    isSuccess: successProxyCacheDeletion,
-    error: proxyCacheDeletionError,
-  } = useMutation(
+  const {mutate: deleteProxyCacheConfigMutation} = useMutation(
     async () => {
       return deleteProxyCacheConfig(orgName);
     },
     {
       onSuccess: () => {
+        onSuccess();
         queryClient.invalidateQueries(['proxycacheconfig']);
+      },
+      onError: (err: AxiosError) => {
+        onError(addDisplayError('proxy cache deletion error', err));
       },
     },
   );
   return {
     deleteProxyCacheConfigMutation,
-    successProxyCacheDeletion,
-    isErrorProxyCacheDeletion,
-    proxyCacheDeletionError,
   };
 }
