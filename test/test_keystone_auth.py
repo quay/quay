@@ -1,15 +1,20 @@
 import json
 import os
 import unittest
+import unittest.util
 from contextlib import contextmanager
-from test.helpers import liveserver_app
 from typing import Optional
 
 import requests
 from flask import Flask, abort, make_response, request
+from mock import patch
 
+from app import app as realapp
+from app import usermanager
 from data.users.keystone import get_keystone_users
+from features import FeatureNameValue
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import liveserver_app
 
 _PORT_NUMBER = 5001
 
@@ -422,6 +427,34 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
             self.assertEqual(2, len(results))
             self.assertEqual("adminuser", results[0][0].id)
             self.assertEqual("cool.user", results[1][0].id)
+
+
+class KeystoneRestrictedUsers(KeystoneAuthTestsMixin, unittest.TestCase):
+    def fake_keystone(self):
+        return fake_keystone(3, requires_email=True)
+
+    def emails(self):
+        return True
+
+    def test_restricted_users(self):
+        with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+            with self.fake_keystone() as keystone:
+                # Lookup cool.
+                (response, federated_id, error_message) = keystone.query_users("cool")
+                self.assertIsNone(error_message)
+                self.assertEqual(1, len(response))
+                self.assertEqual("keystone", federated_id)
+
+                user_info = response[0]
+                self.assertEqual("cool.user", user_info.username)
+
+                # check if "cool" is a super user
+                check_is_superuser = usermanager.is_superuser(user_info.username)
+                assert check_is_superuser == False
+
+                # turn on restricted users
+                check_is_restricted_user = usermanager.is_restricted_user(user_info.username)
+                assert check_is_restricted_user == True
 
 
 if __name__ == "__main__":

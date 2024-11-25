@@ -158,8 +158,10 @@ class OrganizationList(ApiResource):
         org_data = request.get_json()
         existing = None
 
-        if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
-            raise Unauthorized()
+        # Super users should be able to create new orgs regardless of user restriction
+        if user.username not in app.config.get("SUPER_USERS", None):
+            if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
+                raise Unauthorized()
 
         try:
             existing = model.organization.get_organization(org_data["name"])
