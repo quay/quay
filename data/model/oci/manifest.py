@@ -327,7 +327,7 @@ def _create_manifest(
 
             # Retrieve its labels.
             labels = child_manifest.get_manifest_labels(retriever)
-            if labels is None:
+            if labels is None and isinstance(child_manifest, ManifestInterface):
                 if raise_on_error:
                     raise CreateManifestException("Unable to retrieve manifest labels")
 

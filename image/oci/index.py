@@ -177,7 +177,7 @@ class OCIIndex(ManifestListInterface):
         }
         return METASCHEMA
 
-    def __init__(self, manifest_bytes):
+    def __init__(self, manifest_bytes, validate=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._layers = None
