@@ -6301,6 +6301,7 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 201	31	32	29	\N	2023-11-07 19:54:08.826725	172.18.0.1	{"member": "user1", "team": "teamforreadonly"}
 202	98	29	29	\N	2023-11-07 19:54:14.934915	172.18.0.1	{}
 203	97	1	\N	\N	2023-11-07 19:54:19.160078	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
+204	76	6	1	\N	2024-11-26 13:28:52.179631	172.20.0.1	{"upstream_registry": "docker.io"}
 \.
 
 
@@ -6683,6 +6684,7 @@ COPY public.permissionprototype (id, org_id, uuid, activating_user_id, delegate_
 --
 
 COPY public.proxycacheconfig (id, organization_id, creation_date, upstream_registry, upstream_registry_username, upstream_registry_password, expiration_s, insecure) FROM stdin;
+1	6	2024-11-26 13:28:52.175714	docker.io	\N	\N	86400	f
 \.
 
 
@@ -6715,8 +6717,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2024-09-30 17:51:28.055159	t	2024-09-30 20:46:28.041972	5	245c3f97-bac6-4742-93eb-2b61f948c6b9
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2024-09-30 17:51:33.074743	t	2024-09-30 20:46:33.062514	5	daa3897c-92bf-4678-a49a-8dbf4efed18c
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2024-11-26 13:33:24.969707	t	2024-11-26 16:28:24.944791	5	b26bfbb7-6d52-4adb-81bd-9674dfc4359d
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2024-11-26 13:33:30.012937	t	2024-11-26 16:28:29.982092	5	be21614e-6c32-4f3c-9454-6c8c94a8b672
 \.
 
 
@@ -8286,7 +8288,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 207, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 204, true);
 
 
 --
@@ -8440,7 +8442,7 @@ SELECT pg_catalog.setval('public.permissionprototype_id_seq', 3, true);
 -- Name: proxycacheconfig_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.proxycacheconfig_id_seq', 1, false);
+SELECT pg_catalog.setval('public.proxycacheconfig_id_seq', 1, true);
 
 
 --
