@@ -21,13 +21,9 @@ export async function validateProxyCacheConfig(
     upstream_registry_password:
       proxyCacheConfig.upstream_registry_password || null,
   };
-  try {
-    const proxyResponse = await axios.post(proxyCacheConfigUrl, payload);
-    assertHttpCode(proxyResponse.status, 202);
-    return proxyResponse.data;
-  } catch (error) {
-    throw error;
-  }
+  const proxyResponse = await axios.post(proxyCacheConfigUrl, payload);
+  assertHttpCode(proxyResponse.status, 202);
+  return proxyResponse.data;
 }
 
 export async function deleteProxyCacheConfig(
@@ -35,13 +31,9 @@ export async function deleteProxyCacheConfig(
   signal?: AbortSignal,
 ) {
   const proxyCacheConfigUrl = `/api/v1/organization/${org}/proxycache`;
-  try {
-    const proxyResponse = await axios.delete(proxyCacheConfigUrl, {signal});
-    assertHttpCode(proxyResponse.status, 201);
-    return proxyResponse.data;
-  } catch (error) {
-    throw error;
-  }
+  const proxyResponse = await axios.delete(proxyCacheConfigUrl, {signal});
+  assertHttpCode(proxyResponse.status, 201);
+  return proxyResponse.data;
 }
 
 export async function createProxyCacheConfig(
@@ -55,14 +47,10 @@ export async function createProxyCacheConfig(
     upstream_registry_password:
       proxyCacheConfig.upstream_registry_password || null,
   };
-  try {
-    const response: AxiosResponse = await axios.post(
-      createProxyCacheConfigUrl,
-      payload,
-    );
-    assertHttpCode(response.status, 201);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response: AxiosResponse = await axios.post(
+    createProxyCacheConfigUrl,
+    payload,
+  );
+  assertHttpCode(response.status, 201);
+  return response.data;
 }
