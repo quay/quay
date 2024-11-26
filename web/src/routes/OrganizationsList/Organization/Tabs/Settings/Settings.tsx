@@ -78,6 +78,7 @@ export default function Settings(props: SettingsProps) {
               <Tab
                 key={tab.id}
                 id={tab.id}
+                data-testid={tab.name}
                 eventKey={tabIndex}
                 title={<TabTitleText>{tab.name}</TabTitleText>}
               />
