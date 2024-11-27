@@ -9,7 +9,13 @@ export function useAlerts() {
     }
     setAlerts([...alerts, alert]);
   };
+
+  const clearAllAlerts = () => {
+    setAlerts([]);
+  };
+
   return {
-    addAlert: addAlert,
+    addAlert,
+    clearAllAlerts,
   };
 }
