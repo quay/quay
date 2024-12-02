@@ -3,8 +3,12 @@ import os
 import re
 from datetime import datetime, timedelta
 
-from elasticsearch import RequestsHttpConnection
-from elasticsearch.exceptions import AuthorizationException, NotFoundError
+from elastic_transport import RequestsHttpNode, SerializationError
+from elasticsearch.exceptions import (
+    AuthorizationException,
+    NotFoundError,
+    UnsupportedProductError,
+)
 from elasticsearch_dsl import Date, Document, Index, Integer, Ip, Keyword, Object, Text
 from elasticsearch_dsl.connections import connections
 from requests_aws4auth import AWS4Auth
@@ -75,7 +79,10 @@ class LogEntry(Document):
     def create_or_update_template(cls):
         assert cls._index and cls._index_prefix
         index_template = cls._index.as_template(cls._index_prefix)
-        index_template.save(using=ELASTICSEARCH_TEMPLATE_CONNECTION_ALIAS)
+        try:
+            index_template.save(using=ELASTICSEARCH_TEMPLATE_CONNECTION_ALIAS)
+        except SerializationError:
+            pass
 
     def save(self, **kwargs):
         # We group the logs based on year, month and day as different indexes, so that
@@ -127,6 +134,7 @@ class ElasticsearchLogs(object):
         """
         if not self._initialized:
             http_auth = None
+            scheme = "https" if self._use_ssl else "http"
             if self._access_key and self._secret_key and self._aws_region:
                 http_auth = AWS4Auth(self._access_key, self._secret_key, self._aws_region, "es")
             elif self._access_key and self._secret_key:
@@ -135,11 +143,10 @@ class ElasticsearchLogs(object):
                 logger.warning("Connecting to Elasticsearch without HTTP auth")
 
             self._client = connections.create_connection(
-                hosts=[{"host": self._host, "port": self._port}],
+                hosts=[{"host": self._host, "port": self._port, "scheme": scheme}],
                 http_auth=http_auth,
-                use_ssl=self._use_ssl,
                 verify_certs=True,
-                connection_class=RequestsHttpConnection,
+                node_class=RequestsHttpNode,
                 timeout=ELASTICSEARCH_DEFAULT_CONNECTION_TIMEOUT,
             )
 
@@ -149,23 +156,24 @@ class ElasticsearchLogs(object):
             # This only needs to be done once to initialize the index template
             connections.create_connection(
                 alias=ELASTICSEARCH_TEMPLATE_CONNECTION_ALIAS,
-                hosts=[{"host": self._host, "port": self._port}],
+                hosts=[{"host": self._host, "port": self._port, "scheme": scheme}],
                 http_auth=http_auth,
-                use_ssl=self._use_ssl,
                 verify_certs=True,
-                connection_class=RequestsHttpConnection,
+                node_class=RequestsHttpNode,
                 timeout=ELASTICSEARCH_TEMPLATE_CONNECTION_TIMEOUT,
             )
 
             try:
                 force_template_update = ELASTICSEARCH_FORCE_INDEX_TEMPLATE_UPDATE.lower() == "true"
-                self._client.indices.get_template(self._index_prefix)
+                self._client.indices.get_template(name=self._index_prefix)
                 LogEntry.init(
                     self._index_prefix,
                     self._index_settings,
                     skip_template_init=not force_template_update,
                 )
             except NotFoundError:
+                LogEntry.init(self._index_prefix, self._index_settings, skip_template_init=False)
+            except SerializationError:
                 LogEntry.init(self._index_prefix, self._index_settings, skip_template_init=False)
             finally:
                 try:
@@ -187,8 +195,10 @@ class ElasticsearchLogs(object):
 
     def index_exists(self, index):
         try:
-            return index in self._client.indices.get(index)
+            return index in self._client.indices.get(index=index)
         except NotFoundError:
+            return False
+        except SerializationError:
             return False
 
     @staticmethod
@@ -229,12 +239,17 @@ class ElasticsearchLogs(object):
     def list_indices(self):
         self._initialize()
         try:
-            return list(self._client.indices.get(self._index_prefix + "*").keys())
+            return list(self._client.indices.get(index=(self._index_prefix + "*")).keys())
         except NotFoundError as nfe:
             logger.exception("`%s` indices not found: %s", self._index_prefix, nfe.info)
             return []
         except AuthorizationException as ae:
             logger.exception("Unauthorized for indices `%s`: %s", self._index_prefix, ae.info)
+            return None
+        except SerializationError as se:
+            logger.exception(
+                "Serialization error for indices `%s`: %s", self._index_prefix, se.info
+            )
             return None
 
     def delete_index(self, index):
@@ -242,7 +257,7 @@ class ElasticsearchLogs(object):
         assert self._valid_index_name(index)
 
         try:
-            self._client.indices.delete(index)
+            self._client.indices.delete(index=index)
             return index
         except NotFoundError as nfe:
             logger.exception("`%s` indices not found: %s", index, nfe.info)
