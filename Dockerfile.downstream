@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS base
+FROM registry.redhat.io/rhel8-6-els/rhel:latest AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -9,10 +9,10 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.22 \
-	; microdnf -y module enable python39:3.9 \
-	; microdnf update -y \
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; dnf -y module enable nginx:1.22 \
+	; dnf -y module enable python39:3.9 \
+	; dnf update -y \
+	; dnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
 		nginx \
@@ -24,9 +24,9 @@ RUN set -ex\
 		python3-gpg \
 		skopeo \
 		findutils \
-	; microdnf -y reinstall tzdata \
-	; microdnf remove platform-python-pip python39-pip \
-	; microdnf -y clean all && rm -rf /var/cache/yum
+	; dnf -y reinstall tzdata \
+	; dnf remove -yplatform-python-pip python39-pip \
+	; dnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
@@ -42,7 +42,7 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; dnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
 		git \
 		openldap-devel \
@@ -59,7 +59,7 @@ RUN set -ex\
 		libxml2-devel \
 		libxslt-devel \
 		freetype-devel \
-	; microdnf -y clean all
+	; dnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
@@ -135,7 +135,7 @@ COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
+FROM registry.redhat.io/rhel8-6-els/rhel AS build-quaydir
 WORKDIR /quaydir
 COPY --from=config-editor /opt/app-root/src /quaydir/config_app
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
@@ -153,7 +153,14 @@ RUN set -ex\
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
-LABEL maintainer "quay-devel@redhat.com"
+LABEL com.redhat.component="quay-registry-container"
+LABEL name="quay/quay-rhel8"
+LABEL io.k8s.display-name="Red Hat Quay"
+LABEL io.k8s.description="Red Hat Quay"
+LABEL summary="Red Hat Quay"
+LABEL maintainer="support@redhat.com"
+LABEL io.openshift.tags="quay"
+ENV RED_HAT_QUAY=true
 
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
