@@ -23,6 +23,7 @@
     "angular": "1.6.2",
     "angular-route": "1.6.2",
     "angular-sanitize": "1.6.2",
+    "axios": "^1.7.7",
     "bootbox": "^4.1.0",
     "clipboard": "^1.6.1",
     "core-js": "^2.4.1",
