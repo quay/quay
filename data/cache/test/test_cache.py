@@ -2,7 +2,6 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from rediscluster.nodemanager import NodeManager
 
 from data.cache import (
     InMemoryDataModelCache,
@@ -192,7 +191,7 @@ def test_redis_cache():
     ],
 )
 def test_redis_cache_config(cache_config, expected_exception):
-    with patch("rediscluster.nodemanager.NodeManager.initialize", MagicMock):
+    with patch("redis.cluster.NodesManager", MagicMock):
         if expected_exception is not None:
             with pytest.raises(expected_exception[0]) as e:
                 rc = redis_cache_from_config(cache_config)
