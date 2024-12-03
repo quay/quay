@@ -1,4 +1,4 @@
-FROM registry.redhat.io/rhel8-6-els/rhel:latest AS base
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -9,10 +9,10 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; dnf -y module enable nginx:1.22 \
-	; dnf -y module enable python39:3.9 \
-	; dnf update -y \
-	; dnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y module enable nginx:1.22 \
+	; microdnf -y module enable python39:3.9 \
+	; microdnf update -y \
+	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
 		nginx \
@@ -24,9 +24,9 @@ RUN set -ex\
 		python3-gpg \
 		skopeo \
 		findutils \
-	; dnf -y reinstall tzdata \
-	; dnf remove -yplatform-python-pip python39-pip \
-	; dnf -y clean all && rm -rf /var/cache/yum
+	; microdnf -y reinstall tzdata \
+	; microdnf remove platform-python-pip python39-pip \
+	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
@@ -42,7 +42,7 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
-	; dnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y --setopt=tsflags=nodocs install \
 		gcc-c++ \
 		git \
 		openldap-devel \
@@ -59,7 +59,7 @@ RUN set -ex\
 		libxml2-devel \
 		libxslt-devel \
 		freetype-devel \
-	; dnf -y clean all
+	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
@@ -76,17 +76,6 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 # wget has been added to reduce the build time
 # In Future if wget is to be removed , then uncomment below line for grpc installation on IBMZ i.e. s390x
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
-
-RUN ARCH=$(uname -m) ; echo $ARCH; \
-    if [ "$ARCH" == "ppc64le" ] ; then \
-    GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
-	tar xvf manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
-	python3 -m pip install --no-cache-dir --user wheelhouse/gevent-${GE_LATEST}-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
-    GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
-	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
-	fi
 
 RUN set -ex\
 	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
@@ -133,9 +122,9 @@ FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
-RUN go install -tags=fips ./cmd/config-tool
+RUN GOEXPERIMENT=strictfipsruntime go install -tags strictfipsruntime,fips ./cmd/config-tool
 
-FROM registry.redhat.io/rhel8-6-els/rhel AS build-quaydir
+FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
 COPY --from=config-editor /opt/app-root/src /quaydir/config_app
 COPY --from=build-static /opt/app-root/src/static /quaydir/static
@@ -147,7 +136,6 @@ COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 COPY --chown=0:0 . .
 RUN set -ex\
 	; chmod -R g=u ./conf\
-	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
 	;
 
 # Final is the end container, where all the work from the other
