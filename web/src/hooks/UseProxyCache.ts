@@ -27,10 +27,10 @@ export function useFetchProxyCacheConfig(orgName: string) {
     isSuccess: isSuccessLoadingProxyCacheConfig,
     isError: errorLoadingProxyCacheConfig,
   } = useQuery<IProxyCacheConfig>(
-    ['proxycacheconfig'],
+    ['proxycacheconfig', orgName],
     ({signal}) => fetchProxyCacheConfig(orgName, signal),
     {
-      enabled: !(user.username === orgName),
+      enabled: orgName !== '' && !(user.username === orgName),
     },
   );
 

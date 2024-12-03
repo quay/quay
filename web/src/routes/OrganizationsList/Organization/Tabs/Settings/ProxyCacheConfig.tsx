@@ -28,7 +28,7 @@ type ProxyCacheConfigProps = {
   isUser: boolean;
 };
 
-const tagExpirationInSecsForProxyCache = 86400;
+export const tagExpirationInSecsForProxyCache = 86400;
 
 export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const defaultProxyCacheConfig = {
