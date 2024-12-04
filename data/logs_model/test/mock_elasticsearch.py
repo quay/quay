@@ -315,12 +315,11 @@ SCROLL_REQUESTS = [
             "query": {
                 "range": {"datetime": {"lt": "2018-04-02T00:00:00", "gte": "2018-03-08T00:00:00"}}
             },
-            "size": 1,
         },
     ],
     [{"scroll": "5m", "scroll_id": _scroll_id}],
     [{"scroll": "5m", "scroll_id": _scroll_id}],
-    [{"scroll_id": _scroll_id}],
+    [{"scroll_id": [_scroll_id]}],
 ]
 
 SCROLL_RESPONSES = [SCROLL_CREATE, SCROLL_GET, SCROLL_GET_2, SCROLL_DELETE]
