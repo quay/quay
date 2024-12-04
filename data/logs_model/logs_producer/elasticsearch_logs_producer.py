@@ -1,6 +1,6 @@
 import logging
 
-from elasticsearch.exceptions import ApiError
+from elasticsearch.exceptions import ElasticsearchException
 
 from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface
@@ -18,7 +18,7 @@ class ElasticsearchLogsProducer(LogProducerInterface):
     def send(self, logentry):
         try:
             logentry.save()
-        except ApiError as ex:
+        except ElasticsearchException as ex:
             logger.exception("ElasticsearchLogsProducer error sending log to Elasticsearch: %s", ex)
             raise LogSendException(
                 "ElasticsearchLogsProducer error sending log to Elasticsearch: %s" % ex
