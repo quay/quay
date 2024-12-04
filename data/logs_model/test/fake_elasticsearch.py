@@ -8,8 +8,6 @@ from datetime import datetime
 import dateutil.parser
 from httmock import HTTMock, urlmatch
 
-from data.logs_model.test.test_elasticsearch import add_elastic_headers
-
 FAKE_ES_HOST = "fakees"
 
 EMPTY_RESULT = {
@@ -44,7 +42,6 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return value
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/_template/(.+)", method="GET")
     def get_template(url, request):
         template_name = url[len("/_template/") :]
@@ -53,14 +50,12 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return {"status_code": 404}
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/_template/(.+)", method="PUT")
     def put_template(url, request):
         template_name = url[len("/_template/") :]
         templates[template_name] = True
         return {"status_code": 201}
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_doc", method="POST")
     def post_doc(url, request):
         index_name, _ = url.path[1:].split("/")
@@ -80,7 +75,6 @@ def fake_elasticsearch(allow_wildcard=True):
             ),
         }
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)$", method="DELETE")
     def index_delete(url, request):
         index_name_or_pattern = url.path[1:]
@@ -102,7 +96,6 @@ def fake_elasticsearch(allow_wildcard=True):
             "content": {"acknowledged": True},
         }
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)$", method="GET")
     def index_lookup(url, request):
         index_name_or_pattern = url.path[1:]
@@ -191,7 +184,6 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return found, found_index or (index_name_or_pattern.find("*") >= 0)
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_count$", method="POST")
     def count_docs(url, request):
         request = json.loads(request.body)
@@ -211,7 +203,6 @@ def fake_elasticsearch(allow_wildcard=True):
             "content": json.dumps({"count": len(found)}),
         }
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/_search/scroll$", method="POST")
     def lookup_scroll(url, request):
         request_obj = json.loads(request.body)
@@ -229,7 +220,6 @@ def fake_elasticsearch(allow_wildcard=True):
             "status_code": 404,
         }
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/_search/scroll$", method="DELETE")
     def delete_scroll(url, request):
         request = json.loads(request.body)
@@ -240,7 +230,6 @@ def fake_elasticsearch(allow_wildcard=True):
             "status_code": 404,
         }
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_search$", method="POST")
     def lookup_docs(url, request):
         query_params = parse_query(url.query)
@@ -394,7 +383,6 @@ def fake_elasticsearch(allow_wildcard=True):
             "content": json.dumps(final_result),
         }
 
-    @add_elastic_headers
     @urlmatch(netloc=FAKE_ES_HOST)
     def catchall_handler(url, request):
         print(
