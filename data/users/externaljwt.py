@@ -150,16 +150,16 @@ class ExternalJWTAuthN(FederatedUsers):
             return (None, "Exception when decoding returned JWT")
 
     def is_superuser(self, username):
-        raise NotImplementedError()
+        return None
 
     def is_global_readonly_superuser(self, username):
-        raise NotImplementedError()
+        return None
 
     def has_superusers(self):
         raise NotImplementedError()
 
     def is_restricted_user(self, username):
-        raise NotImplementedError()
+        return None
 
     def has_restricted_users(self):
         raise NotImplementedError()
