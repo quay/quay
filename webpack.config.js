@@ -13,6 +13,9 @@ let config = {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    fallback: {
+      process: require.resolve('process/browser'),
+    },
   },
   // Use global variables to maintain compatibility with non-Webpack components
   externals: {
@@ -68,6 +71,10 @@ let config = {
     }),
     // Restrict the extra locales that moment.js can load; en is always included
     new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /en/),
+    // new plugin required for axios 1.7.7 and higher
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+    }),
   ],
   devtool: "cheap-module-source-map",
   watchOptions: {
