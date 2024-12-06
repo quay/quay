@@ -14,7 +14,7 @@ import {
 import ExclamationCircleIcon from '@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon';
 import './css/Organizations.scss';
 import {isValidEmail} from 'src/libs/utils';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useCreateOrganization} from 'src/hooks/UseCreateOrganization';
@@ -23,7 +23,6 @@ import {tagExpirationInSecsForProxyCache} from './Organization/Tabs/Settings/Pro
 import {
   IProxyCacheConfig,
   useCreateProxyCacheConfig,
-  useFetchProxyCacheConfig,
   useValidateProxyCacheConfig,
 } from 'src/hooks/UseProxyCache';
 import {useAlerts} from 'src/hooks/UseAlerts';
@@ -51,44 +50,24 @@ export const CreateOrganizationModal = (
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
   const [proxyOrgCheck, setProxyOrgCheck] = useState(false);
-  const [orgForProxyCache, setOrgForProxyCache] = useState('');
 
   const defaultProxyCacheConfig = {
     upstream_registry: '',
     expiration_s: tagExpirationInSecsForProxyCache,
     insecure: false,
-    org_name: orgForProxyCache,
+    org_name: organizationName,
   };
 
   const [proxyCacheConfig, setProxyCacheConfig] = useState<IProxyCacheConfig>(
     defaultProxyCacheConfig,
   );
-  const {addAlert, clearAllAlerts} = useAlerts();
-
-  const {fetchedProxyCacheConfig} = useFetchProxyCacheConfig(orgForProxyCache);
-
-  useEffect(() => {
-    if (fetchedProxyCacheConfig) {
-      // only set values that are fetched
-      setProxyCacheConfig((prevConfig) => ({
-        ...prevConfig,
-        upstream_registry: fetchedProxyCacheConfig.upstream_registry,
-        expiration_s:
-          fetchedProxyCacheConfig.expiration_s ||
-          tagExpirationInSecsForProxyCache,
-        insecure: fetchedProxyCacheConfig.insecure || false,
-      }));
-    } else {
-      // reset the config if there's no fetchedProxyCacheConfig data
-      setProxyCacheConfig(defaultProxyCacheConfig);
-    }
-  }, [fetchedProxyCacheConfig]);
+  const {addAlert} = useAlerts();
 
   const {createProxyCacheConfigMutation} = useCreateProxyCacheConfig({
     onSuccess: () => {
       addAlert({
         variant: AlertVariant.Success,
-        title: `Successfully configured proxy cache`,
+        title: `Successfully configured proxy cache for ${organizationName}`,
       });
     },
     onError: (err) => {
@@ -105,7 +84,6 @@ export const CreateOrganizationModal = (
       onSuccess: (response) => {
         if (response === 'Valid' || response === 'Anonymous') {
           createProxyCacheConfigMutation(proxyCacheConfig);
-          setProxyCacheConfig(proxyCacheConfig);
         }
       },
       onError: (err) => {
@@ -118,16 +96,17 @@ export const CreateOrganizationModal = (
   );
 
   const {createOrganization} = useCreateOrganization({
-    onSuccess: () => {
-      setOrgForProxyCache(organizationName);
-      addAlert({
-        variant: AlertVariant.Success,
-        title: `Successfully created ${organizationName} organization`,
-      });
-      if (proxyOrgCheck && orgForProxyCache !== '') {
-        proxyCacheConfigValidation();
+    onSuccess: (response) => {
+      if (response === 'Created') {
+        addAlert({
+          variant: AlertVariant.Success,
+          title: `Successfully created ${organizationName} organization`,
+        });
+        if (proxyOrgCheck) {
+          proxyCacheConfigValidation();
+        }
+        props.handleModalToggle();
       }
-      props.handleModalToggle();
     },
     onError: (err) => {
       setErr(addDisplayError('Unable to create organization', err));
@@ -161,6 +140,10 @@ export const CreateOrganizationModal = (
       setValidation(defaultMessage);
     }
     setOrganizationName(value);
+    setProxyCacheConfig((prevConfig) => ({
+      ...prevConfig,
+      org_name: value,
+    }));
   };
 
   const handleEmailInputChange = (value: string) => {
@@ -296,7 +279,6 @@ export const CreateOrganizationModal = (
             fieldId="form-remote-registry"
           >
             <TextInput
-              isDisabled={!!fetchedProxyCacheConfig?.upstream_registry}
               type="text"
               id="form-name"
               data-testid="remote-registry-input"
@@ -325,7 +307,6 @@ export const CreateOrganizationModal = (
             fieldId="form-username"
           >
             <TextInput
-              isDisabled={!!fetchedProxyCacheConfig?.upstream_registry_username}
               type="text"
               id="remote-registry-username"
               data-testid="remote-registry-username"
@@ -354,7 +335,6 @@ export const CreateOrganizationModal = (
             fieldId="form-password"
           >
             <TextInput
-              isDisabled={!!fetchedProxyCacheConfig?.upstream_registry_password}
               type="password"
               id="remote-registry-password"
               data-testid="remote-registry-password"

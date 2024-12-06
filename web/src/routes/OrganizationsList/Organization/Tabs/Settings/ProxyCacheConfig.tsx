@@ -91,7 +91,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
       onSuccess: (response) => {
         if (response === 'Valid' || response === 'Anonymous') {
           createProxyCacheConfigMutation(proxyCacheConfig);
-          setProxyCacheConfig(proxyCacheConfig);
+          // setProxyCacheConfig(proxyCacheConfig);
         }
       },
       onError: (err) => {

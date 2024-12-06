@@ -3,16 +3,13 @@ import {Label, Skeleton} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
-import {
-  fetchRepositoriesForNamespace,
-  IRepository,
-} from 'src/resources/RepositoryResource';
+import {IRepository} from 'src/resources/RepositoryResource';
 import {fetchMembersForOrg} from 'src/resources/MembersResource';
 import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
 import Conditional from 'src/components/empty/Conditional';
@@ -114,7 +111,7 @@ export default function OrgTableData(props: OrganizationsTableItem) {
         <Link to={props.name}>{props.name}&nbsp;&nbsp;</Link>
         <Conditional if={!!fetchedProxyCacheConfig?.upstream_registry}>
           <Label key={props.name} color="blue">
-            proxy-org
+            proxy
           </Label>
         </Conditional>
       </Td>

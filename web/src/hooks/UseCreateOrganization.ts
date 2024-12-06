@@ -8,8 +8,8 @@ export function useCreateOrganization({onSuccess, onError}) {
       return createOrg(name, email);
     },
     {
-      onSuccess: () => {
-        onSuccess();
+      onSuccess: (response) => {
+        onSuccess(response);
         queryClient.invalidateQueries(['user']);
       },
       onError: (err) => {

@@ -27,7 +27,7 @@ export function useFetchProxyCacheConfig(orgName: string) {
     isSuccess: isSuccessLoadingProxyCacheConfig,
     isError: errorLoadingProxyCacheConfig,
   } = useQuery<IProxyCacheConfig>(
-    ['proxycacheconfig', orgName],
+    ['proxycacheconfig', orgName, user],
     ({signal}) => fetchProxyCacheConfig(orgName, signal),
     {
       enabled: orgName !== '' && !(user.username === orgName),
@@ -55,7 +55,7 @@ export function useValidateProxyCacheConfig(
     {
       onSuccess: (response) => {
         onSuccess(response);
-        queryClient.invalidateQueries(['proxycacheconfig']);
+        queryClient.invalidateQueries(['proxycacheconfig', 'user']);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('proxy cache validation error', err));
@@ -69,14 +69,18 @@ export function useValidateProxyCacheConfig(
 
 export function useCreateProxyCacheConfig({onSuccess, onError}) {
   const queryClient = useQueryClient();
-  const {mutate: createProxyCacheConfigMutation} = useMutation(
+  const {user} = useCurrentUser();
+  const {
+    mutate: createProxyCacheConfigMutation,
+    isSuccess: successProxyCacheCreation,
+  } = useMutation(
     async (proxyCacheConfig: IProxyCacheConfig) => {
       return createProxyCacheConfig(proxyCacheConfig);
     },
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['proxycacheconfig']);
+        queryClient.invalidateQueries(['proxycacheconfig', user]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('proxy cache creation error', err));
@@ -86,6 +90,7 @@ export function useCreateProxyCacheConfig({onSuccess, onError}) {
 
   return {
     createProxyCacheConfigMutation,
+    successProxyCacheCreation,
   };
 }
 
