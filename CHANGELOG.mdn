@@ -3,8 +3,23 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.2"></a>
+## [v3.13.2] - 2024-12-05
+### [Redhat-3.13] Auth
+- [2c38a085](https://github.com/quay/quay/commit/2c38a0854f198807b15ee1382d77499c1f9d6df3): Implement is_restricted_user for federated auth systems (PROJQUAY-8208) ([#3459](https://github.com/quay/quay/issues/3459))
+- [96e3f3b0](https://github.com/quay/quay/commit/96e3f3b06be6098bd84bced5bcc03e70ed02ff5a): Remove robot references from scopes list (PROJQUAY-8269) ([#3458](https://github.com/quay/quay/issues/3458))
+### [Redhat-3.13] Dep
+- [5702a0f1](https://github.com/quay/quay/commit/5702a0f1bd3601a222a91d11489b4ee49fbb90b1): updating axios (PROJQUAY-7657) ([#3465](https://github.com/quay/quay/issues/3465))
+### [Redhat-3.13] Deps
+- [046b16ea](https://github.com/quay/quay/commit/046b16eacbf9fe6995c684c4322249c2ea4840fb): bump protobuf (PROJQUAY-7970) ([#3422](https://github.com/quay/quay/issues/3422))
+### [Redhat-3.13] Ui
+- [e97bbca8](https://github.com/quay/quay/commit/e97bbca8a080259f320b6c97654be68f2165c937): Add proxy cache config UI to org settings (PROJQUAY-7697) ([#3428](https://github.com/quay/quay/issues/3428))
+- [33177946](https://github.com/quay/quay/commit/33177946911a1d6157c5ba7c27551c80f66b5685): removing bootbox ([#3416](https://github.com/quay/quay/issues/3416))
+
 <a name="v3.13.1"></a>
-## [v3.13.1] - 2024-11-08
+## [v3.13.1] - 2024-11-14
+### [Redhat-3.13] Api
+- [56d5b76b](https://github.com/quay/quay/commit/56d5b76b9c0f3e2ff4233dce553002e4e918879c): allowing superuser to read catalog endpoint (PROJQUAY-8023) ([#3402](https://github.com/quay/quay/issues/3402))
 ### [Redhat-3.13] Build(Deps)
 - [bdcd2796](https://github.com/quay/quay/commit/bdcd27965f0c7d616cda321ba8e3162d2c731c50): bump jmespath from 0.9.4 to 1.0.1 in requirements.txt (PROJQUAY-7031) ([#3392](https://github.com/quay/quay/issues/3392))
 - [9de00c4a](https://github.com/quay/quay/commit/9de00c4adf93b290266f1931ca7148350ec73ffb): bump werkzeug from 3.0.3 to 3.0.6 ([#3373](https://github.com/quay/quay/issues/3373))
@@ -162,6 +177,13 @@
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.5"></a>
+## [v3.12.5] - 2024-11-19
+### [Redhat-3.12] Bug
+- [89b643dd](https://github.com/quay/quay/commit/89b643ddac2af8646e103db8b8234b131604377f): too strict validateTeamName regex (PROJQUAY-7606) ([#3379](https://github.com/quay/quay/issues/3379))
+### [Redhat-3.12] Conf(Nginx)
+- [5d61cddd](https://github.com/quay/quay/commit/5d61cdddf2d0f2fd4025ae711f1a4325fd659669): change forwarded header removing host (PROJQUAY-8024) ([#3387](https://github.com/quay/quay/issues/3387))
 
 <a name="v3.12.4"></a>
 ## [v3.12.4] - 2024-10-21
@@ -2571,9 +2593,11 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.1...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.2...HEAD
+[v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.4...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.5...v3.13.0
+[v3.12.5]: https://github.com/quay/quay/compare/v3.12.4...v3.12.5
 [v3.12.4]: https://github.com/quay/quay/compare/v3.12.3...v3.12.4
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
