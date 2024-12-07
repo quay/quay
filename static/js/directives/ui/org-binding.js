@@ -77,14 +77,25 @@ angular.module('quay').directive('orgBinding', function() {
         loadSubscriptions();
       }
 
-      $scope.bindSku = function(subscriptionToBind) {
-        let subscription = JSON.parse(subscriptionToBind);
+      $scope.bindSku = function(subscriptionToBind, bindingQuantity) {
+        let subscription;
+        try {
+          // Try to parse if it's a JSON string
+          subscription = typeof subscriptionToBind === 'string' ? JSON.parse(subscriptionToBind) : subscriptionToBind;
+        } catch (e) {
+          // If parsing fails, assume it's already an object
+          subscription = subscriptionToBind;
+        }
         $scope.marketplaceLoading = true;
         const requestData = {};
         requestData["subscriptions"] = [];
-        requestData["subscriptions"].push({
-          "subscription_id": subscription["id"],
-        });
+        const subscriptionData = {
+          "subscription_id": subscription["id"]
+        };
+        if (bindingQuantity !== undefined) {
+          subscriptionData["quantity"] = bindingQuantity;
+        }
+        requestData["subscriptions"].push(subscriptionData);
         PlanService.bindSkuToOrg(requestData, $scope.organization, function(resp){
           if (resp === "Okay"){
             bindSkuSuccessMessage();
