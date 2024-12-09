@@ -18,7 +18,7 @@ angular.module('quay').factory('RolesService', ['UtilService', 'Restangular', 'A
   roleService.teamRoles = [
     { 'id': 'member', 'title': 'Member', 'kind': 'default', 'description': 'Inherits all permissions of the team' },
     { 'id': 'creator', 'title': 'Creator', 'kind': 'success', 'description': 'Member and can create new repositories' },
-    { 'id': 'admin', 'title': 'Admin', 'kind': 'primary', 'description': 'Full admin access to the organization' }
+    { 'id': 'admin', 'title': 'Admin', 'kind': 'primary', 'description': 'Full admin access to the organization and repositories' }
   ];
 
   var getPermissionEndpoint = function(repository, entityName, entityKind) {
