@@ -21,6 +21,7 @@ LABEL io.k8s.description="Red Hat Quay"\
 LABEL summary="Red Hat Quay"\
 LABEL maintainer="support@redhat.com"\
 LABEL io.openshift.tags="quay"\
+LABEL description="Red Hat Quay"\
 ENV RED_HAT_QUAY=true
 		d
 	}
