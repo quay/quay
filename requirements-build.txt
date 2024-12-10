@@ -26,6 +26,8 @@ hatchling==1.18.0
     # via
     #   -r requirements-build.in
     #   hatch-vcs
+maturin==1.7.8
+    # via cryptography
 packaging==23.2
     # via
     #   -r requirements-build.in
