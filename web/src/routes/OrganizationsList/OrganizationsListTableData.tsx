@@ -110,7 +110,11 @@ export default function OrgTableData(props: OrganizationsTableItem) {
       <Td dataLabel={ColumnNames.name}>
         <Link to={props.name}>{props.name}&nbsp;&nbsp;</Link>
         <Conditional if={!!fetchedProxyCacheConfig?.upstream_registry}>
-          <Label key={props.name} color="blue">
+          <Label
+            key={props.name}
+            color="blue"
+            data-testid={`proxy-org-${props.name}`}
+          >
             proxy
           </Label>
         </Conditional>

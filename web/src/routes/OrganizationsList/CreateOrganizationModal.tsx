@@ -27,6 +27,7 @@ import {
 } from 'src/hooks/UseProxyCache';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface Validation {
   message: string;
@@ -50,6 +51,7 @@ export const CreateOrganizationModal = (
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
   const [proxyOrgCheck, setProxyOrgCheck] = useState(false);
+  const quayConfig = useQuayConfig();
 
   const defaultProxyCacheConfig = {
     upstream_registry: '',
@@ -173,6 +175,7 @@ export const CreateOrganizationModal = (
       actions={[
         <Button
           id="create-org-confirm"
+          data-testid="create-org-confirm"
           key="confirm"
           variant="primary"
           onClick={createOrganizationHandler}
@@ -252,160 +255,166 @@ export const CreateOrganizationModal = (
           </FormHelperText>
         </FormGroup>
 
-        <FormGroup
-          isInline
-          label="Is this a proxy cache organization?"
-          fieldId="radio-proxy-cache"
-        >
-          <Radio
-            isChecked={proxyOrgCheck}
-            name="Yes"
-            onChange={() => setProxyOrgCheck(true)}
-            label="Yes"
-            id="radio-controlled-yes"
-          />
-          <Radio
-            isChecked={!proxyOrgCheck}
-            name="No"
-            onChange={() => setProxyOrgCheck(false)}
-            label="No"
-            id="radio-controlled-no"
-          />
-        </FormGroup>
-        <Conditional if={proxyOrgCheck}>
+        <Conditional if={quayConfig?.features?.PROXY_CACHE}>
           <FormGroup
             isInline
-            label="Remote Registry"
-            fieldId="form-remote-registry"
+            label="Is this a proxy cache organization?"
+            fieldId="radio-proxy-cache"
           >
-            <TextInput
-              type="text"
-              id="form-name"
-              data-testid="remote-registry-input"
-              value={proxyCacheConfig?.upstream_registry || ''}
-              onChange={(_event, registryName) =>
-                setProxyCacheConfig((prevConfig) => ({
-                  ...prevConfig,
-                  upstream_registry: registryName,
-                }))
-              }
+            <Radio
+              isChecked={proxyOrgCheck}
+              name="Yes"
+              onChange={() => setProxyOrgCheck(true)}
+              label="Yes"
+              id="radio-controlled-yes"
+              data-testid="radio-controlled-yes"
             />
-
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Remote registry that is to be cached. (Eg: For docker hub,
-                  docker.io, docker.io/library)
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
-
-          <FormGroup
-            isInline
-            label="Remote Registry username"
-            fieldId="form-username"
-          >
-            <TextInput
-              type="text"
-              id="remote-registry-username"
-              data-testid="remote-registry-username"
-              value={proxyCacheConfig?.upstream_registry_username || ''}
-              onChange={(_event, registryUsername) =>
-                setProxyCacheConfig((prevConfig) => ({
-                  ...prevConfig,
-                  upstream_registry_username: registryUsername,
-                }))
-              }
+            <Radio
+              isChecked={!proxyOrgCheck}
+              name="No"
+              onChange={() => setProxyOrgCheck(false)}
+              label="No"
+              id="radio-controlled-no"
+              data-testid="radio-controlled-no"
             />
-
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Username for authenticating into the entered remote registry.
-                  For anonymous pulls from the upstream, leave this empty.
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
           </FormGroup>
+          <Conditional if={proxyOrgCheck}>
+            <FormGroup
+              isInline
+              label="Remote Registry"
+              fieldId="form-remote-registry"
+            >
+              <TextInput
+                type="text"
+                id="form-name"
+                data-testid="remote-registry-input"
+                value={proxyCacheConfig?.upstream_registry || ''}
+                onChange={(_event, registryName) =>
+                  setProxyCacheConfig((prevConfig) => ({
+                    ...prevConfig,
+                    upstream_registry: registryName,
+                  }))
+                }
+              />
 
-          <FormGroup
-            isInline
-            label="Remote Registry password"
-            fieldId="form-password"
-          >
-            <TextInput
-              type="password"
-              id="remote-registry-password"
-              data-testid="remote-registry-password"
-              value={proxyCacheConfig?.upstream_registry_password || ''}
-              onChange={(_event, registryPass) =>
-                setProxyCacheConfig((prevConfig) => ({
-                  ...prevConfig,
-                  upstream_registry_password: registryPass,
-                }))
-              }
-            />
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Remote registry that is to be cached. (Eg: For docker hub,
+                    docker.io, docker.io/library)
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
 
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Password for authenticating into the entered remote registry.
-                  For anonymous pulls from the upstream, leave this empty.{' '}
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
+            <FormGroup
+              isInline
+              label="Remote Registry username"
+              fieldId="form-username"
+            >
+              <TextInput
+                type="text"
+                id="remote-registry-username"
+                data-testid="remote-registry-username"
+                value={proxyCacheConfig?.upstream_registry_username || ''}
+                onChange={(_event, registryUsername) =>
+                  setProxyCacheConfig((prevConfig) => ({
+                    ...prevConfig,
+                    upstream_registry_username: registryUsername,
+                  }))
+                }
+              />
 
-          <FormGroup isInline label="Expiration" fieldId="form-username">
-            <TextInput
-              type="text"
-              id="remote-registry-expiration"
-              data-testid="remote-registry-expiration"
-              value={proxyCacheConfig?.expiration_s}
-              placeholder={tagExpirationInSecsForProxyCache.toString()}
-              onChange={(_event, inputSecs) =>
-                setProxyCacheConfig((prevConfig) => ({
-                  ...prevConfig,
-                  expiration_s: Number(inputSecs),
-                }))
-              }
-            />
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Username for authenticating into the entered remote
+                    registry. For anonymous pulls from the upstream, leave this
+                    empty.
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
 
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Default tag expiration for cached images, in seconds. This
-                  value is refreshed on every pull. Default is 86400 i.e, 24
-                  hours.{' '}
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
+            <FormGroup
+              isInline
+              label="Remote Registry password"
+              fieldId="form-password"
+            >
+              <TextInput
+                type="password"
+                id="remote-registry-password"
+                data-testid="remote-registry-password"
+                value={proxyCacheConfig?.upstream_registry_password || ''}
+                onChange={(_event, registryPass) =>
+                  setProxyCacheConfig((prevConfig) => ({
+                    ...prevConfig,
+                    upstream_registry_password: registryPass,
+                  }))
+                }
+              />
 
-          <FormGroup isInline label="Insecure" fieldId="form-insecure">
-            <Checkbox
-              label="http"
-              isChecked={proxyCacheConfig?.insecure}
-              onChange={(e, checked) =>
-                setProxyCacheConfig((prevConfig) => ({
-                  ...prevConfig,
-                  insecure: checked,
-                }))
-              }
-              id="controlled-check-2"
-              data-testid="remote-registry-insecure"
-            />
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  If set, http (unsecure protocol) will be used. If not set,
-                  https (secure protocol) will be used to request the remote
-                  registry.
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          </FormGroup>
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Password for authenticating into the entered remote
+                    registry. For anonymous pulls from the upstream, leave this
+                    empty.{' '}
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
+
+            <FormGroup isInline label="Expiration" fieldId="form-username">
+              <TextInput
+                type="text"
+                id="remote-registry-expiration"
+                data-testid="remote-registry-expiration"
+                value={proxyCacheConfig?.expiration_s}
+                placeholder={tagExpirationInSecsForProxyCache.toString()}
+                onChange={(_event, inputSecs) =>
+                  setProxyCacheConfig((prevConfig) => ({
+                    ...prevConfig,
+                    expiration_s: Number(inputSecs),
+                  }))
+                }
+              />
+
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    Default tag expiration for cached images, in seconds. This
+                    value is refreshed on every pull. Default is 86400 i.e, 24
+                    hours.{' '}
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
+
+            <FormGroup isInline label="Insecure" fieldId="form-insecure">
+              <Checkbox
+                label="http"
+                isChecked={proxyCacheConfig?.insecure}
+                onChange={(e, checked) =>
+                  setProxyCacheConfig((prevConfig) => ({
+                    ...prevConfig,
+                    insecure: checked,
+                  }))
+                }
+                id="controlled-check-2"
+                data-testid="remote-registry-insecure"
+              />
+              <FormHelperText>
+                <HelperText>
+                  <HelperTextItem>
+                    If set, http (unsecure protocol) will be used. If not set,
+                    https (secure protocol) will be used to request the remote
+                    registry.
+                  </HelperTextItem>
+                </HelperText>
+              </FormHelperText>
+            </FormGroup>
+          </Conditional>
         </Conditional>
       </Form>
     </Modal>
