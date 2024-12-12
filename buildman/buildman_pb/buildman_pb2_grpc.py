@@ -11,7 +11,7 @@ GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
 try:
-    from grpc._utilities import first_version_is_lower  # type: ignore
+    from grpc._utilities import first_version_is_lower
 
     _version_not_supported = first_version_is_lower(GRPC_VERSION, GRPC_GENERATED_VERSION)
 except ImportError:
