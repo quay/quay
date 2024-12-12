@@ -21,7 +21,7 @@
     "@types/jest": "^27.4.1",
     "@types/node": "^16.11.26",
     "@types/react": "^17.0.2",
-    "axios": "^0.27.2",
+    "axios": "^1.7.7",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.6.1",
     "null-loader": "^4.0.1",
@@ -106,6 +106,6 @@
     "webpack-merge": "^5.8.0"
   },
   "optionalDependencies": {
-    "cypress": "^12.17.4"
+    "cypress": "^13.13.2"
   }
 }
