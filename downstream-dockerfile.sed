@@ -22,6 +22,7 @@ LABEL summary="Red Hat Quay"\
 LABEL maintainer="support@redhat.com"\
 LABEL io.openshift.tags="quay"\
 LABEL description="Red Hat Quay"\
+LABEL vendor="Red Hat, Inc."
 ENV RED_HAT_QUAY=true
 		d
 	}
