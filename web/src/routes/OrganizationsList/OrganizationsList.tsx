@@ -31,6 +31,7 @@ import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
 import './css/Organizations.scss';
+import { useAlerts } from 'src/hooks/UseAlerts';
 
 export interface OrganizationsTableItem {
   name: string;
@@ -59,6 +60,7 @@ export default function OrganizationsList() {
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [perPage, setPerPage] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
+  const {clearAllAlerts} = useAlerts();
 
   const {
     organizationsTableDetails,
@@ -79,6 +81,16 @@ export default function OrganizationsList() {
     page * perPage - perPage,
     page * perPage - perPage + perPage,
   );
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      clearAllAlerts();
+    }, 5000);
+    // clear alerts when switching tabs
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isOrganizationModalOpen]);
 
   const isOrgSelectable = (org) => org.name !== ''; // Arbitrary logic for this example
 
