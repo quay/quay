@@ -62,7 +62,7 @@ RUN set -ex\
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
-COPY requirements-cache.txt .
+COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
