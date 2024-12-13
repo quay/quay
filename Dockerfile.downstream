@@ -78,7 +78,8 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
 
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements-cache.txt \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
