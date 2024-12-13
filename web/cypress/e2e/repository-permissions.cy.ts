@@ -120,13 +120,14 @@ describe('Repository Settings - Permissions', () => {
   it('Adds user/robot/team permission', () => {
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      // avoiding flaky test case by not chaining commands belows
-      cy.get('#entity-search-input', {timeout: 4000}).as('entity-search-input');
-      cy.get('@entity-search-input')
-        .find('input', {timeout: 4000})
-        .as('search-input');
-      cy.get('@search-input').type('user');
-      cy.get('@search-input').should('have.value', 'user');
+      // We need the wait otherwise the dropdown won't open
+      cy.wait(2000);
+      cy.get('input[placeholder="Search for user, add/create robot account"]')
+        .click()
+        .type('user');
+      cy.get(
+        'input[placeholder="Search for user, add/create robot account"]',
+      ).should('have.value', 'user');
 
       cy.get('button:contains("user2")').click();
       cy.contains('admin').click();
@@ -141,13 +142,14 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      // avoiding flaky test case by not chaining commands belows
-      cy.get('#entity-search-input', {timeout: 4000}).as('entity-search-input');
-      cy.get('@entity-search-input')
-        .find('input', {timeout: 4000})
-        .as('search-input');
-      cy.get('@search-input').type('test');
-      cy.get('@search-input').should('have.value', 'test');
+      // We need the wait otherwise the dropdown won't open
+      cy.wait(2000);
+      cy.get('input[placeholder="Search for user, add/create robot account"]')
+        .click()
+        .type('test');
+      cy.get(
+        'input[placeholder="Search for user, add/create robot account"]',
+      ).should('have.value', 'test');
 
       cy.contains('testorg+testrobot2').click();
       cy.contains('admin').click();
@@ -165,13 +167,14 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add permissions').click();
     cy.get('#add-permission-form').within(() => {
-      // avoiding flaky test case by not chaining commands belows
-      cy.get('#entity-search-input', {timeout: 4000}).as('entity-search-input');
-      cy.get('@entity-search-input')
-        .find('input', {timeout: 4000})
-        .as('search-input');
-      cy.get('@search-input').type('test');
-      cy.get('@search-input').should('have.value', 'test');
+      // We need the wait otherwise the dropdown won't open
+      cy.wait(2000);
+      cy.get('input[placeholder="Search for user, add/create robot account"]')
+        .click()
+        .type('test');
+      cy.get(
+        'input[placeholder="Search for user, add/create robot account"]',
+      ).should('have.value', 'test');
 
       cy.contains('testteam2').click();
       cy.contains('admin').click();
