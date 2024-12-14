@@ -48,6 +48,13 @@ def get_organization(name):
         raise InvalidOrganizationException("Organization does not exist: %s" % name)
 
 
+def get_organization_by_id(org_db_id):
+    try:
+        return User.get(id=org_db_id, organization=True)
+    except User.DoesNotExist:
+        raise InvalidOrganizationException("Organization does not exist: %s" % org_db_id)
+
+
 def convert_user_to_organization(user_obj, admin_user):
     if user_obj.robot:
         raise DataModelException("Cannot convert a robot into an organization")

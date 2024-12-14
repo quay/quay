@@ -239,12 +239,22 @@ class RedHatSubscriptionApi(object):
                         ):
                             continue
 
-                        bound_to_org = organization_skus.subscription_bound_to_org(
+                        bound_to_org, bound_subs = organization_skus.subscription_bound_to_org(
                             user_subscription["id"]
                         )
 
-                        if filter_out_org_bindings and bound_to_org[0]:
-                            continue
+                        if filter_out_org_bindings and bound_to_org:
+                            # special case for MW02702, we need to calculate how many
+                            # subscriptions are left if it is split across orgs
+                            if sku == "MW02702":
+                                total_attached = 0
+                                for sub in bound_subs:
+                                    total_attached += sub["quantity"]
+                                user_subscription["quantity"] -= total_attached
+                                if user_subscription["quantity"] <= 0:
+                                    continue
+                            else:
+                                continue
 
                         if convert_to_stripe_plans:
                             quantity = user_subscription["quantity"]
@@ -296,6 +306,21 @@ TEST_USER = {
             "effectiveEndDate": 3813177600000,
         },
     ],
+    "private_subscription": {
+        "id": 80808080,
+        "masterEndSystemName": "Quay",
+        "createdEndSystemName": "SUBSCRIPTION",
+        "createdDate": 1675957362000,
+        "lastUpdateEndSystemName": "SUBSCRIPTION",
+        "lastUpdateDate": 1675957362000,
+        "installBaseStartDate": 1707368400000,
+        "installBaseEndDate": 1707368399000,
+        "webCustomerId": 123456,
+        "subscriptionNumber": "12399889",
+        "quantity": 10,
+        "effectiveStartDate": 1707368400000,
+        "effectiveEndDate": 3813177600000,
+    },
     "reconciled_subscription": {
         "id": 87654321,
         "masterEndSystemName": "SUBSCRIPTION",
@@ -362,6 +387,8 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
     def lookup_subscription(self, customer_id, sku_id):
         if customer_id == TEST_USER["account_number"] and sku_id == "MW02701":
             return TEST_USER["subscriptions"]
+        elif customer_id == TEST_USER["account_number"] and sku_id == "MW02702":
+            return [TEST_USER["private_subscription"]]
         elif customer_id == TEST_USER["account_number"] and sku_id == "MW00584MO":
             return [TEST_USER["reconciled_subscription"]]
         return None
@@ -377,7 +404,7 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
         if subscription_id in valid_ids:
             return {"sku": "MW02701", "expiration_date": 3813177600000, "terminated_date": None}
         elif subscription_id == 80808080:
-            return {"sku": "MW02701", "expiration_date": 1645544830000, "terminated_date": None}
+            return {"sku": "MW02702", "expiration_date": 1645544830000, "terminated_date": None}
         elif subscription_id == 87654321:
             return {"sku": "MW00584MO", "expiration_date": 3813177600000, "terminated_date": None}
         elif subscription_id == 22222222:
