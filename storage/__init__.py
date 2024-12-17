@@ -95,6 +95,9 @@ class Storage(object):
             download_proxy,
             app.config.get("REGISTRY_STATE") == "readonly",
             validate_endtoend=app.config.get("DISTRIBUTED_STORAGE_VALIDATE_ENDTOEND", False),
+            requires_all_available=app.config.get(
+                "DISTRIBUTED_STORAGE_REQUIRES_ALL_AVAILABLE", False
+            ),
         )
 
         # register extension with app
