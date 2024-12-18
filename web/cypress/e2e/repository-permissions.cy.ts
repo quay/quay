@@ -127,7 +127,15 @@ describe('Repository Settings - Permissions', () => {
   it('Adds user/robot/team permission', () => {
     cy.contains('Add Permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('user');
+      // We need the wait otherwise the dropdown won't open
+      cy.wait(2000);
+      cy.get('input[placeholder="Search for user, add/create robot account"]')
+        .click()
+        .type('user');
+      cy.get(
+        'input[placeholder="Search for user, add/create robot account"]',
+      ).should('have.value', 'user');
+
       cy.get('button:contains("user2")').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
@@ -141,7 +149,15 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add Permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('test');
+      // We need the wait otherwise the dropdown won't open
+      cy.wait(2000);
+      cy.get('input[placeholder="Search for user, add/create robot account"]')
+        .click()
+        .type('test');
+      cy.get(
+        'input[placeholder="Search for user, add/create robot account"]',
+      ).should('have.value', 'test');
+
       cy.contains('testorg+testrobot2').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
@@ -158,7 +174,15 @@ describe('Repository Settings - Permissions', () => {
     });
     cy.contains('Add Permissions').click();
     cy.get('#add-permission-form').within(() => {
-      cy.get('input').type('test');
+      // We need the wait otherwise the dropdown won't open
+      cy.wait(2000);
+      cy.get('input[placeholder="Search for user, add/create robot account"]')
+        .click()
+        .type('test');
+      cy.get(
+        'input[placeholder="Search for user, add/create robot account"]',
+      ).should('have.value', 'test');
+
       cy.contains('testteam2').click();
       cy.contains('admin').click();
       cy.contains('Read').click();
