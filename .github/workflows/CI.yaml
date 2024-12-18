@@ -166,13 +166,13 @@ jobs:
 
     - name: Start Quay
       run: |
-        docker-compose up -d redis quay-db
+        docker compose up -d redis quay-db
         docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-        DOCKER_USER="1001:0" docker-compose up -d --no-build quay
+        DOCKER_USER="1001:0" docker compose up -d --no-build quay
 
     - name: Checkout
       uses: actions/checkout@v3
-    
+
     - name: Seed Database
       run: cd web && npm run quay:seed
 
@@ -191,7 +191,7 @@ jobs:
         docker restart quay-quay
         sleep 30
         make integration-test
-    
+
     - name: Cypress run
       uses: cypress-io/github-action@v5
       with:
