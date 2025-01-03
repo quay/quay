@@ -1,0 +1,34 @@
+name: rehash-openssl
+
+on:
+  push:
+    branches:
+      - "!dependabot/*"
+      - "*"
+    paths:
+      - rehash-openssl/**
+  pull_request:
+    branches:
+      - "*"
+    paths:
+      - rehash-openssl/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          sudo apt-get -y install libssl-dev
+      - name: Build package
+        run: |
+          cd ./rehash-openssl
+          pip install .
+      - name: Run tests
+        run: |
+          cd ./rehash-openssl
+          cargo test
