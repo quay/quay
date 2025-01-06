@@ -46,7 +46,7 @@ idna==3.10
 iso8601==0.1.12
 isodate==0.6.0
 itsdangerous==1.1.0
-Jinja2==2.11.3
+Jinja2==3.1.5
 jmespath==0.9.4
 jsonpath-rw==1.4.0
 jsonpointer==2.0
