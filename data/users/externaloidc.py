@@ -1,6 +1,7 @@
 import json
 import logging
 from urllib.parse import urlparse
+from peewee import IntegrityError
 
 import app
 from data.model import InvalidTeamException, UserAlreadyInTeam, team
@@ -150,7 +151,7 @@ class OIDCUsers(FederatedUsers):
                     logger.exception(
                         f"External OIDC Group Sync: Exception occurred when adding user: {user_obj.username} to quay team: {team_synced.team} as {err}"
                     )
-                except UserAlreadyInTeam:
+                except (IntegrityError, UserAlreadyInTeam):
                     # Ignore
                     pass
         return
