@@ -608,14 +608,14 @@ def get_oidc_team_from_groupname(group_name, login_service_name):
     Fetch TeamSync row synced with login_service_name from `group_name` in TeamSync.config
     """
     response = []
-    with db_transaction():
-        query_result = (
-            TeamSync.select()
-            .join(LoginService)
-            .where(TeamSync.config.contains(group_name), LoginService.name == login_service_name)
-        )
-        for row in query_result:
-            if json.loads(row.config).get("group_name", None) == group_name:
-                response.append(row)
+    query_result = (
+        TeamSync.select()
+        .join(LoginService)
+        .where(TeamSync.config.contains(group_name), LoginService.name == login_service_name)
+    )
+
+    for row in query_result:
+        if json.loads(row.config).get("group_name", None) == group_name:
+            response.append(row)
 
     return response
