@@ -1,6 +1,7 @@
 import json
 import logging
 from urllib.parse import urlparse
+
 from peewee import IntegrityError
 
 import app
