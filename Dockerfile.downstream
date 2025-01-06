@@ -62,7 +62,7 @@ RUN set -ex\
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
-COPY requirements-cache.txt .
+COPY requirements-build.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -78,7 +78,7 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
 
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements-cache.txt \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements-build.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
