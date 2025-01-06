@@ -31,7 +31,7 @@ spec:
   - name: prefetch-input
     value: |
       [
-        {"type": "gomod", "path": "./config-tool"},
+        {"type": "gomod", "path": "config-tool"},
         {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
         {"type": "npm", "path": "web"}
       ]
