@@ -664,7 +664,9 @@ def set_repository_state(repo, state):
     repo.save()
 
 
-def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_queue):
+def mark_repository_for_deletion(
+    namespace_name, repository_name, repository_gc_queue, available_after=0
+):
     """
     Marks a repository for future deletion in the background.
 
@@ -695,6 +697,7 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
                     "original_name": repository_name,
                 }
             ),
+            available_after=available_after,
         )
         marker.save()
 
