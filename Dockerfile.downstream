@@ -9,7 +9,10 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y module enable nginx:1.22 \
+	; microdnf -y module enable python39:3.9 \
+	; microdnf update -y \
+	; microdnf -y --setopt=tsflags=nodocs --cacheonly install \
 		dnsmasq \
 		memcached \
 		nginx \
@@ -21,7 +24,7 @@ RUN set -ex\
 		python3-gpg \
 		skopeo \
 		findutils \
-	; microdnf -y reinstall tzdata \
+	; microdnf -y --cacheonly reinstall tzdata \
 	; microdnf remove platform-python-pip python39-pip \
 	; microdnf -y clean all && rm -rf /var/cache/yum
 
@@ -39,7 +42,7 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y --setopt=tsflags=nodocs --cacheonly install \
 		gcc-c++ \
 		git \
 		openldap-devel \
