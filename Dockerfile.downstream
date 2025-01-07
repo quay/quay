@@ -9,9 +9,9 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.22 \
-	; microdnf -y module enable python39:3.9 \
-	; microdnf update -y \
+	; microdnf -y --cacheonly module enable nginx:1.22 \
+	; microdnf -y --cacheonly module enable python39:3.9 \
+	; microdnf update -y --cacheonly \
 	; microdnf -y --setopt=tsflags=nodocs --cacheonly install \
 		dnsmasq \
 		memcached \
@@ -25,8 +25,8 @@ RUN set -ex\
 		skopeo \
 		findutils \
 	; microdnf -y --cacheonly reinstall tzdata \
-	; microdnf remove platform-python-pip python39-pip \
-	; microdnf -y clean all && rm -rf /var/cache/yum
+	; microdnf --cacheonly remove platform-python-pip python39-pip \
+	; microdnf -y --cacheonly clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
