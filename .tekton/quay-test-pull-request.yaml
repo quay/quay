@@ -28,6 +28,8 @@ spec:
     value: 5d
   - name: dockerfile
     value: Dockerfile.downstream
+  - name: hermetic
+    value: true
   - name: prefetch-input
     value: |
       [
