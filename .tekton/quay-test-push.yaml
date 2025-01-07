@@ -32,7 +32,8 @@ spec:
       [
         {"type": "gomod", "path": "./config-tool"},
         {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
-        {"type": "npm", "path": "web"}
+        {"type": "npm", "path": "web"},
+        {"type": "rpm", "path": "."}
       ]
   pipelineSpec:
     description: |
@@ -181,6 +182,8 @@ spec:
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: dev-package-managers
+        value: "true"
       runAfter:
       - clone-repository
       taskRef:
