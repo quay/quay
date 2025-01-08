@@ -8,6 +8,7 @@ ENV PATH=/app/bin/:$PATH \
 	LANG=C.UTF-8
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
+RUN rm -f /etc/yum.repos.d/ubi.repo
 RUN set -ex\
 	; microdnf -y module enable nginx:1.22 \
 	; microdnf -y module enable python39:3.9 \
