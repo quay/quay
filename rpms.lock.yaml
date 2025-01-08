@@ -2,7 +2,7 @@
 lockfileVersion: 1
 lockfileVendor: redhat
 arches:
-- arch: aarch64
+- arch: amd64
   packages:
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/aarch64/appstream/os/Packages/c/cargo-1.79.0-2.module+el8.10.0+22210+e7efad26.aarch64.rpm
     repoid: ubi-8-appstream-rpms
