@@ -2,6 +2,14 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
 
+<a name="v3.12.7"></a>
+## [v3.12.7] - 2025-01-07
+### Dep
+- [b60ea738](https://github.com/quay/quay/commit/b60ea7380168ba69fcdfde908361913f556d45cd): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3546](https://github.com/quay/quay/issues/3546))
+### Ui
+- [c2331fb8](https://github.com/quay/quay/commit/c2331fb82815654d67809cc5f29b15929cd5de41): fixing cypress flake (PROJQUAY-8352) ([#3512](https://github.com/quay/quay/issues/3512))
+### [Redhat-3.12] Dep
+- [baad6535](https://github.com/quay/quay/commit/baad653577f21b42c327921033ff97803cfc1996): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3532](https://github.com/quay/quay/issues/3532))
 
 <a name="v3.12.6"></a>
 ## [v3.12.6] - 2024-12-05
@@ -2592,7 +2600,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.6...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.7...HEAD
+[v3.12.7]: https://github.com/quay/quay/compare/v3.12.6...v3.12.7
 [v3.12.6]: https://github.com/quay/quay/compare/v3.12.5...v3.12.6
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
 [v3.13.0]: https://github.com/quay/quay/compare/v3.12.5...v3.13.0
