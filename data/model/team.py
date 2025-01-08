@@ -619,3 +619,11 @@ def get_oidc_team_from_groupname(group_name, login_service_name):
             response.append(row)
 
     return response
+
+
+def user_exists_in_team(user_obj, team):
+    try:
+        TeamMember.get(TeamMember.user == user_obj, TeamMember.team == team)
+        return True
+    except TeamMember.DoesNotExist:
+        return False

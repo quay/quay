@@ -145,16 +145,16 @@ class OIDCUsers(FederatedUsers):
                         f"External OIDC Group Sync: Cannot retrieve quay team synced with the oidc group: {oidc_group}"
                     )
 
+                if team.user_exists_in_team(user_obj, team_synced.team):
+                    continue
+
                 # add user to team
                 try:
                     team.add_user_to_team(user_obj, team_synced.team)
-                except InvalidTeamException as err:
+                except Exception as err:
                     logger.exception(
                         f"External OIDC Group Sync: Exception occurred when adding user: {user_obj.username} to quay team: {team_synced.team} as {err}"
                     )
-                except (IntegrityError, UserAlreadyInTeam):
-                    # Ignore
-                    pass
         return
 
     def ping(self):
