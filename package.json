@@ -2,7 +2,7 @@
   "name": "quay",
   "license": "UNLICENSED",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "dev": "karma start --browsers ChromeHeadless",
     "test": "karma start --single-run --browsers ChromeNoSandbox",
