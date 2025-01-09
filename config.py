@@ -878,8 +878,8 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_RH_MARKETPLACE = False
 
-    # Set up custom TOS for on-premise installations
-    TERMS_OF_SERVICE_URL = ""
+    # Set up custom footer links for on-premise installations
+    FOOTER_LINKS: Optional[Dict[str, Any]] = None
 
     FEATURE_AUTO_PRUNE = False
     # delay after a write operation is made to the DB. This

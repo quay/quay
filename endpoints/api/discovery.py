@@ -41,7 +41,7 @@ SERVER_HOSTNAME = app.config["SERVER_HOSTNAME"]
 if SERVER_HOSTNAME == "quay.io" or SERVER_HOSTNAME == "stage.quay.io":
     TERMS_OF_SERVICE_URL = "https://www.openshift.com/legal/terms"
 else:
-    TERMS_OF_SERVICE_URL = app.config["TERMS_OF_SERVICE_URL"]
+    TERMS_OF_SERVICE_URL = app.config["FOOTER_LINKS"]["TERMS_OF_SERVICE_URL"]
 CONTACT_EMAIL = app.config["MAIL_DEFAULT_SENDER"]
 
 
