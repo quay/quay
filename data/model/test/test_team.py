@@ -3,7 +3,7 @@ import json
 import pytest
 
 from data.database import TeamMember
-from data.model import DataModelException
+from data.model import DataModelException, UserAlreadyInTeam
 from data.model.organization import create_organization
 from data.model.team import (
     __get_user_admin_teams,
@@ -179,6 +179,10 @@ def test_user_exists_in_team(initialized_db):
     team_1 = create_team("team_1", new_org, "member")
     assert add_user_to_team(dev_user, team_1)
     assert user_exists_in_team(dev_user, team_1) is True
+
+    # add user to team already part of
+    with pytest.raises(UserAlreadyInTeam):
+        add_user_to_team(dev_user, team_1)
 
     team_2 = create_team("team_2", new_org, "member")
     assert user_exists_in_team(dev_user, team_2) is False
