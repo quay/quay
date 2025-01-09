@@ -179,6 +179,12 @@ class OIDCAuthTests(unittest.TestCase):
 
         assert user_teams_before_sync + 2 == user_teams_after_sync
 
+        # attempt to sync already synced groups
+        self.oidc_instance.sync_oidc_groups(user_groups, user_obj)
+        user_teams_after_sync = TeamMember.select().where(TeamMember.user == user_obj).count()
+
+        assert user_teams_before_sync + 2 == user_teams_after_sync
+
     def test_resync_for_empty_quay_teams(self):
         user_obj = model.user.get_user("devtable")
 

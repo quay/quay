@@ -145,9 +145,6 @@ class OIDCUsers(FederatedUsers):
                         f"External OIDC Group Sync: Cannot retrieve quay team synced with the oidc group: {oidc_group}"
                     )
 
-                if team.user_exists_in_team(user_obj, team_synced.team):
-                    continue
-
                 # add user to team
                 team.add_user_to_team(user_obj, team_synced.team)
         return
