@@ -170,7 +170,10 @@ def add_or_invite_to_team(inviter, team, user_obj=None, email=None, requires_inv
 
     # If we have a valid user and no invite is required, simply add the user to the team.
     if user_obj and not requires_invite:
-        add_user_to_team(user_obj, team)
+        if add_user_to_team(user_obj, team) is None:
+            raise UserAlreadyInTeam(
+                "User %s is already a member of team %s" % (user_obj.username, team.name)
+            )
         return None
 
     email_address = email if not user_obj else None
