@@ -66,7 +66,9 @@ def create_team(name, org_obj, team_role_name, description=""):
 
 def add_user_to_team(user_obj, team):
     if user_exists_in_team(user_obj, team):
-        return
+        raise UserAlreadyInTeam(
+            "User %s is already a member of team %s" % (user_obj.username, team.name)
+        )
 
     return TeamMember.create(user=user_obj, team=team)
 
@@ -170,10 +172,7 @@ def add_or_invite_to_team(inviter, team, user_obj=None, email=None, requires_inv
 
     # If we have a valid user and no invite is required, simply add the user to the team.
     if user_obj and not requires_invite:
-        if add_user_to_team(user_obj, team) is None:
-            raise UserAlreadyInTeam(
-                "User %s is already a member of team %s" % (user_obj.username, team.name)
-            )
+        add_user_to_team(user_obj, team)
         return None
 
     email_address = email if not user_obj else None
@@ -623,9 +622,4 @@ def get_oidc_team_from_groupname(group_name, login_service_name):
 
 
 def user_exists_in_team(user_obj, team):
-    try:
-        return (
-            TeamMember.select().where(TeamMember.user == user_obj, TeamMember.team == team).exists()
-        )
-    except TeamMember.DoesNotExist:
-        return False
+    return TeamMember.select().where(TeamMember.user == user_obj, TeamMember.team == team).exists()

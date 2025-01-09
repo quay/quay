@@ -181,7 +181,8 @@ def test_user_exists_in_team(initialized_db):
     assert user_exists_in_team(dev_user, team_1) is True
 
     # add user to team already part of
-    assert add_user_to_team(dev_user, team_1) is None
+    with pytest.raises(UserAlreadyInTeam):
+        add_user_to_team(dev_user, team_1)
 
     team_2 = create_team("team_2", new_org, "member")
     assert user_exists_in_team(dev_user, team_2) is False
