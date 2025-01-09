@@ -1506,7 +1506,7 @@ CONFIG_SCHEMA = {
                 "TERMS_OF_SERVICE_URL": {
                     "type": "string",
                     "description": "Custom terms of service for on-prem installations",
-                    "x-example": "https://quay.io/tos",
+                    "x-example": "https://www.openshift.com/legal/terms",
                 },
                 "PRIVACY_POLICY_URL": {
                     "type": "string",
