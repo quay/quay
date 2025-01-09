@@ -187,7 +187,7 @@ def test_user_exists_in_team(initialized_db):
     assert user_exists_in_team(dev_user, team_2) is False
 
 
-def test_get_get_oidc_team_from_groupname(initialized_db):
+def test_get_oidc_team_from_groupname(initialized_db):
     dev_user = get_user("devtable")
     new_org = create_organization("testorg", "testorg" + "@example.com", dev_user)
 

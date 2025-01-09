@@ -2,8 +2,6 @@ import json
 import logging
 from urllib.parse import urlparse
 
-from peewee import IntegrityError
-
 import app
 from data.model import InvalidTeamException, UserAlreadyInTeam, team
 from data.users.federated import FederatedUsers, UserInformation
