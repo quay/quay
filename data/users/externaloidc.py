@@ -144,7 +144,15 @@ class OIDCUsers(FederatedUsers):
                     )
 
                 # add user to team
-                team.add_user_to_team(user_obj, team_synced.team)
+                try:
+                    team.add_user_to_team(user_obj, team_synced.team)
+                except InvalidTeamException as err:
+                    logger.exception(
+                        f"External OIDC Group Sync: Exception occurred when adding user: {user_obj.username} to quay team: {team_synced.team} as {err}"
+                    )
+                except UserAlreadyInTeam:
+                    # Ignore
+                    pass
         return
 
     def ping(self):
