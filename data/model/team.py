@@ -65,12 +65,10 @@ def create_team(name, org_obj, team_role_name, description=""):
 
 
 def add_user_to_team(user_obj, team):
-    try:
-        return TeamMember.create(user=user_obj, team=team)
-    except Exception:
-        raise UserAlreadyInTeam(
-            "User %s is already a member of team %s" % (user_obj.username, team.name)
-        )
+    if user_exists_in_team(user_obj, team):
+        return
+
+    return TeamMember.create(user=user_obj, team=team)
 
 
 def remove_user_from_team(org_name, team_name, username, removed_by_username):
