@@ -624,7 +624,8 @@ def get_oidc_team_from_groupname(group_name, login_service_name):
 
 def user_exists_in_team(user_obj, team):
     try:
-        TeamMember.get(TeamMember.user == user_obj, TeamMember.team == team)
-        return True
+        return (
+            TeamMember.select().where(TeamMember.user == user_obj, TeamMember.team == team).exists()
+        )
     except TeamMember.DoesNotExist:
         return False
