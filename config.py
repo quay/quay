@@ -879,7 +879,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_RH_MARKETPLACE = False
 
     # Set up custom footer links for on-premise installations
-    FOOTER_LINKS = {}
+    FOOTER_LINKS: Optional[Dict[str, str]] = {}
 
     FEATURE_AUTO_PRUNE = False
     # delay after a write operation is made to the DB. This
