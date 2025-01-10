@@ -3,14 +3,28 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.3"></a>
+## [v3.13.3] - 2025-01-09
+### [Redhat-3.13] Dep
+- [b1870400](https://github.com/quay/quay/commit/b1870400c160034404a20ff3c969adc8baa25637): updating css-loader to 6.11.0 (PROJQUAY-8297) ([#3545](https://github.com/quay/quay/issues/3545))
+- [b433afee](https://github.com/quay/quay/commit/b433afeedfea3a299b115c66a1b1ec64a57965e4): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3544](https://github.com/quay/quay/issues/3544))
+- [03e7a1d9](https://github.com/quay/quay/commit/03e7a1d9c7c291f56fed959b4dcfb888d26f9794): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3531](https://github.com/quay/quay/issues/3531))
+### [Redhat-3.13] Teamsync
+- [68fa008d](https://github.com/quay/quay/commit/68fa008d51d7b7fd46e905e9a6190315d17adff1): peewee integrity error check on teamsync (PROJQUAY-7747) ([#3557](https://github.com/quay/quay/issues/3557))
+### [Redhat-3.13] Ui
+- [cfd93eda](https://github.com/quay/quay/commit/cfd93edafecef03a244c877ee52c5b275a307d1f): fixing cypress flake (PROJQUAY-8352) ([#3510](https://github.com/quay/quay/issues/3510))
+
 <a name="v3.13.2"></a>
-## [v3.13.2] - 2024-12-05
+## [v3.13.2] - 2024-12-10
 ### [Redhat-3.13] Auth
 - [2c38a085](https://github.com/quay/quay/commit/2c38a0854f198807b15ee1382d77499c1f9d6df3): Implement is_restricted_user for federated auth systems (PROJQUAY-8208) ([#3459](https://github.com/quay/quay/issues/3459))
 - [96e3f3b0](https://github.com/quay/quay/commit/96e3f3b06be6098bd84bced5bcc03e70ed02ff5a): Remove robot references from scopes list (PROJQUAY-8269) ([#3458](https://github.com/quay/quay/issues/3458))
 ### [Redhat-3.13] Dep
 - [5702a0f1](https://github.com/quay/quay/commit/5702a0f1bd3601a222a91d11489b4ee49fbb90b1): updating axios (PROJQUAY-7657) ([#3465](https://github.com/quay/quay/issues/3465))
 ### [Redhat-3.13] Deps
+- [62017129](https://github.com/quay/quay/commit/620171295069e362c5f8df737e0639bf7b9c3c6a): downgrading cryptography ([#3493](https://github.com/quay/quay/issues/3493))
+- [4c02c110](https://github.com/quay/quay/commit/4c02c1105cd8a04a69afe4375e7b0dd7394cf1e2): adding maturin to build deps (PROJQUAY-8308) ([#3489](https://github.com/quay/quay/issues/3489))
+- [9b83bd6b](https://github.com/quay/quay/commit/9b83bd6b9f99cdb9472272f8b69d2d2a74bc46ce): Upgrade cryptography package to 43.0.3 (PROJQUAY-7032) ([#3442](https://github.com/quay/quay/issues/3442))
 - [046b16ea](https://github.com/quay/quay/commit/046b16eacbf9fe6995c684c4322249c2ea4840fb): bump protobuf (PROJQUAY-7970) ([#3422](https://github.com/quay/quay/issues/3422))
 ### [Redhat-3.13] Ui
 - [e97bbca8](https://github.com/quay/quay/commit/e97bbca8a080259f320b6c97654be68f2165c937): Add proxy cache config UI to org settings (PROJQUAY-7697) ([#3428](https://github.com/quay/quay/issues/3428))
@@ -177,6 +191,24 @@
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.6"></a>
+## [v3.12.6] - 2024-12-10
+### Chore: Revert "[Redhat-3.12] Cve
+- [a2d287a6](https://github.com/quay/quay/commit/a2d287a663b3d435cce2cdba1ddf3a7f5a1c092f): upgrade elasticsearch and elasticsearch-dsl to 8.13.0 (PROJQUAY-6962)" (PROJQUAY-6962) ([#3450](https://github.com/quay/quay/issues/3450))
+### [Redhat-3.12] Build(Deps-Dev)
+- [492c23e8](https://github.com/quay/quay/commit/492c23e8a7cd6e691e12c95cef72bcc3a8c79b5a): bump body-parser from 1.19.0 to 1.20.3 in /config-tool/pkg/lib/editor ([#3412](https://github.com/quay/quay/issues/3412))
+### [Redhat-3.12] Cve
+- [f0dd86f2](https://github.com/quay/quay/commit/f0dd86f2f17dd8fb1a9d2f5b59ccec1b56ce7fc4): upgrade elasticsearch and elasticsearch-dsl to 8.13.0 (PROJQUAY-6962) ([#3436](https://github.com/quay/quay/issues/3436))
+### [Redhat-3.12] Dep
+- [81a778dd](https://github.com/quay/quay/commit/81a778dd9e2086b37680b5ddb5879706f61ecbf5): updating axios (PROJQUAY-7657) ([#3466](https://github.com/quay/quay/issues/3466))
+### [Redhat-3.12] Deps
+- [d029e72a](https://github.com/quay/quay/commit/d029e72a520297b95b4cad36d50b7f10fd6f995d): downgrading cryptography ([#3494](https://github.com/quay/quay/issues/3494))
+- [c0f4f8eb](https://github.com/quay/quay/commit/c0f4f8ebd3d4f9a52520425ac4a70ec83b9a7dde): Upgrade cryptography package to 43.0.3 (PROJQUAY-7032) ([#3438](https://github.com/quay/quay/issues/3438))
+- [409bed66](https://github.com/quay/quay/commit/409bed666d697a4f285327279e2fc6528e6ec63a): bump protobuf (PROJQUAY-7970) ([#3421](https://github.com/quay/quay/issues/3421))
+### [Redhat-3.12] Ui
+- [71dd05f1](https://github.com/quay/quay/commit/71dd05f1e271a8a24c3a61b178b7102f531820f2): removing bootbox ([#3417](https://github.com/quay/quay/issues/3417))
+- [58624700](https://github.com/quay/quay/commit/58624700f160c4faddf88b887b8ffbb18b989c58): Update regex pattern helper text for validating team name (PROJQUAY-8110) ([#3355](https://github.com/quay/quay/issues/3355))
 
 <a name="v3.12.5"></a>
 ## [v3.12.5] - 2024-11-19
@@ -429,6 +461,25 @@
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
 
+<a name="v3.11.7"></a>
+## [v3.11.7] - 2024-12-11
+### Deps
+- [86d64def](https://github.com/quay/quay/commit/86d64defa691abc8939d1e7949a6c9c94b58cb95): Upgrade express and dependencies (PROJQUAY-7799) ([#3432](https://github.com/quay/quay/issues/3432))
+- [71a765d0](https://github.com/quay/quay/commit/71a765d0848b10afcc92231a5eb465042a1c010e): bump certifi (PROJQUAY-7620) ([#3247](https://github.com/quay/quay/issues/3247))
+### [Redhat-3.11] Build(Deps)
+- [e3bf03ad](https://github.com/quay/quay/commit/e3bf03ad20338c552f914ac7b067ac7e48473b55): reverting back the support for s390x which has been removed temporarily(PROJECTQUAY-7960) ([#3295](https://github.com/quay/quay/issues/3295))
+- [74657406](https://github.com/quay/quay/commit/74657406b3c1b0591737d1fc8c74a0daadc54169): bump urllib3 from 1.26.18 to 1.26.19 ([#3243](https://github.com/quay/quay/issues/3243))
+- [455ebf6e](https://github.com/quay/quay/commit/455ebf6ee2c9091ef8b22291f4089903fa72505d): bump pillow from 10.0.1 to 10.3.0 ([#3239](https://github.com/quay/quay/issues/3239))
+- [dc9e7d01](https://github.com/quay/quay/commit/dc9e7d015e063f168363002833c86516e53dccb5): bump idna from 3.4 to 3.7 ([#3242](https://github.com/quay/quay/issues/3242))
+### [Redhat-3.11] Dep
+- [e6412363](https://github.com/quay/quay/commit/e64123630560858de3f8c62c665ccdc6d79c3831): updating axios (PROJQUAY-7657) ([#3498](https://github.com/quay/quay/issues/3498))
+### [Redhat-3.11] Deps
+- [80aa9a8f](https://github.com/quay/quay/commit/80aa9a8f1cd0c6a2a58da5ae3524d61253b367c8): downgrading cryptography ([#3496](https://github.com/quay/quay/issues/3496))
+- [885cfd0f](https://github.com/quay/quay/commit/885cfd0f369f1589cb39c9675412945b4bafb61b): bump protobuf (PROJQUAY-7970) ([#3486](https://github.com/quay/quay/issues/3486))
+- [824e3794](https://github.com/quay/quay/commit/824e3794fca09159c6564b0855ce7085248392a0): Upgrade cryptography package to 43.0.3 (PROJQUAY-7032) ([#3484](https://github.com/quay/quay/issues/3484))
+### [Redhat-3.11] Ui
+- [6734c4b7](https://github.com/quay/quay/commit/6734c4b78dbbc73a179b6f3cdc4c9f956fccea58): removing bootbox ([#3497](https://github.com/quay/quay/issues/3497))
+
 <a name="v3.11.6"></a>
 ## [v3.11.6] - 2024-09-18
 ### Deps
@@ -649,6 +700,28 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.7"></a>
+## [v3.10.7] - 2024-12-10
+### Api
+- [e1fc6e1c](https://github.com/quay/quay/commit/e1fc6e1c65b7ca1f89662d20074fd57192bc1e09): adding permissions for global readonly superuser (PROJQUAY-7545) ([#3080](https://github.com/quay/quay/issues/3080))
+- [0eefefa7](https://github.com/quay/quay/commit/0eefefa7ce75b5b472f92761788d8a651bf3fd6b): adding endpoints to FEATURE_SUPERUSERS_FULL_ACCESS (PROJQUAY-7308) ([#2942](https://github.com/quay/quay/issues/2942))
+### Dep
+- [a584caf2](https://github.com/quay/quay/commit/a584caf258d82dd532fb5b5e3ddf7afcedceb496): updating axios (PROJQUAY-7657) ([#3469](https://github.com/quay/quay/issues/3469))
+### Deps
+- [9d86901e](https://github.com/quay/quay/commit/9d86901ed8df2d42c684b2a8937df5dcb1629231): bump protobuf (PROJQUAY-7970) ([#3331](https://github.com/quay/quay/issues/3331)) ([#3483](https://github.com/quay/quay/issues/3483))
+- [3d75743b](https://github.com/quay/quay/commit/3d75743b63a31441ec8550bbe240531462ae4da8): Upgrade cryptography package to 43.0.3 (PROJQUAY-7032) ([#3420](https://github.com/quay/quay/issues/3420)) ([#3482](https://github.com/quay/quay/issues/3482))
+- [2d0cbc14](https://github.com/quay/quay/commit/2d0cbc14879b8baeb296364831cf31fc0b55424f): Upgrade express and dependencies (PROJQUAY-7800) ([#3433](https://github.com/quay/quay/issues/3433))
+### Revert "Deps
+- [5c1d5416](https://github.com/quay/quay/commit/5c1d541638a1ab0e8e23347aed62ba0654892fba): Upgrade express and dependencies (PROJQUAY-7800)" ([#3452](https://github.com/quay/quay/issues/3452))
+### [Redhat-3.10] Api
+- [c1bc61e4](https://github.com/quay/quay/commit/c1bc61e4f1f7800fb03726d0344811482ca5d622): adding global readonly user to list repo endpoint (PROJQUAY-7549) ([#3087](https://github.com/quay/quay/issues/3087))
+- [2119c14e](https://github.com/quay/quay/commit/2119c14eabe320de5ada38dc51a9856b52b1860d): adding token to global readonly user list robots (PROJQUAY-7545) ([#3084](https://github.com/quay/quay/issues/3084))
+- [071257c0](https://github.com/quay/quay/commit/071257c03937a323699fca0fc10f3f3191d45416): adding global readonly superuser to superuser endpoints (PROJQUAY-7542) ([#3078](https://github.com/quay/quay/issues/3078))
+### [Redhat-3.10] Deps
+- [a196e598](https://github.com/quay/quay/commit/a196e598566b0d7322f3daa941ce7f38a9fe85c9): downgrading cryptography ([#3495](https://github.com/quay/quay/issues/3495))
+### [Redhat-3.10] Ui
+- [507e07a6](https://github.com/quay/quay/commit/507e07a659fad31ea2a2e8d0b5d8c0b9a083e8f1): removing bootbox ([#3480](https://github.com/quay/quay/issues/3480))
 
 <a name="v3.10.6"></a>
 ## [v3.10.6] - 2024-06-04
@@ -1067,6 +1140,18 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.9"></a>
+## [v3.9.9] - 2024-12-16
+### Dep
+- [a89ec59b](https://github.com/quay/quay/commit/a89ec59ba01e4be6558f003630ace952f6b52f11): updating axios (PROJQUAY-7657) ([#3462](https://github.com/quay/quay/issues/3462)) ([#3504](https://github.com/quay/quay/issues/3504))
+### Deps
+- [9a6539dc](https://github.com/quay/quay/commit/9a6539dc9e4c93ecadfcd3b14aade44999be6c77): adding requirements-build.txt ([#3518](https://github.com/quay/quay/issues/3518))
+- [617c1fd1](https://github.com/quay/quay/commit/617c1fd10bc75d592e7004dfce30fe54914ce36b): bump protobuf (PROJQUAY-7970) ([#3331](https://github.com/quay/quay/issues/3331)) ([#3487](https://github.com/quay/quay/issues/3487))
+- [1375269e](https://github.com/quay/quay/commit/1375269eebd1b407aaeb8bbcb5171eac3a4d7a19): downgrading cryptography ([#3492](https://github.com/quay/quay/issues/3492)) ([#3501](https://github.com/quay/quay/issues/3501))
+- [0d813cf3](https://github.com/quay/quay/commit/0d813cf3ad0d6b98662c14d9a33c7342a8487a70): Upgrade cryptography package to 43.0.3 (PROJQUAY-7032) ([#3420](https://github.com/quay/quay/issues/3420)) ([#3485](https://github.com/quay/quay/issues/3485))
+### [Redhat-3.9] Ui
+- [02d6f64e](https://github.com/quay/quay/commit/02d6f64ee79b94de4ebc35c703d621753d3f1880): removing bootbox ([#3505](https://github.com/quay/quay/issues/3505))
 
 <a name="v3.9.8"></a>
 ## [v3.9.8] - 2024-06-06
@@ -2593,30 +2678,35 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.3...HEAD
+[v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.5...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.6...v3.13.0
+[v3.12.6]: https://github.com/quay/quay/compare/v3.12.5...v3.12.6
 [v3.12.5]: https://github.com/quay/quay/compare/v3.12.4...v3.12.5
 [v3.12.4]: https://github.com/quay/quay/compare/v3.12.3...v3.12.4
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.6...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.7...v3.12.0
+[v3.11.7]: https://github.com/quay/quay/compare/v3.11.6...v3.11.7
 [v3.11.6]: https://github.com/quay/quay/compare/v3.11.5...v3.11.6
 [v3.11.5]: https://github.com/quay/quay/compare/v3.11.4...v3.11.5
 [v3.11.4]: https://github.com/quay/quay/compare/v3.11.3...v3.11.4
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.6...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.7...v3.11.0
+[v3.10.7]: https://github.com/quay/quay/compare/v3.10.6...v3.10.7
 [v3.10.6]: https://github.com/quay/quay/compare/v3.10.5...v3.10.6
 [v3.10.5]: https://github.com/quay/quay/compare/v3.10.4...v3.10.5
 [v3.10.4]: https://github.com/quay/quay/compare/v3.10.3...v3.10.4
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.8...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.9...v3.10.0
+[v3.9.9]: https://github.com/quay/quay/compare/v3.9.8...v3.9.9
 [v3.9.8]: https://github.com/quay/quay/compare/v3.9.7...v3.9.8
 [v3.9.7]: https://github.com/quay/quay/compare/v3.9.6...v3.9.7
 [v3.9.6]: https://github.com/quay/quay/compare/v3.9.5...v3.9.6
