@@ -40,7 +40,7 @@ class ReconciliationWorker(Worker):
         """
         logger.info("Reconciliation worker looking to create new subscriptions...")
 
-        users = model.user.get_active_users()
+        users = model.user.get_active_users(include_orgs=True)
 
         stripe_users = [user for user in users if user.stripe_id is not None]
 
