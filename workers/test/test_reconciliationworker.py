@@ -22,6 +22,18 @@ def test_skip_free_user(initialized_db):
     mock.assert_not_called()
 
 
+def test_reconcile_org_user(initialized_db):
+    user = model.user.get_user("devtable")
+
+    org_user = model.organization.create_organization("org_user", "org_user@test.com", user)
+    org_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    org_user.save()
+    with patch.object(marketplace_users, "lookup_customer_id") as mock:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    mock.assert_called_with(org_user.email)
+
+
 def test_exception_handling(initialized_db):
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.InvalidRequestException
