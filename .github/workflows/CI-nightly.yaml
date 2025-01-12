@@ -37,10 +37,9 @@ jobs:
       run: |
         #creation of zvsi
         ibmcloud is instance-create $ZVSI_INSTANCE_NAME $ZVSI_VPC $ZVSI_ZONE_NAME $ZVSI_PROFILE_NAME $ZVSI_SUBNET --image $ZVSI_IMAGE --keys $ZVSI_KEY --resource-group-id $ZVSI_RG_ID
-        #Reserving a floating ip to the ZVSI
-        ibmcloud is floating-ip-reserve $ZVSI_FP_NAME --zone $ZVSI_ZONE_NAME --resource-group-id $ZVSI_RG_ID --in $ZVSI_INSTANCE_NAME
         #Bouding the Floating ip to the ZVSI
-        ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic primary --in $ZVSI_INSTANCE_NAME
+        vniid=$(ibmcloud is instance $ZVSI_INSTANCE_NAME --output json | jq -r .network_attachments[].virtual_network_interface.id)
+        ibmcloud is floating-ip-update $ZVSI_FP_NAME --nic $vniid --in $ZVSI_INSTANCE_NAME
         sleep 60
 
         #Saving the Floating IP to login ZVSI
@@ -131,5 +130,3 @@ jobs:
         #Delete the created ZVSI
         ibmcloud is instance-delete $ZVSI_INSTANCE_NAME --force
         sleep 20
-        #Release the created FP
-        ibmcloud is floating-ip-release $ZVSI_FP_NAME --force
