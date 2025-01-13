@@ -665,7 +665,7 @@ def set_repository_state(repo, state):
 
 
 def mark_repository_for_deletion(
-    namespace_name, repository_name, repository_gc_queue, available_after=0
+    namespace_name, repository_name, repository_gc_queue, available_after=0, deleted_suffix=None
 ):
     """
     Marks a repository for future deletion in the background.
@@ -681,7 +681,11 @@ def mark_repository_for_deletion(
         Star.delete().where(Star.repository == repo).execute()
 
         # Change the name and state of the repository.
-        repo.name = str(uuid.uuid4())
+        deleted_name = str(uuid.uuid4())
+        if deleted_suffix is not None:
+            deleted_name = "_".join([deleted_name, str(deleted_suffix)])
+        repo.name = deleted_name
+
         repo.state = RepositoryState.MARKED_FOR_DELETION
         repo.save()
 
