@@ -28,7 +28,7 @@ Deprecated==1.2.7
 dumb-init==1.2.2
 elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
-Flask==1.1.4
+Flask==2.0.0
 Flask-Login==0.4.1
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
