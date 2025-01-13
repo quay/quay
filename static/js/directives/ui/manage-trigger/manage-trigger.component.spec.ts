@@ -47,7 +47,13 @@ describe("ManageTriggerComponent", () => {
     it("sets default values for config and selected namespace", () => {
       component.ngOnChanges({});
 
-      expect(component.config).toEqual({});
+      expect(component.config).toEqual({
+        build_source: "",
+        dockerfile_path: "",
+        context: "",
+        branchtag_regex: "",
+        default_tag_from_ref: false
+      });
       expect(component.local.selectedNamespace).toBe(null);
     });
   });
