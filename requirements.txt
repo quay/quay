@@ -128,7 +128,7 @@ urllib3==1.26.18
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
-Werkzeug==1.0.0
+Werkzeug==2.3.3
 wrapt==1.13.3
 xhtml2pdf==0.2.6
 zipp==2.1.0
