@@ -30,7 +30,7 @@ FROM registry.access.redhat.com/ubi8/nodejs-18 AS config-editor
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
-	; npm install --verbose --no-progress --ignore-engines \
+	; npm install --verbose --no-progress --ignore-engines --prefer-offline \
 	; npm run --quiet build\
 	; rm -Rf .cache .npm* node_modules\
 	;
