@@ -31,6 +31,7 @@
     "jquery": "1.12.4",
     "moment": "^2.29",
     "ng-metadata": "^4.0.1",
+    "package-json": "^10.0.1",
     "package.json": "^2.0.1",
     "raven-js": "^3.1.0",
     "rxjs": "5.5.7",
