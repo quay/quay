@@ -14,7 +14,7 @@ export const addHighlightedLanguage = (language: string): Promise<{}> => {
       const langModule = await import(`highlight.js/lib/languages/${language}`);
       registerLanguage(language, langModule.default);
       console.debug(`Language ${language} registered for syntax highlighting`);
-      resolve();
+      resolve({});
     } catch (error) {
       console.debug(`Language ${language} not supported for syntax highlighting`);
       reject(error);
