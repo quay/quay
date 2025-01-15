@@ -63,7 +63,7 @@ describe('Org List Page', () => {
   });
 
   it('Create Org', () => {
-    cy.intercept('/organization').as('getOrganization');
+    cy.intercept('GET', '/organization').as('getOrganization');
     cy.visit('/organization');
     cy.wait('@getOrganization');
 
@@ -71,11 +71,18 @@ describe('Org List Page', () => {
     cy.get('#create-organization-button').click();
     cy.get('#create-org-cancel').click();
 
+    cy.intercept('POST', '/organization').as('createOrganization');
+
     // Create Org
     cy.get('#create-organization-button').click();
     cy.get('#create-org-name-input').type('cypress');
     cy.get('#create-org-email-input').type('cypress@redhat.com');
-    cy.get('#create-org-confirm').click({timeout: 10000});
+    cy.get('[data-testid="create-org-confirm"]').click();
+
+    cy.wait('@createOrganization').then((interception) => {
+      expect(interception.response?.statusCode).to.eq(201);
+      expect(interception.response?.body).to.eq('Created');
+    });
 
     cy.get('#orgslist-search-input').type('cypress');
     cy.contains('1 - 1 of 1');

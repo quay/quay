@@ -57,7 +57,6 @@ export const CreateOrganizationModal = (
     upstream_registry: '',
     expiration_s: tagExpirationInSecsForProxyCache,
     insecure: false,
-    org_name: organizationName,
   };
 
   const [proxyCacheConfig, setProxyCacheConfig] = useState<IProxyCacheConfig>(

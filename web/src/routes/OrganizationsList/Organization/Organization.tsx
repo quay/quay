@@ -23,6 +23,7 @@ import Settings from './Tabs/Settings/Settings';
 import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import {useAlerts} from 'src/hooks/UseAlerts';
 
 export enum OrganizationDrawerContentType {
   None,
@@ -33,9 +34,7 @@ export enum OrganizationDrawerContentType {
 export default function Organization() {
   const quayConfig = useQuayConfig();
   const {organizationName, teamName} = useParams();
-
   const [searchParams, setSearchParams] = useSearchParams();
-
   const {organization, isUserOrganization} = useOrganization(organizationName);
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
