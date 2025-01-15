@@ -45,6 +45,7 @@ http {
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
         real_ip_header X-Forwarded-For;
+        real_ip_recursive on;
 
         access_log /var/log/nginx/access.log lb_logs;
 
@@ -67,7 +68,7 @@ http {
         {% if use_ipv6 %}
         listen [::]:7443 ssl http2 default proxy_protocol;
         {% endif %}
-        
+
         ssl on;
 
         # This header must be set only for HTTPS
