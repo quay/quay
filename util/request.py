@@ -21,6 +21,10 @@ def get_request_ip():
     if os.getenv("TEST", "false").lower() == "true":
         remote_addr = request.headers.get("X-Override-Remote-Addr-For-Testing", remote_addr)
 
+    if request.headers.get("X-Forwarded-For"):
+        # first ip address in the list of forwarded ips is the client's
+        return request.headers.get("X-Forwarded-For").split(",")[0].strip()
+
     return remote_addr
 
 
