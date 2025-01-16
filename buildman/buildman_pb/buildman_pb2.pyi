@@ -11,7 +11,7 @@ from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class Phase(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+class Phase(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):  # type: ignore
     __slots__ = ()
     WAITING: _ClassVar[Phase]
     UNPACKING: _ClassVar[Phase]
