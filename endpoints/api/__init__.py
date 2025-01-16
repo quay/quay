@@ -5,6 +5,7 @@ from calendar import timegm
 from email.utils import formatdate
 from functools import partial, wraps
 
+import pytz
 from flask import Blueprint, request, session
 from flask_restful import Resource, abort, Api, reqparse
 from flask_restful.utils import unpack
@@ -441,7 +442,7 @@ def require_fresh_login(func):
         )
 
         if (
-            last_login >= valid_span
+            last_login.replace(tzinfo=pytz.UTC) >= valid_span.replace(tzinfo=pytz.UTC)
             or not authentication.supports_fresh_login
             or not authentication.has_password_set(user.username)
         ):
