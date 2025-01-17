@@ -628,6 +628,10 @@ class _CloudStorage(BaseStorageV2):
         self._initialize_cloud_conn()
         chunk_list = self._chunk_list_from_metadata(storage_metadata)
 
+        if len(chunk_list) == 0:
+            # Skip empty chunk list
+            return
+
         # Here is where things get interesting: we are going to try to assemble this server side
         # In order to be a candidate all parts (after offsets have been computed) must be at least 5MB
         server_side_assembly = False

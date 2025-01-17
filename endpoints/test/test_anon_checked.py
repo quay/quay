@@ -18,7 +18,15 @@ def test_verify_blueprint(blueprint):
             self.first_registration = True
             self.app = app
 
-        def add_url_rule(self, rule, endpoint, view_function, methods=None):
+        def add_url_rule(
+            self,
+            rule,
+            endpoint=None,
+            view_function=None,
+            methods=None,
+            provide_automatic_options=None,
+            **options,
+        ):
             result = "__anon_protected" in dir(view_function) or "__anon_allowed" in dir(
                 view_function
             )

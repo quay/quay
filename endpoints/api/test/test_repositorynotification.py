@@ -14,8 +14,8 @@ from test.fixtures import *
 
 
 @pytest.fixture()
-def authd_client(client):
-    with client_with_identity("devtable", client) as cl:
+def authd_client(app):
+    with client_with_identity("devtable", app) as cl:
         yield cl
 
 

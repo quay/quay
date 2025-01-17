@@ -8,7 +8,6 @@ from data import model
 from data.registry_model import registry_model
 from data.database import Image, ManifestLegacyImage
 from initdb import setup_database_for_testing, finished_database_for_testing
-from util.secscan.secscan_util import get_blob_download_uri_getter
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure
 from util.secscan.v4.fake import fake_security_scanner
 from util.secscan.blob import BlobURLRetriever

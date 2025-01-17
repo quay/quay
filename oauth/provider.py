@@ -6,10 +6,7 @@ import logging
 from requests import Response
 from io import StringIO
 
-try:
-    from werkzeug.exceptions import Unauthorized
-except ImportError:
-    Unauthorized = Exception
+from werkzeug.exceptions import Unauthorized
 
 from oauth import utils
 
