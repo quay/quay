@@ -11,9 +11,9 @@ from features import FeatureNameValue
 from test.fixtures import *
 
 
-def test_user_metadata_update(client):
+def test_user_metadata_update(app):
     with patch("features.USER_METADATA", FeatureNameValue("USER_METADATA", True)):
-        with client_with_identity("devtable", client) as cl:
+        with client_with_identity("devtable", app) as cl:
             metadata = {
                 "given_name": "Quay",
                 "family_name": "User",

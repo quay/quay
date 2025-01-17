@@ -12,21 +12,21 @@ CSRF_TOKEN_KEY = "_csrf_token"
 
 
 @contextmanager
-def client_with_identity(auth_username, client):
-    with client.session_transaction() as sess:
-        if auth_username and auth_username is not None:
-            loaded = model.user.get_user(auth_username)
-            sess["user_id"] = loaded.uuid
-            sess["login_time"] = datetime.datetime.now()
-        else:
-            sess["user_id"] = "anonymous"
+def client_with_identity(auth_username, app):
+    if auth_username and auth_username is not None:
+        loaded = model.user.get_user(auth_username)
+    else:
+        loaded = None
 
-    yield client
+    with app.test_client(user=loaded) as cl:
+        yield cl
 
-    with client.session_transaction() as sess:
-        sess["user_id"] = None
-        sess["login_time"] = None
-        sess[CSRF_TOKEN_KEY] = None
+        with cl.session_transaction() as sess:
+            sess["_user_id"] = None
+            sess["user_id"] = None
+            sess["_fresh"] = False
+            sess["login_time"] = None
+            sess[CSRF_TOKEN_KEY] = None
 
 
 @contextmanager

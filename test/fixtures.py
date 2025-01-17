@@ -1,12 +1,14 @@
+import datetime
 import os
-
 from collections import namedtuple
+from test.testconfig import FakeTransaction
 
 import pytest
 import shutil
 import inspect
 
 from flask import Flask, jsonify
+from flask.testing import FlaskClient
 from flask_login import LoginManager
 from flask_principal import identity_loaded, Principal
 from flask_mail import Mail
@@ -296,6 +298,29 @@ def initialized_db(appconfig):
             yield
 
 
+class _FlaskLoginClient(FlaskClient):
+    """
+    A Flask test client that knows how to log in users
+    using the Flask-Login extension.
+    https://github.com/maxcountryman/flask-login/pull/470
+    """
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        fresh = kwargs.pop("fresh_login", True)
+
+        super(_FlaskLoginClient, self).__init__(*args, **kwargs)
+
+        with self.session_transaction() as sess:
+            if user:
+                sess["_user_id"] = user.uuid
+                sess["user_id"] = user.uuid
+                sess["_fresh"] = fresh
+                sess["login_time"] = datetime.datetime.now()
+            else:
+                sess["_user_id"] = "anonymous"
+
+
 @pytest.fixture()
 def app(appconfig, initialized_db):
     """
@@ -303,6 +328,7 @@ def app(appconfig, initialized_db):
     """
     app = Flask(__name__)
     login_manager = LoginManager(app)
+    login_manager.init_app(app)
 
     @app.errorhandler(model.DataModelException)
     def handle_dme(ex):
@@ -317,6 +343,8 @@ def app(appconfig, initialized_db):
     @identity_loaded.connect_via(app)
     def on_identity_loaded_for_test(sender, identity):
         on_identity_loaded(sender, identity)
+
+    app.test_client_class = _FlaskLoginClient
 
     Principal(app, use_sessions=False)
 
