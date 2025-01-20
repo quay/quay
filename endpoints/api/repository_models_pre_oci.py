@@ -100,6 +100,20 @@ class PreOCIModel(RepositoryDataInterface):
                 user, kind_filter=repo_kind
             )
             repos = [repo for repo in unfiltered_repos if can_view_repo(repo)]
+            if not page_token in [{}, None]:
+                repos = repos[
+                    (REPOS_PER_PAGE) * page_token.get("start_index")
+                    - get("start_index") : REPOS_PER_PAGE
+                    + 1
+                ]
+                next_page_token = {
+                    "start_index": page_token.get("start_index") + 1,
+                    "page_number": page_token.get("start_index") + 1,
+                    "is_datetime": False,
+                    "offset_val": 0,
+                }
+            else:
+                repos = repos[REPOS_PER_PAGE : REPOS_PER_PAGE - 1]
         else:
             # Determine the starting offset for pagination. Note that we don't use the normal
             # model.modelutil.paginate method here, as that does not operate over UNION queries, which
