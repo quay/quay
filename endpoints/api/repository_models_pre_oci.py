@@ -113,7 +113,7 @@ class PreOCIModel(RepositoryDataInterface):
                     "offset_val": 0,
                 }
             else:
-                repos = repos[REPOS_PER_PAGE : REPOS_PER_PAGE - 1]
+                repos = repos[0 : REPOS_PER_PAGE - 1]
         else:
             # Determine the starting offset for pagination. Note that we don't use the normal
             # model.modelutil.paginate method here, as that does not operate over UNION queries, which
