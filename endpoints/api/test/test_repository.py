@@ -91,7 +91,7 @@ def test_list_starred_repos(app):
             if len(retrepos) < REPOS_PER_PAGE:
                 break
             page_token["start_index"] += 1
-        assert retrepos[-1] != 258
+        assert retrepos[-1] == 258
 
 
 def test_list_repos(initialized_db, app):
