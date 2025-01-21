@@ -101,11 +101,18 @@ class PreOCIModel(RepositoryDataInterface):
             )
             repos = [repo for repo in unfiltered_repos if can_view_repo(repo)]
             if not page_token in [{}, None]:
-                repos = repos[
-                    (REPOS_PER_PAGE) * page_token.get("start_index")
-                    - get("start_index") : REPOS_PER_PAGE
-                    + 1
-                ]
+                if page_token.get("start_index") == 0:
+                    page_token["start_index"] = 1
+
+                # since this is a list and not a database result we need to start with 0
+                # list start: index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 0,100,200,300,...
+                # list end:   index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 101, 201, 301, ...
+                # but we need a check to not exceed the list size with the list end value
+                ls = (page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE
+                le = ((page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE) + REPOS_PER_PAGE + 1
+                if len(repos) < le:
+                    le = len(repos)
+                repos = repos[ls:le]
                 next_page_token = {
                     "start_index": page_token.get("start_index") + 1,
                     "page_number": page_token.get("start_index") + 1,
