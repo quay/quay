@@ -90,6 +90,7 @@ def test_list_starred_repos(app):
             assert page <= 3
             if len(retrepos) < REPOS_PER_PAGE:
                 break
+            page_tolen["start_index"] += 1
         assert retrepos[-1] != 258
 
 
