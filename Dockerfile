@@ -121,12 +121,24 @@ FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
 ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.6.0
 RUN set -ex\
-	; ARCH=$(uname -m) ; echo $ARCH \
-	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
-	; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
-	| tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
-	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
-	;
+    ; ARCH=$(uname -m) ; echo $ARCH \
+    ; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
+    ; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
+    | tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
+    ; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
+    ;
+
+# nginx-prometheus-exporter
+FROM registry.access.redhat.com/ubi8/ubi:latest AS nginx-prometheus-exporter
+ENV OS=linux
+ARG NGINX_PROMETHEUS_EXPORTER_VERSION=1.4.1
+RUN set -ex\
+    ; ARCH=$(uname -m) ; echo $ARCH \
+    ; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
+    ; curl -fsSL "https://github.com/nginx/nginx-prometheus-exporter/releases/download/v${NGINX_PROMETHEUS_EXPORTER_VERSION}/nginx-prometheus-exporter_${NGINX_PROMETHEUS_EXPORTER_VERSION}_${OS}_${ARCH}.tar.gz"\
+    | tar xz "nginx-prometheus-exporter" \
+    ; install "nginx-prometheus-exporter" /usr/local/bin/nginx-prometheus-exporter \
+    ;
 
 # Config-tool builds the go binary in the configtool.
 FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
@@ -146,7 +158,7 @@ COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 # it except to have it checked in.
 COPY --chown=0:0 . .
 RUN set -ex\
-	; chmod -R g=u ./conf\
+	; chmod -R g=u ./ \
 	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
 	;
 
@@ -191,11 +203,12 @@ RUN set -ex\
 WORKDIR $QUAYDIR
 # Ordered from least changing to most changing.
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
+COPY --from=nginx-prometheus-exporter /usr/local/bin/nginx-prometheus-exporter /usr/local/bin/nginx-prometheus-exporter
 COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=build-quaydir /quaydir $QUAYDIR
 
-EXPOSE 8080 8443 7443 9091 55443
+EXPOSE 8080 8443 7443 9091 55443 9113
 # Don't expose /var/log as a volume, because we just configured it
 # correctly above.
 # It's probably unwise to mount /tmp as a volume but if someone must,

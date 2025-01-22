@@ -350,4 +350,12 @@ location /static/ {
     error_page 404 /404;
 }
 
+location /nginx_status {
+    stub_status;
+
+    access_log off;
+    allow 127.0.0.1;
+    deny all;
+}
+
 error_page 502 {{static_dir}}/502.html;
