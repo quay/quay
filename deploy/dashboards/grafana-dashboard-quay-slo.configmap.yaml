@@ -45,6 +45,193 @@ data:
         },
         {
           "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "dashed+area"
+                }
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.9999
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "id": 82,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "PD8A2C6F0E4302668"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
+              },
+              "expression": "",
+              "hide": true,
+              "id": "",
+              "label": "",
+              "logGroups": [],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "A",
+              "region": "default",
+              "sql": {
+                "from": {
+                  "property": {
+                    "name": "AWS/ApplicationELB",
+                    "type": "string"
+                  },
+                  "type": "property"
+                },
+                "select": {
+                  "name": "SUM",
+                  "parameters": [
+                    {
+                      "name": "HTTPCode_Target_5XX_Count",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                },
+                "where": {
+                  "expressions": [
+                    {
+                      "operator": {
+                        "name": "=",
+                        "value": "app/quayio-production-alb01/dd2a8a128b2029c6"
+                      },
+                      "property": {
+                        "name": "LoadBalancer",
+                        "type": "string"
+                      },
+                      "type": "operator"
+                    }
+                  ],
+                  "type": "and"
+                }
+              },
+              "sqlExpression": "SELECT SUM(HTTPCode_Target_5XX_Count) FROM \"AWS/ApplicationELB\" WHERE LoadBalancer = 'app/quayio-production-alb01/dd2a8a128b2029c6'",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
+              },
+              "expression": "",
+              "hide": true,
+              "id": "",
+              "label": "",
+              "logGroups": [],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "RequestCount",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "B",
+              "region": "default",
+              "sql": {
+                "select": {
+                  "name": "AVG",
+                  "type": "function"
+                }
+              },
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - ($A/$B)",
+              "hide": false,
+              "refId": "Availability",
+              "type": "math"
+            }
+          ],
+          "title": "ALB 5xx SLI",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
             "type": "prometheus",
             "uid": "${catchpoint_datasource}"
           },
@@ -82,21 +269,22 @@ data:
                   "mode": "none"
                 },
                 "thresholdsStyle": {
-                  "mode": "off"
+                  "mode": "dashed+area"
                 }
               },
+              "decimals": 3,
               "links": [],
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 95
+                    "color": "green",
+                    "value": 0.99999
                   }
                 ]
               },
@@ -105,9 +293,9 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
+            "h": 8,
             "w": 12,
-            "x": 0,
+            "x": 12,
             "y": 1
           },
           "id": 79,
@@ -125,20 +313,6 @@ data:
           },
           "pluginVersion": "9.0.3",
           "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "0.999",
-              "hide": false,
-              "instant": false,
-              "legendFormat": "Target",
-              "range": true,
-              "refId": "F"
-            },
             {
               "datasource": {
                 "type": "prometheus",
@@ -204,222 +378,211 @@ data:
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "${catchpoint_datasource}"
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
           },
-          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "palette-classic"
+                "mode": "thresholds"
               },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "links": [],
+              "decimals": 3,
+              "displayName": "5XX response rate SLI",
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "#EAB839",
+                    "value": 0.9999
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.99999
                   }
                 ]
               },
-              "unit": "none"
+              "unit": "percentunit"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ErrorBudget"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "orange",
+                          "value": 0
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.00001
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Error budget left"
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
-            "h": 9,
-            "w": 6,
-            "x": 12,
-            "y": 1
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 9
           },
-          "id": 30,
+          "id": 83,
           "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "mean"
+              ],
+              "fields": "",
+              "values": false
             },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
           },
-          "pluginVersion": "9.0.3",
+          "pluginVersion": "10.4.1",
           "targets": [
             {
               "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
+                "type": "cloudwatch",
+                "uid": "PD8A2C6F0E4302668"
               },
-              "editorMode": "code",
-              "expr": "1 - sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / (sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])) * 0.0001)",
-              "legendFormat": "Error budget remaining",
-              "range": true,
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
-              "editorMode": "code",
-              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / 0.0001",
-              "hide": false,
-              "legendFormat": "Error budget burn rate",
-              "range": true,
-              "refId": "B"
-            }
-          ],
-          "title": "Push Error Budget Burn Rate",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${catchpoint_datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
+              "expression": "",
+              "hide": true,
+              "id": "",
+              "label": "",
+              "logGroups": [],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "A",
+              "region": "default",
+              "sql": {
+                "from": {
+                  "property": {
+                    "name": "AWS/ApplicationELB",
+                    "type": "string"
+                  },
+                  "type": "property"
                 },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
+                "select": {
+                  "name": "SUM",
+                  "parameters": [
+                    {
+                      "name": "HTTPCode_Target_5XX_Count",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
                 },
-                "showPoints": "never",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
+                "where": {
+                  "expressions": [
+                    {
+                      "operator": {
+                        "name": "=",
+                        "value": "app/quayio-production-alb01/dd2a8a128b2029c6"
+                      },
+                      "property": {
+                        "name": "LoadBalancer",
+                        "type": "string"
+                      },
+                      "type": "operator"
+                    }
+                  ],
+                  "type": "and"
                 }
               },
-              "links": [],
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 6,
-            "x": 18,
-            "y": 1
-          },
-          "id": 31,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "9.0.3",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "expr": "1 - sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / (sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) * 0.0001)",
-              "legendFormat": "Error budget remaining",
-              "range": true,
-              "refId": "A"
+              "sqlExpression": "SELECT SUM(HTTPCode_Target_5XX_Count) FROM \"AWS/ApplicationELB\" WHERE LoadBalancer = 'app/quayio-production-alb01/dd2a8a128b2029c6'",
+              "statistic": "Sum"
             },
             {
               "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
-              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / 0.0001",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
+              },
+              "expression": "",
+              "hide": true,
+              "id": "",
+              "label": "",
+              "logGroups": [],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "RequestCount",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "B",
+              "region": "default",
+              "sql": {
+                "select": {
+                  "name": "AVG",
+                  "type": "function"
+                }
+              },
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - ($A/$B)",
               "hide": false,
-              "legendFormat": "Error budget burn rate",
-              "range": true,
-              "refId": "B"
+              "refId": "Availability",
+              "type": "math"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "0.00001 - ($A/$B)",
+              "hide": false,
+              "refId": "ErrorBudget",
+              "type": "math"
             }
           ],
-          "title": "Pull Error Budget Burn Rate",
-          "type": "timeseries"
+          "title": "Quay.io requests",
+          "type": "stat"
         },
         {
           "datasource": {
@@ -464,18 +627,175 @@ data:
               },
               "unit": "percentunit"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "error budget left"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "orange",
+                          "value": 0
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.00005
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
-            "h": 4,
+            "h": 6,
             "w": 6,
-            "x": 0,
-            "y": 10
+            "x": 12,
+            "y": 9
+          },
+          "id": 33,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "mean"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${catchpoint_datasource}"
+              },
+              "editorMode": "code",
+              "expr": "1 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])))",
+              "hide": false,
+              "legendFormat": "Push SLI",
+              "range": true,
+              "refId": "push availability"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${catchpoint_datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.00005 - ((sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range]))))",
+              "hide": false,
+              "legendFormat": "Error budget left",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Push Operations",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${catchpoint_datasource}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 3,
+              "mappings": [
+                {
+                  "options": {
+                    "NaN": {
+                      "index": 0,
+                      "text": "0"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 0.9995
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.9999
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Error budget left"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.00001
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 9
           },
           "id": 34,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -512,7 +832,7 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.99999 - (1 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))))",
+              "expr": "0.00001 - ((sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))))",
               "hide": false,
               "legendFormat": "Error budget left",
               "range": true,
@@ -524,6 +844,312 @@ data:
         },
         {
           "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 19,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.1
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 15
+          },
+          "id": 84,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "PD8A2C6F0E4302668"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
+              },
+              "expression": "",
+              "hide": true,
+              "id": "",
+              "label": "",
+              "logGroups": [],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "A",
+              "region": "default",
+              "sql": {
+                "from": {
+                  "property": {
+                    "name": "AWS/ApplicationELB",
+                    "type": "string"
+                  },
+                  "type": "property"
+                },
+                "select": {
+                  "name": "SUM",
+                  "parameters": [
+                    {
+                      "name": "HTTPCode_Target_5XX_Count",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                },
+                "where": {
+                  "expressions": [
+                    {
+                      "operator": {
+                        "name": "=",
+                        "value": "app/quayio-production-alb01/dd2a8a128b2029c6"
+                      },
+                      "property": {
+                        "name": "LoadBalancer",
+                        "type": "string"
+                      },
+                      "type": "operator"
+                    }
+                  ],
+                  "type": "and"
+                }
+              },
+              "sqlExpression": "SELECT SUM(HTTPCode_Target_5XX_Count) FROM \"AWS/ApplicationELB\" WHERE LoadBalancer = 'app/quayio-production-alb01/dd2a8a128b2029c6'",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
+              },
+              "expression": "",
+              "hide": true,
+              "id": "",
+              "label": "",
+              "logGroups": [],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "RequestCount",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "B",
+              "region": "default",
+              "sql": {
+                "select": {
+                  "name": "AVG",
+                  "type": "function"
+                }
+              },
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "($A/$B) / 0.00001",
+              "hide": false,
+              "refId": "Burn rate",
+              "type": "math"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "0.00001 - ($A/$B)",
+              "hide": false,
+              "refId": "Error budget remaining",
+              "type": "math"
+            }
+          ],
+          "title": "5xx error burn rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${catchpoint_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 12,
+            "y": 15
+          },
+          "id": 31,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${catchpoint_datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.00005 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])))",
+              "legendFormat": "Error budget remaining",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${catchpoint_datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / 0.00005",
+              "hide": false,
+              "legendFormat": "Error budget burn rate",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Pull Error Budget Burn Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
             "type": "prometheus",
             "uid": "${catchpoint_datasource}"
           },
@@ -531,106 +1157,41 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
               },
-              "decimals": 3,
-              "mappings": [
-                {
-                  "options": {
-                    "NaN": {
-                      "index": 0,
-                      "text": "0"
-                    }
-                  },
-                  "type": "value"
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
-              ],
-              "noValue": "0",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": null
-                  },
-                  {
-                    "color": "#EAB839",
-                    "value": 0.9995
-                  },
-                  {
-                    "color": "green",
-                    "value": 0.9999
-                  }
-                ]
               },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 6,
-            "y": 10
-          },
-          "id": 33,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "text": {},
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "expr": "1 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])))",
-              "hide": false,
-              "legendFormat": "Push SLI",
-              "range": true,
-              "refId": "push availability"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "expr": "0.99995 - (1 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))))",
-              "hide": false,
-              "legendFormat": "error budget left",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Push Operations",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
+              "links": [],
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
@@ -645,140 +1206,57 @@ data:
                   }
                 ]
               },
-              "unit": "s"
+              "unit": "none"
             },
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 12,
-            "y": 10
-          },
-          "id": 42,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "sum(increase(quay_build_queue_duration_seconds_sum[$rate]))\n/\nsum(increase(quay_build_queue_duration_seconds_count[$rate])) > 0",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Average Time in Build Queue",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
+            "h": 8,
             "w": 6,
             "x": 18,
-            "y": 10
+            "y": 15
           },
-          "id": 69,
+          "id": 30,
           "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
             },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "pluginVersion": "10.4.1",
+          "pluginVersion": "9.0.3",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.995",
-              "hide": false,
-              "legendFormat": "target",
-              "range": true,
-              "refId": "B"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "sum(increase(quay_build_jobs_total{success=\"true\"}[$rate]))\n/\nsum(increase(quay_build_jobs_total[$rate])) > 0",
-              "legendFormat": "success %",
+              "expr": "0.00001 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])))",
+              "legendFormat": "Error budget remaining",
               "range": true,
               "refId": "A"
             },
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${datasource}"
+                "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.005 - (\n  (sum(increase(quay_build_jobs_total[$rate])) - sum(increase(quay_build_jobs_total{success=\"true\"}[$rate])))\n  /\n  sum(increase(quay_build_jobs_total[$rate]))\n) != 0",
+              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / 0.0001",
               "hide": false,
-              "legendFormat": "error budget",
+              "legendFormat": "Error budget burn rate",
               "range": true,
-              "refId": "C"
+              "refId": "B"
             }
           ],
-          "title": "Build Success",
-          "type": "stat"
+          "title": "Push Error Budget Burn Rate",
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -844,7 +1322,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 14
+            "y": 23
           },
           "id": 54,
           "options": {
@@ -1024,7 +1502,7 @@ data:
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 22
+            "y": 31
           },
           "id": 80,
           "options": {
@@ -1044,13 +1522,12 @@ data:
             {
               "datasource": {
                 "type": "cloudwatch",
-                "uid": "PD8A2C6F0E4302668"
+                "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
-              "hide": false,
               "id": "",
               "label": "",
               "logGroups": [],
@@ -1063,43 +1540,9 @@ data:
               "queryMode": "Metrics",
               "refId": "A",
               "region": "default",
-              "sql": {
-                "from": {
-                  "property": {
-                    "name": "AWS/ApplicationELB",
-                    "type": "string"
-                  },
-                  "type": "property"
-                },
-                "select": {
-                  "name": "SUM",
-                  "parameters": [
-                    {
-                      "name": "HTTPCode_Target_5XX_Count",
-                      "type": "functionParameter"
-                    }
-                  ],
-                  "type": "function"
-                },
-                "where": {
-                  "expressions": [
-                    {
-                      "operator": {
-                        "name": "=",
-                        "value": "app/quayio-production-alb01/dd2a8a128b2029c6"
-                      },
-                      "property": {
-                        "name": "LoadBalancer",
-                        "type": "string"
-                      },
-                      "type": "operator"
-                    }
-                  ],
-                  "type": "and"
-                }
-              },
-              "sqlExpression": "SELECT SUM(HTTPCode_Target_5XX_Count) FROM \"AWS/ApplicationELB\" WHERE LoadBalancer = 'app/quayio-production-alb01/dd2a8a128b2029c6'",
-              "statistic": "Sum"
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "statsGroups": []
             },
             {
               "datasource": {
@@ -1123,12 +1566,7 @@ data:
               "queryMode": "Metrics",
               "refId": "B",
               "region": "default",
-              "sql": {
-                "select": {
-                  "name": "AVG",
-                  "type": "function"
-                }
-              },
+              "sqlExpression": "",
               "statistic": "Sum"
             }
           ],
@@ -1137,7 +1575,7 @@ data:
             {
               "id": "calculateField",
               "options": {
-                "alias": "Target 5XX response rate",
+                "alias": "Error rate",
                 "binary": {
                   "left": "HTTPCode_Target_5XX_Count",
                   "operator": "/",
@@ -1160,7 +1598,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 30
+            "y": 39
           },
           "id": 53,
           "panels": [],
@@ -1258,7 +1696,7 @@ data:
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 31
+            "y": 40
           },
           "id": 43,
           "options": {
@@ -1367,7 +1805,7 @@ data:
             "h": 6,
             "w": 24,
             "x": 0,
-            "y": 41
+            "y": 50
           },
           "id": 55,
           "options": {
@@ -1502,7 +1940,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 47
+            "y": 56
           },
           "id": 60,
           "panels": [],
@@ -1573,7 +2011,7 @@ data:
             "h": 9,
             "w": 9,
             "x": 0,
-            "y": 48
+            "y": 57
           },
           "id": 58,
           "options": {
@@ -1718,7 +2156,7 @@ data:
             "h": 9,
             "w": 15,
             "x": 9,
-            "y": 48
+            "y": 57
           },
           "id": 77,
           "maxDataPoints": 100,
@@ -1798,7 +2236,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 57
+            "y": 66
           },
           "id": 51,
           "panels": [],
@@ -1834,15 +2272,82 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
-            "w": 5,
+            "h": 6,
+            "w": 6,
             "x": 0,
-            "y": 58
+            "y": 67
           },
-          "id": 40,
+          "id": 42,
           "options": {
             "colorMode": "value",
             "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(quay_build_queue_duration_seconds_sum[$rate]))\n/\nsum(increase(quay_build_queue_duration_seconds_count[$rate])) > 0",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Average Time in Build Queue",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 67
+          },
+          "id": 69,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1864,88 +2369,38 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(\n        increase(quay_build_queue_duration_seconds_sum[$rate])\n    )\n    /\n    sum(\n        increase(quay_build_queue_duration_seconds_count[$rate])\n    ) > 0\n) + (\n    sum(\n        increase(quay_build_duration_seconds_sum[$rate])\n    )\n    /\n    sum(\n        increase(quay_build_duration_seconds_count[$rate])\n    ) > 0\n)",
+              "expr": "0.995",
+              "hide": false,
+              "legendFormat": "target",
               "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Total Build Time",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "description": "Distribution of time spent in the build queue over specified `rate`",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "fillOpacity": 80,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
+              "refId": "B"
             },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 7,
-            "x": 5,
-            "y": 58
-          },
-          "id": 56,
-          "options": {
-            "bucketOffset": 0,
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            }
-          },
-          "pluginVersion": "9.3.8",
-          "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "exemplar": true,
-              "expr": "sum(rate(quay_build_queue_duration_seconds_sum[$rate])) / sum(rate(quay_build_queue_duration_seconds_count[$rate]))",
-              "format": "time_series",
-              "instant": false,
-              "interval": "",
-              "legendFormat": "__auto",
+              "expr": "sum(increase(quay_build_jobs_total{success=\"true\"}[$rate]))\n/\nsum(increase(quay_build_jobs_total[$rate])) > 0",
+              "legendFormat": "success %",
               "range": true,
               "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.005 - (\n  (sum(increase(quay_build_jobs_total[$rate])) - sum(increase(quay_build_jobs_total{success=\"true\"}[$rate])))\n  /\n  sum(increase(quay_build_jobs_total[$rate]))\n) != 0",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
             }
           ],
-          "title": "Time in Build Queue Distribution",
-          "type": "histogram"
+          "title": "Build Success",
+          "type": "stat"
         },
         {
           "cards": {},
@@ -1978,10 +2433,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
+            "h": 14,
             "w": 12,
             "x": 12,
-            "y": 58
+            "y": 67
           },
           "heatmap": {},
           "hideZeroBuckets": true,
@@ -2065,12 +2520,154 @@ data:
           "yBucketBound": "auto"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 5,
+            "x": 0,
+            "y": 73
+          },
+          "id": 40,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "mean"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n    sum(\n        increase(quay_build_queue_duration_seconds_sum[$rate])\n    )\n    /\n    sum(\n        increase(quay_build_queue_duration_seconds_count[$rate])\n    ) > 0\n) + (\n    sum(\n        increase(quay_build_duration_seconds_sum[$rate])\n    )\n    /\n    sum(\n        increase(quay_build_duration_seconds_count[$rate])\n    ) > 0\n)",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Total Build Time",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Distribution of time spent in the build queue over specified `rate`",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "fillOpacity": 80,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 7,
+            "x": 5,
+            "y": 73
+          },
+          "id": 56,
+          "options": {
+            "bucketOffset": 0,
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "pluginVersion": "9.3.8",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(rate(quay_build_queue_duration_seconds_sum[$rate])) / sum(rate(quay_build_queue_duration_seconds_count[$rate]))",
+              "format": "time_series",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Time in Build Queue Distribution",
+          "type": "histogram"
+        },
+        {
           "collapsed": false,
           "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 66
+            "y": 81
           },
           "id": 71,
           "panels": [],
@@ -2109,7 +2706,7 @@ data:
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 67
+            "y": 82
           },
           "id": 75,
           "options": {
@@ -2176,7 +2773,7 @@ data:
             "h": 8,
             "w": 12,
             "x": 6,
-            "y": 67
+            "y": 82
           },
           "heatmap": {},
           "hideZeroBuckets": true,
@@ -2428,7 +3025,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 2,
+      "version": 3,
       "weekStart": ""
     }
 kind: ConfigMap
