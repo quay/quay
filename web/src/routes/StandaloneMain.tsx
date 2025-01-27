@@ -24,8 +24,6 @@ import OverviewList from './OverviewList/OverviewList';
 import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedirect';
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
-import SuperuserUsersList from './SuperuserList/Users/SuperuserUsersList';
-import SuperuserOrgsList from './SuperuserList/Organizations/SuperuserOrgsList';
 
 const NavigationRoutes = [
   {
@@ -55,14 +53,6 @@ const NavigationRoutes = [
   {
     path: NavigationPath.repositoryDetail,
     Component: <RepositoryTagRouter />,
-  },
-  {
-    path: NavigationPath.superuserUsersList,
-    Component: <SuperuserUsersList />,
-  },
-  {
-    path: NavigationPath.superuserOrgsList,
-    Component: <SuperuserOrgsList />,
   },
 ];
 

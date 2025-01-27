@@ -4,7 +4,6 @@ import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
 import OverviewList from './OverviewList/OverviewList';
-import SuperuserUsersList from './SuperuserList/Users/SuperuserUsersList';
 
 const organizationNameBreadcrumb = (match) => {
   return <span>{match.params.organizationName}</span>;
@@ -35,7 +34,6 @@ const Breadcrumb = {
   tagDetailBreadcrumb: tagNameBreadcrumb,
   manifestDigestBreadcrumb: manifestDigestBreadcrumb,
   teamMemberBreadcrumb: teamMemberBreadcrumb,
-  superuserListBreadcrumb: 'Superuser',
 };
 
 export enum NavigationPath {
@@ -46,9 +44,6 @@ export enum NavigationPath {
   overviewList = '/overview',
 
   repositoriesList = '/repository',
-
-  superuserUsersList = '/superuser/users',
-  superuserOrgsList = '/superuser/organizations',
 
   // Organization detail
   organizationDetail = '/organization/:organizationName',
@@ -147,7 +142,7 @@ function domainRoute(currentRoute, definedRoute) {
    ***/
   return (
     currentRoute.replace(
-      /\/(overview|organization|repository|superuser|signin)(?!.*\1).*/,
+      /\/(overview|organization|repository|signin)(?!.*\1).*/,
       '',
     ) + definedRoute
   );
@@ -196,11 +191,6 @@ export const getNavigationRoutes = () => {
       path: domainRoute(currentRoute, NavigationPath.teamMember),
       element: <RepositoryDetails />,
       breadcrumb: Breadcrumb.teamMemberBreadcrumb,
-    },
-    {
-      path: domainRoute(currentRoute, NavigationPath.superuserUsersList),
-      element: <SuperuserUsersList />,
-      breadcrumb: Breadcrumb.superuserListBreadcrumb,
     },
   ];
   return NavigationRoutes;
