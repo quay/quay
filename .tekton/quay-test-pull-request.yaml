@@ -38,7 +38,8 @@ spec:
         {"type": "rpm", "path": "."},
         {"type": "npm", "path": "web"},
         {"type": "npm", "path": "config-tool/pkg/lib/editor"},
-        {"type": "npm", "path": "."}
+        {"type": "npm", "path": "."},
+        {"type": "generic", "path": "web"}
       ]
   pipelineSpec:
     description: |

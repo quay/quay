@@ -33,7 +33,8 @@ spec:
         {"type": "gomod", "path": "./config-tool"},
         {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
         {"type": "npm", "path": "web"},
-        {"type": "rpm", "path": "."}
+        {"type": "rpm", "path": "."},
+        {"type": "generic", "path": "web"}
       ]
   pipelineSpec:
     description: |

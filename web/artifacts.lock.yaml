@@ -1,0 +1,7 @@
+---
+metadata:
+  version: "1.0"
+artifacts:
+  - download_url: "https://download.cypress.io/desktop/13.16.1?platform=linux&arch=x64"
+    checksum: "sha256:65136ff1b92fb1f54b9569d2f9208d2c1cd8ded539363c22ced244457550facf"
+    filename: "cypress.zip"
