@@ -120,7 +120,7 @@ class RedHatSubscriptionApi(object):
                 if now_ms < end_date:
                     logger.debug("subscription found for %s", str(skuId))
                     valid_subscriptions.append(subscription)
-            return valid_subscriptions
+            return valid_subscriptions if len(valid_subscriptions) > 0 else None
         return None
 
     def extend_subscription(self, subscription_id, endDate):
@@ -171,6 +171,7 @@ class RedHatSubscriptionApi(object):
             "webCustomerId": customerId,
         }
         logger.debug("Created entitlement")
+
         try:
             r = requests.request(
                 method="post",
@@ -185,6 +186,30 @@ class RedHatSubscriptionApi(object):
             logger.info("request to %s timed out", self.marketplace_endpoint)
             return 408
 
+        return r.status_code
+
+    def remove_entitlement(self, subscription_id):
+        """
+        Removes subscription from user given subscription_id
+        """
+        request_url = (
+            f"{self.marketplace_endpoint}/subscription/v5/terminateSubscription/{subscription_id}"
+        )
+        request_headers = {"Content-Type": "application/json"}
+
+        logger.debug("Terminating subscription with id %s", subscription_id)
+        try:
+            r = requests.request(
+                method="post",
+                url=request_url,
+                cert=self.cert,
+                headers=request_headers,
+                verify=True,
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.exceptions.ReadTimeout:
+            logger.info("request to %s timed out", self.marketplace_endpoint)
+            return 408
         return r.status_code
 
     def get_subscription_details(self, subscription_id):
@@ -268,7 +293,6 @@ class RedHatSubscriptionApi(object):
 
 
 # Mocked classes for unit tests
-
 
 TEST_USER = {
     "account_number": 12345,
@@ -358,6 +382,45 @@ FREE_USER = {
     "email": "free_user@test.com",
     "username": "free_user",
 }
+PAID_USER = {
+    "account_number": 34567,
+    "email": "paid@test.com",
+    "username": "paid_user",
+    "subscriptions": [
+        {
+            "id": 12345678,
+            "masterEndSystemName": "Quay",
+            "createdEndSystemName": "SUBSCRIPTION",
+            "createdDate": 1675957362000,
+            "lastUpdateEndSystemName": "SUBSCRIPTION",
+            "lastUpdateDate": 1675957362000,
+            "installBaseStartDate": 1707368400000,
+            "installBaseEndDate": 1707368399000,
+            "webCustomerId": 123456,
+            "subscriptionNumber": "12399889",
+            "quantity": 1,
+            "effectiveStartDate": 1707368400000,
+            "effectiveEndDate": 3813177600000,
+        }
+    ],
+    "free_sku": [
+        {
+            "id": 56781234,
+            "masterEndSystemName": "Quay",
+            "createdEndSystemName": "SUBSCRIPTION",
+            "createdDate": 1675957362000,
+            "lastUpdateEndSystemName": "SUBSCRIPTION",
+            "lastUpdateDate": 1675957362000,
+            "installBaseStartDate": 1707368400000,
+            "installBaseEndDate": 1707368399000,
+            "webCustomerId": 123456,
+            "subscriptionNumber": "12399889",
+            "quantity": 1,
+            "effectiveStartDate": 1707368400000,
+            "effectiveEndDate": 3813177600000,
+        }
+    ],
+}
 
 
 class FakeUserApi(RedHatUserApi):
@@ -368,6 +431,8 @@ class FakeUserApi(RedHatUserApi):
     def lookup_customer_id(self, email):
         if email == TEST_USER["email"]:
             return [TEST_USER["account_number"]]
+        if email == PAID_USER["email"]:
+            return [PAID_USER["account_number"]]
         if email == FREE_USER["email"]:
             return [FREE_USER["account_number"]]
         if email == STRIPE_USER["email"]:
@@ -391,10 +456,19 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
             return [TEST_USER["private_subscription"]]
         elif customer_id == TEST_USER["account_number"] and sku_id == "MW00584MO":
             return [TEST_USER["reconciled_subscription"]]
+        elif customer_id == PAID_USER["account_number"] and sku_id == "MW02701":
+            return PAID_USER["subscriptions"]
+        elif customer_id == PAID_USER["account_number"] and sku_id == "MW04192":
+            return PAID_USER["free_sku"]
+        elif customer_id == FREE_USER["account_number"]:
+            return []
         return None
 
     def create_entitlement(self, customer_id, sku_id):
         self.subscription_created = True
+
+    def remove_entitlement(self, subscription_id):
+        pass
 
     def extend_subscription(self, subscription_id, end_date):
         self.subscription_extended = True
