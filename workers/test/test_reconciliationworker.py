@@ -19,7 +19,18 @@ def test_skip_free_user(initialized_db):
     with patch.object(marketplace_subscriptions, "create_entitlement") as mock:
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
-    mock.assert_not_called()
+    # adding the free tier
+    mock.assert_called_with(23456, "MW04192")
+
+
+def test_remove_free_tier(initialized_db):
+    # if a user has a sku and also has a free tier, the free tier should be removed
+    paid_user = model.user.create_user("paid_user", "password", "paid@test.com")
+    paid_user.save()
+    marketplace_subscriptions.create_entitlement(12345, "MW04192")
+    with patch.object(marketplace_subscriptions, "remove_entitlement") as mock:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+    mock.assert_called_with(56781234)  # fake "free" tier subscription id mocked in marketplace.py
 
 
 def test_reconcile_org_user(initialized_db):
@@ -77,12 +88,12 @@ def test_reconcile_different_ids(initialized_db):
     test_user = model.user.create_user("stripe_user", "password", "stripe_user@test.com")
     test_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
     test_user.save()
-    model.entitlements.save_web_customer_id(test_user, 12345)
+    model.entitlements.save_web_customer_id(test_user, 55555)
 
     worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
     new_id = model.entitlements.get_web_customer_ids(test_user.id)
-    assert new_id != [12345]
+    assert new_id != [55555]
     assert new_id == marketplace_users.lookup_customer_id(test_user.email)
 
     # make sure it will remove account numbers from db that do not belong
