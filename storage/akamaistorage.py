@@ -6,7 +6,7 @@ from akamai.edgeauth import EdgeAuth, EdgeAuthError  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-from storage.cloud import S3Storage
+from storage.cloud import S3Storage, is_in_network_request
 
 DEFAULT_SIGNED_URL_EXPIRY_SECONDS = 900  # 15 mins
 TOKEN_QUERY_STRING = "akamai_signature"
@@ -49,6 +49,19 @@ class AkamaiS3Storage(S3Storage):
         s3_presigned_url = super(AkamaiS3Storage, self).get_direct_download_url(
             path, request_ip, expires_in, requires_cors, head
         )
+        logger.debug(f"s3 presigned_url: {s3_presigned_url}")
+        if request_ip is None:
+            return s3_presigned_url
+
+        if is_in_network_request(self._context, request_ip, self.region):
+            if kwargs.get("cdn_specific", False):
+                logger.debug(
+                    "Request came from within network but namespace is protected: %s", path
+                )
+            else:
+                logger.debug("Request is from within the network, returning S3 URL")
+                return s3_presigned_url
+
         s3_url_parsed = urllib.parse.urlparse(s3_presigned_url)
 
         # replace s3 location with Akamai domain
