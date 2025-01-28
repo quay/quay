@@ -8,3 +8,6 @@ artifacts:
   - download_url: "https://github.com/prometheus/pushgateway/releases/download/v1.6.0/pushgateway-1.6.0.linux-amd64.tar.gz"
     checksum: "sha256:6247e16f6c30f5fc3603a1efbc7c2069e965938bc5381897b1317f7119f28ac4"
     filename: "pushgateway.tar.gz"
+  - download_url: "https://github.com/prometheus/pushgateway/releases/download/v1.6.0/pushgateway-1.6.0.linux-x86_64.tar.gz"
+    checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    filename: "pushgateway.tar.gz"
