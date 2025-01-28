@@ -34,7 +34,7 @@ spec:
         {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
         {"type": "npm", "path": "web"},
         {"type": "rpm", "path": "."},
-        {"type": "generic", "path": "./web", "lockfile": "./web/artifacts.lock.yaml"}
+        {"type": "generic", "path": "./web"}
       ]
   pipelineSpec:
     description: |
