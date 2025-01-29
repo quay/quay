@@ -41,8 +41,6 @@ spec:
         {"type": "npm", "path": "."},
         {"type": "generic", "path": "web"}
       ]
-  - name: build-args
-    value: ["--volume='$(realpath ./cachi2-output)':/tmp/cachi2-output:Z"]
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
