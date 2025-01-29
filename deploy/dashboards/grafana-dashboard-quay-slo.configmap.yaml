@@ -96,7 +96,7 @@ data:
                   },
                   {
                     "color": "green",
-                    "value": 0.9999
+                    "value": 0.999
                   }
                 ]
               },
@@ -200,7 +200,7 @@ data:
               "logGroups": [],
               "matchExact": true,
               "metricEditorMode": 0,
-              "metricName": "RequestCount",
+              "metricName": "HTTPCode_Target_2XX_Count",
               "metricQueryType": 0,
               "namespace": "AWS/ApplicationELB",
               "period": "",
@@ -284,7 +284,7 @@ data:
                   },
                   {
                     "color": "green",
-                    "value": 0.99999
+                    "value": 0.999
                   }
                 ]
               },
@@ -381,12 +381,13 @@ data:
             "type": "cloudwatch",
             "uid": "${cloudwatch_datasource}"
           },
+          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 2,
               "displayName": "5XX response rate SLI",
               "mappings": [],
               "thresholds": {
@@ -398,11 +399,11 @@ data:
                   },
                   {
                     "color": "#EAB839",
-                    "value": 0.9999
+                    "value": 0.998
                   },
                   {
                     "color": "green",
-                    "value": 0.99999
+                    "value": 0.999
                   }
                 ]
               },
@@ -430,7 +431,7 @@ data:
                         },
                         {
                           "color": "green",
-                          "value": 0.00001
+                          "value": 0.1
                         }
                       ]
                     }
@@ -462,7 +463,7 @@ data:
               "fields": "",
               "values": false
             },
-            "showPercentChange": false,
+            "showPercentChange": true,
             "textMode": "auto",
             "wideLayout": true
           },
@@ -543,7 +544,7 @@ data:
               "logGroups": [],
               "matchExact": true,
               "metricEditorMode": 0,
-              "metricName": "RequestCount",
+              "metricName": "HTTPCode_Target_2XX_Count",
               "metricQueryType": 0,
               "namespace": "AWS/ApplicationELB",
               "period": "",
@@ -575,13 +576,13 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.00001 - ($A/$B)",
+              "expression": "0.001 - ($A/$B)",
               "hide": false,
               "refId": "ErrorBudget",
               "type": "math"
             }
           ],
-          "title": "Quay.io requests",
+          "title": "Quay.io ALB requests (SLO 99.9%)",
           "type": "stat"
         },
         {
@@ -595,7 +596,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 2,
               "mappings": [
                 {
                   "options": {
@@ -617,11 +618,11 @@ data:
                   },
                   {
                     "color": "#EAB839",
-                    "value": 0.9995
+                    "value": 0.998
                   },
                   {
                     "color": "green",
-                    "value": 0.9999
+                    "value": 0.999
                   }
                 ]
               },
@@ -631,7 +632,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "error budget left"
+                  "options": "Error budget left"
                 },
                 "properties": [
                   {
@@ -649,7 +650,7 @@ data:
                         },
                         {
                           "color": "green",
-                          "value": 0.00005
+                          "value": 0.005
                         }
                       ]
                     }
@@ -677,7 +678,7 @@ data:
               "fields": "",
               "values": false
             },
-            "showPercentChange": false,
+            "showPercentChange": true,
             "text": {},
             "textMode": "auto",
             "wideLayout": true
@@ -702,14 +703,14 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.00005 - ((sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range]))))",
+              "expr": "0.005 - ((sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range]))))",
               "hide": false,
               "legendFormat": "Error budget left",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Push Operations",
+          "title": "Push Operations (SLO 99.5%)",
           "type": "stat"
         },
         {
@@ -723,7 +724,7 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "decimals": 3,
+              "decimals": 2,
               "mappings": [
                 {
                   "options": {
@@ -745,11 +746,11 @@ data:
                   },
                   {
                     "color": "#EAB839",
-                    "value": 0.9995
+                    "value": 0.98
                   },
                   {
                     "color": "green",
-                    "value": 0.9999
+                    "value": 0.99
                   }
                 ]
               },
@@ -777,7 +778,7 @@ data:
                         },
                         {
                           "color": "green",
-                          "value": 0.00001
+                          "value": 0.001
                         }
                       ]
                     }
@@ -805,7 +806,7 @@ data:
               "fields": "",
               "values": false
             },
-            "showPercentChange": false,
+            "showPercentChange": true,
             "text": {},
             "textMode": "auto",
             "wideLayout": true
@@ -832,14 +833,14 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.00001 - ((sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))))",
+              "expr": "0.001 - ((sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))))",
               "hide": false,
               "legendFormat": "Error budget left",
               "range": true,
               "refId": "error budget left pull"
             }
           ],
-          "title": "Pull Operations",
+          "title": "Pull Operations (SLO 99.9%)",
           "type": "stat"
         },
         {
@@ -1019,7 +1020,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "($A/$B) / 0.00001",
+              "expression": "($A/$B) / 0.001",
               "hide": false,
               "refId": "Burn rate",
               "type": "math"
@@ -1030,7 +1031,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.00001 - ($A/$B)",
+              "expression": "0.001 - ($A/$B)",
               "hide": false,
               "refId": "Error budget remaining",
               "type": "math"
@@ -1127,7 +1128,7 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.00005 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])))",
+              "expr": "0.005 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])))",
               "legendFormat": "Error budget remaining",
               "range": true,
               "refId": "A"
@@ -1138,7 +1139,7 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / 0.00005",
+              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$__range])) / 0.005",
               "hide": false,
               "legendFormat": "Error budget burn rate",
               "range": true,
@@ -1237,7 +1238,7 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "0.00001 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])))",
+              "expr": "0.001 - (sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])))",
               "legendFormat": "Error budget remaining",
               "range": true,
               "refId": "A"
@@ -1248,7 +1249,7 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / 0.0001",
+              "expr": "(sum(rate(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$__range]))) / sum(rate(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$__range])) / 0.001",
               "hide": false,
               "legendFormat": "Error budget burn rate",
               "range": true,
@@ -2865,7 +2866,7 @@ data:
         "list": [
           {
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "quayp05ue1-prometheus",
               "value": "P85A349E17159E2A2"
             },
@@ -2957,7 +2958,7 @@ data:
           },
           {
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "appsrep11ue1-prometheus",
               "value": "P677746A44F299DAF"
             },
@@ -2975,7 +2976,7 @@ data:
           },
           {
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "AWS quayio-prod",
               "value": "PD8A2C6F0E4302668"
             },
@@ -3025,7 +3026,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 3,
+      "version": 2,
       "weekStart": ""
     }
 kind: ConfigMap
