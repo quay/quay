@@ -9,8 +9,6 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
-	; microdnf -y module enable nginx:1.22 \
-	; microdnf -y module enable python39:3.9 \
 	; microdnf update -y \
 	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
@@ -24,12 +22,11 @@ RUN set -ex\
 		python3-gpg \
 		skopeo \
 		findutils \
-	; microdnf -y reinstall tzdata \
 	; microdnf remove platform-python-pip python39-pip \
 	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
+FROM registry.access.redhat.com/ubi8/nodejs-18 AS config-editor
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
@@ -62,7 +59,7 @@ RUN set -ex\
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
-COPY requirements.txt .
+COPY requirements-build.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
@@ -78,8 +75,7 @@ ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
 
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
-	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements-build.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
@@ -89,7 +85,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
+FROM registry.access.redhat.com/ubi8/nodejs-18 AS build-static
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
@@ -101,7 +97,7 @@ RUN npm run --quiet build
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
-RUN npm clean-install
+RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
 COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
@@ -112,13 +108,13 @@ ARG PUSHGATEWAY_VERSION=1.6.0
 RUN set -ex\
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
-	; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
-	| tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
+	# ; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
+	; tar xzf  "/var/workdir/cachi2-output/deps/generic/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" -C .\
 	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
+FROM registry.access.redhat.com/ubi8/go-toolset AS config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build

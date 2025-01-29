@@ -11,10 +11,10 @@ const highlightedLanguages: string[] = require('../../../constants/highlighted-l
 export const addHighlightedLanguage = (language: string): Promise<{}> => {
   return new Promise(async(resolve, reject) => {
     try {
-      const langModule = await System.import(`highlight.js/lib/languages/${language}`);
+      const langModule = await import(`highlight.js/lib/languages/${language}`);
       registerLanguage(language, langModule.default);
       console.debug(`Language ${language} registered for syntax highlighting`);
-      resolve();
+      resolve({});
     } catch (error) {
       console.debug(`Language ${language} not supported for syntax highlighting`);
       reject(error);

@@ -25,6 +25,17 @@ spec:
     value: quay.io/redhat-user-workloads/quay-eng-tenant/quay-test:{{revision}}
   - name: dockerfile
     value: Dockerfile.downstream
+  - name: hermetic
+    value: true
+  - name: prefetch-input
+    value: |
+      [
+        {"type": "gomod", "path": "./config-tool"},
+        {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
+        {"type": "npm", "path": "web"},
+        {"type": "rpm", "path": "."},
+        {"type": "generic", "path": "web"}
+      ]
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -172,6 +183,8 @@ spec:
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: dev-package-managers
+        value: "true"
       runAfter:
       - clone-repository
       taskRef:
