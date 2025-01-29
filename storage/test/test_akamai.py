@@ -8,7 +8,11 @@ from app import config_provider
 from storage import AkamaiS3Storage, StorageContext
 from test.fixtures import *
 from util.ipresolver import IPResolver
-from util.ipresolver.test.test_ipresolver import aws_ip_range_data, test_ip_range_cache
+from util.ipresolver.test.test_ipresolver import (
+    aws_ip_range_data,
+    test_aws_ip,
+    test_ip_range_cache,
+)
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
@@ -47,4 +51,21 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
 
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
         assert engine.exists(_TEST_PATH)
-        assert "akamai-domain" in engine.get_direct_download_url(_TEST_PATH, request_ip="4.0.0.2")
+        # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
+        assert engine.get_direct_download_url(_TEST_PATH, request_ip="4.0.0.2").startswith(
+            "https://s3.us-east-1.amazonaws.com"
+        )
+        # Request a direct download URL for a request from a non-AWS IP, and ensure we are returned Akamai URL.
+        assert engine.get_direct_download_url(_TEST_PATH, "1.2.3.4").startswith(
+            "https://akamai-domain"
+        )
+
+        assert engine.get_direct_download_url(
+            _TEST_PATH, request_ip="4.0.0.2", cdn_specific=False
+        ).startswith("https://s3.us-east-1.amazonaws.com")
+        assert engine.get_direct_download_url(
+            _TEST_PATH, request_ip="4.0.0.2", cdn_specific=True
+        ).startswith("https://akamai-domain")
+        assert engine.get_direct_download_url(_TEST_PATH).startswith(
+            "https://s3.us-east-1.amazonaws.com"
+        )
