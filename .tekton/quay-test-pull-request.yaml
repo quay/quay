@@ -41,6 +41,8 @@ spec:
         {"type": "npm", "path": "."},
         {"type": "generic", "path": "web"}
       ]
+  - name: build-args
+    value: ["--volume='$(realpath ./cachi2-output)':/tmp/cachi2-output:Z"]
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -231,6 +233,8 @@ spec:
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: BUILD_ARGS
+        value: ["$params.build-args[*]"]
       runAfter:
       - prefetch-dependencies
       taskRef:
