@@ -52,14 +52,20 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
         assert engine.exists(_TEST_PATH)
         # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
-        assert "amazonaws.com" in engine.get_direct_download_url(_TEST_PATH, request_ip="4.0.0.2")
+        assert engine.get_direct_download_url(_TEST_PATH, request_ip="4.0.0.2").startswith(
+            "https://s3.us-east-1.amazonaws.com"
+        )
         # Request a direct download URL for a request from a non-AWS IP, and ensure we are returned Akamai URL.
-        assert "akamai-domain" in engine.get_direct_download_url(_TEST_PATH, "1.2.3.4")
+        assert engine.get_direct_download_url(_TEST_PATH, "1.2.3.4").startswith(
+            "https://akamai-domain"
+        )
 
-        assert "amazonaws.com" in engine.get_direct_download_url(
+        assert engine.get_direct_download_url(
             _TEST_PATH, request_ip="4.0.0.2", cdn_specific=False
-        )
-        assert "akamai-domain" in engine.get_direct_download_url(
+        ).startswith("https://s3.us-east-1.amazonaws.com")
+        assert engine.get_direct_download_url(
             _TEST_PATH, request_ip="4.0.0.2", cdn_specific=True
+        ).startswith("https://akamai-domain")
+        assert engine.get_direct_download_url(_TEST_PATH).startswith(
+            "https://s3.us-east-1.amazonaws.com"
         )
-        assert "amazonaws.com" in engine.get_direct_download_url(_TEST_PATH)
