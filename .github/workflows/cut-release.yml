@@ -38,7 +38,7 @@ jobs:
           echo "creating change log for tag: $TAG"
           /tmp/git-chglog --tag-filter-pattern "v3.*" -o changelog v3.6.0-alpha.4..
       - name: Upload Release Archive
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: |
