@@ -41,6 +41,9 @@ def test_exception_handling(initialized_db):
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.APIConnectionError
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+    with patch("data.billing.FakeStripe.Customer.subscription") as mock:
+        mock.side_effect = AttributeError
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
 
 def test_create_for_stripe_user(initialized_db):
