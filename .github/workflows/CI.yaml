@@ -204,13 +204,13 @@ jobs:
       env:
         REACT_QUAY_APP_API_URL: http://localhost:8080
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: cypress-screenshots
         path: web/cypress/screenshots
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       if: always()
       with:
         name: cypress-videos
