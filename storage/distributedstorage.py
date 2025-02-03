@@ -28,15 +28,33 @@ def _location_aware(unbound_func, requires_write=False):
     return wrapper
 
 
-def _call_endtoend(unbound_func, requires_write=False):
+def _call_endtoend(unbound_func, requires_write=False, requires_all_available=False):
+    """Wrapper to call a storage function for all locations.
+    Should raise exception if requires_all_available is set and one of the calls fails.
+    None otherwise.
+    """
+
     @wraps(unbound_func)
     def wrapper(self, locations, *args, **kwargs):
         if requires_write:
             assert not self.readonly_mode
 
-        for storage in self._storages:
-            storage_func = getattr(storage, unbound_func.__name__)
-            storage_func(*args, **kwargs)
+        exs = []
+        for location in locations:
+            storage = self._storages[location]
+            try:
+                storage_func = getattr(storage, unbound_func.__name__)
+                storage_func(*args, **kwargs)
+                exs.append(None)
+            except Exception as e:
+                exs.append(e)
+                if requires_all_available or len(locations) == 1:
+                    raise e
+
+        if all(exs) and not requires_all_available:
+            raise exs[-1]
+
+    return wrapper
 
 
 class DistributedStorage(StoragePaths):
@@ -48,6 +66,7 @@ class DistributedStorage(StoragePaths):
         proxy=None,
         readonly_mode=False,
         validate_endtoend=False,
+        requires_all_available=False,
     ):
         self._storages = dict(storages)
         self.preferred_locations = list(preferred_locations or [])
@@ -55,11 +74,16 @@ class DistributedStorage(StoragePaths):
         self.proxy = proxy
         self.readonly_mode = readonly_mode
         self.validate_endtoend = validate_endtoend
+        self.requires_all_available = requires_all_available
 
         setattr(
             DistributedStorage,
             "validate",
-            _call_endtoend(BaseStorage.validate, requires_write=True)
+            _call_endtoend(
+                BaseStorage.validate,
+                requires_write=True,
+                requires_all_available=self.requires_all_available,
+            )
             if self.validate_endtoend
             else _location_aware(BaseStorage.validate, requires_write=True),
         )
