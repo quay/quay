@@ -20,6 +20,10 @@ const statusToIndicator = {
     indicator: 'critical',
     description: 'Major Service Outage',
   },
+  under_maintenance: {
+    indicator: 'minor',
+    description: 'Under Maintenance',
+  },
 };
 
 interface StatusData {
