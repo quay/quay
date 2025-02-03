@@ -3,8 +3,15 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.4"></a>
+## [v3.13.4] - 2025-02-03
+### [Redhat-3.13] Endpoints(Repository)
+- [4eb74050](https://github.com/quay/quay/commit/4eb740503f62d7cfb5b2c24eaa69842f93780e89): fixing repository return with starred repos to paged response (PROJQUAY-8450) ([#3600](https://github.com/quay/quay/issues/3600))
+### [Redhat-3.13] Ui
+- [96ff97e7](https://github.com/quay/quay/commit/96ff97e7dfaa5d06f9d17631b5cb180096363f6d): adding under_maintenance state to status indicator (PROJQUAY-8507) ([#3625](https://github.com/quay/quay/issues/3625))
+
 <a name="v3.13.3"></a>
-## [v3.13.3] - 2025-01-09
+## [v3.13.3] - 2025-01-10
 ### [Redhat-3.13] Dep
 - [b1870400](https://github.com/quay/quay/commit/b1870400c160034404a20ff3c969adc8baa25637): updating css-loader to 6.11.0 (PROJQUAY-8297) ([#3545](https://github.com/quay/quay/issues/3545))
 - [b433afee](https://github.com/quay/quay/commit/b433afeedfea3a299b115c66a1b1ec64a57965e4): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3544](https://github.com/quay/quay/issues/3544))
@@ -191,6 +198,15 @@
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.7"></a>
+## [v3.12.7] - 2025-01-08
+### Dep
+- [b60ea738](https://github.com/quay/quay/commit/b60ea7380168ba69fcdfde908361913f556d45cd): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3546](https://github.com/quay/quay/issues/3546))
+### Ui
+- [c2331fb8](https://github.com/quay/quay/commit/c2331fb82815654d67809cc5f29b15929cd5de41): fixing cypress flake (PROJQUAY-8352) ([#3512](https://github.com/quay/quay/issues/3512))
+### [Redhat-3.12] Dep
+- [baad6535](https://github.com/quay/quay/commit/baad653577f21b42c327921033ff97803cfc1996): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3532](https://github.com/quay/quay/issues/3532))
 
 <a name="v3.12.6"></a>
 ## [v3.12.6] - 2024-12-10
@@ -2678,11 +2694,13 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.3...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.4...HEAD
+[v3.13.4]: https://github.com/quay/quay/compare/v3.13.3...v3.13.4
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.6...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.7...v3.13.0
+[v3.12.7]: https://github.com/quay/quay/compare/v3.12.6...v3.12.7
 [v3.12.6]: https://github.com/quay/quay/compare/v3.12.5...v3.12.6
 [v3.12.5]: https://github.com/quay/quay/compare/v3.12.4...v3.12.5
 [v3.12.4]: https://github.com/quay/quay/compare/v3.12.3...v3.12.4
