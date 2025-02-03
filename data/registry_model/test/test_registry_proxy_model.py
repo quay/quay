@@ -1260,6 +1260,8 @@ class TestRegistryProxyModelGetRepoTag:
         """
         Test to verify that layers are missing in proxy cache when they exist locally
         but were not explicitly requested by the client.
+
+        Note: this is not an expected behavior. The fix is expected with (PROJQUAY-8440)
         """
         proxy_mock = proxy_manifest_response(
             UBI8_8_4_DIGEST, UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
