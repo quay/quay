@@ -724,7 +724,6 @@ class ProxyModel(OCIModel):
     def _pull_upstream_manifest(
         self, repository_ref: RepositoryReference, manifest_ref: str
     ) -> ManifestInterface:
-
         repo = repository_ref.name
         try:
             raw_manifest, content_type = self._proxy.get_manifest(
@@ -742,7 +741,7 @@ class ProxyModel(OCIModel):
         valid = self._validate_schema1_manifest(upstream_namespace, upstream_repo_name, manifest)
         if not valid:
             raise ManifestDoesNotExist("invalid schema 1 manifest")
-        self._download_missing_layers(self, repository_ref, manifest)
+        self._download_missing_layers(repository_ref, manifest)
         return manifest
 
     def _validate_schema1_manifest(
@@ -765,12 +764,12 @@ class ProxyModel(OCIModel):
 
         return True
 
-    def _download_missing_layers(self, repository_ref: RepositoryReference):
+    def _download_missing_layers(self, repository_ref: RepositoryReference, manifest):
         """
         Check for all layers in the stored manifest and download any that are missing
         from the proxy cache repository.
         """
-        for layer in self._stored_manifest.filesystem_layers:
+        for layer in manifest.filesystem_layers:
             layer_digest = layer.digest
 
             # Check if the layer already exists in the proxy cache repository
