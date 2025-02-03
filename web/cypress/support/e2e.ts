@@ -18,3 +18,10 @@ import './commands';
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
+
+beforeEach(() => {
+  cy.intercept('GET', 'api/v2/summary.json', {
+    statusCode: 200,
+    body: {page: {}, components: []},
+  }).as('getStatusData');
+});
