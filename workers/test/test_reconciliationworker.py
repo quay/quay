@@ -1,7 +1,6 @@
-import logging
 import random
 import string
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 from app import billing as stripe
 from app import marketplace_subscriptions, marketplace_users
