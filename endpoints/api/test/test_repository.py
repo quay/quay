@@ -71,6 +71,28 @@ def test_list_starred_repos(app):
         assert "devtable/simple" in repos
         assert "public/publicrepo" not in repos
 
+        # testing starred pagination with static rules
+        # since this is a list and not a database result we need to start with 0
+        # list start: index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 0,100,200,300,...
+        # list end:   index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 101, 201, 301, ...
+        # but we need a check to not exceed the list size with the list end value
+        page_token = dict(start_index=1)
+        REPOS_PER_PAGE = 100
+        repos = range(259)
+        retrepos = []
+        for page in range(10):
+            ls = (page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE
+            le = ((page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE) + REPOS_PER_PAGE
+            if len(repos) < le:
+                le = len(repos)
+            retrepos = repos[ls:le]
+            assert len(retrepos) <= REPOS_PER_PAGE
+            assert page <= 3
+            if len(retrepos) < REPOS_PER_PAGE:
+                break
+            page_token["start_index"] += 1
+        assert retrepos[-1] == 258
+
 
 def test_list_repos(initialized_db, app):
     with client_with_identity("devtable", app) as cl:

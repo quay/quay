@@ -34,12 +34,28 @@ def test_reconcile_org_user(initialized_db):
     mock.assert_called_with(org_user.email)
 
 
-def test_exception_handling(initialized_db):
+def test_exception_handling(initialized_db, caplog):
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.InvalidRequestException
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.APIConnectionError
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+
+def test_attribute_error(initialized_db, caplog):
+    test_user = model.user.create_user("stripe_user", "password", "stripe_user@test.com")
+    test_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    test_user.save()
+
+    with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
+
+        class MockCustomer:
+            @property
+            def subscription(self):
+                raise AttributeError
+
+        mock.return_value = MockCustomer()
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
 
