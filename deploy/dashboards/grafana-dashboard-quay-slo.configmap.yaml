@@ -27,6 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
+      "id": 995266,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -426,12 +427,12 @@ data:
                           "value": null
                         },
                         {
-                          "color": "orange",
+                          "color": "yellow",
                           "value": 0
                         },
                         {
                           "color": "green",
-                          "value": 0.1
+                          "value": 0.0005
                         }
                       ]
                     }
@@ -650,7 +651,7 @@ data:
                         },
                         {
                           "color": "green",
-                          "value": 0.005
+                          "value": 0.0045
                         }
                       ]
                     }
@@ -774,11 +775,11 @@ data:
                         },
                         {
                           "color": "#EAB839",
-                          "value": 0
+                          "value": 0.0005
                         },
                         {
                           "color": "green",
-                          "value": 0.001
+                          "value": 0.0009
                         }
                       ]
                     }
@@ -1793,8 +1794,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -1995,8 +1995,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2140,8 +2139,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2259,8 +2257,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2326,8 +2323,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2535,8 +2531,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2613,8 +2608,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2690,8 +2684,7 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2866,7 +2859,7 @@ data:
         "list": [
           {
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "quayp05ue1-prometheus",
               "value": "P85A349E17159E2A2"
             },
@@ -2958,7 +2951,7 @@ data:
           },
           {
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "appsrep11ue1-prometheus",
               "value": "P677746A44F299DAF"
             },
@@ -2976,7 +2969,7 @@ data:
           },
           {
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "AWS quayio-prod",
               "value": "PD8A2C6F0E4302668"
             },
@@ -3026,7 +3019,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 2,
+      "version": 3,
       "weekStart": ""
     }
 kind: ConfigMap
