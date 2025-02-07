@@ -1498,11 +1498,32 @@ CONFIG_SCHEMA = {
             "description": "Endpoint for internal RH marketplace API",
             "x-example": "https://internal-rh-marketplace-endpoint",
         },
-        # Custom terms of service
-        "TERMS_OF_SERVICE_URL": {
-            "type": "string",
-            "description": "Enable customizing of terms of service for on-prem installations",
-            "x-example": "https://quay.io/tos",
+        # Custom footer links
+        "FOOTER_LINKS": {
+            "type": "object",
+            "description": "Enable customization of footer links in Quay's UI for on-prem installations",
+            "properties": {
+                "TERMS_OF_SERVICE_URL": {
+                    "type": "string",
+                    "description": "Custom terms of service for on-prem installations",
+                    "x-example": "https://www.openshift.com/legal/terms",
+                },
+                "PRIVACY_POLICY_URL": {
+                    "type": "string",
+                    "description": "Custom privacy policy for on-prem installations",
+                    "x-example": "https://www.redhat.com/en/about/privacy-policy",
+                },
+                "SECURITY_URL": {
+                    "type": "string",
+                    "description": "Custom security page for on-prem installations",
+                    "x-example": "https://quay.io/security/",
+                },
+                "ABOUT_URL": {
+                    "type": "string",
+                    "description": "Custom about page for on-prem installations",
+                    "x-example": "https://quay.io/about/",
+                },
+            },
         },
         "ROBOTS_DISALLOW": {
             "type": "boolean",
