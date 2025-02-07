@@ -49,7 +49,7 @@ CLIENT_WHITELIST = [
     "QUOTA_BACKFILL",
     "PERMANENTLY_DELETE_TAGS",
     "UI_V2_FEEDBACK_FORM",
-    "TERMS_OF_SERVICE_URL",
+    "FOOTER_LINKS",
     "UI_DELAY_AFTER_WRITE_SECONDS",
     "FEATURE_ASSIGN_OAUTH_TOKEN",
     "FEATURE_IMAGE_EXPIRY_TRIGGER",
@@ -878,8 +878,8 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_RH_MARKETPLACE = False
 
-    # Set up custom TOS for on-premise installations
-    TERMS_OF_SERVICE_URL = ""
+    # Set up custom footer links for on-premise installations
+    FOOTER_LINKS: Optional[Dict[str, str]] = {}
 
     FEATURE_AUTO_PRUNE = False
     # delay after a write operation is made to the DB. This
