@@ -63,6 +63,7 @@ RUN set -ex\
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
+COPY rehash-openssl rehash-openssl
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 
