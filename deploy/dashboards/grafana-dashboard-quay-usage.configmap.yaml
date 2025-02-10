@@ -1,0 +1,714 @@
+apiVersion: v1
+data:
+  quay-usage-1739198283080.json: |-
+    {
+      "__inputs": [
+        {
+          "name": "DS_AWS_QUAYIO-PROD",
+          "label": "AWS quayio-prod",
+          "description": "",
+          "type": "datasource",
+          "pluginId": "cloudwatch",
+          "pluginName": "CloudWatch"
+        },
+        {
+          "name": "DS_QUAYP05UE1-PROMETHEUS",
+          "label": "quayp05ue1-prometheus",
+          "description": "",
+          "type": "datasource",
+          "pluginId": "prometheus",
+          "pluginName": "Prometheus"
+        }
+      ],
+      "__elements": {},
+      "__requires": [
+        {
+          "type": "panel",
+          "id": "barchart",
+          "name": "Bar chart",
+          "version": ""
+        },
+        {
+          "type": "panel",
+          "id": "bargauge",
+          "name": "Bar gauge",
+          "version": ""
+        },
+        {
+          "type": "datasource",
+          "id": "cloudwatch",
+          "name": "CloudWatch",
+          "version": "1.0.0"
+        },
+        {
+          "type": "grafana",
+          "id": "grafana",
+          "name": "Grafana",
+          "version": "10.4.1"
+        },
+        {
+          "type": "panel",
+          "id": "piechart",
+          "name": "Pie chart",
+          "version": ""
+        },
+        {
+          "type": "datasource",
+          "id": "prometheus",
+          "name": "Prometheus",
+          "version": "1.0.0"
+        },
+        {
+          "type": "panel",
+          "id": "table",
+          "name": "Table",
+          "version": ""
+        },
+        {
+          "type": "panel",
+          "id": "timeseries",
+          "name": "Time series",
+          "version": ""
+        }
+      ],
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${DS_AWS_QUAYIO-PROD}"
+          },
+          "description": "Top namespaces associated with requests to v2 endpoint based on nginx logs",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-GrYlRd"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "displayMode": "basic",
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": true
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "color"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${DS_AWS_QUAYIO-PROD}"
+              },
+              "dimensions": {},
+              "expression": "filter @message like /nginx\\[\\d+\\]/\n| parse @message '* * *[*]: * (*) * * [*] \"* * *\" * *' as datetime, podname, pname, pid, ip1, ip2, user1, user2, datetime2, http_verb, http_uri, http_version, statuscode, rest\n| parse http_uri /(?<namespace>(?<=^\\/v2\\/)([^auth][a-zA-z0-9-_]+)(?=\\/?))/\n| filter not isempty(namespace)\n| stats count(*) as req_count by namespace\n| sort by req_count desc\n| limit 10",
+              "id": "",
+              "label": "",
+              "logGroups": [
+                {
+                  "arn": "$log_group",
+                  "name": "$log_group"
+                }
+              ],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "",
+              "metricQueryType": 0,
+              "namespace": "",
+              "period": "",
+              "queryMode": "Logs",
+              "refId": "A",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Average",
+              "statsGroups": [
+                "namespace"
+              ]
+            }
+          ],
+          "title": "Top namespaces",
+          "type": "bargauge"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${DS_AWS_QUAYIO-PROD}"
+          },
+          "description": "Top namespaces associated with requests to v2 endpoint based on nginx logs",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "mappings": []
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "displayLabels": [
+              "percent"
+            ],
+            "legend": {
+              "calcs": [],
+              "displayMode": "hidden",
+              "placement": "right",
+              "showLegend": false,
+              "values": []
+            },
+            "pieType": "pie",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${DS_AWS_QUAYIO-PROD}"
+              },
+              "dimensions": {},
+              "expression": "filter @message like /nginx\\[\\d+\\]/\n| parse @message '* * *[*]: * (*) * * [*] \"* * *\" * *' as datetime, podname, pname, pid, ip1, ip2, user1, user2, datetime2, http_verb, http_uri, http_version, statuscode, rest\n| parse http_uri /(?<namespace>(?<=^\\/v2\\/)([^auth][a-zA-z0-9-_]+)(?=\\/?))/\n| filter not isempty(namespace)\n| stats count(*) as req_count by namespace\n| sort by req_count desc\n| limit 10",
+              "id": "",
+              "label": "",
+              "logGroups": [
+                {
+                  "arn": "$log_group",
+                  "name": "$log_group"
+                }
+              ],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "",
+              "metricQueryType": 0,
+              "namespace": "",
+              "period": "",
+              "queryMode": "Logs",
+              "refId": "A",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Average",
+              "statsGroups": [
+                "namespace"
+              ]
+            }
+          ],
+          "title": "Top namespaces",
+          "type": "piechart"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${DS_AWS_QUAYIO-PROD}"
+          },
+          "description": "Top client IP addresses associated with requests based on nginx logs",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 2,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "ip_count"
+              }
+            ]
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${DS_AWS_QUAYIO-PROD}"
+              },
+              "dimensions": {},
+              "expression": "filter @message like /nginx\\[\\d+\\]/\n| parse @message '* * *[*]: * (*) * * [*] \"* * *\" * *' as datetime, podname, pname, pid, ip1, ip2, user1, user2, datetime2, http_verb, http_uri, http_version, statuscode, rest\n| filter http_verb not in ['<exclude_ineffective_http_method>', 'HEAD']\n| stats count(*) as ip_count group by ip1\n| sort by ip_count desc\n| limit 20",
+              "id": "",
+              "label": "",
+              "logGroups": [
+                {
+                  "arn": "$log_group",
+                  "name": "$log_group"
+                }
+              ],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "",
+              "metricQueryType": 0,
+              "namespace": "",
+              "period": "",
+              "queryMode": "Logs",
+              "refId": "A",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Average",
+              "statsGroups": [
+                "ip1"
+              ]
+            }
+          ],
+          "title": "Top client IPs",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${DS_AWS_QUAYIO-PROD}"
+          },
+          "description": "Top requests by quay username based on nginx logs",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-GrYlRd"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 1,
+          "options": {
+            "displayMode": "basic",
+            "maxVizHeight": 300,
+            "minVizHeight": 16,
+            "minVizWidth": 8,
+            "namePlacement": "auto",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": true
+            },
+            "showUnfilled": true,
+            "sizing": "auto",
+            "valueMode": "color"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${DS_AWS_QUAYIO-PROD}"
+              },
+              "dimensions": {},
+              "expression": "filter @message like /nginx\\[\\d+\\]/\n| parse @message '* * *[*]: * (*) * * [*] \"* * *\" * *' as datetime, podname, pname, pid, ip1, ip2, user1, username, datetime2, http_verb, http_uri, http_version, statuscode, rest\n| filter http_verb not in ['HEAD']\n| filter not isempty(username) and username != \"-\"\n| stats count(*) as req_count by username\n| sort by req_count desc\n| limit 10",
+              "id": "",
+              "label": "",
+              "logGroups": [
+                {
+                  "arn": "$log_group",
+                  "name": "$log_group"
+                }
+              ],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "",
+              "metricQueryType": 0,
+              "namespace": "",
+              "period": "",
+              "queryMode": "Logs",
+              "refId": "A",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Average",
+              "statsGroups": [
+                "username"
+              ]
+            }
+          ],
+          "title": "Top quay.io accounts",
+          "type": "bargauge"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_QUAYP05UE1-PROMETHEUS}"
+          },
+          "description": "Counter for number of images pulled",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 17
+          },
+          "id": 5,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_QUAYP05UE1-PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(quay_registry_image_pulls_total{protocol=\"v2\"}[$__rate_interval]))",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Image Pulls Total",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${DS_AWS_QUAYIO-PROD}"
+          },
+          "description": "Top repos requested based on nginx logs",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 80,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 17
+          },
+          "id": 6,
+          "options": {
+            "barRadius": 0,
+            "barWidth": 0.97,
+            "fullHighlight": false,
+            "groupWidth": 0.7,
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "right",
+              "showLegend": true
+            },
+            "orientation": "horizontal",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            },
+            "xTickLabelRotation": 0,
+            "xTickLabelSpacing": 0
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${DS_AWS_QUAYIO-PROD}"
+              },
+              "dimensions": {},
+              "expression": "filter @message like /nginx\\[\\d+\\]/\n| parse @message '* * *[*]: * (*) * * [*] \"* * *\" * *' as datetime, podname, pname, pid, ip1, ip2, user1, user2, datetime2, http_verb, http_uri, http_version, statuscode, rest\n| filter http_verb not in ['HEAD']\n| parse http_uri \"/v2/*/manifests/\" as repo\n| filter not isempty(repo)\n| stats count(*) as req_count by repo\n| sort by req_count desc\n| limit 10",
+              "id": "",
+              "label": "",
+              "logGroups": [
+                {
+                  "arn": "$log_group",
+                  "name": "$log_group"
+                }
+              ],
+              "matchExact": true,
+              "metricEditorMode": 0,
+              "metricName": "",
+              "metricQueryType": 0,
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Logs",
+              "refId": "A",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Average",
+              "statsGroups": [
+                "repo"
+              ]
+            }
+          ],
+          "title": "Top Repos",
+          "type": "barchart"
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "current": {
+              "selected": false,
+              "text": "osd-us-east-1/quay/app",
+              "value": "osd-us-east-1/quay/app"
+            },
+            "description": "Cloudwatch log group",
+            "hide": 0,
+            "includeAll": false,
+            "label": "Log Group",
+            "multi": false,
+            "name": "log_group",
+            "options": [
+              {
+                "selected": true,
+                "text": "osd-us-east-1/quay/app",
+                "value": "osd-us-east-1/quay/app"
+              },
+              {
+                "selected": false,
+                "text": "osd-us-east-2/quay/app",
+                "value": "osd-us-east-2/quay/app"
+              }
+            ],
+            "query": "osd-us-east-1/quay/app,osd-us-east-2/quay/app",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "quayio-usage",
+      "uid": "cebz4c9byrxfkb",
+      "version": 7,
+      "weekStart": ""
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: grafana-dashboard-quay-usage.configmap.yaml
+  labels:
+    grafana_dashboard: "true"
+  annotations:
+    grafana-folder: /grafana-dashboard-definitions/Quay
