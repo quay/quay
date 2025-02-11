@@ -9,12 +9,22 @@ from util.log import filter_logs, logfile_path
 
 def test_filter_logs():
     values = {
-        "user": {"password": "toto"},
+        "user": {"password": "toto", "repeatPassword": "toto"},
+        "password": "toto",
+        "upstream_registry_username": "user",
+        "upstream_registry_password": "testpass",
         "blob": "1234567890asdfewkqresfdsfewfdsfd",
         "unfiltered": "foo",
     }
     filter_logs(values, FILTERED_VALUES)
-    assert values == {"user": {"password": "[FILTERED]"}, "blob": "12345678", "unfiltered": "foo"}
+    assert values == {
+        "user": {"password": "[FILTERED]", "repeatPassword": "[FILTERED]"},
+        "password": "[FILTERED]",
+        "upstream_registry_username": "[FILTERED]",
+        "upstream_registry_password": "[FILTERED]",
+        "blob": "12345678",
+        "unfiltered": "foo",
+    }
 
 
 @pytest.mark.parametrize(
