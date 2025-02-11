@@ -932,7 +932,7 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
                 "TargetGroup": "quay-push"
               },
               "metricName": "RequestCount",
