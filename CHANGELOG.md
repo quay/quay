@@ -2,6 +2,11 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.11/html/red_hat_quay_release_notes/index)
 
+<a name="v3.11.9"></a>
+## [v3.11.9] - 2025-02-07
+### Deps
+- [a4a607a27](https://github.com/quay/quay/commit/a4a607a276fa5accc71b9f06b626d97bb6b0f4fc): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3638](https://github.com/quay/quay/issues/3638))
+
 <a name="v3.11.8"></a>
 ## [v3.11.8] - 2025-01-07
 ### Dep
@@ -2228,6 +2233,7 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
+[v3.11.9]: https://github.com/quay/quay/compare/v3.11.8...v3.11.9
 [v3.11.8]: https://github.com/quay/quay/compare/v3.11.7...v3.11.8
 [v3.11.7]: https://github.com/quay/quay/compare/v3.11.6...v3.11.7
 [v3.11.6]: https://github.com/quay/quay/compare/v3.11.5...v3.11.6
