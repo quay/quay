@@ -95,7 +95,10 @@ def test_direct_download(
         assert "cloudfrontdomain" in engine.get_direct_download_url(_TEST_PATH, test_aws_ip)
 
         # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
-        assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH, "4.0.0.2")
+        # with initializing the boto library through super on a region we shall never have a return of s3.amazonaws.com
+        assert f"s3.{_TEST_REGION}.amazonaws.com" in engine.get_direct_download_url(
+            _TEST_PATH, "4.0.0.2"
+        )
 
         if ipranges_populated:
             # Request a direct download URL for a request from a non-AWS IP, and ensure we are returned a CloudFront URL.
@@ -103,7 +106,10 @@ def test_direct_download(
         else:
             # Request a direct download URL for a request from a non-AWS IP, but since IP Ranges isn't populated, we still
             # get back an S3 URL.
-            assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH, "1.2.3.4")
+            # with initializing the boto library through super on a region we shall never have a return of s3.amazonaws.com
+            assert f"s3.{_TEST_REGION}.amazonaws.com" in engine.get_direct_download_url(
+                _TEST_PATH, "1.2.3.4"
+            )
 
         engine = CloudFrontedS3Storage(
             context,
@@ -131,7 +137,8 @@ def test_direct_download(
         )
 
         # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
-        assert "s3.amazonaws.com" in engine.get_direct_download_url(
+        # with initializing the boto library through super on a region we shall never have a return of s3.amazonaws.com
+        assert f"s3.{_TEST_REGION}.amazonaws.com" in engine.get_direct_download_url(
             _TEST_PATH, "4.0.0.2", namespace="testnamespace"
         )
 
@@ -143,7 +150,8 @@ def test_direct_download(
         else:
             # Request a direct download URL for a request from a non-AWS IP, but since IP Ranges isn't populated, we still
             # get back an S3 URL.
-            assert "s3.amazonaws.com" in engine.get_direct_download_url(
+            # with initializing the boto library through super on a region we shall never have a return of s3.amazonaws.com
+            assert f"s3.{_TEST_REGION}.amazonaws.com" in engine.get_direct_download_url(
                 _TEST_PATH, "1.2.3.4", namespace="testnamespace"
             )
 
@@ -170,7 +178,8 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
     )
     engine.put_content(_TEST_PATH, _TEST_CONTENT)
     assert engine.exists(_TEST_PATH)
-    assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH)
+    # with initializing the boto library through super on a region we shall never have a return of s3.amazonaws.com
+    assert f"s3.{_TEST_REGION}.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH)
 
 
 @mock_s3
