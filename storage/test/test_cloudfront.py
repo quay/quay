@@ -272,7 +272,7 @@ def test_direct_download_regions(
     ipresolver = IPResolver(app)
     context = StorageContext("nyc", None, config_provider, ipresolver)
     # Create a test bucket and put some test content.
-    boto3.client("s3").create_bucket(Bucket=bucket)
+    boto3.client("s3").create_bucket(Bucket="bucket")
     for region_name in boto3.Session("s3").get_available_regions("s3"):
         engine = CloudFlareS3Storage(
             context,
