@@ -269,7 +269,7 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
 def test_direct_download_regions(
     app,
 ):
-    ipresolver.amazon_ranges = test_empty_ip_range_cache["all_amazon"]
+    ipresolver = IPResolver(app)
     context = StorageContext("nyc", None, config_provider, ipresolver)
     for region_name in boto3.Session("s3").get_available_regions("s3"):
         engine = CloudFlareS3Storage(
