@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 from contextlib import contextmanager
 
 import boto3
@@ -253,3 +254,27 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
         assert "cloudflare-domain" in engine.get_direct_download_url(
             _TEST_PATH, request_ip="4.0.0.2", cdn_specific=True
         )
+
+
+@mock_s3
+def test_direct_download_regions(
+    app,
+):
+    ipresolver.amazon_ranges = test_empty_ip_range_cache["all_amazon"]
+    context = StorageContext("nyc", None, config_provider, ipresolver)
+    for region_name in boto3.Session("s3").get_available_regions("s3"):
+        engine = CloudFlareS3Storage(
+            context,
+            "cloudflare-domain",
+            "test/data/test.pem",
+            "some/path",
+            "bucket",
+            region_name,
+            None,
+        )
+        presign = engine.get_direct_download_url(
+            "some/path", request_ip="4.0.0.2", cdn_specific=False
+        )
+        parsed = urllib.parse.urlparse(presign)
+        region = urllib.parse.unquote(parsed.query.split("&")[1]).split("/")[2]
+        assert region == region_name
