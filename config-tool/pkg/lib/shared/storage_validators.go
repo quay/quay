@@ -115,7 +115,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		// If no keys or web identity token file are provided, we attempt to use IAM
+		// If no keys are provided, we attempt to use IAM
 		if args.S3AccessKey == "" || args.S3SecretKey == "" {
 
 			sess, err := session.NewSession()
