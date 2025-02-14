@@ -1245,28 +1245,39 @@ class STSS3Storage(S3Storage):
         maximum_chunk_size_gb=None,
         signature_version="s3v4",
     ):
-        sts_client = boto3.client(
-            "sts", aws_access_key_id=sts_user_access_key, aws_secret_access_key=sts_user_secret_key
-        )
-        assumed_role = sts_client.assume_role(RoleArn=sts_role_arn, RoleSessionName="quay")
-        credentials = assumed_role["Credentials"]
-        deferred_refreshable_credentials = DeferredRefreshableCredentials(
-            refresh_using=create_assume_role_refresher(
-                sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": "quay"}
-            ),
-            method="sts-assume-role",
-        )
+        if sts_user_access_key == "" or sts_user_secret_key == "":
+            sts_client = boto3.client("sts")
+        else:
+            sts_client = boto3.client(
+                "sts",
+                aws_access_key_id=sts_user_access_key,
+                aws_secret_access_key=sts_user_secret_key,
+            )
 
         # !! NOTE !! connect_kwargs here initializes the S3Storage Class not the s3 connection (mis leading re-use of the name)
         connect_kwargs = {
-            "s3_access_key": credentials["AccessKeyId"],
-            "s3_secret_key": credentials["SecretAccessKey"],
-            "aws_session_token": credentials["SessionToken"],
             "s3_region": s3_region,
             "endpoint_url": endpoint_url,
             "maximum_chunk_size_gb": maximum_chunk_size_gb,
-            "deferred_refreshable_credentials": deferred_refreshable_credentials,
             "signature_version": signature_version,
         }
+        if sts_role_arn is not None:
+            assumed_role = sts_client.assume_role(RoleArn=sts_role_arn, RoleSessionName="quay")
+            credentials = assumed_role["Credentials"]
+            deferred_refreshable_credentials = DeferredRefreshableCredentials(
+                refresh_using=create_assume_role_refresher(
+                    sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": "quay"}
+                ),
+                method="sts-assume-role",
+            )
+
+            connect_kwargs.update(
+                {
+                    "s3_access_key": credentials["AccessKeyId"],
+                    "s3_secret_key": credentials["SecretAccessKey"],
+                    "aws_session_token": credentials["SessionToken"],
+                    "deferred_refreshable_credentials": deferred_refreshable_credentials,
+                }
+            )
 
         super().__init__(context, storage_path, s3_bucket, **connect_kwargs)
