@@ -170,11 +170,13 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		durationSeconds := int64(3600)
 
 		webIdentityTokenFile := args.STSWebIdentityTokenFile
-		if args.STSUserAccessKey == ""  && args.STSUserSecretKey == "" && args.STSWebIdentityTokenFile == "" {
+		// Only check the Web Identity Token File variable if no other credentials are present in the config
+		if args.STSUserAccessKey == "" && args.STSUserSecretKey == "" && args.STSWebIdentityTokenFile == "" {
 			webIdentityTokenFile = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 		}
 
 		var credentials *sts.Credentials
+		// Prefer using web tokens to authenticate and fallback to access and secret keys
 		if webIdentityTokenFile != "" {
 			sess := session.Must(session.NewSession())
 			svc := sts.New(sess)
