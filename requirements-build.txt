@@ -20,7 +20,7 @@ flit-core==3.9.0
     # via -r requirements-build.in
 greenlet==3.0.0
     # via -r requirements-build.in
-hatch-vcs==0.3.0
+hatch-vcs==0.4.0
     # via -r requirements-build.in
 hatchling==1.18.0
     # via
