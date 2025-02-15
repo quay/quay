@@ -63,7 +63,7 @@ os-service-types==1.7.0
 peewee==3.13.1
 pillow==10.3.0
 ply==3.11
-prometheus-client==0.7.1
+prometheus-client==0.21.1
 protobuf==5.28.2
 psutil==5.9.0
 psycopg2==2.9.9
