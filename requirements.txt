@@ -102,7 +102,7 @@ s3transfer==0.7.0
 semantic-version==2.10.0
 six==1.14.0
 soupsieve==1.9.5
-splunk-sdk==1.7.4
+splunk-sdk==2.1.0
 SQLAlchemy==1.4.49
 stevedore==5.1.0
 stringscore==0.1.0
