@@ -123,7 +123,7 @@ xhtml2pdf==0.2.6
 
 # Leverage wheels for faster builds
 setuptools==71.1.0
-wheel==0.38.4
+wheel==0.45.1
 
 # Indirect dependencies
 PyNaCl==1.5.0
