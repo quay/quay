@@ -65,7 +65,7 @@ tomli==2.0.1
     #   hatchling
     #   setuptools-rust
     #   setuptools-scm
-trove-classifiers==2023.9.19
+trove-classifiers==2023.11.29
     # via
     #   -r requirements-build.in
     #   hatchling
