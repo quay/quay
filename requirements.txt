@@ -33,7 +33,7 @@ Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.10
 geoip2==3.0.0
-gevent==23.9.1
+gevent==24.11.1
 greenlet==2.0.2
 grpcio==1.67.0
 gunicorn==22.0.0
