@@ -45,7 +45,7 @@ pycparser==2.21
     # via
     #   -r requirements-build.in
     #   cffi
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via -r requirements-build.in
 semantic-version==2.10.0
     # via
