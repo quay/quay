@@ -22,7 +22,7 @@ greenlet==3.0.0
     # via -r requirements-build.in
 hatch-vcs==0.3.0
     # via -r requirements-build.in
-hatchling==1.18.0
+hatchling==1.27.0
     # via
     #   -r requirements-build.in
     #   hatch-vcs
