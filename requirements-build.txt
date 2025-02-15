@@ -26,7 +26,7 @@ hatchling==1.18.0
     # via
     #   -r requirements-build.in
     #   hatch-vcs
-packaging==23.2
+packaging==24.2
     # via
     #   -r requirements-build.in
     #   hatchling
