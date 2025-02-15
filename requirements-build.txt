@@ -59,7 +59,7 @@ setuptools-scm[toml]==8.0.4
     #   hatch-vcs
 six==1.16.0
     # via -r requirements-build.in
-tomli==2.0.1
+tomli==2.2.1
     # via
     #   -r requirements-build.in
     #   hatchling
