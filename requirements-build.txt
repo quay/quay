@@ -57,7 +57,7 @@ setuptools-scm[toml]==8.0.4
     # via
     #   -r requirements-build.in
     #   hatch-vcs
-six==1.16.0
+six==1.17.0
     # via -r requirements-build.in
 tomli==2.0.1
     # via
