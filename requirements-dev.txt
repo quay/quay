@@ -24,7 +24,7 @@ pytest-timeout
 pytest-xdist
 python-coveralls
 pytest-sugar
-sqlalchemy-stubs==0.3
+sqlalchemy-stubs==0.4
 termcolor==2.3.0
 tox
 tox-docker
