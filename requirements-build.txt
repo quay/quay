@@ -37,7 +37,7 @@ pathspec==0.11.2
     #   hatchling
 pbr==5.11.1
     # via -r requirements-build.in
-pluggy==1.3.0
+pluggy==1.5.0
     # via
     #   -r requirements-build.in
     #   hatchling
