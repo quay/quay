@@ -88,9 +88,6 @@ class SkopeoMirror(object):
         with NamedTemporaryFile() as authfile:
             authfile.write(json.dumps(content).encode("utf8"))
             authfile.flush()
-            print("authfile.json")
-            print(open(authfile.name).read())
-            print("")
             args.extend(["--authfile", authfile.name])
             args = args + [quote(src_image), quote(dest_image)]
             return self.run_skopeo(args, proxy)
@@ -129,9 +126,6 @@ class SkopeoMirror(object):
         with NamedTemporaryFile() as authfile:
             authfile.write(json.dumps(content).encode("utf8"))
             authfile.flush()
-            print("authfile.json")
-            print(open(authfile.name).read())
-            print("")
             result = self.run_skopeo(args, proxy)
             if result.success:
                 all_tags = json.loads(result.stdout)["Tags"]

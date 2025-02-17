@@ -2,7 +2,7 @@ import base64
 import os
 
 import pytest
-from repomirror.skopeomirror import SkopeoMirror, create_authfile_content
+from util.repomirror.skopeomirror import SkopeoMirror, create_authfile_content
 
 
 def test_create_authfile_content():
