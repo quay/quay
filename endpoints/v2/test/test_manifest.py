@@ -1,3 +1,4 @@
+import hashlib
 import json
 import time
 from unittest.mock import patch
@@ -83,7 +84,7 @@ def test_e2e_query_count_manifest_norewrite(client, app):
         assert counter.count <= 27
 
 
-MANIFEST_BYTES = json.dumps(
+INVALID_DOCKER_V2_MANIFEST = json.dumps(
     {
         "schemaVersion": 2,
         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
@@ -123,7 +124,7 @@ def test_push_malformed_manifest_docker_v2s2(client, app):
 
     params = {
         "repository": "devtable/simple",
-        "manifest_ref": "sha256:d2fc93351b0929db9127713600adc3867fea4b665e5e9724f8cc9279c4a1ccde",
+        "manifest_ref": "sha256:" + hashlib.sha256(INVALID_DOCKER_V2_MANIFEST).hexdigest(),
     }
 
     user = model.user.get_user("devtable")
@@ -153,11 +154,11 @@ def test_push_malformed_manifest_docker_v2s2(client, app):
         params,
         expected_code=400,
         headers=headers,
-        raw_body=MANIFEST_BYTES,
+        raw_body=INVALID_DOCKER_V2_MANIFEST,
     )
 
 
-SAMPLE_MANIFEST = json.dumps(
+INVALID_OCI_MANIFEST = json.dumps(
     {
         "schemaVersion": 2,
         "config": {
@@ -192,7 +193,7 @@ def test_push_malformed_manifest_oci_manifest(client, app):
 
     params = {
         "repository": "devtable/simple",
-        "manifest_ref": "sha256:d2fc93351b0929db9127713600adc3867fea4b665e5e9724f8cc9279c4a1ccde",
+        "manifest_ref": "sha256:" + hashlib.sha256(INVALID_OCI_MANIFEST).hexdigest(),
     }
 
     user = model.user.get_user("devtable")
@@ -222,5 +223,5 @@ def test_push_malformed_manifest_oci_manifest(client, app):
         params,
         expected_code=400,
         headers=headers,
-        raw_body=MANIFEST_BYTES,
+        raw_body=INVALID_OCI_MANIFEST,
     )
