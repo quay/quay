@@ -100,7 +100,7 @@ MANIFEST_WITH_INVALID_LAYER_SIZE = json.dumps(
 
 
 def test_invalid_layer_size_manifest():
-    with pytest.raises(MalformedSchema2Manifest):
+    with pytest.raises(MalformedSchema2Manifest, match="invalid layer size"):
         DockerSchema2Manifest(Bytes.for_string_or_unicode(MANIFEST_WITH_INVALID_LAYER_SIZE))
 
 

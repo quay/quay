@@ -300,5 +300,5 @@ INVALID_LAYER_SIZE_MANIFEST = json.dumps(
 
 
 def test_invalid_layer_size_manifest():
-    with pytest.raises(MalformedOCIManifest):
+    with pytest.raises(MalformedOCIManifest, match="invalid layer size"):
         OCIManifest(Bytes.for_string_or_unicode(INVALID_LAYER_SIZE_MANIFEST))
