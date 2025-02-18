@@ -165,7 +165,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
         for layer in self._parsed["layers"]:
             if not layer["size"] > 0:
-                raise MalformedSchema2Manifest("negative layer size")
+                raise MalformedSchema2Manifest("invalid layer size")
 
         for layer in self.filesystem_layers:
             if layer.is_remote and not layer.urls:

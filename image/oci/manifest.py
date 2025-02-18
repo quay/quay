@@ -169,7 +169,7 @@ class OCIManifest(ManifestInterface):
 
         for layer in self._parsed["layers"]:
             if not layer["size"] > 0:
-                raise MalformedOCIManifest("negative layer size")
+                raise MalformedOCIManifest("invalid layer size")
 
         for layer in self.filesystem_layers:
             if layer.is_remote and not layer.urls:
