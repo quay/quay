@@ -992,11 +992,34 @@ data:
             },
             {
               "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_ELB_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "elb_errors",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
                 "name": "Expression",
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - ($errors/$total)",
+              "expression": "1 - (($errors+$elb_errors)/$total)",
               "hide": false,
               "refId": "Push SLI",
               "type": "math",
@@ -1008,7 +1031,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.001 - ($errors/$total)",
+              "expression": "0.001 - (($errors+$elb_errors)/$total)",
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
@@ -1166,11 +1189,34 @@ data:
             },
             {
               "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_ELB_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "elb_errors",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
                 "name": "Expression",
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - ($errors/$total)",
+              "expression": "1 - (($errors+$elb_errors)/$total)",
               "hide": false,
               "refId": "Pull SLI",
               "type": "math",
@@ -1182,7 +1228,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.001 - ($errors/$total)",
+              "expression": "0.001 - (($errors+$elb_errors)/$total)",
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
