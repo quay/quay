@@ -854,6 +854,182 @@ data:
               "color": {
                 "mode": "palette-classic"
               },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.995
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 1
+          },
+          "id": 85,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
+              },
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "errors",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
+              },
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "total",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - ($errors/$total)",
+              "hide": false,
+              "refId": "availability",
+              "type": "math"
+            }
+          ],
+          "title": "Push Operations SLI (ALB)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.995
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 4
+          },
+          "id": 86,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "errors",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "total",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - ($errors/$total)",
+              "hide": false,
+              "refId": "Availability",
+              "type": "math"
+            }
+          ],
+          "title": "Pull Operations SLI (ALB)",
+          "type": "timeseries"
+        }
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
               "custom": {
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
