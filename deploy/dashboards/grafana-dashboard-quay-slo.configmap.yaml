@@ -958,6 +958,642 @@ data:
             "type": "cloudwatch",
             "uid": "${cloudwatch_datasource}"
           },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [
+                {
+                  "options": {
+                    "NaN": {
+                      "index": 0,
+                      "text": "0"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 0.998
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.999
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Error budget left"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "orange",
+                          "value": 0
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.0045
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 12,
+            "y": 9
+          },
+          "id": 33,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "mean"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": true,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "errors",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "total",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_ELB_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "errors_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "total_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "$total/$total_elb",
+              "hide": true,
+              "refId": "fraction_of_elb_traffic",
+              "type": "math",
+              "legendFormat": "Fraction of ELB Traffic per Target"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "hide": false,
+              "refId": "Push SLI",
+              "type": "math",
+              "legendFormat": "Push SLI"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "0.001 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "hide": false,
+              "refId": "Error budget left",
+              "type": "math",
+              "legendFormat": "Error budget left",
+            },
+          ],
+          "title": "Push Operations Derived from ALB (SLO 99.5%)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${catchpoint_datasource}"
+          },
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [
+                {
+                  "options": {
+                    "NaN": {
+                      "index": 0,
+                      "text": "0"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 0.98
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.99
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Error budget left"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "#EAB839",
+                          "value": 0.0005
+                        },
+                        {
+                          "color": "green",
+                          "value": 0.0009
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 9
+          },
+          "id": 34,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "mean"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": true,
+            "text": {},
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "errors",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "total",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_ELB_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "errors_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "total_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "$total/$total_elb",
+              "hide": true,
+              "refId": "fraction_of_elb_traffic",
+              "type": "math",
+              "legendFormat": "Fraction of ELB Traffic per Target"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
+              "hide": false,
+              "refId": "Pull SLI",
+              "type": "math",
+              "legendFormat": "Pull SLI"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "0.001 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
+              "hide": false,
+              "refId": "Error budget left",
+              "type": "math",
+              "legendFormat": "Error budget left",
+            },
+          ],
+          "title": "Pull Operations Derived from ALB (SLO 99.9%)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.995
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 1
+          },
+          "id": 85,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
+              },
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "errors",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
+              },
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "total",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - ($errors/$total)",
+              "hide": false,
+              "refId": "availability",
+              "type": "math"
+            }
+          ],
+          "title": "Push Operations SLI (ALB)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.995
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            }
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 4
+          },
+          "id": 86,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "metricName": "HTTPCode_Target_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "errors",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
+              },
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "refId": "total",
+              "statistic": "Sum"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - ($errors/$total)",
+              "hide": false,
+              "refId": "Availability",
+              "type": "math"
+            }
+          ],
+          "title": "Pull Operations SLI (ALB)",
+          "type": "timeseries"
+        }
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
