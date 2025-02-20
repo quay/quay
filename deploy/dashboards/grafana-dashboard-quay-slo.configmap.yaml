@@ -1156,7 +1156,7 @@ data:
               "refId": "errors",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1177,7 +1177,7 @@ data:
               "refId": "total",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1197,7 +1197,7 @@ data:
               "refId": "errors_elb",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1217,7 +1217,7 @@ data:
               "refId": "total_elb",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1228,7 +1228,7 @@ data:
               "expression": "$total/$total_elb",
               "hide": true,
               "refId": "fraction_of_elb_traffic",
-              "type": "math",
+              "type": "math"
             },
             {
               "datasource": {
@@ -1239,7 +1239,7 @@ data:
               "expression": "1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Push SLI",
-              "type": "math",
+              "type": "math"
             },
             {
               "datasource": {
@@ -1250,7 +1250,7 @@ data:
               "expression": "0.001 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Error budget left",
-              "type": "math",
+              "type": "math"
             }
           ],
           "title": "Push Operations Derived from ALB (SLO 99.5%)",
