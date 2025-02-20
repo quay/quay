@@ -1,6 +1,7 @@
 apiVersion: v1
 data:
   quay-slo-dashboard.json: |-
+
     {
       "annotations": {
         "list": [
@@ -931,7 +932,7 @@ data:
               "queryMode": "Metrics",
               "region": "default",
               "sqlExpression": "",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -952,7 +953,7 @@ data:
               "queryMode": "Metrics",
               "region": "default",
               "sqlExpression": "",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -961,7 +962,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -974,7 +975,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -983,7 +984,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -996,7 +997,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1032,7 +1033,7 @@ data:
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
-              "legendFormat": "Error budget left",
+              "legendFormat": "Error budget left"
             }
           ]
         },
@@ -1157,7 +1158,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1180,7 +1181,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1189,7 +1190,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -1202,7 +1203,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1211,7 +1212,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -1224,7 +1225,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1260,8 +1261,8 @@ data:
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
-              "legendFormat": "Error budget left",
-            },
+              "legendFormat": "Error budget left"
+            }
           ],
           "title": "Push Operations Derived from ALB (SLO 99.5%)",
           "type": "stat"
@@ -1387,7 +1388,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1410,7 +1411,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1419,7 +1420,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -1432,7 +1433,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1441,7 +1442,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -1454,7 +1455,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -1490,8 +1491,8 @@ data:
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
-              "legendFormat": "Error budget left",
-            },
+              "legendFormat": "Error budget left"
+            }
           ],
           "title": "Pull Operations Derived from ALB (SLO 99.9%)",
           "type": "stat"
@@ -1671,7 +1672,7 @@ data:
           ],
           "title": "Pull Operations ALB (SLO 99.9%)",
           "type": "timeseries"
-        }
+        },
         {
           "datasource": {
             "type": "cloudwatch",
@@ -3766,7 +3767,7 @@ data:
               "queryMode": "Metrics",
               "region": "default",
               "sqlExpression": "",
-              "range": true,
+              "range": true
 
             },
             {
@@ -3788,7 +3789,7 @@ data:
               "queryMode": "Metrics",
               "region": "default",
               "sqlExpression": "",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -3797,7 +3798,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -3810,7 +3811,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -3819,7 +3820,7 @@ data:
               },
               "editorMode": "code",
               "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
               "expression": "",
               "hide": true,
@@ -3832,7 +3833,7 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true,
+              "range": true
             },
             {
               "datasource": {
@@ -3868,7 +3869,7 @@ data:
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
-              "legendFormat": "Error budget left",
+              "legendFormat": "Error budget left"
             }
           ]
         }
