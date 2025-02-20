@@ -1142,7 +1142,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
@@ -1165,7 +1164,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
@@ -1188,7 +1186,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -1210,7 +1207,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -1372,7 +1368,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
@@ -1395,7 +1390,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
@@ -1418,7 +1412,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -1440,7 +1433,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
