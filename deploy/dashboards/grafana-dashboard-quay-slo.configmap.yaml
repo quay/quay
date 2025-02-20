@@ -1017,7 +1017,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "expression": "1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Push SLI",
               "type": "math",
@@ -1029,7 +1029,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.001 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "expression": "0.005 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
@@ -1117,7 +1117,7 @@ data:
             "x": 12,
             "y": 9
           },
-          "id": 33,
+          "id": 133,
           "options": {
             "colorMode": "value",
             "graphMode": "none",
@@ -1142,7 +1142,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
@@ -1157,15 +1156,13 @@ data:
               "refId": "errors",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
@@ -1180,15 +1177,13 @@ data:
               "refId": "total",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -1202,15 +1197,13 @@ data:
               "refId": "errors_elb",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -1224,8 +1217,7 @@ data:
               "refId": "total_elb",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1236,8 +1228,7 @@ data:
               "expression": "$total/$total_elb",
               "hide": true,
               "refId": "fraction_of_elb_traffic",
-              "type": "math",
-              "legendFormat": "Fraction of ELB Traffic per Target"
+              "type": "math"
             },
             {
               "datasource": {
@@ -1245,11 +1236,10 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "expression": "1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Push SLI",
-              "type": "math",
-              "legendFormat": "Push SLI"
+              "type": "math"
             },
             {
               "datasource": {
@@ -1257,11 +1247,10 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.001 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "expression": "0.001 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Error budget left",
-              "type": "math",
-              "legendFormat": "Error budget left"
+              "type": "math"
             }
           ],
           "title": "Push Operations Derived from ALB (SLO 99.5%)",
@@ -1372,7 +1361,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
@@ -1395,7 +1383,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
                 "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
@@ -1418,7 +1405,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -1440,7 +1426,6 @@ data:
                 "type": "cloudwatch",
                 "uid": "${cloudwatch_datasource}"
               },
-              "editorMode": "code",
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6"
               },
@@ -3853,7 +3838,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "expression": "1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Pull SLI",
               "type": "math",
@@ -3865,7 +3850,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.001 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "expression": "0.001 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
