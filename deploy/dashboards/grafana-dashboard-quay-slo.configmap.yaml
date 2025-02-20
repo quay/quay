@@ -1049,6 +1049,7 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 2,
+              "displayName": "Push SLI",
               "mappings": [
                 {
                   "options": {
@@ -1106,6 +1107,10 @@ data:
                         }
                       ]
                     }
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Error budget left"
                   }
                 ]
               }
@@ -1268,6 +1273,7 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 2,
+              "displayName": "Pull SLI",
               "mappings": [
                 {
                   "options": {
@@ -1325,6 +1331,10 @@ data:
                         }
                       ]
                     }
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Error budget left"
                   }
                 ]
               }
@@ -1375,8 +1385,7 @@ data:
               "refId": "errors",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1397,8 +1406,7 @@ data:
               "refId": "total",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1418,8 +1426,7 @@ data:
               "refId": "errors_elb",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
+              "statistic": "Sum"
             },
             {
               "datasource": {
@@ -1439,9 +1446,7 @@ data:
               "refId": "total_elb",
               "region": "default",
               "sqlExpression": "",
-              "statistic": "Sum",
-              "range": true
-            },
+              "statistic": "Sum"            },
             {
               "datasource": {
                 "name": "Expression",
@@ -1451,8 +1456,7 @@ data:
               "expression": "$total/$total_elb",
               "hide": true,
               "refId": "fraction_of_elb_traffic",
-              "type": "math",
-              "legendFormat": "Fraction of ELB Traffic per Target"
+              "type": "math"
             },
             {
               "datasource": {
@@ -1463,8 +1467,7 @@ data:
               "expression": "1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Pull SLI",
-              "type": "math",
-              "legendFormat": "Pull SLI"
+              "type": "math"
             },
             {
               "datasource": {
@@ -1475,8 +1478,7 @@ data:
               "expression": "0.001 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Error budget left",
-              "type": "math",
-              "legendFormat": "Error budget left"
+              "type": "math"
             }
           ],
           "title": "Pull Operations Derived from ALB (SLO 99.9%)",
