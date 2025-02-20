@@ -1157,7 +1157,6 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true
             },
             {
               "datasource": {
@@ -1179,7 +1178,6 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true
             },
             {
               "datasource": {
@@ -1200,7 +1198,6 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true
             },
             {
               "datasource": {
@@ -1221,7 +1218,6 @@ data:
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum",
-              "range": true
             },
             {
               "datasource": {
@@ -1233,7 +1229,6 @@ data:
               "hide": true,
               "refId": "fraction_of_elb_traffic",
               "type": "math",
-              "legendFormat": "Fraction of ELB Traffic per Target"
             },
             {
               "datasource": {
@@ -1245,7 +1240,6 @@ data:
               "hide": false,
               "refId": "Push SLI",
               "type": "math",
-              "legendFormat": "Push SLI"
             },
             {
               "datasource": {
@@ -1257,7 +1251,6 @@ data:
               "hide": false,
               "refId": "Error budget left",
               "type": "math",
-              "legendFormat": "Error budget left"
             }
           ],
           "title": "Push Operations Derived from ALB (SLO 99.5%)",
