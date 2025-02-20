@@ -918,8 +918,8 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-push-70bd2ca9/f19ef416482ce26a"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
               },
               "metricName": "HTTPCode_Target_5XX_Count",
               "namespace": "AWS/ApplicationELB",
@@ -932,8 +932,8 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-push-70bd2ca9/f19ef416482ce26a"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
               },
               "metricName": "RequestCount",
               "namespace": "AWS/ApplicationELB",
@@ -3670,8 +3670,8 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-pull-cf5863c7/6dc5f60c79aadb07"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
               },
               "metricName": "HTTPCode_Target_5XX_Count",
               "namespace": "AWS/ApplicationELB",
@@ -3684,8 +3684,8 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-pull-cf5863c7/6dc5f60c79aadb07"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
               },
               "metricName": "RequestCount",
               "namespace": "AWS/ApplicationELB",
