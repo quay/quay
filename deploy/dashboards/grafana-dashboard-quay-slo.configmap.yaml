@@ -845,7 +845,7 @@ data:
           "type": "stat"
         },
         {
-          "title": "Push Operations SLI (ALB)",
+          "title": "Push Operations ALB (SLO 99.5%)",
           "type": "timeseries",
           "fieldConfig": {
             "defaults": {
@@ -918,13 +918,20 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-push-70bd2ca9/f19ef416482ce26a"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
               },
               "metricName": "HTTPCode_Target_5XX_Count",
               "namespace": "AWS/ApplicationELB",
               "statistic": "Sum",
-              "refId": "errors"
+              "refId": "errors",
+              "expression": "",
+              "hide": true,
+              "period": "",
+              "queryMode": "Metrics",
+              "region": "default",
+              "sqlExpression": "",
+              "range": true,
             },
             {
               "datasource": {
@@ -932,13 +939,64 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-push-70bd2ca9/f19ef416482ce26a"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
               },
               "metricName": "RequestCount",
               "namespace": "AWS/ApplicationELB",
               "statistic": "Sum",
-              "refId": "total"
+              "refId": "total",
+              "expression": "",
+              "hide": true,
+              "period": "",
+              "queryMode": "Metrics",
+              "region": "default",
+              "sqlExpression": "",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_ELB_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "errors_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "total_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
             },
             {
               "datasource": {
@@ -946,10 +1004,35 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - ($errors/$total)",
+              "expression": "$total/$total_elb",
+              "hide": true,
+              "refId": "fraction_of_elb_traffic",
+              "type": "math",
+              "legendFormat": "Fraction of ELB Traffic per Target"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
               "hide": false,
-              "refId": "availability",
-              "type": "math"
+              "refId": "Push SLI",
+              "type": "math",
+              "legendFormat": "Push SLI"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "0.001 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "hide": false,
+              "refId": "Error budget left",
+              "type": "math",
+              "legendFormat": "Error budget left",
             }
           ]
         },
@@ -1586,7 +1669,7 @@ data:
               "type": "math"
             }
           ],
-          "title": "Pull Operations SLI (ALB)",
+          "title": "Pull Operations ALB (SLO 99.9%)",
           "type": "timeseries"
         }
         {
@@ -3670,13 +3753,21 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-pull-cf5863c7/6dc5f60c79aadb07"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
               },
               "metricName": "HTTPCode_Target_5XX_Count",
               "namespace": "AWS/ApplicationELB",
               "statistic": "Sum",
-              "refId": "errors"
+              "refId": "errors",
+              "expression": "",
+              "hide": true,
+              "period": "",
+              "queryMode": "Metrics",
+              "region": "default",
+              "sqlExpression": "",
+              "range": true,
+
             },
             {
               "datasource": {
@@ -3684,13 +3775,64 @@ data:
                 "uid": "${cloudwatch_datasource}"
               },
               "dimensions": {
-                "LoadBalancer": "app/quayio-stage-alb01/9f398c80e457d386",
-                "TargetGroup": "targetgroup/quay-pull-cf5863c7/6dc5f60c79aadb07"
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+                "TargetGroup": "targetgroup/quay-pull-ef491a17/76637e152f2da8b0"
               },
               "metricName": "RequestCount",
               "namespace": "AWS/ApplicationELB",
               "statistic": "Sum",
-              "refId": "total"
+              "refId": "total",
+              "expression": "",
+              "hide": true,
+              "period": "",
+              "queryMode": "Metrics",
+              "region": "default",
+              "sqlExpression": "",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "HTTPCode_ELB_5XX_Count",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "errors_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
+            },
+            {
+              "datasource": {
+                "type": "cloudwatch",
+                "uid": "${cloudwatch_datasource}"
+              },
+              "editorMode": "code",
+              "dimensions": {
+                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
+              },
+              "expression": "",
+              "hide": true,
+              "matchExact": true,
+              "metricName": "RequestCount",
+              "namespace": "AWS/ApplicationELB",
+              "period": "",
+              "queryMode": "Metrics",
+              "refId": "total_elb",
+              "region": "default",
+              "sqlExpression": "",
+              "statistic": "Sum",
+              "range": true,
             },
             {
               "datasource": {
@@ -3698,10 +3840,35 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "1 - ($errors/$total)",
+              "expression": "$total/$total_elb",
+              "hide": true,
+              "refId": "fraction_of_elb_traffic",
+              "type": "math",
+              "legendFormat": "Fraction of ELB Traffic per Target"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "1 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
               "hide": false,
-              "refId": "availability",
-              "type": "math"
+              "refId": "Pull SLI",
+              "type": "math",
+              "legendFormat": "Pull SLI"
+            },
+            {
+              "datasource": {
+                "name": "Expression",
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "expression": "0.001 - (($errors+$errors_elb*fraction_of_elb_traffic)/$total)",
+              "hide": false,
+              "refId": "Error budget left",
+              "type": "math",
+              "legendFormat": "Error budget left",
             }
           ]
         }
