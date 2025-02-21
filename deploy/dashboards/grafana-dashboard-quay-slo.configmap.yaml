@@ -1263,8 +1263,8 @@ data:
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "${catchpoint_datasource}"
+            "type": "cloudwatch",
+            "uid": "${cloudwatch_datasource}"
           },
           "description": "",
           "fieldConfig": {
