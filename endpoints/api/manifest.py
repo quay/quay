@@ -1,15 +1,19 @@
 """
 Manage the manifests of a repository.
 """
+import io
 import json
 import logging
+import tarfile
 from datetime import datetime
 from typing import List, Optional
+import features
 
 from flask import request
 
-from app import label_validator, storage
+from app import app, label_validator, storage
 from data.model import InvalidLabelKeyException, InvalidMediaTypeException
+from data.model.oci.retriever import RepositoryContentRetriever
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -31,6 +35,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import NotFound
+from util.parsing import truthy_bool
 from util.validation import VALID_LABEL_KEY_REGEX
 
 BASE_MANIFEST_ROUTE = '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>'
@@ -107,7 +112,14 @@ class RepositoryManifest(RepositoryParamResource):
     @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoManifest")
     @disallow_for_app_repositories
-    def get(self, namespace_name, repository_name, manifestref):
+    @parse_args()
+    @query_param(
+        "include_modelcard",
+        "If specified, include modelcard markdown from image, if any",
+        type=truthy_bool,
+        default=False,
+    )
+    def get(self, namespace_name, repository_name, manifestref, parsed_args):
         repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
         if repo_ref is None:
             raise NotFound()
@@ -120,7 +132,43 @@ class RepositoryManifest(RepositoryParamResource):
         if manifest is None or manifest.internal_manifest_bytes.as_unicode() == "":
             raise NotFound()
 
-        return _manifest_dict(manifest)
+        manifest_dict = _manifest_dict(manifest)
+
+        if features.UI_MODELCARD and parsed_args["include_modelcard"]:
+            manifest_modelcard_annotation = app.config["UI_MODELCARD_ANNOTATION"]
+            manifest_layer_modelcard_annotation = app.config["UI_MODELCARD_LAYER_ANNOTATION"]
+
+            parsed = manifest.get_parsed_manifest()
+
+            layer_digest = None
+            if (
+                parsed.artifact_type
+                and manifest.artifact_type == app.config["UI_MODELCARD_ARTIFACT_TYPE"]
+            ):
+                layer_digest = str(parsed.filesystem_layers[-1].digest)
+
+            elif (
+                manifest_modelcard_annotation
+                and manifest_modelcard_annotation.items() <= parsed.annotations.items()
+            ):
+                for layer in parsed.filesystem_layers:
+                    if manifest_layer_modelcard_annotation.items() <= layer.annotations.items():
+                        layer_digest = layer.digest
+                        break
+
+            if layer_digest:
+                retriever = RepositoryContentRetriever(repo_ref._db_id, storage)
+                content = retriever.get_blob_bytes_with_digest(layer_digest)
+
+                with io.BytesIO(content) as bytes_io:
+                    with tarfile.open(fileobj=bytes_io) as tar:
+                        for member in tar.getmembers():
+                            f = tar.extractfile(member)
+                            if f is not None:
+                                readme = f.read()
+                                manifest_dict["modelcard"] = readme.decode("utf-8")
+
+        return manifest_dict
 
 
 @resource(MANIFEST_DIGEST_ROUTE + "/labels")
