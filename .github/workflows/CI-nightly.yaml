@@ -14,7 +14,7 @@ jobs:
       ZVSI_INSTANCE_NAME: quay-zvsi-ci
       ZVSI_VPC: r018-b72c601c-c1d9-42cf-af66-c0f6da4ab982
       ZVSI_ZONE_NAME: eu-gb-3
-      ZVSI_PROFILE_NAME: bz2-4x16
+      ZVSI_PROFILE_NAME: bz2e-4x16
       ZVSI_SUBNET: 07a7-8ea5eb5d-d432-47fd-a90c-153ebcb6c2cb
       ZVSI_IMAGE: r018-000c8ed2-fb20-436a-9b3a-8b4f062b50d2
       ZVSI_KEY: r018-ee997015-b88c-4500-874c-71f2175a8284
