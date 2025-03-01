@@ -120,7 +120,7 @@ webencodings==0.5.1
 WebOb==1.8.8
 websocket-client==1.7.0
 Werkzeug==3.0.6
-xhtml2pdf==0.2.6
+xhtml2pdf==0.2.17
 
 # Leverage wheels for faster builds
 setuptools==71.1.0
