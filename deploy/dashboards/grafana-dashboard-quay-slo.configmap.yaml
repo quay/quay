@@ -1252,7 +1252,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "0.001 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
+              "expression": "0.005 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total)",
               "hide": false,
               "refId": "Error budget left",
               "type": "math"
