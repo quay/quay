@@ -14,7 +14,7 @@ from datetime import datetime
 from enum import Enum, IntEnum, unique
 from random import SystemRandom
 
-import rehash
+import rehash_openssl
 import toposort
 from cachetools.func import lru_cache
 from peewee import *
@@ -1484,7 +1484,7 @@ class BlobUpload(BaseModel):
     uuid = CharField(index=True, unique=True)
     byte_count = BigIntegerField(default=0)
     # TODO(kleesc): Verify that this is backward compatible with resumablehashlib
-    sha_state = ResumableSHA256Field(null=True, default=rehash.sha256)
+    sha_state = ResumableSHA256Field(null=True, default=rehash_openssl.sha256)
     location = ForeignKeyField(ImageStorageLocation)
     storage_metadata = JSONField(null=True, default={})
     chunk_count = IntegerField(default=0)

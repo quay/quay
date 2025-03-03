@@ -12,7 +12,7 @@ sed -n '/^# Indirect dependencies/,$p' ./requirements.txt | sort >"$TMP_CONSTRAI
 sed -n 's/ *#.*//; s/\[[^]]*\]//g; /./p' ./requirements.txt | sort >"$TMP_REQUIREMENTS_FULL"
 
 pip install --target="$TMP_PACKAGESDIR" -r "$TMP_REQUIREMENTS" -c "$TMP_CONSTRAINTS"
-pip freeze --path="$TMP_PACKAGESDIR" --all | sort >"$TMP_PIP_FREEZE"
+pip freeze --path="$TMP_PACKAGESDIR" --all | sed "s|^.* @ file://$PWD/|./|" | sort >"$TMP_PIP_FREEZE"
 
 if ! diff -u "$TMP_REQUIREMENTS_FULL" "$TMP_PIP_FREEZE"; then
   echo >&2 "requirements.txt doesn't have all dependencies pinned correctly. Please check output above to see what should be added or removed."

@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import pickle
 import string
@@ -14,6 +15,13 @@ from util.bytes import Bytes
 def random_string(length=16):
     random = SystemRandom()
     return "".join([random.choice(string.ascii_uppercase + string.digits) for _ in range(length)])
+
+
+class _RehashUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module == "rehash":
+            module = "rehash_openssl"
+        return super().find_class(module, name)
 
 
 class _ResumableSHAField(TextField):
@@ -43,7 +51,7 @@ class _ResumableSHAField(TextField):
         if value is None:
             return None
 
-        hasher = pickle.loads(base64.b64decode(value.encode("ascii")))
+        hasher = _RehashUnpickler(io.BytesIO(base64.b64decode(value.encode("ascii")))).load()
         return hasher
 
 
