@@ -22,6 +22,7 @@ import {
   parseRepoNameFromUrl,
   parseTagNameFromUrl,
 } from '../../libs/utils';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import TagArchSelect from './TagDetailsArchSelect';
 import TagTabs from './TagDetailsTabs';
 
@@ -45,6 +46,8 @@ export default function TagDetails() {
       manifests: [],
     },
   });
+
+  const quayConfig = useQuayConfig();
 
   // TODO: refactor, need more checks when parsing path
   const location = useLocation();
@@ -71,10 +74,13 @@ export default function TagDetails() {
         }
 
         const tagResp: Tag = resp.tags[0];
-        if (tagResp.is_manifest_list) {
+        if (tagResp.is_manifest_list || quayConfig.features.UI_MODELCARD) {
           const manifestResp: ManifestByDigestResponse =
-            await getManifestByDigest(org, repo, tagResp.manifest_digest);
+            await getManifestByDigest(org, repo, tagResp.manifest_digest, true);
           tagResp.manifest_list = JSON.parse(manifestResp.manifest_data);
+          if (manifestResp.modelcard) {
+            tagResp.modelcard = manifestResp.modelcard;
+          }
         }
 
         // Confirm requested digest exists for this tag
