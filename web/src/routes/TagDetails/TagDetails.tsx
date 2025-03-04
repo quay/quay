@@ -77,7 +77,9 @@ export default function TagDetails() {
         if (tagResp.is_manifest_list || quayConfig.features.UI_MODELCARD) {
           const manifestResp: ManifestByDigestResponse =
             await getManifestByDigest(org, repo, tagResp.manifest_digest, true);
-          tagResp.manifest_list = JSON.parse(manifestResp.manifest_data);
+          if (tagResp.is_manifest_list) {
+            tagResp.manifest_list = JSON.parse(manifestResp.manifest_data);
+          }
           if (manifestResp.modelcard) {
             tagResp.modelcard = manifestResp.modelcard;
           }
