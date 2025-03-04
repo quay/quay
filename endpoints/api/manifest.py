@@ -7,10 +7,10 @@ import logging
 import tarfile
 from datetime import datetime
 from typing import List, Optional
-import features
 
 from flask import request
 
+import features
 from app import app, label_validator, storage
 from data.model import InvalidLabelKeyException, InvalidMediaTypeException
 from data.model.oci.retriever import RepositoryContentRetriever
@@ -149,24 +149,21 @@ class RepositoryManifest(RepositoryParamResource):
 
             elif (
                 manifest_modelcard_annotation
+                and hasattr(parsed, "annotations")
                 and manifest_modelcard_annotation.items() <= parsed.annotations.items()
             ):
                 for layer in parsed.filesystem_layers:
-                    if manifest_layer_modelcard_annotation.items() <= layer.annotations.items():
+                    if (
+                        hasattr(layer, "annotations")
+                        and manifest_layer_modelcard_annotation.items() <= layer.annotations.items()
+                    ):
                         layer_digest = layer.digest
                         break
 
             if layer_digest:
                 retriever = RepositoryContentRetriever(repo_ref._db_id, storage)
                 content = retriever.get_blob_bytes_with_digest(layer_digest)
-
-                with io.BytesIO(content) as bytes_io:
-                    with tarfile.open(fileobj=bytes_io) as tar:
-                        for member in tar.getmembers():
-                            f = tar.extractfile(member)
-                            if f is not None:
-                                readme = f.read()
-                                manifest_dict["modelcard"] = readme.decode("utf-8")
+                manifest_dict["modelcard"] = content.decode("utf-8")
 
         return manifest_dict
 
