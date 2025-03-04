@@ -19,6 +19,7 @@ from auth.auth_context import (
     get_authenticated_context,
     get_authenticated_user,
     get_validated_oauth_token,
+    get_sso_token,
 )
 from auth.decorators import process_oauth
 from auth.permissions import (
@@ -539,7 +540,7 @@ def require_fresh_login(func):
         if not user or user.robot:
             raise Unauthorized()
 
-        if get_validated_oauth_token():
+        if get_validated_oauth_token() or get_sso_token():
             return func(*args, **kwargs)
 
         last_login = session.get("login_time", datetime.datetime.min)
