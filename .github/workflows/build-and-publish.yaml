@@ -40,7 +40,7 @@ jobs:
       - name: Add rule to VPC
         id: sg-rule-id
         run: |
-          cidr="$(hostname -i)"
+          cidr=$(dig +short myip.opendns.com @resolver1.opendns.com)
           echo $cidr
           SGRID=$(ibmcloud is security-group-rule-add --sg ${{ secrets.SG_ID }} --direction=inbound --protocol=tcp --port-min=22 --port-max=22 --remote=$cidr --output JSON | jq -r '.id')
           echo $SGRID
@@ -127,5 +127,6 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
 
       - name: Clean up
+        if: success() || failure()
         run: |
           ibmcloud is security-group-rule-delete ${{ secrets.SG_ID }} $RID -f
