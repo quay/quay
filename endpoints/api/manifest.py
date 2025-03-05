@@ -1,10 +1,8 @@
 """
 Manage the manifests of a repository.
 """
-import io
 import json
 import logging
-import tarfile
 from datetime import datetime
 from typing import List, Optional
 
@@ -101,6 +99,30 @@ def _manifest_dict(manifest):
     }
 
 
+def _get_modelcard_layer_digest(parsed):
+    manifest_modelcard_annotation = app.config["UI_MODELCARD_ANNOTATION"]
+    manifest_layer_modelcard_annotation = app.config["UI_MODELCARD_LAYER_ANNOTATION"]
+
+    layer_digest = None
+    if parsed.artifact_type and parsed.artifact_type == app.config["UI_MODELCARD_ARTIFACT_TYPE"]:
+        layer_digest = str(parsed.filesystem_layers[-1].digest)
+
+    elif (
+        manifest_modelcard_annotation
+        and hasattr(parsed, "annotations")
+        and manifest_modelcard_annotation.items() <= parsed.annotations.items()
+    ):
+        for layer in parsed.filesystem_layers:
+            if (
+                hasattr(layer, "annotations")
+                and manifest_layer_modelcard_annotation.items() <= layer.annotations.items()
+            ):
+                layer_digest = str(layer.digest)
+                break
+
+    return layer_digest
+
+
 @resource(MANIFEST_DIGEST_ROUTE)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("manifestref", "The digest of the manifest")
@@ -135,30 +157,8 @@ class RepositoryManifest(RepositoryParamResource):
         manifest_dict = _manifest_dict(manifest)
 
         if features.UI_MODELCARD and parsed_args["include_modelcard"]:
-            manifest_modelcard_annotation = app.config["UI_MODELCARD_ANNOTATION"]
-            manifest_layer_modelcard_annotation = app.config["UI_MODELCARD_LAYER_ANNOTATION"]
-
             parsed = manifest.get_parsed_manifest()
-
-            layer_digest = None
-            if (
-                parsed.artifact_type
-                and manifest.artifact_type == app.config["UI_MODELCARD_ARTIFACT_TYPE"]
-            ):
-                layer_digest = str(parsed.filesystem_layers[-1].digest)
-
-            elif (
-                manifest_modelcard_annotation
-                and hasattr(parsed, "annotations")
-                and manifest_modelcard_annotation.items() <= parsed.annotations.items()
-            ):
-                for layer in parsed.filesystem_layers:
-                    if (
-                        hasattr(layer, "annotations")
-                        and manifest_layer_modelcard_annotation.items() <= layer.annotations.items()
-                    ):
-                        layer_digest = layer.digest
-                        break
+            layer_digest = _get_modelcard_layer_digest(parsed)
 
             if layer_digest:
                 retriever = RepositoryContentRetriever(repo_ref._db_id, storage)
