@@ -1196,6 +1196,7 @@ class CloudFrontedS3Storage(S3Storage):
         logger.debug(
             'Returning CloudFront URL for path "%s" with IP "%s": %s',
             path,
+            request_ip,
             signed_url,
         )
         return signed_url
