@@ -8,8 +8,10 @@ from typing import List, Optional
 
 from flask import request
 
-from app import label_validator, storage
+import features
+from app import app, label_validator, storage
 from data.model import InvalidLabelKeyException, InvalidMediaTypeException
+from data.model.oci.retriever import RepositoryContentRetriever
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -31,6 +33,7 @@ from endpoints.api import (
     validate_json_request,
 )
 from endpoints.exception import NotFound
+from util.parsing import truthy_bool
 from util.validation import VALID_LABEL_KEY_REGEX
 
 BASE_MANIFEST_ROUTE = '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>'
@@ -96,6 +99,30 @@ def _manifest_dict(manifest):
     }
 
 
+def _get_modelcard_layer_digest(parsed):
+    manifest_modelcard_annotation = app.config["UI_MODELCARD_ANNOTATION"]
+    manifest_layer_modelcard_annotation = app.config["UI_MODELCARD_LAYER_ANNOTATION"]
+
+    layer_digest = None
+    if parsed.artifact_type and parsed.artifact_type == app.config["UI_MODELCARD_ARTIFACT_TYPE"]:
+        layer_digest = str(parsed.filesystem_layers[-1].digest)
+
+    elif (
+        manifest_modelcard_annotation
+        and hasattr(parsed, "annotations")
+        and manifest_modelcard_annotation.items() <= parsed.annotations.items()
+    ):
+        for layer in parsed.filesystem_layers:
+            if (
+                hasattr(layer, "annotations")
+                and manifest_layer_modelcard_annotation.items() <= layer.annotations.items()
+            ):
+                layer_digest = str(layer.digest)
+                break
+
+    return layer_digest
+
+
 @resource(MANIFEST_DIGEST_ROUTE)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("manifestref", "The digest of the manifest")
@@ -107,7 +134,14 @@ class RepositoryManifest(RepositoryParamResource):
     @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoManifest")
     @disallow_for_app_repositories
-    def get(self, namespace_name, repository_name, manifestref):
+    @parse_args()
+    @query_param(
+        "include_modelcard",
+        "If specified, include modelcard markdown from image, if any",
+        type=truthy_bool,
+        default=False,
+    )
+    def get(self, namespace_name, repository_name, manifestref, parsed_args):
         repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
         if repo_ref is None:
             raise NotFound()
@@ -120,7 +154,18 @@ class RepositoryManifest(RepositoryParamResource):
         if manifest is None or manifest.internal_manifest_bytes.as_unicode() == "":
             raise NotFound()
 
-        return _manifest_dict(manifest)
+        manifest_dict = _manifest_dict(manifest)
+
+        if features.UI_MODELCARD and parsed_args["include_modelcard"]:
+            parsed = manifest.get_parsed_manifest()
+            layer_digest = _get_modelcard_layer_digest(parsed)
+
+            if layer_digest:
+                retriever = RepositoryContentRetriever(repo_ref._db_id, storage)
+                content = retriever.get_blob_bytes_with_digest(layer_digest)
+                manifest_dict["modelcard"] = content.decode("utf-8")
+
+        return manifest_dict
 
 
 @resource(MANIFEST_DIGEST_ROUTE + "/labels")

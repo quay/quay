@@ -1425,6 +1425,26 @@ CONFIG_SCHEMA = {
             "description": "Enables user to try the beta UI Environment",
             "x-example": False,
         },
+        "FEATURE_UI_MODELCARD": {
+            "type": "boolean",
+            "description": "Enables modelcard image tab in UI",
+            "x-example": False,
+        },
+        "UI_MODELCARD_ARTIFACT_TYPE": {
+            "type": "str",
+            "description": "Defines the modelcard artifact type",
+            "x-example": "application/x-mlmodel",
+        },
+        "UI_MODELCARD_ANNOTATION": {
+            "type": "object",
+            "description": "Defines the layer annotation of the modelcard stored in an OCI image",
+            "x-example": {},
+        },
+        "UI_MODELCARD_LAYER_ANNOTATION": {
+            "type": "object",
+            "description": "Defines the layer annotation of the modelcard stored in an OCI image",
+            "x-example": {"org.opencontainers.image.title": "README.md"},
+        },
         "EXPORT_COMPLIANCE_ENDPOINT": {
             "type": "string",
             "description": "The Red Hat Export Compliance Service Endpoint (only used in Quay.io)",
