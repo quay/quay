@@ -1301,6 +1301,8 @@ class SuperUserRepositoryBuildResource(ApiResource):
 @show_if(features.SUPER_USERS)
 class SuperUserDumpConfig(ApiResource):
     # NOTE: any changes made here must also be reflected in the nginx config
+    # this API returns a complete set of options. ! NOTE ! changing options listed
+    # but not documented is not supported
 
     @require_fresh_login
     @require_scope(scopes.SUPERUSER)
