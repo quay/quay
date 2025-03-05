@@ -2208,7 +2208,7 @@ CONFIG_SCHEMA = {
     "LDAP_USER_RDN": {
         "type": "array",
         "description": "LDAP_USER_RDN.",
-        "x-example": ["ou=people"],
+        "x-example": ["ou=team","ou=people"],
         "x-reference": None,
     },
     "LDAP_SUPERUSER_FILTER": {
