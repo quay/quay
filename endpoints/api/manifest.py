@@ -99,26 +99,32 @@ def _manifest_dict(manifest):
     }
 
 
+def _find_modelcard_layer(parsed):
+    manifest_layer_modelcard_annotation = app.config["UI_MODELCARD_LAYER_ANNOTATION"]
+    for layer in parsed.filesystem_layers:
+        if (
+            hasattr(layer, "annotations")
+            and manifest_layer_modelcard_annotation.items() <= layer.annotations.items()
+        ):
+            return str(layer.digest)
+
+
 def _get_modelcard_layer_digest(parsed):
     manifest_modelcard_annotation = app.config["UI_MODELCARD_ANNOTATION"]
-    manifest_layer_modelcard_annotation = app.config["UI_MODELCARD_LAYER_ANNOTATION"]
 
     layer_digest = None
     if parsed.artifact_type and parsed.artifact_type == app.config["UI_MODELCARD_ARTIFACT_TYPE"]:
-        layer_digest = str(parsed.filesystem_layers[-1].digest)
-
+        layer_digest = (
+            str(parsed.filesystem_layers[-1].digest)
+            if len(parsed.filesystem_layers) == 1
+            else _find_modelcard_layer(parsed)
+        )
     elif (
         manifest_modelcard_annotation
         and hasattr(parsed, "annotations")
         and manifest_modelcard_annotation.items() <= parsed.annotations.items()
     ):
-        for layer in parsed.filesystem_layers:
-            if (
-                hasattr(layer, "annotations")
-                and manifest_layer_modelcard_annotation.items() <= layer.annotations.items()
-            ):
-                layer_digest = str(layer.digest)
-                break
+        layer_digest = _find_modelcard_layer(parsed)
 
     return layer_digest
 
