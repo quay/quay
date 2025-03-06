@@ -35,24 +35,49 @@ ARTIFACT_MANIFEST = """{
   "artifactType": "application/vnd.example+type",
   "config": {
     "mediaType": "application/vnd.oci.empty.v1+json",
-    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-    "size": 2
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61c12345",
+    "size": 2,
+    "data": "k10="
   },
   "layers": [
     {
-      "mediaType": "application/vnd.oci.image.layer.v1.tar",
-      "digest": "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-      "size": 12,
+      "mediaType": "text/markdown",
+      "digest": "sha256:01196d075d7712211cb75f29a9c50c158c1df18639871a73aba777f2f0412345",
+      "size": 9283,
       "annotations": {
-        "org.opencontainers.image.title": "hello.txt"
+        "org.opencontainers.image.title": "cake.txt"
+      }
+    },
+    {
+      "mediaType": "application/json",
+      "digest": "sha256:2f2bba45146f073a7b8a097cb6133a6b4b66d5751e73f2a2aca8108328112345",
+      "size": 1020,
+      "annotations": {
+        "org.opencontainers.image.title": "special_tokens_map.json"
+      }
+    },
+    {
+      "mediaType": "application/json",
+      "digest": "sha256:d3b4df07a0ce3940b15c77e2ea17ab5627ca0c4bf982d2eb37966aea0a812345",
+      "size": 2057451,
+      "annotations": {
+        "org.opencontainers.image.title": "tokenizer.json"
+      }
+    },
+    {
+      "mediaType": "application/json",
+      "digest": "sha256:f533a8dbb8526be9e8f5b218e6d7be21cb4ce6fd2068286ab7e78d98ecc12345",
+      "size": 4540,
+      "annotations": {
+        "org.opencontainers.image.title": "tokenizer_config.json"
       }
     }
   ],
   "annotations": {
-    "org.opencontainers.image.created": "2023-08-03T00:21:51Z"
+    "org.opencontainers.image.created": "2025-01-31T18:20:30Z"
   }
-}"""
-
+}
+ """
 
 IMAGE_MANIFEST = """{
   "schemaVersion": 2,
@@ -101,7 +126,7 @@ def test_modelcar_layer(app):
         layer_digest1 = _get_modelcard_layer_digest(manifest1)
         assert (
             layer_digest1
-            == "sha256:d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26"
+            == "sha256:01196d075d7712211cb75f29a9c50c158c1df18639871a73aba777f2f0412345"
         )
 
         layer_digest2 = _get_modelcard_layer_digest(manifest2)
