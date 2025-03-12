@@ -1,6 +1,7 @@
 import {PageSection, Divider, TextContent} from '@patternfly/react-core';
 
 import {Remark} from 'react-remark';
+import oembed from '@agentofuser/remark-oembed'
 
 export function ModelCard(props: ModelCardProps) {
   return (
@@ -8,7 +9,7 @@ export function ModelCard(props: ModelCardProps) {
       <Divider />
       <PageSection>
         <TextContent>
-          <Remark>{props.modelCard}</Remark>
+          <Remark remarkPlugins={[oembed]}>{props.modelCard}</Remark>
         </TextContent>
       </PageSection>
     </>
