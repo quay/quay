@@ -8,7 +8,7 @@ export function ModelCard(props: ModelCardProps) {
       <Divider />
       <PageSection>
         <TextContent>
-          <Remark>{props.modelCard}</Remark>
+          <Remark remarkPlugins={[remarkGfm]}>{props.modelCard}</Remark>
         </TextContent>
       </PageSection>
     </>
