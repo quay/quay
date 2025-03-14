@@ -3,6 +3,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from mock import MagicMock, patch
 from playhouse.test_utils import assert_query_count
 
 from app import storage
@@ -13,9 +14,10 @@ from data.database import (
     Manifest,
     ManifestBlob,
     ManifestChild,
-    Tag,
-    get_epoch_timestamp_ms,
 )
+from data.database import Tag
+from data.database import Tag as TagTable
+from data.database import get_epoch_timestamp_ms
 from data.model import (
     QuotaExceededException,
     TagDoesNotExist,
@@ -24,6 +26,7 @@ from data.model import (
     user,
 )
 from data.model.blob import store_blob_record_and_temp_link
+from data.model.oci import tag as tag_model
 from data.model.oci.manifest import get_or_create_manifest
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
@@ -32,6 +35,7 @@ from data.model.storage import get_layer_path
 from data.model.user import get_user
 from data.registry_model import registry_model
 from data.registry_model.datatypes import Manifest as ManifestType
+from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.registry_proxy_model import ProxyModel
 from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
@@ -1436,3 +1440,78 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         assert proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest) is None
         first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
         assert first_tag is None
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_existing_manifest_when_temp_tag_expires(initialized_db):
+        """
+        Test that when pulling a manifest by digest after its temporary tag expires,
+        the system returns the existing manifest rather than trying to create a new one.
+        """
+        namespace_name = "testrepo"
+        repo_name = "repo"
+        manifest_digest = "sha256:abc123"
+        manifest_bytes = Bytes.for_string_or_unicode('{"schemaVersion": 2}')
+
+        config = MagicMock()
+        config.expiration_s = 86400  # 1 day expiration
+        config.upstream_registry_namespace = None
+
+        repository_ref = RepositoryReference.for_repo_obj(
+            MagicMock(
+                id=1,
+                namespace_user=MagicMock(stripe_id=None),
+                name=repo_name,
+                namespace_user_id=1,
+                state="NORMAL",
+            ),
+            namespace_name,
+            repo_name,
+            is_free=True,
+        )
+
+        with patch(
+            "data.registry_model.registry_proxy_model.get_proxy_cache_config_for_org"
+        ) as mock_config:
+            mock_config.return_value = config
+            proxy = ProxyModel(namespace_name, repo_name, None)
+
+            with patch.object(proxy._proxy, "manifest_exists") as mock_exists, patch.object(
+                proxy._proxy, "get_manifest"
+            ) as mock_get:
+
+                mock_exists.return_value = manifest_digest
+                mock_get.return_value = (
+                    manifest_bytes.as_unicode(),
+                    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+                )
+
+                # First pull - creates manifest and temp tag
+                manifest1 = proxy.lookup_manifest_by_digest(
+                    repository_ref, manifest_digest, allow_dead=True, require_available=False
+                )
+                assert manifest1 is not None
+
+                temp_tag = tag_model.get_tag_by_manifest_id(repository_ref.id, manifest1.id)
+                assert temp_tag is not None
+                original_tag_id = temp_tag.id
+
+                expired_time = get_epoch_timestamp_ms() - 1000  # Set to past timestamp
+                TagTable.update(lifetime_end_ms=expired_time).where(
+                    TagTable.id == temp_tag.id
+                ).execute()
+
+                # Second pull of same manifest after tag expiration
+                manifest2 = proxy.lookup_manifest_by_digest(
+                    repository_ref, manifest_digest, allow_dead=True, require_available=False
+                )
+
+                # Verify we got the same manifest back
+                assert manifest2 is not None
+                assert manifest1.digest == manifest2.digest
+                assert manifest1.id == manifest2.id
+
+                # Verify the temp tag was renewed
+                renewed_tag = tag_model.get_tag_by_manifest_id(repository_ref.id, manifest2.id)
+                assert renewed_tag is not None
+                assert renewed_tag.id == original_tag_id  # Same tag was renewed
+                assert renewed_tag.lifetime_end_ms > expired_time  # Expiration was extended
