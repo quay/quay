@@ -1441,7 +1441,6 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
         assert first_tag is None
 
-    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_returns_existing_manifest_when_temp_tag_expires(initialized_db):
         """
         Test that when pulling a manifest by digest after its temporary tag expires,
