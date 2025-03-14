@@ -151,7 +151,7 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
             {% if config_set['FOOTER_LINKS']['PRIVACY_POLICY_URL'] %}
               <li><a href="{{ config_set['FOOTER_LINKS']['PRIVACY_POLICY_URL'] }}" target="_blank">Privacy</a></li>
             {% endif %}
-            {% if config_set['FOOTER_LINKS']['PRIVACY_SECURITY_URL'] %}
+            {% if config_set['FOOTER_LINKS']['SECURITY_URL'] %}
               <li><a href="{{ config_set['FOOTER_LINKS']['SECURITY_URL'] }}" target="_blank">Security</a></li>
             {% endif %}
             {% if config_set['FOOTER_LINKS']['ABOUT_URL'] %}
