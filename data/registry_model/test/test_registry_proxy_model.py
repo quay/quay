@@ -1465,7 +1465,7 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
             ),
             namespace_name,
             repo_name,
-            is_free=True,
+            is_free_namespace=True,
         )
 
         with patch(
