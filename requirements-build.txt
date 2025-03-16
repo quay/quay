@@ -9,7 +9,7 @@ calver==2022.6.26
     # via -r requirements-build.in
 cffi==1.16.0
     # via -r requirements-build.in
-cython==0.29.36
+cython==0.29.37
 cython==3.0.2
     # via -r requirements-build.in
 editables==0.5
