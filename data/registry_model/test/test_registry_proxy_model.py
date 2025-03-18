@@ -471,6 +471,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
     orgname = "quayio-cache"
     repository = f"{orgname}/{upstream_repository}"
     digest = UBI8_8_4_DIGEST
+    tag = "8.4"
 
     @pytest.fixture(autouse=True)
     def setup(self, app):
