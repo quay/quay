@@ -9,8 +9,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-SKOPEO_TIMEOUT_SECONDS = 300
-
 # success: True or False whether call was successful
 # tags: list of tags or empty list
 # stdout: stdout from skopeo subprocess
@@ -26,6 +24,7 @@ class SkopeoMirror(object):
         self,
         src_image,
         dest_image,
+        timeout,
         src_tls_verify=True,
         dest_tls_verify=True,
         src_username=None,
@@ -56,11 +55,12 @@ class SkopeoMirror(object):
         args = args + self.external_registry_credentials("--src-creds", src_username, src_password)
         args = args + [quote(src_image), quote(dest_image)]
 
-        return self.run_skopeo(args, proxy)
+        return self.run_skopeo(args, proxy, timeout)
 
     def tags(
         self,
         repository: str,
+        timeout: int,
         username: Optional[str] = None,
         password: Optional[str] = None,
         verify_tls: bool = True,
@@ -82,7 +82,7 @@ class SkopeoMirror(object):
         args = args + [repository]
 
         all_tags = []
-        result = self.run_skopeo(args, proxy)
+        result = self.run_skopeo(args, proxy, timeout)
         if result.success:
             all_tags = json.loads(result.stdout)["Tags"]
 
@@ -113,10 +113,13 @@ class SkopeoMirror(object):
 
         return env
 
-    def run_skopeo(self, args, proxy):
+    def run_skopeo(self, args, proxy, timeout):
         # Using a tempfile makes sure that if --debug is set, the stdout and stderr output
         # doesn't get truncated by the system's pipe limit.
+
         with SpooledTemporaryFile() as stdoutpipe, SpooledTemporaryFile() as stderrpipe:
+            logger.debug("Creating mirroring job, command to execute: %s", args)
+            logger.debug("Setting job timeout: %s s", timeout)
             job = subprocess.Popen(
                 args,
                 shell=False,
@@ -126,7 +129,7 @@ class SkopeoMirror(object):
             )
 
             try:
-                job.wait(timeout=SKOPEO_TIMEOUT_SECONDS)
+                job.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
                 job.kill()
             finally:

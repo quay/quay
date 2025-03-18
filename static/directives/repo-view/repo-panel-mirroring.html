@@ -81,6 +81,12 @@
             </td>
           </tr>
           <tr>
+            <td><label for="create_skopeo_timeout">Skopeo timeout interval</label></td>
+            <td>
+              <span class="interval-input" seconds="vm.skopeoTimeout"></span>
+            </td>
+          </tr>
+          <tr>
             <td><label for="choose_robot">Robot User</label></td>
             <td>
               <span class="entity-search"
@@ -265,6 +271,16 @@
           </td>
         </tr>
         <tr>
+          <td>
+            <label for="skopeo_timeout_interval">Skopeo timeout</label>
+          </td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeSkopeoTimeoutInterval()">
+              {{ vm.skopeoTimeout | humanizeInterval }}
+            </a>
+          </td>
+        </tr>
+        <tr>
           <td><label for="view_sync_start_date">Next Sync Date</label></td>
           <td>
             <a style="float: left"
@@ -403,7 +419,7 @@
     <div class="cor-confirm-dialog"
         dialog-context="vm.syncIntervalChanges"
         dialog-action="vm.changeConfig(info, callback)"
-        dialog-title="Update next synchronization date"
+        dialog-title="Update sync interval"
         dialog-action-title="Update"
         dialog-form="context.mirroringform">
       <form name="context.mirroringform" class="co-single-field-dialog">
@@ -413,6 +429,22 @@
         </div>
       </form>
     </div>
+
+    <!-- Modal: Change Skopeo Mirror Timeout -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.skopeoTimeoutChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update skopeo timeout"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>Timeout length</label>
+        <div>
+          <span class="interval-input" seconds="vm.skopeoTimeoutChanges.values.skopeo_timeout_interval"></span>
+        </div>
+      </form>
+    </div>
+
 
     <!-- Modal: Change external repository -->
     <div class="cor-confirm-dialog"

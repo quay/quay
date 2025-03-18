@@ -200,6 +200,7 @@ def enable_mirroring_for_repository(
     internal_robot,
     external_reference,
     sync_interval,
+    skopeo_timeout_interval,
     external_registry_username=None,
     external_registry_password=None,
     external_registry_config=None,
@@ -235,6 +236,7 @@ def enable_mirroring_for_repository(
                 external_registry_config=external_registry_config or {},
                 sync_interval=sync_interval,
                 sync_start_date=sync_start_date or datetime.utcnow(),
+                skopeo_timeout=skopeo_timeout_interval,
             )
         except IntegrityError:
             return RepoMirrorConfig.get(repository=repository)
@@ -296,6 +298,13 @@ def update_sync_status_to_sync_now(mirror):
     return None
 
 
+def check_repo_mirror_sync_status(mirror):
+    """
+    Returns the current sync status for a given mirror configuration.
+    """
+    return RepoMirrorConfig.get(RepoMirrorConfig.id == mirror.id).sync_status
+
+
 def update_sync_status_to_cancel(mirror):
     """
     If the mirror is SYNCING, it will be force-claimed (ignoring existing transaction id), and the
@@ -343,6 +352,7 @@ def update_with_transaction(mirror, **kwargs):
         "sync_retries_remaining",
         "sync_status",
         "sync_transaction_id",
+        "skopeo_timeout",
     )
 
     # Key-Value map of changes to make
@@ -450,6 +460,14 @@ def change_sync_interval(repository, interval):
     """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, sync_interval=interval))
+
+
+def change_skopeo_timeout_interval(repository, skopeo_timeout):
+    """
+    Update the skopeo timeout for a specific mirroring configuration.
+    """
+    mirror = get_mirror(repository)
+    return bool(update_with_transaction(mirror, skopeo_timeout=skopeo_timeout))
 
 
 def change_sync_start_date(repository, dt):
