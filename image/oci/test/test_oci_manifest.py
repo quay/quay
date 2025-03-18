@@ -336,7 +336,6 @@ def test_validate_helm_oci_manifest():
     manifest = OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
 
 
-
 INVALID_LAYER_SIZE_MANIFEST = json.dumps(
     {
         "schemaVersion": 2,
@@ -413,6 +412,7 @@ def test_manifest_with_layer_size_0():
         "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
     ]
 
+
 def test_manifest_layer_annotations():
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST2))
     assert manifest.annotations == {"com.example.key1": "value1", "com.example.key2": "value2"}
@@ -424,4 +424,3 @@ def test_manifest_layer_annotations():
                 "com.example.layerkey1": "value1",
                 "com.example.layerkey2": "value2",
             }
-
