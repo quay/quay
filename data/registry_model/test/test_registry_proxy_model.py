@@ -572,9 +572,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
         expired_time = datetime.now() - timedelta(days=2)
         tag.lifetime_end_ms = int(expired_time.timestamp() * 1000)
 
-        retrieved_manifest = proxy_model.lookup_manifest_by_digest(
-            repo_ref, UBI8_8_4_DIGEST, allow_hidden=True
-        )
+        retrieved_manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
 
         assert retrieved_manifest is not None
         assert retrieved_manifest.digest == UBI8_8_4_DIGEST
