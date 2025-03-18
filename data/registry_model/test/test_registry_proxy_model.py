@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -535,6 +535,36 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert manifest is not None
         tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
         assert tag.lifetime_end_ms > first_tag.lifetime_end_ms
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_existing_manifest_when_temp_tag_expires(self, create_repo):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        manifest, tag = proxy_model._create_manifest_and_retarget_tag(
+            repo_ref, input_manifest, self.tag
+        )
+        assert manifest is not None
+        assert tag is not None
+
+        expired_time = datetime.now() - timedelta(days=2)
+        tag.lifetime_end_ms = int(expired_time.timestamp() * 1000)
+
+        retrieved_manifest = proxy_model.lookup_manifest_by_digest(
+            repo_ref, UBI8_8_4_DIGEST, allow_hidden=True
+        )
+
+        assert retrieved_manifest is not None
+        assert retrieved_manifest.digest == UBI8_8_4_DIGEST
+        assert retrieved_manifest.internal_manifest_bytes.as_unicode() == UBI8_8_4_MANIFEST_SCHEMA2
 
     def test_recreate_tag_when_manifest_is_cached_and_exists_upstream(
         self, create_repo, proxy_manifest_response
