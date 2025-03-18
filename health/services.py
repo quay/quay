@@ -80,6 +80,21 @@ def _check_storage(app):
         return (False, "Storage check failed with exception %s" % ex)
 
 
+def _check_preferred_storage(app):
+    """
+    HEALTH_CHECKER_INSTANCE_CHECK_PREFERRED_STORAGE
+    """
+    if app.config.get("REGISTRY_STATE", "normal") == "readonly":
+        return (True, "Preferred storage check disabled for readonly mode")
+
+    try:
+        storage.validate([storage.preferred_locations[0]], app.config["HTTPCLIENT"])
+        return (True, None)
+    except Exception as ex:
+        logger.exception("Storage check failed with exception %s", ex)
+        return (False, "Preferred storage check failed with exception %s" % ex)
+
+
 def _check_auth(app):
     """
     Returns the status of the auth engine, as accessed from this instance.
@@ -183,6 +198,8 @@ def check_all_services(app, skip, for_instance=False):
     if for_instance:
         services = dict(_INSTANCE_SERVICES)
         services.update(_GLOBAL_SERVICES)
+        if app.config.get("HEALTH_CHECKER_INSTANCE_CHECK_PREFERRED_STORAGE"):
+            services["preferred_storage"] = _check_preferred_storage
     else:
         services = _GLOBAL_SERVICES
 

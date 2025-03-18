@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"os"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
@@ -162,30 +163,73 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		roleArn := args.STSRoleArn
-		sess := session.Must(session.NewSession(&aws.Config{
-			Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
-		}))
-		svc := sts.New(sess)
+		if roleArn == "" {
+			roleArn = os.Getenv("AWS_ROLE_ARN")
+		}
 		roleToAssumeArn := roleArn
 		durationSeconds := int64(3600)
-		assumeRoleInput := &sts.AssumeRoleInput{
-			RoleArn:         aws.String(roleToAssumeArn),
-			RoleSessionName: aws.String("quay"),
-			DurationSeconds: aws.Int64(durationSeconds),
-		}
-		assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)
-		if err != nil {
-			errors = append(errors, ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not fetch credentials from STS. Error: " + err.Error(),
-			})
-			break
+
+		webIdentityTokenFile := args.STSWebIdentityTokenFile
+		// Only check the Web Identity Token File variable if no other credentials are present in the config
+		if args.STSUserAccessKey == "" && args.STSUserSecretKey == "" && args.STSWebIdentityTokenFile == "" {
+			webIdentityTokenFile = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 		}
 
-		accessKey := *assumeRoleOutput.Credentials.AccessKeyId
-		secretKey := *assumeRoleOutput.Credentials.SecretAccessKey
-		token = *assumeRoleOutput.Credentials.SessionToken
+		var credentials *sts.Credentials
+		// Prefer using web tokens to authenticate and fallback to access and secret keys
+		if webIdentityTokenFile != "" {
+			sess := session.Must(session.NewSession())
+			svc := sts.New(sess)
+			webIdentityToken, err := os.ReadFile(webIdentityTokenFile)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not read the STS Web Identity Token File, Error: " + err.Error(),
+				})
+				break
+			}
+			assumeRoleInput := &sts.AssumeRoleWithWebIdentityInput{
+				RoleArn:         aws.String(roleToAssumeArn),
+				RoleSessionName: aws.String("quay"),
+				DurationSeconds: aws.Int64(durationSeconds),
+				WebIdentityToken: aws.String(string(webIdentityToken)),
+			}
+			assumeRoleOutput, err := svc.AssumeRoleWithWebIdentity(assumeRoleInput)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not fetch credentials from STS with Web Identity Token. Error: " + err.Error(),
+				})
+				break
+			}
+			credentials = assumeRoleOutput.Credentials
+		} else {
+			sess := session.Must(session.NewSession(&aws.Config{
+				Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
+			}))
+			svc := sts.New(sess)
+			assumeRoleInput := &sts.AssumeRoleInput{
+				RoleArn:         aws.String(roleToAssumeArn),
+				RoleSessionName: aws.String("quay"),
+				DurationSeconds: aws.Int64(durationSeconds),
+			}
+			assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not fetch credentials from STS. Error: " + err.Error(),
+				})
+				break
+			}
+			credentials = assumeRoleOutput.Credentials
+		}
+
+		accessKey := *credentials.AccessKeyId
+		secretKey := *credentials.SecretAccessKey
+		token = *credentials.SessionToken
 		bucketName = args.S3Bucket
 		isSecure = true
 

@@ -24,6 +24,7 @@ export interface Tag {
   manifest_list: ManifestList;
   expiration?: string;
   end_ts?: number;
+  modelcard?: string;
 }
 
 export interface ManifestList {
@@ -70,6 +71,7 @@ export interface ManifestByDigestResponse {
   manifest_data: string;
   config_media_type?: any;
   layers?: any;
+  modelcard?: string;
 }
 
 export interface SecurityDetailsResponse {
@@ -326,9 +328,10 @@ export async function getManifestByDigest(
   org: string,
   repo: string,
   digest: string,
+  include_modelcard: boolean,
 ) {
   const response: AxiosResponse<ManifestByDigestResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}`,
+    `/api/v1/repository/${org}/${repo}/manifest/${digest}?include_modelcard=true`,
   );
   assertHttpCode(response.status, 200);
   return response.data;

@@ -76,13 +76,13 @@ OCI_MANIFEST_URLS_KEY = "urls"
 OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
 OCI_MANIFEST_SUBJECT_KEY = "subject"
 OCI_MANIFEST_ARTIFACT_TYPE_KEY = "artifactType"
-OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
 
 # Named tuples.
 OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
 OCIManifestDescriptor = namedtuple("OCIManifestDescriptor", ["mediatype", "size", "digest"])
 OCIManifestLayer = namedtuple(
-    "OCIManifestLayer", ["index", "digest", "is_remote", "urls", "compressed_size"]
+    "OCIManifestLayer",
+    ["index", "digest", "is_remote", "urls", "compressed_size", "mediatype", "annotations"],
 )
 
 OCIManifestImageLayer = namedtuple(
@@ -510,6 +510,7 @@ class OCIManifest(ManifestInterface):
         for index, layer in enumerate(self._parsed[OCI_MANIFEST_LAYERS_KEY]):
             content_type = layer[OCI_MANIFEST_MEDIATYPE_KEY]
             is_remote = content_type in OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES
+            layer_annotations = layer.get(OCI_MANIFEST_ANNOTATIONS_KEY, {})
 
             try:
                 digest = digest_tools.Digest.parse_digest(layer[OCI_MANIFEST_DIGEST_KEY])
@@ -524,6 +525,8 @@ class OCIManifest(ManifestInterface):
                 digest=digest,
                 is_remote=is_remote,
                 urls=layer.get(OCI_MANIFEST_URLS_KEY),
+                mediatype=content_type,
+                annotations=layer_annotations,
             )
 
 
@@ -565,7 +568,7 @@ class OCIManifestBuilder(object):
         """
         self.annotations[key] = value
 
-    def add_layer(self, digest, size, urls=None):
+    def add_layer(self, digest, size, urls=None, annotations=None, mediatype=None):
         """
         Adds a filesystem layer to the manifest.
         """
@@ -576,6 +579,8 @@ class OCIManifestBuilder(object):
                 compressed_size=size,
                 urls=urls,
                 is_remote=bool(urls),
+                annotations=None,
+                mediatype=None,
             )
         )
 
