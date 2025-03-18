@@ -164,7 +164,7 @@ class DockerSchema2Manifest(ManifestInterface):
             raise MalformedSchema2Manifest("manifest data does not match schema: %s" % ve)
 
         for layer in self._parsed["layers"]:
-            if not layer["size"] > 0:
+            if layer["size"] < 0:
                 raise MalformedSchema2Manifest("invalid layer size")
 
         for layer in self.filesystem_layers:

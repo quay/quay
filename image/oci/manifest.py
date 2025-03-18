@@ -168,7 +168,7 @@ class OCIManifest(ManifestInterface):
             raise MalformedOCIManifest("manifest data does not match schema: %s" % ve)
 
         for layer in self._parsed["layers"]:
-            if not layer["size"] > 0:
+            if layer["size"] < 0:
                 raise MalformedOCIManifest("invalid layer size")
 
         for layer in self.filesystem_layers:
