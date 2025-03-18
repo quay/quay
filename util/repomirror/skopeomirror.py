@@ -54,6 +54,9 @@ class SkopeoMirror(object):
         )
         args = args + self.external_registry_credentials("--src-creds", src_username, src_password)
         args = args + [quote(src_image), quote(dest_image)]
+        logger.debug(
+            "Creating mirroring job: upstream image %s, local repository %s", src_image, dest_image
+        )
 
         return self.run_skopeo(args, proxy, timeout)
 
@@ -118,7 +121,6 @@ class SkopeoMirror(object):
         # doesn't get truncated by the system's pipe limit.
 
         with SpooledTemporaryFile() as stdoutpipe, SpooledTemporaryFile() as stderrpipe:
-            logger.debug("Creating mirroring job, command to execute: %s", args)
             logger.debug("Setting job timeout: %s s", timeout)
             job = subprocess.Popen(
                 args,
