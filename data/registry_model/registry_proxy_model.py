@@ -251,17 +251,25 @@ class ProxyModel(OCIModel):
         wrapped_manifest = super().lookup_manifest_by_digest(
             repository_ref, manifest_digest, allow_dead=True, require_available=False
         )
+        logger.info("tried getting wrapped manifest ***...")
+        logger.info(wrapped_manifest)
         if wrapped_manifest is None:
+            logger.info("wrapped manifest is none ***...")
             try:
                 wrapped_manifest, _ = self._create_and_tag_manifest(
                     repository_ref, manifest_digest, self._create_manifest_with_temp_tag
                 )
+                logger.info("^^^^tried getting wrapped manifest ***...")
+                logger.info(wrapped_manifest)
             except (UpstreamRegistryError, ManifestDoesNotExist) as e:
                 raise ManifestDoesNotExist(str(e))
             return wrapped_manifest
 
         db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
+        logger.info("db_tag ***...")
+        logger.info(db_tag)
         if db_tag is None:
+            logger.info("db_tag is None ***...")
             oci.manifest.lookup_manifest(
                 repository_ref.id, manifest_digest, allow_dead=True, require_available=True
             )
@@ -269,6 +277,8 @@ class ProxyModel(OCIModel):
         existing_tag = Tag.for_tag(
             db_tag, self._legacy_image_id_handler, manifest_row=db_tag.manifest
         )
+        logger.info("existing db_tag ***...")
+        logger.info(existing_tag)
         new_tag = False
         try:
             tag, new_tag = self._update_manifest_for_tag(
