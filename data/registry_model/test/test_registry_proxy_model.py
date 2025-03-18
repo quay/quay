@@ -559,6 +559,10 @@ class TestRegistryProxyModelLookupManifestByDigest:
             self.user,
         )
 
+        proxy_model._proxy.get_manifest = MagicMock(
+            return_value=(UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE)
+        )
+
         manifest, tag = proxy_model._create_manifest_and_retarget_tag(
             repo_ref, input_manifest, self.tag
         )
