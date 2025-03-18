@@ -1116,13 +1116,14 @@ def populate_database(minimal=False):
         (4, [], ["latest", "prod"]),
     )
     mirror_rule = model.repo_mirror.create_mirroring_rule(mirror_repo, ["latest", "3.3*"])
-    mirror_args = (mirror_repo, mirror_rule, dtrobot[0], "quay.io/coreos/etcd", 60 * 60 * 24)
+    mirror_args = (mirror_repo, mirror_rule, dtrobot[0], "quay.io/coreos/etcd", 60 * 60 * 24, 600)
     mirror_kwargs = {
         "external_registry_username": "fakeusername",
         "external_registry_password": "fakepassword",
         "external_registry_config": {},
         "is_enabled": True,
         "sync_start_date": datetime.utcnow(),
+        "skopeo_timeout_interval": 600,
     }
     mirror = model.repo_mirror.enable_mirroring_for_repository(*mirror_args, **mirror_kwargs)
 
