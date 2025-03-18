@@ -1938,7 +1938,7 @@ class RepoMirrorConfig(BaseModel):
     external_registry_password = EncryptedCharField(max_length=9000, null=True)
     external_registry_config = JSONField(default={})
 
-    # Worker Queuingg
+    # Worker Queueing
     sync_interval = IntegerField()  # seconds between syncs
     sync_start_date = DateTimeField(null=True)  # next start time
     sync_expiration_date = DateTimeField(null=True)  # max duration
@@ -1948,6 +1948,9 @@ class RepoMirrorConfig(BaseModel):
 
     # Tag-Matching Rules
     root_rule = ForeignKeyField(RepoMirrorRule)
+
+    # Skopeo timeout
+    skopeo_timeout = BigIntegerField()
 
 
 @unique
