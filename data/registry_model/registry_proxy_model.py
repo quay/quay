@@ -442,16 +442,25 @@ class ProxyModel(OCIModel):
         """
         upstream_manifest = None
         upstream_digest = self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
-
+        logger.info("upstream digest ***...")
+        logger.info(upstream_digest)
         # manifest_exists will return an empty/None digest when the upstream
         # registry omits the docker-content-digest header.
         if not upstream_digest:
+            logger.info("upstream digest is none...")
             upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
             upstream_digest = upstream_manifest.digest
+            logger.info("fetched upstream manifest is...")
+            logger.info(upstream_manifest.digest)
+            logger.info("upstream digest is none...")
 
-        logger.debug(f"Found upstream manifest with digest {upstream_digest}, {manifest_ref=}")
+        logger.info("manifest ref is...")
+        logger.info(manifest_ref)
+        logger.info(f"Found upstream manifest with digest {upstream_digest}, {manifest_ref=}")
         up_to_date = manifest.digest == upstream_digest
-
+        logger.info(
+            f"manifest digest and upstream digest and uptodate: {manifest.digest}, {upstream_digest}, {up_to_date}"
+        )
         placeholder = manifest.internal_manifest_bytes.as_unicode() == ""
         if up_to_date and not placeholder:
             if tag.expired:
@@ -464,6 +473,7 @@ class ProxyModel(OCIModel):
             upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
 
         if up_to_date and placeholder:
+            logger.info("entering uptodate and placeholder....")
             self._check_image_upload_possible_or_prune(repo_ref, upstream_manifest)
             with db_disallow_replica_use():
                 with db_transaction():

@@ -571,7 +571,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
 
         expired_time = datetime.now() - timedelta(days=2)
         tag.lifetime_end_ms = int(expired_time.timestamp() * 1000)
-
+        Tag.delete().where(Tag.repository_id == self.repository_id).execute()
         retrieved_manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
 
         assert retrieved_manifest is not None
