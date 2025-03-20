@@ -66,7 +66,7 @@ export default function TagTabs(props: TagTabsProps) {
       </Tab>
       <Tab
         eventKey={TabIndex.ModelCard}
-        title={<TabTitleText>ModelCard</TabTitleText>}
+        title={<TabTitleText>Model Card</TabTitleText>}
         isHidden={!quayConfig?.features?.UI_MODELCARD || !props.tag.modelcard}
       >
         <ModelCard modelCard={props.tag.modelcard} />
