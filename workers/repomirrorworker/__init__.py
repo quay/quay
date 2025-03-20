@@ -16,6 +16,7 @@ from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
 from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
 from data.model.repo_mirror import (
+    change_retries_remaining,
     check_repo_mirror_sync_status,
     claim_mirror,
     release_mirror,
@@ -220,6 +221,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                     stderr=result.stderr,
                 )
                 logger.info("Sync cancelled on repo %s.", mirror.repository.name)
+                change_retries_remaining(mirror, 0)
                 break
 
             if not result.success:
