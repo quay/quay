@@ -1123,7 +1123,6 @@ def populate_database(minimal=False):
         "external_registry_config": {},
         "is_enabled": True,
         "sync_start_date": datetime.utcnow(),
-        "skopeo_timeout_interval": 600,
     }
     mirror = model.repo_mirror.enable_mirroring_for_repository(*mirror_args, **mirror_kwargs)
 

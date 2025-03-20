@@ -81,10 +81,12 @@
             </td>
           </tr>
           <tr>
-            <td><label for="create_skopeo_timeout">Skopeo timeout interval</label></td>
-            <td>
-              <span class="interval-input" seconds="vm.skopeoTimeout"></span>
-            </td>
+            <td style="border-bottom: none"><label for="create_skopeo_timeout">Skopeo timeout interval: </label></td>
+            <td style="border-bottom: none"><input class="form-control" id="skopeo_timeout_interval" type="number" ng-model="vm.skopeoTimeout" placeholder="300" required min="300"></input></td>
+            <td style="border-bottom: none">seconds</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="text-align: center">The value of the field cannot be less than 300 seconds.</td>
           </tr>
           <tr>
             <td><label for="choose_robot">Robot User</label></td>
