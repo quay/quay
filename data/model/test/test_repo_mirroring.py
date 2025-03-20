@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import pytest
 from jsonschema import ValidationError
+from peewee import IntegrityError
 
 from data import model
 from data.database import RepoMirrorConfig, RepoMirrorStatus, User
@@ -15,6 +15,7 @@ from data.model.repo_mirror import (
     update_sync_status_to_cancel,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
+from test.fixtures import *
 
 
 def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=None):
@@ -41,6 +42,7 @@ def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=N
         "internal_robot": robot,
         "external_reference": "registry.example.com/namespace/repository",
         "sync_interval": timedelta(days=1).total_seconds(),
+        "skopeo_timeout_interval": 300,
         "external_registry_config": external_registry_config,
     }
     mirror = model.repo_mirror.enable_mirroring_for_repository(**mirror_kwargs)
