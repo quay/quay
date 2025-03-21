@@ -102,6 +102,11 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_TOKEN }}
 
+      - name: Remove pip from requirements.txt
+        run: |
+          # Having pip in the requirements.txt interferes with the workflow
+          sed -i '/^pip=/d' requirements.txt
+
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
