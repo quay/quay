@@ -1358,15 +1358,17 @@ class SuperUserDumpConfig(ApiResource):
                     else:
                         warn[k] = obfuscate(v, key=k)
                 except Exception as procerr:
-                    app.logger.error(f"Cannot parse config, error {procerr}")
+                    logger.error(f"Cannot parse config, error {procerr}")
                     continue
             try:
-                return dict(config=cfg, warning=warn, env=dict(os.environ))
+                return dict(config=cfg, warning=warn, env=dict(os.environ), schema=CONFIG_SCHEMA)
             except TypeError as jsonerr:
                 # we shouldn't populate keys with methods/class/functions
                 # but to ensure we do not raise an Exception
-                app.logger.error(f"Cannot parse json, error {jsonerr}")
-                return dict(config=str(cfg), warning=str(warn), env=dict(os.environ))
+                logger.error(f"Cannot parse json, error {jsonerr}")
+                return dict(
+                    config=str(cfg), warning=str(warn), env=dict(os.environ), schema=CONFIG_SCHEMA
+                )
 
         # requesting Scope only doesn't restrict so we need superuserpermissions.can
         if SuperUserPermission().can() or allow_if_global_readonly_superuser():
