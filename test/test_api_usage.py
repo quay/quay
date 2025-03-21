@@ -5375,6 +5375,59 @@ class TestOrganizationRhSku(ApiTestCase):
         )
         self.assertEqual(org_subs[0]["quantity"], 3)
 
+    def test_splittable_sku_multiple_attached(self):
+        # case where one MW02702 sku is attached fully to an org
+        # and another MW02702 sku is not
+        with patch("util.marketplace.FakeSubscriptionApi.lookup_subscription") as mock:
+            self.login(SUBSCRIPTION_USER)
+            mock.return_value = [
+                {
+                    "id": 12121212,
+                    "masterEndSystemName": "SUBSCRIPTION",
+                    "createdEndSystemName": "WEB",
+                    "createdDate": 1718373229000,
+                    "lastUpdateDate": 1718373337000,
+                    "externalLastUpdateDate": 1718373289000,
+                    "installBaseStartDate": 1718337600000,
+                    "webCustomerId": 123456,
+                    "quantity": 1,
+                    "effectiveStartDate": 1707368400000,
+                    "effectiveEndDate": 3813177600000,
+                },
+                {
+                    "id": 43434343,
+                    "masterEndSystemName": "SUBSCRIPTION",
+                    "createdEndSystemName": "SUBSCRIPTION",
+                    "createdDate": 1742376193000,
+                    "lastUpdateDate": 1742376193000,
+                    "quantity": 100,
+                    "effectiveStartDate": 1742356800000,
+                    "effectiveEndDate": 3813177600000,
+                },
+            ]
+            self.postResponse(
+                resource_name=OrganizationRhSku,
+                params=dict(orgname=SUBSCRIPTION_ORG),
+                data={"subscriptions": [{"subscription_id": 12121212, "quantity": 1}]},
+                expected_code=201,
+            )
+
+            # validate user marketplace response
+            user_subs = self.getJsonResponse(
+                resource_name=UserSkuList,
+            )
+
+            # look for remaining subscription unbound and make sure
+            # fields are present
+            other_sub = None
+            for sub in user_subs:
+                if sub["id"] == 43434343:
+                    other_sub = sub
+
+            self.assertIsNotNone(other_sub, "Could not find other subscription")
+            self.assertIsNotNone(other_sub["metadata"], "metadata missing")
+            self.assertIsNone(other_sub["assigned_to_org"])
+
 
 if __name__ == "__main__":
     unittest.main()
