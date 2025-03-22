@@ -177,7 +177,7 @@ function TagsTableRow(props: RowProps) {
           dataLabel={ColumnNames.pull}
           style={{
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
             alignItems: 'center',
           }}
         >
