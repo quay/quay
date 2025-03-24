@@ -3436,7 +3436,8 @@ CREATE TABLE public.repomirrorconfig (
     sync_transaction_id character varying(36),
     root_rule_id integer NOT NULL,
     external_reference text NOT NULL,
-    external_registry_password character varying(9000)
+    external_registry_password character varying(9000),
+    skopeo_timeout bigint DEFAULT '300'::bigint NOT NULL
 );
 
 
@@ -5742,7 +5743,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-8e97c2cfee57
+a52c7684f140
 \.
 
 
@@ -6717,8 +6718,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2024-11-26 13:33:24.969707	t	2024-11-26 16:28:24.944791	5	b26bfbb7-6d52-4adb-81bd-9674dfc4359d
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2024-11-26 13:33:30.012937	t	2024-11-26 16:28:29.982092	5	be21614e-6c32-4f3c-9454-6c8c94a8b672
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2025-03-24 21:22:24.382366	t	2025-03-25 00:17:24.368732	5	f9d7b771-086b-415f-a8dd-afbe5d0de32a
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2025-03-24 21:22:29.403608	t	2025-03-25 00:17:29.39198	5	0c481bcf-3df2-4659-b7df-fa37c4c1d998
 \.
 
 
@@ -6776,7 +6777,7 @@ COPY public.redhatsubscriptions (id, user_id, account_number) FROM stdin;
 -- Data for Name: repomirrorconfig; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
-COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference, external_registry_password) FROM stdin;
+COPY public.repomirrorconfig (id, repository_id, creation_date, is_enabled, mirror_type, internal_robot_id, external_registry_username, external_registry_config, sync_interval, sync_start_date, sync_expiration_date, sync_retries_remaining, sync_status, sync_transaction_id, root_rule_id, external_reference, external_registry_password, skopeo_timeout) FROM stdin;
 \.
 
 
@@ -10888,7 +10889,7 @@ CREATE UNIQUE INDEX oauthauthorizationcode_code_name ON public.oauthauthorizatio
 -- Name: organizationrhskus_subscription_id; Type: INDEX; Schema: public; Owner: quay
 --
 
-CREATE UNIQUE INDEX organizationrhskus_subscription_id ON public.organizationrhskus USING btree (subscription_id);
+CREATE INDEX organizationrhskus_subscription_id ON public.organizationrhskus USING btree (subscription_id);
 
 
 --
