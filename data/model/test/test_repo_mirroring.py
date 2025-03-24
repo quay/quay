@@ -255,7 +255,7 @@ def test_release_mirror(initialized_db):
 
     mirror = release_mirror(mirror, RepoMirrorStatus.CANCEL)
     assert mirror.sync_retries_remaining == 0
-    assert mirror.sync_start_date == None
+    assert mirror.sync_start_date is None
 
 
 def test_repo_mirror_robot(initialized_db):
