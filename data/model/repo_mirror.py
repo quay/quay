@@ -125,10 +125,13 @@ def release_mirror(mirror, sync_status):
 
     If mirroring is cancelled from the UI, the job should not be attempted until manual sync is started.
     """
-    if sync_status == RepoMirrorStatus.FAIL or RepoMirrorStatus.CANCEL:
-        retries = max(0, mirror.sync_retries_remaining - 1)
+    retries = mirror.sync_retries_remaining
+    next_start_date = None
 
-    if sync_status == RepoMirrorStatus.SUCCESS or retries < 1:
+    if sync_status == RepoMirrorStatus.FAIL:
+        retries = max(0, retries - 1)
+
+    if sync_status == RepoMirrorStatus.SUCCESS or (RepoMirrorStatus.FAIL and retries < 1):
         now = datetime.utcnow()
         delta = now - mirror.sync_start_date
         delta_seconds = (delta.days * 24 * 60 * 60) + delta.seconds
@@ -137,13 +140,14 @@ def release_mirror(mirror, sync_status):
         )
         retries = MAX_SYNC_RETRIES
 
+    else:
+        next_start_date = mirror.sync_start_date
+
     if sync_status == RepoMirrorStatus.CANCEL:
         next_start_date = None
         retries = 0
 
-    else:
-        next_start_date = mirror.sync_start_date
-
+    print("Record number of retries: {}".format(retries))
     query = RepoMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
         sync_status=sync_status,
@@ -334,6 +338,7 @@ def update_sync_status_to_cancel(mirror):
         sync_transaction_id=uuid_generator(),
         sync_status=RepoMirrorStatus.CANCEL,
         sync_expiration_date=None,
+        sync_retries_remaining=0,
     ).where(RepoMirrorConfig.id == mirror.id)
 
     if query.execute():

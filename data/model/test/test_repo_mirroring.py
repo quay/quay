@@ -199,13 +199,13 @@ def test_sync_status_to_cancel(initialized_db):
     mirror.save()
     updated = update_sync_status_to_cancel(mirror)
     assert updated is not None
-    assert updated.sync_status == RepoMirrorStatus.NEVER_RUN
+    assert updated.sync_status == RepoMirrorStatus.CANCEL
 
     mirror.sync_status = RepoMirrorStatus.SYNC_NOW
     mirror.save()
     updated = update_sync_status_to_cancel(mirror)
     assert updated is not None
-    assert updated.sync_status == RepoMirrorStatus.NEVER_RUN
+    assert updated.sync_status == RepoMirrorStatus.CANCEL
 
     mirror.sync_status = RepoMirrorStatus.FAIL
     mirror.save()
@@ -252,6 +252,10 @@ def test_release_mirror(initialized_db):
     mirror = release_mirror(mirror, RepoMirrorStatus.FAIL)
     assert mirror.sync_retries_remaining == 3
     assert mirror.sync_start_date > original_sync_start_date
+
+    mirror = release_mirror(mirror, RepoMirrorStatus.CANCEL)
+    assert mirror.sync_retries_remaining == 0
+    assert mirror.sync_start_date == None
 
 
 def test_repo_mirror_robot(initialized_db):

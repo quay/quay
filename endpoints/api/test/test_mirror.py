@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from data import model
-from endpoints.api.mirror import RepoMirrorResource
+from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -255,3 +255,24 @@ def test_change_credentials(request_body, expected_status, app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
+
+
+def test_cancel_repo_mirroring(app):
+    """
+    Verify that cancelling a mirror sync sets proper values for sync status and number of retries.
+    """
+    mirror = _setup_mirror()
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+
+    mirror = model.repo_mirror.update_sync_status_to_sync_now(mirror)
+    assert mirror.sync_status == 3
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        conduct_api_call(cl, RepoMirrorSyncCancelResource, "POST", params, None, 204)
+        assert model.repo_mirror.check_repo_mirror_sync_status(mirror) == -2
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+        assert resp["sync_retries_remaining"] == 0
