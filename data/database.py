@@ -1910,6 +1910,7 @@ class RepoMirrorStatus(IntEnum):
     Possible statuses of repository mirroring.
     """
 
+    CANCEL = -2
     FAIL = -1
     NEVER_RUN = 0
     SUCCESS = 1

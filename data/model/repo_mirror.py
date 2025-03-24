@@ -97,6 +97,9 @@ def claim_mirror(mirror):
             expire_mirror(mirror)
             return None
 
+        if mirror.sync_status == RepoMirrorStatus.CANCEL:
+            return None
+
         query = RepoMirrorConfig.update(
             sync_status=RepoMirrorStatus.SYNCING,
             sync_expiration_date=expiration_date,
@@ -119,8 +122,10 @@ def release_mirror(mirror, sync_status):
     current date to ensure they are picked up for repeat attempt. After MAX_SYNC_RETRIES, the next
     sync will be moved ahead as if it were a success. This is to allow a daily sync, for example, to
     retry the next day. Without this, users would need to manually run syncs to clear failure state.
+
+    If mirroring is cancelled from the UI, the job should not be attempted until manual sync is started.
     """
-    if sync_status == RepoMirrorStatus.FAIL:
+    if sync_status == RepoMirrorStatus.FAIL or RepoMirrorStatus.CANCEL:
         retries = max(0, mirror.sync_retries_remaining - 1)
 
     if sync_status == RepoMirrorStatus.SUCCESS or retries < 1:
@@ -131,6 +136,11 @@ def release_mirror(mirror, sync_status):
             seconds=mirror.sync_interval - (delta_seconds % mirror.sync_interval)
         )
         retries = MAX_SYNC_RETRIES
+
+    if sync_status == RepoMirrorStatus.CANCEL:
+        next_start_date = None
+        retries = 0
+
     else:
         next_start_date = mirror.sync_start_date
 
@@ -308,7 +318,7 @@ def check_repo_mirror_sync_status(mirror):
 def update_sync_status_to_cancel(mirror):
     """
     If the mirror is SYNCING, it will be force-claimed (ignoring existing transaction id), and the
-    state will set to NEVER_RUN.
+    state will set to CANCELed.
 
     None will be returned in cases where this is not possible, such as if the mirror is not in the
     SYNCING state.
@@ -322,7 +332,7 @@ def update_sync_status_to_cancel(mirror):
 
     query = RepoMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
-        sync_status=RepoMirrorStatus.NEVER_RUN,
+        sync_status=RepoMirrorStatus.CANCEL,
         sync_expiration_date=None,
     ).where(RepoMirrorConfig.id == mirror.id)
 
@@ -500,7 +510,7 @@ def change_retries_remaining(repository, retries_remaining):
     Change the number of retries remaining for mirroring a repository.
     """
     mirror = get_mirror(repository)
-    return update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
+    update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
 
 
 def change_external_registry_config(repository, config_updates):
