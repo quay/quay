@@ -17,6 +17,7 @@ from data.logs_model import logs_model
 from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
 from data.model.repo_mirror import (
     change_retries_remaining,
+    change_sync_status,
     check_repo_mirror_sync_status,
     claim_mirror,
     release_mirror,
@@ -210,18 +211,9 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                     unsigned_images=mirror.external_registry_config.get("unsigned_images", False),
                 )
 
-            if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.NEVER_RUN:
-                failed_tags.append(tag)
-                emit_log(
-                    mirror,
-                    "repo_mirror_sync_failed",
-                    "finish",
-                    "Sync cancelled on repo " + mirror.repository.name,
-                    stdout=result.stdout,
-                    stderr=result.stderr,
-                )
+            if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
                 logger.info("Sync cancelled on repo %s.", mirror.repository.name)
-                change_retries_remaining(mirror, 0)
+                overall_status = RepoMirrorStatus.CANCEL
                 break
 
             if not result.success:
@@ -312,6 +304,16 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 rollback(mirror, now_ms)
             else:
                 rollback(mirror, now_ms, failed_tags)
+        if overall_status == RepoMirrorStatus.CANCEL:
+            log_message = "'%s' with tag pattern '%s'"
+            emit_log(
+                mirror,
+                "repo_mirror_sync_failed",
+                "Cancelled",
+                log_message % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+                stdout="Not applicable",
+                stderr="Not applicable",
+            )
         else:
             emit_log(
                 mirror,
