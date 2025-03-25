@@ -2,6 +2,13 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.10/html/red_hat_quay_release_notes/index)
 
+<a name="v3.11.10"></a>
+## [v3.11.10] - 2025-03-25
+### Chore
+- [b13f45033](https://github.com/quay/quay/commit/b13f450338bace7803d477a95ad0e2f49f598c51): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3706](https://github.com/quay/quay/issues/3706)) ([#3713](https://github.com/quay/quay/issues/3713))
+### [Redhat-3.10] Deps
+- [714a8fc1e](https://github.com/quay/quay/commit/714a8fc1e0dcb14dab700a99377ee2b3ce6dee23): bump gunicorn (PROJQUAY-8726) ([#3735](https://github.com/quay/quay/issues/3735))
+
 <a name="v3.10.9"></a>
 ## [v3.10.9] - 2025-02-06
 ### [Redhat-3.10] Deps
@@ -1993,6 +2000,7 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
+[v3.10.10]: https://github.com/quay/quay/compare/v3.10.9...v3.10.10
 [v3.10.9]: https://github.com/quay/quay/compare/v3.10.8...v3.10.9
 [v3.10.8]: https://github.com/quay/quay/compare/v3.10.7...v3.10.8
 [v3.10.7]: https://github.com/quay/quay/compare/v3.10.6...v3.10.7
