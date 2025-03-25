@@ -3,10 +3,26 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.5"></a>
+## [v3.13.5] - 2025-03-25
+### Storage
+- [48691d64](https://github.com/quay/quay/commit/48691d648ffad9242e26cbcc5201209c95dcc040): Modify the STS S3 implementation of the storage backend to use Web Identity Tokens when available (PROJQUAY-8692) ([#3715](https://github.com/quay/quay/issues/3715))
+### [Redhat-3.13] Api
+- [0a4e248e](https://github.com/quay/quay/commit/0a4e248ecb59cd5a083575f9097cb6355d5db3e3): put /superuser/users/<username> will now show up in swagger (PROJQUAY-7579) ([#3702](https://github.com/quay/quay/issues/3702))
+### [Redhat-3.13] Bug
+- [b85b5e3c](https://github.com/quay/quay/commit/b85b5e3cc66c3505634561efc832c4cf84018058): Adding allow hidden flag while looking up for manifests (PROJQUAY-8536) ([#3726](https://github.com/quay/quay/issues/3726))
+### [Redhat-3.13] Chore
+- [bdd7f894](https://github.com/quay/quay/commit/bdd7f89428f3301f2dc165a9cf691c479aa419fe): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3710](https://github.com/quay/quay/issues/3710))
+- [460f4f84](https://github.com/quay/quay/commit/460f4f845199fa419bfaaafae0c3d98ea3d09420): Change in the CIDR for Z ([#3696](https://github.com/quay/quay/issues/3696))
+### [Redhat-3.13] Deps
+- [88a70d0c](https://github.com/quay/quay/commit/88a70d0cccd99ab25b78dbd9e1527d3e38be6e19): bump gunicorn (PROJQUAY-8726) ([#3732](https://github.com/quay/quay/issues/3732))
+
 <a name="v3.13.4"></a>
-## [v3.13.4] - 2025-02-04
+## [v3.13.4] - 2025-02-07
 ### Deps
 - [0915dcd1](https://github.com/quay/quay/commit/0915dcd10788875e8851094a05daf87583c91338): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3631](https://github.com/quay/quay/issues/3631))
+### [Redhat-3.13] Chore
+- [fceab15a](https://github.com/quay/quay/commit/fceab15a5b6a2c566efd364e10836ce1ed2800ec): fix for wide open ssh for vsi for Z ([#3644](https://github.com/quay/quay/issues/3644))
 ### [Redhat-3.13] Endpoints(Repository)
 - [4eb74050](https://github.com/quay/quay/commit/4eb740503f62d7cfb5b2c24eaa69842f93780e89): fixing repository return with starred repos to paged response (PROJQUAY-8450) ([#3600](https://github.com/quay/quay/issues/3600))
 ### [Redhat-3.13] Ui
@@ -200,6 +216,13 @@
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.8"></a>
+## [v3.12.8] - 2025-02-11
+### Deps
+- [6420527c](https://github.com/quay/quay/commit/6420527c935b7cc2a3f30d67165a6c9ee706928b): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3629](https://github.com/quay/quay/issues/3629)) ([#3639](https://github.com/quay/quay/issues/3639))
+### [Redhat-3.12] Chore
+- [c5a4f658](https://github.com/quay/quay/commit/c5a4f658d3dab7167d15bfebc061ff82ce25fe88): fix for wide open ssh for vsi for Z ([#3645](https://github.com/quay/quay/issues/3645))
 
 <a name="v3.12.7"></a>
 ## [v3.12.7] - 2025-01-08
@@ -479,6 +502,22 @@
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
 
+<a name="v3.11.9"></a>
+## [v3.11.9] - 2025-02-12
+### Deps
+- [a4a607a2](https://github.com/quay/quay/commit/a4a607a276fa5accc71b9f06b626d97bb6b0f4fc): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3629](https://github.com/quay/quay/issues/3629)) ([#3638](https://github.com/quay/quay/issues/3638))
+### [Redhat-3.11] Chore
+- [84bf7f89](https://github.com/quay/quay/commit/84bf7f890da9df89708e959120b7dfd04efeb5b9): fix for wide open ssh for vsi for Z ([#3646](https://github.com/quay/quay/issues/3646))
+
+<a name="v3.11.8"></a>
+## [v3.11.8] - 2025-01-27
+### Dep
+- [bf657022](https://github.com/quay/quay/commit/bf6570225c0d13b17b4d5cc1d5d9767c9d38d013): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3547](https://github.com/quay/quay/issues/3547))
+### Ui
+- [964ddbd5](https://github.com/quay/quay/commit/964ddbd5928ae656fabd74dbae66df51dcfe2cee): fixing cypress flake (PROJQUAY-8352) ([#3519](https://github.com/quay/quay/issues/3519))
+### [Redhat-3.11] Dep
+- [8e328ef1](https://github.com/quay/quay/commit/8e328ef15b718f22aef04bd62969aa61e152489c): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3533](https://github.com/quay/quay/issues/3533))
+
 <a name="v3.11.7"></a>
 ## [v3.11.7] - 2024-12-11
 ### Deps
@@ -718,6 +757,20 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.9"></a>
+## [v3.10.9] - 2025-02-13
+### [Redhat-3.10] Deps
+- [1028df4f](https://github.com/quay/quay/commit/1028df4f00167a5cbe158e2fe146ea01cf446a73): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3637](https://github.com/quay/quay/issues/3637))
+
+<a name="v3.10.8"></a>
+## [v3.10.8] - 2025-01-27
+### Dep
+- [b44279f7](https://github.com/quay/quay/commit/b44279f752cff03759821b170fef332b29c125c0): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3548](https://github.com/quay/quay/issues/3548))
+### Ui
+- [aa374a97](https://github.com/quay/quay/commit/aa374a970b6259f5fd6e82877c2cd2ba7385adf2): fixing cypress flake (PROJQUAY-8352) ([#3520](https://github.com/quay/quay/issues/3520))
+### [Redhat-3.10] Dep
+- [42d8541c](https://github.com/quay/quay/commit/42d8541cabd872396cbcbce27fbbb6134f6ce434): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3534](https://github.com/quay/quay/issues/3534))
 
 <a name="v3.10.7"></a>
 ## [v3.10.7] - 2024-12-10
@@ -1158,6 +1211,27 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.10"></a>
+## [v3.9.10] - 2025-03-14
+### Api
+- [6b07d728](https://github.com/quay/quay/commit/6b07d7282ba77e9ae0f394073dfa2a6af1ca77a1): accepting empty body for create robot endpoints (PROJQUAY-6224) ([#3682](https://github.com/quay/quay/issues/3682))
+### Chore
+- [80d8af47](https://github.com/quay/quay/commit/80d8af47d2c2fc190592dcbe1a2896df5f8dbaee): removing pip from requirements.txt file ([#3714](https://github.com/quay/quay/issues/3714))
+### Ci
+- [b620e304](https://github.com/quay/quay/commit/b620e304c501cbd36d691bd99acd96596d15bcfd): updating user for s390x test instance to wfuser ([#3525](https://github.com/quay/quay/issues/3525))
+### Dep
+- [566d8bae](https://github.com/quay/quay/commit/566d8baefd3cfa078a06c349f65fe63b10fb2a01): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3549](https://github.com/quay/quay/issues/3549))
+### Deps
+- [89cae83f](https://github.com/quay/quay/commit/89cae83fa31e2abb87b2a7dc1563b7cfdf0be3b4): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3640](https://github.com/quay/quay/issues/3640))
+### Ui
+- [e5cd8114](https://github.com/quay/quay/commit/e5cd81143f2187b07fbce70dc8bb3ab1de59ac24): fixing cypress flake (PROJQUAY-8352) ([#3521](https://github.com/quay/quay/issues/3521))
+### [Redhat-3.9] Build(Deps)
+- [1d08b96b](https://github.com/quay/quay/commit/1d08b96bd41b33e4dee74887cb4632d04cea2bb9): bump jquery from 1.12.4 to 3.5.0 in /config-tool/pkg/lib/editor ([#3667](https://github.com/quay/quay/issues/3667))
+### [Redhat-3.9] Chore
+- [db489488](https://github.com/quay/quay/commit/db489488652da347ca371bca943e6fa3c7078116): update werkzeug and related package versions (PROJQUAY-5098) ([#3570](https://github.com/quay/quay/issues/3570))
+### [Redhat-3.9] Dep
+- [f44ac01b](https://github.com/quay/quay/commit/f44ac01b259b15187df0b920ae325cbca4226807): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3535](https://github.com/quay/quay/issues/3535))
 
 <a name="v3.9.9"></a>
 ## [v3.9.9] - 2024-12-16
@@ -2696,12 +2770,14 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.5...HEAD
+[v3.13.5]: https://github.com/quay/quay/compare/v3.13.4...v3.13.5
 [v3.13.4]: https://github.com/quay/quay/compare/v3.13.3...v3.13.4
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.7...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.8...v3.13.0
+[v3.12.8]: https://github.com/quay/quay/compare/v3.12.7...v3.12.8
 [v3.12.7]: https://github.com/quay/quay/compare/v3.12.6...v3.12.7
 [v3.12.6]: https://github.com/quay/quay/compare/v3.12.5...v3.12.6
 [v3.12.5]: https://github.com/quay/quay/compare/v3.12.4...v3.12.5
@@ -2709,7 +2785,9 @@
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.7...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.9...v3.12.0
+[v3.11.9]: https://github.com/quay/quay/compare/v3.11.8...v3.11.9
+[v3.11.8]: https://github.com/quay/quay/compare/v3.11.7...v3.11.8
 [v3.11.7]: https://github.com/quay/quay/compare/v3.11.6...v3.11.7
 [v3.11.6]: https://github.com/quay/quay/compare/v3.11.5...v3.11.6
 [v3.11.5]: https://github.com/quay/quay/compare/v3.11.4...v3.11.5
@@ -2717,7 +2795,9 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.7...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.9...v3.11.0
+[v3.10.9]: https://github.com/quay/quay/compare/v3.10.8...v3.10.9
+[v3.10.8]: https://github.com/quay/quay/compare/v3.10.7...v3.10.8
 [v3.10.7]: https://github.com/quay/quay/compare/v3.10.6...v3.10.7
 [v3.10.6]: https://github.com/quay/quay/compare/v3.10.5...v3.10.6
 [v3.10.5]: https://github.com/quay/quay/compare/v3.10.4...v3.10.5
@@ -2725,7 +2805,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.9...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.10...v3.10.0
+[v3.9.10]: https://github.com/quay/quay/compare/v3.9.9...v3.9.10
 [v3.9.9]: https://github.com/quay/quay/compare/v3.9.8...v3.9.9
 [v3.9.8]: https://github.com/quay/quay/compare/v3.9.7...v3.9.8
 [v3.9.7]: https://github.com/quay/quay/compare/v3.9.6...v3.9.7
