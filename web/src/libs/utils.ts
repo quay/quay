@@ -1,6 +1,6 @@
-import {VulnerabilitySeverity} from 'src/resources/TagResource';
-import moment from 'moment';
+import moment, {Duration} from 'moment';
 import {ITeamMember} from 'src/hooks/UseMembers';
+import {VulnerabilitySeverity} from 'src/resources/TagResource';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
@@ -123,8 +123,55 @@ export function parseTeamNameFromUrl(url: string): string {
   return urlParts[teamKeywordIndex + 1];
 }
 
-export function humanizeTimeForExpiry(time_seconds: number): string {
-  return moment.duration(time_seconds || 0, 's').humanize();
+export function parseTimeDuration(input: string): Duration {
+  if (!input) {
+    return moment.duration(NaN);
+  }
+
+  const durationRegex = /^(\d+)([smhdwy])$/i; // suffixes supported by Quay
+  const match = input.match(durationRegex);
+
+  if (!match) {
+    return moment.duration(NaN);
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  const duration = moment.duration(
+    value,
+    unit as moment.unitOfTime.DurationConstructor,
+  );
+
+  return duration;
+}
+
+export function humanizeTimeForExpiry(time_seconds: number | Duration): string {
+  let duration;
+
+  if (typeof time_seconds === 'number') {
+    duration = moment.duration(time_seconds || 0, 'seconds');
+  } else if (moment.isDuration(time_seconds)) {
+    duration = time_seconds;
+  } else {
+    throw new Error('Invalid type for time_seconds');
+  }
+  const days = duration.asDays();
+
+  if (Math.floor(days) < 31) {
+    return duration.humanize();
+  } else if (Math.floor(days) < 365) {
+    const remainingDays = Math.floor(days % 31);
+    const closeToAMonth =
+      (remainingDays >= 0 && remainingDays < 7) ||
+      (remainingDays > 24 && remainingDays < 31);
+    return closeToAMonth ? duration.humanize() : `${Math.floor(days)} days`;
+  } else {
+    const years = Math.floor(days / 365);
+    const remainingDays = Math.floor(days % 365);
+    const months = Math.floor(remainingDays / 31);
+    return months > 0 ? `${years} years ${months} months` : duration.humanize();
+  }
 }
 
 export function getSeconds(duration_str: string): number {

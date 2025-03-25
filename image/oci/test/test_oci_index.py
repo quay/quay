@@ -88,6 +88,7 @@ def test_index_builder_with_artifact_type_and_annotations():
     referrers_index = index_builder.build()
 
     assert referrers_index.is_manifest_list
+    assert referrers_index.annotations
 
     manifests = referrers_index.manifest_dict["manifests"]
     for manifest in manifests:

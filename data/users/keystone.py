@@ -356,16 +356,16 @@ class KeystoneV3Users(FederatedUsers):
             )
 
     def is_superuser(self, username):
-        raise NotImplementedError()
+        return None
 
     def is_global_readonly_superuser(self, username):
-        raise NotImplementedError()
+        return None
 
     def has_superusers(self, username):
-        raise NotImplementedError()
+        return None
 
     def is_restricted_user(self, username):
-        raise NotImplementedError()
+        return None
 
     def has_restricted_users(self):
-        raise NotImplementedError()
+        return None

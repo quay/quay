@@ -14,6 +14,7 @@ from app import docker_v2_signing_key, model_cache, storage
 from data import database, model
 from data.database import (
     ApprBlob,
+    ExternalNotificationMethod,
     ImageStorage,
     ImageStorageLocation,
     Label,
@@ -21,12 +22,14 @@ from data.database import (
     ManifestBlob,
     ManifestLabel,
     Tag,
+    TagNotificationSuccess,
     UploadedBlob,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from digest.digest_tools import sha256_digest
+from endpoints.api.repositorynotification_models_pre_oci import pre_oci_model
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.oci.config import OCIConfig
 from image.oci.manifest import OCIManifestBuilder
@@ -703,3 +706,33 @@ def test_delete_manifests_with_subject(initialized_db):
     # These are kept alive with a "non-temporary" hidden tag.
     # In order to clean these up, they need to be manually deleted for now.
     assert model.gc._check_manifest_used(manifest2_created.manifest.id)
+
+
+def test_tag_cleanup_with_autoprune_policy(default_tag_policy, initialized_db):
+    repo1 = model.repository.create_repository("devtable", "newrepo", None)
+    slack = ExternalNotificationMethod.get(ExternalNotificationMethod.name == "slack")
+    notification = pre_oci_model.create_repo_notification(
+        namespace_name="devtable",
+        repository_name="newrepo",
+        event_name="repo_image_expiry",
+        method_name=slack.name,
+        method_config={"url": "http://example.com"},
+        event_config={"days": 5},
+        title="Image(s) will expire in 5 days",
+    )
+    notification = model.notification.get_repo_notification(notification.uuid)
+    manifest1, built1 = create_manifest_for_testing(
+        repo1, differentiation_field="1", include_shared_blob=True
+    )
+    model.oci.tag.retarget_tag("tag1", manifest1)
+    tag = Tag.select().where(Tag.name == "tag1", Tag.manifest == manifest1.id).get()
+
+    TagNotificationSuccess.create(notification=notification.id, tag=tag.id, method=slack.id)
+
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo1, "tag1", expect_gc=True)
+
+    tag_notification_count = (
+        TagNotificationSuccess.select().where(TagNotificationSuccess.tag == tag.id).count()
+    )
+    assert tag_notification_count == 0

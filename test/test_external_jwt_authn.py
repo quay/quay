@@ -3,7 +3,6 @@ import unittest
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
-from test.helpers import liveserver_app
 from typing import Optional
 
 import jwt
@@ -11,10 +10,13 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from flask import Flask, jsonify, make_response, request
+from mock import patch
 
-from app import app
+from app import app, usermanager
 from data.users import ExternalJWTAuthN
+from features import FeatureNameValue
 from initdb import finished_database_for_testing, setup_database_for_testing
+from test.helpers import liveserver_app
 
 _PORT_NUMBER = 5001
 
@@ -326,6 +328,21 @@ class JWTAuthTestMixin:
             user, error_message = jwt_auth.link_user("invaliduser")
             self.assertIsNotNone(error_message)
             self.assertIsNone(user)
+
+    def test_restricted_users(self):
+        with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+            with fake_jwt(self.emails) as jwt_auth:
+                user, error_message = jwt_auth.get_user("cool.user")
+                self.assertIsNone(error_message)
+                self.assertIsNotNone(user)
+
+                # check if the user is superuser
+                check_is_superuser = usermanager.is_superuser(user.username)
+                assert check_is_superuser == False
+
+                # check if the user is restricted
+                check_is_restricted_user = usermanager.is_restricted_user(user.username)
+                assert check_is_restricted_user == True
 
 
 class JWTAuthNoEmailTestCase(JWTAuthTestMixin, unittest.TestCase):

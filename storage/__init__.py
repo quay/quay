@@ -1,3 +1,4 @@
+from storage.akamaistorage import AkamaiS3Storage
 from storage.azurestorage import AzureStorage
 from storage.cloud import (
     CloudFrontedS3Storage,
@@ -33,6 +34,7 @@ STORAGE_DRIVER_CLASSES = {
     "MultiCDNStorage": MultiCDNStorage,
     "IBMCloudStorage": IBMCloudStorage,
     "STSS3Storage": STSS3Storage,
+    "AkamaiS3Storage": AkamaiS3Storage,
 }
 
 
@@ -93,6 +95,9 @@ class Storage(object):
             download_proxy,
             app.config.get("REGISTRY_STATE") == "readonly",
             validate_endtoend=app.config.get("DISTRIBUTED_STORAGE_VALIDATE_ENDTOEND", False),
+            requires_all_available=app.config.get(
+                "DISTRIBUTED_STORAGE_REQUIRES_ALL_AVAILABLE", False
+            ),
         )
 
         # register extension with app

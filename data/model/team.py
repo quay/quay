@@ -65,12 +65,12 @@ def create_team(name, org_obj, team_role_name, description=""):
 
 
 def add_user_to_team(user_obj, team):
-    try:
-        return TeamMember.create(user=user_obj, team=team)
-    except Exception:
+    if user_exists_in_team(user_obj, team):
         raise UserAlreadyInTeam(
             "User %s is already a member of team %s" % (user_obj.username, team.name)
         )
+
+    return TeamMember.create(user=user_obj, team=team)
 
 
 def remove_user_from_team(org_name, team_name, username, removed_by_username):
@@ -608,14 +608,18 @@ def get_oidc_team_from_groupname(group_name, login_service_name):
     Fetch TeamSync row synced with login_service_name from `group_name` in TeamSync.config
     """
     response = []
-    with db_transaction():
-        query_result = (
-            TeamSync.select()
-            .join(LoginService)
-            .where(TeamSync.config.contains(group_name), LoginService.name == login_service_name)
-        )
-        for row in query_result:
-            if json.loads(row.config).get("group_name", None) == group_name:
-                response.append(row)
+    query_result = (
+        TeamSync.select()
+        .join(LoginService)
+        .where(TeamSync.config.contains(group_name), LoginService.name == login_service_name)
+    )
+
+    for row in query_result:
+        if json.loads(row.config).get("group_name", None) == group_name:
+            response.append(row)
 
     return response
+
+
+def user_exists_in_team(user_obj, team):
+    return TeamMember.select().where(TeamMember.user == user_obj, TeamMember.team == team).exists()

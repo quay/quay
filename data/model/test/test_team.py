@@ -1,7 +1,9 @@
+import json
+
 import pytest
 
 from data.database import TeamMember
-from data.model import DataModelException
+from data.model import DataModelException, UserAlreadyInTeam
 from data.model.organization import create_organization
 from data.model.team import (
     __get_user_admin_teams,
@@ -11,10 +13,12 @@ from data.model.team import (
     create_team,
     delete_all_team_members,
     get_federated_user_teams,
+    get_oidc_team_from_groupname,
     list_team_users,
     remove_team,
     remove_user_from_team,
     set_team_syncing,
+    user_exists_in_team,
     validate_team_name,
 )
 from data.model.user import create_user_noverify, get_user
@@ -166,3 +170,38 @@ def test_get_federated_user_teams(login_service_name, initialized_db):
         assert len(user_teams) == 2
     elif login_service_name == "ldap":
         assert len(user_teams) == 1
+
+
+def test_user_exists_in_team(initialized_db):
+    dev_user = get_user("devtable")
+    new_org = create_organization("testorg", "testorg" + "@example.com", dev_user)
+
+    team_1 = create_team("team_1", new_org, "member")
+    assert add_user_to_team(dev_user, team_1)
+    assert user_exists_in_team(dev_user, team_1) is True
+
+    # add user to team already part of
+    with pytest.raises(UserAlreadyInTeam):
+        add_user_to_team(dev_user, team_1)
+
+    team_2 = create_team("team_2", new_org, "member")
+    assert user_exists_in_team(dev_user, team_2) is False
+
+
+def test_get_oidc_team_from_groupname(initialized_db):
+    dev_user = get_user("devtable")
+    new_org = create_organization("testorg", "testorg" + "@example.com", dev_user)
+
+    team_1 = create_team("team_1", new_org, "member")
+    assert add_user_to_team(dev_user, team_1)
+    assert set_team_syncing(team_1, "oidc", {"group_name": "grp1"})
+    response = get_oidc_team_from_groupname(group_name="grp1", login_service_name="oidc")
+    assert len(response) == 1
+    assert response[0].team.name == "team_1"
+    assert json.loads(response[0].config).get("group_name") == "grp1"
+
+    response = get_oidc_team_from_groupname(group_name="team_1", login_service_name="ldap")
+    assert len(response) == 0
+
+    response = get_oidc_team_from_groupname(group_name="team_1", login_service_name="ldap")
+    assert len(response) == 0

@@ -1231,8 +1231,11 @@ def get_public_repo_count(username):
     )
 
 
-def get_active_users(disabled=True, deleted=False):
+def get_active_users(disabled=True, deleted=False, include_orgs=False):
     query = User.select().where(User.organization == False, User.robot == False)
+
+    if include_orgs:
+        query = User.select().where(User.robot == False)
 
     if not disabled:
         query = query.where(User.enabled == True)

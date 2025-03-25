@@ -7,6 +7,7 @@ import {
   MenuToggleElement,
   Modal,
   ModalVariant,
+  NumberInput,
   Select,
   SelectList,
   SelectOption,
@@ -27,6 +28,7 @@ interface OrgSubscriptionModalProps {
 export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
   const [selectedSku, setSelectedSku] = React.useState('');
   const [menuIsOpen, setMenuIsOpen] = React.useState(false);
+  const [bindingQuantity, setBindingQuantity] = React.useState(null);
   const {addAlert} = useAlerts();
   const onSelect = (
     _event: React.MouseEvent<Element, MouseEvent> | undefined,
@@ -104,6 +106,18 @@ export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
           </Select>
         </FlexItem>
         <FlexItem>
+          {props.subscriptions[selectedSku]?.sku === 'MW02702' &&
+            props.modalType === 'attach' && (
+              <NumberInput
+                value={bindingQuantity}
+                onPlus={() => setBindingQuantity(bindingQuantity + 1)}
+                onMinus={() => setBindingQuantity(bindingQuantity - 1)}
+                min={1}
+                max={props.subscriptions[selectedSku]?.quantity}
+              />
+            )}
+        </FlexItem>
+        <FlexItem>
           <Button
             id="confirm-subscription-select"
             variant="primary"
@@ -112,6 +126,7 @@ export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
               manageSubscription({
                 subscription: props.subscriptions[selectedSku],
                 manageType: props.modalType,
+                bindingQuantity: bindingQuantity,
               });
             }}
           >

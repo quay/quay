@@ -180,7 +180,7 @@ def test_robot_federation_create(app):
                 "orgname": "buynlarge",
                 "robot_shortname": "coolrobot",
             },
-            [{"issuer": "issuer1", "subject": "subject1"}],
+            [{"issuer": "https://issuer1", "subject": "subject1"}],
             expected_code=200,
         )
 
@@ -197,7 +197,7 @@ def test_robot_federation_create(app):
         )
 
         assert len(resp.json) == 1
-        assert resp.json[0].get("issuer") == "issuer1"
+        assert resp.json[0].get("issuer") == "https://issuer1"
         assert resp.json[0].get("subject") == "subject1"
 
         resp = conduct_api_call(
@@ -228,22 +228,27 @@ def test_robot_federation_create(app):
 @pytest.mark.parametrize(
     "fed_config, raises_error, error_message",
     [
-        ([{"issuer": "issuer1", "subject": "subject1"}], False, None),
+        (
+            [{"issuer": "issuer1", "subject": "subject1"}],
+            True,
+            "Issuer must be a URL (http:// or https://)",
+        ),
+        ([{"issuer": "https://issuer1", "subject": "subject1"}], False, None),
         (
             [{"bad_key": "issuer1", "subject": "subject1"}],
             True,
             "Missing one or more required fields",
         ),
         (
-            [{"issuer": "issuer1", "subject": "subject1"}, {}],
+            [{"issuer": "https://issuer1", "subject": "subject1"}, {}],
             True,
             "Missing one or more required fields",
         ),
         (
             [
-                {"issuer": "issuer1", "subject": "subject1"},
-                {"issuer": "issuer2", "subject": "subject1"},
-                {"issuer": "issuer1", "subject": "subject1"},
+                {"issuer": "https://issuer1", "subject": "subject1"},
+                {"issuer": "https://issuer2", "subject": "subject1"},
+                {"issuer": "https://issuer1", "subject": "subject1"},
             ],
             True,
             "Duplicate federation config entry",

@@ -6,6 +6,7 @@ import AutoPruning from './AutoPruning';
 import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
+import {ProxyCacheConfig} from './ProxyCacheConfig';
 
 export default function Settings(props: SettingsProps) {
   const organizationName = location.pathname.split('/')[2];
@@ -48,6 +49,17 @@ export default function Settings(props: SettingsProps) {
       ),
       visible: quayConfig?.features?.AUTO_PRUNE,
     },
+    {
+      name: 'Proxy Cache',
+      id: 'proxycacheconfig',
+      content: (
+        <ProxyCacheConfig
+          organizationName={props.organizationName}
+          isUser={props.isUserOrganization}
+        />
+      ),
+      visible: quayConfig?.features?.PROXY_CACHE && !props.isUserOrganization,
+    },
   ];
 
   return (
@@ -66,6 +78,7 @@ export default function Settings(props: SettingsProps) {
               <Tab
                 key={tab.id}
                 id={tab.id}
+                data-testid={tab.name}
                 eventKey={tabIndex}
                 title={<TabTitleText>{tab.name}</TabTitleText>}
               />

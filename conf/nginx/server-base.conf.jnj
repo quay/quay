@@ -91,6 +91,7 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     proxy_set_header Host $3;
     proxy_set_header Authorization "";
     proxy_set_header x-forwarded-host "";
+    proxy_set_header forwarded "for=$remote_addr;";
     proxy_ssl_name $3;
     proxy_ssl_server_name on;
 
@@ -98,6 +99,8 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
 
     proxy_buffering off;
     proxy_request_buffering off;
+    proxy_buffer_size 32k;
+    proxy_buffers 4 32k;
 
     proxy_read_timeout 60s;
 }
@@ -171,6 +174,8 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
 
     proxy_buffering off;
     proxy_request_buffering off;
+    proxy_buffer_size 32k;
+    proxy_buffers 4 32k;
     proxy_read_timeout 2000;
     proxy_send_timeout 2000;
     proxy_temp_path /tmp 1 2;

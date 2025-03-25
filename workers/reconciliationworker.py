@@ -40,7 +40,7 @@ class ReconciliationWorker(Worker):
         """
         logger.info("Reconciliation worker looking to create new subscriptions...")
 
-        users = model.user.get_active_users()
+        users = model.user.get_active_users(include_orgs=True)
 
         stripe_users = [user for user in users if user.stripe_id is not None]
 
@@ -87,8 +87,12 @@ class ReconciliationWorker(Worker):
             except stripe.error.InvalidRequestError:
                 logger.warn("Invalid request for stripe_id %s", user.stripe_id)
                 continue
+            try:
+                subscription = stripe_customer.subscription
+            except AttributeError:
+                subscription = None
             for sku_id in RECONCILER_SKUS:
-                if stripe_customer.subscription:
+                if subscription is not None:
                     plan = get_plan(stripe_customer.subscription.plan.id)
                     if plan is None:
                         continue

@@ -111,7 +111,7 @@ export interface UpdateUserRequest {
   company?: string;
   password?: string;
   invoice_email_address?: string;
-  tag_expiration_s?: string;
+  tag_expiration_s?: number;
   email?: string;
 }
 

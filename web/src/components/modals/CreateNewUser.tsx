@@ -84,7 +84,7 @@ export function CreateNewUser(props: CreateNewUserProps) {
   }
 
   const updateUsername = async () => {
-    await updateUser(username);
+    await updateUser({username: username});
     handleModalToggle();
     window.location.reload();
   };

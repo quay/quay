@@ -308,6 +308,7 @@ def get_visible_repositories(
     start_id=None,
     limit=None,
     is_superuser=False,
+    return_all=False,
 ):
     """
     Returns the repositories visible to the given user (if any).
@@ -350,6 +351,7 @@ def get_visible_repositories(
         include_public,
         start_id=start_id,
         is_superuser=is_superuser,
+        return_all=return_all,
     )
 
     if limit is not None:
@@ -662,7 +664,9 @@ def set_repository_state(repo, state):
     repo.save()
 
 
-def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_queue):
+def mark_repository_for_deletion(
+    namespace_name, repository_name, repository_gc_queue, available_after=0, deleted_suffix=None
+):
     """
     Marks a repository for future deletion in the background.
 
@@ -677,7 +681,11 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
         Star.delete().where(Star.repository == repo).execute()
 
         # Change the name and state of the repository.
-        repo.name = str(uuid.uuid4())
+        deleted_name = str(uuid.uuid4())
+        if deleted_suffix is not None:
+            deleted_name = "_".join([deleted_name, str(deleted_suffix)])
+        repo.name = deleted_name
+
         repo.state = RepositoryState.MARKED_FOR_DELETION
         repo.save()
 
@@ -693,6 +701,7 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
                     "original_name": repository_name,
                 }
             ),
+            available_after=available_after,
         )
         marker.save()
 

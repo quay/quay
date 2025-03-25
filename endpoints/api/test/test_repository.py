@@ -1,13 +1,15 @@
-from test.fixtures import *
-
 import pytest
 from mock import ANY, MagicMock, patch
 
+from app import app as realapp
+from app import authentication, usermanager
 from data import database, model
+from data.users import UserAuthentication, UserManager
 from endpoints.api.repository import Repository, RepositoryList, RepositoryTrust
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from features import FeatureNameValue
+from test.fixtures import *
 
 
 @pytest.mark.parametrize(
@@ -68,6 +70,28 @@ def test_list_starred_repos(app):
         repos = {r["namespace"] + "/" + r["name"] for r in response["repositories"]}
         assert "devtable/simple" in repos
         assert "public/publicrepo" not in repos
+
+        # testing starred pagination with static rules
+        # since this is a list and not a database result we need to start with 0
+        # list start: index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 0,100,200,300,...
+        # list end:   index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 101, 201, 301, ...
+        # but we need a check to not exceed the list size with the list end value
+        page_token = dict(start_index=1)
+        REPOS_PER_PAGE = 100
+        repos = range(259)
+        retrepos = []
+        for page in range(10):
+            ls = (page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE
+            le = ((page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE) + REPOS_PER_PAGE
+            if len(repos) < le:
+                le = len(repos)
+            retrepos = repos[ls:le]
+            assert len(retrepos) <= REPOS_PER_PAGE
+            assert page <= 3
+            if len(retrepos) < REPOS_PER_PAGE:
+                break
+            page_token["start_index"] += 1
+        assert retrepos[-1] == 258
 
 
 def test_list_repos(initialized_db, app):
@@ -208,3 +232,46 @@ def test_delete_repo(initialized_db, app):
         marker = database.DeletedRepository.get()
         assert marker.original_name == "simple"
         assert marker.queue_id
+
+
+@pytest.mark.parametrize(
+    "namespace, expected_status",
+    [
+        ("devtable", 201),
+        ("buynlarge", 201),
+    ],
+)
+def test_create_repo_with_restricted_users_enabled_as_superuser(namespace, expected_status, app):
+    with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+        with client_with_identity("devtable", app) as cl:
+            body = {
+                "namespace": namespace,
+                "repository": "somerepo",
+                "visibility": "public",
+                "description": "foobar",
+            }
+
+            resp = conduct_api_call(
+                cl, RepositoryList, "POST", None, body, expected_code=expected_status
+            ).json
+            if expected_status == 201:
+                assert resp["name"] == "somerepo"
+                assert model.repository.get_repository(namespace, "somerepo").name == "somerepo"
+
+
+def test_create_repo_with_restricted_users_enabled_as_normal_user(app):
+    # reset super user list
+    super_users = realapp.config.get("SUPER_USERS")
+    realapp.config["SUPER_USERS"] = []
+
+    # try creating a repo with a random user
+    with patch("features.RESTRICTED_USERS", FeatureNameValue("RESTRICTED_USERS", True)):
+        with client_with_identity("devtable", app) as cl:
+            body = {
+                "namespace": "devtable",
+                "repository": "somerepo2",
+                "visibility": "public",
+                "description": "foobarbaz",
+            }
+
+            resp = conduct_api_call(cl, RepositoryList, "POST", None, body, expected_code=403)

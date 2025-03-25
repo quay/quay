@@ -1,41 +1,40 @@
-import {useEffect, useState} from 'react';
 import {
+  ActionGroup,
+  Alert,
+  Button,
   Flex,
-  FormGroup,
   Form,
   FormAlert,
-  TextInput,
+  FormGroup,
+  FormHelperText,
   FormSelect,
   FormSelectOption,
-  ActionGroup,
-  Button,
-  Alert,
   Grid,
   GridItem,
-  FormHelperText,
   HelperText,
   HelperTextItem,
+  TextInput,
 } from '@patternfly/react-core';
-import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import moment from 'moment';
+import {useEffect, useState} from 'react';
+import {AlertVariant} from 'src/atoms/AlertState';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
-import {IOrganization} from 'src/resources/OrganizationResource';
-import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
-import {addDisplayError} from 'src/resources/ErrorHandling';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {useUpdateUser} from 'src/hooks/UseCurrentUser';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {
+  humanizeTimeForExpiry,
+  isValidEmail,
+  parseTimeDuration,
+} from 'src/libs/utils';
+import {addDisplayError} from 'src/resources/ErrorHandling';
+import {IOrganization} from 'src/resources/OrganizationResource';
+import {UpdateUserRequest} from 'src/resources/UserResource';
 import Alerts from 'src/routes/Alerts';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
-const timeMachineOptions = {
-  '0s': 'a few seconds',
-  '1d': 'a day',
-  '1w': '7 days',
-  '2w': '14 days',
-  '4w': 'a month',
-};
+const normalize = (value) => (value === null ? '' : value);
 
 type GeneralSettingsProps = {
   organizationName: string;
@@ -43,6 +42,9 @@ type GeneralSettingsProps = {
 
 export const GeneralSettings = (props: GeneralSettingsProps) => {
   const quayConfig = useQuayConfig();
+  const [timeMachineOptions, setTimeMachineOptions] = useState<{
+    [key: string]: string;
+  }>({});
   const organizationName = props.organizationName;
   const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
@@ -52,7 +54,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   const {updateOrgSettings} = useOrganizationSettings({
     name: organizationName,
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully updated settings',
         variant: AlertVariant.Success,
@@ -69,7 +71,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   });
 
   const {updateUser} = useUpdateUser({
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully updated settings',
         variant: AlertVariant.Success,
@@ -84,6 +86,23 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       });
     },
   });
+
+  useEffect(() => {
+    if (quayConfig?.config?.TAG_EXPIRATION_OPTIONS) {
+      const options = quayConfig.config.TAG_EXPIRATION_OPTIONS.reduce(
+        (acc: {[key: string]: string}, option: string) => {
+          const duration = parseTimeDuration(option);
+          if (duration.isValid()) {
+            acc[option] = humanizeTimeForExpiry(duration);
+          }
+
+          return acc;
+        },
+        {},
+      );
+      setTimeMachineOptions(options);
+    }
+  }, [quayConfig]);
 
   // Time Machine
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
@@ -108,14 +127,15 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     setFullNameValue(user?.family_name || null);
     setCompanyValue(user?.company || null);
     setLocationValue(user?.location || null);
-    const humanized_expiry = humanizeTimeForExpiry(namespaceTimeMachineExpiry);
     for (const key of Object.keys(timeMachineOptions)) {
-      if (humanized_expiry == timeMachineOptions[key]) {
-        setTimeMachineFormValue(key);
+      const optionSeconds = parseTimeDuration(key).asSeconds();
+
+      if (optionSeconds === namespaceTimeMachineExpiry) {
+        setTimeMachineFormValue(optionSeconds.toString());
         break;
       }
     }
-  }, [loading, isUserLoading, isUserOrganization]);
+  }, [loading, isUserLoading, isUserOrganization, timeMachineOptions]);
 
   const handleEmailChange = (emailFormValue: string) => {
     setEmailFormValue(emailFormValue);
@@ -143,16 +163,20 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   };
 
   const checkForChanges = () => {
-    if (!isUserOrganization && namespaceEmail != emailFormValue) {
+    if (
+      !isUserOrganization &&
+      normalize(namespaceEmail) != normalize(emailFormValue)
+    ) {
       return validated == 'success';
     }
 
     return (
-      (getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry ||
-        namespaceEmail != emailFormValue ||
-        user?.family_name != fullNameValue ||
-        user?.company != companyValue ||
-        user?.location != locationValue) &&
+      (moment.duration(timeMachineFormValue, 'seconds').asSeconds() !=
+        namespaceTimeMachineExpiry ||
+        normalize(namespaceEmail) != normalize(emailFormValue) ||
+        normalize(user?.family_name) != normalize(fullNameValue) ||
+        normalize(user?.company) != normalize(companyValue) ||
+        normalize(user?.location) != normalize(locationValue)) &&
       validated != 'error'
     );
   };
@@ -162,20 +186,33 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       if (!isUserOrganization) {
         const response = await updateOrgSettings({
           tag_expiration_s:
-            getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry
-              ? getSeconds(timeMachineFormValue)
+            moment.duration(timeMachineFormValue, 'seconds') !=
+            moment.duration(namespaceTimeMachineExpiry, 'seconds')
+              ? moment.duration(timeMachineFormValue, 'seconds').asSeconds()
               : null,
           email: namespaceEmail != emailFormValue ? emailFormValue : null,
           isUser: isUserOrganization,
         });
         return response;
       } else {
-        const response = await updateUser({
-          email: emailFormValue.trim(),
-          company: companyValue.trim(),
-          location: locationValue.trim(),
-          family_name: fullNameValue.trim(),
-        });
+        let updateRequest: UpdateUserRequest = {
+          email: normalize(emailFormValue).trim(),
+          company: normalize(companyValue).trim(),
+          location: normalize(locationValue).trim(),
+          family_name: normalize(fullNameValue).trim(),
+        };
+
+        if (quayConfig?.features?.CHANGE_TAG_EXPIRATION) {
+          updateRequest = {
+            ...updateRequest,
+            tag_expiration_s:
+              moment.duration(timeMachineFormValue, 'seconds') !=
+              moment.duration(namespaceTimeMachineExpiry, 'seconds')
+                ? moment.duration(timeMachineFormValue, 'seconds').asSeconds()
+                : null,
+          };
+        }
+        const response = await updateUser(updateRequest);
         return response;
       }
     } catch (error) {
@@ -278,32 +315,34 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </Grid>
       )}
 
-      <FormGroup isInline label="Time machine" fieldId="form-time-machine">
-        <FormSelect
-          placeholder="Time Machine"
-          aria-label="Time Machine select"
-          data-testid="arch-select"
-          value={timeMachineFormValue}
-          onChange={(_, val) => setTimeMachineFormValue(val)}
-        >
-          {quayConfig?.config?.TAG_EXPIRATION_OPTIONS.map((option, index) => (
-            <FormSelectOption
-              key={index}
-              value={option}
-              label={timeMachineOptions[option]}
-            />
-          ))}
-        </FormSelect>
+      {quayConfig?.features?.CHANGE_TAG_EXPIRATION && (
+        <FormGroup isInline label="Time machine" fieldId="form-time-machine">
+          <FormSelect
+            placeholder="Time Machine"
+            aria-label="Time Machine select"
+            data-testid="tag-expiration-picker"
+            value={timeMachineFormValue}
+            onChange={(_, val) => setTimeMachineFormValue(val)}
+          >
+            {Object.entries(timeMachineOptions).map(([key, value], index) => (
+              <FormSelectOption
+                key={index}
+                value={moment.duration(parseTimeDuration(key)).asSeconds()}
+                label={value}
+              />
+            ))}
+          </FormSelect>
 
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem>
-              The amount of time, after a tag is deleted, that the tag is
-              accessible in time machine before being garbage collected.
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem>
+                The amount of time, after a tag is deleted, that the tag is
+                accessible in time machine before being garbage collected.
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+      )}
 
       <ActionGroup>
         <Flex

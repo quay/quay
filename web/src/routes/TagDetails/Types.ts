@@ -3,4 +3,5 @@ export enum TabIndex {
   Layers = 'layers',
   SecurityReport = 'securityreport',
   Packages = 'packages',
+  ModelCard = 'modelcard',
 }

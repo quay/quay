@@ -177,7 +177,7 @@ class OCIIndex(ManifestListInterface):
         }
         return METASCHEMA
 
-    def __init__(self, manifest_bytes):
+    def __init__(self, manifest_bytes, validate=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._layers = None
@@ -264,6 +264,11 @@ class OCIIndex(ManifestListInterface):
     @property
     def local_blob_digests(self):
         return self.blob_digests
+
+    @property
+    def annotations(self):
+        """Returns the annotations on the manifest list itself."""
+        return self._parsed.get(INDEX_ANNOTATIONS_KEY) or {}
 
     def get_blob_digests_for_translation(self):
         return self.blob_digests
@@ -473,6 +478,9 @@ class OCIIndexBuilder(object):
                 annotations,
             )
         )
+        if annotations:
+            for k, v in annotations.items():
+                self.annotations[k] = v
 
     def set_subject(self, digest, size, mediatype):
         self.subject = OCIManifestDescriptor(digest=digest, size=size, mediatype=mediatype)

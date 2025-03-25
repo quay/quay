@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"os"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
@@ -34,9 +35,10 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 	switch storageType {
 	case "LocalStorage":
+		log.Debugf("Using local driver storage.")
 		return true, []ValidationError{}
 	case "RHOCSStorage", "RadosGWStorage", "IBMCloudStorage":
-
+		log.Debugf("Using IBM Cloud/ODF/RadosGW storage.")
 		// Check access key
 		if ok, err := ValidateRequiredString(args.AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".access_key", fgName); !ok {
 			errors = append(errors, err)
@@ -70,6 +72,9 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+		log.Debugf("Storage parameters: ")
+		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
@@ -86,6 +91,8 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		// }
 
 		// Check bucket name
+		log.Debugf("Using Amazon S3 Storage.")
+
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
 			errors = append(errors, err)
 		}
@@ -140,42 +147,89 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			token = value.SessionToken
 
 		}
+
+		log.Debugf("S3 Storage parameters: ")
+		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
 	case "STSS3Storage":
-
+		log.Debugf("Using STS S3 Storage.")
 		// Check bucket name
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
 			errors = append(errors, err)
 		}
 
 		roleArn := args.STSRoleArn
-		sess := session.Must(session.NewSession(&aws.Config{
-			Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
-		}))
-		svc := sts.New(sess)
+		if roleArn == "" {
+			roleArn = os.Getenv("AWS_ROLE_ARN")
+		}
 		roleToAssumeArn := roleArn
 		durationSeconds := int64(3600)
-		assumeRoleInput := &sts.AssumeRoleInput{
-			RoleArn:         aws.String(roleToAssumeArn),
-			RoleSessionName: aws.String("quay"),
-			DurationSeconds: aws.Int64(durationSeconds),
-		}
-		assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)
-		if err != nil {
-			errors = append(errors, ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not fetch credentials from STS. Error: " + err.Error(),
-			})
-			break
+
+		webIdentityTokenFile := args.STSWebIdentityTokenFile
+		// Only check the Web Identity Token File variable if no other credentials are present in the config
+		if args.STSUserAccessKey == "" && args.STSUserSecretKey == "" && args.STSWebIdentityTokenFile == "" {
+			webIdentityTokenFile = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 		}
 
-		accessKey := *assumeRoleOutput.Credentials.AccessKeyId
-		secretKey := *assumeRoleOutput.Credentials.SecretAccessKey
-		token = *assumeRoleOutput.Credentials.SessionToken
+		var credentials *sts.Credentials
+		// Prefer using web tokens to authenticate and fallback to access and secret keys
+		if webIdentityTokenFile != "" {
+			sess := session.Must(session.NewSession())
+			svc := sts.New(sess)
+			webIdentityToken, err := os.ReadFile(webIdentityTokenFile)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not read the STS Web Identity Token File, Error: " + err.Error(),
+				})
+				break
+			}
+			assumeRoleInput := &sts.AssumeRoleWithWebIdentityInput{
+				RoleArn:         aws.String(roleToAssumeArn),
+				RoleSessionName: aws.String("quay"),
+				DurationSeconds: aws.Int64(durationSeconds),
+				WebIdentityToken: aws.String(string(webIdentityToken)),
+			}
+			assumeRoleOutput, err := svc.AssumeRoleWithWebIdentity(assumeRoleInput)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not fetch credentials from STS with Web Identity Token. Error: " + err.Error(),
+				})
+				break
+			}
+			credentials = assumeRoleOutput.Credentials
+		} else {
+			sess := session.Must(session.NewSession(&aws.Config{
+				Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
+			}))
+			svc := sts.New(sess)
+			assumeRoleInput := &sts.AssumeRoleInput{
+				RoleArn:         aws.String(roleToAssumeArn),
+				RoleSessionName: aws.String("quay"),
+				DurationSeconds: aws.Int64(durationSeconds),
+			}
+			assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not fetch credentials from STS. Error: " + err.Error(),
+				})
+				break
+			}
+			credentials = assumeRoleOutput.Credentials
+		}
+
+		accessKey := *credentials.AccessKeyId
+		secretKey := *credentials.SecretAccessKey
+		token = *credentials.SessionToken
 		bucketName = args.S3Bucket
 		isSecure = true
 
@@ -192,12 +246,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+		log.Debugf("STS S3 Storage parameters: ")
+		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
 	case "GoogleCloudStorage":
-
+		log.Debugf("Using Google Cloud Storage.")
 		// Check access key
 		if ok, err := ValidateRequiredString(args.AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".access_key", fgName); !ok {
 			errors = append(errors, err)
@@ -221,11 +278,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+		log.Debugf("GCS Storage parameters: ")
+		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
 	case "AzureStorage":
+		log.Debugf("Using Azure storage.")
 
 		// Check access key
 		if ok, err := ValidateRequiredString(args.AzureContainer, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".azure_container", fgName); !ok {
@@ -250,12 +311,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+		log.Debugf("Azure Storage parameters: ")
+		log.Debugf("hostname: %s, account name: %s, container name: %s.", endpoint, accountName, containerName)
+
 		if ok, err := validateAzureGateway(opts, endpoint, storageName, accountName, accountKey, containerName, token, fgName); !ok {
 			errors = append(errors, err)
 		}
 
 	case "CloudFrontedS3Storage":
-
+		log.Debugf("Using CloudFront S3 storage.")
 		// Check access key
 		if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
 			errors = append(errors, err)
@@ -295,6 +359,9 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+		log.Debugf("CloudFront S3 Storage parameters: ")
+		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+
 		// Validate bucket settings
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
@@ -314,6 +381,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 	case "SwiftStorage":
+		log.Debugf("Swift Storage setup.")
 
 		// Validate auth version
 		if args.SwiftAuthVersion != 1 && args.SwiftAuthVersion != 2 && args.SwiftAuthVersion != 3 {
@@ -344,6 +412,9 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if len(errors) > 0 {
 			return false, errors
 		}
+
+		log.Debugf("Swift Storage parameters: ")
+		log.Debugf("hostname: %s, container: %s, auth version: %d", args.SwiftAuthURL, args.SwiftContainer, args.SwiftAuthVersion)
 
 		if ok, err := validateSwift(opts, storageName, args.SwiftAuthVersion, args.SwiftUser, args.SwiftPassword, args.SwiftContainer, args.SwiftAuthURL, args.SwiftOsOptions, fgName); !ok {
 			errors = append(errors, err)

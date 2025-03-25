@@ -9,6 +9,7 @@ export default defineConfig({
     baseUrl: 'http://localhost:9000',
     video: false,
     defaultCommandTimeout: 25000,
+    retries: 3,
     setupNodeEvents(on, config) {
       // implement node event listeners here
     },

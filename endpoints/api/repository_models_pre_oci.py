@@ -100,6 +100,27 @@ class PreOCIModel(RepositoryDataInterface):
                 user, kind_filter=repo_kind
             )
             repos = [repo for repo in unfiltered_repos if can_view_repo(repo)]
+            if not page_token in [{}, None]:
+                if page_token.get("start_index") == 0:
+                    page_token["start_index"] = 1
+
+                # since this is a list and not a database result we need to start with 0
+                # list start: index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 0,100,200,300,...
+                # list end:   index (min1) -1 -> 0 * REPOS_PER_PAGE (100) == 101, 201, 301, ...
+                # but we need a check to not exceed the list size with the list end value
+                ls = (page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE
+                le = ((page_token.get("start_index", 1) - 1) * REPOS_PER_PAGE) + REPOS_PER_PAGE + 1
+                if len(repos) < le:
+                    le = len(repos)
+                repos = repos[ls:le]
+                next_page_token = {
+                    "start_index": page_token.get("start_index") + 1,
+                    "page_number": page_token.get("start_index") + 1,
+                    "is_datetime": False,
+                    "offset_val": 0,
+                }
+            else:
+                repos = repos[0 : REPOS_PER_PAGE - 1]
         else:
             # Determine the starting offset for pagination. Note that we don't use the normal
             # model.modelutil.paginate method here, as that does not operate over UNION queries, which

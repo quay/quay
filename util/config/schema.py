@@ -93,6 +93,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "RESET_CHILD_MANIFEST_EXPIRATION",
     "PERMANENTLY_DELETE_TAGS",
     "FEATURE_RH_MARKETPLACE",
+    "CDN_SPECIFIC_NAMESPACES",
 }
 
 
@@ -1390,6 +1391,26 @@ CONFIG_SCHEMA = {
             "description": "Enables user to try the beta UI Environment",
             "x-example": False,
         },
+        "FEATURE_UI_MODELCARD": {
+            "type": "boolean",
+            "description": "Enables modelcard image tab in UI",
+            "x-example": False,
+        },
+        "UI_MODELCARD_ARTIFACT_TYPE": {
+            "type": "str",
+            "description": "Defines the modelcard artifact type",
+            "x-example": "application/x-mlmodel",
+        },
+        "UI_MODELCARD_ANNOTATION": {
+            "type": "object",
+            "description": "Defines the layer annotation of the modelcard stored in an OCI image",
+            "x-example": {},
+        },
+        "UI_MODELCARD_LAYER_ANNOTATION": {
+            "type": "object",
+            "description": "Defines the layer annotation of the modelcard stored in an OCI image",
+            "x-example": {"org.opencontainers.image.title": "README.md"},
+        },
         "EXPORT_COMPLIANCE_ENDPOINT": {
             "type": "string",
             "description": "The Red Hat Export Compliance Service Endpoint (only used in Quay.io)",
@@ -1461,11 +1482,32 @@ CONFIG_SCHEMA = {
             "description": "Endpoint for internal RH marketplace API",
             "x-example": "https://internal-rh-marketplace-endpoint",
         },
-        # Custom terms of service
-        "TERMS_OF_SERVICE_URL": {
-            "type": "string",
-            "description": "Enable customizing of terms of service for on-prem installations",
-            "x-example": "https://quay.io/tos",
+        # Custom footer links
+        "FOOTER_LINKS": {
+            "type": "object",
+            "description": "Enable customization of footer links in Quay's UI for on-prem installations",
+            "properties": {
+                "TERMS_OF_SERVICE_URL": {
+                    "type": "string",
+                    "description": "Custom terms of service for on-prem installations",
+                    "x-example": "https://www.openshift.com/legal/terms",
+                },
+                "PRIVACY_POLICY_URL": {
+                    "type": "string",
+                    "description": "Custom privacy policy for on-prem installations",
+                    "x-example": "https://www.redhat.com/en/about/privacy-policy",
+                },
+                "SECURITY_URL": {
+                    "type": "string",
+                    "description": "Custom security page for on-prem installations",
+                    "x-example": "https://quay.io/security/",
+                },
+                "ABOUT_URL": {
+                    "type": "string",
+                    "description": "Custom about page for on-prem installations",
+                    "x-example": "https://quay.io/about/",
+                },
+            },
         },
         "ROBOTS_DISALLOW": {
             "type": "boolean",

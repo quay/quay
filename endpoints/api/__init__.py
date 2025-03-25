@@ -9,6 +9,7 @@ from flask import Blueprint, request, session
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
+from werkzeug.routing.exceptions import RequestRedirect
 
 import features
 from .__init__models_pre_oci import pre_oci_model as model
@@ -63,6 +64,12 @@ class ApiExceptionHandlingApi(Api):
     @crossorigin()
     def handle_error(self, error):
         return super(ApiExceptionHandlingApi, self).handle_error(error)
+
+    def _should_use_fr_error_handler(self):
+        try:
+            return super(ApiExceptionHandlingApi, self)._should_use_fr_error_handler()
+        except RequestRedirect:
+            return False
 
 
 api = ApiExceptionHandlingApi()
@@ -490,7 +497,7 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
-    return features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
+    return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
 def allow_if_global_readonly_superuser():

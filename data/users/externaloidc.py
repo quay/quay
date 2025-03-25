@@ -49,6 +49,12 @@ class OIDCUsers(FederatedUsers):
         """
         return None
 
+    def is_restricted_user(self, username):
+        """
+        Checks whether the currently logged in user is restricted.
+        """
+        return None
+
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         """
         Used by teamSync worker, unsupported for oidc team sync

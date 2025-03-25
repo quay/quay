@@ -38,7 +38,7 @@ jobs:
           echo "creating change log for tag: $TAG"
           /tmp/git-chglog --tag-filter-pattern "v3.*" -o changelog v3.6.0-alpha.4..
       - name: Upload Release Archive
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release
           path: |
@@ -61,7 +61,7 @@ jobs:
           tag=`basename ${{ github.ref }}`
           echo "VERSION=${tag}" >> $GITHUB_ENV
       - name: Fetch Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         id: download
         with:
           name: release
@@ -97,7 +97,7 @@ jobs:
           echo "QUAY_USER=projectquay+quay_github" >> $GITHUB_ENV
           echo "::add-mask::${{ secrets.QUAY_TOKEN }}"
       - name: Fetch Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         id: download
         with:
           name: release

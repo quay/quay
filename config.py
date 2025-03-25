@@ -49,7 +49,7 @@ CLIENT_WHITELIST = [
     "QUOTA_BACKFILL",
     "PERMANENTLY_DELETE_TAGS",
     "UI_V2_FEEDBACK_FORM",
-    "TERMS_OF_SERVICE_URL",
+    "FOOTER_LINKS",
     "UI_DELAY_AFTER_WRITE_SECONDS",
     "FEATURE_ASSIGN_OAUTH_TOKEN",
     "FEATURE_IMAGE_EXPIRY_TRIGGER",
@@ -843,6 +843,12 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Enables user to try the beta UI Environment
     FEATURE_UI_V2 = False
+    FEATURE_UI_MODELCARD = True
+    UI_MODELCARD_ARTIFACT_TYPE = "application/x-mlmodel"
+    UI_MODELCARD_ANNOTATION: Optional[Dict[str, str]] = {}
+    UI_MODELCARD_LAYER_ANNOTATION: Optional[Dict[str, str]] = {
+        "org.opencontainers.image.title": "README.md"
+    }
 
     # User feedback form for UI-V2
     UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
@@ -878,8 +884,8 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_RH_MARKETPLACE = False
 
-    # Set up custom TOS for on-premise installations
-    TERMS_OF_SERVICE_URL = ""
+    # Set up custom footer links for on-premise installations
+    FOOTER_LINKS: Optional[Dict[str, str]] = {}
 
     FEATURE_AUTO_PRUNE = False
     # delay after a write operation is made to the DB. This
@@ -901,3 +907,7 @@ class DefaultConfig(ImmutableConfig):
     # Disable pushes while allowing other registry operations.
     # Defaults to "False".
     DISABLE_PUSHES = False
+
+    # Specific namespaces that be exceptions to the s3-cloudflare optimization
+    # used for registry-proxy namespaces
+    CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []
