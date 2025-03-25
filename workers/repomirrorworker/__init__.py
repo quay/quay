@@ -212,7 +212,11 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 )
 
             if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
-                logger.info("Sync cancelled on repo %s.", mirror.repository.name)
+                logger.info(
+                    "Sync cancelled on repo %s/%s.",
+                    mirror.repository.namespace_user.username,
+                    mirror.repository.name,
+                )
                 overall_status = RepoMirrorStatus.CANCEL
                 break
 

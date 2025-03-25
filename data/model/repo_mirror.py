@@ -21,7 +21,10 @@ from util.names import parse_robot_username
 
 # TODO: Move these to the configuration
 MAX_SYNC_RETRIES = 3
-MAX_SYNC_DURATION = 60 * 60 * 2  # 2 Hours
+
+# We need to increase the MAX_SYNC_DURATION because for certain very big images, 2 hours might not be enough
+# Previous value: 2 hours
+MAX_SYNC_DURATION = 60 * 60 * 12  # 12 Hours
 
 
 def get_eligible_mirrors():
@@ -515,7 +518,7 @@ def change_retries_remaining(repository, retries_remaining):
     Change the number of retries remaining for mirroring a repository.
     """
     mirror = get_mirror(repository)
-    update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
+    return update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
 
 
 def change_external_registry_config(repository, config_updates):

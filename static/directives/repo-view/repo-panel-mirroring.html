@@ -82,11 +82,11 @@
           </tr>
           <tr>
             <td style="border-bottom: none"><label for="create_skopeo_timeout">Skopeo timeout interval: </label></td>
-            <td style="border-bottom: none"><input class="form-control" id="skopeo_timeout_interval" type="number" ng-model="vm.skopeoTimeout" placeholder="300" required min="300" max="7200"></input></td>
+            <td style="border-bottom: none"><input class="form-control" id="skopeo_timeout_interval" type="number" ng-model="vm.skopeoTimeout" placeholder="300" required min="300" max="43200"></input></td>
             <td style="border-bottom: none">seconds</td>
           </tr>
           <tr>
-            <td colspan="3" style="text-align: center">Minimum timeout length: 300 seconds (5 minutes). Maximum timeout length: 7200 seconds (2 hours).</td>
+            <td colspan="3" style="text-align: center">Minimum timeout length: 300 seconds (5 minutes). Maximum timeout length: 43200 seconds (12 hours).</td>
           </tr>
           <tr>
             <td><label for="choose_robot">Robot User</label></td>
@@ -441,8 +441,10 @@
         dialog-form="context.mirroringform">
       <form name="context.mirroringform" class="co-single-field-dialog">
         <label for="skopeo_timeout_interval_change" style="margin: 0px; vertical-align: middle;">Timeout: </label>
-        <input style="width: 60%; display: inline-flex;" class="form-control" id="skopeo_timeout_interval_change" type="number" ng-model="vm.skopeoTimeoutChanges.values.skopeo_timeout_interval" placeholder="300" required min="300" max="7200"></input>
+        <input style="width: 60%; display: inline-flex;" class="form-control" id="skopeo_timeout_interval_change" type="number" ng-model="vm.skopeoTimeoutChanges.values.skopeo_timeout_interval" placeholder="300" required min="300" max="43200"></input>
         <span style="vertical-align: middle;"> seconds</span>
+        <p></p>
+        <p style="text-align: left;">Minimum value: 300 seconds (5 minutes). Maximum value: 43200 seconds (12 hours).</p>
       </form>
     </div>
 
