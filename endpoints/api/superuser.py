@@ -1298,7 +1298,6 @@ class SuperUserRepositoryBuildResource(ApiResource):
 
 @resource("/v1/superuser/config")
 @show_if(features.SUPER_USERS)
-@show_if(features.SUPERUSER_CONFIGDUMP)
 class SuperUserDumpConfig(ApiResource):
     # NOTE: any changes made here must also be reflected in the nginx config
     # this API returns a complete set of options. ! NOTE ! changing options listed
@@ -1372,5 +1371,6 @@ class SuperUserDumpConfig(ApiResource):
 
         # requesting Scope only doesn't restrict so we need superuserpermissions.can
         if SuperUserPermission().can() or allow_if_global_readonly_superuser():
-            return process_config()
+            if features.SUPERUSER_CONFIGDUMP:
+                return process_config()
         raise Unauthorized()

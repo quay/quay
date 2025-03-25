@@ -144,9 +144,9 @@ SECURITY_TESTS: List[
         None,
         None,
         "devtable",
-        200,
+        403,
     ),  # seems to be a superuser see test_superuser_full_access_security
-    (SuperUserDumpConfig, "GET", None, None, "globalreadonlysuperuser", 200),
+    (SuperUserDumpConfig, "GET", None, None, "globalreadonlysuperuser", 403),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "freshuser", 403),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "reader", 403),
     (RepositorySignatures, "GET", REPO_PARAMS, {}, "devtable", 404),

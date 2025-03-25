@@ -71,6 +71,9 @@ def test_change_install_user(app):
 
 
 def test_get_superuserdumpconfig(app):
+    import features
+
+    features.import_features({"FEATURE_SUPERUSER_CONFIGDUMP": True})
     with client_with_identity("devtable", app) as cl:
         result = conduct_api_call(cl, SuperUserDumpConfig, "GET", None, None, 200).json
         # we check for json struct to be returned by the function
