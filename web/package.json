@@ -33,6 +33,7 @@
     "recoil": "^0.7.7",
     "recoil-persist": "^4.2.0",
     "rehype-raw": "^7.0.0",
+    "rehype-video": "^2.3.0",
     "remark-gemoji": "^8.0.0",
     "remark-gfm": "^4.0.1",
     "ts-jest": "^29.1.1",
