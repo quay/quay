@@ -2,6 +2,15 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
 
+<a name="v3.12.9"></a>
+## [v3.12.9] - 2025-03-25
+### Chore
+- [6535020e8](https://github.com/quay/quay/commit/6535020e81c53d046c1962a73f43158b2c8d81c2): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3706](https://github.com/quay/quay/issues/3706)) ([#3711](https://github.com/quay/quay/issues/3711))
+### [Redhat-3.12] Chore
+- [139402e24](https://github.com/quay/quay/commit/139402e24e4c4404a0d3477f2eef72cdb872c8e2): Change in the CIDR for Z ([#3699](https://github.com/quay/quay/issues/3699))
+### [Redhat-3.12] Deps
+- [c5f1e718b](https://github.com/quay/quay/commit/c5f1e718b8a2c17a9d0230c8b5d14d3b87b9a3db): bump gunicorn (PROJQUAY-8726) ([#3733](https://github.com/quay/quay/issues/3733))
+
 <a name="v3.12.8"></a>
 ## [v3.12.8] - 2025-02-07
 ### Deps
@@ -2605,7 +2614,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.8...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.9...HEAD
+[v3.12.9]: https://github.com/quay/quay/compare/v3.12.8...v3.12.9
 [v3.12.8]: https://github.com/quay/quay/compare/v3.12.7...v3.12.8
 [v3.12.7]: https://github.com/quay/quay/compare/v3.12.6...v3.12.7
 [v3.12.6]: https://github.com/quay/quay/compare/v3.12.5...v3.12.6
