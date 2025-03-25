@@ -31,8 +31,14 @@ def subscription_bound_to_org(subscription_id):
     # lookup row in table matching subscription_id, if there is no row return false, otherwise return true
     # this function is used to check if a subscription is bound to an org or
     try:
-        binding = OrganizationRhSkus.get(OrganizationRhSkus.subscription_id == subscription_id)
-        return True, binding.org_id
+        query = (
+            OrganizationRhSkus.select()
+            .where(OrganizationRhSkus.subscription_id == subscription_id)
+            .dicts()
+        )
+        if query.__len__() > 0:
+            return True, query
+        return False, None
     except OrganizationRhSkus.DoesNotExist:
         return False, None
 
@@ -54,3 +60,13 @@ def remove_all_owner_subscriptions_from_org(user_id, org_id):
         query.execute()
     except model.DataModelException as ex:
         raise model.DataModelException(ex)
+
+
+def get_bound_subscriptions(subscription_id):
+    try:
+        query = OrganizationRhSkus.select().where(
+            OrganizationRhSkus.subscription_id == subscription_id
+        )
+        return query
+    except OrganizationRhSkus.DoesNotExist:
+        return None

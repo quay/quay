@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 DOCKER ?= docker
-DOCKER_COMPOSE ?= $(DOCKER)-compose
+DOCKER_COMPOSE ?= $(DOCKER) compose
 
 export PATH := ./venv/bin:$(PATH)
 

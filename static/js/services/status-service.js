@@ -28,6 +28,10 @@ angular.module('quay').factory('StatusService', ['Features', function(Features) 
       indicator: 'critical',
       description: 'Major Service Outage'
     },
+    under_maintenance: {
+      indicator: 'minor',
+      description: 'Under Maintenance',
+    },
   }
   var statusPageHandler = null;
   var statusPageData = null;

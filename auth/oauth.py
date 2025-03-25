@@ -14,9 +14,9 @@ from oauth.login_utils import (
     _conduct_oauth_login,
     get_jwt_issuer,
     get_sub_username_email_from_token,
-    is_jwt,
 )
 from oauth.oidc import PublicKeyLoadException
+from util.security.jwtutil import is_jwt
 
 logger = logging.getLogger(__name__)
 

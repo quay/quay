@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +9,7 @@ from app import storage
 from data.database import (
     ImageStorage,
     ImageStorageLocation,
+    ImageStoragePlacement,
     Manifest,
     ManifestBlob,
     ManifestChild,
@@ -39,7 +40,15 @@ from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
-from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from image.docker.schema2.manifest import (
+    DockerSchema2Manifest,
+    DockerSchema2ManifestBuilder,
+)
+from image.docker.schema2.test.test_config import (
+    CONFIG_BYTES,
+    CONFIG_DIGEST,
+    CONFIG_SIZE,
+)
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
@@ -462,6 +471,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
     orgname = "quayio-cache"
     repository = f"{orgname}/{upstream_repository}"
     digest = UBI8_8_4_DIGEST
+    tag = "8.4"
 
     @pytest.fixture(autouse=True)
     def setup(self, app):
@@ -535,6 +545,40 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert manifest is not None
         tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
         assert tag.lifetime_end_ms > first_tag.lifetime_end_ms
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_returns_existing_manifest_when_temp_tag_expires(self, create_repo):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        proxy_model._proxy.get_manifest = MagicMock(
+            return_value=(UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE)
+        )
+
+        manifest, tag = proxy_model._create_manifest_and_retarget_tag(
+            repo_ref, input_manifest, self.tag
+        )
+        assert manifest is not None
+        assert tag is not None
+
+        expired_time = datetime.now() - timedelta(days=2)
+        tag.lifetime_end_ms = int(expired_time.timestamp() * 1000)
+        with patch.object(proxy_model._proxy, "manifest_exists", return_value=UBI8_8_4_DIGEST):
+            retrieved_manifest = proxy_model.lookup_manifest_by_digest(
+                repo_ref, UBI8_8_4_DIGEST, allow_hidden=True
+            )
+
+        assert retrieved_manifest is not None
+        assert retrieved_manifest.digest == UBI8_8_4_DIGEST
+        assert retrieved_manifest.internal_manifest_bytes.as_unicode() == UBI8_8_4_MANIFEST_SCHEMA2
 
     def test_recreate_tag_when_manifest_is_cached_and_exists_upstream(
         self, create_repo, proxy_manifest_response
@@ -1246,6 +1290,78 @@ class TestRegistryProxyModelGetRepoTag:
             tag = proxy_model.get_repo_tag(repo_ref, self.tag)
         assert tag is not None
         assert tag.lifetime_end_ms == first_tag.lifetime_end_ms
+
+    def test_missing_layers_in_proxy_cache(self, proxy_manifest_response):
+        """
+        Test to verify that layers are missing in proxy cache when they exist locally
+        but were not explicitly requested by the client.
+
+        Note: this is not an expected behavior. The fix is expected with (PROJQUAY-8440)
+        """
+        proxy_mock = proxy_manifest_response(
+            UBI8_8_4_DIGEST, UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        )
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+
+            manifest = DockerSchema2Manifest(
+                Bytes.for_string_or_unicode(self.create_manifest_with_valid_layers())
+            )
+
+        assert manifest is not None
+        assert len(manifest.filesystem_layers) == 4
+        missing_layers = []
+        for layer in manifest.filesystem_layers:
+            exists = (
+                ImageStorage.select().where(ImageStorage.content_checksum == layer.digest).exists()
+            )
+            if not exists:
+                missing_layers.append(layer.digest)
+
+        # Assert that we have missing layers
+        assert len(missing_layers) > 0
+
+    def create_manifest_with_valid_layers(self):
+        return json.dumps(
+            {
+                "schemaVersion": 2,
+                "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+                "config": {
+                    "mediaType": "application/vnd.docker.container.image.v1+json",
+                    "size": CONFIG_SIZE,
+                    "digest": CONFIG_DIGEST,
+                },
+                "layers": [
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "size": 1234,
+                        "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+                    },
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "size": 32654,
+                        "digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
+                    },
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "size": 16724,
+                        "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
+                    },
+                    {
+                        "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                        "size": 73109,
+                        "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+                    },
+                ],
+            }
+        ).encode("utf-8")
 
 
 class TestPruningLRUProxiedImagesToAllowBlobUpload:

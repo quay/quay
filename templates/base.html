@@ -136,16 +136,28 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
       <div class="col-md-12">
         <ul>
           {% if config_set['BRANDING']['footer_img'] %}
-          <li><a href="{{ config_set['BRANDING']['footer_url'] }}" ng-safenewtab><img src="{{ config_set['BRANDING']['footer_img'] }}"></a></li>
-          {% endif %}
-          {% if config_set['TERMS_OF_SERVICE_URL'] %}
-          <li><a href="{{ config_set['TERMS_OF_SERVICE_URL'] }}" ng-safenewtab>Terms of Service</a></li>
+            <li><a href="{{ config_set['BRANDING']['footer_url'] }}" ng-safenewtab><img src="{{ config_set['BRANDING']['footer_img'] }}"></a></li>
           {% endif %}
           <li><a href="{{ config_set['DOCUMENTATION_ROOT'] }}" ng-safenewtab>Documentation</a></li>
-          <li quay-require="['BILLING']"><a href="https://www.openshift.com/legal/terms" target="_blank">Terms</a></li>
-          <li quay-require="['BILLING']"><a href="https://www.redhat.com/en/about/privacy-policy" target="_blank">Privacy</a></li>
-          <li quay-require="['BILLING']"><a href="/security/" target="_self">Security</a></li>
-          <li quay-require="['BILLING']"><a href="/about/" target="_self">About</a></li>
+          {% if config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
+            <li quay-require="['BILLING']"><a href="https://www.openshift.com/legal/terms" target="_blank">Terms</a></li>
+            <li quay-require="['BILLING']"><a href="https://www.redhat.com/en/about/privacy-policy" target="_blank">Privacy</a></li>
+            <li quay-require="['BILLING']"><a href="/security/" target="_self">Security</a></li>
+            <li quay-require="['BILLING']"><a href="/about/" target="_self">About</a></li>
+          {% else %}
+            {% if config_set['FOOTER_LINKS']['TERMS_OF_SERVICE_URL'] %}
+              <li><a href="{{ config_set['FOOTER_LINKS']['TERMS_OF_SERVICE_URL'] }}" ng-safenewtab>Terms of Service</a></li>
+            {% endif %}
+            {% if config_set['FOOTER_LINKS']['PRIVACY_POLICY_URL'] %}
+              <li><a href="{{ config_set['FOOTER_LINKS']['PRIVACY_POLICY_URL'] }}" target="_blank">Privacy</a></li>
+            {% endif %}
+            {% if config_set['FOOTER_LINKS']['SECURITY_URL'] %}
+              <li><a href="{{ config_set['FOOTER_LINKS']['SECURITY_URL'] }}" target="_blank">Security</a></li>
+            {% endif %}
+            {% if config_set['FOOTER_LINKS']['ABOUT_URL'] %}
+              <li><a href="{{ config_set['FOOTER_LINKS']['ABOUT_URL'] }}" target="_blank">About</a></li>
+            {% endif %}
+          {% endif %}
           {% if has_contact %}
           <li><b><a href="{{ contact_href or '/contact/' }}" target="_self">Contact</a></b></li>
           {% endif %}

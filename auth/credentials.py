@@ -2,9 +2,10 @@ import logging
 from enum import Enum
 
 from flask import request
+from jwt import InvalidTokenError
 
 import features
-from app import app, authentication
+from app import app, authentication, instance_keys
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -119,10 +120,9 @@ def validate_credentials(auth_username, auth_password_or_token):
     if is_robot:
         logger.debug("Found credentials header for robot %s", auth_username)
         try:
-            robot = model.user.verify_robot(auth_username, auth_password_or_token)
-
+            robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)
+            assert robot
             logger.debug("Successfully validated credentials for robot %s", auth_username)
-
             return ValidateResult(AuthKind.credentials, robot=robot), CredentialKind.robot
         except model.DeactivatedRobotOwnerException as dre:
             robot_owner, robot_name = parse_robot_username(auth_username)
@@ -155,7 +155,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                 ValidateResult(AuthKind.credentials, error_message=str(dre)),
                 CredentialKind.robot,
             )
-        except model.InvalidRobotCredentialException as ire:
+        except (model.InvalidRobotCredentialException, InvalidTokenError) as ire:
             logger.debug("Failed to validate credentials for robot %s: %s", auth_username, ire)
 
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):

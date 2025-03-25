@@ -781,7 +781,13 @@ def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
 
 
 def fetch_paginated_autoprune_repo_tags_by_number(
-    repo_id, max_tags_allowed: int, items_per_page, page, tag_pattern=None, tag_pattern_matches=True
+    repo_id,
+    max_tags_allowed: int,
+    items_per_page,
+    page,
+    tag_pattern=None,
+    tag_pattern_matches=True,
+    exclude_tags=None,
 ):
     """
     Fetch repository's active tags sorted by creation date & are more than max_tags_allowed
@@ -790,8 +796,7 @@ def fetch_paginated_autoprune_repo_tags_by_number(
         tags_offset = max_tags_allowed + ((page - 1) * items_per_page)
         now_ms = get_epoch_timestamp_ms()
         query = (
-            Tag.select(Tag.name)
-            .where(
+            Tag.select(Tag.id, Tag.name).where(
                 Tag.repository_id == repo_id,
                 (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
                 Tag.hidden == False,
@@ -799,16 +804,22 @@ def fetch_paginated_autoprune_repo_tags_by_number(
             # TODO: Ignoring type error for now, but it seems order_by doesn't
             # return anything to be modified by offset. Need to investigate
             .order_by(Tag.lifetime_start_ms.desc())  # type: ignore[func-returns-value]
-            .offset(tags_offset)
-            .limit(items_per_page)
         )
+
+        if exclude_tags and len(exclude_tags) > 0:
+            query.where(Tag.name.not_in([tag.name for tag in exclude_tags]))
+
         if tag_pattern is not None:
             query = db_regex_search(
                 Tag.select(query.c.name).from_(query),
                 query.c.name,
                 tag_pattern,
+                tags_offset,
+                items_per_page,
                 matches=tag_pattern_matches,
             )
+        else:
+            query = query.offset(tags_offset).limit(items_per_page)
         return list(query)
     except Exception as err:
         raise Exception(
@@ -830,19 +841,23 @@ def fetch_paginated_autoprune_repo_tags_older_than_ms(
     try:
         tags_offset = items_per_page * (page - 1)
         now_ms = get_epoch_timestamp_ms()
-        query = (
-            Tag.select(Tag.name)
-            .where(
-                Tag.repository_id == repo_id,
-                (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
-                (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
-                Tag.hidden == False,
-            )
-            .offset(tags_offset)  # type: ignore[func-returns-value]
-            .limit(items_per_page)
+        query = Tag.select(Tag.id, Tag.name).where(
+            Tag.repository_id == repo_id,
+            (Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms),
+            (now_ms - Tag.lifetime_start_ms) > tag_lifetime_ms,
+            Tag.hidden == False,
         )
         if tag_pattern is not None:
-            query = db_regex_search(query, Tag.name, tag_pattern, matches=tag_pattern_matches)
+            query = db_regex_search(
+                query,
+                Tag.name,
+                tag_pattern,
+                tags_offset,
+                items_per_page,
+                matches=tag_pattern_matches,
+            )
+        else:
+            query = query.offset(tags_offset).limit(items_per_page)  # type: ignore[func-returns-value]
         return list(query)
     except Exception as err:
         raise Exception(

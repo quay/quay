@@ -127,6 +127,7 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
         username=username,
         namespace=namespace_name,
         repo_name=repo_name,
+        cdn_specific=_is_cdn_specific(namespace_name),
     )
     if direct_download_url:
         logger.debug("Returning direct download URL")
@@ -149,6 +150,13 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
             storage.stream_read(blob.placements, path),
             headers=headers,
         )
+
+
+def _is_cdn_specific(namespace):
+    # Checks if blob belongs to namespace that should have cdn url returned
+    logger.debug("Checking for namespace %s", namespace)
+    namespaces = app.config.get("CDN_SPECIFIC_NAMESPACES")
+    return namespace in namespaces
 
 
 def _try_to_mount_blob(repository_ref, mount_blob_digest):

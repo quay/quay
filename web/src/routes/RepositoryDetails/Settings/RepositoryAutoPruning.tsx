@@ -18,18 +18,20 @@ import {RepositoryAutoPrunePolicy} from 'src/resources/RepositoryAutoPruneResour
 import ReadonlyAutoprunePolicy from './RepositoryAutoPruningReadonlyPolicy';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 
 export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [policies, setPolicies] = useState([]);
   const {addAlert} = useAlerts();
   const {organization} = useOrganization(props.organizationName);
+  const {user} = useCurrentUser();
   const config = useQuayConfig();
 
   const {isSuccess: successFetchingPolicies, nsPolicies} =
     useNamespaceAutoPrunePolicies(
       props.organizationName,
       props.isUser,
-      organization?.is_admin || false,
+      organization?.is_admin || user?.username == props.organizationName,
     );
 
   const {
@@ -73,26 +75,38 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
     props.repoName,
   );
 
-  const addNewPolicy = () => {
-    setPolicies([
-      ...policies,
-      {
-        method: AutoPruneMethod.NONE,
-        uuid: null,
-        value: null,
-        tagPattern: null,
-        tagPatternMatches: true,
-      },
-    ]);
+  const addNewPolicy = (clear_existing = false) => {
+    if (clear_existing) {
+      setPolicies([
+        {
+          method: AutoPruneMethod.NONE,
+          uuid: null,
+          value: null,
+          tagPattern: null,
+          tagPatternMatches: true,
+        },
+      ]);
+    } else {
+      setPolicies([
+        ...policies,
+        {
+          method: AutoPruneMethod.NONE,
+          uuid: null,
+          value: null,
+          tagPattern: null,
+          tagPatternMatches: true,
+        },
+      ]);
+    }
   };
 
   useEffect(() => {
     if (successFetchingRepoPolicies) {
-      if (repoPolicies.length > 0) {
-        setPolicies(repoPolicies);
-      } else if (policies.length == 0) {
-        addNewPolicy();
+      if (repoPolicies.length == 0) {
+        addNewPolicy(true);
+        return;
       }
+      setPolicies(repoPolicies);
     }
   }, [
     successFetchingRepoPolicies,
@@ -203,7 +217,14 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
           policies={[config?.config?.DEFAULT_NAMESPACE_AUTOPRUNE_POLICY]}
         />
       </Conditional>
-      <Conditional if={nsPolicies?.length > 0 && organization?.is_admin}>
+      <Conditional
+        if={
+          nsPolicies?.length > 0 &&
+          (props.isUser
+            ? user?.username == props.organizationName
+            : organization?.is_admin)
+        }
+      >
         <ReadonlyAutoprunePolicy
           testId="namespace-autoprune-policy"
           title="Namespace Auto-Pruning Policies"
@@ -227,7 +248,7 @@ export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
         />
       ))}
       <br />
-      <Button variant="primary" type="submit" onClick={addNewPolicy}>
+      <Button variant="primary" type="submit" onClick={() => addNewPolicy()}>
         Add Policy
       </Button>
     </>

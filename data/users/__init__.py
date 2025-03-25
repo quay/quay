@@ -405,6 +405,12 @@ class UserManager(object):
 
         return self.state.is_restricted_user(username)
 
+    def is_superuser(self, username):
+        if not features.SUPER_USERS:
+            return False
+
+        return self.state.is_superuser(username)
+
 
 class FederatedUserManager(ConfigUserManager):
     """
@@ -438,7 +444,9 @@ class FederatedUserManager(ConfigUserManager):
         if super().restricted_whitelist_is_set() and not super().is_restricted_user(username):
             return False
 
-        return self.federated_users.is_restricted_user(username)
+        return self.federated_users.is_restricted_user(username) or super().is_restricted_user(
+            username
+        )
 
     def has_restricted_users(self) -> bool:
         return self.federated_users.has_restricted_users() or super().has_restricted_users()

@@ -181,14 +181,14 @@ jobs:
       if: always()
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: oci-test-results
         path: .oci-test-results/
       if: always()
 
     - name: Upload Quay logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: logs
         path: .logs/

@@ -10,6 +10,7 @@ class AuthKind(Enum):
     signed_grant = "signed_grant"
     credentials = "credentials"
     ssojwt = "ssojwt"
+    federated = "federated"
 
     def __str__(self):
         return "%s" % self.value

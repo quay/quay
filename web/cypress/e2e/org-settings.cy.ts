@@ -1,5 +1,7 @@
 /// <reference types="cypress" />
 
+import {parseTimeDuration, humanizeTimeForExpiry} from 'src/libs/utils';
+
 describe('Org Settings Page', () => {
   beforeEach(() => {
     cy.exec('npm run quay:seed');
@@ -38,6 +40,42 @@ describe('Org Settings Page', () => {
     // refresh page and check if email is saved
     cy.reload();
     cy.get('#org-settings-email').should('have.value', 'good-email@redhat.com');
+  });
+
+  it('Tag expiration picker dropdown values', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.CHANGE_TAG_EXPIRATION = true;
+      cy.intercept('GET', '/config', config).as('getConfigEnabled');
+    });
+    cy.intercept('GET', '/api/v1/user', (req) => {
+      req.continue((res) => {
+        res.body.tag_expiration_s = 60 * 60 * 24 * 80; // 80 days in seconds
+      });
+    }).as('getUser');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.wait('@getConfigEnabled');
+    cy.wait('@getUser');
+
+    // Verify the dropdown values
+    cy.fixture('config.json').then((config) => {
+      const options = config.config.TAG_EXPIRATION_OPTIONS;
+      options.forEach((option, index) => {
+        const duration = parseTimeDuration(option);
+        const durationInSeconds = duration.asSeconds();
+        const humanized = humanizeTimeForExpiry(durationInSeconds);
+
+        cy.get(`[data-testid="tag-expiration-picker"] option:eq(${index})`)
+          .should('have.value', durationInSeconds.toString())
+          .and('contain', humanized);
+      });
+    });
+
+    // Verify the correct value is selected
+    cy.get('[data-testid="tag-expiration-picker"]').should(
+      'have.value',
+      60 * 60 * 24 * 80,
+    );
   });
 
   it('Billing Information', () => {

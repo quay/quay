@@ -1,6 +1,6 @@
-from test.fixtures import *
-
 from data import model
+from data.database import Repository, RepositoryState
+from test.fixtures import *
 
 NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
@@ -86,3 +86,20 @@ def test_admin(initialized_db):
     assertHasRepo(ADMIN_ACCESS_USER, ANOTHER_ORG_REPO)
 
     assertDoesNotHaveRepo(ADMIN_ACCESS_USER, OUTSIDE_ORG_REPO)
+
+
+def test_global_readonly_superuser(initialized_db):
+    all_repos = list(
+        Repository.select().where(
+            Repository.state != RepositoryState.MARKED_FOR_DELETION,
+            Repository.kind == Repository.kind.get_id("image"),
+        )
+    )
+    repos = list(
+        model.repository.get_visible_repositories(
+            "globalreadonlysuperuser", is_superuser=True, return_all=True
+        )
+    )
+    assert len(repos) == len(all_repos)
+    for repo in all_repos:
+        assert repo.id in [r.rid for r in repos]

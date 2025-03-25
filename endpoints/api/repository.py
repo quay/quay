@@ -10,6 +10,7 @@ from flask import abort, request
 
 import features
 from app import (
+    app,
     dockerfile_build_queue,
     repository_gc_queue,
     tuf_metadata_api,
@@ -144,6 +145,7 @@ class RepositoryList(ApiResource):
             features.RESTRICTED_USERS
             and usermanager.is_restricted_user(owner.username)
             and owner.username == namespace_name
+            and owner.username not in app.config.get("SUPER_USERS", None)
         ):
 
             repository_name = req["repository"]

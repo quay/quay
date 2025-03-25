@@ -60,17 +60,23 @@ export function useManageOrgSubscriptions(org: string, {onSuccess, onError}) {
     async ({
       subscription,
       manageType,
+      bindingQuantity,
     }: {
       subscription: Dict<string>;
       manageType: string;
+      bindingQuantity: number;
     }) => {
       const reqBody = [];
-      reqBody.push({
+      const subscriptionObj = {
         subscription_id:
           manageType === 'attach'
             ? subscription['id']
             : subscription['subscription_id'],
-      });
+      };
+      if (bindingQuantity) {
+        subscriptionObj['quantity'] = bindingQuantity;
+      }
+      reqBody.push(subscriptionObj);
       if (manageType === 'attach') {
         setMarketplaceOrgAttachment(org, reqBody);
       } else {

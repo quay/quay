@@ -5185,6 +5185,38 @@ class TestSuperUserManagement(ApiTestCase):
         self.assertEqual(len(json["messages"]), 1)
 
 
+class TestUserSku(ApiTestCase):
+    def test_get_user_skus(self):
+        self.login(SUBSCRIPTION_USER)
+        json = self.getJsonResponse(UserSkuList)
+        self.assertEqual(len(json), 3)
+
+    def test_quantity(self):
+        self.login(SUBSCRIPTION_USER)
+        subscription_user = model.user.get_user(SUBSCRIPTION_USER)
+        plans = check_internal_api_for_subscription(subscription_user)
+        assert len(plans) == 13
+
+    def test_split_sku(self):
+        self.login(SUBSCRIPTION_USER)
+        user = model.user.get_user(SUBSCRIPTION_USER)
+        org = model.organization.get_organization(SUBSCRIPTION_ORG)
+        model.organization_skus.bind_subscription_to_org(80808080, org.id, user.id, 3)
+
+        user_subs = self.getJsonResponse(resource_name=UserSkuList)
+
+        unassigned_sub = None
+        assigned_sub = None
+        for sub in user_subs:
+            if sub["id"] == 80808080 and sub["assigned_to_org"] is None:
+                unassigned_sub = sub
+            elif sub["id"] == 80808080 and sub["assigned_to_org"] is not None:
+                assigned_sub = sub
+        self.assertIsNotNone(unassigned_sub, "Could not find unassigned remaining subscription")
+        self.assertIsNotNone(assigned_sub, "Could not find assigned subscription")
+        self.assertEqual(7, unassigned_sub["quantity"])
+
+
 class TestOrganizationRhSku(ApiTestCase):
     def test_bind_sku_to_org(self):
         self.login(SUBSCRIPTION_USER)
@@ -5209,7 +5241,7 @@ class TestOrganizationRhSku(ApiTestCase):
             resource_name=OrganizationRhSku,
             params=dict(orgname=SUBSCRIPTION_ORG),
             data={"subscriptions": [{"subscription_id": 12345678}]},
-            expected_code=400,
+            expected_code=401,
         )
 
     def test_bind_sku_unauthorized(self):
@@ -5320,18 +5352,81 @@ class TestOrganizationRhSku(ApiTestCase):
         json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=SUBSCRIPTION_ORG))
         self.assertEqual(json["privateAllowed"], False)
 
-
-class TestUserSku(ApiTestCase):
-    def test_get_user_skus(self):
+    def test_splittable_sku(self):
         self.login(SUBSCRIPTION_USER)
-        json = self.getJsonResponse(UserSkuList)
-        self.assertEqual(len(json), 2)
 
-    def test_quantity(self):
-        self.login(SUBSCRIPTION_USER)
-        subscription_user = model.user.get_user(SUBSCRIPTION_USER)
-        plans = check_internal_api_for_subscription(subscription_user)
-        assert len(plans) == 3
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 80808080, "quantity": 3}]},
+            expected_code=201,
+        )
+
+        self.postResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+            data={"subscriptions": [{"subscription_id": 80808080, "quantity": 10}]},
+            expected_code=400,
+        )
+
+        org_subs = self.getJsonResponse(
+            resource_name=OrganizationRhSku,
+            params=dict(orgname=SUBSCRIPTION_ORG),
+        )
+        self.assertEqual(org_subs[0]["quantity"], 3)
+
+    def test_splittable_sku_multiple_attached(self):
+        # case where one MW02702 sku is attached fully to an org
+        # and another MW02702 sku is not
+        with patch("util.marketplace.FakeSubscriptionApi.lookup_subscription") as mock:
+            self.login(SUBSCRIPTION_USER)
+            mock.return_value = [
+                {
+                    "id": 12121212,
+                    "masterEndSystemName": "SUBSCRIPTION",
+                    "createdEndSystemName": "WEB",
+                    "createdDate": 1718373229000,
+                    "lastUpdateDate": 1718373337000,
+                    "externalLastUpdateDate": 1718373289000,
+                    "installBaseStartDate": 1718337600000,
+                    "webCustomerId": 123456,
+                    "quantity": 1,
+                    "effectiveStartDate": 1707368400000,
+                    "effectiveEndDate": 3813177600000,
+                },
+                {
+                    "id": 43434343,
+                    "masterEndSystemName": "SUBSCRIPTION",
+                    "createdEndSystemName": "SUBSCRIPTION",
+                    "createdDate": 1742376193000,
+                    "lastUpdateDate": 1742376193000,
+                    "quantity": 100,
+                    "effectiveStartDate": 1742356800000,
+                    "effectiveEndDate": 3813177600000,
+                },
+            ]
+            self.postResponse(
+                resource_name=OrganizationRhSku,
+                params=dict(orgname=SUBSCRIPTION_ORG),
+                data={"subscriptions": [{"subscription_id": 12121212, "quantity": 1}]},
+                expected_code=201,
+            )
+
+            # validate user marketplace response
+            user_subs = self.getJsonResponse(
+                resource_name=UserSkuList,
+            )
+
+            # look for remaining subscription unbound and make sure
+            # fields are present
+            other_sub = None
+            for sub in user_subs:
+                if sub["id"] == 43434343:
+                    other_sub = sub
+
+            self.assertIsNotNone(other_sub, "Could not find other subscription")
+            self.assertIsNotNone(other_sub["metadata"], "metadata missing")
+            self.assertIsNone(other_sub["assigned_to_org"])
 
 
 if __name__ == "__main__":

@@ -62,8 +62,8 @@ describe('Repositories List Page', () => {
     cy.wait('@getRepositories');
     cy.contains('Create Repository').click();
     cy.contains('Create Repository').should('exist');
-    //cy.contains('Select namespace').click();
-    //cy.get('li:contains("user1")').click();
+    cy.get('[data-testid="selected-namespace-dropdown"]').click();
+    cy.get('[data-testid="user-user1"]').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new public repository',
@@ -82,8 +82,8 @@ describe('Repositories List Page', () => {
     cy.visit('/repository');
     cy.contains('Create Repository').click();
     cy.contains('Create Repository').should('exist');
-    //cy.contains('Select namespace').click();
-    //cy.get('li:contains("user1")').click();
+    cy.get('[data-testid="selected-namespace-dropdown"]').click();
+    cy.get('[data-testid="user-user1"]').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new private repository',

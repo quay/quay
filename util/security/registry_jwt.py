@@ -90,15 +90,13 @@ def decode_bearer_token(bearer_token, instance_keys, config):
 
     kid = headers.get("kid", None)
     if kid is None:
-        logger.error("Missing kid header on encoded JWT: %s", bearer_token)
+        logger.error("Missing kid header on encoded JWT")
         raise InvalidBearerTokenException("Missing kid header")
 
     # Find the matching public key.
     public_key = instance_keys.get_service_key_public_key(kid)
     if public_key is None:
-        logger.error(
-            "Could not find requested service key %s with encoded JWT: %s", kid, bearer_token
-        )
+        logger.error("Could not find requested service key %s with encoded JWT", kid)
         raise InvalidBearerTokenException("Unknown service key")
 
     # Load the JWT returned.

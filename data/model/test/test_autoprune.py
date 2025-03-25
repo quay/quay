@@ -17,8 +17,8 @@ from test.fixtures import *
     [
         (
             [
-                {"method": "number_of_tags", "value": "10"},
                 {"method": "creation_date", "value": "2d"},
+                {"method": "number_of_tags", "value": "10"},
             ],
             True,
         ),

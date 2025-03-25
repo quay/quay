@@ -13,7 +13,7 @@ READ_REPO = Scope(
     title="View all visible repositories",
     description=(
         "This application will be able to view and pull all repositories "
-        "visible to the granting user or robot account"
+        "visible to the granting user"
     ),
 )
 
@@ -24,7 +24,7 @@ WRITE_REPO = Scope(
     title="Read/Write to any accessible repositories",
     description=(
         "This application will be able to view, push and pull to all "
-        "repositories to which the granting user or robot account has "
+        "repositories to which the granting user has "
         "write access"
     ),
 )
@@ -36,7 +36,7 @@ ADMIN_REPO = Scope(
     title="Administer Repositories",
     description=(
         "This application will have administrator access to all "
-        "repositories to which the granting user or robot account has "
+        "repositories to which the granting user has "
         "access"
     ),
 )
@@ -47,8 +47,8 @@ CREATE_REPO = Scope(
     dangerous=False,
     title="Create Repositories",
     description=(
-        "This application will be able to create repositories in to any "
-        "namespaces that the granting user or robot account is allowed "
+        "This application will be able to create repositories in all "
+        "namespaces that the granting user is allowed "
         "to create repositories"
     ),
 )

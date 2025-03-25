@@ -16,8 +16,8 @@ RUN yum install -y nodejs && \
     npm install --ignore-engines
 
 RUN yum install -y wget && \
-    wget https://golang.org/dl/go1.19.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go1.19.linux-amd64.tar.gz
+    wget https://golang.org/dl/go1.21.13.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.21.13.linux-amd64.tar.gz
 
 WORKDIR /go/src/config-tool
 RUN go get github.com/cosmtrek/air

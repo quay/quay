@@ -1,16 +1,17 @@
 import json
-from test.fixtures import *
 
 import pytest
 
 from app import config_provider
 from storage import (
+    AkamaiS3Storage,
     CloudFlareS3Storage,
     CloudFrontedS3Storage,
     MultiCDNStorage,
     StorageContext,
 )
 from storage.basestorage import InvalidStorageConfigurationException
+from test.fixtures import *
 from util.ipresolver import IPResolver
 
 _TEST_CONFIG_JSON = """{
@@ -37,6 +38,13 @@ _TEST_CONFIG_JSON = """{
         "cloudfront_privatekey_filename": "test/data/test.pem",
         "cloudfront_distribution_org_overrides": {}
       }
+    ],
+    "Akamai": [
+      "AkamaiS3Storage",
+      {
+        "akamai_domain": "test-akamai",
+        "akamai_shared_secret": "test-akamai-key"
+      }
     ]
   },
   "default_provider": "AWSCloudFront",
@@ -54,7 +62,7 @@ def test_should_pass_config_no_rules(context, app):
 
     engine = MultiCDNStorage(context, **test_config)
 
-    assert len(engine.providers.keys()) == 2
+    assert len(engine.providers.keys()) == 3
 
 
 def test_should_fail_config_no_storage_config(context, app):
@@ -142,6 +150,34 @@ def test_should_fail_bad_target_in_rule(context, app):
         ),
         pytest.param(
             {"continent": "AF", "namespace": "test", "target": "CloudFlare"},
+            "test",
+            "8.8.8.8",
+            None,
+            CloudFrontedS3Storage,
+        ),  # no rule match
+        pytest.param(
+            {"continent": "NA", "target": "Akamai"},
+            "test",
+            "8.8.8.8",
+            None,
+            AkamaiS3Storage,
+        ),
+        pytest.param(
+            {"namespace": "test", "target": "Akamai"},
+            "test",
+            "8.8.8.8",
+            "quay.io",
+            AkamaiS3Storage,
+        ),
+        pytest.param(
+            {"namespace": "test", "host": "quay.io", "target": "Akamai"},
+            "test",
+            "8.8.8.8",
+            "quay.io",
+            AkamaiS3Storage,
+        ),
+        pytest.param(
+            {"continent": "AF", "namespace": "test", "target": "Akamai"},
             "test",
             "8.8.8.8",
             None,

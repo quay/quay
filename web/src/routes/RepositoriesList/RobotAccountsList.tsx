@@ -51,6 +51,7 @@ import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
+import {RobotFederationModal} from 'src/components/modals/RobotFederationModal';
 
 export const RepoPermissionDropdownItems = [
   {
@@ -100,12 +101,16 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [selectedRepoPerms, setSelectedRepoPerms] = useRecoilState(
     selectedReposPermissionState,
   );
+
   const [prevRepoPerms, setPrevRepoPerms] = useState({});
   const [showRepoModalSave, setShowRepoModalSave] = useState(false);
   const [newRepoPerms, setNewRepoPerms] = useState({});
   const [err, setErr] = useState<string[]>();
   const [errTitle, setErrTitle] = useState<string>();
   const robotPermissionsPlaceholder = useRef(null);
+  const [isRobotFederationModalOpen, setRobotFederationModalOpen] =
+    useState<boolean>(false);
+
   const {addAlert} = useAlerts();
 
   const {robotAccountsForOrg, page, perPage, setPage, setPerPage} =
@@ -338,6 +343,11 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     setRobotForModalView(robotAccount);
     setRobotRepos(repos);
     setReposModalOpen(true);
+  };
+
+  const robotFederationModal = (robotAccount) => {
+    setRobotForModalView(robotAccount);
+    setRobotFederationModalOpen(true);
   };
 
   const fetchTeamsModal = (items) => {
@@ -585,6 +595,12 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           }
           showFooter={true}
         />
+        <RobotFederationModal
+          robotAccount={robotForModalView}
+          isModalOpen={isRobotFederationModalOpen}
+          setIsModalOpen={setRobotFederationModalOpen}
+          namespace={props.organizationName}
+        />
         <Table aria-label="Expandable table" variant="compact">
           <Thead>
             <Tr>
@@ -659,6 +675,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                       setSelectedRobotAccount={setRobotForDeletion}
                       onSetRepoPermsClick={fetchReposModal}
                       robotAccountRepos={robotAccount.repositories}
+                      onSetRobotFederationClick={robotFederationModal}
                     />
                   </Td>
                 </Tr>

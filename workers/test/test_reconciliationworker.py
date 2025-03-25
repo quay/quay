@@ -22,12 +22,40 @@ def test_skip_free_user(initialized_db):
     mock.assert_not_called()
 
 
-def test_exception_handling(initialized_db):
+def test_reconcile_org_user(initialized_db):
+    user = model.user.get_user("devtable")
+
+    org_user = model.organization.create_organization("org_user", "org_user@test.com", user)
+    org_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    org_user.save()
+    with patch.object(marketplace_users, "lookup_customer_id") as mock:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    mock.assert_called_with(org_user.email)
+
+
+def test_exception_handling(initialized_db, caplog):
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.InvalidRequestException
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.APIConnectionError
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+
+def test_attribute_error(initialized_db, caplog):
+    test_user = model.user.create_user("stripe_user", "password", "stripe_user@test.com")
+    test_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    test_user.save()
+
+    with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
+
+        class MockCustomer:
+            @property
+            def subscription(self):
+                raise AttributeError
+
+        mock.return_value = MockCustomer()
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
 

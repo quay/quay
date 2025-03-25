@@ -356,6 +356,11 @@ def initialize_database():
     LogEntryKind.create(name="create_robot")
     LogEntryKind.create(name="delete_robot")
 
+    LogEntryKind.create(name="create_robot_federation")
+    LogEntryKind.create(name="delete_robot_federation")
+
+    LogEntryKind.create(name="federated_robot_token_exchange")
+
     LogEntryKind.create(name="create_repo")
     LogEntryKind.create(name="push_repo")
     LogEntryKind.create(name="push_repo_failed")
@@ -477,6 +482,9 @@ def initialize_database():
 
     LogEntryKind.create(name="oauth_token_assigned")
     LogEntryKind.create(name="oauth_token_revoked")
+
+    LogEntryKind.create(name="export_logs_success")
+    LogEntryKind.create(name="export_logs_failure")
 
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")

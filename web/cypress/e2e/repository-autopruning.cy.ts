@@ -38,7 +38,7 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.contains('Successfully created repository auto-prune policy');
     cy.get('input[aria-label="number of tags"]').should('have.value', '25');
 
-    cy.contains('Add Policy').click();
+    cy.contains('Add Policy').trigger('click');
     cy.get('#autoprune-policy-form-1', {timeout: 3000}).should('be.visible');
 
     // Create second policy
@@ -181,6 +181,8 @@ describe('Repository settings - Repository autoprune policies', () => {
     // Create namespace policy
     cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
     cy.get('input[aria-label="number of tags"]').should('have.value', '20');
+    cy.get('input[aria-label="tag pattern"]').type('v1.*');
+    cy.get('select[aria-label="tag pattern matches"]').select('does not match');
     // Since we're using an older version of numberinput, the field can never be empty and will
     // always include a 0. Here we backspace to remove that 0.
     cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
@@ -199,16 +201,22 @@ describe('Repository settings - Repository autoprune policies', () => {
       'Namespace Auto-Pruning Policies',
     );
     cy.get('[data-testid="namespace-autoprune-policy-method"]').contains(
-      'Number of Tags:',
+      'Number of Tags',
     );
     cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
+    cy.get('[data-testid="namespace-autoprune-policy-tag-pattern"]').contains(
+      'v1.*',
+    );
+    cy.get(
+      '[data-testid="namespace-autoprune-policy-tag-pattern-matches"]',
+    ).contains('does not match');
   });
 
   it('shows the registry autoprune policy', () => {
     cy.visit('/repository/testorg/testrepo?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.get('[data-testid="registry-autoprune-policy-method"]').contains(
-      'Number of Tags:',
+      'Number of Tags',
     );
     cy.get('[data-testid="registry-autoprune-policy-value"]').contains('10');
   });
@@ -273,5 +281,49 @@ describe('Repository settings - Repository autoprune policies', () => {
 
     // second policy form should not exist
     cy.get('#autoprune-policy-form-1').should('not.exist');
+
+    // Delete first policy
+    cy.get('#autoprune-policy-form-0').within(() => {
+      cy.get('[data-testid="auto-prune-method"]').select('None');
+      cy.contains('Save').click();
+    });
+
+    cy.contains('Successfully deleted repository auto-prune policy');
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
+
+    // second policy form should not exist
+    cy.get('#autoprune-policy-form-1').should('not.exist');
+  });
+
+  it('user policies under user repository autoprune policies tab', () => {
+    cy.visit('/organization/user1?tab=Settings');
+    cy.contains('Auto-Prune Policies').click();
+    cy.get('[data-testid="auto-prune-method"]').contains('None');
+
+    // Create namespace policy
+    cy.get('[data-testid="auto-prune-method"]').select('By number of tags');
+    cy.get('input[aria-label="number of tags"]').should('have.value', '20');
+    cy.get('input[aria-label="tag pattern"]').type('v1.*');
+    cy.get('select[aria-label="tag pattern matches"]').select('does not match');
+    cy.get('input[aria-label="number of tags"]').type('{end}{backspace}5');
+    cy.contains('Save').click();
+
+    // switch to hello-world repository under user namespace
+    cy.visit('/repository/user1/hello-world?tab=settings');
+    cy.contains('Repository Auto-Prune Policies').click();
+
+    cy.get('[data-testid="namespace-auto-prune-policy-heading"]').contains(
+      'Namespace Auto-Pruning Policies',
+    );
+    cy.get('[data-testid="namespace-autoprune-policy-method"]').contains(
+      'Number of Tags',
+    );
+    cy.get('[data-testid="namespace-autoprune-policy-value"]').contains('25');
+    cy.get('[data-testid="namespace-autoprune-policy-tag-pattern"]').contains(
+      'v1.*',
+    );
+    cy.get(
+      '[data-testid="namespace-autoprune-policy-tag-pattern-matches"]',
+    ).contains('does not match');
   });
 });

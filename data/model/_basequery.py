@@ -95,6 +95,7 @@ def filter_to_repos_for_user(
     include_public=True,
     start_id=None,
     is_superuser=False,
+    return_all=False,
 ):
     if not include_public and not user_id:
         return Repository.select().where(Repository.id == "-1")
@@ -121,10 +122,9 @@ def filter_to_repos_for_user(
     if include_public:
         queries.append(query.where(Repository.visibility == get_public_repo_visibility()))
 
-    # If use is a superuser and a namespace was given return the given query,
-    # else filter repositories to those the user has permissions in.
-    # We do not want to return all repositories due to performance impact
-    if user_id is not None and is_superuser and namespace:
+    # If user is a superuser and only return query when filtered to a namespace or explicitly
+    # returning all repositories, otherwise filter to the user's permissions.
+    if user_id is not None and is_superuser and (namespace or return_all):
         queries.append(query)
     elif user_id is not None:
         AdminTeam = Team.alias()
