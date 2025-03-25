@@ -85,12 +85,12 @@ class AkamaiS3Storage(S3Storage):
                 amz_signature = amz_signature_params[0] if len(amz_signature_params) == 1 else None
 
                 if amz_signature is not None:
-                    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+                    padder = padding.PKCS7(algorithms.AES256.block_size).padder()
                     padded_data = padder.update(amz_signature.encode()) + padder.finalize()
 
                     iv = os.urandom(16)
                     cipher = Cipher(
-                        algorithms.AES(self.amz_encryption_token.encode("utf-8")),
+                        algorithms.AES256(self.amz_encryption_token.encode("utf-8")),
                         modes.CBC(iv),
                         backend=default_backend(),
                     )
