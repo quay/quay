@@ -402,7 +402,7 @@ parameters:
     value: "15"
     displayName: quay app liveness probe initial delay seconds
   - name: QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS
-    value: "30"
+    value: "15"
     displayName: quay app liveness probe period seconds
   - name: QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS
     value: "10"
