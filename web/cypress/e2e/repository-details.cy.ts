@@ -221,42 +221,60 @@ describe('Repository Details Page', () => {
 
   it('renders pull popover', () => {
     cy.visit('/repository/user1/hello-world');
-    cy.get('tbody:contains("latest")')
-      .first()
-      .within(() => cy.get('td[data-label="Pull"]').trigger('mouseover'));
-    cy.get('[data-testid="pull-popover"]')
+
+    // Find the first row that contains "latest" and trigger mouseover on the "Pull" column
+    cy.contains('tbody tr', 'latest')
       .first()
       .within(() => {
-        cy.contains('Fetch Tag').should('exist');
-        cy.contains('Podman Pull (By Tag)').should('exist');
-        cy.get('input')
-          .first()
-          .should(
-            'have.value',
-            'podman pull localhost:8080/user1/hello-world:latest',
-          );
-        cy.contains('Podman Pull (By Digest)').should('exist');
-        cy.get('input')
-          .eq(1)
-          .should(
-            'have.value',
-            'podman pull localhost:8080/user1/hello-world@sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
-          );
-        cy.contains('Docker Pull (By Tag)').should('exist');
-        cy.get('input')
-          .eq(2)
-          .should(
-            'have.value',
-            'docker pull localhost:8080/user1/hello-world:latest',
-          );
-        cy.contains('Docker Pull (By Digest)').should('exist');
-        cy.get('input')
-          .eq(3)
-          .should(
-            'have.value',
-            'docker pull localhost:8080/user1/hello-world@sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
-          );
+        cy.get('td[data-label="Pull"] svg').trigger('mouseover', {force: true});
       });
+
+    // Ensure popover appears
+    cy.get(
+      '[role="tooltip"], .popover, [data-testid="pull-popover"], [class*="popover"]',
+      {timeout: 5000},
+    ).should('exist');
+
+    // Verify popover contents
+    cy.get('[data-testid="pull-popover"]').within(() => {
+      cy.contains('Fetch Tag').should('exist');
+
+      // Podman Pull (By Tag)
+      cy.contains('Podman Pull (By Tag)').should('exist');
+      cy.get('input')
+        .first()
+        .should(
+          'have.value',
+          'podman pull localhost:8080/user1/hello-world:latest',
+        );
+
+      // Podman Pull (By Digest)
+      cy.contains('Podman Pull (By Digest)').should('exist');
+      cy.get('input')
+        .eq(1)
+        .should(
+          'have.value',
+          'podman pull localhost:8080/user1/hello-world@sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
+        );
+
+      // Docker Pull (By Tag)
+      cy.contains('Docker Pull (By Tag)').should('exist');
+      cy.get('input')
+        .eq(2)
+        .should(
+          'have.value',
+          'docker pull localhost:8080/user1/hello-world:latest',
+        );
+
+      // Docker Pull (By Digest)
+      cy.contains('Docker Pull (By Digest)').should('exist');
+      cy.get('input')
+        .eq(3)
+        .should(
+          'have.value',
+          'docker pull localhost:8080/user1/hello-world@sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
+        );
+    });
   });
 
   it('clicking tag name goes to tag details page', () => {
