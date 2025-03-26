@@ -53,6 +53,10 @@ export const MarkdownCodeBlock: React.FunctionComponent = (props) => {
 
 export function ModelCard(props: ModelCardProps) {
   const modelcard = props.modelCard;
+  const isValidImgSrc = (src) =>
+    src &&
+    (src.startsWith('https://github.com/') ||
+      src.startsWith('https://huggingface.co/'));
 
   return (
     <>
@@ -67,7 +71,7 @@ export function ModelCard(props: ModelCardProps) {
                 rehypeVideo,
                 {
                   test: new RegExp(
-                    '(.*)(githubusercontent.com|github.com)(.*)(.mp4|.mov)$',
+                    '(.*)(githubusercontent.com|github.com|huggingface.co)(.*)(.mp4|.mov)$',
                   ),
                 },
               ],
@@ -92,6 +96,11 @@ export function ModelCard(props: ModelCardProps) {
                   {children}
                 </Td>
               ),
+              img: ({src, alt}) =>
+                isValidImgSrc(src) ? (
+                  <img src={src} alt={alt} style={{maxWidth: '100%'}} />
+                ) : null,
+              iframe: () => null,
             }}
           >
             {modelcard}
