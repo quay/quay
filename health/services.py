@@ -40,7 +40,11 @@ def _check_gunicorn(endpoint):
         client = app.config["HTTPCLIENT"]
         registry_url = _compute_internal_endpoint(app, endpoint)
         try:
-            status_code = client.get(registry_url, verify=False, timeout=2).status_code
+            status_code = client.get(
+                registry_url,
+                verify=False,
+                timeout=app.config.get("GUNICORN_HEALTH_CHECK_TIMEOUT", 2),
+            ).status_code
             okay = status_code == 200
             message = ("Got non-200 response for worker: %s" % status_code) if not okay else None
             return (okay, message)
