@@ -224,7 +224,6 @@ data:
               },
               "dimensions": {
                 "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
-                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
               },
               "expression": "",
               "hide": true,
@@ -234,27 +233,6 @@ data:
               "period": "",
               "queryMode": "Metrics",
               "refId": "errors",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Sum"
-            },
-            {
-              "datasource": {
-                "type": "cloudwatch",
-                "uid": "${cloudwatch_datasource}"
-              },
-              "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
-                "TargetGroup": "targetgroup/quay-push-403fbec3/8c09fc97c018252c"
-              },
-              "expression": "",
-              "hide": true,
-              "matchExact": true,
-              "metricName": "RequestCount",
-              "namespace": "AWS/ApplicationELB",
-              "period": "",
-              "queryMode": "Metrics",
-              "refId": "total",
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum"
@@ -294,7 +272,7 @@ data:
               "namespace": "AWS/ApplicationELB",
               "period": "",
               "queryMode": "Metrics",
-              "refId": "total_elb",
+              "refId": "total",
               "region": "default",
               "sqlExpression": "",
               "statistic": "Sum"
@@ -305,18 +283,7 @@ data:
                 "type": "__expr__",
                 "uid": "__expr__"
               },
-              "expression": "$total_elb > 0 ? $total/$total_elb : 0",
-              "hide": true,
-              "refId": "fraction_of_elb_traffic",
-              "type": "math"
-            },
-            {
-              "datasource": {
-                "name": "Expression",
-                "type": "__expr__",
-                "uid": "__expr__"
-              },
-              "expression": "$total > 0 ? 1 - (($errors+$errors_elb*$fraction_of_elb_traffic)/$total) : 1",
+              "expression": "1 - ($errors + $errors_elb)/$total",
               "hide": false,
               "refId": "Availability",
               "type": "math"
