@@ -242,11 +242,10 @@ objects:
           - name: configvolume
             mountPath: /conf/stack
           startupProbe:
-            exec:
-              command:
-              - curl
-              - -k
-              - https://localhost:8443/health/instance
+            httpGet:
+              path: /health/instance
+              port: 8443
+              scheme: HTTPS
             failureThreshold: ${{QUAY_APP_STARTUP_PROBE_FAILURE_THRESHOLD}}
             timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
             periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
