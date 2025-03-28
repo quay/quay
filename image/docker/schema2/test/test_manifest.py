@@ -22,6 +22,8 @@ from image.docker.schema2.test.test_config import (
     CONFIG_BYTES,
     CONFIG_DIGEST,
     CONFIG_SIZE,
+    EMPTY_CONFIG_DIGEST,
+    EMPTY_CONFIG_SIZE,
 )
 from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
@@ -42,6 +44,64 @@ from util.bytes import Bytes
 def test_malformed_manifests(json_data):
     with pytest.raises(MalformedSchema2Manifest):
         DockerSchema2Manifest(Bytes.for_string_or_unicode(json_data))
+
+
+EMPTY_CONFIG_MANIFEST_BYTES = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        "config": {
+            "mediaType": "application/vnd.docker.container.image.v1+json",
+            "size": EMPTY_CONFIG_SIZE,
+            "digest": EMPTY_CONFIG_DIGEST,
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 1234,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+        ],
+    }
+).encode("utf-8")
+
+
+def test_empty_config_manifest():
+    manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(EMPTY_CONFIG_MANIFEST_BYTES))
+    assert manifest.config.size == EMPTY_CONFIG_SIZE
+    assert manifest.config.digest == EMPTY_CONFIG_DIGEST
+    assert manifest.media_type == "application/vnd.docker.distribution.manifest.v2+json"
+    assert manifest.config_media_type == "application/vnd.docker.container.image.v1+json"
+
+
+MANIFEST_WITH_INVALID_LAYER_SIZE = json.dumps(
+    {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        "config": {
+            "mediaType": "application/vnd.docker.container.image.v1+json",
+            "size": CONFIG_SIZE,
+            "digest": CONFIG_DIGEST,
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 1234,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+            {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": -1,
+                "digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
+            },
+        ],
+    }
+).encode("utf-8")
+
+
+def test_invalid_layer_size_manifest():
+    with pytest.raises(MalformedSchema2Manifest, match="invalid layer size"):
+        DockerSchema2Manifest(Bytes.for_string_or_unicode(MANIFEST_WITH_INVALID_LAYER_SIZE))
 
 
 MANIFEST_BYTES = json.dumps(
