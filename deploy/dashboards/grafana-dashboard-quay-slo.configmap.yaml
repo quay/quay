@@ -197,36 +197,6 @@ data:
               },
               "expression": "",
               "hide": true,
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "HTTPCode_Target_2XX_Count",
-              "metricQueryType": 0,
-              "namespace": "AWS/ApplicationELB",
-              "period": "",
-              "queryMode": "Metrics",
-              "refId": "B",
-              "region": "default",
-              "sql": {
-                "select": {
-                  "name": "AVG",
-                  "type": "function"
-                }
-              },
-              "statistic": "Sum"
-            },
-            {
-              "datasource": {
-                "type": "cloudwatch",
-                "uid": "${cloudwatch_datasource}"
-              },
-              "dimensions": {
-                "LoadBalancer": "app/quayio-production-alb01/dd2a8a128b2029c6",
-              },
-              "expression": "",
-              "hide": true,
               "matchExact": true,
               "metricName": "HTTPCode_Target_5XX_Count",
               "namespace": "AWS/ApplicationELB",
