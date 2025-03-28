@@ -912,7 +912,6 @@ class GoogleCloudStorage(_CloudStorage):
         bucket_name,
         boto_timeout=60,
         minimum_chunk_size_mb=None,
-        maximum_chunk_size_mb=None,
         signature_version=None,
     ):
         # GCS does not support ListObjectV2
@@ -936,11 +935,6 @@ class GoogleCloudStorage(_CloudStorage):
             access_key,
             secret_key,
         )
-
-        chunk_size = (
-            maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 100
-        )  # 100 MiB default
-        self.maximum_chunk_size = chunk_size * 1024 * 1024
 
         self.minimum_chunk_size = (
             (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
