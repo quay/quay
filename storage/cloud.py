@@ -911,6 +911,7 @@ class GoogleCloudStorage(_CloudStorage):
         secret_key,
         bucket_name,
         boto_timeout=60,
+        minimum_chunk_size_mb=None,
         signature_version=None,
     ):
         # GCS does not support ListObjectV2
@@ -933,6 +934,10 @@ class GoogleCloudStorage(_CloudStorage):
             bucket_name,
             access_key,
             secret_key,
+        )
+
+        self.minimum_chunk_size = (
+            (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
         )
 
         # Workaround for setting GCS cors at runtime with boto
@@ -985,50 +990,6 @@ class GoogleCloudStorage(_CloudStorage):
             .get_direct_download_url(path, request_ip, expires_in, requires_cors, head, **kwargs)
             .replace("AWSAccessKeyId", "GoogleAccessId")
         )
-
-    def _stream_write_internal(
-        self,
-        path,
-        fp,
-        content_type=None,
-        content_encoding=None,
-        cancel_on_error=True,
-        size=filelike.READ_UNTIL_END,
-    ):
-        """
-        Writes the data found in the file-like stream to the given path, with optional limit on
-        size. Note that this method returns a *tuple* of (bytes_written, write_error) and should.
-
-        *not* raise an exception (such as IOError) if a problem uploading occurred. ALWAYS check
-        the returned tuple on calls to this method.
-        """
-        # Minimum size of upload part size on S3 is 5MB
-        self._initialize_cloud_conn()
-        path = self._init_path(path)
-        obj = self.get_cloud_bucket().Object(path)
-
-        extra_args = {}
-        if content_type is not None:
-            extra_args["ContentType"] = content_type
-
-        if content_encoding is not None:
-            extra_args["ContentEncoding"] = content_encoding
-
-        if size != filelike.READ_UNTIL_END:
-            fp = filelike.StreamSlice(fp, 0, size)
-
-        with BytesIO() as buf:
-            # Stage the bytes into the buffer for use with the multipart upload file API
-            bytes_staged = self.stream_write_to_fp(fp, buf, size)
-            buf.seek(0)
-
-            # TODO figure out how to handle cancel_on_error=False
-            try:
-                obj.put(Body=buf, **extra_args)
-            except Exception as ex:
-                return 0, ex
-
-        return bytes_staged, None
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
         self._initialize_cloud_conn()
