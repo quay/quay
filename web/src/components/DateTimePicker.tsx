@@ -1,90 +1,91 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {DatePicker, TimePicker} from '@patternfly/react-core';
 import {isNullOrUndefined} from 'src/libs/utils';
+import PropTypes from 'prop-types';
 
-export default function DateTimePicker(props: DateTimePickerProps) {
+export default function DateTimePicker(props) {
   const {id, value, setValue, futureDatesOnly, initialDate} = props;
-  const date: Date = isNullOrUndefined(value) ? initialDate : value;
+  const [inputValue, setInputValue] = useState(value ? dateFormat(value) : '');
 
-  const dateFormat = (date: Date) => {
+  const date = isNullOrUndefined(value) ? initialDate : value;
+
+  function dateFormat(date) {
     if (!isNullOrUndefined(date)) {
-      return date.toLocaleDateString(navigator.language, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      return date
+        .toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+        .replace(/ /g, ' ');
     }
-  };
+    return '';
+  }
 
-  const onDateChange = (
-    _event: React.FormEvent<HTMLInputElement>,
-    _value: string,
-    dateValue?: Date,
-  ) => {
-    if (!isNullOrUndefined(dateValue)) {
-      if (isNullOrUndefined(date)) {
-        setValue(() => dateValue);
-      } else {
-        setValue((prevDate) => {
-          const newDate = new Date(prevDate);
-          newDate.setFullYear(dateValue.getFullYear());
-          newDate.setMonth(dateValue.getMonth());
-          newDate.setDate(dateValue.getDate());
-          return newDate;
-        });
-      }
-    } else {
-      setValue(null);
+  function dateParse(value) {
+    const parts = value.trim().split(' ');
+    if (parts.length < 2 || parts.length > 3) return null; // Allow partial input
+
+    const [day, month, year = new Date().getFullYear()] = parts;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const monthIndex = months.indexOf(month);
+    if (monthIndex === -1 || isNaN(day) || (year && isNaN(year))) return null;
+
+    return new Date(parseInt(year, 10), monthIndex, parseInt(day, 10));
+  }
+
+  function onDateChange(_event, userInput, dateValue) {
+    setInputValue(userInput); // Preserve user's input while typing
+
+    if (dateValue && !isNaN(dateValue.getTime())) {
+      setValue(dateValue); // Set only valid dates
     }
-  };
+  }
 
-  const onTimeChange = (
-    _event: React.FormEvent<HTMLInputElement>,
-    _time: string,
-    hour?: number,
-    minute?: number,
-    _seconds?: number,
-    isValid?: boolean,
-  ) => {
+  function onTimeChange(_event, _time, hour, minute, _seconds, isValid) {
     if (hour !== null && minute !== null && isValid) {
-      if (isNullOrUndefined(date)) {
-        const newDate = new Date();
+      setValue((prevDate) => {
+        const newDate = new Date(prevDate || new Date());
         newDate.setHours(hour);
         newDate.setMinutes(minute);
-        setValue(() => newDate);
-      } else {
-        setValue((prevDate) => {
-          const newDate = new Date(prevDate);
-          newDate.setHours(hour);
-          newDate.setMinutes(minute);
-          return newDate;
-        });
-      }
-    } else {
-      setValue(null);
+        return newDate;
+      });
     }
-  };
+  }
 
-  const rangeValidator = (date: Date) => {
+  function rangeValidator(date) {
     if (futureDatesOnly) {
       const now = new Date();
-      now.setHours(0);
-      now.setMinutes(0);
+      now.setHours(0, 0, 0, 0);
       return date < now ? 'Date is before the allowable range.' : '';
     }
     return '';
-  };
+  }
 
   return (
     <>
       <span id={isNullOrUndefined(id) ? 'date-time-picker' : id}>
         <DatePicker
-          placeholder="No date selected"
-          value={dateFormat(date)}
+          placeholder="DD MMM YYYY"
+          value={inputValue}
           dateFormat={dateFormat}
+          dateParse={dateParse}
           onChange={onDateChange}
           validators={[rangeValidator]}
-          style={{width: '20ch'}}
+          style={{width: '20ch', paddingRight: '10px'}}
         />
         <TimePicker
           placeholder="No time selected"
@@ -95,11 +96,10 @@ export default function DateTimePicker(props: DateTimePickerProps) {
     </>
   );
 }
-
-interface DateTimePickerProps {
-  initialDate?: Date;
-  value: Date;
-  setValue: (set: (prev: Date) => Date) => void;
-  futureDatesOnly?: boolean;
-  id?: string;
-}
+DateTimePicker.propTypes = {
+  id: PropTypes.string,
+  value: PropTypes.instanceOf(Date),
+  setValue: PropTypes.func.isRequired,
+  futureDatesOnly: PropTypes.bool,
+  initialDate: PropTypes.instanceOf(Date),
+};
