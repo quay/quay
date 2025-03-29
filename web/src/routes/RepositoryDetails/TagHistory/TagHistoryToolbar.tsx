@@ -24,22 +24,28 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
     setPerPage,
     total,
   } = props;
+
   return (
     <Toolbar>
-      <ToolbarContent alignItems="center">
+      <ToolbarContent
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
         <ToolbarItem variant="search-filter">
           <SearchInput
             placeholder="Search by tag name..."
             value={query}
-            onChange={(_, value) => {
-              setQuery(value);
-            }}
-            onClear={() => {
-              setQuery('');
-            }}
+            onChange={(_, value) => setQuery(value)}
+            onClear={() => setQuery('')}
           />
         </ToolbarItem>
-        <ToolbarItem alignItems="center">
+        <ToolbarItem
+          style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}
+        >
           Date range:
           <DateTimePicker
             id="start-time-picker"
@@ -52,15 +58,12 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
             value={endTime}
             setValue={setEndTime}
           />
-        </ToolbarItem>
-        <ToolbarItem alignSelf="center">
           <Checkbox
             label="Show future"
             id="show-future-checkbox"
             isChecked={showFuture}
-            onChange={() => {
-              setShowFuture(!showFuture);
-            }}
+            onChange={() => setShowFuture(!showFuture)}
+            style={{marginLeft: '1rem'}} // Adjust spacing
           />
         </ToolbarItem>
         <ToolbarPagination
