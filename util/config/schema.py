@@ -1615,5 +1615,10 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "FEATURE_SUPERUSER_CONFIGDUMP": {
+            "type": "boolean",
+            "description": "Enables a full config dump of the running Framework, environment and schema for validation",
+            "x-example": False,
+        },
     },
 }
