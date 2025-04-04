@@ -28,6 +28,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
+    error: logError,
     isLoading: loadingAggregateLogs,
   } = useQuery(
     [
@@ -48,8 +49,9 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
 
   // tslint:disable-next-line:curly
   if (loadingAggregateLogs) return <Spinner />;
-  // tslint:disable-next-line:curly
-  if (errorFetchingLogs) return <RequestError message="Unable to get logs" />;
+  if (errorFetchingLogs) {
+    return <RequestError message={logError.message} />;
+  }
 
   let maxRange = 0;
 
