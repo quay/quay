@@ -911,3 +911,6 @@ class DefaultConfig(ImmutableConfig):
     # Specific namespaces that be exceptions to the s3-cloudflare optimization
     # used for registry-proxy namespaces
     CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []
+
+    # Enabled superuser API to dump config,env,schema and drifts(unknown like typos)
+    FEATURE_SUPERUSER_CONFIGDUMP = False
