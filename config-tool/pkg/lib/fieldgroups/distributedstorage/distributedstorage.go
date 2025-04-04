@@ -379,6 +379,13 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
+	if value, ok := storageArgs["sts_web_token_filen"]; ok {
+		newDistributedStorageArgs.STSWebIdentityTokenFile, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("sts_web_token_file must be a string")
+		}
+	}
+
 	return newDistributedStorageArgs, nil
 }
 
