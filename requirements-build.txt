@@ -51,7 +51,7 @@ semantic-version==2.10.0
     # via
     #   -r requirements-build.in
     #   setuptools-rust
-setuptools-rust==1.7.0
+setuptools-rust==1.11.1
     # via -r requirements-build.in
 setuptools-scm[toml]==8.0.4
     # via
