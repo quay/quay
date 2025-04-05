@@ -69,7 +69,7 @@ trove-classifiers==2023.9.19
     # via
     #   -r requirements-build.in
     #   hatchling
-typing-extensions==4.8.0
+typing-extensions==4.13.1
     # via
     #   -r requirements-build.in
     #   setuptools-rust
