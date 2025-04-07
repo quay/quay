@@ -26,7 +26,7 @@ spec:
   - name: dockerfile
     value: Dockerfile
   - name: hermetic
-    value: "true"
+    value: "false"
   - name: prefetch-input
     value: |
       [
