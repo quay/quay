@@ -25,11 +25,13 @@ spec:
     value: quay.io/redhat-user-workloads/quay-eng-tenant/quay-test:{{revision}}
   - name: dockerfile
     value: Dockerfile
+  - name: hermetic
+    value: "true"
   - name: prefetch-input
     value: |
       [
         {"type": "gomod", "path": "./config-tool"},
-        {"type": "pip", "path": ".", "requirements_files": ["requirements-build.txt"]},
+        {"type": "pip", "path": "."},
         {"type": "npm", "path": "web"}
       ]
   pipelineSpec:
