@@ -32,7 +32,7 @@ spec:
     value: |
       [
         {"type": "gomod", "path": "./config-tool"},
-        {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
+        {"type": "pip", "path": ".", "requirements_files": ["requirements-build.txt"]},
         {"type": "npm", "path": "web"}
       ]
   pipelineSpec:
