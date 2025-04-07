@@ -24,7 +24,7 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/quay-eng-tenant/quay-test:{{revision}}
   - name: dockerfile
-    value: Dockerfile.downstream
+    value: Dockerfile
   - name: prefetch-input
     value: |
       [
