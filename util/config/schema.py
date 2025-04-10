@@ -309,7 +309,7 @@ CONFIG_SCHEMA = {
         },
         "DISTRIBUTED_STORAGE_CONFIG": {
             "type": "object",
-            "description": "Configuration for storage engine(s) to use in Quay. Each key is a unique ID for a storage engine, with the value being a tuple of the type and  configuration for that engine.",
+            "description": "Configuration for storage engine(s) to use in Quay. Each key is a unique ID for a storage engine, with the value being a tuple of the type and configuration for that engine.",
             "x-example": {"local_storage": ["LocalStorage", {"storage_path": "some/path/"}]},
             "items": {"type": "array"},
         },
@@ -656,7 +656,7 @@ CONFIG_SCHEMA = {
         },
         "ENABLE_HEALTH_DEBUG_SECRET": {
             "type": ["string", "null"],
-            "description": "If specified, a secret that can be given to health endpoints to see full debug info whennot authenticated as a superuser",
+            "description": "If specified, a secret that can be given to health endpoints to see full debug info when not authenticated as a superuser",
             "x-example": "somesecrethere",
         },
         "BROWSER_API_CALLS_XHR_ONLY": {
@@ -1172,7 +1172,7 @@ CONFIG_SCHEMA = {
                         },
                         "url_scheme": {
                             "type": "string",
-                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL*at all*, this *must* be `https`",
+                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL *at all*, this *must* be `https`",
                             "enum": ["http", "https"],
                             "x-example": "https",
                         },
@@ -1216,7 +1216,7 @@ CONFIG_SCHEMA = {
                         },
                         "url_scheme": {
                             "type": "string",
-                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL*at all*, this *must* be `https`",
+                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL *at all*, this *must* be `https`",
                             "enum": ["http", "https"],
                             "x-example": "https",
                             "default": "https",
