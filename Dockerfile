@@ -134,6 +134,7 @@ WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
+RUN ls -l /opt/app-root/src/go/bin/config-tool # see if it's there
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
 WORKDIR /quaydir
