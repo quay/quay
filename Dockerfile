@@ -131,9 +131,11 @@ RUN set -ex\
 # Config-tool builds the go binary in the configtool.
 FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
+ENV GOPATH=/opt/app-root/src/go
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
+RUN ls -l $GOPATH/bin/config-tool # see if it's there
 RUN ls -l /opt/app-root/src/go/bin/config-tool # see if it's there
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
