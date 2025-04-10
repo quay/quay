@@ -199,9 +199,13 @@ def increase_maximum_build_count(user, maximum_queued_builds_count):
         user.save()
 
 
+def get_username(username):
+    return User.get(User.username == username, can_use_read_replica=True)
+
+
 def is_username_unique(test_username):
     try:
-        User.get((User.username == test_username))
+        get_username(test_username)
         return False
     except User.DoesNotExist:
         return True
@@ -354,7 +358,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
     username = format_robot_username(parent.username, robot_shortname)
 
     try:
-        User.get(User.username == username)
+        get_username(username)
 
         msg = "Existing robot with name: %s" % username
         logger.debug(msg)
@@ -527,7 +531,7 @@ def verify_robot(robot_username, password, instance_keys):
 
     # Find the owner user and ensure it is not disabled.
     try:
-        owner = User.get(User.username == result[0])
+        owner = get_username(result[0])
     except User.DoesNotExist:
         raise InvalidRobotOwnerException("Robot %s owner does not exist" % robot_username)
 
@@ -918,7 +922,7 @@ def get_namespace_user(username):
         return None
 
     try:
-        return User.get(User.username == username)
+        return get_username(username)
     except User.DoesNotExist:
         return None
 
