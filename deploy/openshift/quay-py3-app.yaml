@@ -251,18 +251,20 @@ objects:
             timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
             periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
           livenessProbe:
-            httpGet:
-              path: /health/instance
-              port: 8443
-              scheme: HTTPS
+            exec:
+              command:
+              - curl
+              - -k
+              - https://localhost:8443/health/instance
             initialDelaySeconds: ${{QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS}}
           readinessProbe:
-            httpGet:
-              path: /health/endtoend
-              port: 8443
-              scheme: HTTPS
+            exec:
+              command:
+              - curl
+              - -k
+              - https://localhost:8443/health/endtoend
             initialDelaySeconds: ${{QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_APP_READINESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
@@ -402,7 +404,7 @@ parameters:
     value: "15"
     displayName: quay app liveness probe initial delay seconds
   - name: QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS
-    value: "15"
+    value: "30"
     displayName: quay app liveness probe period seconds
   - name: QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS
     value: "10"
