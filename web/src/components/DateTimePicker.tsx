@@ -1,105 +1,75 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {DatePicker, TimePicker} from '@patternfly/react-core';
-import {isNullOrUndefined} from 'src/libs/utils';
+import PropTypes from 'prop-types';
 
-export default function DateTimePicker(props: DateTimePickerProps) {
+export default function DateTimePicker(props) {
   const {id, value, setValue, futureDatesOnly, initialDate} = props;
-  const date: Date = isNullOrUndefined(value) ? initialDate : value;
+  const userLocale = navigator.language;
+  const date = value ?? initialDate;
+  const [inputValue, setInputValue] = useState(
+    value ? date.toLocaleDateString(userLocale) : '',
+  );
+  function onDateChange(_event, userInput, dateValue) {
+    setInputValue(userInput);
 
-  const dateFormat = (date: Date) => {
-    if (!isNullOrUndefined(date)) {
-      return date.toLocaleDateString(navigator.language, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+    if (dateValue && !isNaN(dateValue.getTime())) {
+      setValue((prev) => {
+        const updated = new Date(dateValue);
+        if (prev) {
+          updated.setHours(prev.getHours());
+          updated.setMinutes(prev.getMinutes());
+        }
+        return updated;
       });
     }
-  };
+  }
 
-  const onDateChange = (
-    _event: React.FormEvent<HTMLInputElement>,
-    _value: string,
-    dateValue?: Date,
-  ) => {
-    if (!isNullOrUndefined(dateValue)) {
-      if (isNullOrUndefined(date)) {
-        setValue(() => dateValue);
-      } else {
-        setValue((prevDate) => {
-          const newDate = new Date(prevDate);
-          newDate.setFullYear(dateValue.getFullYear());
-          newDate.setMonth(dateValue.getMonth());
-          newDate.setDate(dateValue.getDate());
-          return newDate;
-        });
-      }
-    } else {
-      setValue(null);
-    }
-  };
-
-  const onTimeChange = (
-    _event: React.FormEvent<HTMLInputElement>,
-    _time: string,
-    hour?: number,
-    minute?: number,
-    _seconds?: number,
-    isValid?: boolean,
-  ) => {
+  function onTimeChange(_event, _time, hour, minute, _seconds, isValid) {
     if (hour !== null && minute !== null && isValid) {
-      if (isNullOrUndefined(date)) {
-        const newDate = new Date();
-        newDate.setHours(hour);
-        newDate.setMinutes(minute);
-        setValue(() => newDate);
-      } else {
-        setValue((prevDate) => {
-          const newDate = new Date(prevDate);
-          newDate.setHours(hour);
-          newDate.setMinutes(minute);
-          return newDate;
-        });
-      }
-    } else {
-      setValue(null);
+      const updated = new Date(value || initialDate || new Date());
+      updated.setHours(hour);
+      updated.setMinutes(minute);
+      setValue(updated);
     }
-  };
-
-  const rangeValidator = (date: Date) => {
+  }
+  function rangeValidator(date) {
     if (futureDatesOnly) {
       const now = new Date();
-      now.setHours(0);
-      now.setMinutes(0);
+      now.setHours(0, 0, 0, 0);
       return date < now ? 'Date is before the allowable range.' : '';
     }
     return '';
-  };
+  }
 
+  function getFormattedTime(date) {
+    return date
+      ? `${date.getHours().toString().padStart(2, '0')}:${date
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`
+      : '';
+  }
   return (
-    <>
-      <span id={isNullOrUndefined(id) ? 'date-time-picker' : id}>
-        <DatePicker
-          placeholder="No date selected"
-          value={dateFormat(date)}
-          dateFormat={dateFormat}
-          onChange={onDateChange}
-          validators={[rangeValidator]}
-          style={{width: '20ch'}}
-        />
-        <TimePicker
-          placeholder="No time selected"
-          time={isNullOrUndefined(date) ? ' ' : date.toLocaleTimeString()}
-          onChange={onTimeChange}
-        />
-      </span>
-    </>
+    <span id={id || 'date-time-picker'}>
+      <DatePicker
+        value={inputValue}
+        onChange={onDateChange}
+        validators={[rangeValidator]}
+      />
+      <TimePicker
+        placeholder="Select time"
+        time={getFormattedTime(date)}
+        onChange={onTimeChange}
+        is24Hour
+      />
+    </span>
   );
 }
 
-interface DateTimePickerProps {
-  initialDate?: Date;
-  value: Date;
-  setValue: (set: (prev: Date) => Date) => void;
-  futureDatesOnly?: boolean;
-  id?: string;
-}
+DateTimePicker.propTypes = {
+  id: PropTypes.string,
+  value: PropTypes.instanceOf(Date),
+  setValue: PropTypes.func.isRequired,
+  futureDatesOnly: PropTypes.bool,
+  initialDate: PropTypes.instanceOf(Date),
+};
