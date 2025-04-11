@@ -28,11 +28,13 @@ spec:
     value: 5d
   - name: dockerfile
     value: Dockerfile
+  - name: hermetic
+    value: "false"
   - name: prefetch-input
     value: |
       [
         {"type": "gomod", "path": "./config-tool"},
-        {"type": "pip", "path": ".", "requirements_files": ["requirements-cache.txt"]},
+        {"type": "pip", "path": "."},
         {"type": "npm", "path": "web"}
       ]
   pipelineSpec:
