@@ -7,10 +7,10 @@
 # 3. Change the IMAGE var at the top of this script to the value from build_deploy.sh
 # 3. Run the script
 # 4. Run the container podman run -p 8000:8000 localhost/edge:5316bd7
-# 5. Open the app in your browser at http://localhost:8000/apps/edge 
+# 5. Open the app in your browser at http://localhost:8000/apps/edge
 #
 # Note: You can find the image name and tag by looking at the output of the script
-# or by running `podman images`. Also, fill in the app name in the URL with the 
+# or by running `podman images`. Also, fill in the app name in the URL with the
 # app you are testing
 
 # --------------------------------------------
@@ -46,6 +46,9 @@ export NPM_BUILD_SCRIPT="build-plugin"
 # HACK: Save old Dockerfiles because the container needs to generate it's own
 mv .dockerignore .dockerignore.bak
 mv Dockerfile Dockerfile.bak
+
+# Remove old container in case of previous run failing to cleanup
+docker ps -q --filter "name=$CONTAINER_NAME" | grep -q . && docker stop $CONTAINER_NAME && docker rm -f $CONTAINER_NAME
 
 # NOTE: Make sure this volume is mounted 'ro', otherwise Jenkins cannot clean up the
 # workspace due to file permission errors; the Z is used for SELinux workarounds
@@ -86,7 +89,7 @@ docker save ${IMAGE}:${IMAGE_TAG} -o ${BASE_IMG}
 # skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
 #     "docker-archive:${BASE_IMG}" \
 #     "docker://${BACKUP_IMAGE}:latest"
-# 
+#
 # skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
 #     "docker-archive:${BASE_IMG}" \
 #     "docker://${BACKUP_IMAGE}:${IMAGE_TAG}"
