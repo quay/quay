@@ -48,7 +48,7 @@ mv .dockerignore .dockerignore.bak
 mv Dockerfile Dockerfile.bak
 
 # Remove old container in case of previous run failing to cleanup
-docker ps -q --filter "name=$CONTAINER_NAME" | grep -q . && docker stop $CONTAINER_NAME && docker rm -f $CONTAINER_NAME
+docker rm -f $CONTAINER_NAME || true
 
 # NOTE: Make sure this volume is mounted 'ro', otherwise Jenkins cannot clean up the
 # workspace due to file permission errors; the Z is used for SELinux workarounds
