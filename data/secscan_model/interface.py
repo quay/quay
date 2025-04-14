@@ -1,6 +1,5 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 
-from deprecated import deprecated
 from six import add_metaclass
 
 
@@ -55,13 +54,6 @@ class SecurityScannerInterface(object):
 
         Typically, a callback is registered to remove the manifest/image from the security indexer
         if it has been GCed in the data model.
-        """
-
-    @abstractproperty
-    @deprecated(reason="Only exposed for the legacy notification worker")
-    def legacy_api_handler(self):
-        """
-        Exposes the legacy security scan API for legacy workers that need it or None if none.
         """
 
     @abstractmethod
