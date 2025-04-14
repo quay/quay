@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 QUAYENTRY=${QUAYENTRY:=$1}
 QUAYENTRY=${QUAYENTRY:=registry}
 
