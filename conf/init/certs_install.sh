@@ -69,7 +69,6 @@ done
 # to /etc/pki after because of permission issues
 
 mkdir -p /tmp/extracted
-id
 rm -rf /etc/pki/ca-trust/extracted
 update-ca-trust extract -o /tmp/extracted
 chmod ug+w -R /tmp/extracted
