@@ -507,7 +507,7 @@ def get_matching_robots(name_prefix, username, limit=10):
     user_search = prefix_search(User.username, username + "+" + name_prefix)
     prefix_checks = prefix_checks | user_search
 
-    return User.select().where(prefix_checks).limit(limit)
+    return User.select(can_use_read_replica=True).where(prefix_checks).limit(limit)
 
 
 def verify_robot(robot_username, password, instance_keys):
@@ -629,7 +629,9 @@ def _list_entity_robots(entity_name, include_metadata=True, include_token=True):
             .where(User.robot == True, User.username ** (entity_name + "+%"))
         )
     else:
-        query = User.select(User).where(User.robot == True, User.username ** (entity_name + "+%"))
+        query = User.select(User, can_use_read_replica=True).where(
+            User.robot == True, User.username ** (entity_name + "+%")
+        )
 
     return query
 
