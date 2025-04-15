@@ -280,6 +280,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
     - name: Install deps and OpenSSL 1.1
       run: |
         sudo apt-get -y update
@@ -295,11 +300,6 @@ jobs:
         export PATH="/opt/openssl-1.1/bin:$PATH"
         export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
         openssl version
-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
 
     - name: Install dependencies
       run: |
