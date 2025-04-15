@@ -315,8 +315,6 @@ jobs:
       run: |
         export PATH="/opt/openssl-1.1/bin:$PATH"
         export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
-        openssl version
-        echo $OPENSSL_VERSION
         export OPENSSL_VERSION=$(openssl version)
         echo $OPENSSL_VERSION
         python -c "import ssl; print(ssl.OPENSSL_VERSION)"
