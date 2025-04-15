@@ -312,7 +312,14 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py39-mysql
+      run: |
+        export PATH="/opt/openssl-1.1/bin:$PATH"
+        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
+        openssl version
+        echo $OPENSSL_VERSION
+        export OPENSSL_VERSION=$(openssl version)
+        openssl version
+        tox -e py39-mysql
 
 
   psql:
