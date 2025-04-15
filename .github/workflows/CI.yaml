@@ -296,13 +296,15 @@ jobs:
 
     - name: Install dependencies
       run: |
-        apt-get -y update
-        apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        apt-get update -y
+        apt-get install -yq --no-install-recommends libgpgme-dev libldap2-dev libsasl2-dev swig
         systemctl unmask docker
         systemctl start docker
         docker version
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
+      env:
+        DEBIAN_FRONTEND: noninteractive
 
     - name: tox
       run: tox -e py39-mysql
