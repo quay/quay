@@ -290,6 +290,12 @@ jobs:
         ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
         sudo make install
 
+    - name: Test OpenSSL version
+      run: |
+        export PATH="/opt/openssl-1.1/bin:$PATH"
+        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
+        openssl version
+
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
@@ -297,8 +303,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        export PATH="/opt/openssl-1.1/bin:$PATH"
-        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         sudo systemctl unmask docker
@@ -308,10 +312,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: |
-        export PATH="/opt/openssl-1.1/bin:$PATH"
-        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
-        tox -e py39-mysql
+      run: tox -e py39-mysql
 
 
   psql:
