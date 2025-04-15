@@ -298,8 +298,6 @@ jobs:
       run: |
         apt-get update -y
         apt-get install -yq --no-install-recommends libgpgme-dev libldap2-dev libsasl2-dev swig
-        service docker start
-        docker version
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
       env:
