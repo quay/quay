@@ -276,18 +276,20 @@ jobs:
     name: E2E MySQL Test
     runs-on: ubuntu-22.04
 
-    container:
-      image: ubuntu:20.04
-
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Install deps and OpenSSL 1.1
       run: |
-        apt update
+        sudo add-apt-repository -y ppa:rael-gc/rvm
+        sudo apt-get update
         apt install -y libssl1.1
 
-    - name: Checkout
-      uses: actions/checkout@v3
+    - name: Check OpenSSL version
+      run: |
+        openssl version || echo "Default OpenSSL not found"
+        ls /usr/lib/x86_64-linux-gnu/libssl* || true
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -295,15 +297,20 @@ jobs:
         python-version: 3.9
 
     - name: Install dependencies
+      env:
+        OPENSSL_DIR: /usr/lib/x86_64-linux-gnu
       run: |
-        apt-get update -y
-        apt-get install -yq --no-install-recommends libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo systemctl unmask docker
+        sudo systemctl start docker
+        docker version
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
-      env:
-        DEBIAN_FRONTEND: noninteractive
 
     - name: tox
+      env:
+        OPENSSL_DIR: /usr/lib/x86_64-linux-gnu
       run: tox -e py39-mysql
 
   psql:
