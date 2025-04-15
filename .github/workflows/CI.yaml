@@ -319,7 +319,7 @@ jobs:
         echo $OPENSSL_VERSION
         python -c "import ssl; print(ssl.OPENSSL_VERSION)"
         LD_LIBRARY_PATH=/opt/openssl-1.1/lib \
-        PATH="/opt/openssl-1.1/bin:$PATH \
+        PATH=/opt/openssl-1.1/bin:$PATH \
         tox -e py39-mysql
 
 
