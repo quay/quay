@@ -8,7 +8,7 @@ jobs:
   unit:
     if: github.repository == 'quay/quay'
     name: Run all Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       ZVSI_FP_NAME: ${{ vars.IBMZ_ZVSI_FP_NAME }}
       ZVSI_INSTANCE_NAME: ${{ vars.IBMZ_ZVSI_INSTANCE_NAME }}
