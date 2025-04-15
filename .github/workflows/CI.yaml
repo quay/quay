@@ -275,7 +275,16 @@ jobs:
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-22.04
+
+    container:
+      image: ubuntu:20.04
+
     steps:
+
+    - name: Install deps and OpenSSL 1.1
+      run: |
+        apt update
+        apt install -y libssl1.1
 
     - name: Checkout
       uses: actions/checkout@v3
@@ -287,10 +296,10 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        sudo systemctl unmask docker
-        sudo systemctl start docker
+        apt-get -y update
+        apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        systemctl unmask docker
+        systemctl start docker
         docker version
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
