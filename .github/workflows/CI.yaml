@@ -280,26 +280,25 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-
     - name: Install deps and OpenSSL 1.1
       run: |
-        sudo add-apt-repository -y ppa:rael-gc/rvm
         sudo apt-get -y update
-        apt install -y libssl1.1
+        sudo apt-get install -y wget build-essential
+        wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
+        tar -xzf openssl-1.1.1w.tar.gz
+        cd openssl-1.1.1w
+        ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
+        sudo make install
 
-    - name: Check OpenSSL version
-      run: |
-        openssl version || echo "Default OpenSSL not found"
-        python -c "import ssl; print(ssl.OPENSSL_VERSION)"
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
 
     - name: Install dependencies
-      env:
-        OPENSSL_DIR: /usr/lib/x86_64-linux-gnu
       run: |
+        export PATH="/opt/openssl-1.1/bin:$PATH"
+        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         sudo systemctl unmask docker
@@ -309,9 +308,11 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      env:
-        OPENSSL_DIR: /usr/lib/x86_64-linux-gnu
-      run: tox -e py39-mysql
+      run: |
+        export PATH="/opt/openssl-1.1/bin:$PATH"
+        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
+        tox -e py39-mysql
+
 
   psql:
     name: E2E Postgres Test
