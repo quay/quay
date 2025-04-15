@@ -280,21 +280,21 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
     - name: Install deps and OpenSSL 1.1
       run: |
         sudo add-apt-repository -y ppa:rael-gc/rvm
-        sudo apt-get update
+        sudo apt-get -y update
         apt install -y libssl1.1
 
     - name: Check OpenSSL version
       run: |
         openssl version || echo "Default OpenSSL not found"
-        ls /usr/lib/x86_64-linux-gnu/libssl* || true
-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
+        python -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
     - name: Install dependencies
       env:
