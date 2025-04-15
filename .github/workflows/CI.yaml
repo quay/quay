@@ -12,7 +12,7 @@ on:
 jobs:
   build:
     name: Format
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
@@ -79,7 +79,7 @@ jobs:
 
   unit:
     name: Unit Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
@@ -107,7 +107,7 @@ jobs:
 
   types:
     name: Types Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
@@ -141,7 +141,7 @@ jobs:
 
   e2e:
     name: E2E Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
@@ -164,7 +164,7 @@ jobs:
 
   registry:
     name: E2E Registry Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
@@ -274,7 +274,7 @@ jobs:
 
   mysql:
     name: E2E MySQL Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
@@ -300,7 +300,7 @@ jobs:
 
   psql:
     name: E2E Postgres Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - name: Checkout
