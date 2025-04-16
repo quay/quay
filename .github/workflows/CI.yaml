@@ -327,6 +327,8 @@ jobs:
         export OPENSSL_VERSION=$(openssl version)
         echo $OPENSSL_VERSION
         /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
+        /opt/python3.9-openssl1.1/bin/python3.9 -m venv .venv
+        source .venv/bin/activate
         tox -e py39-mysql
 
   psql:
