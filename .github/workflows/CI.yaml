@@ -309,8 +309,6 @@ jobs:
 
     - name: Test OpenSSL version
       run: |
-        export PATH="/opt/openssl-1.1/bin:$PATH"
-        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
         openssl version
         /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
@@ -326,15 +324,10 @@ jobs:
 
     - name: tox
       run: |
-        export PATH="/opt/openssl-1.1/bin:$PATH"
-        export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
         export OPENSSL_VERSION=$(openssl version)
         echo $OPENSSL_VERSION
-        python -c "import ssl; print(ssl.OPENSSL_VERSION)"
-        LD_LIBRARY_PATH=/opt/openssl-1.1/lib \
-        PATH=/opt/openssl-1.1/bin:$PATH \
+        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
         tox -e py39-mysql
-
 
   psql:
     name: E2E Postgres Test
