@@ -18,10 +18,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
@@ -57,10 +57,10 @@ jobs:
       with:
         fetch-depth: 0  # fetch all commits and branches for pre-commit
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - name: Set up Node 18
       uses: actions/setup-node@v3
@@ -85,32 +85,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Install deps and OpenSSL 1.1
-      run: |
-        sudo apt-get -y update
-        sudo apt-get install -y wget build-essential
-        wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
-        tar -xzf openssl-1.1.1w.tar.gz
-        cd openssl-1.1.1w
-        ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
-        sudo make install
-
-    - name: Download Python and configure python with OpenSSL 1.1
-      run: |
-        cd /usr/local/src
-        sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
-        sudo tar -xzf Python-3.9.0.tgz
-        cd Python-3.9.0
-        sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
-            --with-openssl=/opt/openssl-1.1 \
-            --enable-optimizations
-        sudo make -j$(nproc)
-        sudo make altinstall
-
-    - name: Test OpenSSL version
-      run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -119,10 +93,7 @@ jobs:
 
     - name: tox
       run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-        /opt/python3.9-openssl1.1/bin/python3.9 -m venv .venv
-        source .venv/bin/activate
-        tox -e py39-unit -- --cov=./ --cov-report=xml
+        tox -e py312-unit -- --cov=./ --cov-report=xml
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -138,10 +109,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.12
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
@@ -172,32 +143,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Install deps and OpenSSL 1.1
-      run: |
-        sudo apt-get -y update
-        sudo apt-get install -y wget build-essential
-        wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
-        tar -xzf openssl-1.1.1w.tar.gz
-        cd openssl-1.1.1w
-        ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
-        sudo make install
-
-    - name: Download Python and configure python with OpenSSL 1.1
-      run: |
-        cd /usr/local/src
-        sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
-        sudo tar -xzf Python-3.9.0.tgz
-        cd Python-3.9.0
-        sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
-            --with-openssl=/opt/openssl-1.1 \
-            --enable-optimizations
-        sudo make -j$(nproc)
-        sudo make altinstall
-
-    - name: Test OpenSSL version
-      run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -207,10 +152,7 @@ jobs:
 
     - name: tox
       run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-        /opt/python3.9-openssl1.1/bin/python3.9 -m venv .venv
-        source .venv/bin/activate
-        tox -e py39-e2e
+        tox -e py312-e2e
 
   registry:
     name: E2E Registry Tests
@@ -220,32 +162,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Install deps and OpenSSL 1.1
-      run: |
-        sudo apt-get -y update
-        sudo apt-get install -y wget build-essential
-        wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
-        tar -xzf openssl-1.1.1w.tar.gz
-        cd openssl-1.1.1w
-        ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
-        sudo make install
-
-    - name: Download Python and configure python with OpenSSL 1.1
-      run: |
-        cd /usr/local/src
-        sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
-        sudo tar -xzf Python-3.9.0.tgz
-        cd Python-3.9.0
-        sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
-            --with-openssl=/opt/openssl-1.1 \
-            --enable-optimizations
-        sudo make -j$(nproc)
-        sudo make altinstall
-
-    - name: Test OpenSSL version
-      run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -255,10 +171,7 @@ jobs:
 
     - name: tox
       run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-        /opt/python3.9-openssl1.1/bin/python3.9 -m venv .venv
-        source .venv/bin/activate
-        tox -e py39-registry
+        tox -e py312-registry
 
   cypress:
     name: Cypress Tests
@@ -288,10 +201,10 @@ jobs:
     - name: Seed Database
       run: cd web && npm run quay:seed
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
@@ -355,32 +268,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Install deps and OpenSSL 1.1
-      run: |
-        sudo apt-get -y update
-        sudo apt-get install -y wget build-essential
-        wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
-        tar -xzf openssl-1.1.1w.tar.gz
-        cd openssl-1.1.1w
-        ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
-        sudo make install
-
-    - name: Download Python and configure python with OpenSSL 1.1
-      run: |
-        cd /usr/local/src
-        sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
-        sudo tar -xzf Python-3.9.0.tgz
-        cd Python-3.9.0
-        sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
-            --with-openssl=/opt/openssl-1.1 \
-            --enable-optimizations
-        sudo make -j$(nproc)
-        sudo make altinstall
-
-    - name: Test OpenSSL version
-      run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -393,10 +280,7 @@ jobs:
 
     - name: tox
       run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-        /opt/python3.9-openssl1.1/bin/python3.9 -m venv .venv
-        source .venv/bin/activate
-        tox -e py39-mysql
+        tox -e py312-mysql
 
   psql:
     name: E2E Postgres Test
@@ -406,32 +290,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Install deps and OpenSSL 1.1
-      run: |
-        sudo apt-get -y update
-        sudo apt-get install -y wget build-essential
-        wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
-        tar -xzf openssl-1.1.1w.tar.gz
-        cd openssl-1.1.1w
-        ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
-        sudo make install
-
-    - name: Download Python and configure python with OpenSSL 1.1
-      run: |
-        cd /usr/local/src
-        sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
-        sudo tar -xzf Python-3.9.0.tgz
-        cd Python-3.9.0
-        sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
-            --with-openssl=/opt/openssl-1.1 \
-            --enable-optimizations
-        sudo make -j$(nproc)
-        sudo make altinstall
-
-    - name: Test OpenSSL version
-      run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -444,7 +302,4 @@ jobs:
 
     - name: tox
       run: |
-        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
-        /opt/python3.9-openssl1.1/bin/python3.9 -m venv .venv
-        source .venv/bin/activate
-        tox -e py39-psql
+        tox -e py312-psql
