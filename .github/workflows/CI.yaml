@@ -301,7 +301,7 @@ jobs:
         sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
         sudo tar -xzf Python-3.9.0.tgz
         cd Python-3.9.0
-        ./configure --prefix=/opt/python3.9-openssl1.1 \
+        sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
             --with-openssl=/opt/openssl-1.1 \
             --enable-optimizations
         make -j$(nproc)
