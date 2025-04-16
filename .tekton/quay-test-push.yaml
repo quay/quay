@@ -32,7 +32,9 @@ spec:
       [
         {"type": "gomod", "path": "./config-tool"},
         {"type": "pip", "path": "."},
-        {"type": "npm", "path": "web"}
+        {"type": "npm", "path": "web"},
+        {"type": "npm", "path": "."},
+        {"type": "npm", "path": "config-tool/pkg/lib/editor"}
       ]
   pipelineSpec:
     description: |
