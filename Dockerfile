@@ -178,7 +178,6 @@ ENV PYTHONPATH $QUAYPATH
 # Openshift runs a container as a random UID and GID 0, so anything
 # that's in the base image and needs to be modified at runtime needs
 # to make sure it's group-writable.
-# RUN alternatives --set python /usr/bin/python3.12
 RUN set -ex\
 	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
 	; newdir() { for d in "$@"; do mkdir -m 775 "$d" && ls -ld "$d"; done; }\
