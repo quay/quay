@@ -280,10 +280,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
+#    - name: Set up Python 3.9
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: 3.9
 
     - name: Install deps and OpenSSL 1.1
       run: |
@@ -295,11 +295,24 @@ jobs:
         ./config --prefix=/opt/openssl-1.1 --openssldir=/opt/openssl-1.1
         sudo make install
 
+    - name: Download Python
+      run: |
+        cd /usr/local/src
+        sudo wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tgz
+        sudo tar -xzf Python-3.9.0.tgz
+        cd Python-3.9.0
+        ./configure --prefix=/opt/python3.9-openssl1.1 \
+            --with-openssl=/opt/openssl-1.1 \
+            --enable-optimizations
+        make -j$(nproc)
+        sudo make altinstall
+
     - name: Test OpenSSL version
       run: |
         export PATH="/opt/openssl-1.1/bin:$PATH"
         export LD_LIBRARY_PATH="/opt/openssl-1.1/lib:$LD_LIBRARY_PATH"
         openssl version
+        /opt/python3.9-openssl1.1/bin/python3.9 -c "import ssl; print(ssl.OPENSSL_VERSION)"
 
     - name: Install dependencies
       run: |
