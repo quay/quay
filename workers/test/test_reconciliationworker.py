@@ -47,7 +47,7 @@ def test_reconcile_org_user(initialized_db):
 
 def test_exception_handling(initialized_db, caplog):
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
-        mock.side_effect = stripe.error.InvalidRequestException
+        mock.side_effect = stripe.error.InvalidRequestError
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
     with patch("data.billing.FakeStripe.Customer.retrieve") as mock:
         mock.side_effect = stripe.error.APIConnectionError

@@ -418,7 +418,7 @@ class FakeStripe(object):
     ACTIVE_CUSTOMERS: Dict[str, Any] = {}
 
     class error(object):
-        class InvalidRequestException(Exception):
+        class InvalidRequestError(Exception):
             pass
 
         class APIConnectionError(Exception):
