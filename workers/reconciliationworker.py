@@ -87,7 +87,7 @@ class ReconciliationWorker(Worker):
                 except stripe.error.APIConnectionError:
                     logger.error("Cannot connect to Stripe")
                     continue
-                except stripe.error.InvalidRequestException:
+                except stripe.error.InvalidRequestError:
                     logger.warn("Invalid request for stripe_id %s", user.stripe_id)
                     continue
 
