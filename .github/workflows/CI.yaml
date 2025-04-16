@@ -85,6 +85,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -143,6 +148,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -161,6 +171,11 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
@@ -268,6 +283,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -289,6 +309,11 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
 
     - name: Install dependencies
       run: |
