@@ -14,7 +14,6 @@ from datetime import datetime
 from enum import Enum, IntEnum, unique
 from random import SystemRandom
 
-# import rehash
 import resumablesha256 as rehash
 import toposort
 from cachetools.func import lru_cache
