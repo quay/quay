@@ -304,7 +304,7 @@ jobs:
         sudo ./configure --prefix=/opt/python3.9-openssl1.1 \
             --with-openssl=/opt/openssl-1.1 \
             --enable-optimizations
-        make -j$(nproc)
+        sudo make -j$(nproc)
         sudo make altinstall
 
     - name: Test OpenSSL version
