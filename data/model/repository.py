@@ -528,7 +528,7 @@ def _get_sorted_matching_repositories(
 
         select_fields.append(computed_score)
         query = (
-            Repository.select(*select_fields)
+            Repository.select(*select_fields, can_use_read_replica=True)
             .join(RepositorySearchScore)
             .where(clause)
             .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
