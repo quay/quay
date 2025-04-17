@@ -924,7 +924,7 @@ def get_namespace_user(username):
         return None
 
     try:
-        return get_username(username)
+        return User.get(User.username == username)
     except User.DoesNotExist:
         return None
 
