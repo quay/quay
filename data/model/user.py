@@ -462,7 +462,7 @@ def lookup_robot(robot_username):
         raise InvalidRobotException("Could not find robot with specified username")
 
     try:
-        return User.get(username=robot_username, robot=True, can_use_read_replica=True)
+        return User.get(username=robot_username, robot=True)
     except User.DoesNotExist:
         raise InvalidRobotException("Could not find robot with specified username")
 
