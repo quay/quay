@@ -597,7 +597,7 @@ def generate_temp_robot_jwt_token(instance_keys):
 
 def delete_robot(robot_username):
     try:
-        robot = User.get(username=robot_username, robot=True)
+        robot = User.get(username=robot_username, robot=True, can_use_read_replica=True)
         robot.delete_instance(recursive=True, delete_nullable=True)
 
     except User.DoesNotExist:
@@ -629,9 +629,7 @@ def _list_entity_robots(entity_name, include_metadata=True, include_token=True):
             .where(User.robot == True, User.username ** (entity_name + "+%"))
         )
     else:
-        query = User.select(User, can_use_read_replica=True).where(
-            User.robot == True, User.username ** (entity_name + "+%")
-        )
+        query = User.select(User).where(User.robot == True, User.username ** (entity_name + "+%"))
 
     return query
 
