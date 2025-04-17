@@ -54,6 +54,13 @@ class GeneratorFile(object):
     def flush(self):
         _complain_ifclosed(self._closed)
 
+    @property
+    def closed(self):
+        """
+        Return whether the file is closed.
+        """
+        return self._closed
+
     def read(self, size=-1):
         """
         Read at most size bytes from the file (less if the read hits EOF before obtaining size
