@@ -911,3 +911,6 @@ class DefaultConfig(ImmutableConfig):
     # Specific namespaces that be exceptions to the s3-cloudflare optimization
     # used for registry-proxy namespaces
     CDN_SPECIFIC_NAMESPACES: Optional[List[str]] = []
+
+    # Automation user config. Note: The Users need to also be in the SUPER_USERS list
+    AUTOMATION_USERS: List[str] = []

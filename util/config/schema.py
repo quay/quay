@@ -1615,5 +1615,13 @@ CONFIG_SCHEMA = {
             "description": "Nginx read timeout for manifests endpoints used by pulls and pushes",
             "x-example": "5m",
         },
+        "AUTOMATION_USERS": {
+            "type": "array",
+            "description": "Automation names of those organizations to be granted superuser privileges",
+            "uniqueItems": True,
+            "items": {
+                "type": "string",
+            },
+        },
     },
 }
