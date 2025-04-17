@@ -113,3 +113,25 @@ def test_update_same_id(initialized_db):
         worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
 
     mock.assert_not_called()
+
+
+def test_empty_email(initialized_db):
+    test_user = model.user.create_user("stripe_user", "password", "", email_required=False)
+    test_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    test_user.save()
+
+    with patch.object(marketplace_users, "lookup_customer_id") as mock:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    assert "" not in mock.call_args_list
+
+
+def test_null_email(initialized_db):
+    test_user = model.user.create_user("stripe_user", "password", None, email_required=False)
+    test_user.stripe_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+    test_user.save()
+
+    with patch.object(marketplace_users, "lookup_customer_id") as mock:
+        worker._perform_reconciliation(marketplace_users, marketplace_subscriptions)
+
+    assert None not in mock.call_args_list
