@@ -61,6 +61,8 @@ class ReconciliationWorker(Worker):
                 user_api.lookup_customer_id(email) if email is not None and email != "" else None
             )
             if customer_ids is None:
+                if email is None or email == "":
+                    logger.info("Email missing or empty for user %s", user.username)
                 logger.info("No web customer ids found for %s", email)
                 if model_customer_ids:
                     # user does not have a web customer id from api and should be removed from table
