@@ -203,7 +203,6 @@ def _purge_repository_contents(repo):
 
     # Purge manifests that not referenced by tags
     while True:
-        print("TESTING 1:")
         found = False
         for manifests in _chunk_iterate_for_deletion(
             Manifest.select().where(Manifest.repository == repo)
@@ -228,7 +227,6 @@ def _purge_repository_contents(repo):
 
     # Purge any uploaded blobs that have expired.
     while True:
-        print("TESTING 2:")
         found = False
         for uploaded_blobs in _chunk_iterate_for_deletion(
             UploadedBlob.select().where(UploadedBlob.repository == repo)
