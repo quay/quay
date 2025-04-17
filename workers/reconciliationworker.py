@@ -57,9 +57,11 @@ class ReconciliationWorker(Worker):
                 model_customer_ids = []
 
             # check against user api
-            customer_ids = user_api.lookup_customer_id(email)
+            customer_ids = (
+                user_api.lookup_customer_id(email) if email is not None and email != "" else None
+            )
             if customer_ids is None:
-                logger.debug("No web customer ids found for %s", email)
+                logger.info("No web customer ids found for %s", email)
                 if model_customer_ids:
                     # user does not have a web customer id from api and should be removed from table
                     logger.debug(
@@ -117,8 +119,8 @@ class ReconciliationWorker(Worker):
                     paying = True
                     plan_sku = plan.get("rh_sku")
                     if plan_sku not in customer_skus:
-                        logger.debug("Found %s to create for %s", plan_sku, user)
                         marketplace_api.create_entitlement(customer_id, plan_sku)
+                        logger.info("Created SKU %s for %s", plan_sku, user)
                     # check for free tier sku
             else:
                 # not a stripe customer but we want to check for paying subscriptions for the
@@ -132,6 +134,7 @@ class ReconciliationWorker(Worker):
             # check for free-tier reconciliations
             if not paying and FREE_TIER_SKU not in customer_skus:
                 marketplace_api.create_entitlement(customer_id, FREE_TIER_SKU)
+                logger.info("Created Free SKU %s for %s", FREE_TIER_SKU, user)
             elif paying and FREE_TIER_SKU in customer_skus:
                 free_tier_subscriptions = marketplace_api.lookup_subscription(
                     customer_id, FREE_TIER_SKU
@@ -141,6 +144,7 @@ class ReconciliationWorker(Worker):
                 for sub in free_tier_subscriptions:
                     id = sub.get("id")
                     marketplace_api.remove_entitlement(id)
+                    logger.info("Removed Free SKU id: %s from %s", id, user)
 
     def _prefetch_user_entitlements(self, customer_id, marketplace_api):
         found_skus = []
