@@ -8,7 +8,6 @@ from app import billing as stripe
 from app import marketplace_subscriptions, marketplace_users
 from data import model
 from data.billing import RECONCILER_SKUS, RH_SKUS, get_plan
-from data.model import entitlements
 from util.locking import GlobalLock, LockNotAcquiredException
 from workers.gunicorn_worker import GunicornWorker
 from workers.namespacegcworker import LOCK_TIMEOUT_PADDING
@@ -49,12 +48,6 @@ class ReconciliationWorker(Worker):
         for user in users:
 
             email = user.email
-            model_customer_ids = entitlements.get_web_customer_ids(user.id)
-            logger.debug(
-                "Database returned %s customer ids for %s", str(model_customer_ids), user.username
-            )
-            if model_customer_ids is None:
-                model_customer_ids = []
 
             # check against user api
             customer_ids = (
@@ -64,25 +57,10 @@ class ReconciliationWorker(Worker):
                 if email is None or email == "":
                     logger.info("Email missing or empty for user %s", user.username)
                 logger.info("No web customer ids found for %s", email)
-                if model_customer_ids:
-                    # user does not have a web customer id from api and should be removed from table
-                    logger.debug(
-                        "Removing conflicting ids %s for %s", model_customer_ids, user.username
-                    )
-                    for model_customer_id in model_customer_ids:
-                        entitlements.remove_web_customer_id(user, model_customer_id)
                 continue
 
             logger.debug("Found %s number for %s", str(customer_ids), email)
 
-            for customer_id in customer_ids:
-                if customer_id not in model_customer_ids:
-                    logger.debug("Saving new customer id %s for %s", customer_id, user.username)
-                    entitlements.save_web_customer_id(user, customer_id)
-
-            for customer_id in model_customer_ids:
-                if customer_id not in customer_ids:
-                    entitlements.remove_web_customer_id(user, customer_id)
             # check for any subscription reconciliations
             stripe_customer = None
             if user.stripe_id is not None:
