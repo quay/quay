@@ -14,7 +14,7 @@ flit-core==3.9.0
     # via -r requirements-build.in
 greenlet==3.0.0
     # via -r requirements-build.in
-packaging==23.2
+packaging==25.0
     # via
     #   -r requirements-build.in
     #   setuptools-scm
