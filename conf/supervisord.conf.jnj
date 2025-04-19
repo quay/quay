@@ -296,6 +296,12 @@ autostart = {{ config['pushgateway']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:nginxprometheusexporter]
+command=/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1:8080/stub_status
+autostart = {{ config['nginxprometheusexporter']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:servicekey]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
