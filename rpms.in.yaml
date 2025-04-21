@@ -1,0 +1,33 @@
+packages: [
+  dnsmasq,
+  memcached,
+  nginx,
+  libpq-devel,
+  libjpeg-turbo,
+  openldap,
+  openssl,
+  python39,
+  python3-gpg,
+  skopeo,
+  findutils,
+  tzdata,
+  gcc-c++,
+  git,
+  openldap-devel,
+  python39-devel,
+  libffi-devel,
+  openssl-devel,
+  diffutils,
+  file,
+  make,
+  libjpeg-turbo,
+  libjpeg-turbo-devel,
+  wget,
+  rust-toolset,
+  libxml2-devel,
+  libxslt-devel,
+  freetype-devel,
+]
+contentOrigin:
+  repofiles: ["./ubi.repo"]
+arches: [x86_64]
