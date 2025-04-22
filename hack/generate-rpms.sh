@@ -12,4 +12,4 @@ sed -i '' 's/\[ubi-9/[ubi-9-for-$basearch/' ubi.repo
 curl https://raw.githubusercontent.com/konflux-ci/rpm-lockfile-prototype/refs/heads/main/Containerfile \
   | $DOCKER build -t localhost/rpm-lockfile-prototype -
 
-$DOCKER run --rm -v ${PWD}:${CONTAINER_DIR} localhost/rpm-lockfile-prototype:latest --outfile=${CONTAINER_DIR}/rpms.lock.yaml --image=${BASE_IMAGE} ${CONTAINER_DIR}/rpms.in.yaml
+$DOCKER run --rm -v ${PWD}:${CONTAINER_DIR} localhost/rpm-lockfile-prototype:latest --outfile=${CONTAINER_DIR}/rpms.lock.yaml --bare ${CONTAINER_DIR}/rpms.in.yaml

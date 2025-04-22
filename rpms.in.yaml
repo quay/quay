@@ -3,7 +3,6 @@ packages: [
   memcached,
   nginx,
   libpq-devel,
-  libjpeg-turbo,
   openldap,
   openssl,
   python39,
