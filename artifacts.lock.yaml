@@ -1,0 +1,6 @@
+---
+metadata:
+  version: "1.0"
+artifacts:
+  - download_url: "https://index.crates.io/config.json"
+    checksum: "sha256:5b943a2c6f7eb743f7308aba07bdbb47d9ae44aafecd832d7f15df186afbafb3"
