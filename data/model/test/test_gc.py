@@ -707,6 +707,10 @@ def test_delete_manifests_with_subject(initialized_db):
     # In order to clean these up, they need to be manually deleted for now.
     assert model.gc._check_manifest_used(manifest2_created.manifest.id)
 
+    # Make sure we're able to delete the untagged manifests when deleting the repository
+    # i.e There should be no manifests leftover
+    assert model.gc.purge_repository(repository, force=True)
+
 
 def test_tag_cleanup_with_autoprune_policy(default_tag_policy, initialized_db):
     repo1 = model.repository.create_repository("devtable", "newrepo", None)
