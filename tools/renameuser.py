@@ -1,6 +1,6 @@
 import argparse
 
-from app import app
+from app import app, model_cache
 from data import model
 
 
@@ -17,7 +17,7 @@ def renameUser(username, new_name):
         raise Exception("Username %s does not exist" % username)
 
     print("Renaming user...")
-    model.user.change_username(existing.id, new_name)
+    model.user.change_username(existing.id, new_name, model_cache)
     print("Rename complete")
 
 

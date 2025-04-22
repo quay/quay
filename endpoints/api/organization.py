@@ -9,7 +9,7 @@ import recaptcha2
 from flask import request
 
 import features
-from app import all_queues, app, authentication, avatar
+from app import all_queues, app, authentication, avatar, model_cache
 from app import billing as stripe
 from app import ip_resolver, marketplace_subscriptions, namespace_gc_queue, usermanager
 from auth import scopes
@@ -343,7 +343,7 @@ class Organization(ApiResource):
             log_action(
                 "org_delete", orgname, {"namespace": orgname}
             )  # we need to do this before the deletion, as the org will be gone after
-            model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue)
+            model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue, model_cache)
             return "", 204
 
         raise Unauthorized()
@@ -984,9 +984,9 @@ class OrganizationProxyCacheConfig(ApiResource):
                     "create_proxy_cache_config",
                     orgname,
                     {
-                        "upstream_registry": data["upstream_registry"]
-                        if data["upstream_registry"]
-                        else None
+                        "upstream_registry": (
+                            data["upstream_registry"] if data["upstream_registry"] else None
+                        )
                     },
                 )
                 return "Created", 201
