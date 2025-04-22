@@ -201,6 +201,30 @@ def _purge_repository_contents(repo):
         if not found:
             break
 
+    # Purge manifests that not referenced by tags
+    while True:
+        found = False
+        for manifests in _chunk_iterate_for_deletion(
+            Manifest.select().where(Manifest.repository == repo)
+        ):
+            logger.debug("Found %s manifests to GC under repository %s", len(tags), repo)
+            found = True
+            context = _GarbageCollectorContext(repo)
+            for manifest in manifests:
+                logger.debug(
+                    "Deleting manifest %s with digest %s under repository %s",
+                    manifest,
+                    manifest.digest,
+                    repo,
+                )
+                assert manifest.repository_id == repo.id
+                _purge_oci_manifest(manifest, context)
+
+            _run_garbage_collection(context)
+
+        if not found:
+            break
+
     # Purge any uploaded blobs that have expired.
     while True:
         found = False
@@ -291,6 +315,11 @@ def _run_garbage_collection(context):
             for blob_removed_id in storage_ids_removed:
                 context.mark_blob_id_removed(blob_removed_id)
                 has_changes = True
+
+
+def _purge_oci_manifest(manifest, context):
+    context.add_manifest_id(manifest.id)
+    gc_table_rows_deleted.labels(table="Manifest").inc()
 
 
 def _purge_oci_tag(tag, context, allow_non_expired=False):
