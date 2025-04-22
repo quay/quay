@@ -26,6 +26,9 @@ packages: [
   libxml2-devel,
   libxslt-devel,
   freetype-devel,
+  glibc,
+  glibc-minimal-langpack,
+  glibc-devel,
 ]
 contentOrigin:
   repofiles: ["./ubi.repo"]
