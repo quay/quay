@@ -2,8 +2,8 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.10/html/red_hat_quay_release_notes/index)
 
-<a name="v3.11.10"></a>
-## [v3.11.10] - 2025-03-25
+<a name="v3.10.10"></a>
+## [v3.10.10] - 2025-03-25
 ### Chore
 - [b13f45033](https://github.com/quay/quay/commit/b13f450338bace7803d477a95ad0e2f49f598c51): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3706](https://github.com/quay/quay/issues/3706)) ([#3713](https://github.com/quay/quay/issues/3713))
 ### [Redhat-3.10] Deps
