@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+import random
+import time
 from typing import Callable
 
-from peewee import Select, fn
+from peewee import IntegrityError, Select, fn
 
 import features
 from app import app, storage
@@ -252,12 +254,44 @@ class ProxyModel(OCIModel):
             repository_ref, manifest_digest, allow_dead=True, require_available=False
         )
         if wrapped_manifest is None:
+            max_retries = 3  # maximum retries
+            max_backoff_time = 3  # maximum backoff time in seconds
+            retries = 0
             try:
                 wrapped_manifest, _ = self._create_and_tag_manifest(
                     repository_ref, manifest_digest, self._create_manifest_with_temp_tag
                 )
             except (UpstreamRegistryError, ManifestDoesNotExist) as e:
                 raise ManifestDoesNotExist(str(e))
+            except IntegrityError as e:
+                logger.warning(f"Manifest creation race condition detected: {str(e)}")
+
+                # Start retry loop with exponential backoff and jitter
+                while retries < max_retries:
+                    # Add a small delay before first retry
+                    jitter = random.uniform(0, 0.1)
+                    backoff_time = min(max_backoff_time, (2**retries) + jitter)
+                    time.sleep(backoff_time)
+
+                    # Try to look up the manifest by digest again
+                    wrapped_manifest = super().lookup_manifest_by_digest(
+                        repository_ref, manifest_digest, allow_dead=True, require_available=False
+                    )
+
+                    if wrapped_manifest is not None:
+                        logger.info(f"Successfully retrieved manifest on retry {retries+1}")
+                        break
+
+                    retries += 1
+                    logger.debug(
+                        f"Manifest not found on retry {retries}, backing off for {backoff_time:.2f}s"
+                    )
+
+                if wrapped_manifest is None and retries >= max_retries:
+                    logger.error(f"Failed to retrieve manifest after {max_retries} retries")
+                    raise ManifestDoesNotExist(
+                        f"Manifest {manifest_digest} not found after multiple retries"
+                    )
             return wrapped_manifest
 
         db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
