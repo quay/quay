@@ -5,7 +5,7 @@ import random
 import time
 from typing import Callable
 
-from peewee import IntegrityError, Select, fn
+from peewee import fn
 
 import features
 from app import app, storage
@@ -28,7 +28,7 @@ from data.model import (
     oci,
     repository,
 )
-from data.model.oci.manifest import is_child_manifest
+from data.model.oci.manifest import _ManifestAlreadyExists, is_child_manifest
 from data.model.proxy_cache import get_proxy_cache_config_for_org
 from data.model.quota import (
     QuotaOperation,
@@ -263,17 +263,17 @@ class ProxyModel(OCIModel):
                 )
             except (UpstreamRegistryError, ManifestDoesNotExist) as e:
                 raise ManifestDoesNotExist(str(e))
-            except IntegrityError as e:
+            except _ManifestAlreadyExists as e:
                 logger.warning(f"Manifest creation race condition detected: {str(e)}")
 
-                # Start retry loop with exponential backoff and jitter
+                # Starting retry loop with exponential backoff and jitter
                 while retries < max_retries:
-                    # Add a small delay before first retry
+                    # Adding a small delay before first retry
                     jitter = random.uniform(0, 0.1)
                     backoff_time = min(max_backoff_time, (2**retries) + jitter)
                     time.sleep(backoff_time)
 
-                    # Try to look up the manifest by digest again
+                    # Trying to look up the manifest by digest again
                     wrapped_manifest = super().lookup_manifest_by_digest(
                         repository_ref, manifest_digest, allow_dead=True, require_available=False
                     )
