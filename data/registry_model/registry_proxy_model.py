@@ -280,7 +280,7 @@ class ProxyModel(OCIModel):
 
                     if wrapped_manifest is not None:
                         logger.info(f"Successfully retrieved manifest on retry {retries+1}")
-                        break
+                        return wrapped_manifest
 
                     retries += 1
                     logger.debug(
