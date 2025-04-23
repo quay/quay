@@ -110,7 +110,7 @@ RUN npm run --quiet build
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
-RUN npm clean-install
+RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
 COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
