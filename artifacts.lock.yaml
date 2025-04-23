@@ -4,3 +4,8 @@ metadata:
 artifacts:
   - download_url: "https://index.crates.io/config.json"
     checksum: "sha256:5b943a2c6f7eb743f7308aba07bdbb47d9ae44aafecd832d7f15df186afbafb3"
+  - download_url: "https://download.cypress.io/desktop/13.16.1?platform=linux&arch=x64"
+    checksum: "sha256:65136ff1b92fb1f54b9569d2f9208d2c1cd8ded539363c22ced244457550facf"
+    filename: "cypress.zip"
+  - download_url: "https://github.com/prometheus/pushgateway/releases/download/v1.6.0/pushgateway-1.6.0.linux-amd64.tar.gz"
+    checksum: "sha256:6247e16f6c30f5fc3603a1efbc7c2069e965938bc5381897b1317f7119f28ac4"
