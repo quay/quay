@@ -1036,6 +1036,9 @@ class TestRegistryProxyModelLookupManifestByDigest:
             UBI8_8_4_DIGEST, UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
         )
 
+        mock_manifest = MagicMock()
+        mock_manifest.digest = UBI8_8_4_DIGEST
+
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
         ):
@@ -1046,18 +1049,36 @@ class TestRegistryProxyModelLookupManifestByDigest:
                 self.user,
             )
 
-            with patch.object(ProxyModel, "_create_and_tag_manifest") as mock_create_manifest:
-                mock_create_manifest.side_effect = _ManifestAlreadyExists("Manifest already exists")
+            with patch.object(ProxyModel, "_create_and_tag_manifest") as mock_create_method:
+                mock_create_method.side_effect = _ManifestAlreadyExists("Manifest already exists")
 
-                with patch("time.sleep") as mock_sleep:
-                    manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
+                original_lookup = super(ProxyModel, ProxyModel).lookup_manifest_by_digest
+                call_count = [0]
 
-                    assert manifest is not None
-                    assert manifest.digest == UBI8_8_4_DIGEST
+                def mock_lookup(*args, **kwargs):
+                    call_count[0] += 1
+                    if call_count[0] == 1:
+                        # First call during the initial lookup returns None
+                        return None
+                    else:
+                        # Subsequent calls return our mock manifest
+                        return mock_manifest
 
-                    mock_create_manifest.assert_called_once()
-                    # Ensure at least one retry happened with sleep
-                    assert mock_sleep.call_count >= 1
+                with patch.object(
+                    super(ProxyModel, ProxyModel),
+                    "lookup_manifest_by_digest",
+                    side_effect=mock_lookup,
+                ):
+
+                    with patch("time.sleep") as mock_sleep:
+                        result = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
+
+                        # Verify the test worked as expected
+                        assert result is not None
+                        assert result.digest == UBI8_8_4_DIGEST
+                        mock_create_method.assert_called_once()
+                        assert mock_sleep.call_count >= 1
+                        assert call_count[0] >= 2
 
 
 class TestRegistryProxyModelGetRepoTag:
