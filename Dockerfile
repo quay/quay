@@ -147,7 +147,7 @@ COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 COPY --chown=0:0 . .
 RUN set -ex\
 	; chmod -R g=u ./conf\
-	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json \
+	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json 2>/dev/null \
   || cp /cachi2/output/deps/generic/aws-ip-ranges.json util/ipresolver/aws-ip-ranges.json \
 	;
 
