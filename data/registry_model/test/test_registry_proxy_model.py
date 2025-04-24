@@ -1038,51 +1038,26 @@ class TestRegistryProxyModelLookupManifestByDigest:
 
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
-        ), patch.object(ProxyModel, "_create_and_tag_manifest") as mock_create_manifest:
-            mock_create_manifest.side_effect = _ManifestAlreadyExists("Manifest already exists")
+        ):
 
-            mock_manifest = MagicMock()
-            mock_manifest.digest = UBI8_8_4_DIGEST
-            mock_manifest.internal_manifest_bytes.as_unicode.return_value = (
-                UBI8_8_4_MANIFEST_SCHEMA2
-            )
-            mock_manifest.id = 12345
-
-            original_lookup = (
-                ProxyModel.lookup_manifest_by_digest.__func__.__self__.__class__.lookup_manifest_by_digest
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
             )
 
-            call_count = [0]
+            with patch.object(ProxyModel, "_create_and_tag_manifest") as mock_create_manifest:
+                mock_create_manifest.side_effect = _ManifestAlreadyExists("Manifest already exists")
 
-            def mock_super_lookup(*args, **kwargs):
-                call_count[0] += 1
-                if call_count[0] == 1:
-                    return None
-                else:
-                    return mock_manifest
-
-            with patch.object(
-                ProxyModel.lookup_manifest_by_digest.__func__.__self__.__class__,
-                "lookup_manifest_by_digest",
-                side_effect=mock_super_lookup,
-            ):
                 with patch("time.sleep") as mock_sleep:
-                    proxy_model = ProxyModel(
-                        self.orgname,
-                        self.upstream_repository,
-                        self.user,
-                    )
+                    manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
 
-                    result = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
-
-                    assert result is not None
-                    assert result.digest == UBI8_8_4_DIGEST
+                    assert manifest is not None
+                    assert manifest.digest == UBI8_8_4_DIGEST
 
                     mock_create_manifest.assert_called_once()
-                    # Ensuring at least one retry with backoff
+                    # Ensure at least one retry happened with sleep
                     assert mock_sleep.call_count >= 1
-
-                    assert call_count[0] >= 2
 
 
 class TestRegistryProxyModelGetRepoTag:
