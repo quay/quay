@@ -18,10 +18,10 @@ from app import (
     ip_resolver,
     marketplace_subscriptions,
     marketplace_users,
+    model_cache,
     namespace_gc_queue,
     oauth_login,
     url_scheme_and_hostname,
-    model_cache,
 )
 from auth import scopes
 from auth.auth_context import get_authenticated_user

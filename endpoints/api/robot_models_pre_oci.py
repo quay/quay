@@ -144,7 +144,7 @@ class RobotPreOCIModel(RobotInterface):
             metadata.unstructured_json,
         )
 
-    def delete_robot(self, robot_username):
+    def delete_robot(self, robot_username, model_cache=None):
         model.user.delete_robot(robot_username, model_cache)
 
     def create_user_robot(self, robot_shortname, owning_user, description, unstructured_metadata):

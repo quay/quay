@@ -6,8 +6,8 @@ import json
 import logging
 
 from flask import abort, request
-from app import model_cache
 
+from app import model_cache
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (

@@ -1,7 +1,7 @@
 from flask import request
 
 import features
-from app import all_queues, namespace_gc_queue, userfiles, model_cache
+from app import all_queues, model_cache, namespace_gc_queue, userfiles
 from auth.permissions import (
     AdministerRepositoryPermission,
     ModifyRepositoryPermission,

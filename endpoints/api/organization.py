@@ -9,9 +9,15 @@ import recaptcha2
 from flask import request
 
 import features
-from app import all_queues, app, authentication, avatar, model_cache
+from app import all_queues, app, authentication, avatar
 from app import billing as stripe
-from app import ip_resolver, marketplace_subscriptions, namespace_gc_queue, usermanager
+from app import (
+    ip_resolver,
+    marketplace_subscriptions,
+    model_cache,
+    namespace_gc_queue,
+    usermanager,
+)
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
