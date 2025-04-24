@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from app import model_cache
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -8,8 +9,15 @@ from auth.credential_consts import (
 from auth.credentials import CredentialKind, validate_credentials
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
-from data.database import RobotAccountToken
+from data.cache import cache_key
+from data.database import RobotAccountToken, User
 from test.fixtures import *
+
+
+def clear_robot_cache(username):
+    if model_cache is not None:
+        robot_cache_key = cache_key.for_robot_lookup(username, model_cache.cache_config)
+        model_cache.invalidate(robot_cache_key)
 
 
 def test_valid_user(app):
@@ -23,6 +31,7 @@ def test_valid_robot(app):
     result, kind = validate_credentials(robot.username, password)
     assert kind == CredentialKind.robot
     assert result == ValidateResult(AuthKind.credentials, robot=robot)
+    clear_robot_cache(robot.username)
 
 
 def test_valid_robot_for_disabled_user(app):
@@ -38,6 +47,7 @@ def test_valid_robot_for_disabled_user(app):
 
     err = "Robot %s owner %s is disabled" % (robot.username, user.username)
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
+    clear_robot_cache(robot.username)
 
 
 def test_valid_robot_with_invalid_password(app):
@@ -47,6 +57,7 @@ def test_valid_robot_with_invalid_password(app):
 
     err = "Could not find robot with username: %s and supplied password." % robot.username
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
+    clear_robot_cache(robot.username)
 
 
 def test_valid_robot_with_invalid_token(app):
@@ -59,6 +70,7 @@ def test_valid_robot_with_invalid_token(app):
 
     err = "Could not find robot with username: %s and supplied password." % robot.username
     assert result == ValidateResult(AuthKind.credentials, error_message=err)
+    clear_robot_cache(robot.username)
 
 
 def test_valid_token(app):
@@ -141,6 +153,7 @@ def test_unicode_robot(app):
 
     msg = "Could not find robot with username: devtable+somerobot and supplied password."
     assert result == ValidateResult(AuthKind.credentials, error_message=msg)
+    clear_robot_cache(robot.username)
 
 
 def test_invalid_user(app):
@@ -170,6 +183,7 @@ def test_invalid_robot_token(app):
     assert kind == CredentialKind.robot
     assert not result.authed_user
     assert not result.auth_valid
+    clear_robot_cache(robot.username)
 
 
 def test_invalid_unicode_robot(app):
@@ -191,3 +205,4 @@ def test_invalid_unicode_robot_2(app):
     assert not result.auth_valid
     msg = "Could not find robot with username: devtable+somerobot and supplied password."
     assert result == ValidateResult(AuthKind.credentials, error_message=msg)
+    clear_robot_cache(robot.username)

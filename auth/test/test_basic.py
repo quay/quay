@@ -4,6 +4,7 @@ from base64 import b64encode
 
 import pytest
 
+from app import model_cache
 from auth.basic import validate_basic_auth
 from auth.credentials import (
     ACCESS_TOKEN_USERNAME,
@@ -12,6 +13,7 @@ from auth.credentials import (
 )
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.cache import cache_key
 from test.fixtures import *
 
 
@@ -84,6 +86,10 @@ def test_valid_robot(app):
     token = _token(robot.username, password)
     result = validate_basic_auth(token)
     assert result == ValidateResult(AuthKind.basic, robot=robot)
+    # Invalidate robot cache as it persists and throws errors in other test cases
+    if model_cache is not None:
+        robot_cache_key = cache_key.for_robot_lookup(robot.username, model_cache.cache_config)
+        model_cache.invalidate(robot_cache_key)
 
 
 def test_valid_token(app):
