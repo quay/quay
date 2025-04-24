@@ -29,15 +29,17 @@ spec:
   - name: dockerfile
     value: Dockerfile
   - name: hermetic
-    value: "false"
+    value: "true"
   - name: prefetch-input
     value: |
       [
         {"type": "gomod", "path": "./config-tool"},
-        {"type": "pip", "path": "."},
+        {"type": "pip", "path": ".", "allow_binary": "true"},
         {"type": "npm", "path": "web"},
         {"type": "npm", "path": "."},
-        {"type": "npm", "path": "config-tool/pkg/lib/editor"}
+        {"type": "npm", "path": "config-tool/pkg/lib/editor"},
+        {"type": "rpm", "path": "."},
+        {"type": "generic", "path": "."}
       ]
   pipelineSpec:
     description: |
@@ -186,6 +188,8 @@ spec:
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: dev-package-managers
+        value: "true"
       runAfter:
       - clone-repository
       taskRef:
