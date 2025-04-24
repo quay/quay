@@ -1052,7 +1052,6 @@ class TestRegistryProxyModelLookupManifestByDigest:
             with patch.object(ProxyModel, "_create_and_tag_manifest") as mock_create_method:
                 mock_create_method.side_effect = _ManifestAlreadyExists("Manifest already exists")
 
-                original_lookup = super(ProxyModel, ProxyModel).lookup_manifest_by_digest
                 call_count = [0]
 
                 def mock_lookup(*args, **kwargs):
@@ -1073,7 +1072,6 @@ class TestRegistryProxyModelLookupManifestByDigest:
                     with patch("time.sleep") as mock_sleep:
                         result = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
 
-                        # Verify the test worked as expected
                         assert result is not None
                         assert result.digest == UBI8_8_4_DIGEST
                         mock_create_method.assert_called_once()
