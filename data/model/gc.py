@@ -207,7 +207,7 @@ def _purge_repository_contents(repo):
         for manifests in _chunk_iterate_for_deletion(
             Manifest.select().where(Manifest.repository == repo)
         ):
-            logger.debug("Found %s manifests to GC under repository %s", len(tags), repo)
+            logger.debug("Found %s manifests to GC under repository %s", len(manifests), repo)
             found = True
             context = _GarbageCollectorContext(repo)
             for manifest in manifests:
