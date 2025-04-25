@@ -1023,11 +1023,21 @@ def redirect_to_namespace(namespace):
         return redirect(url_for("web.user_view", path=namespace))
 
 
-def has_users():
+def has_users(name):
     """
-    Return false if no users in database yet
+    Return false if no organization or user in database yet
+    summing bools like [True, True, False] sum up with their corresponding int
+    representation, therefor we want [False, False] which equals 0
     """
-    return bool(User.select().limit(1))
+    return (
+        sum(
+            [
+                bool(User.select(name=name, organization=True).limit(1)),
+                bool(User.select(name=name).limit(1)),
+            ]
+        )
+        != 0
+    )
 
 
 @web.route("/api/v1/user/initialize", methods=["POST"])
@@ -1037,69 +1047,80 @@ def user_initialize():
     Create initial user in an empty database
     """
 
-    # Ensure that we are using database auth.
-    if not features.USER_INITIALIZE:
-        response = jsonify({"message": "Cannot initialize user, FEATURE_USER_INITIALIZE is False"})
-        response.status_code = 400
-        return response
+    return ("Deprecated API endpoint, use /api/v1/automation/initialize instead", 200)
 
-    # Ensure that we are using database auth.
-    if app.config["AUTHENTICATION_TYPE"] != "Database":
-        response = jsonify({"message": "Cannot initialize user in a non-database auth system"})
-        response.status_code = 400
-        return response
 
-    if has_users():
-        response = jsonify({"message": "Cannot initialize user in a non-empty database"})
-        response.status_code = 400
-        return response
+@web.route("/api/v1/automation/initialize", methods=["POST"])
+def user_initialize():
+    """
+    Create initial superuser organization with token in an empty database
+    """
 
     user_data = request.get_json()
+    # do this check first as it's less expensive than the config and DB lookup which are next
+    if not user_data.get("username", False):
+        logger.info(
+            f"Cannot initialize automation with recieved user_data does not contain a username"
+        )
+        # return unauthorized following best-practice in security
+        abort(401)
+
+    # beyond this point it is safe to use the dict reference for username instead of the dict.get
+    # do not initialize if config does not have AUTOMATION_USERS: [xx,xxx,xx]
+    if not all(
+        [
+            user_data["username"] in app.config.get("AUTOMATION_USERS", []),
+            user_data["username"] in app.config.get("SUPER_USERS", []),
+        ]
+    ):
+        logger.info(
+            f"Cannot initialize automation with {user_data['username']}, user not in AUTOMATION_USERS"
+        )
+        # return unauthorized following best-practice in security
+        abort(401)
+
+    # do not initialize if it has already any organization configured
+    if has_users(user_data["username"]):
+        logger.info(f"Cannot initialize automation with {user_data['username']}, already exists")
+        # return unauthorized following best-practice in security
+        abort(401)
+
     try:
         prompts = model.user.get_default_user_prompts(features)
-        new_user = model.user.create_user(
+        new_user = model.user.create_user_noverify(
             user_data["username"],
-            user_data["password"],
-            user_data.get("email"),
-            auto_verify=True,
-            email_required=features.MAILING,
+            None,
+            False,
             is_possible_abuser=False,
             prompts=prompts,
         )
-        success, headers = common_login(new_user.uuid)
-        if not success:
-            response = jsonify({"message": "Could not login. Failed to initialize user"})
-            response.status_code = 403
-            return response
+        new_user.organization = True
+        new_user.save()
 
-        result = {
-            "username": user_data["username"],
-            "email": user_data.get("email"),
-            "encrypted_password": authentication.encrypt_user_password(
-                user_data["password"]
-            ).decode("ascii"),
-        }
+        model.oauth.create_application(
+            new_user,
+            "automation",
+            "",
+            "",
+            client_id=user_data["username"],
+            description="Application token generated via /api/v1/automation/initialize",
+        )
+        scope = (
+            "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
+        )
+        created, access_token = model.oauth.create_user_access_token(
+            new_user,
+            user_data["username"],
+            scope,
+            user_data.get("access_token", None),
+            expires_in=86400 * 365 * 100,
+        )
+        result = {"access_token": access_token}
 
-        if user_data.get("access_token"):
-            model.oauth.create_application(
-                new_user,
-                "automation",
-                "",
-                "",
-                client_id=user_data["username"],
-                description="Application token generated via /api/v1/user/initialize",
-            )
-            scope = "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
-            created, access_token = model.oauth.create_user_access_token(
-                new_user, user_data["username"], scope
-            )
-            result["access_token"] = access_token
-
-        return (result, 200, headers)
+        return (result, 200)
     except model.user.DataModelException as ex:
-        response = jsonify({"message": "Failed to initialize user: " + str(ex)})
-        response.status_code = 400
-        return response
+        logger.info(f"Failed to initialize automation for {user_data['username']}: {ex}")
+        abort(401)
 
 
 @web.route("/config", methods=["GET", "OPTIONS"])
