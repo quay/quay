@@ -123,7 +123,7 @@ Werkzeug==3.0.6
 xhtml2pdf==0.2.6
 
 # Leverage wheels for faster builds
-setuptools==71.1.0
+setuptools==79.0.1
 wheel==0.41.2
 
 # Indirect dependencies
