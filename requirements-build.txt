@@ -78,7 +78,7 @@ wheel==0.41.2
     # via -r requirements-build.in
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==68.2.2
+setuptools==79.0.1
     # via
     #   -r requirements-build.in
     #   setuptools-rust
