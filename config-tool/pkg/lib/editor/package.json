@@ -88,5 +88,24 @@
   },
   "optionalDependencies": {
     "cypress": "^13.2.0"
+  },
+  "overrides": {
+    "cypress": {
+      "execa": {
+        "cross-spawn": "^7.0.6"
+      }
+    },
+    "protractor": {
+      "yargs": {
+        "os-locale": {
+          "execa": {
+            "cross-spawn": "^6.0.6"
+          }
+        }
+      }
+    },
+    "webpack-cli": {
+      "cross-spawn": "^7.0.6"
+    }
   }
 }
