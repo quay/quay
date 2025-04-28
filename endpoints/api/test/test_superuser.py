@@ -2,6 +2,7 @@ import pytest
 
 from data.database import DeletedNamespace, User
 from endpoints.api.superuser import (
+    SuperUserDumpConfig,
     SuperUserList,
     SuperUserManagement,
     SuperUserOrganizationList,
@@ -67,3 +68,41 @@ def test_change_install_user(app):
         result = conduct_api_call(cl, SuperUserManagement, "PUT", params, body, 200).json
 
         assert result["email"] == body["email"]
+
+
+def test_get_superuserdumpconfig(app):
+    import features
+
+    features.import_features({"FEATURE_SUPERUSER_CONFIGDUMP": True})
+    with client_with_identity("devtable", app) as cl:
+        result = conduct_api_call(cl, SuperUserDumpConfig, "GET", None, None, 200).json
+        # we check for json struct to be returned by the function
+        assert isinstance(result.get("config", False), dict)
+        assert isinstance(result.get("warning", False), dict)
+        assert isinstance(result.get("env", False), dict)
+        assert isinstance(result.get("schema", False), dict)
+
+        # we check for some Keys that are expected to be always present
+        with pytest.raises(AttributeError):
+            result.get("config", {})["AUTHENTICATION_TYPE"]
+            result.get("config", {})["SERVER_HOSTNAME"]
+            # satisfy the test after passing without KeyError raised
+            raise AttributeError()
+        # we check for some Keys that are expected to be present in warning
+        # which means, they are not in config.yaml but set by the application
+        with pytest.raises(AttributeError):
+            result.get("warning", {})["APPLICATION_ROOT"]
+            result.get("warning", {})["EXPLAIN_TEMPLATE_LOADING"]
+            # satisfy the test after passing without KeyError raised
+            raise AttributeError()
+        # we check for some Keys that are expected to be present in env
+        with pytest.raises(AttributeError):
+            result.get("env", {})["PATH"]
+            result.get("env", {})["PYTHONPATH"]
+            # satisfy the test after passing without KeyError raised
+            raise AttributeError()
+        # we check for some Keys that are expected to be present in schema
+        with pytest.raises(AttributeError):
+            result.get("schema", {})["description"]
+            result.get("schema", {})["required"]
+            raise AttributeError()
