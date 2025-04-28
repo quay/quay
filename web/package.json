@@ -109,6 +109,7 @@
     "cypress": "^13.13.2"
   },
   "overrides": {
+    "cross-spawn": "^7.0.6",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "@types/react": "^17.0.2",
