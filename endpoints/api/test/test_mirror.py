@@ -1,5 +1,4 @@
 from datetime import datetime
-from test.fixtures import *
 
 import pytest
 
@@ -7,6 +6,7 @@ from data import model
 from endpoints.api.mirror import RepoMirrorResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 
 def _setup_mirror():
@@ -72,7 +72,8 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
 
     # Check the status of the robot.
     permissions = model.permission.get_user_repository_permissions(mirror_bot, "devtable", "simple")
-    assert permissions[0].role.name == expected_permission
+    permission = next(permissions, None)
+    assert permission and permission[0].role.name == expected_permission
 
     config = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
     assert config.root_rule.rule_value == ["latest", "foo", "bar"]
