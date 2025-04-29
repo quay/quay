@@ -428,6 +428,11 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "FEATURE_USER_EVENTS": {
+            "type": "boolean",
+            "description": "Whether user events are enabled. Defaults to True",
+            "x-example": True,
+        },
         "USER_EVENTS_REDIS": {
             "type": "object",
             "description": "Connection information for Redis for user event handling",
