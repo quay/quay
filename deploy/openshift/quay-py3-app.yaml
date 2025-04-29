@@ -241,6 +241,10 @@ objects:
           volumeMounts:
           - name: configvolume
             mountPath: /conf/stack
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "15"]
           startupProbe:
             exec:
               command:
