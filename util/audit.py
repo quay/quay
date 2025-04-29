@@ -51,7 +51,7 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
     if (
         auth_context
         and auth_context.has_nonrobot_user
-        and app.config.get("FEATURE_USER_EVENTS", False)
+        and app.config.get("FEATURE_USER_EVENTS", True)
     ):
         logger.debug("Publishing %s to the user events system", event_name)
         user_event_data = {
