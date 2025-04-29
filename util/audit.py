@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from flask import request
 
-from app import analytics, ip_resolver, userevents
+from app import analytics, app_config, ip_resolver, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.logs_model import logs_model
 from data.readreplica import ReadOnlyModeException
@@ -48,7 +48,11 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
 
     # Publish the user event (if applicable)
     logger.debug("Checking publishing %s to the user events system", event_name)
-    if auth_context and auth_context.has_nonrobot_user:
+    if (
+        auth_context
+        and auth_context.has_nonrobot_user
+        and app_config.get("FEATURE_USER_EVENTS", False)
+    ):
         logger.debug("Publishing %s to the user events system", event_name)
         user_event_data = {
             "action": event_name,
