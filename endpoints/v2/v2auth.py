@@ -158,8 +158,10 @@ def generate_registry_jwt(auth_result):
                 user.username if not user.robot else parse_robot_username(user.username)[0],
                 metadata=metadata,
             )
-        event = userevents.get_event(user.username)
-        event.publish_event_data("docker-cli", user_event_data)
+
+        if app.config.get("FEATURE_USER_EVENTS", False):
+            event = userevents.get_event(user.username)
+            event.publish_event_data("docker-cli", user_event_data)
 
     # Build the signed JWT.
     tuf_roots = {
