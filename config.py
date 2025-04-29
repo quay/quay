@@ -366,6 +366,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether the v2/ endpoint is visible
     FEATURE_ADVERTISE_V2 = True
 
+    # Allow realtime user events to be sent to redis
+    FEATURE_USER_EVENTS = True
+
     # Semver spec for which Docker versions we will blacklist
     # Documentation: http://pythonhosted.org/semantic_version/reference.html#semantic_version.Spec
     BLACKLIST_V2_SPEC = "<1.6.0"
