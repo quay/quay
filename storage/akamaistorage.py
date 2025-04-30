@@ -1,8 +1,15 @@
+import base64
 import logging
+import os
 import urllib.parse
 
 # ignoring the below type check as mypy fails with "missing library stubs or py.typed marker" error
 from akamai.edgeauth import EdgeAuth, EdgeAuthError  # type: ignore
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+from data.encryption import aes256_encrypt
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +32,7 @@ class AkamaiS3Storage(S3Storage):
         storage_path,
         s3_bucket,
         s3_region,
+        akamai_sig_encryption_key=None,
         *args,
         **kwargs,
     ):
@@ -35,6 +43,7 @@ class AkamaiS3Storage(S3Storage):
         self.akamai_domain = akamai_domain
         self.akamai_shared_secret = akamai_shared_secret
         self.region = s3_region
+        self.akamai_sig_encryption_key = akamai_sig_encryption_key
         self.et = EdgeAuth(
             token_name=TOKEN_QUERY_STRING,
             key=self.akamai_shared_secret,
@@ -45,6 +54,9 @@ class AkamaiS3Storage(S3Storage):
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
+        # Forcing expiry to 1 hour for Akamai only to accomodate large image pulls
+        expires_in = 60 * 60
+
         # If CloudFront could not be loaded, fall back to normal S3.
         s3_presigned_url = super(AkamaiS3Storage, self).get_direct_download_url(
             path, request_ip, expires_in, requires_cors, head
@@ -69,6 +81,20 @@ class AkamaiS3Storage(S3Storage):
 
         # add akamai signed token
         try:
+            if self.akamai_sig_encryption_key is not None:
+                query_params = urllib.parse.parse_qs(akamai_url_parsed.query)
+                amz_signature_params = query_params.get("X-Amz-Signature", [])
+                amz_signature = amz_signature_params[0] if len(amz_signature_params) == 1 else None
+
+                if amz_signature is not None:
+                    # Generate a random 16-byte Initialization Vector
+                    iv = os.urandom(16)
+                    encoded_string = aes256_encrypt(amz_signature, self.akamai_sig_encryption_key)
+
+                    query_params["X-Amz-Signature"] = [base64.b64encode(encoded_string).decode()]
+                    query_params["initializationVector"] = [base64.b64encode(iv).decode()]
+                    new_query_string = urllib.parse.urlencode(query_params, doseq=True)
+                    akamai_url_parsed = akamai_url_parsed._replace(query=new_query_string)
 
             # add region to the query string
             akamai_url_parsed = akamai_url_parsed._replace(
