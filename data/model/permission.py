@@ -77,10 +77,7 @@ def _get_user_repo_permissions(
 
     base_query = (
         RepositoryPermission.select(
-            RepositoryPermission,
-            Role,
-            Repository,
-            Namespace,
+            RepositoryPermission, Role, Repository, Namespace, can_use_read_replica=True
         )
         .join(Role)
         .switch(RepositoryPermission)
@@ -106,7 +103,14 @@ def _get_user_repo_permissions(
         .where(UserThroughTeam.id == user)
     )
 
-    return direct | team
+    results = []
+    for r in direct:
+        results.append(r)
+
+    for r in team:
+        results.append(r)
+
+    return results
 
 
 def delete_prototype_permission(org, uid):

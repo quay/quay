@@ -177,6 +177,7 @@ FILTERED_VALUES = [
     {"key": ["upstream_registry_password"], "fn": DEFAULT_FILTER},
     {"key": ["upstream_registry_username"], "fn": DEFAULT_FILTER},
     {"key": ["user", "password"], "fn": DEFAULT_FILTER},
+    {"key": ["user", "repeatPassword"], "fn": DEFAULT_FILTER},
     {"key": ["blob"], "fn": lambda x: x[0:8]},
 ]
 

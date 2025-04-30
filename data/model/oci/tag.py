@@ -655,7 +655,7 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
 
     try:
         candidates = (
-            Tag.select(Tag.repository)
+            Tag.select(Tag.repository, can_use_read_replica=True)
             .join(Repository)
             .join(Namespace, on=(Repository.namespace_user == Namespace.id))
             .where(
@@ -671,7 +671,7 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
         )
 
         found = (
-            Tag.select(candidates.c.repository_id)
+            Tag.select(candidates.c.repository_id, can_use_read_replica=True)
             .from_(candidates)
             .order_by(db_random_func())
             .get()

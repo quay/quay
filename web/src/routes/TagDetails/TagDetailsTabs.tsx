@@ -3,12 +3,14 @@ import {useSearchParams, useNavigate, useLocation} from 'react-router-dom';
 import {useState} from 'react';
 import Details from './Details/Details';
 import SecurityReport from './SecurityReport/SecurityReport';
+import {ModelCard} from './ModelCard/ModelCard';
 import {Tag} from 'src/resources/TagResource';
 import {TabIndex} from './Types';
 import {Packages} from './Packages/Packages';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 // Return the tab as an enum or null if it does not exist
 function getTabIndex(tab: string) {
@@ -18,6 +20,8 @@ function getTabIndex(tab: string) {
 }
 
 export default function TagTabs(props: TagTabsProps) {
+  const quayConfig = useQuayConfig();
+
   const [activeTabKey, setActiveTabKey] = useState<TabIndex>(TabIndex.Details);
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,6 +32,7 @@ export default function TagTabs(props: TagTabsProps) {
   if (requestedTabIndex && requestedTabIndex !== activeTabKey) {
     setActiveTabKey(requestedTabIndex);
   }
+
   return (
     <Tabs
       activeKey={activeTabKey}
@@ -58,6 +63,13 @@ export default function TagTabs(props: TagTabsProps) {
         title={<TabTitleText>Packages</TabTitleText>}
       >
         <Packages />
+      </Tab>
+      <Tab
+        eventKey={TabIndex.ModelCard}
+        title={<TabTitleText>Model Card</TabTitleText>}
+        isHidden={!quayConfig?.features?.UI_MODELCARD || !props.tag.modelcard}
+      >
+        <ModelCard modelCard={props.tag.modelcard} />
       </Tab>
     </Tabs>
   );

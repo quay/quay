@@ -911,6 +911,7 @@ class GoogleCloudStorage(_CloudStorage):
         secret_key,
         bucket_name,
         boto_timeout=60,
+        minimum_chunk_size_mb=None,
         signature_version=None,
     ):
         # GCS does not support ListObjectV2
@@ -933,6 +934,10 @@ class GoogleCloudStorage(_CloudStorage):
             bucket_name,
             access_key,
             secret_key,
+        )
+
+        self.minimum_chunk_size = (
+            (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
         )
 
         # Workaround for setting GCS cors at runtime with boto
@@ -985,50 +990,6 @@ class GoogleCloudStorage(_CloudStorage):
             .get_direct_download_url(path, request_ip, expires_in, requires_cors, head, **kwargs)
             .replace("AWSAccessKeyId", "GoogleAccessId")
         )
-
-    def _stream_write_internal(
-        self,
-        path,
-        fp,
-        content_type=None,
-        content_encoding=None,
-        cancel_on_error=True,
-        size=filelike.READ_UNTIL_END,
-    ):
-        """
-        Writes the data found in the file-like stream to the given path, with optional limit on
-        size. Note that this method returns a *tuple* of (bytes_written, write_error) and should.
-
-        *not* raise an exception (such as IOError) if a problem uploading occurred. ALWAYS check
-        the returned tuple on calls to this method.
-        """
-        # Minimum size of upload part size on S3 is 5MB
-        self._initialize_cloud_conn()
-        path = self._init_path(path)
-        obj = self.get_cloud_bucket().Object(path)
-
-        extra_args = {}
-        if content_type is not None:
-            extra_args["ContentType"] = content_type
-
-        if content_encoding is not None:
-            extra_args["ContentEncoding"] = content_encoding
-
-        if size != filelike.READ_UNTIL_END:
-            fp = filelike.StreamSlice(fp, 0, size)
-
-        with BytesIO() as buf:
-            # Stage the bytes into the buffer for use with the multipart upload file API
-            bytes_staged = self.stream_write_to_fp(fp, buf, size)
-            buf.seek(0)
-
-            # TODO figure out how to handle cancel_on_error=False
-            try:
-                obj.put(Body=buf, **extra_args)
-            except Exception as ex:
-                return 0, ex
-
-        return bytes_staged, None
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
         self._initialize_cloud_conn()
@@ -1151,7 +1112,7 @@ class CloudFrontedS3Storage(S3Storage):
         **kwargs,
     ):
         super(CloudFrontedS3Storage, self).__init__(
-            context, storage_path, s3_bucket, *args, **kwargs
+            context, storage_path, s3_bucket, s3_region=s3_region, *args, **kwargs
         )
 
         self.s3_region = s3_region
@@ -1196,6 +1157,7 @@ class CloudFrontedS3Storage(S3Storage):
         logger.debug(
             'Returning CloudFront URL for path "%s" with IP "%s": %s',
             path,
+            request_ip,
             signed_url,
         )
         return signed_url
@@ -1245,28 +1207,39 @@ class STSS3Storage(S3Storage):
         maximum_chunk_size_gb=None,
         signature_version="s3v4",
     ):
-        sts_client = boto3.client(
-            "sts", aws_access_key_id=sts_user_access_key, aws_secret_access_key=sts_user_secret_key
-        )
-        assumed_role = sts_client.assume_role(RoleArn=sts_role_arn, RoleSessionName="quay")
-        credentials = assumed_role["Credentials"]
-        deferred_refreshable_credentials = DeferredRefreshableCredentials(
-            refresh_using=create_assume_role_refresher(
-                sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": "quay"}
-            ),
-            method="sts-assume-role",
-        )
+        if sts_user_access_key == "" or sts_user_secret_key == "":
+            sts_client = boto3.client("sts")
+        else:
+            sts_client = boto3.client(
+                "sts",
+                aws_access_key_id=sts_user_access_key,
+                aws_secret_access_key=sts_user_secret_key,
+            )
 
         # !! NOTE !! connect_kwargs here initializes the S3Storage Class not the s3 connection (mis leading re-use of the name)
         connect_kwargs = {
-            "s3_access_key": credentials["AccessKeyId"],
-            "s3_secret_key": credentials["SecretAccessKey"],
-            "aws_session_token": credentials["SessionToken"],
             "s3_region": s3_region,
             "endpoint_url": endpoint_url,
             "maximum_chunk_size_gb": maximum_chunk_size_gb,
-            "deferred_refreshable_credentials": deferred_refreshable_credentials,
             "signature_version": signature_version,
         }
+        if sts_role_arn is not None:
+            assumed_role = sts_client.assume_role(RoleArn=sts_role_arn, RoleSessionName="quay")
+            credentials = assumed_role["Credentials"]
+            deferred_refreshable_credentials = DeferredRefreshableCredentials(
+                refresh_using=create_assume_role_refresher(
+                    sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": "quay"}
+                ),
+                method="sts-assume-role",
+            )
+
+            connect_kwargs.update(
+                {
+                    "s3_access_key": credentials["AccessKeyId"],
+                    "s3_secret_key": credentials["SecretAccessKey"],
+                    "aws_session_token": credentials["SessionToken"],
+                    "deferred_refreshable_credentials": deferred_refreshable_credentials,
+                }
+            )
 
         super().__init__(context, storage_path, s3_bucket, **connect_kwargs)

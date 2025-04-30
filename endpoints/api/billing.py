@@ -1136,10 +1136,13 @@ class UserSkuList(ApiResource):
             )
 
         child_subscriptions = []
+        subscriptions_to_return = []
+
         for subscription in user_subscriptions:
             bound_to_org, bindings = organization_skus.subscription_bound_to_org(subscription["id"])
             # fill in information for whether a subscription is bound to an org
             metadata = get_plan_using_rh_sku(subscription["sku"])
+            subscription["metadata"] = metadata
             if bound_to_org:
                 # special case for MW02702, which can be split across orgs
                 if subscription["sku"] == "MW02702":
@@ -1161,19 +1164,16 @@ class UserSkuList(ApiResource):
                     if remaining_unbound > 0:
                         subscription["quantity"] = remaining_unbound
                         subscription["assigned_to_org"] = None
-                    else:
-                        # all quantities for this subscription are bound, remove it from
-                        # the response body
-                        user_subscriptions.remove(subscription)
+                        subscriptions_to_return.append(subscription)
 
                 else:
                     # default case, only one org is bound
                     subscription["assigned_to_org"] = model.organization.get_organization_by_id(
                         bindings[0]["org_id"]
                     ).username
+                    subscriptions_to_return.append(subscription)
             else:
                 subscription["assigned_to_org"] = None
+                subscriptions_to_return.append(subscription)
 
-            subscription["metadata"] = metadata
-
-        return user_subscriptions + child_subscriptions
+        return subscriptions_to_return + child_subscriptions

@@ -199,9 +199,13 @@ def increase_maximum_build_count(user, maximum_queued_builds_count):
         user.save()
 
 
+def get_username(username):
+    return User.get(User.username == username, can_use_read_replica=True)
+
+
 def is_username_unique(test_username):
     try:
-        User.get((User.username == test_username))
+        get_username(test_username)
         return False
     except User.DoesNotExist:
         return True
@@ -354,7 +358,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
     username = format_robot_username(parent.username, robot_shortname)
 
     try:
-        User.get(User.username == username)
+        get_username(username)
 
         msg = "Existing robot with name: %s" % username
         logger.debug(msg)
@@ -503,7 +507,7 @@ def get_matching_robots(name_prefix, username, limit=10):
     user_search = prefix_search(User.username, username + "+" + name_prefix)
     prefix_checks = prefix_checks | user_search
 
-    return User.select().where(prefix_checks).limit(limit)
+    return User.select(can_use_read_replica=True).where(prefix_checks).limit(limit)
 
 
 def verify_robot(robot_username, password, instance_keys):
@@ -527,7 +531,7 @@ def verify_robot(robot_username, password, instance_keys):
 
     # Find the owner user and ensure it is not disabled.
     try:
-        owner = User.get(User.username == result[0])
+        owner = get_username(result[0])
     except User.DoesNotExist:
         raise InvalidRobotOwnerException("Robot %s owner does not exist" % robot_username)
 
@@ -593,7 +597,7 @@ def generate_temp_robot_jwt_token(instance_keys):
 
 def delete_robot(robot_username):
     try:
-        robot = User.get(username=robot_username, robot=True)
+        robot = User.get(username=robot_username, robot=True, can_use_read_replica=True)
         robot.delete_instance(recursive=True, delete_nullable=True)
 
     except User.DoesNotExist:

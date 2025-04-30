@@ -254,7 +254,10 @@ class ProxyModel(OCIModel):
         if wrapped_manifest is None:
             try:
                 wrapped_manifest, _ = self._create_and_tag_manifest(
-                    repository_ref, manifest_digest, self._create_manifest_with_temp_tag
+                    repository_ref,
+                    manifest_digest,
+                    self._create_manifest_with_temp_tag,
+                    verify_manifest_exists=True,
                 )
             except (UpstreamRegistryError, ManifestDoesNotExist) as e:
                 raise ManifestDoesNotExist(str(e))
@@ -387,6 +390,7 @@ class ProxyModel(OCIModel):
         create_manifest_fn: Callable[
             [RepositoryReference, ManifestInterface, str | None], tuple[Manifest | None, Tag | None]
         ],
+        verify_manifest_exists: bool = False,
     ) -> tuple[Manifest | None, Tag | None]:
         """
         Returns the newly created manifest and tag.
@@ -398,6 +402,12 @@ class ProxyModel(OCIModel):
         """
         self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
         upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+        if verify_manifest_exists:
+            wrapped_manifest = super().lookup_manifest_by_digest(
+                repo_ref, manifest_ref, allow_dead=True, require_available=False
+            )
+            if wrapped_manifest is not None:
+                return wrapped_manifest, None
         manifest, tag = create_manifest_fn(repo_ref, upstream_manifest, manifest_ref)
         return manifest, tag
 

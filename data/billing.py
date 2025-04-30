@@ -372,6 +372,14 @@ PLANS = [
         "sku_billing": True,
         "plans_page_hidden": True,
     },
+    {
+        "title": "freetier",
+        "privateRepos": 0,
+        "stripeId": "not_a_stripe_plan",
+        "rh_sku": "MW04192",
+        "sku_billing": False,
+        "plans_page_hidden": True,
+    },
 ]
 
 RH_SKUS = [plan["rh_sku"] for plan in PLANS if plan.get("rh_sku") is not None]
@@ -410,7 +418,7 @@ class FakeStripe(object):
     ACTIVE_CUSTOMERS: Dict[str, Any] = {}
 
     class error(object):
-        class InvalidRequestException(Exception):
+        class InvalidRequestError(Exception):
             pass
 
         class APIConnectionError(Exception):
