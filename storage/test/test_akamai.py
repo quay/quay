@@ -28,8 +28,13 @@ def ipranges_populated(request):
     return request.param
 
 
+@pytest.fixture(params=["thisisasecretkey1234567890123456", None])
+def token(request):
+    return request.param
+
+
 @mock_s3
-def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, app):
+def test_direct_download_cdn_specific(token, ipranges_populated, test_ip_range_cache, app):
     ipresolver = IPResolver(app)
     if ipranges_populated:
         ipresolver.sync_token = test_ip_range_cache["sync_token"]
@@ -46,7 +51,7 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
             "some/path",
             _TEST_BUCKET,
             _TEST_REGION,
-            None,
+            amz_encryption_token=token,
         )
 
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
