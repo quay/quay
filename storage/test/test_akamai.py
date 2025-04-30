@@ -1,4 +1,5 @@
 import os
+from urllib.parse import parse_qs, urlparse
 
 import boto3
 import pytest
@@ -69,3 +70,23 @@ def test_direct_download_cdn_specific(ipranges_populated, test_ip_range_cache, a
         assert engine.get_direct_download_url(_TEST_PATH).startswith(
             "https://s3.us-east-1.amazonaws.com"
         )
+
+        engine = AkamaiS3Storage(
+            context,
+            "akamai-domain",
+            "eee7e9157f81b2f6d471bf2c",
+            "some/path",
+            _TEST_BUCKET,
+            _TEST_REGION,
+            "88b91ccead2baffe122df4b5e23d720d",  # akamai encryption key
+        )
+        engine.put_content(_TEST_PATH, _TEST_CONTENT)
+        download_url = engine.get_direct_download_url(
+            _TEST_PATH, request_ip="4.0.0.2", cdn_specific=True
+        )
+        parsed_url = urlparse(download_url)
+        query_params = parse_qs(parsed_url.query)
+
+        assert query_params.get("initializationVector", None) is not None
+        assert query_params.get("X-Amz-Signature", None) is not None
+        assert query_params.get("akamai_signature", None) is not None

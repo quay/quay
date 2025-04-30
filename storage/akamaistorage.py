@@ -78,7 +78,6 @@ class AkamaiS3Storage(S3Storage):
 
         # replace s3 location with Akamai domain
         akamai_url_parsed = s3_url_parsed._replace(netloc=self.akamai_domain)
-
         # add akamai signed token
         try:
             if self.akamai_sig_encryption_key is not None:
@@ -89,7 +88,9 @@ class AkamaiS3Storage(S3Storage):
                 if amz_signature is not None:
                     # Generate a random 16-byte Initialization Vector
                     iv = os.urandom(16)
-                    encoded_string = aes256_encrypt(amz_signature, self.akamai_sig_encryption_key)
+                    encoded_string = aes256_encrypt(
+                        amz_signature, self.akamai_sig_encryption_key, iv
+                    )
 
                     query_params["X-Amz-Signature"] = [base64.b64encode(encoded_string).decode()]
                     query_params["initializationVector"] = [base64.b64encode(iv).decode()]
