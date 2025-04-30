@@ -129,8 +129,9 @@ def create_user():
 
         if kind == CredentialKind.user:
             # Mark that the login failed.
-            event = userevents.get_event(username)
-            event.publish_event_data("docker-cli", {"action": "loginfailure"})
+            if app.config.get("FEATURE_USER_EVENTS", True):
+                event = userevents.get_event(username)
+                event.publish_event_data("docker-cli", {"action": "loginfailure"})
             abort(400, result.error_message, issue="login-failure")
 
         # Default case: Just fail.
@@ -144,8 +145,10 @@ def create_user():
                 result.authed_user.username,
                 {"type": "quayauth", "useragent": request.user_agent.string},
             )
-        event = userevents.get_event(username)
-        event.publish_event_data("docker-cli", {"action": "login"})
+
+        if app.config.get("FEATURE_USER_EVENTS", True):
+            event = userevents.get_event(username)
+            event.publish_event_data("docker-cli", {"action": "login"})
 
     return success
 
@@ -254,7 +257,7 @@ def create_repository(namespace_name, repo_name):
             namespace_name, repo_name, get_authenticated_user()
         )
 
-    if get_authenticated_user():
+    if get_authenticated_user() and app.config.get("FEATURE_USER_EVENTS", True):
         user_event_data = {
             "action": "push_start",
             "repository": repo_name,
