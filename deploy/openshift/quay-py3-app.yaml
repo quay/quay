@@ -164,7 +164,7 @@ objects:
             - podAffinityTerm:
                 labelSelector:
                   matchExpressions:
-                  - key: app
+                  - key: part-of
                     operator: In
                     values:
                     - registry-proxy
