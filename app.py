@@ -75,9 +75,10 @@ INIT_SCRIPTS_LOCATION = "/conf/init/"
 
 app = Flask(__name__)
 
-FlaskInstrumentor().instrument_app(app)
-Psycopg2Instrumentor().instrument()
-init_exporter()
+if features.OTEL_TRACING:
+    FlaskInstrumentor().instrument_app(app)
+    Psycopg2Instrumentor().instrument()
+    init_exporter()
 
 
 logger = logging.getLogger(__name__)
