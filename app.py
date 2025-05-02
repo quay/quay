@@ -75,12 +75,6 @@ INIT_SCRIPTS_LOCATION = "/conf/init/"
 
 app = Flask(__name__)
 
-if features.OTEL_TRACING:
-    FlaskInstrumentor().instrument_app(app)
-    Psycopg2Instrumentor().instrument()
-    init_exporter()
-
-
 logger = logging.getLogger(__name__)
 
 # Instantiate the configuration.
@@ -360,3 +354,8 @@ def load_user(user_uuid):
 
 
 get_app_url = partial(get_app_url, app.config)
+
+if features.OTEL_TRACING:
+    FlaskInstrumentor().instrument_app(app)
+    Psycopg2Instrumentor().instrument()
+    init_exporter(app.config)

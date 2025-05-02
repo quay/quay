@@ -8,14 +8,16 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 import features
 
-# Service name is required for most backends
 
-DT_API_URL = None
-DT_API_TOKEN = None
+def init_exporter(app_config):
 
+    otel_config = app_config.get("OTEL_CONFIG", {})
 
-def init_exporter():
-    resource = Resource.create(attributes={SERVICE_NAME: "quay-mkok-dev"})
+    service_name = otel_config.get("service_name", "quay")
+    DT_API_URL = otel_config.get("dt_api_url", None)
+    DT_API_TOKEN = otel_config.get("dt_api_token", None)
+
+    resource = Resource.create(attributes={SERVICE_NAME: service_name})
 
     tracerProvider = TracerProvider(resource=resource)
 
