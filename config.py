@@ -914,3 +914,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Enabled superuser API to dump config,env,schema and drifts(unknown like typos)
     FEATURE_SUPERUSER_CONFIGDUMP = False
+
+    # OTEL CONFIG
+    FEATURE_OTEL_TRACING = False
