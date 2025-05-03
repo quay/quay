@@ -85,7 +85,7 @@ PyGithub==1.45
 PyJWT==2.4.0
 pymemcache==3.0.0
 PyMySQL==1.1.1
-pyOpenSSL==24.2.1
+pyOpenSSL==24.3.0
 pyparsing==2.4.6
 pyrsistent==0.18.0
 python-dateutil==2.8.1
