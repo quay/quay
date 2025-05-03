@@ -38,7 +38,7 @@ types-enum34==1.1.1
 types-freezegun==1.1.2
 types-futures==3.3.1
 types-geoip2==3.0.0
-types-ipaddress==1.0.1
+types-ipaddress==1.0.8
 types-maxminddb==1.5.0
 types-mock==4.0.3
 types-protobuf==3.18.0
