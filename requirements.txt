@@ -139,7 +139,7 @@ zope.interface==5.4.0
 # Indirect dependencies
 PyPDF3==1.0.6
 arabic-reshaper==3.0.0
-cssselect2==0.7.0
+cssselect2==0.8.0
 lxml==4.9.2
 python-bidi==0.4.2
 reportlab==3.6.13
