@@ -29,7 +29,7 @@ termcolor==1.1.0
 tox
 tox-docker
 tqdm
-types-boto==2.49.2
+types-boto==2.49.18.20241019
 types-cachetools==4.2.10
 types-cryptography==3.3.7
 types-Deprecated==1.2.3
