@@ -50,6 +50,6 @@ types-redis==3.5.14
 types-requests==2.25.11
 types-setuptools==57.4.2
 types-six==1.16.2
-types-termcolor==1.1.2
+types-termcolor==1.1.6.2
 types-tzlocal==3.0.0
 typing==3.7.4.3
