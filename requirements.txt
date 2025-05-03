@@ -67,7 +67,7 @@ os-service-types==1.7.0
 oslo.config==7.0.0
 oslo.i18n==3.25.1
 oslo.serialization==2.29.2
-oslo.utils==4.12.2
+oslo.utils==8.2.0
 packaging==21.3
 pbr==5.10.0
 peewee==3.13.1
