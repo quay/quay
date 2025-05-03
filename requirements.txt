@@ -134,7 +134,7 @@ wrapt==1.13.3
 xhtml2pdf==0.2.6
 zipp==2.1.0
 zope.event==4.5.0
-zope.interface==5.4.0
+zope.interface==5.5.2
 
 # Indirect dependencies
 PyPDF3==1.0.6
