@@ -141,7 +141,7 @@ PyPDF3==1.0.6
 arabic-reshaper==3.0.0
 cssselect2==0.7.0
 lxml==4.9.2
-python-bidi==0.4.2
+python-bidi==0.6.6
 reportlab==3.6.13
 svglib==1.5.1
 tinycss2==1.2.1
