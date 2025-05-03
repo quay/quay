@@ -18,7 +18,7 @@ packaging==24.2
     # via
     #   -r requirements-build.in
     #   setuptools-scm
-pbr==6.1.0
+pbr==6.1.1
     # via -r requirements-build.in
 pycparser==2.22
     # via
