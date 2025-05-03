@@ -35,7 +35,7 @@ types-cryptography==3.3.7
 types-Deprecated==1.2.3
 types-docutils==0.17.1
 types-enum34==1.1.1
-types-freezegun==1.1.2
+types-freezegun==1.1.10
 types-futures==3.3.1
 types-geoip2==3.0.0
 types-ipaddress==1.0.1
