@@ -113,7 +113,7 @@ semantic-version==2.8.4
 six==1.14.0
 soupsieve==1.9.5
 splunk-sdk==1.7.3
-SQLAlchemy==1.4.31
+SQLAlchemy==1.4.54
 stevedore==1.31.0
 stringscore==0.1.0
 stripe==5.2.0
