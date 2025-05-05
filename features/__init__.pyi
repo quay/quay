@@ -224,3 +224,5 @@ ASSIGN_OAUTH_TOKEN: FeatureNameValue
 IMAGE_EXPIRY_TRIGGER: FeatureNameValue
 
 UI_MODELCARD: FeatureNameValue
+
+OTEL_TRACING: FeatureNameValue
