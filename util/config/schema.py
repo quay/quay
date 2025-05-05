@@ -1620,5 +1620,31 @@ CONFIG_SCHEMA = {
             "description": "Enables a full config dump of the running Framework, environment and schema for validation",
             "x-example": False,
         },
+        "FEATURE_OTEL_TRACING": {
+            "type": "boolean",
+            "description": "Whether to enable open telemetry tracing on quay",
+            "x-example": False,
+        },
+        "OTEL_CONFIG": {
+            "type": "object",
+            "description": "open telemetry config options",
+            "properties": {
+                "service_name": {
+                    "type": "string",
+                    "description": "name of service in otel spans",
+                    "x-example": "quay",
+                },
+                "dt_api_url": {
+                    "type": "string",
+                    "description": "url for dynatrace api",
+                    "x-example": "https://dynatrace-api.example",
+                },
+                "dt_api_token": {
+                    "type": "string",
+                    "description": "token for dynatrace api",
+                    "x-example": "sometoken",
+                },
+            },
+        },
     },
 }
