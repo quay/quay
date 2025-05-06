@@ -1646,5 +1646,10 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "OTEL_TRACING_EXCLUDED_URLS": {
+            "type": "string",
+            "description": "Comma separated list of urls to exclude from tracing",
+            "x-example": "api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth",
+        },
     },
 }

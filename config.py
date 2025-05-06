@@ -917,3 +917,4 @@ class DefaultConfig(ImmutableConfig):
 
     # OTEL CONFIG
     FEATURE_OTEL_TRACING = False
+    OTEL_TRACING_EXCLUDED_URLS = None
