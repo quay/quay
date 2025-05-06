@@ -36,7 +36,6 @@ def init_exporter(app_config):
     trace.set_tracer_provider(tracerProvider)
 
 
-# decorator for tracing
 def traced(span_name=None):
     """
     Decorator for tracing functino calls using OpenTelemetry.

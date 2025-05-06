@@ -356,6 +356,8 @@ def load_user(user_uuid):
 get_app_url = partial(get_app_url, app.config)
 
 if features.OTEL_TRACING:
-    FlaskInstrumentor().instrument_app(app)
+    FlaskInstrumentor().instrument_app(
+        app, excluded_urls="api/v1/.*,v2/([^/]+(/[^/]+)+)/(tags|blobs),v2/_catalog,v2/auth"
+    )
     Psycopg2Instrumentor().instrument()
     init_exporter(app.config)
