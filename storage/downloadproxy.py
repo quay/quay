@@ -14,7 +14,7 @@ from util.security.registry_jwt import (
 logger = logging.getLogger(__name__)
 
 
-PROXY_STORAGE_MAX_LIFETIME_S = 30  # Seconds
+PROXY_STORAGE_MAX_LIFETIME_S = 300  # Seconds.
 STORAGE_PROXY_SUBJECT = "storageproxy"
 STORAGE_PROXY_ACCESS_TYPE = "storageproxy"
 
