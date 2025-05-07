@@ -243,6 +243,10 @@ objects:
           volumeMounts:
           - name: configvolume
             mountPath: /conf/stack
+          lifecycle:
+            preStop:
+              exec:
+                command: ["kill -SIGQUIT $(cat /tmp/nginx.pid) && sleep 15"]
           startupProbe:
             exec:
               command:
