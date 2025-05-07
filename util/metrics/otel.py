@@ -5,6 +5,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 import features
 
@@ -19,7 +20,8 @@ def init_exporter(app_config):
 
     resource = Resource.create(attributes={SERVICE_NAME: service_name})
 
-    tracerProvider = TracerProvider(resource=resource)
+    sampler = TraceIdRatioBased(1 / 1000)
+    tracerProvider = TracerProvider(resource=resource, sampler=sampler)
 
     if DT_API_URL is not None and DT_API_TOKEN is not None:
         spanExporter = BatchSpanProcessor(
