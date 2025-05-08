@@ -7,7 +7,7 @@ repos:
             - 'protect --staged'
             - '--log-level=trace'
 -   repo: https://github.com/psf/black
-    rev: 22.10.0
+    rev: 25.1.0
     hooks:
     -   id: black
 -   repo: local
