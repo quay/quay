@@ -222,6 +222,12 @@ def _create_app(requires_email=True):
                                             "interface": "admin",
                                             "id": "29beb2f1567642eb810b042b6719ea88",
                                         },
+                                        {
+                                            "url": server_url + "/v3/identity",
+                                            "region": "RegionOne",
+                                            "interface": "public",
+                                            "id": "29beb2f1567642eb810b042b6719ea89",
+                                        },
                                     ],
                                     "type": "identity",
                                     "id": "bd73972c0e14fb69bae8ff76e112a90",
