@@ -1014,6 +1014,8 @@ class RadosGWStorage(_CloudStorage):
         region_name=None,
         signature_version=None,
         port=None,
+        # Chunk sizes
+        minimum_chunk_size_mb=None,
         maximum_chunk_size_mb=None,
         server_side_assembly=True,
     ):
@@ -1040,8 +1042,18 @@ class RadosGWStorage(_CloudStorage):
         )
 
         chunk_size = (
-            maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 32
-        )  # 32mb default, as used in Docker registry:2
+            maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 100
+        )  # 100 MiB, as with IBM Storage driver
+
+        # For very big layers over 100 GiB, chunk size of 5 MiB is not enough.
+        # S3 supports up to 10000 parts in a multipart upload, with 5 MiB chunk
+        # we can only upload up to 50 GiB files. If a layer is bigger than that,
+        # storage will return a 400 and upload will fail.
+        # This makes minimum chunk size configurable for both RADOS and OCS storage.
+        self.minimum_chunk_size = (
+            (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
+        )
+
         self.maximum_chunk_size = chunk_size * 1024 * 1024
 
         self.server_side_assembly = server_side_assembly
