@@ -25,7 +25,7 @@ def init_exporter(app_config):
 
     if DT_API_URL is not None and DT_API_TOKEN is not None:
         processor = BatchSpanProcessor(
-            OTLPHTTPSpanExporter(
+            OTLPSpanExporter(
                 endpoint=DT_API_URL + "/v1/traces",
                 headers={"Authorization": "Api-Token " + DT_API_TOKEN},
             )
