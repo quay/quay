@@ -24,23 +24,23 @@ def init_exporter(app_config):
     tracerProvider = TracerProvider(resource=resource, sampler=sampler)
 
     if DT_API_URL is not None and DT_API_TOKEN is not None:
-        spanExporter = BatchSpanProcessor(
-            OTLPSpanExporter(
+        processor = BatchSpanProcessor(
+            OTLPHTTPSpanExporter(
                 endpoint=DT_API_URL + "/v1/traces",
                 headers={"Authorization": "Api-Token " + DT_API_TOKEN},
             )
         )
     else:
         spanExporter = OTLPSpanExporter(endpoint="http://jaeger:4317")
+        processor = BatchSpanProcessor(spanExporter)
 
-    processor = BatchSpanProcessor(spanExporter)
     tracerProvider.add_span_processor(processor)
     trace.set_tracer_provider(tracerProvider)
 
 
 def traced(span_name=None):
     """
-    Decorator for tracing functino calls using OpenTelemetry.
+    Decorator for tracing function calls using OpenTelemetry.
     """
 
     def decorate(func):
