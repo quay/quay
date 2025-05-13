@@ -16,6 +16,14 @@ import sqlalchemy as sa
 def upgrade(op, tables, tester):
     bind = op.get_bind()
     if bind.engine.name == "postgresql":
+        result = op.execute(
+            """
+            SELECT column_type FROM information_schema.columns WHERE table_name = 'manifestblob' AND column_name = 'id';
+        """
+        )
+        if str(result[0]) == "bigint":
+            return
+
         op.execute(
             """
             ALTER TABLE manifestblob ALTER COLUMN id TYPE BIGINT;
@@ -34,4 +42,18 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    pass
+    op.execute(
+        """
+        ALTER TABLE manifestblob ALTER COLUMN id TYPE INTEGER;
+    """
+    )
+    op.execute(
+        """
+        ALTER SEQUENCE manifestblob_id_seq AS INTEGER;
+    """
+    )
+    op.execute(
+        """
+        ALTER SEQUENCE manifestblob_id_seq MAXVALUE 2147483647;
+    """
+    )
