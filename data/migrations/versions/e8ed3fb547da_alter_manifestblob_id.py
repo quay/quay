@@ -21,7 +21,7 @@ def upgrade(op, tables, tester):
             SELECT column_type FROM information_schema.columns WHERE table_name = 'manifestblob' AND column_name = 'id';
         """
         )
-        if str(result[0]) == "bigint":
+        if str(result[0]).lower() == "bigint":
             return
 
         op.execute(
