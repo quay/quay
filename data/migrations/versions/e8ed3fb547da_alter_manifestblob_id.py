@@ -18,7 +18,7 @@ def upgrade(op, tables, tester):
     if bind.engine.name == "postgresql":
         result = op.execute(
             """
-            SELECT column_type FROM information_schema.columns WHERE table_name = 'manifestblob' AND column_name = 'id';
+            SELECT data_type FROM information_schema.columns WHERE table_name = 'manifestblob' AND column_name = 'id';
         """
         )
         if str(result[0]).lower() == "bigint":
