@@ -14,12 +14,24 @@ import sqlalchemy as sa
 
 
 def upgrade(op, tables, tester):
-    op.alter_column(
-        "manifestblob", "id", existing_type=sa.Integer, type_=sa.BigInteger, existing_nullable=False
-    )
+    bind = op.get_bind()
+    if bind.engine.name == "postgresql":
+        op.execute(
+            """
+            ALTER TABLE manifestblob ALTER COLUMN id TYPE BIGINT;
+        """
+        )
+        op.execute(
+            """
+            ALTER SEQUENCE manifestblob_id_seq AS BIGINT;
+        """
+        )
+        op.execute(
+            """
+            ALTER SEQUENCE manifestblob_id_seq MAXVALUE 9223372036854775807;
+        """
+        )
 
 
 def downgrade(op, tables, tester):
-    op.alter_column(
-        "manifestblob", "id", existing_type=sa.BigInteger, type_=sa.Integer, existing_nullable=False
-    )
+    pass
