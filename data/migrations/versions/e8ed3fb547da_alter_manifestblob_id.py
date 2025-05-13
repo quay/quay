@@ -11,18 +11,20 @@ revision = "e8ed3fb547da"
 down_revision = "3634f2df3c5b"
 
 import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 
 
 def upgrade(op, tables, tester):
     bind = op.get_bind()
+    inspector = Inspector.from_engine(bind)
+
     if bind.engine.name == "postgresql":
-        result = op.execute(
-            """
-            SELECT data_type FROM information_schema.columns WHERE table_name = 'manifestblob' AND column_name = 'id';
-        """
-        )
-        if str(result[0]).lower() == "bigint":
-            return
+        columns = inspector.get_columns('manifestblob')
+
+        for col in columns:
+            if col['name'] == 'id':
+                if str(col['type']).lower() == 'bigint':
+                    return
 
         op.execute(
             """
