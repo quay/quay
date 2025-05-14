@@ -16,13 +16,13 @@ import rh_logo from 'src/assets/RH_QuayIO2.svg';
 import {HeaderToolbar} from './HeaderToolbar';
 import {Link} from 'react-router-dom';
 import {SidebarState} from 'src/atoms/SidebarState';
-import {useRecoilState} from 'recoil';
+import {useSetRecoilState} from 'recoil';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import axios from 'src/libs/axios';
 import './QuayHeader.css';
 
-export function QuayHeader() {
-  const [_sidebarState, setSidebarState] = useRecoilState(SidebarState);
+export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
+  const setSidebarState = useSetRecoilState(SidebarState);
   const quayConfig = useQuayConfig();
   let logoUrl = logo;
   if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
@@ -55,7 +55,7 @@ export function QuayHeader() {
         </MastheadBrand>
       </MastheadMain>
       <MastheadContent>
-        <HeaderToolbar />
+        <HeaderToolbar toggleDrawer={toggleDrawer} />
       </MastheadContent>
     </Masthead>
   );
