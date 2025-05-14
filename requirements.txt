@@ -78,7 +78,7 @@ os-service-types==1.7.0
 peewee==3.13.1
 pillow==10.3.0
 ply==3.11
-prometheus-client==0.7.1
+prometheus_client==0.7.1
 protobuf==5.28.2
 psutil==5.9.0
 psycopg2==2.9.9
@@ -135,6 +135,8 @@ WebOb==1.8.8
 websocket-client==1.7.0
 Werkzeug==3.0.6
 xhtml2pdf==0.2.6
+resumablesha256==1.0
+deprecation==2.1.0
 
 # Leverage wheels for faster builds
 setuptools==71.1.0
