@@ -86,6 +86,18 @@ def mock_get_notification(uuid):
             ),
             201,
         ),
+        (
+            "devtable",
+            "with/slash",
+            dict(
+                config={"url": "http://example.com"},
+                event="repo_push",
+                method="webhook",
+                eventConfig={},
+                title="test",
+            ),
+            201,
+        ),
     ],
 )
 def test_create_repo_notification(namespace, repository, body, expected_code, authd_client):
