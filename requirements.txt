@@ -62,9 +62,11 @@ netifaces==0.11.0
 oauthlib==3.2.2
 orderedmultidict==1.0.1
 opentelemetry-api==1.32.1
-opentelemetry-exporter-otlp-proto-common==1.32.1
 opentelemetry-sdk==1.32.1
 opentelemetry-proto==1.32.1
+opentelemetry-exporter-otlp-proto-common==1.32.1
+opentelemetry-exporter-otlp-proto-grpc==1.32.1
+opentelemetry-exporter-otlp-proto-http==1.32.1
 opentelemetry-instrumentation-flask==0.53b1
 opentelemetry-instrumentation-psycopg2==0.53b1
 opentelemetry-instrumentation-dbapi==0.53b1
@@ -72,7 +74,6 @@ opentelemetry-instrumentation-wsgi==0.53b1
 opentelemetry-instrumentation==0.53b1
 opentelemetry-util-http==0.53b1
 opentelemetry-semantic-conventions==0.53b1
-opentelemetry-exporter-otlp-proto-grpc==1.32.1
 os-service-types==1.7.0
 peewee==3.13.1
 pillow==10.3.0
