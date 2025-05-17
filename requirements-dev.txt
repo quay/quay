@@ -25,7 +25,7 @@ pytest-xdist
 python-coveralls
 pytest-sugar
 sqlalchemy-stubs==0.3
-termcolor==2.3.0
+termcolor==3.1.0
 tox
 tox-docker
 tqdm
