@@ -148,7 +148,7 @@ svglib==1.5.1
 tinycss2==1.2.1
 tqdm==4.66.4
 typing_extensions==4.8.0
-tzdata==2023.3
+tzdata==2023.4
 wrapt==1.13.3
 zipp==3.17.0
 zope.event==5.0
