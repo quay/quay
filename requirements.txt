@@ -142,7 +142,7 @@ oslo.utils==6.2.1
 packaging==23.2
 pbr==5.11.1
 pycparser==2.21
-python-bidi==0.4.2
+python-bidi==0.6.6
 reportlab==3.6.13
 svglib==1.5.1
 tinycss2==1.2.1
