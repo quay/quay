@@ -131,7 +131,7 @@ tzlocal==5.0.1
 ua-parser==0.18.0
 urllib3==1.26.19
 webencodings==0.5.1
-WebOb==1.8.8
+WebOb==1.8.9
 websocket-client==1.7.0
 Werkzeug==3.0.6
 xhtml2pdf==0.2.6
