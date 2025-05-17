@@ -53,7 +53,7 @@ types-PyYAML==5.4.12
 types-redis==3.5.14
 types-requests==2.25.11
 types-setuptools==68.2.0.0
-types-six==1.16.21.9
+types-six==1.17.0.20250515
 types-stripe==3.5.2.14
 types-termcolor==1.1.2
 types-toposort==1.10.0.0
