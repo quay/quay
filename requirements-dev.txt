@@ -49,7 +49,7 @@ types-PyYAML==5.4.12
 types-redis==3.5.14
 types-requests==2.25.11
 types-setuptools==57.4.2
-types-six==1.16.2
+types-six==1.17.0.20250515
 types-termcolor==1.1.2
 types-tzlocal==3.0.0
 typing==3.7.4.3
