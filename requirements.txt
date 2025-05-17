@@ -134,7 +134,7 @@ cssselect2==0.7.0
 furl==2.1.0
 html5lib==1.1
 idna==3.7
-lxml==4.9.3
+lxml==4.9.4
 oslo.config==7.0.0
 oslo.i18n==6.2.0
 oslo.serialization==2.29.2
