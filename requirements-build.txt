@@ -41,7 +41,7 @@ pluggy==1.3.0
     # via
     #   -r requirements-build.in
     #   hatchling
-pycparser==2.21
+pycparser==2.22
     # via
     #   -r requirements-build.in
     #   cffi
