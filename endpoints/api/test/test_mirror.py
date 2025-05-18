@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from data import model
-from endpoints.api.mirror import RepoMirrorResource
+from endpoints.api.mirror import RepoMirrorResource, RepoMirrorSyncCancelResource
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -21,6 +21,7 @@ def _setup_mirror():
         "external_reference": "quay.io/redhat/quay",
         "sync_interval": 5000,
         "sync_start_date": datetime(2020, 0o1, 0o2, 6, 30, 0),
+        "skopeo_timeout_interval": 300,
         "external_registry_username": "fakeUsername",
         "external_registry_password": "fakePassword",
         "external_registry_config": {
@@ -64,6 +65,7 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
         request_body = {
             "external_reference": "quay.io/foobar/barbaz",
             "sync_interval": 100,
+            "skopeo_timeout_interval": 300,
             "sync_start_date": "2019-08-20T17:51:00Z",
             "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest", "foo", "bar"]},
             "robot_username": "devtable+newmirrorbot",
@@ -104,6 +106,7 @@ def test_get_mirror(app):
     assert resp["is_enabled"] == True
     assert resp["external_reference"] == "quay.io/redhat/quay"
     assert resp["sync_interval"] == 5000
+    assert resp["skopeo_timeout_interval"] == 300
     assert resp["sync_start_date"] == "2020-01-02T06:30:00Z"
     assert resp["external_registry_username"] == "fakeUsername"
     assert "external_registry_password" not in resp
@@ -141,6 +144,8 @@ def test_get_mirror(app):
         ("sync_start_date", "Wed, 02 Oct 2002 08:00:00 EST", 400),
         ("sync_interval", 2000, 201),
         ("sync_interval", -5, 400),
+        ("skopeo_timeout_interval", 3000, 201),
+        ("skopeo_timeout_interval", 60, 400),
         ("https_proxy", "https://proxy.corp.example.com", 201),
         ("https_proxy", None, 201),
         (
@@ -250,3 +255,24 @@ def test_change_credentials(request_body, expected_status, app):
     with client_with_identity("devtable", app) as cl:
         params = {"repository": "devtable/simple"}
         conduct_api_call(cl, RepoMirrorResource, "PUT", params, request_body, expected_status)
+
+
+def test_cancel_repo_mirroring(app):
+    """
+    Verify that cancelling a mirror sync sets proper values for sync status and number of retries.
+    """
+    mirror = _setup_mirror()
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+
+    mirror = model.repo_mirror.update_sync_status_to_sync_now(mirror)
+    assert mirror.sync_status == 3
+
+    with client_with_identity("devtable", app) as cl:
+        params = {"repository": "devtable/simple"}
+        conduct_api_call(cl, RepoMirrorSyncCancelResource, "POST", params, None, 204)
+        assert model.repo_mirror.check_repo_mirror_sync_status(mirror) == -2
+        resp = conduct_api_call(cl, RepoMirrorResource, "GET", params, None, 200).json
+        assert resp["sync_retries_remaining"] == 0

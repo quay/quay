@@ -81,6 +81,14 @@
             </td>
           </tr>
           <tr>
+            <td style="border-bottom: none"><label for="create_skopeo_timeout">Skopeo timeout interval: </label></td>
+            <td style="border-bottom: none"><input class="form-control" id="skopeo_timeout_interval" type="number" ng-model="vm.skopeoTimeout" placeholder="300" required min="300" max="43200"></input></td>
+            <td style="border-bottom: none">seconds</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="text-align: center">Minimum timeout length: 300 seconds (5 minutes). Maximum timeout length: 43200 seconds (12 hours).</td>
+          </tr>
+          <tr>
             <td><label for="choose_robot">Robot User</label></td>
             <td>
               <span class="entity-search"
@@ -265,6 +273,16 @@
           </td>
         </tr>
         <tr>
+          <td>
+            <label for="skopeo_timeout_interval">Skopeo timeout</label>
+          </td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeSkopeoTimeoutInterval()">
+              {{ vm.skopeoTimeout | humanizeInterval }}
+            </a>
+          </td>
+        </tr>
+        <tr>
           <td><label for="view_sync_start_date">Next Sync Date</label></td>
           <td>
             <a style="float: left"
@@ -403,7 +421,7 @@
     <div class="cor-confirm-dialog"
         dialog-context="vm.syncIntervalChanges"
         dialog-action="vm.changeConfig(info, callback)"
-        dialog-title="Update next synchronization date"
+        dialog-title="Update sync interval"
         dialog-action-title="Update"
         dialog-form="context.mirroringform">
       <form name="context.mirroringform" class="co-single-field-dialog">
@@ -413,6 +431,23 @@
         </div>
       </form>
     </div>
+
+    <!-- Modal: Change Skopeo Mirror Timeout -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.skopeoTimeoutChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update skopeo timeout"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label for="skopeo_timeout_interval_change" style="margin: 0px; vertical-align: middle;">Timeout: </label>
+        <input style="width: 60%; display: inline-flex;" class="form-control" id="skopeo_timeout_interval_change" type="number" ng-model="vm.skopeoTimeoutChanges.values.skopeo_timeout_interval" placeholder="300" required min="300" max="43200"></input>
+        <span style="vertical-align: middle;"> seconds</span>
+        <p></p>
+        <p style="text-align: left;">Minimum value: 300 seconds (5 minutes). Maximum value: 43200 seconds (12 hours).</p>
+      </form>
+    </div>
+
 
     <!-- Modal: Change external repository -->
     <div class="cor-confirm-dialog"
