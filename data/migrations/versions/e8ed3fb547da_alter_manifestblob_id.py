@@ -19,11 +19,11 @@ def upgrade(op, tables, tester):
     inspector = Inspector.from_engine(bind)
 
     if bind.engine.name == "postgresql":
-        columns = inspector.get_columns('manifestblob')
+        columns = inspector.get_columns("manifestblob")
 
         for col in columns:
-            if col['name'] == 'id':
-                if str(col['type']).lower() == 'bigint':
+            if col["name"] == "id":
+                if str(col["type"]).lower() == "bigint":
                     return
 
         op.execute(
