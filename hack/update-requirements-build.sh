@@ -1,7 +1,7 @@
 #!/bin/sh -eux
 echo "Make sure you run this command with PIP_CONSTRAINT=constraints.txt"
 curl -fsSLO https://raw.githubusercontent.com/containerbuildsystem/cachito/master/bin/pip_find_builddeps.py
-pip-compile pyproject.toml -o requirements.in --generate-hashes
+pip-compile pyproject.toml -o requirements.in --generate-hashes --allow-unsafe
 sed -i.bak '/^Cython<3.0/d' requirements.in
 rm requirements.in.bak
 python3 pip_find_builddeps.py requirements.in --append --only-write-on-update -o requirements-build.in
