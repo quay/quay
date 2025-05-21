@@ -240,6 +240,7 @@ spec:
           - io.k8s.display-name="Red Hat Quay"
           - io.k8s.description="Red Hat Quay"
           - summary="Red Hat Quay"
+          - description="Red Hat Quay"
           - maintainer="support@redhat.com"
           - io.openshift.tags="quay"
       runAfter:
