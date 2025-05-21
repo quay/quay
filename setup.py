@@ -79,7 +79,6 @@ setup(
         "data.logs_model.logs_producer",
         "data.model",
         "data.model.oci",
-        "data.queue",
         "data.registry_model",
         "data.secscan_model",
         "util",

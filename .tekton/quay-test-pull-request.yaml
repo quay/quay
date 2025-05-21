@@ -34,12 +34,13 @@ spec:
     value: |
       [
         {"type": "gomod", "path": "./config-tool"},
-        {"type": "pip", "path": ".", "allow_binary": "true"},
+        {"type": "pip", "path": "."},
         {"type": "npm", "path": "web"},
         {"type": "npm", "path": "."},
         {"type": "npm", "path": "config-tool/pkg/lib/editor"},
         {"type": "rpm", "path": "."},
-        {"type": "generic", "path": "."}
+        {"type": "generic", "path": "."},
+        {"type": "cargo", "path": "."}
       ]
   pipelineSpec:
     description: |
