@@ -2,20 +2,35 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.10/html/red_hat_quay_release_notes/index)
 
-<a name="v3.10.10"></a>
-## [v3.10.10] - 2025-03-25
+
+<a name="v3.10.11"></a>
+## [v3.10.11] - 2025-05-22
 ### Chore
-- [b13f45033](https://github.com/quay/quay/commit/b13f450338bace7803d477a95ad0e2f49f598c51): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3706](https://github.com/quay/quay/issues/3706)) ([#3713](https://github.com/quay/quay/issues/3713))
+- [c29bcc29](https://github.com/quay/quay/commit/c29bcc291eb9e0897e99d8697a3a23119602a383): v3.10.11 changelog bump (PROJQUAY-8866)
+### [Redhat-3.10] Dockerfile
+- [e5d03335](https://github.com/quay/quay/commit/e5d03335051dd07855909abaef314472f5066069): dockerfile changes for konflux (PROJQUAY-8804) ([#3823](https://github.com/quay/quay/issues/3823))
+### Reverts
+- chore: v3.10.11 changelog bump (PROJQUAY-8866)
+
+
+<a name="v3.10.10"></a>
+## [v3.10.10] - 2025-04-23
+### Changelog
+- [4db7bd3c](https://github.com/quay/quay/commit/4db7bd3c55b321ba53f34030628a497e11bf561b): fixing wrong version ([#3808](https://github.com/quay/quay/issues/3808))
+### Chore
+- [99daad58](https://github.com/quay/quay/commit/99daad58088800cb22e05cab06f6daf6c8d87943): move github runners to ubuntu-22.04 ([#3783](https://github.com/quay/quay/issues/3783)) ([#3793](https://github.com/quay/quay/issues/3793))
+- [ac4f8510](https://github.com/quay/quay/commit/ac4f8510d803d83af5866d419967c615a1be6ba4): Change in the CIDR for Z ([#3693](https://github.com/quay/quay/issues/3693)) ([#3768](https://github.com/quay/quay/issues/3768))
+- [b13f4503](https://github.com/quay/quay/commit/b13f450338bace7803d477a95ad0e2f49f598c51): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3706](https://github.com/quay/quay/issues/3706)) ([#3713](https://github.com/quay/quay/issues/3713))
 ### [Redhat-3.10] Deps
-- [714a8fc1e](https://github.com/quay/quay/commit/714a8fc1e0dcb14dab700a99377ee2b3ce6dee23): bump gunicorn (PROJQUAY-8726) ([#3735](https://github.com/quay/quay/issues/3735))
+- [714a8fc1](https://github.com/quay/quay/commit/714a8fc1e0dcb14dab700a99377ee2b3ce6dee23): bump gunicorn (PROJQUAY-8726) ([#3735](https://github.com/quay/quay/issues/3735))
 
 <a name="v3.10.9"></a>
-## [v3.10.9] - 2025-02-06
+## [v3.10.9] - 2025-02-13
 ### [Redhat-3.10] Deps
-- [1028df4f0](https://github.com/quay/quay/commit/1028df4f00167a5cbe158e2fe146ea01cf446a73): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3637](https://github.com/quay/quay/issues/3637))
+- [1028df4f](https://github.com/quay/quay/commit/1028df4f00167a5cbe158e2fe146ea01cf446a73): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3637](https://github.com/quay/quay/issues/3637))
 
 <a name="v3.10.8"></a>
-## [v3.10.8] - 2025-01-07
+## [v3.10.8] - 2025-01-27
 ### Dep
 - [b44279f7](https://github.com/quay/quay/commit/b44279f752cff03759821b170fef332b29c125c0): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3548](https://github.com/quay/quay/issues/3548))
 ### Ui
@@ -462,6 +477,36 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.11"></a>
+## [v3.9.11] - 2025-04-17
+### Chore
+- [5380d64a](https://github.com/quay/quay/commit/5380d64ad2322959e6df214eb72adbb05774b894): move github runners to ubuntu-22.04 ([#3783](https://github.com/quay/quay/issues/3783)) ([#3794](https://github.com/quay/quay/issues/3794))
+- [2f43058d](https://github.com/quay/quay/commit/2f43058d817c5de952751bc31132a5d9aea7bc39): revert [#3714](https://github.com/quay/quay/issues/3714) and remove pip from requirements.txt in workflow ([#3729](https://github.com/quay/quay/issues/3729))
+- [f62ee576](https://github.com/quay/quay/commit/f62ee57673b02fbac264b8ca204bd13085428221): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3718](https://github.com/quay/quay/issues/3718))
+### Deps
+- [9510f94a](https://github.com/quay/quay/commit/9510f94a44c2e628369dfc7f7932c7ffe62fdbd2): bump gunicorn (PROJQUAY-8726) ([#3742](https://github.com/quay/quay/issues/3742))
+
+<a name="v3.9.10"></a>
+## [v3.9.10] - 2025-03-14
+### Api
+- [6b07d728](https://github.com/quay/quay/commit/6b07d7282ba77e9ae0f394073dfa2a6af1ca77a1): accepting empty body for create robot endpoints (PROJQUAY-6224) ([#3682](https://github.com/quay/quay/issues/3682))
+### Chore
+- [80d8af47](https://github.com/quay/quay/commit/80d8af47d2c2fc190592dcbe1a2896df5f8dbaee): removing pip from requirements.txt file ([#3714](https://github.com/quay/quay/issues/3714))
+### Ci
+- [b620e304](https://github.com/quay/quay/commit/b620e304c501cbd36d691bd99acd96596d15bcfd): updating user for s390x test instance to wfuser ([#3525](https://github.com/quay/quay/issues/3525))
+### Dep
+- [566d8bae](https://github.com/quay/quay/commit/566d8baefd3cfa078a06c349f65fe63b10fb2a01): updating jinja2 to 3.1.5 (PROJQUAY-8375) ([#3549](https://github.com/quay/quay/issues/3549))
+### Deps
+- [89cae83f](https://github.com/quay/quay/commit/89cae83fa31e2abb87b2a7dc1563b7cfdf0be3b4): updating jquery to 3.5.0 (PROJQUAY-8522) ([#3640](https://github.com/quay/quay/issues/3640))
+### Ui
+- [e5cd8114](https://github.com/quay/quay/commit/e5cd81143f2187b07fbce70dc8bb3ab1de59ac24): fixing cypress flake (PROJQUAY-8352) ([#3521](https://github.com/quay/quay/issues/3521))
+### [Redhat-3.9] Build(Deps)
+- [1d08b96b](https://github.com/quay/quay/commit/1d08b96bd41b33e4dee74887cb4632d04cea2bb9): bump jquery from 1.12.4 to 3.5.0 in /config-tool/pkg/lib/editor ([#3667](https://github.com/quay/quay/issues/3667))
+### [Redhat-3.9] Chore
+- [db489488](https://github.com/quay/quay/commit/db489488652da347ca371bca943e6fa3c7078116): update werkzeug and related package versions (PROJQUAY-5098) ([#3570](https://github.com/quay/quay/issues/3570))
+### [Redhat-3.9] Dep
+- [f44ac01b](https://github.com/quay/quay/commit/f44ac01b259b15187df0b920ae325cbca4226807): upgrading actions/download-artifact to v4 (PROJQUAY-8379) ([#3535](https://github.com/quay/quay/issues/3535))
 
 <a name="v3.9.9"></a>
 ## [v3.9.9] - 2024-12-16
@@ -1238,7 +1283,7 @@
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc
+### Doc 
 - [34cd7d09](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
@@ -2000,6 +2045,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.11...HEAD
+[v3.10.11]: https://github.com/quay/quay/compare/v3.10.10...v3.10.11
 [v3.10.10]: https://github.com/quay/quay/compare/v3.10.9...v3.10.10
 [v3.10.9]: https://github.com/quay/quay/compare/v3.10.8...v3.10.9
 [v3.10.8]: https://github.com/quay/quay/compare/v3.10.7...v3.10.8
@@ -2010,7 +2057,9 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.9...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.11...v3.10.0
+[v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
+[v3.9.10]: https://github.com/quay/quay/compare/v3.9.9...v3.9.10
 [v3.9.9]: https://github.com/quay/quay/compare/v3.9.8...v3.9.9
 [v3.9.8]: https://github.com/quay/quay/compare/v3.9.7...v3.9.8
 [v3.9.7]: https://github.com/quay/quay/compare/v3.9.6...v3.9.7
