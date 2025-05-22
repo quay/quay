@@ -42,7 +42,7 @@ spec:
         {"type": "npm", "path": "config-tool/pkg/lib/editor"},
         {"type": "rpm", "path": "."},
         {"type": "generic", "path": "."},
-        {"type": "cargo", "path": "."}
+        {"type": "cargo", "path": "rust-builddeps"}
       ]
   pipelineSpec:
     description: |
