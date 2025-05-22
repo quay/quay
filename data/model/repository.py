@@ -126,7 +126,13 @@ class _RepositoryExistsException(Exception):
 
 
 def create_repository(
-    namespace, name, creating_user, visibility="private", repo_kind="image", description=None
+    namespace,
+    name,
+    creating_user,
+    visibility="private",
+    repo_kind="image",
+    description=None,
+    proxy_cache=False,
 ):
     namespace_user = User.get(username=namespace)
     yesterday = datetime.now() - timedelta(days=1)
@@ -154,7 +160,8 @@ def create_repository(
 
             # Note: We put the admin create permission under the transaction to ensure it is created.
             if creating_user and not creating_user.organization:
-                admin = Role.get(name="admin")
+                rolename = "admin" if proxy_cache == False else "read"
+                admin = Role.get(name=rolename)
                 RepositoryPermission.create(user=creating_user, repository=repo, role=admin)
     except _RepositoryExistsException as ree:
         try:
