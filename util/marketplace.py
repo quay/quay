@@ -169,6 +169,7 @@ class RedHatSubscriptionApi(object):
                 "millisecond": 0,
             },
             "webCustomerId": customerId,
+            "systemName": "QUAY",
         }
         logger.debug("Created entitlement")
 
