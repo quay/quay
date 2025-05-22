@@ -3,9 +3,15 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.12"></a>
+## [v3.9.12] - 2025-05-14
+### Dockerfile
+- [91f20b92](https://github.com/quay/quay/commit/91f20b920d0f52583495f894358eb8b1098abf83): dockerfile changes for konflux (PROJQUAY-8804) ([#3824](https://github.com/quay/quay/issues/3824))
+
 <a name="v3.9.11"></a>
-## [v3.9.11] - 2025-03-26
+## [v3.9.11] - 2025-04-17
 ### Chore
+- [5380d64a](https://github.com/quay/quay/commit/5380d64ad2322959e6df214eb72adbb05774b894): move github runners to ubuntu-22.04 ([#3783](https://github.com/quay/quay/issues/3783)) ([#3794](https://github.com/quay/quay/issues/3794))
 - [2f43058d](https://github.com/quay/quay/commit/2f43058d817c5de952751bc31132a5d9aea7bc39): revert [#3714](https://github.com/quay/quay/issues/3714) and remove pip from requirements.txt in workflow ([#3729](https://github.com/quay/quay/issues/3729))
 - [f62ee576](https://github.com/quay/quay/commit/f62ee57673b02fbac264b8ca204bd13085428221): upgrade jinja to 3.1.6 (PROJQUAY-8657) ([#3718](https://github.com/quay/quay/issues/3718))
 ### Deps
@@ -1569,7 +1575,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.11...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.12...HEAD
+[v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
 [v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
 [v3.9.10]: https://github.com/quay/quay/compare/v3.9.9...v3.9.10
 [v3.9.9]: https://github.com/quay/quay/compare/v3.9.8...v3.9.9
