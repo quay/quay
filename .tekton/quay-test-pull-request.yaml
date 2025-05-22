@@ -28,6 +28,8 @@ spec:
     value: 5d
   - name: dockerfile
     value: Dockerfile
+  - name: build-source-image
+    value: "true"
   - name: hermetic
     value: "true"
   - name: prefetch-input
