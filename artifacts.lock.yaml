@@ -9,5 +9,5 @@ artifacts:
     checksum: "sha256:6247e16f6c30f5fc3603a1efbc7c2069e965938bc5381897b1317f7119f28ac4"
     filename: "pushgateway-1.6.0.linux-amd64.tar.gz"
   - download_url: "https://ip-ranges.amazonaws.com/ip-ranges.json"
-    checksum: "sha256:cc4ba0054109ea0fc5418eee8cbd78dfa7be2d5eec720b3fa9e079eb6de41126"
+    checksum: "sha256:fc9649e16b6aab8ede8cf89dc645230279f95fca1fb3e2d2cfd083e3580401b9"
     filename: "aws-ip-ranges.json"
