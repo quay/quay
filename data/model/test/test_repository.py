@@ -3,6 +3,11 @@ from datetime import timedelta
 
 import pytest
 
+from auth.permissions import (
+    AdministerRepositoryPermission,
+    ModifyRepositoryPermission,
+    ReadRepositoryPermission,
+)
 from data.database import BlobUpload, QuotaRepositorySize, Repository
 from data.model.repository import (
     create_repository,
@@ -142,3 +147,27 @@ def test_get_repository_sizes(initialized_db):
         repo2.id: 92,
         repo3.id: 0,
     }
+
+
+@pytest.fixture()
+def test_create_repository_proxy_cache(initialized_db):
+    # with CVE-2025-4374 we want to ensure that repositories in PROXY_CACHE are not assigned to "admin"
+    repo1 = create_repository(
+        "devtable",
+        "somenewrepo",
+        None,
+        repo_kind="image",
+        visibility="public",
+        proxy_cache=True,
+    )
+    # we should not have modify or admin permissions on the repo if created with proxy_cache=True
+    if all(
+        [
+            ReadRepositoryPermission("devtable", "somenewrepo").can(),
+            not ModifyRepositoryPermission("devtable", "somenewrepo").can(),
+            not AdministerRepositoryPermission("devtable", "somenewrepo").can(),
+        ]
+    ):
+        assert True
+    else:
+        assert False
