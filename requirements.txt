@@ -33,7 +33,7 @@ Flask-Login==0.6.3
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.10
-geoip2==3.0.0
+geoip2==5.1.0
 gevent==24.11.1
 googleapis-common-protos==1.70.0
 greenlet==3.1.1
