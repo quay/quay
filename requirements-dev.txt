@@ -32,7 +32,7 @@ tqdm
 types-boto==2.49.18.9
 types-cachetools==4.2.10
 types-cryptography==3.3.23.2
-types-Deprecated==1.2.9.3
+types-Deprecated==1.2.15.20250304
 types-beautifulsoup4==4.12.0.6
 types-docutils==0.20.0.3
 types-enum34==1.1.8
