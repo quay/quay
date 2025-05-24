@@ -54,7 +54,7 @@ types-redis==3.5.14
 types-requests==2.25.11
 types-setuptools==68.2.0.0
 types-six==1.16.21.20240513
-types-stripe==3.5.2.14
+types-stripe==3.5.2.20240106
 types-termcolor==1.1.2
 types-toposort==1.10.0.1
 types-tzlocal==5.1.0.1
