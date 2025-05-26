@@ -49,7 +49,7 @@ jmespath==1.0.1
 jsonpath-rw==1.4.0
 jsonpointer==2.4
 jsonschema==3.2.0
-kafka-python==1.4.7
+kafka-python==2.2.10
 keystoneauth1==3.18.0
 Mako==1.2.4
 MarkupSafe==2.1.3
@@ -114,7 +114,7 @@ requests-oauthlib==1.3.1
 rfc3986==1.3.2
 s3transfer==0.7.0
 semantic-version==2.10.0
-six==1.14.0
+six==1.17.0
 soupsieve==1.9.5
 splunk-sdk==2.1.0
 SQLAlchemy==1.4.49
@@ -166,7 +166,7 @@ tinycss2==1.2.1
 tqdm==4.66.4
 typing_extensions==4.8.0
 tzdata==2023.3
-wrapt==1.13.3
+wrapt==1.17.2
 zipp==3.19.2
 zope.event==5.0
 zope.interface==5.4.0
