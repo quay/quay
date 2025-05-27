@@ -204,8 +204,7 @@ RUN set -ex\
 	; chown -R 1001:0 /etc/ssl/ \
 	; chown -R 1001:0 /quay-registry \
 	; chmod ug+wx -R /etc/pki/ \
-	; chmod ug+wx -R /etc/ssl/ \
-  ;
+	; chmod ug+wx -R /etc/ssl/
 
 
 RUN python3 -m pip install --no-cache-dir --progress-bar off dumb-init
