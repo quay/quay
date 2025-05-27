@@ -193,13 +193,12 @@ RUN set -ex\
 	; ln -s $QUAYCONF /conf\
 # Make a grip of runtime directories.
 	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage\
-# Harden /etc/passwd – no group write.
-    ; chown root:root /etc/passwd \
-    ; chmod 0644      /etc/passwd \
-    ;
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
+# Harden /etc/passwd – no group write.
+    ; chown root:root /etc/passwd \
+    ; chmod 0644      /etc/passwd \
 	; chown -R 1001:0 /etc/pki/ \
 	; chown -R 1001:0 /etc/ssl/ \
 	; chown -R 1001:0 /quay-registry \
