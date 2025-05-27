@@ -147,7 +147,8 @@ class ReconciliationWorker(Worker):
             try:
                 with GlobalLock(
                     "RECONCILIATION_WORKER",
-                    lock_ttl=RECONCILIATION_FREQUENCY + LOCK_TIMEOUT_PADDING,
+                    lock_ttl=app.config.get("RECONCILIATION_FREQUENCY", RECONCILIATION_FREQUENCY)
+                    + LOCK_TIMEOUT_PADDING,
                 ):
                     self._perform_reconciliation(
                         user_api=marketplace_users, marketplace_api=marketplace_subscriptions
