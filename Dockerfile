@@ -1,32 +1,37 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS base
-# Only set variables or install packages that need to end up in the
-# final container here.
+
 ENV PATH=/app/bin/:$PATH \
-	PYTHONUNBUFFERED=1 \
-	PYTHONIOENCODING=UTF-8 \
-	LC_ALL=C.UTF-8 \
-	LANG=C.UTF-8
-ENV PYTHONUSERBASE /app
-ENV TZ UTC
-RUN set -ex\
-	; microdnf -y module enable nginx:1.22 \
-	; microdnf -y module enable python39:3.9 \
-	; microdnf update -y \
-	; microdnf -y --setopt=tsflags=nodocs install \
-		dnsmasq \
-		memcached \
-		nginx \
-		libpq-devel \
-		libjpeg-turbo \
-		openldap \
-		openssl \
-		python39 \
-		python3-gpg \
-		skopeo \
-		findutils \
-	; microdnf -y reinstall tzdata \
-	; microdnf remove platform-python-pip python39-pip \
-	; microdnf -y clean all && rm -rf /var/cache/yum
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    PYTHONUSERBASE=/app \
+    TZ=UTC
+
+RUN set -ex \
+    ; microdnf -y module enable python39:3.9 \
+    ; microdnf update -y \
+    ; microdnf -y --setopt=tsflags=nodocs install \
+        dnsmasq \
+        procps-ng \
+        memcached \
+        libpq-devel \
+        libjpeg-turbo \
+        openldap \
+        openssl \
+        python39 \
+        python3-gpg \
+        skopeo \
+        findutils \
+    ; microdnf -y reinstall tzdata \
+    ; microdnf remove platform-python-pip python39-pip \
+    ; microdnf -y clean all && rm -rf /var/cache/yum
+
+# Install NGINX 1.28.0 from the official NGINX repository
+RUN set -ex \
+    && curl -sSL https://nginx.org/packages/rhel/8/x86_64/RPMS/nginx-1.28.0-1.el8.ngx.x86_64.rpm -o /tmp/nginx.rpm \
+    && rpm -ivh /tmp/nginx.rpm \
+    && rm -f /tmp/nginx.rpm
 
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-16 AS config-editor
