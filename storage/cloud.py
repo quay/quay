@@ -1014,7 +1014,9 @@ class RadosGWStorage(_CloudStorage):
         region_name=None,
         signature_version=None,
         port=None,
+        # Chunk size options for multipart upload
         maximum_chunk_size_mb=None,
+        minimum_chunk_size_mb=None,
         server_side_assembly=True,
     ):
         upload_params = {}
@@ -1043,6 +1045,10 @@ class RadosGWStorage(_CloudStorage):
             maximum_chunk_size_mb if maximum_chunk_size_mb is not None else 32
         )  # 32mb default, as used in Docker registry:2
         self.maximum_chunk_size = chunk_size * 1024 * 1024
+
+        self.minimum_chunk_size = (
+                    (minimum_chunk_size_mb if minimum_chunk_size_mb is not None else 5) * 1024 * 1024
+        )
 
         self.server_side_assembly = server_side_assembly
 
