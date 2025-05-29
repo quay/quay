@@ -17,6 +17,7 @@ jobs:
           git checkout master
           git pull origin master
 
+          git fetch origin
           git checkout redhat-3.15
           git pull origin redhat-3.15
           git rebase master
