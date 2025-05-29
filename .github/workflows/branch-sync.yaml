@@ -11,21 +11,30 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configure Git
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "github-actions-bot@users.noreply.github.com"
 
-      - name: Merge master into redhat-3.15
+      - name: Merge master into release
         run: |
+          BRANCH_NAME="redhat-3.15"
+          echo "Syncing master to $BRANCH_NAME"
           git checkout master
           git pull origin master
+          MASTER_COMMIT=$(git rev-parse HEAD)
 
-          git fetch origin
-          git checkout redhat-3.15
-          git pull origin redhat-3.15
+          git fetch origin $BRANCH_NAME
+          git checkout $BRANCH_NAME
+          git pull origin $BRANCH_NAME
+          RELEASE_COMMIT=$(git rev-parse HEAD)
+          echo "Rebasing $BRANCH_NAME ($RELEASE_COMMIT) onto master ($MASTER_COMMIT)"
           git rebase master
-          git push origin redhat-3.15
+          git push origin $BRANCH_NAME
+
+          echo "Merged master ($MASTER_COMMIT) into $BRANCH_NAME ($RELEASE_COMMIT)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
