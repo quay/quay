@@ -28,11 +28,26 @@ jobs:
       - name: Changelog
         run: |
           curl -o /tmp/git-chglog.tar.gz -fsSL\
-            https://github.com/git-chglog/git-chglog/releases/download/v0.14.0/git-chglog_0.14.0_linux_amd64.tar.gz
+            https://github.com/git-chglog/git-chglog/releases/download/v0.15.4/git-chglog_0.15.4_linux_amd64.tar.gz
           tar xvf /tmp/git-chglog.tar.gz --directory /tmp
           chmod u+x /tmp/git-chglog
           echo "creating change log for tag: ${{ github.event.inputs.tag }}"
-          /tmp/git-chglog --next-tag "${{ github.event.inputs.tag }}" --tag-filter-pattern "v3.*" -o CHANGELOG.md v3.6.0-alpha.4..
+
+          # Get the y stream version from the tag
+          Y_STREAM_VERSION=$(echo "${{ github.event.inputs.tag }}" | sed 's/^v//' | awk -F'.' '{print $2}')
+
+          # build the regex in the form of "v3.(6|7|8|9).*" for the y-stream
+          for (( i=6; i<=$Y_STREAM_VERSION; i++ )); do
+              if [ -z "$Y_STREAM_REGEX" ]; then
+                  Y_STREAM_REGEX="$i"
+              else
+                  Y_STREAM_REGEX="${Y_STREAM_REGEX}|${i}"
+              fi
+          done
+          TAG_PATTERN="v3.($Y_STREAM_REGEX).*"
+
+          # Generate the changelog using the tag pattern
+          /tmp/git-chglog --next-tag "${{ github.event.inputs.tag }}" --tag-filter-pattern $TAG_PATTERN -o CHANGELOG.md v3.6.0-alpha.4..
       - name: Modify changelog URL to point to current y-stream
         run: |
           echo "modifying changelog URL to point to current y-stream release."
