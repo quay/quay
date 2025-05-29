@@ -1,0 +1,25 @@
+name: Sync Master to Release Branch
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  sync_master_to_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Merge main into develop
+        run: |
+          git checkout master
+          git pull origin master
+
+          git checkout redhat-3.15
+          git pull origin redhat-3.15
+          git rebase master
+          git push origin redhat-3.15
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
