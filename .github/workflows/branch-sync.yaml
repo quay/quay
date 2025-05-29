@@ -12,6 +12,11 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions-bot@users.noreply.github.com"
+
       - name: Merge master into redhat-3.15
         run: |
           git checkout master
