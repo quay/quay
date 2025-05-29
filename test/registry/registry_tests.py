@@ -4,8 +4,6 @@ import hashlib
 import tarfile
 from io import BytesIO
 
-import bencode
-import rehash
 from werkzeug.datastructures import Accept
 
 from app import app as original_app

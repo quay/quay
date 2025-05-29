@@ -5,7 +5,7 @@ QUAYCONF=${QUAYCONF:-"$QUAYPATH/conf"}
 QUAYCONFIG=${QUAYCONFIG:-"$QUAYCONF/stack"}
 CERTDIR=${CERTDIR:-"$QUAYCONFIG/extra_ca_certs"}
 SYSTEM_CERTDIR=${SYSTEM_CERTDIR:-"/etc/pki/ca-trust/source/anchors"}
-PYTHONUSERBASE_SITE_PACKAGE=${PYTHONUSERBASE_SITE_PACKAGE:-"$(python -m site --user-site)"}
+PYTHONUSERBASE_SITE_PACKAGE=/opt/app-root/lib/python3.12/site-packages
 
 cd ${QUAYDIR:-"/quay-registry"}
 
@@ -64,4 +64,11 @@ do
 done
 
 # Update all CA certificates.
-update-ca-trust extract
+# hack for UBI9, extract it a temp location and move
+# to /etc/pki after because of permission issues
+
+mkdir -p /tmp/extracted
+rm -rf /etc/pki/ca-trust/extracted
+update-ca-trust extract -o /tmp/extracted
+chmod ug+w -R /tmp/extracted
+mv /tmp/extracted /etc/pki/ca-trust
