@@ -157,6 +157,8 @@ objects:
           secret:
             secretName: ${{QUAY_APP_CONFIG_SECRET}}
         serviceAccountName: ${{NAME}}
+        nodeSelector:
+          part-of: quay
         affinity:
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
