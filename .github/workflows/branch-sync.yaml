@@ -12,7 +12,7 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Merge main into develop
+      - name: Merge master into redhat-3.15
         run: |
           git checkout master
           git pull origin master
