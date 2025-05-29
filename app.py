@@ -97,6 +97,15 @@ else:
 # Load the override config via the provider.
 config_provider.update_app_config(app.config)
 
+# Check if TESTING is properly set
+if app.config.get("TESTING", False):
+    logger.warning(
+        "🟡🟡🟡 Detected TESTING: true on startup. TESTING property is either missing from config.yaml or set to 'true'."
+    )
+    logger.warning(
+        "🟡🟡🟡 Quay starting in TESTING mode, some functionality such as e-mail sending will not be available."
+    )
+
 # Update any configuration found in the override environment variable.
 environ_config = json.loads(os.environ.get(OVERRIDE_CONFIG_KEY, "{}"))
 app.config.update(environ_config)
