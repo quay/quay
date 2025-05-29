@@ -2938,6 +2938,7 @@ def test_repository_states(
             "external_registry_username": "fakeusername",
             "external_registry_password": "fakepassword",
             "sync_interval": 1000,
+            "skopeo_timeout_interval": 300,
             "sync_start_date": "2020-01-01T00:00:00Z",
             "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": ["latest", "1.3*", "foo"]},
             "robot_username": robot_full_name,

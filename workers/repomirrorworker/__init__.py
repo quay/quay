@@ -15,7 +15,13 @@ from data.database import RepoMirrorConfig, RepoMirrorStatus
 from data.encryption import DecryptionFailureException
 from data.logs_model import logs_model
 from data.model.oci.tag import delete_tag, lookup_alive_tags_shallow, retarget_tag
-from data.model.repo_mirror import claim_mirror, release_mirror
+from data.model.repo_mirror import (
+    change_retries_remaining,
+    change_sync_status,
+    check_repo_mirror_sync_status,
+    claim_mirror,
+    release_mirror,
+)
 from data.model.user import retrieve_robot_token
 from data.registry_model import registry_model
 from notifications import spawn_notification
@@ -177,6 +183,8 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
             app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
         )
 
+        skopeo_timeout = mirror.skopeo_timeout
+
         for tag in tags:
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
@@ -189,6 +197,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 result = skopeo.copy(
                     src_image,
                     dest_image,
+                    timeout=skopeo_timeout,
                     src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
                     dest_tls_verify=app.config.get(
                         "REPO_MIRROR_TLS_VERIFY", True
@@ -201,6 +210,15 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                     verbose_logs=verbose_logs,
                     unsigned_images=mirror.external_registry_config.get("unsigned_images", False),
                 )
+
+            if check_repo_mirror_sync_status(mirror) == RepoMirrorStatus.CANCEL:
+                logger.info(
+                    "Sync cancelled on repo %s/%s.",
+                    mirror.repository.namespace_user.username,
+                    mirror.repository.name,
+                )
+                overall_status = RepoMirrorStatus.CANCEL
+                break
 
             if not result.success:
                 overall_status = RepoMirrorStatus.FAIL
@@ -290,6 +308,16 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
                 rollback(mirror, now_ms)
             else:
                 rollback(mirror, now_ms, failed_tags)
+        if overall_status == RepoMirrorStatus.CANCEL:
+            log_message = "'%s' with tag pattern '%s'"
+            emit_log(
+                mirror,
+                "repo_mirror_sync_failed",
+                "Cancelled",
+                log_message % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+                stdout="Not applicable",
+                stderr="Not applicable",
+            )
         else:
             emit_log(
                 mirror,
@@ -327,9 +355,12 @@ def get_all_tags(skopeo: SkopeoMirror, mirror: RepoMirrorConfig) -> list[str]:
         mirror.external_registry_password.decrypt() if mirror.external_registry_password else None
     )
 
+    skopeo_timeout = mirror.skopeo_timeout
+
     with database.CloseForLongOperation(app.config):
         result = skopeo.tags(
             "docker://%s" % (mirror.external_reference),
+            timeout=skopeo_timeout,
             username=username,
             password=password,
             verbose_logs=verbose_logs,
