@@ -70,7 +70,7 @@ class ReconciliationWorker(Worker):
                     logger.error("Cannot connect to Stripe")
                     continue
                 except stripe.error.InvalidRequestError:
-                    logger.warn("Invalid request for stripe_id %s", user.stripe_id)
+                    logger.warning("Invalid request for stripe_id %s", user.stripe_id)
                     continue
 
             self._iterate_over_ids(stripe_customer, customer_ids, marketplace_api, user.username)
