@@ -422,11 +422,27 @@ class FederatedUserManager(ConfigUserManager):
         self.federated_users = authentication
         super().__init__(app)
 
+    def __get_federated_login_identifier(self, username) -> str:
+        db_user = model.user.get_user(username)
+        if not db_user:
+            return ""
+
+        federated_login = model.user.lookup_federated_login(
+            db_user, self.federated_users.federated_service
+        )
+        if not federated_login:
+            return ""
+        return federated_login.service_ident
+
     def is_superuser(self, username: str) -> bool:
         """
         Returns if the given username represents a super user.
         """
-        return self.federated_users.is_superuser(username) or super().is_superuser(username)
+        identifier = self.__get_federated_login_identifier(username)
+        if not identifier:
+            identifier = username
+
+        return self.federated_users.is_superuser(identifier) or super().is_superuser(username)
 
     def has_superusers(self) -> bool:
         """
@@ -444,7 +460,11 @@ class FederatedUserManager(ConfigUserManager):
         if super().restricted_whitelist_is_set() and not super().is_restricted_user(username):
             return False
 
-        return self.federated_users.is_restricted_user(username) or super().is_restricted_user(
+        identifier = self.__get_federated_login_identifier(username)
+        if not identifier:
+            identifier = username
+
+        return self.federated_users.is_restricted_user(identifier) or super().is_restricted_user(
             username
         )
 
@@ -452,6 +472,10 @@ class FederatedUserManager(ConfigUserManager):
         return self.federated_users.has_restricted_users() or super().has_restricted_users()
 
     def is_global_readonly_superuser(self, username: str) -> bool:
+        identifier = self.__get_federated_login_identifier(username)
+        if not identifier:
+            identifier = username
+
         return self.federated_users.is_global_readonly_superuser(
-            username
+            identifier
         ) or super().is_global_readonly_superuser(username)
