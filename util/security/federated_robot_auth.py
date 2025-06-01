@@ -3,7 +3,7 @@ import logging
 
 from jwt import InvalidTokenError
 
-from app import app
+from app import app, model_cache
 from auth.basic import _parse_basic_auth_header
 from auth.log import log_action
 from auth.validateresult import AuthKind, ValidateResult
@@ -46,7 +46,7 @@ def validate_federated_auth(auth_header):
     # find out if the robot is federated
     # get the issuer from the DB config
     # validate the token
-    robot = lookup_robot(auth_username)
+    robot = lookup_robot(auth_username, model_cache)
     assert robot.robot
 
     result = verify_federated_robot_jwt_token(robot, federated_token)
