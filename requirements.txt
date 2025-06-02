@@ -97,7 +97,7 @@ python-magic==0.4.15
 python-redis-lock==3.7.0
 python-swiftclient==3.8.1
 pytz==2019.3
-PyYAML==6.0.2
+PyYAML==5.4.1
 raven==6.10.0
 recaptcha2==0.1
 redis==3.5.3
@@ -148,7 +148,7 @@ tinycss2==1.2.1
 tqdm==4.65.0
 
 # Build dependencies
-Cython==3.0.2
+Cython==3.0.0a9
 flit_core==3.7.1
 toml==0.10.2
 tomli==2.2.1
