@@ -9,8 +9,6 @@ from flask import Flask, Request, request
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -56,7 +54,6 @@ from util.ipresolver import IPResolver
 from util.label_validator import LabelValidator
 from util.log import filter_logs
 from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
-from util.metrics.otel import init_exporter
 from util.metrics.prometheus import PrometheusPlugin
 from util.names import urn_generator
 from util.repomirror.api import RepoMirrorAPI
@@ -74,7 +71,6 @@ DOCKER_V2_SIGNINGKEY_FILENAME = "docker_v2.pem"
 INIT_SCRIPTS_LOCATION = "/conf/init/"
 
 app = Flask(__name__)
-
 logger = logging.getLogger(__name__)
 
 # Instantiate the configuration.
@@ -363,11 +359,3 @@ def load_user(user_uuid):
 
 
 get_app_url = partial(get_app_url, app.config)
-
-if features.OTEL_TRACING:
-    FlaskInstrumentor().instrument_app(
-        app,
-        excluded_urls=app.config.get("OTEL_TRACING_EXCLUDED_URLS", None),
-    )
-    Psycopg2Instrumentor().instrument()
-    init_exporter(app.config)
