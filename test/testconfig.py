@@ -130,5 +130,3 @@ class TestConfig(DefaultConfig):
     FEATURE_IMAGE_EXPIRY_TRIGGER = True
 
     CDN_SPECIFIC_NAMESPACES = ["redhat"]
-
-    FEATURE_OTEL_TRACING = True
