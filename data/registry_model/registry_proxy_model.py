@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import Callable
 
 from peewee import Select, fn
 
 import features
-from app import app, storage
+from app import app, proxy_cache_blob_queue, storage
 from data.database import ImageStorage, ImageStoragePlacement
 from data.database import Manifest as ManifestTable
 from data.database import ManifestBlob, ManifestChild
@@ -250,6 +251,7 @@ class ProxyModel(OCIModel):
         Raises QuotaExceededException if the given tag is larger than the max quota
         allotted for the namespace or if there are not enough tags to prune.
         """
+
         wrapped_manifest = super().lookup_manifest_by_digest(
             repository_ref, manifest_digest, allow_dead=True, require_available=False
         )
@@ -707,6 +709,18 @@ class ProxyModel(OCIModel):
 
         for layer in manifest.filesystem_layers:
             self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
+            queue_id = proxy_cache_blob_queue.put(
+                [self._user.username, str(repo_id), str(layer.digest)],
+                json.dumps(
+                    {
+                        "digest": str(layer.digest),
+                        "repo_id": repo_id,
+                        "username": self._user.username,
+                        "namespace": self._user.username,
+                    }
+                ),
+                available_after=5,
+            )
 
     def _upstream_namespace(self, repo: str) -> str:
         upstream_namespace = self._config.upstream_registry_namespace
