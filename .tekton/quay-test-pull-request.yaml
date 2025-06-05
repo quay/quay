@@ -187,6 +187,8 @@ spec:
         value: $(params.output-image).git
       - name: SCRIPT_RUNNER_IMAGE
         value: registry.access.redhat.com/ubi8/ubi:latest
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
       - name: SCRIPT
         value: |
           sed -i '.bak' '\#; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json#,\#|| cp /cachi2/output/deps/generic/aws-ip-ranges.json#d' Dockerfile
@@ -214,7 +216,7 @@ spec:
       - name: dev-package-managers
         value: "true"
       runAfter:
-      - modify-containerfile
+      - clone-repository
       taskRef:
         params:
         - name: name
