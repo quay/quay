@@ -64,7 +64,7 @@ export function NotificationDrawerListComponent() {
   }
 
   return (
-    <NotificationDrawerList>
+    <NotificationDrawerList data-testid="notification-drawer">
       {notifications.map((notification) => {
         console.log(notification);
         return (
@@ -72,11 +72,13 @@ export function NotificationDrawerListComponent() {
             key={notification.id}
             variant={mapLevelToVariant(notification.level)}
             isRead={readNotifications.includes(notification.id)}
+            data-testid="notification-item"
           >
             <NotificationDrawerListItemHeader
               title={getNotificationMessage(notification)}
               variant={mapLevelToVariant(notification.level)}
               onClick={() => markAsRead(notification.id)}
+              data-testid="notification-header"
             />
             <NotificationDrawerListItemBody>
               <TextContent>
@@ -98,6 +100,7 @@ export function NotificationDrawerListComponent() {
               variant="plain"
               onClick={() => dismissNotification(notification.id)}
               aria-label="Dismiss notification"
+              data-testid="delete-notification"
             >
               <TimesIcon />
             </Button>
