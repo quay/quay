@@ -75,6 +75,8 @@ setup(
         "data",
         "data.model",
         "data.model.oci",
+        "data.registry_model",
+        "data.secscan_model",
         "util",
         "util.security",
         "util.metrics",
