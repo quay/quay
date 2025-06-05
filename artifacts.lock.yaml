@@ -5,6 +5,3 @@ artifacts:
   - download_url: "https://github.com/prometheus/pushgateway/releases/download/v1.6.0/pushgateway-1.6.0.linux-amd64.tar.gz"
     checksum: "sha256:6247e16f6c30f5fc3603a1efbc7c2069e965938bc5381897b1317f7119f28ac4"
     filename: "pushgateway-1.6.0.linux-amd64.tar.gz"
-  - download_url: "https://ip-ranges.amazonaws.com/ip-ranges.json"
-    checksum: "sha256:405f5236f4069b947dda2a94c22aa15622f2e435f23dcb9d1b7a22206e458b00"
-    filename: "aws-ip-ranges.json"
