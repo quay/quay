@@ -208,7 +208,7 @@ spec:
       - name: input
         value: $(params.prefetch-input)
       - name: SOURCE_ARTIFACT
-        value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        value: $(tasks.modify-containerfile.results.SOURCE_ARTIFACT)
       - name: ociStorage
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
@@ -216,7 +216,7 @@ spec:
       - name: dev-package-managers
         value: "true"
       runAfter:
-      - clone-repository
+      - modify-containerfile
       taskRef:
         params:
         - name: name
