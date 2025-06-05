@@ -294,6 +294,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 count={unreadCount}
                 onClick={toggleDrawer}
                 aria-label="Notifications"
+                data-testid="notification-bell"
               >
                 <BellIcon />
               </NotificationBadge>
