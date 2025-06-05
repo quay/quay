@@ -1,4 +1,12 @@
-import {Banner, Flex, FlexItem, Page} from '@patternfly/react-core';
+import {
+  Banner,
+  Flex,
+  FlexItem,
+  NotificationDrawer,
+  NotificationDrawerBody,
+  NotificationDrawerHeader,
+  Page,
+} from '@patternfly/react-core';
 
 import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
 
@@ -10,7 +18,7 @@ import Organization from './OrganizationsList/Organization/Organization';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import RepositoryTagRouter from './RepositoryTagRouter';
 
-import {useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
@@ -24,6 +32,7 @@ import OverviewList from './OverviewList/OverviewList';
 import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedirect';
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
+import {NotificationDrawerListComponent} from 'src/components/notifications/NotificationDrawerList';
 
 const NavigationRoutes = [
   {
@@ -65,6 +74,21 @@ export function StandaloneMain() {
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
 
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const toggleDrawer = () => {
+    setIsDrawerOpen((prev) => !prev);
+  };
+
+  const notificationDrawer = (
+    <NotificationDrawer>
+      <NotificationDrawerHeader title="Notifications" onClose={toggleDrawer} />
+      <NotificationDrawerBody>
+        <NotificationDrawerListComponent />
+      </NotificationDrawerBody>
+    </NotificationDrawer>
+  );
+
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
       document.title = quayConfig.config.REGISTRY_TITLE;
@@ -77,11 +101,13 @@ export function StandaloneMain() {
   return (
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
       <Page
-        header={<QuayHeader />}
+        header={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
         style={{height: '100vh'}}
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
+        notificationDrawer={notificationDrawer}
+        isNotificationDrawerExpanded={isDrawerOpen}
       >
         <Banner variant="blue">
           <Flex

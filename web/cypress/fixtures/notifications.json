@@ -1,0 +1,52 @@
+{
+  "notifications": [
+    {
+      "id": "a5c64ae4-7eec-490c-a6ed-c838d2a00570",
+      "organization": null,
+      "kind": "repo_push",
+      "created": "Thu, 05 Jun 2025 15:24:48 -0000",
+      "metadata": {
+        "repository": "user1/hello-world",
+        "namespace": "user1",
+        "name": "hello-world",
+        "docker_url": "localhost:8080/user1/hello-world",
+        "homepage": "http://localhost:8080/repository/user1/hello-world",
+        "updated_tags": [
+          "latest",
+          "foo"
+        ],
+        "pruned_image_count": 3
+      },
+      "dismissed": false
+    },
+    {
+      "id": "4ddbc0f6-16b6-4c35-a42b-e1fd7e999b29",
+      "organization": null,
+      "kind": "vulnerability_found",
+      "created": "Thu, 05 Jun 2025 15:06:38 -0000",
+      "metadata": {
+        "repository": "user1/hello-world",
+        "namespace": "user1",
+        "name": "hello-world",
+        "docker_url": "localhost:8080/user1/hello-world",
+        "homepage": "http://localhost:8080/repository/user1/hello-world",
+        "tags": [
+          "latest",
+          "prod",
+          "foo",
+          "bar",
+          "baz"
+        ],
+        "image": "some-image-id",
+        "vulnerability": {
+          "id": "CVE-FAKE-CVE",
+          "description": "A futurist vulnerability",
+          "link": "https://security-tracker.debian.org/tracker/CVE-FAKE-CVE",
+          "priority": "Critical"
+        }
+      },
+      "dismissed": false
+    }
+  ],
+  "additional": false
+}

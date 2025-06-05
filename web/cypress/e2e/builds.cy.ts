@@ -245,6 +245,9 @@ describe('Repository Builds', () => {
     cy.intercept('GET', '/csrf_token', {fixture: 'csrfToken.json'}).as(
       'getCsrfToken',
     );
+    cy.intercept('GET', '/api/v1/user/notifications', {notifications: []}).as(
+      'getNotifications',
+    );
     cy.intercept(
       'GET',
       '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
@@ -1032,6 +1035,9 @@ describe('Repository Builds - Create Custom Git Build Triggers', () => {
   beforeEach(() => {
     cy.exec('npm run quay:seed');
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
+    cy.intercept('GET', '/api/v1/user/notifications', {notifications: []}).as(
+      'getNotifications',
+    );
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -1288,6 +1294,9 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.intercept('GET', '/csrf_token', {fixture: 'csrfToken.json'}).as(
       'getCsrfToken',
+    );
+    cy.intercept('GET', '/api/v1/user/notifications', {notifications: []}).as(
+      'getNotifications',
     );
     cy.intercept(
       'GET',
@@ -1761,6 +1770,9 @@ describe('Repository Builds - View build logs', () => {
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.intercept('GET', '/csrf_token', {fixture: 'csrfToken.json'}).as(
       'getCsrfToken',
+    );
+    cy.intercept('GET', '/api/v1/user/notifications', {notifications: []}).as(
+      'getNotifications',
     );
     cy.fixture('testrepo.json').then((fixture) => {
       fixture.can_write = true;

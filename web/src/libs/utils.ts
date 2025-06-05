@@ -19,7 +19,10 @@ export function getSeverityColor(severity: VulnerabilitySeverity) {
   }
 }
 
-export function formatDate(date: string | number) {
+export function formatDate(
+  date: string | number,
+  timeStyle: 'short' | 'medium' | 'long' = 'short',
+) {
   if (!date || date == -1) {
     return 'N/A';
   }
@@ -27,7 +30,7 @@ export function formatDate(date: string | number) {
   const adjustedDate = typeof date === 'number' ? date * 1000 : date;
   return new Date(adjustedDate).toLocaleString(navigator.language, {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    timeStyle: 'short',
+    timeStyle,
     dateStyle: 'medium',
   });
 }
