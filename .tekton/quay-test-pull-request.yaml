@@ -208,7 +208,7 @@ spec:
       - name: input
         value: $(params.prefetch-input)
       - name: SOURCE_ARTIFACT
-        value: $(tasks.modify-containerfile.results.SOURCE_ARTIFACT)
+        value: $(tasks.modify-containerfile.results.SCRIPT_ARTIFACT)
       - name: ociStorage
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
