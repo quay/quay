@@ -29,6 +29,22 @@ spec:
     - linux/x86_64
   - name: dockerfile
     value: Dockerfile
+  - name: build-source-image
+    value: "true"
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: |
+      [
+        {"type": "gomod", "path": "./config-tool"},
+        {"type": "pip", "path": "."},
+        {"type": "npm", "path": "web"},
+        {"type": "npm", "path": "."},
+        {"type": "npm", "path": "config-tool/pkg/lib/editor"},
+        {"type": "rpm", "path": "."},
+        {"type": "generic", "path": "."},
+        {"type": "cargo", "path": "rust-builddeps"}
+      ]
   pipelineSpec:
     description: |
       This pipeline is ideal for building multi-arch container images from a Containerfile while maintaining trust after pipeline customization.
@@ -187,6 +203,8 @@ spec:
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: dev-package-managers
+        value: "true"
       runAfter:
       - clone-repository
       taskRef:
