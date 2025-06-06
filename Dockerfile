@@ -9,6 +9,7 @@ ENV PATH=/app/bin/:$PATH \
 ENV PYTHONUSERBASE /app
 ENV TZ UTC
 RUN set -ex\
+	; microdnf -y module enable nginx:1.22 \
 	; microdnf -y module enable python39:3.9 \
 	; microdnf update -y \
 	; microdnf -y --setopt=tsflags=nodocs install \
@@ -134,7 +135,7 @@ FROM registry.access.redhat.com/ubi8/go-toolset as config-tool
 WORKDIR /opt/app-root/src
 COPY config-tool/ ./
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
-RUN GOPATH=/opt/app-root/src/go go install -tags=fips ./cmd/config-tool
+RUN go install -tags=fips ./cmd/config-tool
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
 WORKDIR /quaydir

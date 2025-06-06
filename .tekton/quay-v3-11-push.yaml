@@ -193,12 +193,34 @@ spec:
       workspaces:
       - name: basic-auth
         workspace: git-auth
+    - name: modify-containerfile
+      params:
+      - name: ociStorage
+        value: $(params.output-image).git
+      - name: SCRIPT_RUNNER_IMAGE
+        value: registry.access.redhat.com/ubi8/ubi:latest
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+      - name: SCRIPT
+        value: |
+          sed '\#; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json#,\#|| cp /cachi2/output/deps/generic/aws-ip-ranges.json#d; /; microdnf -y module enable nginx:1.22 \\/d' Dockerfile > Dockerfile.tmp && mv Dockerfile.tmp Dockerfile
+      runAfter:
+      - clone-repository
+      taskRef:
+        params:
+        - name: name
+          value: run-script-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:4b4012ad649a0354a7a355a9b26c0b53bea577801bcaf903dc5260321a9e3c3a
+        - name: kind
+          value: task
+        resolver: bundles
     - name: prefetch-dependencies
       params:
       - name: input
         value: $(params.prefetch-input)
       - name: SOURCE_ARTIFACT
-        value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        value: $(tasks.modify-containerfile.results.SCRIPT_ARTIFACT)
       - name: ociStorage
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
@@ -206,7 +228,7 @@ spec:
       - name: dev-package-managers
         value: "true"
       runAfter:
-      - clone-repository
+      - modify-containerfile
       taskRef:
         params:
         - name: name

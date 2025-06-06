@@ -206,7 +206,7 @@ spec:
         value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
       - name: SCRIPT
         value: |
-          sed '\#; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json#,\#|| cp /cachi2/output/deps/generic/aws-ip-ranges.json#d' Dockerfile > Dockerfile.tmp && mv Dockerfile.tmp Dockerfile
+          sed '\#; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json#,\#|| cp /cachi2/output/deps/generic/aws-ip-ranges.json#d; /; microdnf -y module enable nginx:1.22 \\/d' Dockerfile > Dockerfile.tmp && mv Dockerfile.tmp Dockerfile
       runAfter:
       - clone-repository
       taskRef:
