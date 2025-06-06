@@ -148,7 +148,6 @@ tinycss2==1.2.1
 tqdm==4.65.0
 
 # Build dependencies
-Cython==3.0.2
 Cython==3.0.0a9
 PyYAML==5.4.1
 flit_core==3.7.1
