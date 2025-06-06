@@ -93,7 +93,7 @@ describe('Repository Settings - Permissions', () => {
     cy.contains('1 - 4 of 4').should('exist');
     cy.get('[name="permissions-select-all"]').click();
     cy.contains('Actions').click();
-    cy.contains('Change Permissions').click();
+    cy.contains('Change Permissions').trigger('mouseover');
     cy.get('[data-testid="change-permissions-menu-list"]').within(() => {
       cy.contains('Write').click();
     });
