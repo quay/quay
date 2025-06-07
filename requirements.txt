@@ -25,7 +25,7 @@ debtcollector==1.22.0
 decorator==5.1.1
 Deprecated==1.2.14
 dumb-init==1.2.5.post1
-elasticsearch==7.6.0
+elasticsearch==9.0.2
 elasticsearch-dsl==7.0.0
 Flask==2.3.2
 Flask-Login==0.6.2
