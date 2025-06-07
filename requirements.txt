@@ -85,7 +85,7 @@ python-ldap==3.4.3
 python-magic==0.4.27
 python-redis-lock==3.7.0
 python-swiftclient==4.4.0
-pytz==2019.3
+pytz==2025.2
 PyYAML==6.0.2
 raven==6.10.0
 recaptcha2==0.1
