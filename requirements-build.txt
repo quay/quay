@@ -216,9 +216,9 @@ hatch-vcs==0.3.0 \
     --hash=sha256:60ce59a3fa4664057e4a858b6a96ab0b9dec21bf8f562f836139315bb361be8c \
     --hash=sha256:cec5107cfce482c67f8bc96f18bbc320c9aa0d068180e14ad317bbee5a153fee
     # via -r requirements-build.in
-hatchling==1.18.0 \
-    --hash=sha256:50e99c3110ce0afc3f7bdbadff1c71c17758e476731c27607940cfa6686489ca \
-    --hash=sha256:b66dc254931ec42aa68b5febd1d342c58142cc5267b7ff3b12ba3fa5b4900c93
+hatchling==1.27.0 \
+    --hash=sha256:971c296d9819abb3811112fc52c7a9751c8d381898f36533bb16f9791e941fd6 \
+    --hash=sha256:d3a2f3567c4f926ea39849cdf924c7e99e6686c9c8e288ae1037c8fa2a5d937b
     # via
     #   -r requirements-build.in
     #   hatch-fancy-pypi-readme
