@@ -342,9 +342,9 @@ tomli==2.0.1 \
     #   mypy
     #   setuptools-rust
     #   setuptools-scm
-trove-classifiers==2023.9.19 \
-    --hash=sha256:3e700af445c802f251ce2b741ee78d2e5dfa5ab8115b933b89ca631b414691c9 \
-    --hash=sha256:55460364fe248294386d4dfa5d16544ec930493ecc6bd1db07a0d50afb37018e
+trove-classifiers==2023.11.29 \
+    --hash=sha256:02307750cbbac2b3d13078662f8a5bf077732bf506e9c33c97204b7f68f3699e \
+    --hash=sha256:ff8f7fd82c7932113b46e7ef6742c70091cc63640c8c65db00d91f2e940b9514
     # via
     #   -r requirements-build.in
     #   hatchling
