@@ -140,7 +140,7 @@ oslo.i18n==6.2.0
 oslo.serialization==2.29.2
 oslo.utils==6.2.1
 packaging==23.2
-pbr==5.11.1
+pbr==6.1.1
 pycparser==2.21
 python-bidi==0.4.2
 reportlab==3.6.13
