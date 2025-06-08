@@ -21,7 +21,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/lib/pq v1.7.0
 	github.com/minio/minio-go/v7 v7.0.40
-	github.com/ncw/swift v1.0.52
+	github.com/ncw/swift v1.0.53
 	github.com/olekukonko/tablewriter v0.0.5-0.20200416053754-163badb3bac6
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.0.0
