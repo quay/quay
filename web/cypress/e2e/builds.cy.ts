@@ -1482,7 +1482,6 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     cy.contains('/dir2/subrdir1/Dockerfile').should('not.exist');
     cy.contains('/dir1/Dockerfile').should('not.exist');
     cy.get('button[aria-label="Clear input value"]').click();
-    cy.get('button[aria-label="Menu toggle"]').click();
     cy.contains('/Dockerfile');
     cy.contains('/dir1/Dockerfile');
     cy.contains('/dir2/subrdir1/Dockerfile');
@@ -1499,7 +1498,6 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
       cy.wrap(el).contains('/dir2/subdir2/nesteddir1');
     });
     cy.get('button[aria-label="Clear input value"]').click();
-    cy.get('button[aria-label="Menu toggle"]').click();
     cy.get('#select-typeahead-listbox > li').each((el) => {
       const expected = [
         '/',
@@ -1700,7 +1698,6 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     cy.contains('/dir2/subrdir1/Dockerfile').should('not.exist');
     cy.contains('/dir1/Dockerfile').should('not.exist');
     cy.get('button[aria-label="Clear input value"]').click();
-    cy.get('button[aria-label="Menu toggle"]').click();
     cy.contains('/Dockerfile');
     cy.contains('/dir1/Dockerfile');
     cy.contains('/dir2/subrdir1/Dockerfile');
@@ -1717,7 +1714,6 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
       cy.wrap(el).contains('/dir2/subdir2/nesteddir1');
     });
     cy.get('button[aria-label="Clear input value"]').click();
-    cy.get('button[aria-label="Menu toggle"]').click();
     cy.get('#select-typeahead-listbox > li').each((el) => {
       const expected = [
         '/',
