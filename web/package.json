@@ -105,6 +105,9 @@
     "webpack-dev-server": "^4.8.1",
     "webpack-merge": "^5.8.0"
   },
+  "overrides": {
+    "react-redux": "^8.1.3"
+  },
   "optionalDependencies": {
     "cypress": "^13.13.2"
   }
