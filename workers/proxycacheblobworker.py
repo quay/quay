@@ -47,7 +47,7 @@ class ProxyCacheBlobWorker(QueueWorker):
             repo_id,
         )
 
-        if not self._blob_exists(digest, repo_id):
+        if self._should_download_blob(digest, repo_id, registry_proxy_model):
             try:
                 registry_proxy_model._download_blob(
                     repo_ref,
@@ -62,7 +62,7 @@ class ProxyCacheBlobWorker(QueueWorker):
 
         return
 
-    def _blob_exists(self, digest, repo_id):
+    def _should_download_blob(self, digest, repo_id, registry_proxy_model):
         blob = registry_proxy_model._get_shared_storage(digest)
         if blob is None:
             try:
@@ -82,9 +82,9 @@ class ProxyCacheBlobWorker(QueueWorker):
         try:
             ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
         except ImageStoragePlacement.DoesNotExist:
-            return False
+            return True
 
-        return True
+        return False
 
 
 def create_gunicorn_worker():
