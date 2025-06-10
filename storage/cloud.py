@@ -391,7 +391,7 @@ class _CloudStorage(BaseStorageV2):
                     botocore.exceptions.ConnectionClosedError,
                     IOError,
                 ) as e:
-                    logger.warn(
+                    logger.warning(
                         "Error when writing to stream in stream_write_internal at path %s: %s",
                         path,
                         e,

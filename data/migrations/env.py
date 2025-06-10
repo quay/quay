@@ -124,7 +124,7 @@ def run_migrations_online():
                 # ignore revision error if we're running the previous release
                 releases = list(get_recent_releases(SERVICE, REGION).offset(1).limit(1))
                 if releases and releases[0].version == GIT_HEAD:
-                    logger.warn("Skipping database migration because revision not found")
+                    logger.warning("Skipping database migration because revision not found")
                 else:
                     raise
     finally:
