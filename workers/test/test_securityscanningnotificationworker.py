@@ -14,7 +14,7 @@ from workers.securityscanningnotificationworker import (
     SecurityScanningNotificationWorker,
 )
 
-from app import app  # isort: skip
+from app import app as flask_app  # isort: skip
 
 
 @pytest.mark.skipif(
@@ -25,10 +25,10 @@ from app import app  # isort: skip
 )
 def test_notification(issue, initialized_db):
     worker = SecurityScanningNotificationWorker(secscan_notification_queue)
-    secscan_model.configure(app, instance_keys, storage)
+    secscan_model.configure(flask_app, instance_keys, storage)
     worker._secscan_model = secscan_model
 
-    hostname = urlparse(app.config["SECURITY_SCANNER_V4_ENDPOINT"]).netloc
+    hostname = urlparse(flask_app.config["SECURITY_SCANNER_V4_ENDPOINT"]).netloc
     with fake_security_scanner(hostname=hostname) as fake:
         repository_ref = registry_model.lookup_repository("devtable", "simple")
 
