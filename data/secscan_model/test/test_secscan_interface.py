@@ -31,7 +31,7 @@ from data.secscan_model.secscan_v4_model import V4SecurityScanner
         # (True, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
     ],
 )
-def test_load_security_information(indexed_v4, expected_status, initialized_db):
+def test_load_security_information(indexed_v2, indexed_v4, expected_status, initialized_db):
     secscan_model.configure(flask_app, instance_keys, storage)
 
     repository_ref = registry_model.lookup_repository("devtable", "simple")
