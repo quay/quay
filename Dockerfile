@@ -42,10 +42,11 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 # Enable CodeReady Builder for access to -devel packages.
-RUN microdnf config-manager --set-enabled crb
 
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y \
+    --setopt=tsflags=nodocs install \
+    --enablerepo=ubi-8-codeready-builder-rpms \
 		gcc-c++ \
 		git \
 		openldap-devel \
