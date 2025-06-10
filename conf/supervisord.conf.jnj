@@ -392,6 +392,18 @@ autostart = {{ config['autopruneworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:proxycacheblobworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/proxycacheblobworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.proxycacheblob:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.proxycacheblobworker
+{% endif -%}
+autostart = {{ config['proxycacheblobworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:config-editor]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s,

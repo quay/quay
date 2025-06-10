@@ -279,6 +279,9 @@ authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECT
 usermanager = UserManager(app, authentication)
 
 image_replication_queue = WorkQueue(app.config["REPLICATION_QUEUE_NAME"], tf, has_namespace=False)
+proxy_cache_blob_queue = WorkQueue(
+    app.config["PROXY_CACHE_BLOB_QUEUE_NAME"], tf, has_namespace=True
+)
 dockerfile_build_queue = WorkQueue(
     app.config["DOCKERFILE_BUILD_QUEUE_NAME"], tf, has_namespace=True
 )
