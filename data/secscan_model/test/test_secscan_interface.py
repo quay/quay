@@ -3,7 +3,7 @@ from test.fixtures import *
 import pytest
 from mock import Mock, patch
 
-from app import ap as flask_app, instance_keys, storage
+from app import app as flask_app, instance_keys, storage
 from data.database import (
     IndexerVersion,
     IndexStatus,
