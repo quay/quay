@@ -1,7 +1,7 @@
 import json
 import logging
 
-from app import app
+from app import app as flask_app
 from data.database import (
     ExternalNotificationEvent,
     RepositoryNotification,
@@ -23,7 +23,7 @@ BATCH_SIZE = 10
 SKIP_LOCKED = True
 
 # interval in minutes that specifies how long a task must wait before being run again, defaults to 5hrs
-NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES = app.config.get(
+NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES = flask_app.config.get(
     "NOTIFICATION_TASK_RUN_MINIMUM_INTERVAL_MINUTES", 5 * 60
 )
 
