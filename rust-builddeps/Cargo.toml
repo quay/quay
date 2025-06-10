@@ -4,16 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-once_cell = "=1.19.0"
-cfg-if = "1"
-cc = "=1.0.83"
-pkg-config = "=0.3.29"
-asn1 = { version = "=0.15.5", default-features = false }
-pyo3 = { version = "=0.20.3", features = ["abi3"] }
-pem = { version = "=3.0.3", default-features = false }
-openssl = "=0.10.63"
-openssl-sys = "=0.9.99"
-libc = "=0.2.152"
-foreign-types-shared = "0.1"
-self_cell = "=1.0.3"
-indoc = "=2.0.4"
+asn1 = { version = "0.21.3", default-features = false }
+pyo3 = { version = "0.25", features = ["abi3"] }
+pyo3-build-config = { version = "0.25" }
+openssl = "0.10.72"
+openssl-sys = "0.9.108"
