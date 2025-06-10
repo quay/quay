@@ -1,7 +1,8 @@
-from test.fixtures import *
+import pytest
 
 from app import namespace_gc_queue
 from data import database, model
+from test.fixtures import *
 from workers.namespacegcworker import NamespaceGCWorker
 
 

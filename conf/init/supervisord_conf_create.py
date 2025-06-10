@@ -54,6 +54,7 @@ def registry_services():
         "quotatotalworker": {"autostart": "true"},
         "quotaregistrysizeworker": {"autostart": "true"},
         "autopruneworker": {"autostart": "true"},
+        "proxycacheblobworker": {"autostart": "true"},
     }
 
 
@@ -94,6 +95,7 @@ def config_services():
         "quotatotalworker": {"autostart": "false"},
         "quotaregistrysizeworker": {"autostart": "false"},
         "autopruneworker": {"autostart": "false"},
+        "proxycacheblobworker": {"autostart": "false"},
     }
 
 
