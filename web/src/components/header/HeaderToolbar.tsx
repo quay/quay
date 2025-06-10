@@ -10,6 +10,8 @@ import {
   MenuContent,
   MenuToggle,
   Menu,
+  NotificationBadge,
+  NotificationBadgeVariant,
   Switch,
   ToggleGroup,
   ToggleGroupItem,
@@ -26,6 +28,7 @@ import {
   WindowMaximizeIcon,
 } from '@patternfly/react-icons';
 import React, {useState} from 'react';
+import {useAppNotifications} from 'src/hooks/useAppNotifications';
 import {GlobalAuthState, logoutUser} from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from '../errors/ErrorModal';
@@ -36,9 +39,11 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
+import BellIcon from '@patternfly/react-icons/dist/esm/icons/bell-icon';
+
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 
-export function HeaderToolbar() {
+export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
@@ -235,6 +240,8 @@ export function HeaderToolbar() {
     window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
   };
 
+  const {unreadCount} = useAppNotifications();
+
   return (
     <>
       <ErrorModal error={err} setError={setErr} />
@@ -269,6 +276,28 @@ export function HeaderToolbar() {
                   onChange={toggleSwitch}
                 />
               </Flex>
+            </ToolbarItem>
+            <ToolbarItem
+              spacer={{
+                default: 'spacerNone',
+                md: 'spacerSm',
+                lg: 'spacerMd',
+                xl: 'spacerLg',
+              }}
+            >
+              <NotificationBadge
+                variant={
+                  unreadCount > 0
+                    ? NotificationBadgeVariant.unread
+                    : NotificationBadgeVariant.read
+                }
+                count={unreadCount}
+                onClick={toggleDrawer}
+                aria-label="Notifications"
+                data-testid="notification-bell"
+              >
+                <BellIcon />
+              </NotificationBadge>
             </ToolbarItem>
             <ToolbarItem>
               {user.username ? menuContainer : signInButton}
