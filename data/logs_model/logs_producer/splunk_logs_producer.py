@@ -3,9 +3,12 @@ import logging
 import ssl
 
 from splunklib import client
+from splunklib.binding import AuthenticationError  # type: ignore[import]
 
 from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface
+from data.model import config
+from data.model.log import ACTIONS_ALLOWED_WITHOUT_AUDIT_LOGGING
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,12 @@ class SplunkLogsProducer(LogProducerInterface):
             raise Exception(
                 "Connection to Splunk refused, check if Splunk instance is available: %s" % e
             )
+        except Exception as e:
+            strict_logging_disabled = config.app_config.get("ALLOW_WITHOUT_STRICT_LOGGING")
+            if strict_logging_disabled:
+                logger.exception("Unable to configure Splunk instance: %s", e)
+            else:
+                raise
 
     def send(self, log):
         try:

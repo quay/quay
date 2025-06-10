@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from dateutil.parser import parse
 from mock import Mock, patch
+from splunklib.binding import AuthenticationError  # type: ignore[import]
 
 from ..logs_producer.splunk_logs_producer import SplunkLogsProducer
 from .test_elasticsearch import logs_model, mock_db_model
@@ -206,6 +207,21 @@ def cert_file_path():
             parse("2019-01-01T03:30"),
             True,
             None,
+        ),
+        # doesn't raise a failed push_repo action
+        pytest.param(
+            True,
+            False,
+            "push_repo",
+            "devtable",
+            FAKE_PERFORMER["user1"],
+            "192.168.1.1",
+            {"key": "value"},
+            None,
+            "repo1",
+            parse("2019-01-01T03:30"),
+            False,
+            LogSendException("Failed to send log data"),
         ),
     ],
 )
