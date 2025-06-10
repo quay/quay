@@ -35,8 +35,8 @@ Flask-Principal==0.4.0
 Flask-RESTful==0.3.9
 furl==2.1.0
 geoip2==3.0.0
-gevent==23.9.1
-greenlet==2.0.2
+gevent==24.11.1
+greenlet==3.1.1
 grpcio==1.67.0
 gunicorn==23.0.0
 hashids==1.2.0
