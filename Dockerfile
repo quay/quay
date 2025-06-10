@@ -41,8 +41,12 @@ RUN set -ex\
 # Build-python installs the requirements for the python code.
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
+# Enable CodeReady Builder for access to -devel packages.
+
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install \
+	; microdnf -y \
+    --setopt=tsflags=nodocs install \
+    --enablerepo=ubi-8-codeready-builder-rpms \
 		gcc-c++ \
 		git \
 		openldap-devel \
