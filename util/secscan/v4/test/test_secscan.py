@@ -13,7 +13,7 @@ from data.secscan_model import secscan_model
 from data.database import ManifestSecurityStatus
 
 from test.fixtures import *
-from app import app
+from app import app as flask_app
 
 
 def manifest_for(namespace, repository, tagname):
@@ -24,8 +24,8 @@ def manifest_for(namespace, repository, tagname):
 
 @pytest.fixture()
 def api():
-    assert app is not None
-    retriever = BlobURLRetriever(storage, instance_keys, app)
+    assert flask_app is not None
+    retriever = BlobURLRetriever(storage, instance_keys, flask_app)
     return ClairSecurityScannerAPI(
         "http://fakesecurityscanner", build_requests_session(), retriever
     )
