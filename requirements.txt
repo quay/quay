@@ -15,7 +15,7 @@ blinker==1.6.2
 boto3==1.28.61
 botocore==1.31.61
 cachetools==4.0.0
-certifi==2023.7.22
+certifi==2024.7.4
 chardet==3.0.4
 charset-normalizer==2.0.12
 click==8.1.7
@@ -34,6 +34,7 @@ Flask-Principal==0.4.0
 Flask-RESTful==0.3.10
 geoip2==3.0.0
 gevent==24.11.1
+googleapis-common-protos==1.70.0
 greenlet==3.1.1
 grpcio==1.67.0
 gunicorn==23.0.0
@@ -122,7 +123,7 @@ Werkzeug==2.3.6
 xhtml2pdf==0.2.6
 
 # Leverage wheels for faster builds
-setuptools==68.2.2
+setuptools==71.1.0
 wheel==0.38.4
 
 # Indirect dependencies
