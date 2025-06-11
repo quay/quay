@@ -14,7 +14,7 @@ from data.secscan_model.secscan_v4_model import ScanToken as V4ScanToken
 from data.secscan_model.secscan_v4_model import V4SecurityScanner
 from test.fixtures import *
 
-from app import app  # isort: skip
+from app import app as flask_app  # isort: skip
 
 
 @pytest.mark.parametrize(
@@ -25,7 +25,7 @@ from app import app  # isort: skip
     ],
 )
 def test_load_security_information(indexed_v4, expected_status, initialized_db):
-    secscan_model.configure(app, instance_keys, storage)
+    secscan_model.configure(flask_app, instance_keys, storage)
 
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.find_matching_tag(repository_ref, ["latest"])
@@ -58,7 +58,7 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
     ],
 )
 def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):
-    app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
+    flask_app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
 
     def secscan_api(*args, **kwargs):
         api = Mock()
@@ -69,7 +69,7 @@ def test_perform_indexing(next_token, expected_next_token, expected_error, initi
         return api
 
     with patch("data.secscan_model.secscan_v4_model.ClairSecurityScannerAPI", secscan_api):
-        secscan_model.configure(app, instance_keys, storage)
+        secscan_model.configure(flask_app, instance_keys, storage)
 
         if expected_error is not None:
             with pytest.raises(expected_error):
