@@ -10,10 +10,11 @@ from buildman.build_token import (
     BUILD_JOB_TOKEN_TYPE,
     InvalidBuildTokenException,
 )
+from test.fixtures import *
 
 from test.fixtures import *
 
-from app import app, instance_keys
+from app import app as flask_app, instance_keys
 
 
 @pytest.mark.parametrize(
@@ -31,7 +32,7 @@ def test_registration_build_token(initialized_db, token_type, expected_exception
     build_id = str(uuid.uuid4())
     job_id = "building/" + build_id
     token = build_token(
-        app.config["SERVER_HOSTNAME"],
+        flask_app.config["SERVER_HOSTNAME"],
         BUILD_JOB_REGISTRATION_TYPE,
         build_id,
         job_id,
@@ -43,7 +44,7 @@ def test_registration_build_token(initialized_db, token_type, expected_exception
         with pytest.raises(InvalidBuildTokenException) as ibe:
             payload = verify_build_token(
                 token,
-                app.config["SERVER_HOSTNAME"],
+                flask_app.config["SERVER_HOSTNAME"],
                 token_type,
                 instance_keys,
             )
@@ -51,12 +52,12 @@ def test_registration_build_token(initialized_db, token_type, expected_exception
     else:
         payload = verify_build_token(
             token,
-            app.config["SERVER_HOSTNAME"],
+            flask_app.config["SERVER_HOSTNAME"],
             token_type,
             instance_keys,
         )
 
-        assert payload["aud"] == app.config["SERVER_HOSTNAME"]
+        assert payload["aud"] == flask_app.config["SERVER_HOSTNAME"]
         assert payload["sub"] == ANONYMOUS_SUB
         assert payload["iss"] == instance_keys.service_name
         assert payload["context"]["build_id"] == build_id
