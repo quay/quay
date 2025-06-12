@@ -130,3 +130,8 @@ def test_valid_config():
             assert v1_compat["container_config"]["Cmd"] == [history_entry.command]
 
     assert config.labels == {}
+
+
+EMPTY_CONFIG_BYTES = json.dumps({}).encode("utf-8")
+EMPTY_CONFIG_SIZE = len(EMPTY_CONFIG_BYTES)
+EMPTY_CONFIG_DIGEST = "sha256:" + hashlib.sha256(EMPTY_CONFIG_BYTES).hexdigest()

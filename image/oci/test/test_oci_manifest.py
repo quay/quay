@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pytest
@@ -38,6 +39,39 @@ SAMPLE_MANIFEST = """{
   }
 }"""
 
+SAMPLE_MANIFEST2 = """{
+  "schemaVersion": 2,
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "size": 7023,
+    "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "size": 32654,
+      "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "size": 16724,
+      "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b"
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "size": 73109,
+      "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+      "annotations": {
+        "com.example.layerkey1": "value1",
+        "com.example.layerkey2": "value2"
+      }
+    }
+  ],
+  "annotations": {
+    "com.example.key1": "value1",
+    "com.example.key2": "value2"
+  }
+}"""
 SAMPLE_MANIFEST2 = """{
   "schemaVersion": 2,
   "config": {
@@ -300,6 +334,83 @@ def test_validate_helm_oci_manifest():
     HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
     register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
     manifest = OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
+
+
+INVALID_LAYER_SIZE_MANIFEST = json.dumps(
+    {
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": "application/vnd.oci.image.config.v1+json",
+            "size": 7023,
+            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 32654,
+                "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": -1,
+                "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 73109,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+        ],
+        "annotations": {"com.example.key1": "value1", "com.example.key2": "value2"},
+    }
+).encode("utf-8")
+
+
+def test_invalid_layer_size_manifest():
+    with pytest.raises(MalformedOCIManifest, match="invalid layer size"):
+        OCIManifest(Bytes.for_string_or_unicode(INVALID_LAYER_SIZE_MANIFEST))
+
+
+MANIFEST_WITH_LAYER_SIZE_0 = json.dumps(
+    {
+        "schemaVersion": 2,
+        "config": {
+            "mediaType": "application/vnd.oci.image.config.v1+json",
+            "size": 7023,
+            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        },
+        "layers": [
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 32654,
+                "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 0,
+                "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            },
+            {
+                "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                "size": 73109,
+                "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+            },
+        ],
+        "annotations": {"com.example.key1": "value1", "com.example.key2": "value2"},
+    }
+).encode()
+
+
+def test_manifest_with_layer_size_0():
+    digest = "sha256:" + hashlib.sha256(MANIFEST_WITH_LAYER_SIZE_0).hexdigest()
+    manifest = OCIManifest(Bytes.for_string_or_unicode(MANIFEST_WITH_LAYER_SIZE_0))
+    assert manifest.digest == digest
+    assert manifest.blob_digests == [
+        "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0",
+        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
+        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+    ]
 
 
 def test_manifest_layer_annotations():
