@@ -20,7 +20,7 @@ certifi==2024.7.4
 chardet==5.2.0
 charset-normalizer==2.0.12
 click==8.1.7
-cryptography==42.0.5
+cryptography==44.0.1
 DateTime==4.3
 debtcollector==1.22.0
 decorator==5.1.1
@@ -89,7 +89,7 @@ PyGithub==2.1.1
 PyJWT==2.8.0
 pymemcache==3.0.0
 PyMySQL==1.1.1
-pyOpenSSL==24.2.1
+pyOpenSSL==25.1.0
 pyparsing==2.4.6
 pyrsistent==0.18.0
 python-dateutil==2.8.1
@@ -164,7 +164,7 @@ reportlab==3.6.13
 svglib==1.5.1
 tinycss2==1.2.1
 tqdm==4.66.4
-typing_extensions==4.8.0
+typing_extensions==4.9.0
 tzdata==2023.3
 wrapt==1.17.2
 zipp==3.19.2
