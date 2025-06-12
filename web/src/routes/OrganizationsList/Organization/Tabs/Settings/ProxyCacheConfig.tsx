@@ -28,7 +28,7 @@ type ProxyCacheConfigProps = {
   isUser: boolean;
 };
 
-const tagExpirationInSecsForProxyCache = 86400;
+export const tagExpirationInSecsForProxyCache = 86400;
 
 export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const defaultProxyCacheConfig = {
@@ -91,7 +91,6 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
       onSuccess: (response) => {
         if (response === 'Valid' || response === 'Anonymous') {
           createProxyCacheConfigMutation(proxyCacheConfig);
-          setProxyCacheConfig(proxyCacheConfig);
         }
       },
       onError: (err) => {
