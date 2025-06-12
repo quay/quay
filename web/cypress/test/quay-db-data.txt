@@ -2377,7 +2377,7 @@ ALTER SEQUENCE public.manifest_id_seq OWNED BY public.manifest.id;
 --
 
 CREATE TABLE public.manifestblob (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     repository_id integer NOT NULL,
     manifest_id integer NOT NULL,
     blob_id integer NOT NULL
@@ -2391,7 +2391,6 @@ ALTER TABLE public.manifestblob OWNER TO quay;
 --
 
 CREATE SEQUENCE public.manifestblob_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -5743,7 +5742,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-a52c7684f140
+1623f40582ed
 \.
 
 
@@ -6718,8 +6717,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2025-03-24 21:22:24.382366	t	2025-03-25 00:17:24.368732	5	f9d7b771-086b-415f-a8dd-afbe5d0de32a
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2025-03-24 21:22:29.403608	t	2025-03-25 00:17:29.39198	5	0c481bcf-3df2-4659-b7df-fa37c4c1d998
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2025-06-12 15:21:52.763851	t	2025-06-12 18:16:52.746494	5	a215428c-3447-421d-8e7a-ebda81380dfb
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2025-06-12 15:21:57.782723	t	2025-06-12 18:16:57.767285	5	1e4cfcd4-e84b-4e71-88f3-514fa201ef9c
 \.
 
 
