@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime, timedelta
-from test.fixtures import *
 
 import pytest
 from jsonschema import ValidationError
+from peewee import IntegrityError
 
 from data import model
 from data.database import RepoMirrorConfig, RepoMirrorStatus, User
@@ -15,6 +15,7 @@ from data.model.repo_mirror import (
     update_sync_status_to_cancel,
 )
 from data.model.user import create_robot, create_user_noverify, lookup_robot
+from test.fixtures import *
 
 
 def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=None):
@@ -41,6 +42,7 @@ def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=N
         "internal_robot": robot,
         "external_reference": "registry.example.com/namespace/repository",
         "sync_interval": timedelta(days=1).total_seconds(),
+        "skopeo_timeout_interval": 300,
         "external_registry_config": external_registry_config,
     }
     mirror = model.repo_mirror.enable_mirroring_for_repository(**mirror_kwargs)
@@ -197,13 +199,13 @@ def test_sync_status_to_cancel(initialized_db):
     mirror.save()
     updated = update_sync_status_to_cancel(mirror)
     assert updated is not None
-    assert updated.sync_status == RepoMirrorStatus.NEVER_RUN
+    assert updated.sync_status == RepoMirrorStatus.CANCEL
 
     mirror.sync_status = RepoMirrorStatus.SYNC_NOW
     mirror.save()
     updated = update_sync_status_to_cancel(mirror)
     assert updated is not None
-    assert updated.sync_status == RepoMirrorStatus.NEVER_RUN
+    assert updated.sync_status == RepoMirrorStatus.CANCEL
 
     mirror.sync_status = RepoMirrorStatus.FAIL
     mirror.save()
@@ -250,6 +252,10 @@ def test_release_mirror(initialized_db):
     mirror = release_mirror(mirror, RepoMirrorStatus.FAIL)
     assert mirror.sync_retries_remaining == 3
     assert mirror.sync_start_date > original_sync_start_date
+
+    mirror = release_mirror(mirror, RepoMirrorStatus.CANCEL)
+    assert mirror.sync_retries_remaining == 0
+    assert mirror.sync_start_date is None
 
 
 def test_repo_mirror_robot(initialized_db):

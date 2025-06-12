@@ -106,6 +106,11 @@ common_properties = {
             },
         },
     },
+    "skopeo_timeout_interval": {
+        "type": "integer",
+        "minimum": 300,
+        "description": "Number of seconds mirroring job will run before timing out.",
+    },
 }
 
 
@@ -189,7 +194,13 @@ class RepoMirrorResource(RepositoryParamResource):
         "CreateMirrorConfig": {
             "description": "Create the repository mirroring configuration.",
             "type": "object",
-            "required": ["external_reference", "sync_interval", "sync_start_date", "root_rule"],
+            "required": [
+                "external_reference",
+                "sync_interval",
+                "sync_start_date",
+                "root_rule",
+                "skopeo_timeout_interval",
+            ],
             "properties": common_properties,
         },
         "UpdateMirrorConfig": {
@@ -207,6 +218,7 @@ class RepoMirrorResource(RepositoryParamResource):
                 "external_registry_username",
                 "external_registry_config",
                 "sync_interval",
+                "skopeo_timeout_interval",
                 "sync_start_date",
                 "sync_expiration_date",
                 "sync_retries_remaining",
@@ -249,6 +261,7 @@ class RepoMirrorResource(RepositoryParamResource):
         sync_start_date = self._dt_to_string(mirror.sync_start_date)
         sync_expiration_date = self._dt_to_string(mirror.sync_expiration_date)
         robot = mirror.internal_robot.username if mirror.internal_robot is not None else None
+        timeout = mirror.skopeo_timeout
 
         return {
             "is_enabled": mirror.is_enabled,
@@ -263,6 +276,7 @@ class RepoMirrorResource(RepositoryParamResource):
             "sync_status": mirror.sync_status.name,
             "root_rule": {"rule_kind": "tag_glob_csv", "rule_value": rules},
             "robot_username": robot,
+            "skopeo_timeout_interval": timeout,
         }
 
     @require_repo_admin(allow_for_superuser=True)
@@ -290,6 +304,12 @@ class RepoMirrorResource(RepositoryParamResource):
             )
 
         data = request.get_json()
+
+        if data["skopeo_timeout_interval"] < 300:
+            return (
+                {"detail": "Skopeo timeout interval cannot be less than 300 seconds"},
+                400,
+            )
 
         data["sync_start_date"] = self._string_to_dt(data["sync_start_date"])
 
@@ -394,6 +414,20 @@ class RepoMirrorResource(RepositoryParamResource):
                     wrap_repository(repo),
                     changed="sync_interval",
                     to=values["sync_interval"],
+                )
+
+        if "skopeo_timeout_interval" in values:
+            if values["skopeo_timeout_interval"] < 300:
+                return ({"detail": "Skopeo timeout interval cannot be less than 300 seconds."}, 400)
+
+            if model.repo_mirror.change_skopeo_timeout_interval(
+                repo, values["skopeo_timeout_interval"]
+            ):
+                track_and_log(
+                    "repo_mirror_config_changed",
+                    wrap_repository(repo),
+                    changed="skopeo_timeout_interval",
+                    to=values["skopeo_timeout_interval"],
                 )
 
         if "external_registry_username" in values and "external_registry_password" in values:

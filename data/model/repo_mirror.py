@@ -21,7 +21,10 @@ from util.names import parse_robot_username
 
 # TODO: Move these to the configuration
 MAX_SYNC_RETRIES = 3
-MAX_SYNC_DURATION = 60 * 60 * 2  # 2 Hours
+
+# We need to increase the MAX_SYNC_DURATION because for certain very big images, 2 hours might not be enough
+# Previous value: 2 hours
+MAX_SYNC_DURATION = 60 * 60 * 12  # 12 Hours
 
 
 def get_eligible_mirrors():
@@ -97,6 +100,9 @@ def claim_mirror(mirror):
             expire_mirror(mirror)
             return None
 
+        if mirror.sync_status == RepoMirrorStatus.CANCEL:
+            return None
+
         query = RepoMirrorConfig.update(
             sync_status=RepoMirrorStatus.SYNCING,
             sync_expiration_date=expiration_date,
@@ -119,11 +125,16 @@ def release_mirror(mirror, sync_status):
     current date to ensure they are picked up for repeat attempt. After MAX_SYNC_RETRIES, the next
     sync will be moved ahead as if it were a success. This is to allow a daily sync, for example, to
     retry the next day. Without this, users would need to manually run syncs to clear failure state.
-    """
-    if sync_status == RepoMirrorStatus.FAIL:
-        retries = max(0, mirror.sync_retries_remaining - 1)
 
-    if sync_status == RepoMirrorStatus.SUCCESS or retries < 1:
+    If mirroring is cancelled from the UI, the job should not be attempted until manual sync is started.
+    """
+    retries = mirror.sync_retries_remaining
+    next_start_date = None
+
+    if sync_status == RepoMirrorStatus.FAIL:
+        retries = max(0, retries - 1)
+
+    if sync_status == RepoMirrorStatus.SUCCESS or (RepoMirrorStatus.FAIL and retries < 1):
         now = datetime.utcnow()
         delta = now - mirror.sync_start_date
         delta_seconds = (delta.days * 24 * 60 * 60) + delta.seconds
@@ -131,9 +142,15 @@ def release_mirror(mirror, sync_status):
             seconds=mirror.sync_interval - (delta_seconds % mirror.sync_interval)
         )
         retries = MAX_SYNC_RETRIES
+
     else:
         next_start_date = mirror.sync_start_date
 
+    if sync_status == RepoMirrorStatus.CANCEL:
+        next_start_date = None
+        retries = 0
+
+    print("Record number of retries: {}".format(retries))
     query = RepoMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
         sync_status=sync_status,
@@ -200,6 +217,7 @@ def enable_mirroring_for_repository(
     internal_robot,
     external_reference,
     sync_interval,
+    skopeo_timeout_interval,
     external_registry_username=None,
     external_registry_password=None,
     external_registry_config=None,
@@ -235,6 +253,7 @@ def enable_mirroring_for_repository(
                 external_registry_config=external_registry_config or {},
                 sync_interval=sync_interval,
                 sync_start_date=sync_start_date or datetime.utcnow(),
+                skopeo_timeout=skopeo_timeout_interval,
             )
         except IntegrityError:
             return RepoMirrorConfig.get(repository=repository)
@@ -296,10 +315,17 @@ def update_sync_status_to_sync_now(mirror):
     return None
 
 
+def check_repo_mirror_sync_status(mirror):
+    """
+    Returns the current sync status for a given mirror configuration.
+    """
+    return RepoMirrorConfig.get(RepoMirrorConfig.id == mirror.id).sync_status
+
+
 def update_sync_status_to_cancel(mirror):
     """
     If the mirror is SYNCING, it will be force-claimed (ignoring existing transaction id), and the
-    state will set to NEVER_RUN.
+    state will set to CANCELed.
 
     None will be returned in cases where this is not possible, such as if the mirror is not in the
     SYNCING state.
@@ -313,8 +339,9 @@ def update_sync_status_to_cancel(mirror):
 
     query = RepoMirrorConfig.update(
         sync_transaction_id=uuid_generator(),
-        sync_status=RepoMirrorStatus.NEVER_RUN,
+        sync_status=RepoMirrorStatus.CANCEL,
         sync_expiration_date=None,
+        sync_retries_remaining=0,
     ).where(RepoMirrorConfig.id == mirror.id)
 
     if query.execute():
@@ -343,6 +370,7 @@ def update_with_transaction(mirror, **kwargs):
         "sync_retries_remaining",
         "sync_status",
         "sync_transaction_id",
+        "skopeo_timeout",
     )
 
     # Key-Value map of changes to make
@@ -450,6 +478,14 @@ def change_sync_interval(repository, interval):
     """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, sync_interval=interval))
+
+
+def change_skopeo_timeout_interval(repository, skopeo_timeout):
+    """
+    Update the skopeo timeout for a specific mirroring configuration.
+    """
+    mirror = get_mirror(repository)
+    return bool(update_with_transaction(mirror, skopeo_timeout=skopeo_timeout))
 
 
 def change_sync_start_date(repository, dt):
