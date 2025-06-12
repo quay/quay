@@ -1,14 +1,14 @@
 """Add skopeo timeout to mirroring config
 
-Revision ID: a52c7684f140
-Revises: 3634f2df3c5b
-Create Date: 2025-03-18 18:15:05.053141
+Revision ID: 1623f40582ed
+Revises: e8ed3fb547da
+Create Date: 2025-06-12 13:26:26.010165
 
 """
 
 # revision identifiers, used by Alembic.
-revision = "a52c7684f140"
-down_revision = "3634f2df3c5b"
+revision = "1623f40582ed"
+down_revision = "e8ed3fb547da"
 
 import sqlalchemy as sa
 
