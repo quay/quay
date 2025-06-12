@@ -194,7 +194,13 @@ class RepoMirrorResource(RepositoryParamResource):
         "CreateMirrorConfig": {
             "description": "Create the repository mirroring configuration.",
             "type": "object",
-            "required": ["external_reference", "sync_interval", "sync_start_date", "root_rule"],
+            "required": [
+                "external_reference",
+                "sync_interval",
+                "sync_start_date",
+                "root_rule",
+                "skopeo_timeout_interval",
+            ],
             "properties": common_properties,
         },
         "UpdateMirrorConfig": {
