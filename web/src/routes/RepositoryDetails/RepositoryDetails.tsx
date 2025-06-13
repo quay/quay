@@ -42,6 +42,7 @@ import TagHistory from './TagHistory/TagHistory';
 import TagsList from './Tags/TagsList';
 import {DrawerContentType} from './Types';
 import UsageLogs from '../UsageLogs/UsageLogs';
+import {Mirroring} from './Mirroring/Mirroring';
 
 enum TabIndex {
   Tags = 'tags',
@@ -49,6 +50,7 @@ enum TabIndex {
   TagHistory = 'history',
   Builds = 'builds',
   Logs = 'logs',
+  Mirroring = 'mirroring',
   Settings = 'settings',
 }
 
@@ -261,6 +263,32 @@ export default function RepositoryDetails() {
                       repository={repository}
                       type="repository"
                     />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.Mirroring}
+                    title={<TabTitleText>Mirroring</TabTitleText>}
+                    isHidden={
+                      !config?.features?.REPO_MIRROR || !repoDetails?.can_admin
+                    }
+                  >
+                    {repoDetails?.state !== 'MIRROR' ? (
+                      <div>
+                        This repository&apos;s state is{' '}
+                        <strong>{repoDetails?.state}</strong>. Use the{' '}
+                        <a
+                          href={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
+                        >
+                          settings tab
+                        </a>{' '}
+                        and change it to <strong>Mirror</strong> to manage its
+                        mirroring configuration.
+                      </div>
+                    ) : (
+                      <Mirroring
+                        organization={organization}
+                        repository={repository}
+                      />
+                    )}
                   </Tab>
                   <Tab
                     eventKey={TabIndex.Builds}
