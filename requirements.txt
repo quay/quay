@@ -118,7 +118,7 @@ ua-parser==0.18.0
 urllib3==1.26.18
 webencodings==0.5.1
 WebOb==1.8.6
-websocket-client==0.57.0
+websocket-client==0.59.0
 Werkzeug==2.3.6
 xhtml2pdf==0.2.6
 
