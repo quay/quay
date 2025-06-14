@@ -84,7 +84,7 @@ python-gitlab==2.0.0
 python-keystoneclient==3.22.0
 python-ldap==3.4.3
 python-magic==0.4.27
-python-redis-lock==3.7.0
+python-redis-lock==4.0.0
 python-swiftclient==4.4.0
 pytz==2019.3
 PyYAML==6.0.2
