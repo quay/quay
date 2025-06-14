@@ -134,7 +134,7 @@ cffi==1.16.0
 cssselect2==0.7.0
 furl==2.1.0
 html5lib==1.1
-idna==3.4
+idna==3.10
 lxml==4.9.3
 oslo.config==7.0.0
 oslo.i18n==3.25.1
