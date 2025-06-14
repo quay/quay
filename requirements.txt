@@ -44,7 +44,7 @@ iso8601==0.1.12
 isodate==0.6.1
 itsdangerous==2.1.2
 Jinja2==3.1.6
-jmespath==0.9.4
+jmespath==0.10.0
 jsonpath-rw==1.4.0
 jsonpointer==2.4
 jsonschema==3.2.0
