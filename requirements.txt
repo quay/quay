@@ -136,7 +136,7 @@ furl==2.1.0
 html5lib==1.1
 idna==3.4
 lxml==4.9.3
-oslo.config==7.0.0
+oslo.config==9.8.0
 oslo.i18n==3.25.1
 oslo.serialization==2.29.2
 oslo.utils==6.2.1
