@@ -21,7 +21,7 @@ chardet==5.2.0
 charset-normalizer==2.0.12
 click==8.1.7
 cryptography==44.0.1
-DateTime==4.3
+DateTime==5.5
 debtcollector==1.22.0
 decorator==5.1.1
 Deprecated==1.2.14
