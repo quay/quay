@@ -147,7 +147,7 @@ python-bidi==0.4.2
 reportlab==3.6.13
 svglib==1.5.1
 tinycss2==1.2.1
-tqdm==4.66.4
+tqdm==4.67.1
 typing_extensions==4.9.0
 tzdata==2023.3
 wrapt==1.13.3
