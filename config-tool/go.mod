@@ -10,7 +10,7 @@ require (
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/aws/aws-sdk-go v1.50.20
-	github.com/creasty/defaults v1.7.0
+	github.com/creasty/defaults v1.8.0
 	github.com/dave/jennifer v1.7.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-ldap/ldap/v3 v3.4.6
