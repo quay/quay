@@ -1,6 +1,8 @@
 module github.com/quay/quay/config-tool
 
-go 1.19
+go 1.23.0
+
+toolchain go1.23.9
 
 require (
 	cuelang.org/go v0.2.1
@@ -75,7 +77,7 @@ require (
 	go.opentelemetry.io/otel v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
