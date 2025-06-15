@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
-	"os"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/ncw/swift"
+	"github.com/ncw/swift/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -190,9 +190,9 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 				break
 			}
 			assumeRoleInput := &sts.AssumeRoleWithWebIdentityInput{
-				RoleArn:         aws.String(roleToAssumeArn),
-				RoleSessionName: aws.String("quay"),
-				DurationSeconds: aws.Int64(durationSeconds),
+				RoleArn:          aws.String(roleToAssumeArn),
+				RoleSessionName:  aws.String("quay"),
+				DurationSeconds:  aws.Int64(durationSeconds),
 				WebIdentityToken: aws.String(string(webIdentityToken)),
 			}
 			assumeRoleOutput, err := svc.AssumeRoleWithWebIdentity(assumeRoleInput)
