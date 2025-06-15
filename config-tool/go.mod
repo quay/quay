@@ -25,7 +25,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5-0.20200416053754-163badb3bac6
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.0.0
-	github.com/swaggo/http-swagger v1.3.3
+	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.8.1
 	golang.org/x/crypto v0.14.0
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
@@ -71,7 +71,7 @@ require (
 	github.com/pquerna/cachecontrol v0.0.0-20200921180117-858c6e7e6b7e // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
+	github.com/swaggo/files/v2 v2.0.0 // indirect
 	go.opentelemetry.io/otel v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/net v0.17.0 // indirect
