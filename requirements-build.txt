@@ -314,12 +314,10 @@ pycparser==2.21 \
 semantic-version==2.10.0 \
     --hash=sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c \
     --hash=sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177
-    # via
-    #   -r requirements-build.in
-    #   setuptools-rust
-setuptools-rust==1.7.0 \
-    --hash=sha256:071099885949132a2180d16abf907b60837e74b4085047ba7e9c0f5b365310c1 \
-    --hash=sha256:c7100999948235a38ae7e555fe199aa66c253dc384b125f5d85473bf81eae3a3
+    # via setuptools-rust
+setuptools-rust==1.11.0 \
+    --hash=sha256:61739c016f7ba9e114d68e0ddf92d204748c17d3e55492693aa743d70b9a335e \
+    --hash=sha256:f765d66f3def6fdc85e1e6d889c6a812aea1430c8dadcf1c7b6779b45f874fb2
     # via -r requirements-build.in
 setuptools-scm==7.1.0 \
     --hash=sha256:6c508345a771aad7d56ebff0e70628bf2b0ec7573762be9960214730de278f27 \
@@ -362,9 +360,9 @@ wheel==0.41.2 \
     # via -r requirements-build.in
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==80.8.0 \
-    --hash=sha256:49f7af965996f26d43c8ae34539c8d99c5042fbff34302ea151eaa9c207cd257 \
-    --hash=sha256:95a60484590d24103af13b686121328cc2736bee85de8936383111e421b9edc0
+setuptools==80.9.0 \
+    --hash=sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922 \
+    --hash=sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c
     # via
     #   -r requirements-build.in
     #   setuptools-rust
