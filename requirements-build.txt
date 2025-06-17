@@ -223,21 +223,6 @@ hatchling==1.18.0 \
     #   -r requirements-build.in
     #   hatch-fancy-pypi-readme
     #   hatch-vcs
-maturin==1.8.6 \
-    --hash=sha256:0e0dc2e0bfaa2e1bd238e0236cf8a2b7e2250ccaa29c1aa8d0e61fa664b0289d \
-    --hash=sha256:1bf4c743dd2b24448e82b8c96251597818956ddf848e1d16b59356512c7e58d8 \
-    --hash=sha256:24f66624db69b895b134a8f1592efdf04cd223c9b3b65243ad32080477936d14 \
-    --hash=sha256:4dd2e2f005ca63ac7ef0dddf2d65324ee480277a11544dcc4e7e436af68034dd \
-    --hash=sha256:4ea89cf76048bc760e12b36b608fc3f5ef4f7359c0895e9afe737be34041d948 \
-    --hash=sha256:5c0ff7ad43883920032b63c94c76dcdd5758710d7b72b68db69e7826c40534ac \
-    --hash=sha256:62a65f70ebaadd6eb6083f5548413744f2ef12400445778e08d41d4facf15bbe \
-    --hash=sha256:6bc9281b90cd37e2a7985f2e5d6e3d35a1d64cf6e4d04ce5ed25603d162995b9 \
-    --hash=sha256:b0637604774e2c50ab48a0e9023fe2f071837ecbc817c04ec28e1cfcc25224c2 \
-    --hash=sha256:b1e786ec9b5f7315c7e3fcc62b0715f9d99ffe477b06d0d62655a71e6a51a67b \
-    --hash=sha256:bec5948c6475954c8089b17fae349966258756bb2ca05e54099e476a08070795 \
-    --hash=sha256:ca30fdb158a24cf312f3e53072a6e987182c103fa613efea2d28b5f52707d04a \
-    --hash=sha256:dade5edfaf508439ff6bbc7be4f207e04c0999c47d9ef7e1bae16258e76b1518
-    # via -r requirements-build.in
 mypy==1.15.0 \
     --hash=sha256:1124a18bc11a6a62887e3e137f37f53fbae476dc36c185d549d4f837a2a6a14e \
     --hash=sha256:171a9ca9a40cd1843abeca0e405bc1940cd9b305eaeea2dda769ba096932bb22 \
@@ -336,7 +321,6 @@ tomli==2.0.1 \
     #   -r requirements-build.in
     #   hatch-fancy-pypi-readme
     #   hatchling
-    #   maturin
     #   mypy
     #   setuptools-rust
     #   setuptools-scm
