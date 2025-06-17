@@ -302,6 +302,11 @@ CONFIG_SCHEMA = {
             "description": "Whether pull through proxy cache feature is enabled. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_PROXY_CACHE_BLOB_DOWNLOAD": {
+            "type": "boolean",
+            "description": "Whether to enable a background worker to download placeholder blobs. Defaults to True",
+            "x-example": True,
+        },
         "MAXIMUM_LAYER_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of an image layer. Defaults to 20G",

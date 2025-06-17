@@ -113,7 +113,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    if not features.PROXY_CACHE:
+    if not features.PROXY_CACHE or not features.PROXY_CACHE_BLOB_DOWNLOAD:
         while True:
             time.sleep(100000)
 
