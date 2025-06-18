@@ -80,6 +80,7 @@ class ProxyModel(OCIModel):
         super().__init__()
         self._config = get_proxy_cache_config_for_org(namespace_name)
         self._user = user
+        self._namespace_name = namespace_name
 
         # when Quay is set up to proxy a whole upstream registry, the
         # upstream_registry_namespace for the proxy cache config will be empty.
@@ -710,13 +711,13 @@ class ProxyModel(OCIModel):
         for layer in manifest.filesystem_layers:
             self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
             queue_id = proxy_cache_blob_queue.put(
-                [self._user.username, str(repo_id), str(layer.digest)],
+                [self._namespace_name, str(repo_id), str(layer.digest)],
                 json.dumps(
                     {
                         "digest": str(layer.digest),
                         "repo_id": repo_id,
                         "username": self._user.username,
-                        "namespace": self._user.username,
+                        "namespace": self._namespace_name,
                     }
                 ),
                 available_after=5,
