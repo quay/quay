@@ -200,6 +200,8 @@ HELM_OCI_SUPPORT: FeatureNameValue
 
 PROXY_CACHE: FeatureNameValue
 
+PROXY_CACHE_BLOB_DOWNLOAD: FeatureNameValue
+
 RESTRICTED_USERS: FeatureNameValue
 
 # Feature Flag: If set to true, enables reconciler for RH marketplace
