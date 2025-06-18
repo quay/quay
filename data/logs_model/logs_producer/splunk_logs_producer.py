@@ -62,9 +62,13 @@ class SplunkLogsProducer(LogProducerInterface):
             self.index = service.indexes.create(index_prefix)
             logger.info("Created new splunk index %s", self.index)
         except ConnectionRefusedError as e:
-            raise Exception(
-                "Connection to Splunk refused, check if Splunk instance is available: %s" % e
-            )
+            strict_logging_disabled = config.app_config.get("ALLOW_WITHOUT_STRICT_LOGGING")
+            if strict_logging_disabled:
+                logger.exception("Unable to configure Splunk instance: %s", e)
+            else:
+                raise Exception(
+                    "Connection to Splunk refused, check if Splunk instance is available: %s" % e
+                )
         except Exception as e:
             strict_logging_disabled = config.app_config.get("ALLOW_WITHOUT_STRICT_LOGGING")
             if strict_logging_disabled:
