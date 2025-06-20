@@ -66,7 +66,7 @@ export default function RepositoryDetails() {
   const [activeTabKey, setActiveTabKey] = useState(TabIndex.Tags);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [drawerContent, setDrawerContent] = useState<DrawerContentType>(
     DrawerContentType.None,
   );
@@ -237,6 +237,8 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <TagsList
                       organization={organization}
@@ -247,6 +249,8 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.TagHistory}
                     title={<TabTitleText>Tag history</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <TagHistory
                       org={organization}
@@ -257,6 +261,8 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Logs}
                     title={<TabTitleText>Logs</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <UsageLogs
                       organization={organization}
@@ -270,6 +276,8 @@ export default function RepositoryDetails() {
                     isHidden={
                       !config?.features?.REPO_MIRROR || !repoDetails?.can_admin
                     }
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     {repoDetails?.state !== 'MIRROR' ? (
                       <div>
@@ -278,15 +286,15 @@ export default function RepositoryDetails() {
                         <a
                           href={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
                         >
-                          settings tab
+                          Settings tab
                         </a>{' '}
                         and change it to <strong>Mirror</strong> to manage its
                         mirroring configuration.
                       </div>
                     ) : (
                       <Mirroring
-                        organization={organization}
-                        repository={repository}
+                        namespace={organization}
+                        repoName={repository}
                       />
                     )}
                   </Tab>
@@ -298,6 +306,8 @@ export default function RepositoryDetails() {
                       repoDetails?.state !== 'NORMAL' ||
                       (!repoDetails?.can_write && !repoDetails?.can_admin)
                     }
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <Builds
                       org={organization}
@@ -310,6 +320,8 @@ export default function RepositoryDetails() {
                     eventKey={TabIndex.Settings}
                     title={<TabTitleText>Settings</TabTitleText>}
                     isHidden={!repoDetails?.can_admin}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <Settings
                       org={organization}
