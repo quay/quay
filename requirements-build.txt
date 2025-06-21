@@ -73,7 +73,7 @@ cffi==1.17.1 \
     --hash=sha256:f7f5baafcc48261359e14bcd6d9bff6d4b28d9103847c9e136694cb0501aef87 \
     --hash=sha256:fc48c783f9c87e60831201f2cce7f3b2e4846bf4d8728eabe54d60700b318a0b
     # via -r requirements-build.in
-coherent-licensed==0.4.1 \
+coherent-licensed==0.5.2 \
     --hash=sha256:8ce06acba9cc78726ab9a46977212b10c982a306083e688d19717383144c04b7 \
     --hash=sha256:bb28482f2fad5e71ed3e333e0b7389e2c3d960869de825dfefc519aeebc69cc7
     # via -r requirements-build.in
@@ -367,3 +367,6 @@ setuptools==80.9.0 \
     #   -r requirements-build.in
     #   setuptools-rust
     #   setuptools-scm
+coherent.licensed==0.5.2 \
+    --hash=sha256:d8071403ce742d3ac3592ddc4fb7057a46caffb415b928b4d52802e5f208416d \
+    --hash=sha256:edccc5193ca2786f8fb3f0c7374637a143985f781f7eaa21aca3af2bd634b82f
