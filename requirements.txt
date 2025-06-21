@@ -61,7 +61,7 @@ msgpack==0.6.2
 msrest==0.6.21
 netaddr==0.7.19
 netifaces==0.10.9
-oauthlib==3.2.2
+oauthlib==3.3.1
 orderedmultidict==1.0.1
 os-service-types==1.7.0
 oslo.config==7.0.0
