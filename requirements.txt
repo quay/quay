@@ -125,7 +125,7 @@ tldextract==2.2.2
 toposort==1.5
 tzlocal==2.0.0
 ua-parser==0.18.0
-urllib3==1.26.9
+urllib3==2.5.0
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
