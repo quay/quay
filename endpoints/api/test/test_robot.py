@@ -4,7 +4,9 @@ from unittest.mock import Mock
 import pytest
 import requests
 
+from app import model_cache
 from data import model
+from data.cache import cache_key
 from endpoints.api import api
 from endpoints.api.robot import (
     OrgRobot,
@@ -18,6 +20,12 @@ from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 from test.test_ldap import mock_ldap
 from util.names import parse_robot_username
+
+
+def clear_robot_cache(username):
+    if model_cache is not None:
+        robot_cache_key = cache_key.for_robot_lookup(username, model_cache.cache_config)
+        model_cache.invalidate(robot_cache_key)
 
 
 @pytest.mark.parametrize(
@@ -63,6 +71,7 @@ def test_create_robot_with_metadata(endpoint, body, app):
         body = body or {}
         assert resp.json["description"] == (body.get("description") or "")
         assert resp.json["unstructured_metadata"] == (body.get("unstructured_metadata") or {})
+        clear_robot_cache(resp.json["name"])
 
 
 @pytest.mark.parametrize(
@@ -119,6 +128,7 @@ def test_retrieve_robots(endpoint, params, bot_endpoint, include_token, limit, a
                 bot_params["robot_shortname"] = parse_robot_username(robot["name"])[1]
                 result = conduct_api_call(cl, bot_endpoint, "GET", bot_params, None)
                 assert robot.get("token") == result.json["token"]
+                clear_robot_cache(robot["name"])
 
 
 @pytest.mark.parametrize(
@@ -146,6 +156,7 @@ def test_retrieve_robots_token_permission(username, is_admin, with_permissions, 
         for robot in result.json["robots"]:
             assert (robot.get("token") is not None) == is_admin
             assert (robot.get("repositories") is not None) == (is_admin and with_permissions)
+            clear_robot_cache(robot.get("name"))
 
 
 def test_duplicate_robot_creation(app):
@@ -158,6 +169,7 @@ def test_duplicate_robot_creation(app):
             expected_code=400,
         )
         assert resp.json["error_message"] == "Existing robot with name: devtable+dtrobot"
+        clear_robot_cache("devtable+dtrobot")
 
         resp = conduct_api_call(
             cl,
@@ -167,6 +179,7 @@ def test_duplicate_robot_creation(app):
             expected_code=400,
         )
         assert resp.json["error_message"] == "Existing robot with name: buynlarge+coolrobot"
+        clear_robot_cache("buynlarge+coolrobot")
 
 
 def test_robot_federation_create(app):
