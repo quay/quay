@@ -20,8 +20,15 @@ def get_request_ip():
     remote_addr = request.remote_addr or None
     if os.getenv("TEST", "false").lower() == "true":
         remote_addr = request.headers.get("X-Override-Remote-Addr-For-Testing", remote_addr)
+        
+    """
+    Returns the Real IP address of the client making the current Flask request or None if none.
+    """
+    x_forwarded_for = request.headers.get("X-Forwarded-For", None)
+    real_ip = x_forwarded_for.split(",")[-2] or request.remote_addr
+    
+    return real_ip
 
-    return remote_addr
 
 
 def crossorigin(anonymous=True):
