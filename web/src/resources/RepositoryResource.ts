@@ -41,12 +41,30 @@ export enum RepositoryState {
   MIRROR = 'MIRROR',
 }
 
+export interface FetchAllReposOptions {
+  onPartialResult?: (repos: IRepository[]) => void;
+  flatten?: boolean;
+  signal?: AbortSignal;
+  next_page_token?: string | null;
+}
+
+export interface FetchRepositoriesOptions {
+  signal?: AbortSignal;
+  next_page_token?: string | null;
+  onPartialResult?: (repos: IRepository[]) => void;
+}
+
 export async function fetchAllRepos(
   namespaces: string[],
-  flatten = false,
-  signal: AbortSignal,
-  next_page_token = null,
+  options: FetchAllReposOptions = {},
 ): Promise<IRepository[] | IRepository[][]> {
+  const {
+    onPartialResult,
+    flatten = false,
+    signal,
+    next_page_token = null,
+  } = options;
+
   const namespacedRepos = [];
 
   if (isNullOrUndefined(namespaces) || namespaces.length === 0) {
@@ -58,15 +76,22 @@ export async function fetchAllRepos(
   const BATCH_SIZE = 100;
   for (let i = 0; i < namespaces.length; i += BATCH_SIZE) {
     const batch = namespaces.slice(i, i + BATCH_SIZE);
-    const batchRepos = await Promise.all(
-      batch.map((ns) => {
-        return fetchRepositoriesForNamespace(ns, signal, next_page_token);
+
+    // Process each namespace in parallel but handle results as they come in
+    const batchPromises = batch.map((ns) =>
+      fetchRepositoriesForNamespace(ns, {
+        signal,
+        next_page_token,
+        onPartialResult: flatten ? onPartialResult : undefined,
       }),
     );
+
+    // Wait for all requests in this batch to complete
+    const batchRepos = await Promise.all(batchPromises);
     namespacedRepos.push(...batchRepos);
   }
 
-  // Flatten responses to a single list of all repositories
+  // Return final results in requested format
   if (flatten) {
     return namespacedRepos.reduce(
       (allRepos, namespacedRepos) => allRepos.concat(namespacedRepos),
@@ -79,9 +104,10 @@ export async function fetchAllRepos(
 
 export async function fetchRepositoriesForNamespace(
   ns: string,
-  signal: AbortSignal,
-  next_page_token: string = null,
+  options: FetchRepositoriesOptions = {},
 ): Promise<IRepository[]> {
+  const {signal, next_page_token = null, onPartialResult} = options;
+
   const url = next_page_token
     ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&namespace=${ns}&public=true`
     : `/api/v1/repository?last_modified=true&namespace=${ns}&public=true`;
@@ -91,8 +117,17 @@ export async function fetchRepositoriesForNamespace(
   const next_page = response.data?.next_page;
   const repos = response.data?.repositories as IRepository[];
 
+  // Call the callback with the current page of results
+  if (onPartialResult) {
+    onPartialResult(repos);
+  }
+
   if (next_page) {
-    const resp = await fetchRepositoriesForNamespace(ns, signal, next_page);
+    const resp = await fetchRepositoriesForNamespace(ns, {
+      signal,
+      next_page_token: next_page,
+      onPartialResult,
+    });
     return repos.concat(resp);
   }
   return repos as IRepository[];

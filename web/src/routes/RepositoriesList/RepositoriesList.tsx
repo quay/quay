@@ -248,16 +248,6 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     />
   );
 
-  // Return component Loading state
-  if (loading) {
-    return (
-      <>
-        <RepoListHeader shouldRender={currentOrg === null} />
-        <LoadingPage />
-      </>
-    );
-  }
-
   // Return component Error state
   if (isErrorString(error as any)) {
     return (
