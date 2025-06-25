@@ -275,6 +275,19 @@ jobs:
         path: .logs/
       if: always()
 
+  frontend-plugin:
+    name:  Build Frontend Plugin
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: cd web && npm install
+
+    - name: Build plugin
+      run: cd web && npm run build-plugin
+
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-22.04
