@@ -1,5 +1,5 @@
 import {useQuery} from '@tanstack/react-query';
-import {useState} from 'react';
+import {useState, useCallback} from 'react';
 import {useRecoilState, useRecoilValue} from 'recoil';
 import {
   searchReposFilterState,
@@ -9,6 +9,7 @@ import {OrgSearchState} from 'src/components/toolbar/SearchTypes';
 import {
   fetchAllRepos,
   fetchRepositoriesForNamespace,
+  IRepository,
 } from 'src/resources/RepositoryResource';
 import {useCurrentUser} from './UseCurrentUser';
 
@@ -21,10 +22,15 @@ export function useRepositories(organization?: string) {
   const [search, setSearch] = useRecoilState<OrgSearchState>(searchReposState);
   const searchFilter = useRecoilValue(searchReposFilterState);
   const [currentOrganization, setCurrentOrganization] = useState(organization);
+  const [partialResults, setPartialResults] = useState<IRepository[]>([]);
 
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
     : user?.organizations.map((org) => org.name).concat(user.username);
+
+  const handlePartialResults = useCallback((newRepos: IRepository[]) => {
+    setPartialResults((prev) => [...prev, ...newRepos]);
+  }, []);
 
   const {
     data: repos,
@@ -32,19 +38,32 @@ export function useRepositories(organization?: string) {
     isLoading: loading,
     isPlaceholderData,
   } = useQuery({
-    queryKey: ['organization', organization || 'all', 'repositories', page],
+    queryKey: ['organization', organization || 'all', 'repositories'],
     keepPreviousData: true,
     placeholderData: [],
-    queryFn: ({signal}) => {
+    queryFn: async ({signal}) => {
+      // Reset partial results at the start of a new query
+      setPartialResults([]);
+
       return currentOrganization
-        ? fetchRepositoriesForNamespace(currentOrganization, signal)
-        : fetchAllRepos(listOfOrgNames, true, signal);
+        ? fetchRepositoriesForNamespace(currentOrganization, {
+            signal,
+            onPartialResult: handlePartialResults,
+          })
+        : fetchAllRepos(listOfOrgNames, {
+            flatten: true,
+            signal,
+            onPartialResult: handlePartialResults,
+          });
     },
   });
 
+  // Use partial results if available, otherwise use the final results
+  const displayedRepos = partialResults.length > 0 ? partialResults : repos;
+
   return {
     // Data
-    repos: repos,
+    repos: displayedRepos,
 
     // Fetching State
     loading: loading || isPlaceholderData || !listOfOrgNames,
@@ -62,6 +81,6 @@ export function useRepositories(organization?: string) {
     setCurrentOrganization,
 
     // Useful Metadata
-    totalResults: repos.length,
+    totalResults: displayedRepos?.length || 0,
   };
 }
