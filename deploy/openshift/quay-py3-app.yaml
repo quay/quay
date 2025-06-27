@@ -257,20 +257,18 @@ objects:
             timeoutSeconds: ${{QUAY_APP_STARTUP_PROBE_TIMEOUT_SECONDS}}
             periodSeconds: ${{QUAY_APP_STARTUP_PROBE_PERIOD_SECONDS}}
           livenessProbe:
-            exec:
-              command:
-              - curl
-              - -k
-              - https://localhost:8443/health/instance
+            httpGet:
+              path: /health/instance
+              port: 8443
+              scheme: HTTPS
             initialDelaySeconds: ${{QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS}}
           readinessProbe:
-            exec:
-              command:
-              - curl
-              - -k
-              - https://localhost:8443/health/endtoend
+            httpGet:
+              path: /health/endtoend
+              port: 8443
+              scheme: HTTPS
             initialDelaySeconds: ${{QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
             periodSeconds: ${{QUAY_APP_READINESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
