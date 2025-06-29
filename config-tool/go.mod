@@ -14,7 +14,7 @@ require (
 	github.com/dave/jennifer v1.7.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-ldap/ldap/v3 v3.4.6
-	github.com/go-redis/redis/v8 v8.11.5
+	github.com/go-redis/redis/v9 v9.11.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v4 v4.18.3
