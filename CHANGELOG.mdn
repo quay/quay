@@ -3,8 +3,27 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.13"></a>
+## [v3.9.13] - 2025-06-11
+### Build
+- [f37f2ec4](https://github.com/quay/quay/commit/f37f2ec415ee43297ec9168c19b58c86f5e55597): Konflux 3.9 (PROJQUAY-8964) ([#3991](https://github.com/quay/quay/issues/3991))
+### Cherrypick
+- [ba021117](https://github.com/quay/quay/commit/ba0211174394ed37f43abb65f49f71c3844af002): 3.9 cherry pick (PROJQUAY-0000) ([#3988](https://github.com/quay/quay/issues/3988))
+### Ci
+- [2b7da175](https://github.com/quay/quay/commit/2b7da175e16fef40e594dad4dd2a992582abdf46): fixing app type import (PROJQUAY-8991) ([#4039](https://github.com/quay/quay/issues/4039))
+### Deps
+- [7c900360](https://github.com/quay/quay/commit/7c900360097a755d37fa187df5b78661e974bced): upgrading gevent (PROJQUAY-8938) ([#4033](https://github.com/quay/quay/issues/4033))
+### [Redhat-3.9] Build
+- [8a6702f5](https://github.com/quay/quay/commit/8a6702f596743c68d07a5fe5f51ecd56192dd0de): rpm lock for konflux builds (PROJQUAY-8930) ([#3996](https://github.com/quay/quay/issues/3996))
+- [9854973b](https://github.com/quay/quay/commit/9854973bd35995734a518808dfa188ac9565da5d): add artifacts lockfile (PROJQUAY-8931) ([#3933](https://github.com/quay/quay/issues/3933))
+- [a2c245d2](https://github.com/quay/quay/commit/a2c245d2e4d1dbb4b30b0b4eaabad8fdbece45c0): Add rust build dependencies for cryptography (PROJQUAY-8804) ([#3984](https://github.com/quay/quay/issues/3984))
+### [Redhat-3.9] Dockerfile
+- [e8ccdcbc](https://github.com/quay/quay/commit/e8ccdcbcdb15dad43912694f181d0abf46d620a8): set GOPATH env var before running go build in dockerfile (PROJQUAY-8789) ([#3839](https://github.com/quay/quay/issues/3839))
+### [Redhat-3.9] Proxycache(Permissions)
+- [f86e344a](https://github.com/quay/quay/commit/f86e344ad2cdf35846b7932f930c6efa9e0dda34): CVE-2025-4374 (PROJQUAY-8892) ([#3964](https://github.com/quay/quay/issues/3964))
+
 <a name="v3.9.12"></a>
-## [v3.9.12] - 2025-05-14
+## [v3.9.12] - 2025-05-22
 ### Dockerfile
 - [91f20b92](https://github.com/quay/quay/commit/91f20b920d0f52583495f894358eb8b1098abf83): dockerfile changes for konflux (PROJQUAY-8804) ([#3824](https://github.com/quay/quay/issues/3824))
 
@@ -1575,7 +1594,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.12...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.13...HEAD
+[v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
 [v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
 [v3.9.10]: https://github.com/quay/quay/compare/v3.9.9...v3.9.10
