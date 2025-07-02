@@ -451,50 +451,42 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
             # Mock the lookup to return None (simulating manifest not found)
             mock_lookup.return_value = None
 
-            # Mock oci.manifest.create_manifest to return a mock manifest
+            # Mock oci.tag.create_temporary_tag_if_necessary
             with patch(
-                "data.registry_model.registry_proxy_model.oci.manifest.create_manifest"
-            ) as mock_create:
-                mock_db_manifest = MagicMock()
-                mock_db_manifest.id = 123
-                mock_create.return_value = mock_db_manifest
+                "data.registry_model.registry_proxy_model.oci.tag.create_temporary_tag_if_necessary"
+            ) as mock_create_tag:
+                mock_tag = MagicMock()
+                mock_create_tag.return_value = mock_tag
 
-                # Mock oci.tag.create_temporary_tag_if_necessary
+                # Mock oci.manifest.connect_manifests
                 with patch(
-                    "data.registry_model.registry_proxy_model.oci.tag.create_temporary_tag_if_necessary"
-                ) as mock_create_tag:
-                    mock_tag = MagicMock()
-                    mock_create_tag.return_value = mock_tag
+                    "data.registry_model.registry_proxy_model.oci.manifest.connect_manifests"
+                ):
+                    manifest, tag = proxy_model._create_manifest_with_temp_tag(
+                        repo_ref, input_manifest
+                    )
 
-                    # Mock oci.manifest.connect_manifests
-                    with patch(
-                        "data.registry_model.registry_proxy_model.oci.manifest.connect_manifests"
-                    ):
-                        manifest, tag = proxy_model._create_manifest_with_temp_tag(
-                            repo_ref, input_manifest
+                    # Verify that lookup_manifest was called with allow_hidden=True, allow_dead=True
+                    # for each child manifest in the manifest list
+                    expected_calls = []
+                    for child in input_manifest.child_manifests(content_retriever=None):
+                        expected_calls.append(
+                            (
+                                (repo_ref.id, child.digest),
+                                {"allow_hidden": True, "allow_dead": True},
+                            )
                         )
 
-                        # Verify that lookup_manifest was called with allow_hidden=True, allow_dead=True
-                        # for each child manifest in the manifest list
-                        expected_calls = []
-                        for child in input_manifest.child_manifests(content_retriever=None):
-                            expected_calls.append(
-                                (
-                                    (repo_ref.id, child.digest),
-                                    {"allow_hidden": True, "allow_dead": True},
-                                )
-                            )
+                    # Check that lookup_manifest was called the expected number of times
+                    assert mock_lookup.call_count == len(expected_calls)
 
-                        # Check that lookup_manifest was called the expected number of times
-                        assert mock_lookup.call_count == len(expected_calls)
-
-                        # Verify each call had the correct parameters
-                        for i, call in enumerate(mock_lookup.call_args_list):
-                            args, kwargs = call
-                            assert args[0] == repo_ref.id  # repository_id
-                            assert args[1] == expected_calls[i][0][1]  # child.digest
-                            assert kwargs["allow_hidden"] is True
-                            assert kwargs["allow_dead"] is True
+                    # Verify each call had the correct parameters
+                    for i, call in enumerate(mock_lookup.call_args_list):
+                        args, kwargs = call
+                        assert args[0] == repo_ref.id  # repository_id
+                        assert args[1] == expected_calls[i][0][1]  # child.digest
+                        assert kwargs["allow_hidden"] is True
+                        assert kwargs["allow_dead"] is True
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_connect_existing_manifest_to_manifest_list(self, create_repo):
