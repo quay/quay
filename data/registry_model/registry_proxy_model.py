@@ -579,7 +579,9 @@ class ProxyModel(OCIModel):
 
                 manifests_to_connect = []
                 for child in manifest.child_manifests(content_retriever=None):
-                    m = oci.manifest.lookup_manifest(repository_ref.id, child.digest)
+                    m = oci.manifest.lookup_manifest(
+                        repository_ref.id, child.digest, allow_hidden=True, allow_dead=True
+                    )
                     if m is None:
                         m = oci.manifest.create_manifest(repository_ref.id, child)
                     manifests_to_connect.append(m)
