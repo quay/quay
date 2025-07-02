@@ -431,6 +431,81 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         ), "sub manifest tags must have temp tag name, not parent manifest name"
 
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_lookup_manifest_with_allow_hidden_and_allow_dead_in_create_manifest_with_temp_tag(
+        self, create_repo
+    ):
+        """
+        Test that _create_manifest_with_temp_tag calls oci.manifest.lookup_manifest
+        with allow_hidden=True, allow_dead=True when looking up child manifests.
+
+        This test specifically covers the change on line 586 where
+        oci.manifest.lookup_manifest is called with these specific parameters.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
+            sparse_manifest_support=True,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+        # Mock oci.manifest.lookup_manifest to verify it's called with correct parameters
+        with patch(
+            "data.registry_model.registry_proxy_model.oci.manifest.lookup_manifest"
+        ) as mock_lookup:
+            # Mock the lookup to return None (simulating manifest not found)
+            mock_lookup.return_value = None
+
+            # Mock oci.manifest.create_manifest to return a mock manifest
+            with patch(
+                "data.registry_model.registry_proxy_model.oci.manifest.create_manifest"
+            ) as mock_create:
+                mock_db_manifest = MagicMock()
+                mock_db_manifest.id = 123
+                mock_create.return_value = mock_db_manifest
+
+                # Mock oci.tag.create_temporary_tag_if_necessary
+                with patch(
+                    "data.registry_model.registry_proxy_model.oci.tag.create_temporary_tag_if_necessary"
+                ) as mock_create_tag:
+                    mock_tag = MagicMock()
+                    mock_create_tag.return_value = mock_tag
+
+                    # Mock oci.manifest.connect_manifests
+                    with patch(
+                        "data.registry_model.registry_proxy_model.oci.manifest.connect_manifests"
+                    ):
+                        manifest, tag = proxy_model._create_manifest_with_temp_tag(
+                            repo_ref, input_manifest
+                        )
+
+                        # Verify that lookup_manifest was called with allow_hidden=True, allow_dead=True
+                        # for each child manifest in the manifest list
+                        expected_calls = []
+                        for child in input_manifest.child_manifests(content_retriever=None):
+                            expected_calls.append(
+                                (
+                                    (repo_ref.id, child.digest),
+                                    {"allow_hidden": True, "allow_dead": True},
+                                )
+                            )
+
+                        # Check that lookup_manifest was called the expected number of times
+                        assert mock_lookup.call_count == len(expected_calls)
+
+                        # Verify each call had the correct parameters
+                        for i, call in enumerate(mock_lookup.call_args_list):
+                            args, kwargs = call
+                            assert args[0] == repo_ref.id  # repository_id
+                            assert args[1] == expected_calls[i][0][1]  # child.digest
+                            assert kwargs["allow_hidden"] is True
+                            assert kwargs["allow_dead"] is True
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_connect_existing_manifest_to_manifest_list(self, create_repo):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
