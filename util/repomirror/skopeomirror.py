@@ -1,11 +1,13 @@
+import base64
 import json
 import logging
 import os
 import re
 import subprocess
+import urllib.parse
 from collections import namedtuple
-from pipes import quote
-from tempfile import SpooledTemporaryFile
+from shlex import quote
+from tempfile import NamedTemporaryFile, SpooledTemporaryFile
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -15,6 +17,8 @@ _SANITIZE_PATTERNS = [
     (re.compile(r"(--(src-creds|dest-creds|creds)[=\s]+)\S+", re.IGNORECASE), r"\1[REDACTED]"),
     (re.compile(r'("auth"\s*:\s*")[^"]+(")', re.IGNORECASE), r"\1[REDACTED]\2"),
 ]
+
+SKOPEO_TIMEOUT_SECONDS = 300
 
 
 def sanitize_skopeo_output(output: Optional[str]) -> Optional[str]:
@@ -30,6 +34,33 @@ def sanitize_skopeo_output(output: Optional[str]) -> Optional[str]:
 # stdout: stdout from skopeo subprocess
 # stderr: stderr from skopeo subprocess
 SkopeoResults = namedtuple("SkopeoResults", "success tags stdout stderr")
+AuthContent = namedtuple("AuthContent", ["location", "username", "password"])
+
+
+def wrap_anonymous(user: str = "", passwd: str = "") -> str:
+    if user in ("", None):
+        return ""
+    if passwd in ("", None):
+        return ""
+    return f"{user}:{passwd}"
+
+
+def create_authfile_content(content: list) -> dict:
+    return dict(
+        auths=dict(
+            map(
+                lambda x: (
+                    x.location,
+                    {
+                        "auth": base64.b64encode(
+                            wrap_anonymous(x.username, x.password).encode("utf8")
+                        ).decode("utf8")
+                    },
+                ),
+                filter(lambda y: y.username not in ("", None), content),
+            )
+        )
+    )
 
 
 class SkopeoMirror(object):
@@ -51,7 +82,6 @@ class SkopeoMirror(object):
         verbose_logs=False,
         unsigned_images=False,
     ):
-
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
@@ -65,16 +95,22 @@ class SkopeoMirror(object):
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
-        args = args + self.external_registry_credentials(
-            "--dest-creds", dest_username, dest_password
-        )
-        args = args + self.external_registry_credentials("--src-creds", src_username, src_password)
-        args = args + [quote(src_image), quote(dest_image)]
         logger.debug(
             "Creating mirroring job: upstream image %s, local repository %s", src_image, dest_image
         )
+        content = create_authfile_content(
+            [
+                AuthContent(urllib.parse.urlparse(src_image).netloc, src_username, src_password),
+                AuthContent(urllib.parse.urlparse(dest_image).netloc, dest_username, dest_password),
+            ]
+        )
 
-        return self.run_skopeo(args, proxy, timeout)
+        with NamedTemporaryFile() as authfile:
+            authfile.write(json.dumps(content).encode("utf8"))
+            authfile.flush()
+            args.extend(["--authfile", authfile.name])
+            args = args + [quote(src_image), quote(dest_image)]
+            return self.run_skopeo(args, proxy, timeout)
 
     def tags(
         self,
@@ -97,13 +133,21 @@ class SkopeoMirror(object):
         if verbose_logs:
             args = args + ["--debug"]
         args = args + ["list-tags", "--tls-verify=%s" % verify_tls]
-        args = args + self.external_registry_credentials("--creds", username, password)
+        content = create_authfile_content(
+            [
+                AuthContent(urllib.parse.urlparse(repository).netloc, username, password),
+            ]
+        )
         args = args + [repository]
 
         all_tags = []
-        result = self.run_skopeo(args, proxy, timeout)
-        if result.success:
-            all_tags = json.loads(result.stdout)["Tags"]
+        with NamedTemporaryFile() as authfile:
+            authfile.write(json.dumps(content).encode("utf8"))
+            authfile.flush()
+            args.extend(["--authfile", authfile.name])
+            result = self.run_skopeo(args, proxy, timeout)
+            if result.success:
+                all_tags = json.loads(result.stdout)["Tags"]
 
         return SkopeoResults(result.success, all_tags, result.stdout, result.stderr)
 
