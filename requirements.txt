@@ -19,7 +19,7 @@ cachetools==5.3.3
 certifi==2024.7.4
 chardet==5.2.0
 charset-normalizer==2.0.12
-click==8.1.7
+click==8.2.1
 cryptography==44.0.1
 DateTime==4.3
 debtcollector==1.22.0
