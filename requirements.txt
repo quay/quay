@@ -51,7 +51,7 @@ jmespath==0.9.4
 jsonpath-rw==1.4.0
 jsonpointer==2.0
 jsonschema==3.2.0
-kafka-python==1.4.7
+kafka-python==2.2.15
 keystoneauth1==3.18.0
 Mako==1.2.2
 MarkupSafe==2.1.3
