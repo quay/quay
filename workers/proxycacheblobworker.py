@@ -101,7 +101,7 @@ def create_gunicorn_worker():
         poll_period_seconds=POLL_PERIOD_SECONDS,
         reservation_seconds=RESERVATION_SECONDS,
     )
-    worker = GunicornWorker(__name__, app, repl_worker, features.PROXY_CACHE)
+    worker = GunicornWorker(__name__, app, proxy_cache_blob_worker, features.PROXY_CACHE)
     return worker
 
 

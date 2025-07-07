@@ -396,7 +396,7 @@ stderr_events_enabled = true
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command={% if hotreload -%}
-  gunicorn --timeout=600 -b 'unix:/tmp/proxycacheblobworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.proxycacheblob:create_gunicorn_worker()'
+  gunicorn --timeout=600 -b 'unix:/tmp/proxycacheblobworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.proxycacheblobworker:create_gunicorn_worker()'
 {% else -%}
   python -m workers.proxycacheblobworker
 {% endif -%}
