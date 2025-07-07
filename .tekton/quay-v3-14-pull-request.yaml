@@ -282,6 +282,17 @@ spec:
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: LABELS
+        value:
+          - com.redhat.component="quay-registry-container"
+          - name="quay/quay-rhel8"
+          - version=3.14
+          - io.k8s.display-name="Red Hat Quay"
+          - io.k8s.description="Red Hat Quay"
+          - summary="Red Hat Quay"
+          - description="Red Hat Quay"
+          - maintainer="support@redhat.com"
+          - io.openshift.tags="quay"
       - name: IMAGE_APPEND_PLATFORM
         value: "true"
       runAfter:
