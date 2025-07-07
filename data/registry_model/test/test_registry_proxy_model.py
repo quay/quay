@@ -126,9 +126,9 @@ def test_registry_proxy_model_init_only_query_db_once(initialized_db):
 
 class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
     orgname = "quayio-cache"
-    upstream_repository = "app-sre/ubi8-ubi"
-    upstream_registry = "quay.io"
-    tag = "8.4"
+    upstream_repository = "library/nginx"
+    upstream_registry = "docker.io"
+    tag = "latest"
 
     @pytest.fixture(autouse=True)
     def setup(self, app):
