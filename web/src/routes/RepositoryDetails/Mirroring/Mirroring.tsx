@@ -17,6 +17,7 @@ import {
   SelectGroup,
   MenuToggle,
   Spinner,
+  ValidatedOptions,
 } from '@patternfly/react-core';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
 import {useRepository} from 'src/hooks/UseRepository';
@@ -35,6 +36,8 @@ import {
   getMirrorConfig,
   createMirrorConfig,
   updateMirrorConfig,
+  toggleMirroring,
+  syncMirror,
   cancelSync,
   timestampToISO,
   timestampFromISO,
@@ -47,7 +50,7 @@ interface MirroringProps {
   repoName: string;
 }
 
-type validate = 'success' | 'warning' | 'error' | 'default';
+// Using PatternFly's ValidatedOptions enum instead of custom type
 
 export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const {
@@ -58,6 +61,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const {addAlert} = useAlerts();
 
   // Form state
+  const [isEnabled, setIsEnabled] = useState(true);
   const [externalReference, setExternalReference] = useState('');
   const [tags, setTags] = useState('');
   const [syncStartDate, setSyncStartDate] = useState('');
@@ -87,7 +91,9 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const [config, setConfig] = useState<MirroringConfigResponse | null>(null);
 
   // Validation state
-  const [validated, setValidated] = useState<Record<string, validate>>({});
+  const [validated, setValidated] = useState<Record<string, ValidatedOptions>>(
+    {},
+  );
 
   // Fetch robot accounts for the dropdown
   const {robots} = useFetchRobotAccounts(namespace);
@@ -125,9 +131,24 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     return {value: seconds, unit: 'seconds'};
   };
 
-  // Create options for the dropdown (teams, robots, and creation options)
+  // Create options for the dropdown (creation options first, then teams and robots)
   const robotOptions = [
     <React.Fragment key="dropdown-options">
+      <SelectOption
+        key="create-team"
+        component="button"
+        onClick={() => setIsCreateTeamModalOpen(true)}
+      >
+        <UsersIcon /> &nbsp; Create team
+      </SelectOption>
+      <SelectOption
+        key="create-robot"
+        component="button"
+        onClick={() => setIsCreateRobotModalOpen(true)}
+      >
+        <DesktopIcon /> &nbsp; Create robot account
+      </SelectOption>
+      <Divider component="li" key="divider" />
       <SelectGroup label="Teams" key="teams">
         {teams?.map(({name}) => (
           <SelectOption
@@ -168,21 +189,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           </SelectOption>
         ))}
       </SelectGroup>
-      <Divider component="li" key="divider" />
-      <SelectOption
-        key="create-team"
-        component="button"
-        onClick={() => setIsCreateTeamModalOpen(true)}
-      >
-        <UsersIcon /> &nbsp; Create team
-      </SelectOption>
-      <SelectOption
-        key="create-robot"
-        component="button"
-        onClick={() => setIsCreateRobotModalOpen(true)}
-      >
-        <DesktopIcon /> &nbsp; Create robot account
-      </SelectOption>
     </React.Fragment>,
   ];
 
@@ -198,6 +204,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         setConfig(response);
 
         // Update form state from response
+        setIsEnabled(response.is_enabled);
         setExternalReference(response.external_reference);
         setTags(
           Array.isArray(response.root_rule.rule_value)
@@ -238,6 +245,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           );
           setConfig(null);
           // Set default values for a new mirror configuration
+          setIsEnabled(true);
           setExternalReference('');
           setTags('');
           // Get current date/time in local timezone for datetime-local input
@@ -260,13 +268,12 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           setHttpsProxy('');
           setNoProxy('');
         } else {
-          console.error('Error fetching mirror config:', err);
-          setError(err.message);
           addAlert({
             variant: AlertVariant.Failure,
             title: 'Error loading mirror configuration',
             message: err.message,
           });
+          setError(err.message);
         }
       } finally {
         setIsLoading(false);
@@ -288,9 +295,9 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const validateField = (
     name: string,
     value: string | number | undefined,
-  ): validate => {
-    if (!value) return 'error';
-    return 'success';
+  ): ValidatedOptions => {
+    if (!value) return ValidatedOptions.error;
+    return ValidatedOptions.success;
   };
 
   const validateForm = (): boolean => {
@@ -303,7 +310,9 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     };
 
     setValidated(newValidated);
-    return Object.values(newValidated).every((v) => v === 'success');
+    return Object.values(newValidated).every(
+      (v) => v === ValidatedOptions.success,
+    );
   };
 
   // Check if required fields are filled without side effects
@@ -334,7 +343,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         .filter((tag) => tag.length > 0);
 
       const mirrorConfig = {
-        is_enabled: true,
+        is_enabled: isEnabled,
         external_reference: externalReference,
         external_registry_username: username || null,
         external_registry_password: password || null,
@@ -401,7 +410,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
 
   if (repoDetails.state !== 'MIRROR') {
     return (
-      <div className="mirroring-container">
+      <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
         <TextContent>
           <Text>
             This repository&apos;s state is <strong>{repoDetails.state}</strong>
@@ -422,34 +431,75 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   }
 
   return (
-    <div className="mirroring-container">
+    <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
       <TextContent>
         <Title headingLevel="h2">Repository Mirroring</Title>
       </TextContent>
-      <TextContent>
-        {config ? (
-          <Text>
-            This repository is configured as a mirror. While enabled, Quay will
-            periodically replicate any matching images on the external registry.
-            Users cannot manually push to this repository.
-          </Text>
-        ) : (
-          <Text>
-            This feature will convert{' '}
-            <strong>
-              {namespace}/{repoName}
-            </strong>{' '}
-            into a mirror. Changes to the external repository will be duplicated
-            here. While enabled, users will be unable to push images to this
-            repository.
-          </Text>
-        )}
-      </TextContent>
-      <Form isWidthLimited>
-        <Divider />
-        <Title headingLevel="h3" className="mirroring-section-title">
+      <Form isWidthLimited data-testid="mirror-form">
+        <TextContent>
+          {config ? (
+            <Text>
+              This repository is configured as a mirror. While enabled, Quay
+              will periodically replicate any matching images on the external
+              registry. Users cannot manually push to this repository.
+            </Text>
+          ) : (
+            <Text>
+              This feature will convert{' '}
+              <strong>
+                {namespace}/{repoName}
+              </strong>{' '}
+              into a mirror. Changes to the external repository will be
+              duplicated here. While enabled, users will be unable to push
+              images to this repository.
+            </Text>
+          )}
+        </TextContent>
+        <Divider className="pf-v5-u-mt-sm" />
+        <Title headingLevel="h3">
           {config ? 'Configuration' : 'External Repository'}
         </Title>
+        {config && (
+          <FormGroup fieldId="is_enabled" isStack>
+            <Checkbox
+              label="Enabled"
+              id="is_enabled"
+              name="is_enabled"
+              description={
+                isEnabled
+                  ? 'Scheduled mirroring enabled. Immediate sync available via Sync Now.'
+                  : 'Scheduled mirroring disabled. Immediate sync available via Sync Now.'
+              }
+              isChecked={isEnabled}
+              data-testid="mirror-enabled-checkbox"
+              onChange={async (_event, checked) => {
+                try {
+                  await toggleMirroring(namespace, repoName, checked);
+
+                  // Update only the local state, don't update config to avoid conflicts
+                  // Use the checked parameter since backend is working but response.is_enabled is undefined
+                  setIsEnabled(checked);
+
+                  // Note: We're not updating setConfig here to avoid potential race conditions
+                  // The config will be refreshed on next useEffect if needed
+
+                  addAlert({
+                    variant: AlertVariant.Success,
+                    title: `Mirror ${
+                      checked ? 'enabled' : 'disabled'
+                    } successfully`,
+                  });
+                } catch (err) {
+                  addAlert({
+                    variant: AlertVariant.Failure,
+                    title: 'Error updating mirror status',
+                    message: err.message,
+                  });
+                }
+              }}
+            />
+          </FormGroup>
+        )}
         <FormGroup
           label="Registry Location"
           fieldId="external_reference"
@@ -463,6 +513,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             value={externalReference}
             onChange={(_event, value) => setExternalReference(value)}
             validated={validated.externalReference}
+            data-testid="registry-location-input"
           />
         </FormGroup>
 
@@ -478,20 +529,69 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             value={tags}
             onChange={(_event, value) => setTags(value)}
             validated={validated.tags}
+            data-testid="tags-input"
           />
         </FormGroup>
 
-        <FormGroup label="Start Date" fieldId="sync_start_date" isStack>
-          <TextInput
-            type="datetime-local"
-            id="sync_start_date"
-            name="sync_start_date"
-            value={syncStartDate}
-            onChange={(_event, value) => setSyncStartDate(value)}
-            validated={validated.syncStartDate}
-          />
+        <FormGroup
+          label={config ? 'Next Sync Date' : 'Start Date'}
+          fieldId="sync_start_date"
+          isStack
+        >
+          {config ? (
+            // For configured mirrors: show date with Sync Now button
+            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <TextInput
+                type="datetime-local"
+                id="sync_start_date"
+                name="sync_start_date"
+                value={syncStartDate}
+                onChange={(_event, value) => setSyncStartDate(value)}
+                validated={validated.syncStartDate}
+                style={{flex: 1}}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                isDisabled={
+                  config.sync_status === 'SYNCING' ||
+                  config.sync_status === 'SYNC_NOW'
+                }
+                data-testid="sync-now-button"
+                onClick={async () => {
+                  try {
+                    await syncMirror(namespace, repoName);
+                    addAlert({
+                      variant: AlertVariant.Success,
+                      title: 'Sync scheduled successfully',
+                    });
+                    // Refresh the config to get updated status
+                    const response = await getMirrorConfig(namespace, repoName);
+                    setConfig(response);
+                  } catch (err) {
+                    addAlert({
+                      variant: AlertVariant.Failure,
+                      title: 'Error scheduling sync',
+                      message: err.message,
+                    });
+                  }
+                }}
+              >
+                Sync Now
+              </Button>
+            </div>
+          ) : (
+            // For new mirrors: just the date input
+            <TextInput
+              type="datetime-local"
+              id="sync_start_date"
+              name="sync_start_date"
+              value={syncStartDate}
+              onChange={(_event, value) => setSyncStartDate(value)}
+              validated={validated.syncStartDate}
+            />
+          )}
         </FormGroup>
-
         <FormGroup label="Sync Interval" fieldId="sync_interval" isStack>
           <InputGroup
             onPointerEnterCapture={() => setIsHovered(true)}
@@ -512,6 +612,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               inputMode="numeric"
               validated={validated.syncValue}
               aria-label="Sync interval value"
+              data-testid="sync-interval-input"
             />
             <Select
               isOpen={isSelectOpen}
@@ -555,19 +656,24 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               setRobotUsername('');
             }}
             value={selectedRobot?.name}
-            onError={() => console.error('Error fetching robots')}
+            onError={() =>
+              addAlert({
+                variant: AlertVariant.Failure,
+                title: 'Error loading robot users',
+                message: 'Failed to load available robots',
+              })
+            }
             defaultOptions={robotOptions}
             placeholderText="Select a team or user..."
+            data-testid="robot-user-select"
           />
         </FormGroup>
 
         <Divider />
-        <Title headingLevel="h3" className="mirroring-section-title">
-          Credentials
-        </Title>
+        <Title headingLevel="h3">Credentials</Title>
         <Text
           component="small"
-          className="pf-v5-c-form__helper-text mirroring-credentials-helper"
+          className="pf-v5-c-form__helper-text pf-v5-u-text-align-center pf-v5-u-display-block"
         >
           Required if the external repository is private.
         </Text>
@@ -579,6 +685,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             value={username}
             onChange={(_event, value) => setUsername(value)}
             validated={validated.username}
+            data-testid="username-input"
           />
         </FormGroup>
 
@@ -594,13 +701,12 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             value={password}
             onChange={(_event, value) => setPassword(value)}
             validated={validated.password}
+            data-testid="password-input"
           />
         </FormGroup>
 
         <Divider />
-        <Title headingLevel="h3" className="mirroring-section-title">
-          Advanced Settings
-        </Title>
+        <Title headingLevel="h3">Advanced Settings</Title>
         <FormGroup fieldId="verify_tls" isStack>
           <Checkbox
             label="Verify TLS"
@@ -609,6 +715,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             description="Require HTTPS and verify certificates when talking to the external registry."
             isChecked={verifyTls}
             onChange={(_event, isChecked) => setVerifyTls(isChecked)}
+            data-testid="verify-tls-checkbox"
           />
         </FormGroup>
 
@@ -620,6 +727,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             description="Allow unsigned images to be mirrored."
             isChecked={unsignedImages}
             onChange={(_event, isChecked) => setUnsignedImages(isChecked)}
+            data-testid="unsigned-images-checkbox"
           />
         </FormGroup>
 
@@ -633,6 +741,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             onChange={(_event, value) =>
               setHttpProxy(value === 'None' ? null : value)
             }
+            data-testid="http-proxy-input"
           />
         </FormGroup>
 
@@ -646,6 +755,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             onChange={(_event, value) =>
               setHttpsProxy(value === 'None' ? null : value)
             }
+            data-testid="https-proxy-input"
           />
         </FormGroup>
 
@@ -659,22 +769,19 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             onChange={(_event, value) =>
               setNoProxy(value === 'None' ? null : value)
             }
+            data-testid="no-proxy-input"
           />
         </FormGroup>
         {/* Status section for configured mirrors */}
         {config && (
           <>
             <Divider />
-            <Title headingLevel="h3" className="mirroring-section-title">
-              Status
-            </Title>
-            <div style={{maxWidth: 700, margin: '0 auto'}}>
-              <div
-                style={{display: 'flex', alignItems: 'center', marginBottom: 8}}
-              >
-                <div style={{flex: 1}}>
+            <Title headingLevel="h3">Status</Title>
+            <div className="pf-v5-u-max-width-lg pf-v5-u-mx-auto">
+              <div className="pf-v5-l-flex pf-v5-l-flex--align-items-center pf-v5-u-mb-sm">
+                <div className="pf-v5-l-flex__item pf-v5-m-flex-1">
                   <strong>State</strong>{' '}
-                  <span style={{marginLeft: 8}}>
+                  <span className="pf-v5-u-ml-sm">
                     {statusLabels[config.sync_status] || config.sync_status}
                   </span>
                 </div>
@@ -685,17 +792,36 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                     config.sync_status !== 'SYNCING' &&
                     config.sync_status !== 'SYNC_NOW'
                   }
-                  style={{marginLeft: 16}}
+                  className="pf-v5-u-ml-md"
+                  data-testid="cancel-sync-button"
                   onClick={async () => {
-                    await cancelSync(namespace, repoName);
+                    try {
+                      await cancelSync(namespace, repoName);
+                      addAlert({
+                        variant: AlertVariant.Success,
+                        title: 'Sync cancelled successfully',
+                      });
+                      // Refresh the config to get updated status
+                      const response = await getMirrorConfig(
+                        namespace,
+                        repoName,
+                      );
+                      setConfig(response);
+                    } catch (err) {
+                      addAlert({
+                        variant: AlertVariant.Failure,
+                        title: 'Error cancelling sync',
+                        message: err.message,
+                      });
+                    }
                   }}
                 >
                   Cancel
                 </Button>
               </div>
-              <div style={{marginBottom: 8}}>
+              <div className="pf-v5-u-mb-sm">
                 <strong>Timeout</strong>{' '}
-                <span style={{marginLeft: 8}}>
+                <span className="pf-v5-u-ml-sm">
                   {config.sync_expiration_date
                     ? config.sync_expiration_date
                     : 'None'}
@@ -703,7 +829,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               </div>
               <div>
                 <strong>Retries Remaining</strong>{' '}
-                <span style={{marginLeft: 8}}>
+                <span className="pf-v5-u-ml-sm">
                   {config.sync_retries_remaining != null
                     ? `${config.sync_retries_remaining} / 3`
                     : '3 / 3'}
@@ -715,9 +841,10 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
-            className="mirroring-button"
+            className="pf-v5-u-display-block pf-v5-u-mx-auto"
             onClick={handleSubmit}
             isDisabled={!isFormValid()}
+            data-testid="submit-button"
           >
             {config ? 'Update Mirror' : 'Enable Mirror'}
           </Button>

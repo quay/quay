@@ -105,9 +105,9 @@ export const syncMirror = async (
   repoName: string,
 ): Promise<void> => {
   const response = await axios.post(
-    `/api/v1/repository/${namespace}/${repoName}/mirror/sync`,
+    `/api/v1/repository/${namespace}/${repoName}/mirror/sync-now`,
   );
-  assertHttpCode(response.status, 200);
+  assertHttpCode(response.status, 204);
 };
 
 export const cancelSync = async (
@@ -115,9 +115,9 @@ export const cancelSync = async (
   repoName: string,
 ): Promise<void> => {
   const response = await axios.post(
-    `/api/v1/repository/${namespace}/${repoName}/mirror/sync/cancel`,
+    `/api/v1/repository/${namespace}/${repoName}/mirror/sync-cancel`,
   );
-  assertHttpCode(response.status, 200);
+  assertHttpCode(response.status, 204);
 };
 
 // Status message mapping

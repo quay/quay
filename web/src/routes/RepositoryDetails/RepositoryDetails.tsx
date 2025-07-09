@@ -273,6 +273,7 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Mirroring}
                     title={<TabTitleText>Mirroring</TabTitleText>}
+                    data-testid="mirroring-tab"
                     isHidden={
                       !config?.features?.REPO_MIRROR || !repoDetails?.can_admin
                     }
