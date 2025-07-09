@@ -17,7 +17,7 @@ describe('Repository Mirroring', () => {
     ).as('getConfig');
   });
 
-  describe.skip('Feature Flag Behavior', () => {
+  describe('Feature Flag Behavior', () => {
     it('should not show mirroring tab when REPO_MIRROR feature is disabled', () => {
       cy.intercept('GET', '/config', (req) =>
         req.reply((res) => {
@@ -70,7 +70,7 @@ describe('Repository Mirroring', () => {
     });
   });
 
-  describe.skip('Repository State Requirements', () => {
+  describe('Repository State Requirements', () => {
     it('should show state warning for non-mirror repositories', () => {
       // Mock repository with NORMAL state - using wildcard pattern to catch all variations
       cy.intercept('GET', '**/api/v1/repository/user1/hello-world*', {
@@ -128,7 +128,7 @@ describe('Repository Mirroring', () => {
     });
   });
 
-  describe.skip('New Mirror Configuration', () => {
+  describe('New Mirror Configuration', () => {
     beforeEach(() => {
       // Mock repository with MIRROR state
       cy.intercept('GET', '**/api/v1/repository/user1/hello-world*', {
@@ -219,7 +219,7 @@ describe('Repository Mirroring', () => {
 
       // Select robot user
       cy.get('#robot-user-select').click();
-      cy.contains('user1+testrobot').click();
+      cy.contains('testorg+testrobot').click();
 
       // Now submit button should be enabled
       cy.get('[data-testid="submit-button"]').should('not.be.disabled');
@@ -232,7 +232,7 @@ describe('Repository Mirroring', () => {
           is_enabled: true,
           external_reference: 'quay.io/library/hello-world',
           sync_status: 'NEVER_RUN',
-          robot_username: 'user1+testrobot',
+          robot_username: 'testorg+testrobot',
         },
       }).as('createMirrorConfig');
 
@@ -248,7 +248,7 @@ describe('Repository Mirroring', () => {
 
       // Select robot user
       cy.get('#robot-user-select').click();
-      cy.contains('user1+testrobot').click();
+      cy.contains('testorg+testrobot').click();
 
       // Submit form
       cy.get('[data-testid="submit-button"]').click();
@@ -275,7 +275,7 @@ describe('Repository Mirroring', () => {
 
       // Select robot user
       cy.get('#robot-user-select').click();
-      cy.contains('user1+testrobot').click();
+      cy.contains('testorg+testrobot').click();
 
       // Submit form
       cy.get('[data-testid="submit-button"]').click();
@@ -285,7 +285,7 @@ describe('Repository Mirroring', () => {
     });
   });
 
-  describe.skip('Existing Mirror Configuration', () => {
+  describe('Existing Mirror Configuration', () => {
     beforeEach(() => {
       // Mock repository with MIRROR state
       cy.intercept('GET', '**/api/v1/repository/user1/hello-world*', {
@@ -426,10 +426,7 @@ describe('Repository Mirroring', () => {
     });
   });
 
-  // ALL TESTS ABOVE ARE WORKING
-
-  // TODO: these tests are not working
-  describe.skip('Sync Operations', () => {
+  describe('Sync Operations', () => {
     beforeEach(() => {
       // Mock repository with MIRROR state
       cy.intercept('GET', '**/api/v1/repository/user1/hello-world*', {
@@ -456,7 +453,7 @@ describe('Repository Mirroring', () => {
           is_enabled: true,
           external_reference: 'quay.io/library/hello-world',
           sync_status: 'NEVER_RUN',
-          robot_username: 'user1+testrobot',
+          robot_username: 'testorg+testrobot',
           sync_start_date: '2024-01-01T12:00:00Z',
           sync_interval: 3600,
           external_registry_config: {
@@ -479,16 +476,6 @@ describe('Repository Mirroring', () => {
         },
       ).as('syncNow');
 
-      cy.intercept('GET', '/api/v1/repository/user1/hello-world/mirror', {
-        statusCode: 200,
-        body: {
-          is_enabled: true,
-          external_reference: 'quay.io/library/hello-world',
-          sync_status: 'SYNCING',
-          robot_username: 'user1+testrobot',
-        },
-      }).as('getMirrorConfigSyncing');
-
       cy.visit('/repository/user1/hello-world?tab=mirroring');
       cy.wait('@getRepo');
       cy.wait('@getMirrorConfig');
@@ -502,13 +489,13 @@ describe('Repository Mirroring', () => {
 
     it('should cancel ongoing sync operation', () => {
       // Mock mirror config with ongoing sync
-      cy.intercept('GET', '**/api/v1/repository/user1/hello-world/mirror*', {
+      cy.intercept('GET', '/api/v1/repository/user1/hello-world/mirror', {
         statusCode: 200,
         body: {
           is_enabled: true,
           external_reference: 'quay.io/library/hello-world',
           sync_status: 'SYNCING',
-          robot_username: 'user1+testrobot',
+          robot_username: 'testorg+testrobot',
           sync_start_date: '2024-01-01T12:00:00Z',
           sync_interval: 3600,
           external_registry_config: {
@@ -521,7 +508,7 @@ describe('Repository Mirroring', () => {
             rule_value: ['latest'],
           },
         },
-      }).as('getMirrorConfigSyncing');
+      }).as('getMirrorConfig');
 
       cy.intercept(
         'POST',
@@ -531,19 +518,9 @@ describe('Repository Mirroring', () => {
         },
       ).as('cancelSync');
 
-      cy.intercept('GET', '/api/v1/repository/user1/hello-world/mirror', {
-        statusCode: 200,
-        body: {
-          is_enabled: true,
-          external_reference: 'quay.io/library/hello-world',
-          sync_status: 'NEVER_RUN',
-          robot_username: 'user1+testrobot',
-        },
-      }).as('getMirrorConfigCancelled');
-
       cy.visit('/repository/user1/hello-world?tab=mirroring');
       cy.wait('@getRepo');
-      cy.wait('@getMirrorConfigSyncing');
+      cy.wait('@getMirrorConfig');
 
       // Check sync status shows syncing
       cy.contains('Syncing').should('exist');
@@ -588,11 +565,10 @@ describe('Repository Mirroring', () => {
     });
   });
 
-  // TODO: VERIFY IF THESE TESTS ARE WORKING
   describe('Robot User Selection', () => {
     beforeEach(() => {
       // Mock repository with MIRROR state
-      cy.intercept('GET', '**/api/v1/repository/user1/hello-world*', {
+      cy.intercept('GET', '/api/v1/repository/user1/hello-world*', {
         body: {
           name: 'hello-world',
           namespace: 'user1',
@@ -608,7 +584,7 @@ describe('Repository Mirroring', () => {
       }).as('getRepo');
 
       // Mock no existing mirror config
-      cy.intercept('GET', '**/api/v1/repository/user1/hello-world/mirror*', {
+      cy.intercept('GET', '/api/v1/repository/user1/hello-world/mirror*', {
         statusCode: 404,
       }).as('getMirrorConfig404');
 
@@ -616,8 +592,6 @@ describe('Repository Mirroring', () => {
       cy.intercept('GET', '/api/v1/organization/user1/robots*', {
         fixture: 'robots.json',
       }).as('getRobots');
-
-      // Note: Teams API is not called for user namespaces (useFetchTeams has enabled: !(user.username === orgName))
     });
 
     it('should display robot user dropdown with options', () => {
@@ -634,7 +608,7 @@ describe('Repository Mirroring', () => {
 
       // Check robots are listed (teams are not shown for user namespaces)
       cy.contains('Robot accounts').should('exist');
-      cy.contains('user1+testrobot').should('exist');
+      cy.contains('testorg+testrobot').should('exist');
     });
 
     it('should select robot user from dropdown', () => {
@@ -644,33 +618,17 @@ describe('Repository Mirroring', () => {
 
       // Select robot user
       cy.get('#robot-user-select').click();
-      cy.contains('user1+testrobot').click();
+      cy.contains('testorg+testrobot').click();
 
       // Check selection is reflected
-      cy.get('#robot-user-select').should('contain.text', 'user1+testrobot');
-    });
-
-    it.skip('should handle robot user selection errors', () => {
-      // Mock robot fetch error
-      cy.intercept('GET', '/api/v1/organization/user1/robots*', {
-        statusCode: 500,
-        body: {message: 'Internal server error'},
-      }).as('getRobotsError');
-
-      cy.visit('/repository/user1/hello-world?tab=mirroring');
-      cy.wait('@getRepo');
-      cy.wait('@getRobotsError');
-
-      // Click robot user dropdown
-      cy.get('#robot-user-select').click();
-
-      // Should show error message
-      cy.contains('Error loading robot users').should('exist');
+      cy.get('#robot-user-select input').should(
+        'have.value',
+        'testorg+testrobot',
+      );
     });
   });
 
-  // TODO: VERIFY IF THESE TESTS ARE WORKING
-  describe.skip('Advanced Settings', () => {
+  describe('Advanced Settings', () => {
     beforeEach(() => {
       // Mock repository with MIRROR state
       cy.intercept('GET', '**/api/v1/repository/user1/hello-world*', {
