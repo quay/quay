@@ -59,7 +59,7 @@ netaddr==0.7.19
 netifaces==0.11.0
 oauthlib==3.2.2
 orderedmultidict==1.0.1
-os-service-types==1.7.0
+os-service-types==1.8.0
 peewee==3.13.1
 pillow==10.3.0
 ply==3.11
