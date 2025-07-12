@@ -61,7 +61,7 @@ netifaces==0.11.0
 oauthlib==3.2.2
 orderedmultidict==1.0.1
 os-service-types==1.7.0
-peewee==3.13.1
+peewee==3.18.2
 Pillow==10.0.1
 ply==3.11
 prometheus-client==0.7.1
