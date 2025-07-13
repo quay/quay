@@ -1,6 +1,8 @@
 module github.com/quay/quay/config-tool
 
-go 1.21
+go 1.22
+
+toolchain go1.23.9
 
 require (
 	cuelang.org/go v0.6.0
@@ -57,7 +59,7 @@ require (
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
