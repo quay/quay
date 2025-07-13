@@ -1,6 +1,8 @@
 module github.com/quay/quay/config-tool
 
-go 1.19
+go 1.21
+
+toolchain go1.23.9
 
 require (
 	cuelang.org/go v0.2.1
@@ -45,7 +47,7 @@ require (
 	github.com/go-openapi/spec v0.20.6 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/google/go-cmp v0.5.4 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
