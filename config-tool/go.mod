@@ -1,6 +1,8 @@
 module github.com/quay/quay/config-tool
 
-go 1.19
+go 1.21.0
+
+toolchain go1.23.9
 
 require (
 	cuelang.org/go v0.6.0
@@ -14,7 +16,7 @@ require (
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-ldap/ldap/v3 v3.4.6
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
@@ -33,6 +35,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
