@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import {useForm, Controller} from 'react-hook-form';
+import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {
   Form,
   FormGroup,
@@ -436,84 +437,28 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           </FormGroup>
         )}
 
-        <FormGroup
+        <FormTextInput
+          name="externalReference"
+          control={control}
+          errors={errors}
           label="Registry Location"
           fieldId="external_reference"
-          isStack
-        >
-          <Controller
-            name="externalReference"
-            control={control}
-            rules={{
-              required: 'This field is required',
-              validate: (value) =>
-                value?.trim() !== '' || 'This field is required',
-            }}
-            render={({field: {value, onChange}}) => (
-              <>
-                <TextInput
-                  type="text"
-                  id="external_reference"
-                  placeholder="quay.io/redhat/quay"
-                  value={value}
-                  onChange={(_event, newValue) => onChange(newValue)}
-                  validated={
-                    errors.externalReference
-                      ? ValidatedOptions.error
-                      : ValidatedOptions.default
-                  }
-                  data-testid="registry-location-input"
-                />
-                {errors.externalReference && (
-                  <FormHelperText>
-                    <Text component="p" className="pf-m-error">
-                      {errors.externalReference.message}
-                    </Text>
-                  </FormHelperText>
-                )}
-              </>
-            )}
-          />
-        </FormGroup>
+          placeholder="quay.io/redhat/quay"
+          required
+          data-testid="registry-location-input"
+        />
 
-        <FormGroup label="Tags" fieldId="tags" isStack>
-          <Text component="small" className="pf-v5-c-form__helper-text">
-            Comma-separated list of tag patterns to synchronize.
-          </Text>
-          <Controller
-            name="tags"
-            control={control}
-            rules={{
-              required: 'This field is required',
-              validate: (value) =>
-                value?.trim() !== '' || 'This field is required',
-            }}
-            render={({field: {value, onChange}}) => (
-              <>
-                <TextInput
-                  type="text"
-                  id="tags"
-                  placeholder="Examples: latest, 3.3*, *"
-                  value={value}
-                  onChange={(_event, newValue) => onChange(newValue)}
-                  validated={
-                    errors.tags
-                      ? ValidatedOptions.error
-                      : ValidatedOptions.default
-                  }
-                  data-testid="tags-input"
-                />
-                {errors.tags && (
-                  <FormHelperText>
-                    <Text component="p" className="pf-m-error">
-                      {errors.tags.message}
-                    </Text>
-                  </FormHelperText>
-                )}
-              </>
-            )}
-          />
-        </FormGroup>
+        <FormTextInput
+          name="tags"
+          control={control}
+          errors={errors}
+          label="Tags"
+          fieldId="tags"
+          placeholder="Examples: latest, 3.3*, *"
+          required
+          helperText="Comma-separated list of tag patterns to synchronize."
+          data-testid="tags-input"
+        />
 
         <FormGroup
           label={config ? 'Next Sync Date' : 'Start Date'}
@@ -587,36 +532,15 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               </Button>
             </div>
           ) : (
-            <Controller
+            <FormTextInput
               name="syncStartDate"
               control={control}
-              rules={{
-                required: 'This field is required',
-                validate: (value) =>
-                  value?.trim() !== '' || 'This field is required',
-              }}
-              render={({field: {value, onChange}}) => (
-                <>
-                  <TextInput
-                    type="datetime-local"
-                    id="sync_start_date"
-                    value={value}
-                    onChange={(_event, newValue) => onChange(newValue)}
-                    validated={
-                      errors.syncStartDate
-                        ? ValidatedOptions.error
-                        : ValidatedOptions.default
-                    }
-                  />
-                  {errors.syncStartDate && (
-                    <FormHelperText>
-                      <Text component="p" className="pf-m-error">
-                        {errors.syncStartDate.message}
-                      </Text>
-                    </FormHelperText>
-                  )}
-                </>
-              )}
+              errors={errors}
+              label=""
+              fieldId="sync_start_date"
+              type="datetime-local"
+              required
+              isStack={false}
             />
           )}
         </FormGroup>
@@ -761,51 +685,26 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           Required if the external repository is private.
         </Text>
 
-        <FormGroup label="Username" fieldId="username" isStack>
-          <Controller
-            name="username"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <TextInput
-                type="text"
-                id="username"
-                value={value}
-                onChange={(_event, newValue) => onChange(newValue)}
-                validated={
-                  errors.username
-                    ? ValidatedOptions.error
-                    : ValidatedOptions.default
-                }
-                data-testid="username-input"
-              />
-            )}
-          />
-        </FormGroup>
+        <FormTextInput
+          name="username"
+          control={control}
+          errors={errors}
+          label="Username"
+          fieldId="username"
+          showNoneWhenEmpty={!!config}
+          data-testid="username-input"
+        />
 
-        <FormGroup
+        <FormTextInput
+          name="password"
+          control={control}
+          errors={errors}
           label="Password"
           fieldId="external_registry_password"
-          isStack
-        >
-          <Controller
-            name="password"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <TextInput
-                type="password"
-                id="external_registry_password"
-                value={value}
-                onChange={(_event, newValue) => onChange(newValue)}
-                validated={
-                  errors.password
-                    ? ValidatedOptions.error
-                    : ValidatedOptions.default
-                }
-                data-testid="password-input"
-              />
-            )}
-          />
-        </FormGroup>
+          type="password"
+          showNoneWhenEmpty={!!config}
+          data-testid="password-input"
+        />
 
         <Divider />
         <Title headingLevel="h3">Advanced Settings</Title>
@@ -844,62 +743,38 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           />
         </FormGroup>
 
-        <FormGroup label="HTTP Proxy" fieldId="http_proxy" isStack>
-          <Controller
-            name="httpProxy"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <TextInput
-                type="text"
-                id="http_proxy"
-                placeholder="proxy.example.com"
-                value={value ?? 'None'}
-                onChange={(_event, newValue) =>
-                  onChange(newValue === 'None' ? null : newValue)
-                }
-                data-testid="http-proxy-input"
-              />
-            )}
-          />
-        </FormGroup>
+        <FormTextInput
+          name="httpProxy"
+          control={control}
+          errors={errors}
+          label="HTTP Proxy"
+          fieldId="http_proxy"
+          placeholder="proxy.example.com"
+          showNoneWhenEmpty={!!config}
+          data-testid="http-proxy-input"
+        />
 
-        <FormGroup label="HTTPs Proxy" fieldId="https_proxy" isStack>
-          <Controller
-            name="httpsProxy"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <TextInput
-                type="text"
-                id="https_proxy"
-                placeholder="proxy.example.com"
-                value={value ?? 'None'}
-                onChange={(_event, newValue) =>
-                  onChange(newValue === 'None' ? null : newValue)
-                }
-                data-testid="https-proxy-input"
-              />
-            )}
-          />
-        </FormGroup>
+        <FormTextInput
+          name="httpsProxy"
+          control={control}
+          errors={errors}
+          label="HTTPs Proxy"
+          fieldId="https_proxy"
+          placeholder="proxy.example.com"
+          showNoneWhenEmpty={!!config}
+          data-testid="https-proxy-input"
+        />
 
-        <FormGroup label="No Proxy" fieldId="no_proxy" isStack>
-          <Controller
-            name="noProxy"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <TextInput
-                type="text"
-                id="no_proxy"
-                placeholder="example.com"
-                value={value ?? 'None'}
-                onChange={(_event, newValue) =>
-                  onChange(newValue === 'None' ? null : newValue)
-                }
-                data-testid="no-proxy-input"
-              />
-            )}
-          />
-        </FormGroup>
+        <FormTextInput
+          name="noProxy"
+          control={control}
+          errors={errors}
+          label="No Proxy"
+          fieldId="no_proxy"
+          placeholder="example.com"
+          showNoneWhenEmpty={!!config}
+          data-testid="no-proxy-input"
+        />
 
         {/* Status section for configured mirrors */}
         {config && (
