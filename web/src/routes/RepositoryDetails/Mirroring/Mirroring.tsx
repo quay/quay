@@ -4,6 +4,7 @@ import {MirroringConfiguration} from './MirroringConfiguration';
 import {MirroringCredentials} from './MirroringCredentials';
 import {MirroringAdvancedSettings} from './MirroringAdvancedSettings';
 import {MirroringStatus} from './MirroringStatus';
+import {MirroringModals} from './MirroringModals';
 import {useMirroringConfig} from 'src/hooks/UseMirroringConfig';
 import {useMirroringForm} from 'src/hooks/UseMirroringForm';
 import {
@@ -21,15 +22,11 @@ import {
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
 import {useRepository} from 'src/hooks/UseRepository';
 import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
 import FormError from 'src/components/errors/FormError';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import {useFetchTeams} from 'src/hooks/UseTeams';
-import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
-import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 import {Entity} from 'src/resources/UserResource';
-import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
-import {validateTeamName} from 'src/libs/utils';
+import {useQueryClient} from '@tanstack/react-query';
 import './Mirroring.css';
 
 interface MirroringProps {
@@ -44,6 +41,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     isLoading: isLoadingRepo,
   } = useRepository(namespace, repoName);
   const {addAlert} = useAlerts();
+  const queryClient = useQueryClient();
 
   // Initialize form hook
   const formHook = useMirroringForm(
@@ -187,19 +185,16 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           setConfig={configHook.setConfig}
           addAlert={addAlert}
         />
-
         <MirroringCredentials
           control={formHook.control}
           errors={formHook.errors}
           config={configHook.config}
         />
-
         <MirroringAdvancedSettings
           control={formHook.control}
           errors={formHook.errors}
           config={configHook.config}
         />
-
         <MirroringStatus
           config={configHook.config}
           namespace={namespace}
@@ -207,7 +202,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           setConfig={configHook.setConfig}
           addAlert={addAlert}
         />
-
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
@@ -227,44 +221,28 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             {configHook.config ? 'Update Mirror' : 'Enable Mirror'}
           </Button>
         </ActionGroup>
-
-        {/* Robot Creation Modal */}
-        <CreateRobotAccountModal
-          isModalOpen={formHook.isCreateRobotModalOpen}
-          handleModalToggle={() => formHook.setIsCreateRobotModalOpen(false)}
-          orgName={namespace}
-          teams={teams}
-          RepoPermissionDropdownItems={RepoPermissionDropdownItems}
-          setEntity={(robot: Entity) => {
-            formHook.setSelectedRobot(robot);
-            formHook.setValue('robotUsername', robot.name);
-          }}
-          showSuccessAlert={(msg) =>
-            addAlert({variant: AlertVariant.Success, title: msg})
-          }
-          showErrorAlert={(msg) =>
-            addAlert({variant: AlertVariant.Failure, title: msg})
-          }
-        />
-
-        {/* Team Creation Modal */}
-        <CreateTeamModal
+        <MirroringModals
+          isCreateRobotModalOpen={formHook.isCreateRobotModalOpen}
+          setIsCreateRobotModalOpen={formHook.setIsCreateRobotModalOpen}
+          isCreateTeamModalOpen={formHook.isCreateTeamModalOpen}
+          setIsCreateTeamModalOpen={formHook.setIsCreateTeamModalOpen}
           teamName={formHook.teamName}
           setTeamName={formHook.setTeamName}
-          description={formHook.teamDescription}
-          setDescription={formHook.setTeamDescription}
-          orgName={namespace}
-          nameLabel="Provide a name for your new team:"
-          descriptionLabel="Provide an optional description for your new team"
-          helperText="Enter a description to provide extra information to your teammates about this team:"
-          nameHelperText="Choose a name to inform your teammates about this team. Must match ^([a-z0-9]+(?:[._-][a-z0-9]+)*)$"
-          isModalOpen={formHook.isCreateTeamModalOpen}
-          handleModalToggle={() => formHook.setIsCreateTeamModalOpen(false)}
-          validateName={validateTeamName}
-          setAppliedTo={(team: Entity) => {
+          teamDescription={formHook.teamDescription}
+          setTeamDescription={formHook.setTeamDescription}
+          namespace={namespace}
+          teams={teams}
+          onRobotCreated={(robot: Entity) => {
+            formHook.setSelectedRobot(robot);
+            formHook.setValue('robotUsername', robot.name);
+            // Invalidate robot cache to refresh the list
+            queryClient.invalidateQueries(['robots']);
+          }}
+          onTeamCreated={(team: Entity) => {
             formHook.setSelectedRobot(team);
             formHook.setValue('robotUsername', team.name);
           }}
+          addAlert={addAlert}
         />
       </Form>
     </div>
