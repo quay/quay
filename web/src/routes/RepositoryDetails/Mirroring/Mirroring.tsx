@@ -58,7 +58,7 @@ interface MirroringProps {
   repoName: string;
 }
 
-// Form data type that matches the existing state structure
+// Form data types
 interface MirroringFormData {
   isEnabled: boolean;
   externalReference: string;
@@ -120,7 +120,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   // Watch all form values to maintain existing functionality
   const formValues = watch();
 
-  // Non-form UI state (same as before)
+  // Non-form UI state
   const [selectedRobot, setSelectedRobot] = useState<Entity | null>(null);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -134,11 +134,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<MirroringConfigResponse | null>(null);
 
-  // Fetch robot accounts and teams (same as before)
+  // Fetch robot accounts and teams
   const {robots} = useFetchRobotAccounts(namespace);
   const {teams} = useFetchTeams(namespace);
 
-  // Create dropdown options (same as before)
+  // Create dropdown options
   const robotOptions = [
     <React.Fragment key="dropdown-options">
       <SelectOption
@@ -199,7 +199,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     </React.Fragment>,
   ];
 
-  // Load existing configuration (same as before)
+  // Load existing configuration
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -263,7 +263,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     }
   }, [namespace, repoName, repoDetails?.state, reset]);
 
-  // Form submission (same logic as before)
+  // Form submission
   const onSubmit = async (data: MirroringFormData) => {
     try {
       // Split and clean up tags to match backend expectation
@@ -318,16 +318,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     }
   };
 
-  // Helper function to get validation state for PatternFly
-  const getValidationState = (
-    fieldName: keyof MirroringFormData,
-  ): ValidatedOptions => {
-    return errors[fieldName]
-      ? ValidatedOptions.error
-      : ValidatedOptions.default;
-  };
-
-  // Early returns (same as before)
   if (isLoadingRepo) {
     return <Spinner size="md" />;
   }
@@ -467,7 +457,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                   placeholder="quay.io/redhat/quay"
                   value={value}
                   onChange={(_event, newValue) => onChange(newValue)}
-                  validated={getValidationState('externalReference')}
+                  validated={
+                    errors.externalReference
+                      ? ValidatedOptions.error
+                      : ValidatedOptions.default
+                  }
                   data-testid="registry-location-input"
                 />
                 {errors.externalReference && (
@@ -502,7 +496,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                   placeholder="Examples: latest, 3.3*, *"
                   value={value}
                   onChange={(_event, newValue) => onChange(newValue)}
-                  validated={getValidationState('tags')}
+                  validated={
+                    errors.tags
+                      ? ValidatedOptions.error
+                      : ValidatedOptions.default
+                  }
                   data-testid="tags-input"
                 />
                 {errors.tags && (
@@ -539,7 +537,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                       id="sync_start_date"
                       value={value}
                       onChange={(_event, newValue) => onChange(newValue)}
-                      validated={getValidationState('syncStartDate')}
+                      validated={
+                        errors.syncStartDate
+                          ? ValidatedOptions.error
+                          : ValidatedOptions.default
+                      }
                     />
                     {errors.syncStartDate && (
                       <FormHelperText>
@@ -600,7 +602,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                     id="sync_start_date"
                     value={value}
                     onChange={(_event, newValue) => onChange(newValue)}
-                    validated={getValidationState('syncStartDate')}
+                    validated={
+                      errors.syncStartDate
+                        ? ValidatedOptions.error
+                        : ValidatedOptions.default
+                    }
                   />
                   {errors.syncStartDate && (
                     <FormHelperText>
@@ -648,7 +654,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                   }}
                   pattern="[0-9]*"
                   inputMode="numeric"
-                  validated={getValidationState('syncValue')}
+                  validated={
+                    errors.syncValue
+                      ? ValidatedOptions.error
+                      : ValidatedOptions.default
+                  }
                   aria-label="Sync interval value"
                   data-testid="sync-interval-input"
                 />
@@ -761,7 +771,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                 id="username"
                 value={value}
                 onChange={(_event, newValue) => onChange(newValue)}
-                validated={getValidationState('username')}
+                validated={
+                  errors.username
+                    ? ValidatedOptions.error
+                    : ValidatedOptions.default
+                }
                 data-testid="username-input"
               />
             )}
@@ -782,7 +796,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                 id="external_registry_password"
                 value={value}
                 onChange={(_event, newValue) => onChange(newValue)}
-                validated={getValidationState('password')}
+                validated={
+                  errors.password
+                    ? ValidatedOptions.error
+                    : ValidatedOptions.default
+                }
                 data-testid="password-input"
               />
             )}
