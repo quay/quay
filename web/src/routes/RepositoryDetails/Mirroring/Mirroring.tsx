@@ -1,12 +1,12 @@
 import React, {useState, useEffect} from 'react';
 import {useForm, Controller} from 'react-hook-form';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
+import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import {
   Form,
   FormGroup,
   FormHelperText,
   TextInput,
-  Checkbox,
   Button,
   ButtonVariant,
   ActionGroup,
@@ -398,43 +398,36 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           {config ? 'Configuration' : 'External Repository'}
         </Title>
         {config && (
-          <FormGroup fieldId="is_enabled" isStack>
-            <Controller
-              name="isEnabled"
-              control={control}
-              render={({field: {value, onChange}}) => (
-                <Checkbox
-                  label="Enabled"
-                  id="is_enabled"
-                  description={
-                    value
-                      ? 'Scheduled mirroring enabled. Immediate sync available via Sync Now.'
-                      : 'Scheduled mirroring disabled. Immediate sync available via Sync Now.'
-                  }
-                  isChecked={value}
-                  data-testid="mirror-enabled-checkbox"
-                  onChange={async (_event, checked) => {
-                    try {
-                      await toggleMirroring(namespace, repoName, checked);
-                      onChange(checked);
-                      addAlert({
-                        variant: AlertVariant.Success,
-                        title: `Mirror ${
-                          checked ? 'enabled' : 'disabled'
-                        } successfully`,
-                      });
-                    } catch (err) {
-                      addAlert({
-                        variant: AlertVariant.Failure,
-                        title: 'Error toggling mirror',
-                        message: err.message,
-                      });
-                    }
-                  }}
-                />
-              )}
-            />
-          </FormGroup>
+          <FormCheckbox
+            name="isEnabled"
+            control={control}
+            label="Enabled"
+            fieldId="is_enabled"
+            description={
+              formValues.isEnabled
+                ? 'Scheduled mirroring enabled. Immediate sync available via Sync Now.'
+                : 'Scheduled mirroring disabled. Immediate sync available via Sync Now.'
+            }
+            data-testid="mirror-enabled-checkbox"
+            customOnChange={async (checked, onChange) => {
+              try {
+                await toggleMirroring(namespace, repoName, checked);
+                onChange(checked);
+                addAlert({
+                  variant: AlertVariant.Success,
+                  title: `Mirror ${
+                    checked ? 'enabled' : 'disabled'
+                  } successfully`,
+                });
+              } catch (err) {
+                addAlert({
+                  variant: AlertVariant.Failure,
+                  title: 'Error toggling mirror',
+                  message: err.message,
+                });
+              }
+            }}
+          />
         )}
 
         <FormTextInput
@@ -709,39 +702,23 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         <Divider />
         <Title headingLevel="h3">Advanced Settings</Title>
 
-        <FormGroup fieldId="verify_tls" isStack>
-          <Controller
-            name="verifyTls"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <Checkbox
-                label="Verify TLS"
-                id="verify_tls"
-                description="Require HTTPS and verify certificates when talking to the external registry."
-                isChecked={value}
-                onChange={(_event, checked) => onChange(checked)}
-                data-testid="verify-tls-checkbox"
-              />
-            )}
-          />
-        </FormGroup>
+        <FormCheckbox
+          name="verifyTls"
+          control={control}
+          label="Verify TLS"
+          fieldId="verify_tls"
+          description="Require HTTPS and verify certificates when talking to the external registry."
+          data-testid="verify-tls-checkbox"
+        />
 
-        <FormGroup fieldId="unsigned_images" isStack>
-          <Controller
-            name="unsignedImages"
-            control={control}
-            render={({field: {value, onChange}}) => (
-              <Checkbox
-                label="Accept Unsigned Images"
-                id="unsigned_images"
-                description="Allow unsigned images to be mirrored."
-                isChecked={value}
-                onChange={(_event, checked) => onChange(checked)}
-                data-testid="unsigned-images-checkbox"
-              />
-            )}
-          />
-        </FormGroup>
+        <FormCheckbox
+          name="unsignedImages"
+          control={control}
+          label="Accept Unsigned Images"
+          fieldId="unsigned_images"
+          description="Allow unsigned images to be mirrored."
+          data-testid="unsigned-images-checkbox"
+        />
 
         <FormTextInput
           name="httpProxy"
