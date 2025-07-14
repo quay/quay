@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import {useForm, Controller} from 'react-hook-form';
 import {
   Form,
   FormGroup,
@@ -50,7 +51,41 @@ interface MirroringProps {
   repoName: string;
 }
 
-// Using PatternFly's ValidatedOptions enum instead of custom type
+// Form data type that matches the existing state structure
+interface MirroringFormData {
+  isEnabled: boolean;
+  externalReference: string;
+  tags: string;
+  syncStartDate: string;
+  syncValue: string;
+  syncUnit: string;
+  robotUsername: string;
+  username: string;
+  password: string;
+  verifyTls: boolean;
+  httpProxy: string;
+  httpsProxy: string;
+  noProxy: string;
+  unsignedImages: boolean;
+}
+
+// Default form values
+const defaultFormValues: MirroringFormData = {
+  isEnabled: true,
+  externalReference: '',
+  tags: '',
+  syncStartDate: '',
+  syncValue: '',
+  syncUnit: 'minutes',
+  robotUsername: '',
+  username: '',
+  password: '',
+  verifyTls: true,
+  httpProxy: '',
+  httpsProxy: '',
+  noProxy: '',
+  unsignedImages: false,
+};
 
 export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const {
@@ -60,24 +95,26 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   } = useRepository(namespace, repoName);
   const {addAlert} = useAlerts();
 
-  // Form state
-  const [isEnabled, setIsEnabled] = useState(true);
-  const [externalReference, setExternalReference] = useState('');
-  const [tags, setTags] = useState('');
-  const [syncStartDate, setSyncStartDate] = useState('');
-  const [syncValue, setSyncValue] = useState('');
-  const [syncUnit, setSyncUnit] = useState('minutes');
-  const [robotUsername, setRobotUsername] = useState('');
-  const [selectedRobot, setSelectedRobot] = useState<Entity | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [verifyTls, setVerifyTls] = useState(true);
-  const [httpProxy, setHttpProxy] = useState('');
-  const [httpsProxy, setHttpsProxy] = useState('');
-  const [noProxy, setNoProxy] = useState('');
-  const [unsignedImages, setUnsignedImages] = useState(false);
+  // Initialize react-hook-form
+  const form = useForm<MirroringFormData>({
+    defaultValues: defaultFormValues,
+    mode: 'onChange',
+  });
 
-  // UI state
+  const {
+    control,
+    handleSubmit,
+    formState: {errors, isValid, isDirty},
+    setValue,
+    watch,
+    reset,
+  } = form;
+
+  // Watch all form values to maintain existing functionality
+  const formValues = watch();
+
+  // Non-form UI state (same as before)
+  const [selectedRobot, setSelectedRobot] = useState<Entity | null>(null);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
@@ -90,18 +127,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<MirroringConfigResponse | null>(null);
 
-  // Validation state
-  const [validated, setValidated] = useState<Record<string, ValidatedOptions>>(
-    {},
-  );
-
-  // Fetch robot accounts for the dropdown
+  // Fetch robot accounts and teams (same as before)
   const {robots} = useFetchRobotAccounts(namespace);
-
-  // Fetch teams for the dropdown
   const {teams} = useFetchTeams(namespace);
 
-  // Unit conversion utilities
+  // Unit conversion utilities (same as before)
   const timeUnits = {
     seconds: 1,
     minutes: 60,
@@ -110,16 +140,13 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     weeks: 60 * 60 * 24 * 7,
   };
 
-  // Convert display value + unit to seconds for backend
   const convertToSeconds = (value: number, unit: string): number => {
     return value * (timeUnits[unit] || 1);
   };
 
-  // Convert seconds from backend to best display unit + value
   const convertFromSeconds = (
     seconds: number,
   ): {value: number; unit: string} => {
-    // Find the largest unit that divides evenly into the seconds
     const units = ['weeks', 'days', 'hours', 'minutes', 'seconds'];
     for (const unit of units) {
       const divisor = timeUnits[unit];
@@ -127,11 +154,47 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         return {value: seconds / divisor, unit};
       }
     }
-    // Fallback to seconds if no clean division
     return {value: seconds, unit: 'seconds'};
   };
 
-  // Create options for the dropdown (creation options first, then teams and robots)
+  // Convert ISO date to datetime-local format
+  const formatDateForInput = (isoDate: string): string => {
+    if (!isoDate) return '';
+    try {
+      const date = new Date(isoDate);
+      // Format as YYYY-MM-DDTHH:MM (datetime-local format)
+      return date.toISOString().slice(0, 16);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
+  };
+
+  // Validation functions (same logic as before)
+  const validateRequired = (value: string) => {
+    if (!value || value.trim() === '') {
+      return 'This field is required';
+    }
+    return true;
+  };
+
+  const validateSyncValue = (value: string) => {
+    if (!value || value.trim() === '') {
+      return 'This field is required';
+    }
+    const numValue = Number(value);
+    if (isNaN(numValue) || numValue <= 0) {
+      return 'Must be a positive number';
+    }
+    return true;
+  };
+
+  // Team validation function (same as before)
+  const validateTeamName = (name: string): boolean => {
+    return /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
+  };
+
+  // Create dropdown options (same as before)
   const robotOptions = [
     <React.Fragment key="dropdown-options">
       <SelectOption
@@ -162,7 +225,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                 is_org_member: true,
               };
               setSelectedRobot(teamEntity);
-              setRobotUsername(name);
+              setValue('robotUsername', name);
             }}
           >
             {name}
@@ -182,7 +245,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                 is_org_member: true,
               };
               setSelectedRobot(robotEntity);
-              setRobotUsername(name);
+              setValue('robotUsername', name);
             }}
           >
             {name}
@@ -192,171 +255,94 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     </React.Fragment>,
   ];
 
-  // Team validation function
-  const validateTeamName = (name: string): boolean => {
-    return /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
-  };
-
+  // Load existing configuration (same as before)
   useEffect(() => {
     const fetchConfig = async () => {
       try {
+        setIsLoading(true);
         const response = await getMirrorConfig(namespace, repoName);
         setConfig(response);
 
-        // Update form state from response
-        setIsEnabled(response.is_enabled);
-        setExternalReference(response.external_reference);
-        setTags(
-          Array.isArray(response.root_rule.rule_value)
-            ? response.root_rule.rule_value.join(', ')
-            : response.root_rule.rule_value,
-        );
-        setSyncStartDate(
-          response.sync_start_date.replace('Z', '').slice(0, 16),
-        );
+        // Populate form with existing values
         const {value, unit} = convertFromSeconds(response.sync_interval);
-        setSyncValue(value.toString());
-        setSyncUnit(unit);
-        setRobotUsername(response.robot_username);
-        // Set selected robot based on the robot username
+
+        reset({
+          isEnabled: response.is_enabled,
+          externalReference: response.external_reference || '',
+          tags: response.root_rule.rule_value.join(', '),
+          syncStartDate: formatDateForInput(response.sync_start_date || ''),
+          syncValue: value.toString(),
+          syncUnit: unit,
+          robotUsername: response.robot_username || '',
+          username: response.external_registry_username || '',
+          password: '', // Don't populate password for security
+          verifyTls: response.external_registry_config?.verify_tls ?? true,
+          httpProxy: response.external_registry_config?.proxy?.http_proxy || '',
+          httpsProxy:
+            response.external_registry_config?.proxy?.https_proxy || '',
+          noProxy: response.external_registry_config?.proxy?.no_proxy || '',
+          unsignedImages:
+            response.external_registry_config?.unsigned_images ?? false,
+        });
+
+        // Set selected robot if there's one configured
         if (response.robot_username) {
-          setSelectedRobot({
+          const robotEntity: Entity = {
             name: response.robot_username,
-            is_robot: true,
-            kind: EntityKind.user,
+            is_robot: response.robot_username.includes('+'),
+            kind: response.robot_username.includes('+')
+              ? EntityKind.user
+              : EntityKind.team,
             is_org_member: true,
-          });
+          };
+          setSelectedRobot(robotEntity);
         }
-        setUsername(response.external_registry_username);
-        setPassword(''); // Password is not returned from the API for security reasons
-        setVerifyTls(response.external_registry_config.verify_tls);
-        setUnsignedImages(
-          response.external_registry_config.unsigned_images ?? false,
-        );
-        setHttpProxy(response.external_registry_config.proxy.http_proxy);
-        setHttpsProxy(response.external_registry_config.proxy.https_proxy);
-        setNoProxy(response.external_registry_config.proxy.no_proxy);
-      } catch (err) {
-        // If the error is a 404, it means no mirror config exists yet
-        if (err.response?.status === 404) {
-          console.info(
-            'No repository mirror configuration (404). This is expected for a new mirror setup.',
-            err,
-          );
+      } catch (error: unknown) {
+        if (
+          (error as {response?: {status?: number}}).response?.status === 404
+        ) {
           setConfig(null);
-          // Set default values for a new mirror configuration
-          setIsEnabled(true);
-          setExternalReference('');
-          setTags('');
-          // Get current date/time in local timezone for datetime-local input
-          const now = new Date();
-          const localDateTime = new Date(
-            now.getTime() - now.getTimezoneOffset() * 60000,
-          )
-            .toISOString()
-            .slice(0, 16);
-          setSyncStartDate(localDateTime);
-          setSyncValue('');
-          setSyncUnit('seconds');
-          setRobotUsername('');
-          setSelectedRobot(null);
-          setUsername('');
-          setPassword('');
-          setVerifyTls(false);
-          setUnsignedImages(false);
-          setHttpProxy('');
-          setHttpsProxy('');
-          setNoProxy('');
         } else {
-          addAlert({
-            variant: AlertVariant.Failure,
-            title: 'Error loading mirror configuration',
-            message: err.message,
-          });
-          setError(err.message);
+          setError(
+            (error as Error).message || 'Failed to load mirror configuration',
+          );
         }
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (repoDetails) {
-      if (repoDetails.state === 'MIRROR') {
-        fetchConfig();
-      } else {
-        setIsLoading(false);
-      }
-    } else if (!isLoadingRepo) {
-      // If we're not loading repo details and we don't have them, something went wrong
+    if (repoDetails?.state === 'MIRROR') {
+      fetchConfig();
+    } else {
       setIsLoading(false);
     }
-  }, [namespace, repoName, repoDetails, isLoadingRepo]);
+  }, [namespace, repoName, repoDetails?.state, reset]);
 
-  const validateField = (
-    name: string,
-    value: string | number | undefined,
-  ): ValidatedOptions => {
-    if (!value) return ValidatedOptions.error;
-    return ValidatedOptions.success;
-  };
-
-  const validateForm = (): boolean => {
-    const newValidated = {
-      externalReference: validateField('externalReference', externalReference),
-      tags: validateField('tags', tags),
-      syncStartDate: validateField('syncStartDate', syncStartDate),
-      syncValue: validateField('syncValue', syncValue),
-      robotUsername: validateField('robotUsername', robotUsername),
-    };
-
-    setValidated(newValidated);
-    return Object.values(newValidated).every(
-      (v) => v === ValidatedOptions.success,
-    );
-  };
-
-  // Check if required fields are filled without side effects
-  const isFormValid = () => {
-    const isValidSyncValue =
-      syncValue.trim() !== '' &&
-      !isNaN(Number(syncValue)) &&
-      Number(syncValue) > 0;
-    return !!(
-      externalReference &&
-      tags &&
-      syncStartDate &&
-      isValidSyncValue &&
-      robotUsername
-    );
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+  // Form submission (same logic as before)
+  const onSubmit = async (data: MirroringFormData) => {
     try {
       // Split and clean up tags to match backend expectation
-      const tagPatterns = tags
+      const tagPatterns = data.tags
         .split(',')
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
       const mirrorConfig = {
-        is_enabled: isEnabled,
-        external_reference: externalReference,
-        external_registry_username: username || null,
-        external_registry_password: password || null,
-        sync_start_date: timestampToISO(timestampFromISO(syncStartDate)),
-        sync_interval: convertToSeconds(Number(syncValue), syncUnit),
-        robot_username: robotUsername,
+        is_enabled: data.isEnabled,
+        external_reference: data.externalReference,
+        external_registry_username: data.username || null,
+        external_registry_password: data.password || null,
+        sync_start_date: timestampToISO(timestampFromISO(data.syncStartDate)),
+        sync_interval: convertToSeconds(Number(data.syncValue), data.syncUnit),
+        robot_username: data.robotUsername,
         external_registry_config: {
-          verify_tls: verifyTls,
-          unsigned_images: unsignedImages,
+          verify_tls: data.verifyTls,
+          unsigned_images: data.unsignedImages,
           proxy: {
-            http_proxy: httpProxy || null,
-            https_proxy: httpsProxy || null,
-            no_proxy: noProxy || null,
+            http_proxy: data.httpProxy || null,
+            https_proxy: data.httpsProxy || null,
+            no_proxy: data.noProxy || null,
           },
         },
         root_rule: {
@@ -370,6 +356,9 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
       } else {
         await createMirrorConfig(namespace, repoName, mirrorConfig);
       }
+
+      // Reset form with current values to mark it as clean
+      reset(data);
 
       addAlert({
         variant: AlertVariant.Success,
@@ -385,6 +374,16 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     }
   };
 
+  // Helper function to get validation state for PatternFly
+  const getValidationState = (
+    fieldName: keyof MirroringFormData,
+  ): ValidatedOptions => {
+    return errors[fieldName]
+      ? ValidatedOptions.error
+      : ValidatedOptions.default;
+  };
+
+  // Early returns (same as before)
   if (isLoadingRepo) {
     return <Spinner size="md" />;
   }
@@ -435,7 +434,11 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
       <TextContent>
         <Title headingLevel="h2">Repository Mirroring</Title>
       </TextContent>
-      <Form isWidthLimited data-testid="mirror-form">
+      <Form
+        isWidthLimited
+        data-testid="mirror-form"
+        onSubmit={handleSubmit(onSubmit)}
+      >
         <TextContent>
           {config ? (
             <Text>
@@ -461,59 +464,66 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         </Title>
         {config && (
           <FormGroup fieldId="is_enabled" isStack>
-            <Checkbox
-              label="Enabled"
-              id="is_enabled"
-              name="is_enabled"
-              description={
-                isEnabled
-                  ? 'Scheduled mirroring enabled. Immediate sync available via Sync Now.'
-                  : 'Scheduled mirroring disabled. Immediate sync available via Sync Now.'
-              }
-              isChecked={isEnabled}
-              data-testid="mirror-enabled-checkbox"
-              onChange={async (_event, checked) => {
-                try {
-                  await toggleMirroring(namespace, repoName, checked);
-
-                  // Update only the local state, don't update config to avoid conflicts
-                  // Use the checked parameter since backend is working but response.is_enabled is undefined
-                  setIsEnabled(checked);
-
-                  // Note: We're not updating setConfig here to avoid potential race conditions
-                  // The config will be refreshed on next useEffect if needed
-
-                  addAlert({
-                    variant: AlertVariant.Success,
-                    title: `Mirror ${
-                      checked ? 'enabled' : 'disabled'
-                    } successfully`,
-                  });
-                } catch (err) {
-                  addAlert({
-                    variant: AlertVariant.Failure,
-                    title: 'Error updating mirror status',
-                    message: err.message,
-                  });
-                }
-              }}
+            <Controller
+              name="isEnabled"
+              control={control}
+              render={({field: {value, onChange}}) => (
+                <Checkbox
+                  label="Enabled"
+                  id="is_enabled"
+                  name="is_enabled"
+                  description={
+                    value
+                      ? 'Scheduled mirroring enabled. Immediate sync available via Sync Now.'
+                      : 'Scheduled mirroring disabled. Immediate sync available via Sync Now.'
+                  }
+                  isChecked={value}
+                  data-testid="mirror-enabled-checkbox"
+                  onChange={async (_event, checked) => {
+                    try {
+                      await toggleMirroring(namespace, repoName, checked);
+                      onChange(checked);
+                      addAlert({
+                        variant: AlertVariant.Success,
+                        title: `Mirror ${
+                          checked ? 'enabled' : 'disabled'
+                        } successfully`,
+                      });
+                    } catch (err) {
+                      addAlert({
+                        variant: AlertVariant.Failure,
+                        title: 'Error toggling mirror',
+                        message: err.message,
+                      });
+                    }
+                  }}
+                />
+              )}
             />
           </FormGroup>
         )}
+
         <FormGroup
           label="Registry Location"
           fieldId="external_reference"
           isStack
         >
-          <TextInput
-            type="text"
-            id="external_reference"
-            name="external_reference"
-            placeholder="quay.io/redhat/quay"
-            value={externalReference}
-            onChange={(_event, value) => setExternalReference(value)}
-            validated={validated.externalReference}
-            data-testid="registry-location-input"
+          <Controller
+            name="externalReference"
+            control={control}
+            rules={{validate: validateRequired}}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="text"
+                id="external_reference"
+                name="external_reference"
+                placeholder="quay.io/redhat/quay"
+                value={value}
+                onChange={(_event, newValue) => onChange(newValue)}
+                validated={getValidationState('externalReference')}
+                data-testid="registry-location-input"
+              />
+            )}
           />
         </FormGroup>
 
@@ -521,15 +531,22 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           <Text component="small" className="pf-v5-c-form__helper-text">
             Comma-separated list of tag patterns to synchronize.
           </Text>
-          <TextInput
-            type="text"
-            id="tags"
+          <Controller
             name="tags"
-            placeholder="Examples: latest, 3.3*, *"
-            value={tags}
-            onChange={(_event, value) => setTags(value)}
-            validated={validated.tags}
-            data-testid="tags-input"
+            control={control}
+            rules={{validate: validateRequired}}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="text"
+                id="tags"
+                name="tags"
+                placeholder="Examples: latest, 3.3*, *"
+                value={value}
+                onChange={(_event, newValue) => onChange(newValue)}
+                validated={getValidationState('tags')}
+                data-testid="tags-input"
+              />
+            )}
           />
         </FormGroup>
 
@@ -539,20 +556,27 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           isStack
         >
           {config ? (
-            // For configured mirrors: show date with Sync Now button
             <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-              <TextInput
-                type="datetime-local"
-                id="sync_start_date"
-                name="sync_start_date"
-                value={syncStartDate}
-                onChange={(_event, value) => setSyncStartDate(value)}
-                validated={validated.syncStartDate}
-                style={{flex: 1}}
+              <Controller
+                name="syncStartDate"
+                control={control}
+                rules={{validate: validateRequired}}
+                render={({field: {value, onChange}}) => (
+                  <TextInput
+                    type="datetime-local"
+                    id="sync_start_date"
+                    name="sync_start_date"
+                    value={value}
+                    onChange={(_event, newValue) => onChange(newValue)}
+                    validated={getValidationState('syncStartDate')}
+                    style={{flex: 1}}
+                  />
+                )}
               />
               <Button
                 variant="primary"
                 size="sm"
+                type="button"
                 isDisabled={
                   config.sync_status === 'SYNCING' ||
                   config.sync_status === 'SYNC_NOW'
@@ -565,7 +589,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                       variant: AlertVariant.Success,
                       title: 'Sync scheduled successfully',
                     });
-                    // Refresh the config to get updated status
                     const response = await getMirrorConfig(namespace, repoName);
                     setConfig(response);
                   } catch (err) {
@@ -581,91 +604,117 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               </Button>
             </div>
           ) : (
-            // For new mirrors: just the date input
-            <TextInput
-              type="datetime-local"
-              id="sync_start_date"
-              name="sync_start_date"
-              value={syncStartDate}
-              onChange={(_event, value) => setSyncStartDate(value)}
-              validated={validated.syncStartDate}
+            <Controller
+              name="syncStartDate"
+              control={control}
+              rules={{validate: validateRequired}}
+              render={({field: {value, onChange}}) => (
+                <TextInput
+                  type="datetime-local"
+                  id="sync_start_date"
+                  name="sync_start_date"
+                  value={value}
+                  onChange={(_event, newValue) => onChange(newValue)}
+                  validated={getValidationState('syncStartDate')}
+                />
+              )}
             />
           )}
         </FormGroup>
+
         <FormGroup label="Sync Interval" fieldId="sync_interval" isStack>
           <InputGroup
             onPointerEnterCapture={() => setIsHovered(true)}
             onPointerLeaveCapture={() => setIsHovered(false)}
             className={isHovered ? 'pf-v5-u-background-color-200' : ''}
           >
-            <TextInput
-              type="text"
-              id="sync_interval"
-              name="sync_interval"
-              value={syncValue}
-              onChange={(_event, value) => {
-                // Only allow digits
-                const numericValue = value.replace(/[^0-9]/g, '');
-                setSyncValue(numericValue);
-              }}
-              pattern="[0-9]*"
-              inputMode="numeric"
-              validated={validated.syncValue}
-              aria-label="Sync interval value"
-              data-testid="sync-interval-input"
-            />
-            <Select
-              isOpen={isSelectOpen}
-              onOpenChange={(isOpen) => setIsSelectOpen(isOpen)}
-              onSelect={(_event, value) => {
-                setSyncUnit(value as string);
-                setIsSelectOpen(false);
-              }}
-              selected={syncUnit}
-              aria-label="Sync interval unit"
-              toggle={(toggleRef) => (
-                <MenuToggle
-                  ref={toggleRef}
-                  onClick={() => setIsSelectOpen(!isSelectOpen)}
-                  isExpanded={isSelectOpen}
-                >
-                  {syncUnit}
-                </MenuToggle>
+            <Controller
+              name="syncValue"
+              control={control}
+              rules={{validate: validateSyncValue}}
+              render={({field: {value, onChange}}) => (
+                <TextInput
+                  type="text"
+                  id="sync_interval"
+                  name="sync_interval"
+                  value={value}
+                  onChange={(_event, newValue) => {
+                    const numericValue = newValue.replace(/[^0-9]/g, '');
+                    onChange(numericValue);
+                  }}
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  validated={getValidationState('syncValue')}
+                  aria-label="Sync interval value"
+                  data-testid="sync-interval-input"
+                />
               )}
-            >
-              <SelectOption value="seconds">seconds</SelectOption>
-              <SelectOption value="minutes">minutes</SelectOption>
-              <SelectOption value="hours">hours</SelectOption>
-              <SelectOption value="days">days</SelectOption>
-              <SelectOption value="weeks">weeks</SelectOption>
-            </Select>
+            />
+            <Controller
+              name="syncUnit"
+              control={control}
+              render={({field: {value, onChange}}) => (
+                <Select
+                  isOpen={isSelectOpen}
+                  onOpenChange={(isOpen) => setIsSelectOpen(isOpen)}
+                  onSelect={(_event, selectedValue) => {
+                    onChange(selectedValue as string);
+                    setIsSelectOpen(false);
+                  }}
+                  selected={value}
+                  aria-label="Sync interval unit"
+                  toggle={(toggleRef) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setIsSelectOpen(!isSelectOpen)}
+                      isExpanded={isSelectOpen}
+                    >
+                      {value}
+                    </MenuToggle>
+                  )}
+                >
+                  <SelectOption value="seconds">seconds</SelectOption>
+                  <SelectOption value="minutes">minutes</SelectOption>
+                  <SelectOption value="hours">hours</SelectOption>
+                  <SelectOption value="days">days</SelectOption>
+                  <SelectOption value="weeks">weeks</SelectOption>
+                </Select>
+              )}
+            />
           </InputGroup>
         </FormGroup>
 
         <FormGroup label="Robot User" fieldId="robot_username" isStack>
-          <EntitySearch
-            id="robot-user-select"
-            org={namespace}
-            includeTeams={true}
-            onSelect={(robot: Entity) => {
-              setSelectedRobot(robot);
-              setRobotUsername(robot.name);
-            }}
-            onClear={() => {
-              setSelectedRobot(null);
-              setRobotUsername('');
-            }}
-            value={selectedRobot?.name}
-            onError={() =>
-              addAlert({
-                variant: AlertVariant.Failure,
-                title: 'Error loading robot users',
-                message: 'Failed to load available robots',
-              })
-            }
-            defaultOptions={robotOptions}
-            placeholderText="Select a team or user..."
-            data-testid="robot-user-select"
+          <Controller
+            name="robotUsername"
+            control={control}
+            rules={{validate: validateRequired}}
+            render={() => (
+              <EntitySearch
+                id="robot-user-select"
+                org={namespace}
+                includeTeams={true}
+                onSelect={(robot: Entity) => {
+                  setSelectedRobot(robot);
+                  setValue('robotUsername', robot.name);
+                }}
+                onClear={() => {
+                  setSelectedRobot(null);
+                  setValue('robotUsername', '');
+                }}
+                value={selectedRobot?.name}
+                onError={() =>
+                  addAlert({
+                    variant: AlertVariant.Failure,
+                    title: 'Error loading robot users',
+                    message: 'Failed to load available robots',
+                  })
+                }
+                defaultOptions={robotOptions}
+                placeholderText="Select a team or user..."
+                data-testid="robot-user-select"
+              />
+            )}
           />
         </FormGroup>
 
@@ -677,15 +726,22 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         >
           Required if the external repository is private.
         </Text>
+
         <FormGroup label="Username" fieldId="username" isStack>
-          <TextInput
-            type="text"
-            id="username"
+          <Controller
             name="username"
-            value={username}
-            onChange={(_event, value) => setUsername(value)}
-            validated={validated.username}
-            data-testid="username-input"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="text"
+                id="username"
+                name="username"
+                value={value}
+                onChange={(_event, newValue) => onChange(newValue)}
+                validated={getValidationState('username')}
+                data-testid="username-input"
+              />
+            )}
           />
         </FormGroup>
 
@@ -694,84 +750,122 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           fieldId="external_registry_password"
           isStack
         >
-          <TextInput
-            type="password"
-            id="external_registry_password"
-            name="external_registry_password"
-            value={password}
-            onChange={(_event, value) => setPassword(value)}
-            validated={validated.password}
-            data-testid="password-input"
+          <Controller
+            name="password"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="password"
+                id="external_registry_password"
+                name="external_registry_password"
+                value={value}
+                onChange={(_event, newValue) => onChange(newValue)}
+                validated={getValidationState('password')}
+                data-testid="password-input"
+              />
+            )}
           />
         </FormGroup>
 
         <Divider />
         <Title headingLevel="h3">Advanced Settings</Title>
+
         <FormGroup fieldId="verify_tls" isStack>
-          <Checkbox
-            label="Verify TLS"
-            id="verify_tls"
-            name="verify_tls"
-            description="Require HTTPS and verify certificates when talking to the external registry."
-            isChecked={verifyTls}
-            onChange={(_event, isChecked) => setVerifyTls(isChecked)}
-            data-testid="verify-tls-checkbox"
+          <Controller
+            name="verifyTls"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <Checkbox
+                label="Verify TLS"
+                id="verify_tls"
+                name="verify_tls"
+                description="Require HTTPS and verify certificates when talking to the external registry."
+                isChecked={value}
+                onChange={(_event, checked) => onChange(checked)}
+                data-testid="verify-tls-checkbox"
+              />
+            )}
           />
         </FormGroup>
 
         <FormGroup fieldId="unsigned_images" isStack>
-          <Checkbox
-            label="Accept Unsigned Images"
-            id="unsigned_images"
-            name="unsigned_images"
-            description="Allow unsigned images to be mirrored."
-            isChecked={unsignedImages}
-            onChange={(_event, isChecked) => setUnsignedImages(isChecked)}
-            data-testid="unsigned-images-checkbox"
+          <Controller
+            name="unsignedImages"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <Checkbox
+                label="Accept Unsigned Images"
+                id="unsigned_images"
+                name="unsigned_images"
+                description="Allow unsigned images to be mirrored."
+                isChecked={value}
+                onChange={(_event, checked) => onChange(checked)}
+                data-testid="unsigned-images-checkbox"
+              />
+            )}
           />
         </FormGroup>
 
         <FormGroup label="HTTP Proxy" fieldId="http_proxy" isStack>
-          <TextInput
-            type="text"
-            id="http_proxy"
-            name="http_proxy"
-            placeholder="proxy.example.com"
-            value={httpProxy ?? 'None'}
-            onChange={(_event, value) =>
-              setHttpProxy(value === 'None' ? null : value)
-            }
-            data-testid="http-proxy-input"
+          <Controller
+            name="httpProxy"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="text"
+                id="http_proxy"
+                name="http_proxy"
+                placeholder="proxy.example.com"
+                value={value ?? 'None'}
+                onChange={(_event, newValue) =>
+                  onChange(newValue === 'None' ? null : newValue)
+                }
+                data-testid="http-proxy-input"
+              />
+            )}
           />
         </FormGroup>
 
         <FormGroup label="HTTPs Proxy" fieldId="https_proxy" isStack>
-          <TextInput
-            type="text"
-            id="https_proxy"
-            name="https_proxy"
-            placeholder="proxy.example.com"
-            value={httpsProxy ?? 'None'}
-            onChange={(_event, value) =>
-              setHttpsProxy(value === 'None' ? null : value)
-            }
-            data-testid="https-proxy-input"
+          <Controller
+            name="httpsProxy"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="text"
+                id="https_proxy"
+                name="https_proxy"
+                placeholder="proxy.example.com"
+                value={value ?? 'None'}
+                onChange={(_event, newValue) =>
+                  onChange(newValue === 'None' ? null : newValue)
+                }
+                data-testid="https-proxy-input"
+              />
+            )}
           />
         </FormGroup>
 
         <FormGroup label="No Proxy" fieldId="no_proxy" isStack>
-          <TextInput
-            type="text"
-            id="no_proxy"
-            name="no_proxy"
-            placeholder="example.com"
-            value={noProxy ?? 'None'}
-            onChange={(_event, value) =>
-              setNoProxy(value === 'None' ? null : value)
-            }
-            data-testid="no-proxy-input"
+          <Controller
+            name="noProxy"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <TextInput
+                type="text"
+                id="no_proxy"
+                name="no_proxy"
+                placeholder="example.com"
+                value={value ?? 'None'}
+                onChange={(_event, newValue) =>
+                  onChange(newValue === 'None' ? null : newValue)
+                }
+                data-testid="no-proxy-input"
+              />
+            )}
           />
         </FormGroup>
+
         {/* Status section for configured mirrors */}
         {config && (
           <>
@@ -788,6 +882,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                 <Button
                   variant="danger"
                   size="sm"
+                  type="button"
                   isDisabled={
                     config.sync_status !== 'SYNCING' &&
                     config.sync_status !== 'SYNC_NOW'
@@ -801,7 +896,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                         variant: AlertVariant.Success,
                         title: 'Sync cancelled successfully',
                       });
-                      // Refresh the config to get updated status
                       const response = await getMirrorConfig(
                         namespace,
                         repoName,
@@ -838,17 +932,27 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             </div>
           </>
         )}
+
         <ActionGroup>
           <Button
             variant={ButtonVariant.primary}
             className="pf-v5-u-display-block pf-v5-u-mx-auto"
-            onClick={handleSubmit}
-            isDisabled={!isFormValid()}
+            type="submit"
+            isDisabled={
+              !isValid ||
+              !isDirty ||
+              !formValues.externalReference ||
+              !formValues.tags ||
+              !formValues.syncStartDate ||
+              !formValues.syncValue ||
+              !formValues.robotUsername
+            }
             data-testid="submit-button"
           >
             {config ? 'Update Mirror' : 'Enable Mirror'}
           </Button>
         </ActionGroup>
+
         {/* Robot Creation Modal */}
         <CreateRobotAccountModal
           isModalOpen={isCreateRobotModalOpen}
@@ -858,7 +962,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           RepoPermissionDropdownItems={RepoPermissionDropdownItems}
           setEntity={(robot: Entity) => {
             setSelectedRobot(robot);
-            setRobotUsername(robot.name);
+            setValue('robotUsername', robot.name);
           }}
           showSuccessAlert={(msg) =>
             addAlert({variant: AlertVariant.Success, title: msg})
@@ -867,6 +971,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             addAlert({variant: AlertVariant.Failure, title: msg})
           }
         />
+
         {/* Team Creation Modal */}
         <CreateTeamModal
           teamName={teamName}
@@ -883,7 +988,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           validateName={validateTeamName}
           setAppliedTo={(team: Entity) => {
             setSelectedRobot(team);
-            setRobotUsername(team.name);
+            setValue('robotUsername', team.name);
           }}
         />
       </Form>
