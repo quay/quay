@@ -3,6 +3,7 @@ import {useForm, Controller} from 'react-hook-form';
 import {
   Form,
   FormGroup,
+  FormHelperText,
   TextInput,
   Checkbox,
   Button,
@@ -44,6 +45,12 @@ import {
   timestampFromISO,
   statusLabels,
 } from 'src/resources/MirroringResource';
+import {
+  convertToSeconds,
+  convertFromSeconds,
+  formatDateForInput,
+  validateTeamName,
+} from 'src/libs/utils';
 import './Mirroring.css';
 
 interface MirroringProps {
@@ -130,69 +137,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   // Fetch robot accounts and teams (same as before)
   const {robots} = useFetchRobotAccounts(namespace);
   const {teams} = useFetchTeams(namespace);
-
-  // Unit conversion utilities (same as before)
-  const timeUnits = {
-    seconds: 1,
-    minutes: 60,
-    hours: 60 * 60,
-    days: 60 * 60 * 24,
-    weeks: 60 * 60 * 24 * 7,
-  };
-
-  const convertToSeconds = (value: number, unit: string): number => {
-    return value * (timeUnits[unit] || 1);
-  };
-
-  const convertFromSeconds = (
-    seconds: number,
-  ): {value: number; unit: string} => {
-    const units = ['weeks', 'days', 'hours', 'minutes', 'seconds'];
-    for (const unit of units) {
-      const divisor = timeUnits[unit];
-      if (seconds % divisor === 0) {
-        return {value: seconds / divisor, unit};
-      }
-    }
-    return {value: seconds, unit: 'seconds'};
-  };
-
-  // Convert ISO date to datetime-local format
-  const formatDateForInput = (isoDate: string): string => {
-    if (!isoDate) return '';
-    try {
-      const date = new Date(isoDate);
-      // Format as YYYY-MM-DDTHH:MM (datetime-local format)
-      return date.toISOString().slice(0, 16);
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return '';
-    }
-  };
-
-  // Validation functions (same logic as before)
-  const validateRequired = (value: string) => {
-    if (!value || value.trim() === '') {
-      return 'This field is required';
-    }
-    return true;
-  };
-
-  const validateSyncValue = (value: string) => {
-    if (!value || value.trim() === '') {
-      return 'This field is required';
-    }
-    const numValue = Number(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      return 'Must be a positive number';
-    }
-    return true;
-  };
-
-  // Team validation function (same as before)
-  const validateTeamName = (name: string): boolean => {
-    return /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/.test(name);
-  };
 
   // Create dropdown options (same as before)
   const robotOptions = [
@@ -471,7 +415,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
                 <Checkbox
                   label="Enabled"
                   id="is_enabled"
-                  name="is_enabled"
                   description={
                     value
                       ? 'Scheduled mirroring enabled. Immediate sync available via Sync Now.'
@@ -511,18 +454,30 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           <Controller
             name="externalReference"
             control={control}
-            rules={{validate: validateRequired}}
+            rules={{
+              required: 'This field is required',
+              validate: (value) =>
+                value?.trim() !== '' || 'This field is required',
+            }}
             render={({field: {value, onChange}}) => (
-              <TextInput
-                type="text"
-                id="external_reference"
-                name="external_reference"
-                placeholder="quay.io/redhat/quay"
-                value={value}
-                onChange={(_event, newValue) => onChange(newValue)}
-                validated={getValidationState('externalReference')}
-                data-testid="registry-location-input"
-              />
+              <>
+                <TextInput
+                  type="text"
+                  id="external_reference"
+                  placeholder="quay.io/redhat/quay"
+                  value={value}
+                  onChange={(_event, newValue) => onChange(newValue)}
+                  validated={getValidationState('externalReference')}
+                  data-testid="registry-location-input"
+                />
+                {errors.externalReference && (
+                  <FormHelperText>
+                    <Text component="p" className="pf-m-error">
+                      {errors.externalReference.message}
+                    </Text>
+                  </FormHelperText>
+                )}
+              </>
             )}
           />
         </FormGroup>
@@ -534,18 +489,30 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           <Controller
             name="tags"
             control={control}
-            rules={{validate: validateRequired}}
+            rules={{
+              required: 'This field is required',
+              validate: (value) =>
+                value?.trim() !== '' || 'This field is required',
+            }}
             render={({field: {value, onChange}}) => (
-              <TextInput
-                type="text"
-                id="tags"
-                name="tags"
-                placeholder="Examples: latest, 3.3*, *"
-                value={value}
-                onChange={(_event, newValue) => onChange(newValue)}
-                validated={getValidationState('tags')}
-                data-testid="tags-input"
-              />
+              <>
+                <TextInput
+                  type="text"
+                  id="tags"
+                  placeholder="Examples: latest, 3.3*, *"
+                  value={value}
+                  onChange={(_event, newValue) => onChange(newValue)}
+                  validated={getValidationState('tags')}
+                  data-testid="tags-input"
+                />
+                {errors.tags && (
+                  <FormHelperText>
+                    <Text component="p" className="pf-m-error">
+                      {errors.tags.message}
+                    </Text>
+                  </FormHelperText>
+                )}
+              </>
             )}
           />
         </FormGroup>
@@ -560,17 +527,31 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <Controller
                 name="syncStartDate"
                 control={control}
-                rules={{validate: validateRequired}}
+                rules={{
+                  required: 'This field is required',
+                  validate: (value) =>
+                    value?.trim() !== '' || 'This field is required',
+                }}
                 render={({field: {value, onChange}}) => (
-                  <TextInput
-                    type="datetime-local"
-                    id="sync_start_date"
-                    name="sync_start_date"
-                    value={value}
-                    onChange={(_event, newValue) => onChange(newValue)}
-                    validated={getValidationState('syncStartDate')}
-                    style={{flex: 1}}
-                  />
+                  <div style={{flex: 1}}>
+                    <TextInput
+                      type="datetime-local"
+                      id="sync_start_date"
+                      value={value}
+                      onChange={(_event, newValue) => onChange(newValue)}
+                      validated={getValidationState('syncStartDate')}
+                    />
+                    {errors.syncStartDate && (
+                      <FormHelperText>
+                        <Text
+                          component="p"
+                          className="pf-m-error pf-v5-u-mt-sm"
+                        >
+                          {errors.syncStartDate.message}
+                        </Text>
+                      </FormHelperText>
+                    )}
+                  </div>
                 )}
               />
               <Button
@@ -607,16 +588,28 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             <Controller
               name="syncStartDate"
               control={control}
-              rules={{validate: validateRequired}}
+              rules={{
+                required: 'This field is required',
+                validate: (value) =>
+                  value?.trim() !== '' || 'This field is required',
+              }}
               render={({field: {value, onChange}}) => (
-                <TextInput
-                  type="datetime-local"
-                  id="sync_start_date"
-                  name="sync_start_date"
-                  value={value}
-                  onChange={(_event, newValue) => onChange(newValue)}
-                  validated={getValidationState('syncStartDate')}
-                />
+                <>
+                  <TextInput
+                    type="datetime-local"
+                    id="sync_start_date"
+                    value={value}
+                    onChange={(_event, newValue) => onChange(newValue)}
+                    validated={getValidationState('syncStartDate')}
+                  />
+                  {errors.syncStartDate && (
+                    <FormHelperText>
+                      <Text component="p" className="pf-m-error">
+                        {errors.syncStartDate.message}
+                      </Text>
+                    </FormHelperText>
+                  )}
+                </>
               )}
             />
           )}
@@ -631,12 +624,23 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
             <Controller
               name="syncValue"
               control={control}
-              rules={{validate: validateSyncValue}}
+              rules={{
+                required: 'This field is required',
+                validate: (value) => {
+                  if (!value || value.trim() === '') {
+                    return 'This field is required';
+                  }
+                  const numValue = Number(value);
+                  if (isNaN(numValue) || numValue <= 0) {
+                    return 'Must be a positive number';
+                  }
+                  return true;
+                },
+              }}
               render={({field: {value, onChange}}) => (
                 <TextInput
                   type="text"
                   id="sync_interval"
-                  name="sync_interval"
                   value={value}
                   onChange={(_event, newValue) => {
                     const numericValue = newValue.replace(/[^0-9]/g, '');
@@ -682,38 +686,58 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               )}
             />
           </InputGroup>
+          {errors.syncValue && (
+            <FormHelperText>
+              <Text component="p" className="pf-m-error">
+                {errors.syncValue.message}
+              </Text>
+            </FormHelperText>
+          )}
         </FormGroup>
 
         <FormGroup label="Robot User" fieldId="robot_username" isStack>
           <Controller
             name="robotUsername"
             control={control}
-            rules={{validate: validateRequired}}
-            render={() => (
-              <EntitySearch
-                id="robot-user-select"
-                org={namespace}
-                includeTeams={true}
-                onSelect={(robot: Entity) => {
-                  setSelectedRobot(robot);
-                  setValue('robotUsername', robot.name);
-                }}
-                onClear={() => {
-                  setSelectedRobot(null);
-                  setValue('robotUsername', '');
-                }}
-                value={selectedRobot?.name}
-                onError={() =>
-                  addAlert({
-                    variant: AlertVariant.Failure,
-                    title: 'Error loading robot users',
-                    message: 'Failed to load available robots',
-                  })
-                }
-                defaultOptions={robotOptions}
-                placeholderText="Select a team or user..."
-                data-testid="robot-user-select"
-              />
+            rules={{
+              required: 'This field is required',
+              validate: (value) =>
+                value?.trim() !== '' || 'This field is required',
+            }}
+            render={({field}) => (
+              <>
+                <EntitySearch
+                  id="robot-user-select"
+                  org={namespace}
+                  includeTeams={true}
+                  onSelect={(robot: Entity) => {
+                    setSelectedRobot(robot);
+                    field.onChange(robot.name);
+                  }}
+                  onClear={() => {
+                    setSelectedRobot(null);
+                    field.onChange('');
+                  }}
+                  value={selectedRobot?.name}
+                  onError={() =>
+                    addAlert({
+                      variant: AlertVariant.Failure,
+                      title: 'Error loading robot users',
+                      message: 'Failed to load available robots',
+                    })
+                  }
+                  defaultOptions={robotOptions}
+                  placeholderText="Select a team or user..."
+                  data-testid="robot-user-select"
+                />
+                {errors.robotUsername && (
+                  <FormHelperText>
+                    <Text component="p" className="pf-m-error">
+                      {errors.robotUsername.message}
+                    </Text>
+                  </FormHelperText>
+                )}
+              </>
             )}
           />
         </FormGroup>
@@ -735,7 +759,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <TextInput
                 type="text"
                 id="username"
-                name="username"
                 value={value}
                 onChange={(_event, newValue) => onChange(newValue)}
                 validated={getValidationState('username')}
@@ -757,7 +780,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <TextInput
                 type="password"
                 id="external_registry_password"
-                name="external_registry_password"
                 value={value}
                 onChange={(_event, newValue) => onChange(newValue)}
                 validated={getValidationState('password')}
@@ -778,7 +800,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <Checkbox
                 label="Verify TLS"
                 id="verify_tls"
-                name="verify_tls"
                 description="Require HTTPS and verify certificates when talking to the external registry."
                 isChecked={value}
                 onChange={(_event, checked) => onChange(checked)}
@@ -796,7 +817,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <Checkbox
                 label="Accept Unsigned Images"
                 id="unsigned_images"
-                name="unsigned_images"
                 description="Allow unsigned images to be mirrored."
                 isChecked={value}
                 onChange={(_event, checked) => onChange(checked)}
@@ -814,7 +834,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <TextInput
                 type="text"
                 id="http_proxy"
-                name="http_proxy"
                 placeholder="proxy.example.com"
                 value={value ?? 'None'}
                 onChange={(_event, newValue) =>
@@ -834,7 +853,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <TextInput
                 type="text"
                 id="https_proxy"
-                name="https_proxy"
                 placeholder="proxy.example.com"
                 value={value ?? 'None'}
                 onChange={(_event, newValue) =>
@@ -854,7 +872,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               <TextInput
                 type="text"
                 id="no_proxy"
-                name="no_proxy"
                 placeholder="example.com"
                 value={value ?? 'None'}
                 onChange={(_event, newValue) =>
