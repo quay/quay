@@ -56,6 +56,7 @@ export const useMirroringConfig = (
           noProxy: response.external_registry_config?.proxy?.no_proxy || '',
           unsignedImages:
             response.external_registry_config?.unsigned_images ?? false,
+          skopeoTimeoutInterval: response.skopeo_timeout_interval || 300,
         });
 
         // Set selected robot if there's one configured
@@ -110,6 +111,7 @@ export const useMirroringConfig = (
         : timestampToISO(Math.floor(Date.now() / 1000)),
       sync_interval: convertToSeconds(Number(data.syncValue), data.syncUnit),
       robot_username: data.robotUsername,
+      skopeo_timeout_interval: data.skopeoTimeoutInterval,
       external_registry_config: {
         verify_tls: data.verifyTls,
         unsigned_images: data.unsignedImages,

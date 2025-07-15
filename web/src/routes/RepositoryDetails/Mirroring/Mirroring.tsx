@@ -215,7 +215,10 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
               (configHook.config &&
                 !formHook.formValues.syncStartDate?.trim()) ||
               !formHook.formValues.syncValue?.trim() ||
-              !formHook.formValues.robotUsername?.trim()
+              !formHook.formValues.robotUsername?.trim() ||
+              !formHook.formValues.skopeoTimeoutInterval ||
+              formHook.formValues.skopeoTimeoutInterval < 300 ||
+              formHook.formValues.skopeoTimeoutInterval > 43200
             }
             data-testid="submit-button"
           >

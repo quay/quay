@@ -20,6 +20,7 @@ const defaultFormValues: MirroringFormData = {
   httpsProxy: '',
   noProxy: '',
   unsignedImages: false,
+  skopeoTimeoutInterval: 300,
 };
 
 export const useMirroringForm = (
