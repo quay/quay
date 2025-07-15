@@ -206,15 +206,16 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
           <Button
             variant={ButtonVariant.primary}
             className="pf-v5-u-display-block pf-v5-u-mx-auto"
-            type="submit"
+            type="button"
+            onClick={() => formHook.onSubmit(formHook.formValues)}
             isDisabled={
-              !formHook.isValid ||
-              !formHook.isDirty ||
-              !formHook.formValues.externalReference ||
-              !formHook.formValues.tags ||
-              !formHook.formValues.syncStartDate ||
-              !formHook.formValues.syncValue ||
-              !formHook.formValues.robotUsername
+              (configHook.config && !formHook.isDirty) ||
+              !formHook.formValues.externalReference?.trim() ||
+              !formHook.formValues.tags?.trim() ||
+              (configHook.config &&
+                !formHook.formValues.syncStartDate?.trim()) ||
+              !formHook.formValues.syncValue?.trim() ||
+              !formHook.formValues.robotUsername?.trim()
             }
             data-testid="submit-button"
           >

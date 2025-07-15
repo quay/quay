@@ -15,7 +15,7 @@ const defaultFormValues: MirroringFormData = {
   robotUsername: '',
   username: '',
   password: '',
-  verifyTls: true,
+  verifyTls: false,
   httpProxy: '',
   httpsProxy: '',
   noProxy: '',

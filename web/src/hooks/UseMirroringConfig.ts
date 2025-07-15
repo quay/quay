@@ -105,7 +105,9 @@ export const useMirroringConfig = (
       external_reference: data.externalReference,
       external_registry_username: data.username || null,
       external_registry_password: data.password || null,
-      sync_start_date: timestampToISO(timestampFromISO(data.syncStartDate)),
+      sync_start_date: data.syncStartDate
+        ? timestampToISO(timestampFromISO(data.syncStartDate))
+        : timestampToISO(Math.floor(Date.now() / 1000)),
       sync_interval: convertToSeconds(Number(data.syncValue), data.syncUnit),
       robot_username: data.robotUsername,
       external_registry_config: {
