@@ -29,14 +29,17 @@ def main():
     logger.info("Waiting for Quay availability...")
     while True:
         try:
-            if (
-                requests.get("http://" + host, verify=False, allow_redirects=False).status_code
-                == 200
-            ):
+            resp = requests.head("http://" + host, verify=False, allow_redirects=False)
+            if resp.status_code == 200:
                 logger.info("Quay endpoint healthy, continuing bootstrap of mirror workers.")
                 sys.exit(0)
             else:
-                logger.error("Endpoint %s unavailable, sleeping for 5 seconds.", host)
+                logger.error(
+                    "Endpoint %s unavailable, HTTP status code: %s - %s, sleeping for 5 seconds.",
+                    host,
+                    resp.status_code,
+                    resp.reason,
+                )
                 sleep(5)
         except requests.exceptions.ConnectionError as e:
             logger.error("Connection failed: %s", e)
