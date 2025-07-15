@@ -6,6 +6,7 @@ import {
   MirroringConfigResponse,
   getMirrorConfig,
   cancelSync,
+  statusLabels,
 } from 'src/resources/MirroringResource';
 
 interface MirroringStatusProps {
@@ -27,15 +28,6 @@ export const MirroringStatus: React.FC<MirroringStatusProps> = ({
   setConfig,
   addAlert,
 }) => {
-  const statusLabels = {
-    NEVER_RUN: 'Never Run',
-    SYNC_NOW: 'Sync Now',
-    SYNCING: 'Syncing',
-    SUCCESS: 'Success',
-    FAIL: 'Failed',
-    CANCELLED: 'Cancelled',
-  };
-
   if (!config) {
     return null;
   }
