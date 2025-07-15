@@ -42,6 +42,7 @@ export interface MirroringConfigResponse extends MirroringConfig {
   sync_expiration_date: string | null;
   sync_retries_remaining: number | null;
   robot_username: string;
+  skopeo_timeout_interval: number;
 }
 
 // Date conversion utilities

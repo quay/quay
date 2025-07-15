@@ -317,6 +317,7 @@ describe('Repository Mirroring', () => {
           last_sync: '2024-01-01T12:00:00Z',
           sync_expiration_date: null,
           sync_retries_remaining: 3,
+          skopeo_timeout_interval: 300,
           external_registry_config: {
             verify_tls: true,
             unsigned_images: false,
@@ -456,6 +457,7 @@ describe('Repository Mirroring', () => {
           robot_username: 'testorg+testrobot',
           sync_start_date: '2024-01-01T12:00:00Z',
           sync_interval: 3600,
+          skopeo_timeout_interval: 300,
           external_registry_config: {
             verify_tls: true,
             unsigned_images: false,
@@ -498,6 +500,7 @@ describe('Repository Mirroring', () => {
           robot_username: 'testorg+testrobot',
           sync_start_date: '2024-01-01T12:00:00Z',
           sync_interval: 3600,
+          skopeo_timeout_interval: 300,
           external_registry_config: {
             verify_tls: true,
             unsigned_images: false,
@@ -543,6 +546,7 @@ describe('Repository Mirroring', () => {
           robot_username: 'user1+testrobot',
           sync_start_date: '2024-01-01T12:00:00Z',
           sync_interval: 3600,
+          skopeo_timeout_interval: 300,
           external_registry_config: {
             verify_tls: true,
             unsigned_images: false,

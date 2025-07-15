@@ -8,6 +8,7 @@ import {
   Text,
   Title,
   InputGroup,
+  InputGroupText,
   Select,
   SelectOption,
   MenuToggle,
@@ -291,6 +292,69 @@ export const MirroringConfiguration: React.FC<MirroringConfigurationProps> = ({
             </Text>
           </FormHelperText>
         )}
+      </FormGroup>
+
+      <FormGroup
+        label="Skopeo timeout interval"
+        fieldId="skopeo_timeout_interval"
+        isStack
+      >
+        <Controller
+          name="skopeoTimeoutInterval"
+          control={control}
+          rules={{
+            required: 'This field is required',
+            validate: (value) => {
+              if (!value || value < 300) {
+                return 'Minimum timeout is 300 seconds (5 minutes)';
+              }
+              if (value > 43200) {
+                return 'Maximum timeout is 43200 seconds (12 hours)';
+              }
+              return true;
+            },
+          }}
+          render={({field: {value, onChange}}) => (
+            <InputGroup
+              onPointerEnterCapture={() => setIsHovered(true)}
+              onPointerLeaveCapture={() => setIsHovered(false)}
+              className={isHovered ? 'pf-v5-u-background-color-200' : ''}
+            >
+              <TextInput
+                type="number"
+                id="skopeo_timeout_interval"
+                value={value?.toString() || ''}
+                onChange={(_event, newValue) => {
+                  const numericValue = parseInt(newValue) || 300;
+                  onChange(numericValue);
+                }}
+                min="300"
+                max="43200"
+                validated={
+                  errors.skopeoTimeoutInterval
+                    ? ValidatedOptions.error
+                    : ValidatedOptions.default
+                }
+                aria-label="Skopeo timeout interval"
+                data-testid="skopeo-timeout-input"
+              />
+              <InputGroupText>seconds</InputGroupText>
+            </InputGroup>
+          )}
+        />
+        {errors.skopeoTimeoutInterval && (
+          <FormHelperText>
+            <Text component="p" className="pf-m-error">
+              {errors.skopeoTimeoutInterval.message}
+            </Text>
+          </FormHelperText>
+        )}
+        <FormHelperText>
+          <Text component="p">
+            Minimum timeout length: 300 seconds (5 minutes). Maximum timeout
+            length: 43200 seconds (12 hours).
+          </Text>
+        </FormHelperText>
       </FormGroup>
 
       <FormGroup label="Robot User" fieldId="robot_username" isStack>
