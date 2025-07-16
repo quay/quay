@@ -89,12 +89,12 @@ USER 1001
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
     GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
-	tar xvf manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
-	python3 -m pip install --no-cache-dir wheelhouse/gevent-${GE_LATEST}-cp39-cp3.12-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
+	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz -O /tmp/gvent.tar.gz; \
+	cd /tmp; tar xvf gvent.tar.gz; cd -; \
+	python3 -m pip install --no-cache-dir /tmp/wheelhouse/gevent-${GE_LATEST}-cp39-cp3.12-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
     GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
-	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
-	python3 -m pip install --no-cache-dir grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
+	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl -O /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
+	python3 -m pip install --no-cache-dir /tmp/grpcio-${GRPC_LATEST}-cp312-cp312-linux_ppc64le.whl; \
 	fi
 
 RUN set -ex\
