@@ -137,7 +137,7 @@ class RepositoryManifest(RepositoryParamResource):
     Resource for retrieving a specific repository manifest.
     """
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoManifest")
     @disallow_for_app_repositories
     @parse_args()
@@ -209,7 +209,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
         },
     }
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("listManifestLabels")
     @disallow_for_app_repositories
     @parse_args()
@@ -312,7 +312,7 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
     Resource for managing the labels on a specific repository manifest.
     """
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getManifestLabel")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, manifestref, labelid):

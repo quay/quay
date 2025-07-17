@@ -20,6 +20,7 @@ from data.model import InvalidOrganizationException, organization_skus
 from endpoints.api import (
     ApiResource,
     abort,
+    allow_if_global_readonly_superuser,
     internal_only,
     log_action,
     nickname,
@@ -379,7 +380,7 @@ class OrganizationCard(ApiResource):
         Get the organization's credit card.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_global_readonly_superuser():
             organization = model.organization.get_organization(orgname)
             return get_card(organization)
 
@@ -702,7 +703,7 @@ class OrganizationPlan(ApiResource):
         """
         cus = None
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_global_readonly_superuser():
             private_repos = model.user.get_private_repo_count(orgname)
             organization = model.organization.get_organization(orgname)
             if organization.stripe_id:
@@ -761,7 +762,7 @@ class OrganizationInvoiceList(ApiResource):
         List the invoices for the specified orgnaization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_global_readonly_superuser():
             organization = model.organization.get_organization(orgname)
             if not organization.stripe_id:
                 raise NotFound()
@@ -887,7 +888,7 @@ class OrganizationInvoiceFieldList(ApiResource):
         List the invoice fields for the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_global_readonly_superuser():
             organization = model.organization.get_organization(orgname)
             if not organization.stripe_id:
                 raise NotFound()
@@ -962,7 +963,7 @@ class OrganizationRhSku(ApiResource):
         Get sku assigned to org
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_global_readonly_superuser():
             organization = model.organization.get_organization(orgname)
             query = model.organization_skus.get_org_subscriptions(organization.id)
 
