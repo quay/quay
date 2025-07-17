@@ -128,7 +128,7 @@ RUN npm run --quiet build
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
 ENV OS=linux
-ARG PUSHGATEWAY_VERSION=1.6.0
+ARG PUSHGATEWAY_VERSION=1.11.1
 RUN set -ex\
 	; ARCH=$(uname -m) ; echo $ARCH \
 	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
