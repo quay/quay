@@ -42,6 +42,7 @@ import TagHistory from './TagHistory/TagHistory';
 import TagsList from './Tags/TagsList';
 import {DrawerContentType} from './Types';
 import UsageLogs from '../UsageLogs/UsageLogs';
+import {Mirroring} from './Mirroring/Mirroring';
 
 enum TabIndex {
   Tags = 'tags',
@@ -49,6 +50,7 @@ enum TabIndex {
   TagHistory = 'history',
   Builds = 'builds',
   Logs = 'logs',
+  Mirroring = 'mirroring',
   Settings = 'settings',
 }
 
@@ -64,7 +66,7 @@ export default function RepositoryDetails() {
   const [activeTabKey, setActiveTabKey] = useState(TabIndex.Tags);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [drawerContent, setDrawerContent] = useState<DrawerContentType>(
     DrawerContentType.None,
   );
@@ -235,6 +237,8 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <TagsList
                       organization={organization}
@@ -245,6 +249,8 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.TagHistory}
                     title={<TabTitleText>Tag history</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <TagHistory
                       org={organization}
@@ -255,12 +261,43 @@ export default function RepositoryDetails() {
                   <Tab
                     eventKey={TabIndex.Logs}
                     title={<TabTitleText>Logs</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <UsageLogs
                       organization={organization}
                       repository={repository}
                       type="repository"
                     />
+                  </Tab>
+                  <Tab
+                    eventKey={TabIndex.Mirroring}
+                    title={<TabTitleText>Mirroring</TabTitleText>}
+                    data-testid="mirroring-tab"
+                    isHidden={
+                      !config?.features?.REPO_MIRROR || !repoDetails?.can_admin
+                    }
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
+                  >
+                    {repoDetails?.state !== 'MIRROR' ? (
+                      <div>
+                        This repository&apos;s state is{' '}
+                        <strong>{repoDetails?.state}</strong>. Use the{' '}
+                        <a
+                          href={`/repository/${repoDetails?.namespace}/${repoDetails?.name}?tab=settings`}
+                        >
+                          Settings tab
+                        </a>{' '}
+                        and change it to <strong>Mirror</strong> to manage its
+                        mirroring configuration.
+                      </div>
+                    ) : (
+                      <Mirroring
+                        namespace={organization}
+                        repoName={repository}
+                      />
+                    )}
                   </Tab>
                   <Tab
                     eventKey={TabIndex.Builds}
@@ -270,6 +307,8 @@ export default function RepositoryDetails() {
                       repoDetails?.state !== 'NORMAL' ||
                       (!repoDetails?.can_write && !repoDetails?.can_admin)
                     }
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <Builds
                       org={organization}
@@ -282,6 +321,8 @@ export default function RepositoryDetails() {
                     eventKey={TabIndex.Settings}
                     title={<TabTitleText>Settings</TabTitleText>}
                     isHidden={!repoDetails?.can_admin}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                   >
                     <Settings
                       org={organization}
