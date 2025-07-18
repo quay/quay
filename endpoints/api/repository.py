@@ -296,7 +296,7 @@ class Repository(RepositoryParamResource):
     @query_param(
         "includeTags", "Whether to include repository tags", type=truthy_bool, default=True
     )
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepo")
     def get(self, namespace, repository, parsed_args):
         """

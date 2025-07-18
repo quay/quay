@@ -238,7 +238,7 @@ class RepositoryBuildList(RepositoryParamResource):
         },
     }
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @parse_args()
     @query_param("limit", "The maximum number of builds to return", type=int, default=5)
     @query_param(
@@ -401,7 +401,7 @@ class RepositoryBuildResource(RepositoryParamResource):
     Resource for dealing with repository builds.
     """
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoBuild")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
@@ -456,7 +456,7 @@ class RepositoryBuildStatus(RepositoryParamResource):
     Resource for dealing with repository build status.
     """
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoBuildStatus")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
@@ -507,7 +507,7 @@ class RepositoryBuildLogs(RepositoryParamResource):
     Resource for loading repository build logs.
     """
 
-    @require_repo_read(allow_for_superuser=True)
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @nickname("getRepoBuildLogs")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
