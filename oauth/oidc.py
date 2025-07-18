@@ -172,6 +172,8 @@ class OIDCLoginService(OAuthService):
             app_config, http_client, code, redirect_suffix
         )
 
+        logger.debug("id_token: %s", id_token)
+
         # Decode the id_token.
         try:
             decoded_id_token = self.decode_user_jwt(id_token)
