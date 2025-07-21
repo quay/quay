@@ -212,3 +212,42 @@ export const escapeHtmlString = function (text) {
 
   return adjusted;
 };
+
+// Mirroring utility functions
+const timeUnits = {
+  seconds: 1,
+  minutes: 60,
+  hours: 60 * 60,
+  days: 60 * 60 * 24,
+  weeks: 60 * 60 * 24 * 7,
+};
+
+export const convertToSeconds = (value: number, unit: string): number => {
+  return value * (timeUnits[unit] || 1);
+};
+
+export const convertFromSeconds = (
+  seconds: number,
+): {value: number; unit: string} => {
+  const units = ['weeks', 'days', 'hours', 'minutes', 'seconds'];
+  for (const unit of units) {
+    const divisor = timeUnits[unit];
+    if (seconds % divisor === 0) {
+      return {value: seconds / divisor, unit};
+    }
+  }
+  return {value: seconds, unit: 'seconds'};
+};
+
+// Convert ISO date to datetime-local format
+export const formatDateForInput = (isoDate: string): string => {
+  if (!isoDate) return '';
+  try {
+    const date = new Date(isoDate);
+    // Format as YYYY-MM-DDTHH:MM (datetime-local format)
+    return date.toISOString().slice(0, 16);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
+};
