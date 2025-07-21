@@ -218,6 +218,8 @@ spec:
           value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:4b4012ad649a0354a7a355a9b26c0b53bea577801bcaf903dc5260321a9e3c3a
         - name: kind
           value: task
+        - name: hermetic
+          value: "true"
         resolver: bundles
     - name: prefetch-dependencies
       params:
@@ -279,6 +281,17 @@ spec:
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: LABELS
+        value:
+          - com.redhat.component="quay-registry-container"
+          - name="quay/quay-rhel8"
+          - version=3.14
+          - io.k8s.display-name="Red Hat Quay"
+          - io.k8s.description="Red Hat Quay"
+          - summary="Red Hat Quay"
+          - description="Red Hat Quay"
+          - maintainer="support@redhat.com"
+          - io.openshift.tags="quay"
       - name: IMAGE_APPEND_PLATFORM
         value: "true"
       runAfter:
