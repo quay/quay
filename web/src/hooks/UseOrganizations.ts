@@ -58,7 +58,7 @@ export function useOrganizations() {
       .map((user) => user.username)
       .filter((x) => x);
   } else {
-    usernames = [user.username];
+    usernames = user?.username ? [user.username] : [];
   }
 
   const organizationsTableDetails = [] as OrganizationDetail[];
