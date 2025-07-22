@@ -95,11 +95,6 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
-      <CreateNewUser
-        user={user}
-        isModalOpen={isConfirmUserModalOpen}
-        setModalOpen={setConfirmUserModalOpen}
-      />
       {!user && (
         <Banner variant="gold">
           <Flex
@@ -111,7 +106,8 @@ function PluginMain() {
             </FlexItem>
             <FlexItem>
               We are currently experiencing authentication issues with RH SSO.
-              Our team is actively investigating this issue and working to restore authentication.
+              Our team is actively investigating this issue and working to
+              restore authentication.
             </FlexItem>
           </Flex>
         </Banner>
@@ -137,6 +133,13 @@ function PluginMain() {
           </FlexItem>
         </Flex>
       </Banner>
+      {user && (
+        <CreateNewUser
+          user={user}
+          isModalOpen={isConfirmUserModalOpen}
+          setModalOpen={setConfirmUserModalOpen}
+        />
+      )}
       {user?.prompts && user.prompts.includes('confirm_username') ? (
         <NewUserEmptyPage setCreateUserModalOpen={setConfirmUserModalOpen} />
       ) : (
