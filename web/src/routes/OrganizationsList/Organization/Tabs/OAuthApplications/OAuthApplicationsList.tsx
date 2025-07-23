@@ -46,8 +46,6 @@ export default function OAuthApplicationsList(
     setSearch,
   } = useFetchOAuthApplications(props.orgName);
 
-  console.log(oauthApplications);
-
   const [selectedOAuthApplications, setSelectedOAuthApplications] = useState<
     IOAuthApplication[]
   >([]);
@@ -78,27 +76,6 @@ export default function OAuthApplicationsList(
         return `${oauthApplication.name}`;
       },
     },
-    // 'Permission Applied To': {
-    //   label: 'appliedTo',
-    //   transformFunc: (perm: IOAuthApplication) => perm.appliedTo,
-    // },
-    // Permission: {
-    //   label: 'permission',
-    //   transformFunc: (perm: IOAuthApplication) => (
-    //     <Dropdown
-    //       toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-    //         <MenuToggle ref={toggleRef} id="toggle-disabled" isDisabled>
-    //           {perm.permission}
-    //         </MenuToggle>
-    //       )}
-    //       isOpen={false}
-    //     >
-    //       <DropdownList>
-    //         <DropdownItem>{perm.permission}</DropdownItem>
-    //       </DropdownList>
-    //     </Dropdown>
-    //   ),
-    // },
   };
 
   const {bulkDeleteOAuthApplications} = useBulkDeleteOAuthApplications({

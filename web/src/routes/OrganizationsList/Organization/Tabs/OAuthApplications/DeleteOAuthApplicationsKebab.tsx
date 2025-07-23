@@ -14,8 +14,8 @@ import {
   useDeleteOAuthApplication,
 } from 'src/hooks/UseOAuthApplications';
 
-export default function DeleteDefaultPermissionKebab(
-  props: DefaultPermissionsDropdownProps,
+export default function DeleteOAuthApplicationKebab(
+  props: OAuthApplicationDropdownProps,
 ) {
   const [isOpen, setIsOpen] = useState(false);
   const {addAlert} = useAlerts();
@@ -65,17 +65,19 @@ export default function DeleteDefaultPermissionKebab(
     >
       <DropdownList>
         <DropdownItem
-          onClick={() => removeOAuthApplication({perm: props.oauthApplication})}
+          onClick={() =>
+            removeOAuthApplication({oauthApp: props.oauthApplication})
+          }
           data-testid={`${props.oauthApplication.name}-del-option`}
         >
-          Delete Permission
+          Delete OAuth Application
         </DropdownItem>
       </DropdownList>
     </Dropdown>
   );
 }
 
-interface DefaultPermissionsDropdownProps {
+interface OAuthApplicationDropdownProps {
   orgName: string;
   oauthApplication: IOAuthApplication;
 }

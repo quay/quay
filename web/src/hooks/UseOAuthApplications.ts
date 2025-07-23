@@ -79,25 +79,31 @@ export function useFetchOAuthApplications(org: string) {
 export function useUpdateOAuthApplication(org: string) {
   const queryClient = useQueryClient();
   const {
-    mutate: setOAuthApplication,
-    isError: errorSetOAuthApplication,
-    isSuccess: successSetOAuthApplication,
-    reset: resetSetOAuthApplication,
+    mutate: updateOAuthApplicationMutation,
+    isError: errorUpdateOAuthApplication,
+    isSuccess: successUpdateOAuthApplication,
+    reset: resetUpdateOAuthApplication,
   } = useMutation(
-    async ({id, newRole}: {id: string; newRole: string}) => {
-      return updateOAuthApplication(org, id, newRole);
+    async ({
+      clientId,
+      applicationData,
+    }: {
+      clientId: string;
+      applicationData: Partial<IOAuthApplication>;
+    }) => {
+      return updateOAuthApplication(org, clientId, applicationData);
     },
     {
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
         queryClient.invalidateQueries(['oauthapplications']);
       },
     },
   );
   return {
-    setOAuthApplication,
-    errorSetOAuthApplication,
-    successSetOAuthApplication,
-    resetSetOAuthApplication,
+    updateOAuthApplicationMutation,
+    errorUpdateOAuthApplication,
+    successUpdateOAuthApplication,
+    resetUpdateOAuthApplication,
   };
 }
 
@@ -109,8 +115,8 @@ export function useDeleteOAuthApplication(org: string) {
     isSuccess: successDeleteOAuthApplication,
     reset: resetDeleteOAuthApplication,
   } = useMutation(
-    async ({perm}: {perm: IOAuthApplication}) => {
-      return deleteOAuthApplication(org, perm);
+    async ({oauthApp}: {oauthApp: IOAuthApplication}) => {
+      return deleteOAuthApplication(org, oauthApp);
     },
     {
       onSuccess: () => {

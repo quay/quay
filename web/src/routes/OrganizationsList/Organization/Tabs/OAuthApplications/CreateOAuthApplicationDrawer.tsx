@@ -40,9 +40,12 @@ export default function CreateOAuthApplicationDrawer(
 
   const {createOAuthApplication} = useCreateOAuthApplication(props.orgName, {
     onError: (error) => {
+      const errorMessage =
+        error?.error?.message || error?.message || String(error);
       addAlert({
         variant: AlertVariant.Failure,
         title: 'Error creating application',
+        message: errorMessage,
       });
     },
     onSuccess: () => {
@@ -71,18 +74,17 @@ export default function CreateOAuthApplicationDrawer(
               id="app-name"
               name="app-name"
               value={appName}
-              onChange={(value) => setAppName(value.target.value)}
+              onChange={(_event, value) => setAppName(value)}
               aria-label="Application Name"
             />
           </FormGroup>
-          <FormGroup label="Homepage URL" isRequired fieldId="homepage-url">
+          <FormGroup label="Homepage URL" fieldId="homepage-url">
             <TextInput
-              isRequired
               type="url"
               id="homepage-url"
               name="homepage-url"
               value={homepageUrl}
-              onChange={(value) => setHomepageUrl(value.target.value)}
+              onChange={(_event, value) => setHomepageUrl(value)}
               aria-label="Homepage URL"
             />
           </FormGroup>
@@ -92,7 +94,7 @@ export default function CreateOAuthApplicationDrawer(
               id="description"
               name="description"
               value={description}
-              onChange={(value) => setDescription(value.target.value)}
+              onChange={(_event, value) => setDescription(value)}
               aria-label="Description"
             />
           </FormGroup>
@@ -102,29 +104,27 @@ export default function CreateOAuthApplicationDrawer(
               id="avatar-email"
               name="avatar-email"
               value={avatarEmail}
-              onChange={(value) => setAvatarEmail(value.target.value)}
+              onChange={(_event, value) => setAvatarEmail(value)}
               aria-label="Avatar e-mail"
             />
           </FormGroup>
           <FormGroup
             label="Redirect/Callback URL prefix"
-            isRequired
             fieldId="redirect-url"
           >
             <TextInput
-              isRequired
               type="url"
               id="redirect-url"
               name="redirect-url"
               value={redirectUrl}
-              onChange={(value) => setRedirectUrl(value.target.value)}
+              onChange={(_event, value) => setRedirectUrl(value)}
               aria-label="Redirect/Callback URL prefix"
             />
           </FormGroup>
           <ActionGroup>
             <Button
               variant="primary"
-              isDisabled={!appName || !homepageUrl || !redirectUrl}
+              isDisabled={!appName}
               onClick={handleCreateApplication}
             >
               Create application
