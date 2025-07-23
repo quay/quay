@@ -13,29 +13,35 @@ export async function fetchOAuthApplications(org: string) {
 
 export async function updateOAuthApplication(
   org: string,
-  id: string,
-  newRole: string,
+  clientId: string,
+  applicationData: Partial<IOAuthApplication>,
 ) {
   try {
-    await axios.put(`/api/v1/organization/${org}/applications/${id}`, {
-      id: id,
-      role: newRole.toLowerCase(),
-    });
+    await axios.put(
+      `/api/v1/organization/${org}/applications/${clientId}`,
+      applicationData,
+    );
   } catch (err) {
-    throw new ResourceError('failed to set default permissions', newRole, err);
+    throw new ResourceError(
+      'Failed to update OAuth application',
+      clientId,
+      err,
+    );
   }
 }
 
 export async function deleteOAuthApplication(
   org: string,
-  perm: IOAuthApplication,
+  oauthApp: IOAuthApplication,
 ) {
   try {
-    await axios.delete(`/api/v1/organization/${org}/prototypes/${perm.id}`);
+    await axios.delete(
+      `/api/v1/organization/${org}/applications/${oauthApp.client_id}`,
+    );
   } catch (err) {
     throw new ResourceError(
-      'Unable to delete default permission created by:',
-      perm.createdBy,
+      'Unable to delete OAuth application:',
+      oauthApp.name,
       err,
     );
   }
@@ -49,7 +55,7 @@ export async function createOAuthApplication(
     await axios.post(`/api/v1/organization/${orgName}/applications`, params);
   } catch (err) {
     throw new ResourceError(
-      'failed to create oauth application: ',
+      'Failed to create OAuth application:',
       params.name,
       err,
     );
@@ -65,5 +71,5 @@ export async function bulkDeleteOAuthApplications(
       deleteOAuthApplication(orgName, application),
     ),
   );
-  throwIfError(responses, 'Unable to delete default permissions');
+  throwIfError(responses, 'Unable to delete OAuth applications');
 }
