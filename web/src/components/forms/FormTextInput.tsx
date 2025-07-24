@@ -76,7 +76,12 @@ export function FormTextInput<T extends FieldValues>({
     : ValidatedOptions.default;
 
   return (
-    <FormGroup label={label} fieldId={fieldId || name} isStack={isStack}>
+    <FormGroup
+      label={label}
+      fieldId={fieldId || name}
+      isStack={isStack}
+      isRequired={required}
+    >
       <Controller
         name={name}
         control={control}
