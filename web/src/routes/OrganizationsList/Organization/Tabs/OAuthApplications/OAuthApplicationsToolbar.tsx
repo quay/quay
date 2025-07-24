@@ -3,7 +3,6 @@ import {
   Flex,
   FlexItem,
   Icon,
-  PanelFooter,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
@@ -77,16 +76,6 @@ export default function OAuthApplicationsToolbar(
         </ToolbarContent>
       </Toolbar>
       {props.children}
-      <PanelFooter>
-        <ToolbarPagination
-          itemsList={props.allItems}
-          perPage={props.perPage}
-          page={props.page}
-          setPage={props.setPage}
-          setPerPage={props.setPerPage}
-          bottom={true}
-        />
-      </PanelFooter>
     </>
   );
 }
