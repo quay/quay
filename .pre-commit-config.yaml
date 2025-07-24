@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/zricethezav/gitleaks
-    rev: v8.15.0
+    rev: v8.28.0
     hooks:
     -   id: gitleaks
         args:
