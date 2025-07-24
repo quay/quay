@@ -14,6 +14,9 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
+import SettingsTab from './ManageOAuthApplicationTabs/SettingsTab';
+import OAuthInformationTab from './ManageOAuthApplicationTabs/OAuthInformationTab';
+import GenerateTokenTab from './ManageOAuthApplicationTabs/GenerateTokenTab';
 
 export default function ManageOAuthApplicationDrawer(
   props: ManageOAuthApplicationDrawerProps,
@@ -33,7 +36,7 @@ export default function ManageOAuthApplicationDrawer(
         panelContent={
           <DrawerPanelContent widths={{default: 'width_50'}}>
             <DrawerHead>
-              <Title headingLevel="h2" size="xl">
+              <Title headingLevel="h4" size="md">
                 Manage OAuth Application: {props.application?.name}
               </Title>
               <DrawerActions>
@@ -51,35 +54,36 @@ export default function ManageOAuthApplicationDrawer(
                   title={<TabTitleText>Settings</TabTitleText>}
                   aria-label="Settings Tab"
                 >
-                  <div style={{padding: '16px'}}>
-                    <h3>Settings</h3>
-                    <p>Settings tab content will go here...</p>
-                    <p>Application: {props.application?.name}</p>
-                    <p>Client ID: {props.application?.client_id}</p>
-                  </div>
+                  <SettingsTab
+                    application={props.application}
+                    orgName={props.orgName}
+                    onSuccess={() => {
+                      // Could refresh data or close drawer on success
+                    }}
+                  />
                 </Tab>
                 <Tab
                   eventKey="oauth-info"
                   title={<TabTitleText>OAuth Information</TabTitleText>}
                   aria-label="OAuth Information Tab"
                 >
-                  <div style={{padding: '16px'}}>
-                    <h3>OAuth Information</h3>
-                    <p>OAuth Information tab content will go here...</p>
-                    <p>Client ID: {props.application?.client_id}</p>
-                    <p>Client Secret: ****</p>
-                  </div>
+                  <OAuthInformationTab
+                    application={props.application}
+                    orgName={props.orgName}
+                    onSuccess={() => {
+                      // Could refresh data or close drawer on success
+                    }}
+                  />
                 </Tab>
                 <Tab
                   eventKey="generate-token"
                   title={<TabTitleText>Generate Token</TabTitleText>}
                   aria-label="Generate Token Tab"
                 >
-                  <div style={{padding: '16px'}}>
-                    <h3>Generate Token</h3>
-                    <p>Generate Token tab content will go here...</p>
-                    <p>Select scopes and generate access tokens</p>
-                  </div>
+                  <GenerateTokenTab
+                    application={props.application}
+                    orgName={props.orgName}
+                  />
                 </Tab>
               </Tabs>
             </DrawerContentBody>
