@@ -6,7 +6,6 @@ import {
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
-import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {
   IOAuthApplication,
   useBulkDeleteOAuthApplications,
@@ -15,6 +14,7 @@ import {
 import OAuthApplicationsToolbar from './OAuthApplicationsToolbar';
 import DeleteOAuthApplicationKebab from './DeleteOAuthApplicationsKebab';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
+import CreateOAuthApplicationModal from './CreateOAuthApplicationModal';
 import Conditional from 'src/components/empty/Conditional';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
@@ -51,6 +51,7 @@ export default function OAuthApplicationsList(
   >([]);
 
   const [bulkDeleteModalIsOpen, setBulkDeleteModalIsOpen] = useState(false);
+  const [createModalIsOpen, setCreateModalIsOpen] = useState(false);
   const [err, setError] = useState<string[]>();
   const {addAlert} = useAlerts();
 
@@ -135,13 +136,7 @@ export default function OAuthApplicationsList(
         icon={KeyIcon}
         body="The OAuth Applications panel allows organizations to define custom OAuth applications that can be used by internal or external customers to access Quay Container Registry data on behalf of the customers. More information about the Quay Container Registry API can be found by contacting support."
         button={
-          <Button
-            onClick={() =>
-              props.setDrawerContent(
-                OrganizationDrawerContentType.CreateOAuthApplicationDrawer,
-              )
-            }
-          >
+          <Button onClick={() => setCreateModalIsOpen(true)}>
             Create new application
           </Button>
         }
@@ -151,6 +146,11 @@ export default function OAuthApplicationsList(
 
   return (
     <>
+      <CreateOAuthApplicationModal
+        isModalOpen={createModalIsOpen}
+        handleModalToggle={() => setCreateModalIsOpen(!createModalIsOpen)}
+        orgName={props.orgName}
+      />
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal
           title="Default permission deletion failed"
@@ -170,7 +170,9 @@ export default function OAuthApplicationsList(
           search={search}
           setSearch={setSearch}
           searchOptions={[oauthApplicationColumnName.name]}
-          setDrawerContent={props.setDrawerContent}
+          handleCreateModalToggle={() =>
+            setCreateModalIsOpen(!createModalIsOpen)
+          }
           handleBulkDeleteModalToggle={handleBulkDeleteModalToggle}
         >
           <Conditional if={bulkDeleteModalIsOpen}>
@@ -240,6 +242,5 @@ export default function OAuthApplicationsList(
 }
 
 interface OAuthApplicationsListProps {
-  setDrawerContent: (any) => void;
   orgName: string;
 }

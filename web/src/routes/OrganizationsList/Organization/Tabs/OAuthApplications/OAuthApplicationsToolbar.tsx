@@ -15,7 +15,6 @@ import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {TrashIcon} from '@patternfly/react-icons';
-import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
 
 export default function OAuthApplicationsToolbar(
@@ -48,12 +47,8 @@ export default function OAuthApplicationsToolbar(
             </FlexItem>
           </Flex>
           <Button
-            onClick={() =>
-              props.setDrawerContent(
-                OrganizationDrawerContentType.CreateOAuthApplicationDrawer,
-              )
-            }
-            data-testid="create-default-permissions-btn"
+            onClick={props.handleCreateModalToggle}
+            data-testid="create-oauth-application-btn"
           >
             Create OAuth Application
           </Button>
@@ -113,7 +108,7 @@ interface OAuthApplicationsToolbarProps {
   searchOptions: string[];
   search: SearchState;
   setSearch: (search: SearchState) => void;
-  setDrawerContent: (content: OrganizationDrawerContentType) => void;
+  handleCreateModalToggle: () => void;
   children?: React.ReactNode;
   handleBulkDeleteModalToggle: () => void;
 }
