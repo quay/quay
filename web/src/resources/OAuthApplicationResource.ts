@@ -73,3 +73,21 @@ export async function bulkDeleteOAuthApplications(
   );
   throwIfError(responses, 'Unable to delete OAuth applications');
 }
+
+export async function resetOAuthApplicationClientSecret(
+  org: string,
+  clientId: string,
+): Promise<IOAuthApplication> {
+  try {
+    const response = await axios.post(
+      `/api/v1/organization/${org}/applications/${clientId}/resetclientsecret`,
+    );
+    return response.data;
+  } catch (err) {
+    throw new ResourceError(
+      'Failed to reset OAuth application client secret',
+      clientId,
+      err,
+    );
+  }
+}
