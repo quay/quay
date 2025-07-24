@@ -167,26 +167,28 @@ export default function OAuthApplicationsList(
 
   if (!loading && !oauthApplications?.length) {
     return (
-      <Empty
-        title="This organization doesn't have any OAuth applications defined."
-        icon={KeyIcon}
-        body="The OAuth Applications panel allows organizations to define custom OAuth applications that can be used by internal or external customers to access Quay Container Registry data on behalf of the customers. More information about the Quay Container Registry API can be found by contacting support."
-        button={
-          <Button onClick={() => setCreateModalIsOpen(true)}>
-            Create new application
-          </Button>
-        }
-      />
+      <>
+        <CreateOAuthApplicationModal
+          isModalOpen={createModalIsOpen}
+          handleModalToggle={() => setCreateModalIsOpen(!createModalIsOpen)}
+          orgName={props.orgName}
+        />
+        <Empty
+          title="This organization doesn't have any OAuth applications defined."
+          icon={KeyIcon}
+          body="The OAuth Applications panel allows organizations to define custom OAuth applications that can be used by internal or external customers to access Quay Container Registry data on behalf of the customers. More information about the Quay Container Registry API can be found by contacting support."
+          button={
+            <Button onClick={() => setCreateModalIsOpen(true)}>
+              Create new application
+            </Button>
+          }
+        />
+      </>
     );
   }
 
   return (
     <>
-      <CreateOAuthApplicationModal
-        isModalOpen={createModalIsOpen}
-        handleModalToggle={() => setCreateModalIsOpen(!createModalIsOpen)}
-        orgName={props.orgName}
-      />
       {manageDrawerIsOpen ? (
         <ManageOAuthApplicationDrawer
           isDrawerOpen={manageDrawerIsOpen}
