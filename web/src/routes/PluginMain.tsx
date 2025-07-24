@@ -139,7 +139,7 @@ function PluginMain() {
 
 // Wraps the plugin with necessary context providers
 export default function PluginMainRoot() {
-  // initialize the client only on itial render
+  // initialize the client only on initial render
   const queryClient = useMemo(() => {
     return new QueryClient({
       defaultOptions: {
