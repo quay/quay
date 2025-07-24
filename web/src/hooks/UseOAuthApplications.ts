@@ -6,6 +6,7 @@ import {
   createOAuthApplication,
   deleteOAuthApplication,
   fetchOAuthApplications,
+  resetOAuthApplicationClientSecret,
   updateOAuthApplication,
 } from 'src/resources/OAuthApplicationResource';
 import {oauthApplicationColumnName} from 'src/routes/OrganizationsList/Organization/Tabs/OAuthApplications/OAuthApplicationsList';
@@ -76,7 +77,11 @@ export function useFetchOAuthApplications(org: string) {
   };
 }
 
-export function useUpdateOAuthApplication(org: string) {
+export function useUpdateOAuthApplication(
+  org: string,
+  onSuccess?: () => void,
+  onError?: (error: unknown) => void,
+) {
   const queryClient = useQueryClient();
   const {
     mutate: updateOAuthApplicationMutation,
@@ -96,6 +101,14 @@ export function useUpdateOAuthApplication(org: string) {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['oauthapplications']);
+        if (onSuccess) {
+          onSuccess();
+        }
+      },
+      onError: (error) => {
+        if (onError) {
+          onError(error);
+        }
       },
     },
   );
@@ -178,5 +191,30 @@ export function useBulkDeleteOAuthApplications({orgName, onSuccess, onError}) {
     // Mutations
     bulkDeleteOAuthApplications: async (perms: IOAuthApplication[]) =>
       bulkDeleteOAuthApplicationsMutator.mutate(perms),
+  };
+}
+
+export function useResetOAuthApplicationClientSecret(org: string) {
+  const queryClient = useQueryClient();
+  const {
+    mutate: resetOAuthApplicationClientSecretMutation,
+    isError: errorResetOAuthApplicationClientSecret,
+    isSuccess: successResetOAuthApplicationClientSecret,
+    reset: resetResetOAuthApplicationClientSecret,
+  } = useMutation(
+    async (clientId: string) => {
+      return resetOAuthApplicationClientSecret(org, clientId);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['oauthapplications']);
+      },
+    },
+  );
+  return {
+    resetOAuthApplicationClientSecretMutation,
+    errorResetOAuthApplicationClientSecret,
+    successResetOAuthApplicationClientSecret,
+    resetResetOAuthApplicationClientSecret,
   };
 }
