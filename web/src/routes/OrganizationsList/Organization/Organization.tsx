@@ -24,13 +24,11 @@ import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembership
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import OAuthApplicationsList from './Tabs/OAuthApplications/OAuthApplicationsList';
-import CreateOAuthApplicationDrawer from './Tabs/OAuthApplications/CreateOAuthApplicationDrawer';
 
 export enum OrganizationDrawerContentType {
   None,
   AddNewTeamMemberDrawer,
   CreatePermissionSpecificUser,
-  CreateOAuthApplicationDrawer,
 }
 
 export default function Organization() {
@@ -100,14 +98,6 @@ export default function Organization() {
         drawerContent={drawerContent}
       />
     ),
-    [OrganizationDrawerContentType.CreateOAuthApplicationDrawer]: (
-      <CreateOAuthApplicationDrawer
-        orgName={organizationName}
-        closeDrawer={closeDrawer}
-        drawerRef={drawerRef}
-        drawerContent={drawerContent}
-      />
-    ),
   };
 
   const repositoriesSubNav = [
@@ -147,12 +137,7 @@ export default function Organization() {
     },
     {
       name: 'OAuth Applications',
-      component: (
-        <OAuthApplicationsList
-          orgName={organizationName}
-          setDrawerContent={setDrawerContent}
-        />
-      ),
+      component: <OAuthApplicationsList orgName={organizationName} />,
       visible: !isUserOrganization && organization?.is_admin,
     },
     {
