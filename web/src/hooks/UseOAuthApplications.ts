@@ -194,7 +194,11 @@ export function useBulkDeleteOAuthApplications({orgName, onSuccess, onError}) {
   };
 }
 
-export function useResetOAuthApplicationClientSecret(org: string) {
+export function useResetOAuthApplicationClientSecret(
+  org: string,
+  onSuccess?: (updatedApplication: IOAuthApplication) => void,
+  onError?: (error: unknown) => void,
+) {
   const queryClient = useQueryClient();
   const {
     mutate: resetOAuthApplicationClientSecretMutation,
@@ -206,8 +210,16 @@ export function useResetOAuthApplicationClientSecret(org: string) {
       return resetOAuthApplicationClientSecret(org, clientId);
     },
     {
-      onSuccess: () => {
+      onSuccess: (updatedApplication: IOAuthApplication) => {
         queryClient.invalidateQueries(['oauthapplications']);
+        if (onSuccess) {
+          onSuccess(updatedApplication);
+        }
+      },
+      onError: (error) => {
+        if (onError) {
+          onError(error);
+        }
       },
     },
   );

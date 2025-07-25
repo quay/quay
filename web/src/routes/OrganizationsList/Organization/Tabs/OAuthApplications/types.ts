@@ -23,60 +23,68 @@ export interface OAuthScope {
 }
 
 export const OAUTH_SCOPES: Record<string, OAuthScope> = {
-  'repo:read': {
-    scope: 'repo:read',
-    icon: 'fa-eye',
-    dangerous: false,
-    title: 'View all visible repositories',
-    description:
-      'This application will be able to view and pull all repositories visible to your account',
-  },
-  'repo:write': {
-    scope: 'repo:write',
-    icon: 'fa-pencil',
+  'org:admin': {
+    scope: 'org:admin',
+    icon: 'fa-gear',
     dangerous: true,
-    title: 'Read/Write to any accessible repositories',
+    title: 'Administer Organization',
     description:
-      'This application will be able to view, push and pull to all repositories visible to your account',
+      'This application will be able to administer your organizations including creating robots, creating teams, adjusting team membership, and changing billing settings. You should have absolute trust in the requesting application before granting this permission.',
   },
   'repo:admin': {
     scope: 'repo:admin',
-    icon: 'fa-gear',
-    dangerous: true,
-    title: 'Administer all visible repositories',
+    icon: 'fa-hdd-o',
+    dangerous: false,
+    title: 'Administer Repositories',
     description:
-      'This application will have administrator access to all repositories visible to your account',
+      'This application will have administrator access to all repositories to which the granting user has access',
   },
   'repo:create': {
     scope: 'repo:create',
     icon: 'fa-plus',
-    dangerous: true,
-    title: 'Create new repositories',
+    dangerous: false,
+    title: 'Create Repositories',
     description:
-      'This application will be able to create new repositories in any namespaces that your account has access to',
+      'This application will be able to create repositories in all namespaces that the granting user is allowed to create repositories',
+  },
+  'repo:read': {
+    scope: 'repo:read',
+    icon: 'fa-hdd-o',
+    dangerous: false,
+    title: 'View all visible repositories',
+    description:
+      'This application will be able to view and pull all repositories visible to the granting user',
+  },
+  'repo:write': {
+    scope: 'repo:write',
+    icon: 'fa-hdd-o',
+    dangerous: false,
+    title: 'Read/Write to any accessible repositories',
+    description:
+      'This application will be able to view, push and pull to all repositories to which the granting user has write access',
+  },
+  'super:user': {
+    scope: 'super:user',
+    icon: 'fa-street-view',
+    dangerous: true,
+    title: 'Super User Access',
+    description:
+      'This application will be able to administer your installation including managing users, managing organizations and other features found in the superuser panel. You should have absolute trust in the requesting application before granting this permission.',
+  },
+  'user:admin': {
+    scope: 'user:admin',
+    icon: 'fa-gear',
+    dangerous: true,
+    title: 'Administer User',
+    description:
+      'This application will be able to administer your account including creating robots and granting them permissions to your repositories. You should have absolute trust in the requesting application before granting this permission.',
   },
   'user:read': {
     scope: 'user:read',
     icon: 'fa-user',
     dangerous: false,
-    title: 'View user information',
+    title: 'Read User Information',
     description:
-      'This application will be able to view your basic user information such as username and email address',
-  },
-  'user:admin': {
-    scope: 'user:admin',
-    icon: 'fa-user-cog',
-    dangerous: true,
-    title: 'Administer your account',
-    description:
-      'This application will have administrator access to your user account including the ability to change passwords and create tokens',
-  },
-  'org:admin': {
-    scope: 'org:admin',
-    icon: 'fa-users-cog',
-    dangerous: true,
-    title: 'Administer your organizations',
-    description:
-      'This application will have administrator access to all organizations of which you are an administrator',
+      'This application will be able to read user information such as username and email address.',
   },
 };
