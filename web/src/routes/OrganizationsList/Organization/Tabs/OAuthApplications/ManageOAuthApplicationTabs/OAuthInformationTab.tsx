@@ -1,147 +1,114 @@
 import React, {useState} from 'react';
 import {
-  Alert,
   Button,
   ClipboardCopy,
   DescriptionList,
   DescriptionListTerm,
   DescriptionListGroup,
   DescriptionListDescription,
-  Flex,
-  FlexItem,
   PageSection,
   PageSectionVariants,
-  Title,
+  Stack,
+  StackItem,
+  Text,
 } from '@patternfly/react-core';
-import {EyeIcon, EyeSlashIcon} from '@patternfly/react-icons';
 import {
   IOAuthApplication,
   useResetOAuthApplicationClientSecret,
 } from 'src/hooks/UseOAuthApplications';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 
 interface OAuthInformationTabProps {
   application: IOAuthApplication | null;
   orgName: string;
   onSuccess: () => void;
+  updateSelectedApplication: (updatedApplication: IOAuthApplication) => void;
 }
 
 export default function OAuthInformationTab(props: OAuthInformationTabProps) {
-  const [showSecret, setShowSecret] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const {addAlert} = useAlerts();
 
-  const {
-    resetOAuthApplicationClientSecretMutation,
-    errorResetOAuthApplicationClientSecret,
-    successResetOAuthApplicationClientSecret,
-  } = useResetOAuthApplicationClientSecret(props.orgName);
+  const {resetOAuthApplicationClientSecretMutation} =
+    useResetOAuthApplicationClientSecret(
+      props.orgName,
+      (updatedApplication: IOAuthApplication) => {
+        // onSuccess callback - update the displayed application data
+        addAlert({
+          variant: AlertVariant.Success,
+          title: 'Client secret reset successfully',
+        });
+        props.updateSelectedApplication(updatedApplication);
+        props.onSuccess();
+      },
+      () => {
+        // onError callback
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: 'Failed to reset client secret',
+        });
+      },
+    );
 
   if (!props.application) {
-    return <div>No application selected</div>;
+    return <Text>No application selected</Text>;
   }
 
   const handleResetSecret = () => {
     if (props.application?.client_id) {
       resetOAuthApplicationClientSecretMutation(props.application.client_id);
+      setIsResetModalOpen(false);
     }
   };
 
-  // Show success/error alerts
-  React.useEffect(() => {
-    if (successResetOAuthApplicationClientSecret) {
-      addAlert({
-        variant: AlertVariant.Success,
-        title: 'Client secret reset successfully',
-      });
-    }
-  }, [successResetOAuthApplicationClientSecret]);
-
-  React.useEffect(() => {
-    if (errorResetOAuthApplicationClientSecret) {
-      addAlert({
-        variant: AlertVariant.Failure,
-        title: 'Failed to reset client secret',
-      });
-    }
-  }, [errorResetOAuthApplicationClientSecret]);
-
-  const maskedSecret = props.application.client_secret
-    ? '•'.repeat(props.application.client_secret.length)
-    : 'No secret available';
+  const toggleResetModal = () => {
+    setIsResetModalOpen(!isResetModalOpen);
+  };
 
   return (
     <PageSection variant={PageSectionVariants.light}>
-      <Title headingLevel="h3" size="lg">
-        OAuth Application Credentials
-      </Title>
-
-      <DescriptionList isHorizontal>
-        <DescriptionListGroup>
-          <DescriptionListTerm>Application Name</DescriptionListTerm>
-          <DescriptionListDescription>
-            {props.application.name}
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-
-        <DescriptionListGroup>
-          <DescriptionListTerm>Client ID</DescriptionListTerm>
-          <DescriptionListDescription>
-            <ClipboardCopy
-              hoverTip="Copy"
-              clickTip="Copied"
-              variant="inline-compact"
-            >
-              {props.application.client_id}
-            </ClipboardCopy>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-
-        <DescriptionListGroup>
-          <DescriptionListTerm>Client Secret</DescriptionListTerm>
-          <DescriptionListDescription>
-            <Flex alignItems={{default: 'alignItemsCenter'}}>
-              <FlexItem>
+      <Stack hasGutter>
+        <StackItem>
+          <DescriptionList isHorizontal>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Client ID:</DescriptionListTerm>
+              <DescriptionListDescription>
                 <ClipboardCopy
                   hoverTip="Copy"
                   clickTip="Copied"
                   variant="inline-compact"
-                  isReadOnly={!showSecret}
                 >
-                  {showSecret ? props.application.client_secret : maskedSecret}
+                  {props.application.client_id}
                 </ClipboardCopy>
-              </FlexItem>
-              <FlexItem>
-                <Button
-                  variant="link"
-                  icon={showSecret ? <EyeSlashIcon /> : <EyeIcon />}
-                  onClick={() => setShowSecret(!showSecret)}
-                  aria-label={showSecret ? 'Hide secret' : 'Show secret'}
-                >
-                  {showSecret ? 'Hide' : 'Show'}
-                </Button>
-              </FlexItem>
-            </Flex>
-          </DescriptionListDescription>
-        </DescriptionListGroup>
-      </DescriptionList>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
 
-      <Alert
-        variant="warning"
-        title="Keep your client secret secure"
-        style={{marginTop: '1rem', marginBottom: '1rem'}}
-      >
-        Your client secret is used to authenticate your application. Keep it
-        confidential and secure. If compromised, reset it immediately.
-      </Alert>
+            <DescriptionListGroup>
+              <DescriptionListTerm>Client Secret:</DescriptionListTerm>
+              <DescriptionListDescription>
+                <Text>{props.application.client_secret}</Text>
+              </DescriptionListDescription>
+            </DescriptionListGroup>
+          </DescriptionList>
+        </StackItem>
 
-      <Button
-        variant="danger"
-        onClick={handleResetSecret}
-        style={{marginTop: '1rem'}}
-      >
-        Reset Client Secret
-      </Button>
+        <StackItem>
+          <Button variant="primary" onClick={toggleResetModal}>
+            Reset Client Secret
+          </Button>
+        </StackItem>
+      </Stack>
+
+      <ConfirmationModal
+        title="Reset Client Secret?"
+        description="Are you sure you want to reset your Client Secret? Any existing users of this Secret will break!"
+        buttonText="Reset"
+        modalOpen={isResetModalOpen}
+        toggleModal={toggleResetModal}
+        handleModalConfirm={handleResetSecret}
+      />
     </PageSection>
   );
 }

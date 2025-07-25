@@ -95,8 +95,8 @@ export default function SettingsTab(props: SettingsTabProps) {
           errors={errors}
           fieldId="app-name"
           label="Application Name"
-          placeholder="My OAuth Application"
-          helperText="A user-readable name for this application"
+          placeholder="Application Name"
+          helperText="The name of the application that is displayed to users"
           required
         />
 
@@ -106,8 +106,8 @@ export default function SettingsTab(props: SettingsTabProps) {
           errors={errors}
           fieldId="app-uri"
           label="Homepage URL"
-          placeholder="https://myapp.example.com"
-          helperText="The URL where users can find more information about your application"
+          placeholder="Homepage URL"
+          helperText="The URL to which the application will link in the authorization view"
         />
 
         <FormTextInput
@@ -115,9 +115,9 @@ export default function SettingsTab(props: SettingsTabProps) {
           control={control}
           errors={errors}
           fieldId="app-description"
-          label="Application Description"
-          placeholder="Description of my OAuth application"
-          helperText="An optional description for this application"
+          label="Description"
+          placeholder="Description"
+          helperText="The user friendly description of the application"
         />
 
         <FormTextInput
@@ -126,8 +126,8 @@ export default function SettingsTab(props: SettingsTabProps) {
           errors={errors}
           fieldId="avatar-email"
           label="Avatar E-mail"
-          placeholder="user@example.com"
-          helperText="E-mail address for the application avatar"
+          placeholder="Avatar E-mail"
+          helperText="An e-mail address representing the avatar for the application"
         />
 
         <FormTextInput
@@ -135,9 +135,9 @@ export default function SettingsTab(props: SettingsTabProps) {
           control={control}
           errors={errors}
           fieldId="redirect-uri"
-          label="Authorization Callback URL"
-          placeholder="https://myapp.example.com/oauth/callback"
-          helperText="The callback URL to redirect users after authorization"
+          label="Redirect/Callback URL Prefix"
+          placeholder="OAuth Redirect URL"
+          helperText="Allowed prefix for the application's OAuth redirection/callback URLs"
         />
 
         <FormGroup>
