@@ -1,18 +1,22 @@
 import React, {useState} from 'react';
 import {
-  Alert,
   Button,
-  Checkbox,
-  Flex,
-  FlexItem,
-  List,
-  ListItem,
+  HelperText,
+  HelperTextItem,
   PageSection,
   PageSectionVariants,
-  Title,
+  Text,
+  TextVariants,
+  Stack,
+  StackItem,
+  Flex,
+  FlexItem,
 } from '@patternfly/react-core';
-import {ExclamationTriangleIcon} from '@patternfly/react-icons';
+import {InfoCircleIcon} from '@patternfly/react-icons';
+import {useForm} from 'react-hook-form';
 import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
 
 interface GenerateTokenTabProps {
@@ -20,137 +24,156 @@ interface GenerateTokenTabProps {
   orgName: string;
 }
 
+interface GenerateTokenFormData {
+  [key: string]: boolean;
+}
+
 export default function GenerateTokenTab(props: GenerateTokenTabProps) {
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+  const [customUser, setCustomUser] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const {user} = useCurrentUser();
+
+  // Initialize form with all scopes set to false
+  const defaultValues: GenerateTokenFormData = {};
+  Object.keys(OAUTH_SCOPES).forEach((scope) => {
+    defaultValues[scope] = false;
+  });
+
+  const {control, watch} = useForm<GenerateTokenFormData>({
+    defaultValues,
+  });
+
+  const watchedValues = watch();
 
   if (!props.application) {
-    return <div>No application selected</div>;
+    return <Text>No application selected</Text>;
   }
 
   // Now we know application is not null, store it in a local variable
-  const application = props.application;
+  // const application = props.application;
 
-  const handleScopeChange = (scope: string, checked: boolean) => {
-    if (checked) {
-      setSelectedScopes([...selectedScopes, scope]);
-    } else {
-      setSelectedScopes(selectedScopes.filter((s) => s !== scope));
-    }
-  };
-
-  const generateTokenUrl = () => {
-    const baseUrl = window.location.origin;
-    const scopes = selectedScopes.join(' ');
-    const params = new URLSearchParams({
-      client_id: application.client_id,
-      redirect_uri: application.redirect_uri || `${baseUrl}/oauth/callback`,
-      response_type: 'code',
-      scope: scopes,
-    });
-    return `${baseUrl}/oauth/authorize?${params.toString()}`;
+  const getSelectedScopesList = (): string[] => {
+    return Object.keys(watchedValues).filter((scope) => watchedValues[scope]);
   };
 
   const handleGenerateToken = () => {
-    if (selectedScopes.length === 0) return;
-
-    const authUrl = generateTokenUrl();
-    // Open in new tab
-    window.open(authUrl, '_blank');
+    // TODO: Implement OAuth token generation flow
+    alert('OAuth token generation will be implemented in a future update.');
   };
 
-  const hasDangerousScopes = selectedScopes.some(
-    (scope) => OAUTH_SCOPES[scope]?.dangerous,
-  );
+  const assignUser = () => {
+    setCustomUser(true);
+  };
+
+  const cancelAssignUser = () => {
+    setSelectedUser(null);
+    setCustomUser(false);
+  };
 
   return (
     <PageSection variant={PageSectionVariants.light}>
-      <Title headingLevel="h3" size="lg">
-        Generate Access Token
-      </Title>
-
-      <p style={{marginBottom: '1rem'}}>
-        Select the permissions (scopes) that this token should have. The
-        application will be able to access resources within these scopes on
-        behalf of the user.
-      </p>
-
-      <Title headingLevel="h4" size="md" style={{marginBottom: '1rem'}}>
-        Available Scopes
-      </Title>
-
-      <List isPlain>
-        {Object.entries(OAUTH_SCOPES).map(
-          ([scope, config]: [string, OAuthScope]) => (
-            <ListItem key={scope}>
+      <Stack hasGutter>
+        <HelperText>
+          <HelperTextItem>
+            <Text>
+              Click the button below to generate a new{' '}
+              <Button
+                variant="link"
+                isInline
+                component="a"
+                href="http://tools.ietf.org/html/rfc6749#section-1.4"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                OAuth 2 Access Token
+              </Button>
+              . Note tokens are used for authentication only.{' '}
+              <InfoCircleIcon
+                style={{
+                  marginLeft: 'var(--pf-global--spacer--lg)',
+                  color: 'var(--pf-global--info-color--100)',
+                }}
+                title="The token is used for authentication only and not authorization. While the token scope permits authentication to the API, additional permissions may be required for authorization. e.g. A token with the create repository scope will not permit creation of a repository without the user being granted the Create Repository team permission."
+              />
+            </Text>
+            <Text component={TextVariants.p}>
               <Flex
+                spaceItems={{default: 'spaceItemsSm'}}
                 alignItems={{default: 'alignItemsCenter'}}
-                style={{marginBottom: '0.5rem'}}
               >
                 <FlexItem>
-                  <Checkbox
-                    id={`scope-${scope}`}
-                    label={
-                      <Flex alignItems={{default: 'alignItemsCenter'}}>
-                        <FlexItem>
-                          <strong>{config.title}</strong>
-                        </FlexItem>
-                        {config.dangerous && (
-                          <FlexItem>
-                            <ExclamationTriangleIcon
-                              style={{
-                                color: 'var(--pf-global--warning-color--100)',
-                                marginLeft: '0.5rem',
-                              }}
-                            />
-                          </FlexItem>
-                        )}
-                      </Flex>
-                    }
-                    description={config.description}
-                    isChecked={selectedScopes.includes(scope)}
-                    onChange={(event, checked) =>
-                      handleScopeChange(scope, checked)
-                    }
-                  />
+                  The generated token will act on behalf of user{' '}
+                  {!customUser && <strong>{user?.username || 'user'}</strong>}
+                  {customUser && (
+                    <input
+                      type="text"
+                      placeholder="User"
+                      value={selectedUser || ''}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      style={{
+                        marginLeft: 'var(--pf-global--spacer--xs)',
+                        marginRight: 'var(--pf-global--spacer--xs)',
+                      }}
+                    />
+                  )}
+                </FlexItem>
+                <FlexItem>
+                  {!customUser ? (
+                    <Button variant="primary" size="sm" onClick={assignUser}>
+                      Assign another user
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={cancelAssignUser}
+                    >
+                      Cancel
+                    </Button>
+                  )}
                 </FlexItem>
               </Flex>
-            </ListItem>
-          ),
-        )}
-      </List>
+            </Text>
+          </HelperTextItem>
+        </HelperText>
 
-      {hasDangerousScopes && (
-        <Alert
-          variant="warning"
-          title="Dangerous permissions selected"
-          style={{marginTop: '1rem'}}
-        >
-          Some of the selected permissions can perform destructive actions. Only
-          grant these permissions to applications you fully trust.
-        </Alert>
-      )}
+        <StackItem>
+          <Stack hasGutter>
+            {Object.entries(OAUTH_SCOPES).map(
+              ([scopeName, scopeInfo]: [string, OAuthScope]) => (
+                <StackItem key={scopeName}>
+                  <FormCheckbox
+                    name={scopeName}
+                    control={control}
+                    label={scopeInfo.title}
+                    description={scopeInfo.description}
+                  />
+                </StackItem>
+              ),
+            )}
+          </Stack>
+        </StackItem>
 
-      <Button
-        variant="primary"
-        onClick={handleGenerateToken}
-        isDisabled={selectedScopes.length === 0}
-        style={{marginTop: '1rem'}}
-      >
-        Generate Access Token
-      </Button>
-
-      {selectedScopes.length > 0 && (
-        <Alert
-          variant="info"
-          title="Token generation process"
-          style={{marginTop: '1rem'}}
-        >
-          Clicking Generate Access Token will redirect you to the authorization
-          page where you can approve access for the selected scopes. After
-          approval, you will receive an authorization code that can be exchanged
-          for an access token.
-        </Alert>
-      )}
+        <StackItem>
+          {!customUser ? (
+            <Button
+              variant="primary"
+              onClick={handleGenerateToken}
+              isDisabled={getSelectedScopesList().length === 0}
+            >
+              Generate Access Token
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={handleGenerateToken}
+              isDisabled={!selectedUser || getSelectedScopesList().length === 0}
+            >
+              Assign token
+            </Button>
+          )}
+        </StackItem>
+      </Stack>
     </PageSection>
   );
 }
