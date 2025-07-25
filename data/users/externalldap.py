@@ -6,6 +6,13 @@ import ldap
 from ldap.controls import SimplePagedResultsControl
 from ldap.filter import escape_filter_chars, filter_format
 
+from data.model import InvalidRobotException
+from data.model.user import (
+    find_user_by_email,
+    get_nonrobot_user,
+    get_username,
+    lookup_robot,
+)
 from data.users.federated import FederatedUsers, UserInformation
 from util.itertoolrecipes import take
 
@@ -276,6 +283,13 @@ class LDAPUsers(FederatedUsers):
         if not username_or_email:
             return (None, "Empty username/email")
 
+        try:
+            lookup_robot(username_or_email)
+            return (None, f"LDAP lookup for robots disabled {username_or_email}")
+        except InvalidRobotException:
+            # continue with LDAP lookup
+            pass
+
         # Verify the admin connection works first. We do this here to avoid wrapping
         # the entire block in the INVALID CREDENTIALS check.
         try:
@@ -319,6 +333,13 @@ class LDAPUsers(FederatedUsers):
         filter_restricted_users=False,
         filter_global_readonly_superusers=False,
     ):
+        try:
+            lookup_robot(username_or_email)
+            return (None, f"LDAP lookup for robots disabled {username_or_email}")
+        except InvalidRobotException:
+            # continue with LDAP lookup
+            pass
+
         with_dns, err_msg = self._ldap_user_search(
             username_or_email,
             filter_superusers=filter_superusers,
@@ -530,6 +551,13 @@ class LDAPUsers(FederatedUsers):
         if not username_or_email:
             return False
 
+        try:
+            lookup_robot(username_or_email)
+            return False  # Robots are not in LDAP so return False as not being a superuser
+        except InvalidRobotException:
+            # continue with LDAP lookup
+            pass
+
         logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
             username_or_email, filter_superusers=True
@@ -548,6 +576,13 @@ class LDAPUsers(FederatedUsers):
     def is_global_readonly_superuser(self, username_or_email: str) -> bool:
         if not username_or_email:
             return False
+
+        try:
+            lookup_robot(username_or_email)
+            return False  # Robots are not in LDAP so return False as not being a superuser
+        except InvalidRobotException:
+            # continue with LDAP lookup
+            pass
 
         logger.debug(
             "Looking up LDAP global readonly superuser username or email %s", username_or_email
@@ -573,10 +608,16 @@ class LDAPUsers(FederatedUsers):
         if self._ldap_restricted_user_filter is None:
             return True
 
+        try:
+            lookup_robot(username_or_email)
+            return False  # Robots are not in LDAP so return False as not being a superuser
+        except InvalidRobotException:
+            # continue with LDAP lookup
+            pass
+
         logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email,
-            filter_restricted_users=True,
+            username_or_email, filter_restricted_users=True
         )
         if found_user is None:
             logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
