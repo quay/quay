@@ -125,6 +125,10 @@ export default function OAuthApplicationsList(
     setManageDrawerIsOpen(true);
   };
 
+  const updateSelectedApplication = (updatedApplication: IOAuthApplication) => {
+    setSelectedApplication(updatedApplication);
+  };
+
   const mapOfColNamesToTableData: {
     [key: string]: {
       label: string;
@@ -195,6 +199,7 @@ export default function OAuthApplicationsList(
           handleDrawerToggle={handleManageDrawerToggle}
           application={selectedApplication}
           orgName={props.orgName}
+          updateSelectedApplication={updateSelectedApplication}
         >
           <PageSection variant={PageSectionVariants.light}>
             {error && error.length > 0 && (
@@ -407,6 +412,11 @@ export default function OAuthApplicationsList(
           </Conditional>
         </PageSection>
       )}
+      <CreateOAuthApplicationModal
+        isModalOpen={createModalIsOpen}
+        handleModalToggle={() => setCreateModalIsOpen(!createModalIsOpen)}
+        orgName={props.orgName}
+      />
       <BulkDeleteModalTemplate
         handleModalToggle={() =>
           setBulkDeleteModalIsOpen(!bulkDeleteModalIsOpen)

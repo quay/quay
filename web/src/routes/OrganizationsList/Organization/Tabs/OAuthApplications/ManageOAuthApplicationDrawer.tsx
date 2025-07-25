@@ -73,6 +73,7 @@ export default function ManageOAuthApplicationDrawer(
                     onSuccess={() => {
                       // Could refresh data or close drawer on success
                     }}
+                    updateSelectedApplication={props.updateSelectedApplication}
                   />
                 </Tab>
                 <Tab
@@ -102,4 +103,5 @@ interface ManageOAuthApplicationDrawerProps {
   application: IOAuthApplication | null;
   orgName: string;
   children: React.ReactNode;
+  updateSelectedApplication: (updatedApplication: IOAuthApplication) => void;
 }
