@@ -96,12 +96,8 @@ def get_sub_username_email_from_token(
                 config.get("PREFERRED_GROUP_CLAIM_NAME", None)
             )
 
-    # Call the login service's get_user_id() if it exists (e.g., RHSSO), otherwise use sub directly
-    if (
-        login_service
-        and hasattr(login_service, "get_user_id")
-        and callable(getattr(login_service, "get_user_id"))
-    ):
+    # Call the login service's get_user_id() method to extract user ID from token
+    if login_service:
         user_id = login_service.get_user_id(decoded_id_token)
     else:
         user_id = decoded_id_token["sub"]
