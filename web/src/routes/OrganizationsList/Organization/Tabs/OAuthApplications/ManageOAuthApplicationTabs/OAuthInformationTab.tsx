@@ -79,6 +79,7 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
                   hoverTip="Copy"
                   clickTip="Copied"
                   variant="inline-compact"
+                  data-testid="client-id-copy"
                 >
                   {props.application.client_id}
                 </ClipboardCopy>
@@ -95,7 +96,11 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
         </StackItem>
 
         <StackItem>
-          <Button variant="primary" onClick={toggleResetModal}>
+          <Button
+            variant="primary"
+            onClick={toggleResetModal}
+            data-testid="reset-client-secret-button"
+          >
             Reset Client Secret
           </Button>
         </StackItem>
@@ -108,6 +113,7 @@ export default function OAuthInformationTab(props: OAuthInformationTabProps) {
         modalOpen={isResetModalOpen}
         toggleModal={toggleResetModal}
         handleModalConfirm={handleResetSecret}
+        confirmButtonTestId="confirm-reset-secret"
       />
     </PageSection>
   );
