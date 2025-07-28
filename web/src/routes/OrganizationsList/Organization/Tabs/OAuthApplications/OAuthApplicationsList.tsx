@@ -182,7 +182,10 @@ export default function OAuthApplicationsList(
           icon={KeyIcon}
           body="The OAuth Applications panel allows organizations to define custom OAuth applications that can be used by internal or external customers to access Quay Container Registry data on behalf of the customers. More information about the Quay Container Registry API can be found by contacting support."
           button={
-            <Button onClick={() => setCreateModalIsOpen(true)}>
+            <Button
+              onClick={() => setCreateModalIsOpen(true)}
+              data-testid="create-oauth-application-button"
+            >
               Create new application
             </Button>
           }

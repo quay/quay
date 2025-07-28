@@ -64,7 +64,7 @@ export default function OAuthApplicationActionsKebab(
           <MenuToggle
             ref={toggleRef}
             id={`${props.oauthApplication.name}-toggle-kebab`}
-            data-testid={`${props.oauthApplication.name}-toggle-kebab`}
+            data-testid="oauth-application-actions"
             variant="plain"
             onClick={() => setIsOpen(!isOpen)}
             isExpanded={isOpen}

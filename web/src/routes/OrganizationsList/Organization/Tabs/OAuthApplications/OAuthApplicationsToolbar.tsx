@@ -47,7 +47,7 @@ export default function OAuthApplicationsToolbar(
           </Flex>
           <Button
             onClick={props.handleCreateModalToggle}
-            data-testid="create-oauth-application-btn"
+            data-testid="create-oauth-application-button"
           >
             Create OAuth Application
           </Button>
