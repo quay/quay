@@ -1,6 +1,7 @@
 """
 Create, list, cancel and get status/logs of repository builds.
 """
+
 import datetime
 import hashlib
 import json
@@ -11,7 +12,7 @@ from urllib.parse import urlparse
 from flask import request
 
 import features
-from app import build_logs, dockerfile_build_queue, log_archive
+from app import build_logs, dockerfile_build_queue, log_archive, model_cache
 from app import userfiles as user_files
 from auth.permissions import (
     AdministerOrganizationPermission,
@@ -301,7 +302,7 @@ class RepositoryBuildList(RepositoryParamResource):
             result = parse_robot_username(pull_robot_name)
             if result:
                 try:
-                    model.user.lookup_robot(pull_robot_name)
+                    model.user.lookup_robot(pull_robot_name, model_cache)
                 except model.InvalidRobotException:
                     raise NotFound()
 
