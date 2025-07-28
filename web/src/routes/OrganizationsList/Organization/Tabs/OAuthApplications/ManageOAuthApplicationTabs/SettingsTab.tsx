@@ -98,6 +98,7 @@ export default function SettingsTab(props: SettingsTabProps) {
           placeholder="Application Name"
           helperText="The name of the application that is displayed to users"
           required
+          data-testid="application-name-input"
         />
 
         <FormTextInput
@@ -108,6 +109,7 @@ export default function SettingsTab(props: SettingsTabProps) {
           label="Homepage URL"
           placeholder="Homepage URL"
           helperText="The URL to which the application will link in the authorization view"
+          data-testid="homepage-url-input"
         />
 
         <FormTextInput
@@ -118,6 +120,7 @@ export default function SettingsTab(props: SettingsTabProps) {
           label="Description"
           placeholder="Description"
           helperText="The user friendly description of the application"
+          data-testid="description-input"
         />
 
         <FormTextInput
@@ -128,6 +131,7 @@ export default function SettingsTab(props: SettingsTabProps) {
           label="Avatar E-mail"
           placeholder="Avatar E-mail"
           helperText="An e-mail address representing the avatar for the application"
+          data-testid="avatar-email-input"
         />
 
         <FormTextInput
@@ -138,6 +142,7 @@ export default function SettingsTab(props: SettingsTabProps) {
           label="Redirect/Callback URL Prefix"
           placeholder="OAuth Redirect URL"
           helperText="Allowed prefix for the application's OAuth redirection/callback URLs"
+          data-testid="redirect-url-input"
         />
 
         <FormGroup>
@@ -146,6 +151,7 @@ export default function SettingsTab(props: SettingsTabProps) {
             onClick={handleSubmit(onSubmit)}
             isDisabled={isSubmitting || !isDirty}
             isLoading={isSubmitting}
+            data-testid="update-application-button"
           >
             {isSubmitting ? 'Updating...' : 'Update Application'}
           </Button>
