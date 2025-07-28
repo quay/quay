@@ -143,6 +143,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                       placeholder="User"
                       value={selectedUser || ''}
                       onChange={(e) => setSelectedUser(e.target.value)}
+                      data-testid="custom-user-input"
                       style={{
                         marginLeft: 'var(--pf-global--spacer--xs)',
                         marginRight: 'var(--pf-global--spacer--xs)',
@@ -152,7 +153,12 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                 </FlexItem>
                 <FlexItem>
                   {!customUser ? (
-                    <Button variant="primary" size="sm" onClick={assignUser}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={assignUser}
+                      data-testid="assign-user-button"
+                    >
                       Assign another user
                     </Button>
                   ) : (
@@ -160,6 +166,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                       variant="primary"
                       size="sm"
                       onClick={cancelAssignUser}
+                      data-testid="cancel-assign-button"
                     >
                       Cancel
                     </Button>
@@ -179,6 +186,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                     control={control}
                     label={scopeInfo.title}
                     description={scopeInfo.description}
+                    data-testid={`scope-${scopeName}`}
                   />
                 </StackItem>
               ),
@@ -191,6 +199,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
               variant="primary"
               onClick={handleGenerateToken}
               isDisabled={getSelectedScopesList().length === 0}
+              data-testid="generate-token-button"
             >
               Generate Access Token
             </Button>
@@ -199,6 +208,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
               variant="primary"
               onClick={handleGenerateToken}
               isDisabled={!selectedUser || getSelectedScopesList().length === 0}
+              data-testid="generate-token-button"
             >
               Assign token
             </Button>

@@ -31,7 +31,7 @@ export default function ManageOAuthApplicationDrawer(
   };
 
   return (
-    <Drawer isExpanded={props.isDrawerOpen}>
+    <Drawer isExpanded={props.isDrawerOpen} data-testid="manage-oauth-drawer">
       <DrawerContent
         panelContent={
           <DrawerPanelContent widths={{default: 'width_50'}}>
@@ -53,6 +53,7 @@ export default function ManageOAuthApplicationDrawer(
                   eventKey="settings"
                   title={<TabTitleText>Settings</TabTitleText>}
                   aria-label="Settings Tab"
+                  data-testid="settings-tab"
                 >
                   <SettingsTab
                     application={props.application}
@@ -66,6 +67,7 @@ export default function ManageOAuthApplicationDrawer(
                   eventKey="oauth-info"
                   title={<TabTitleText>OAuth Information</TabTitleText>}
                   aria-label="OAuth Information Tab"
+                  data-testid="oauth-information-tab"
                 >
                   <OAuthInformationTab
                     application={props.application}
@@ -80,6 +82,7 @@ export default function ManageOAuthApplicationDrawer(
                   eventKey="generate-token"
                   title={<TabTitleText>Generate Token</TabTitleText>}
                   aria-label="Generate Token Tab"
+                  data-testid="generate-token-tab"
                 >
                   <GenerateTokenTab
                     application={props.application}
