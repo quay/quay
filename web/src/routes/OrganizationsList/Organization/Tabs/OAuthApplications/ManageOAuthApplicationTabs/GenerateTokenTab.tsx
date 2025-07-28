@@ -1,21 +1,22 @@
 import React, {useState} from 'react';
 import {
   Button,
+  Flex,
+  FlexItem,
   HelperText,
   HelperTextItem,
   PageSection,
   PageSectionVariants,
-  Text,
-  TextVariants,
   Stack,
   StackItem,
-  Flex,
-  FlexItem,
+  Text,
+  TextVariants,
 } from '@patternfly/react-core';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {useForm} from 'react-hook-form';
 import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
 
@@ -32,6 +33,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [customUser, setCustomUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const {user} = useCurrentUser();
+  const quayConfig = useQuayConfig();
 
   // Initialize form with all scopes set to false
   const defaultValues: GenerateTokenFormData = {};
@@ -49,16 +51,47 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
     return <Text>No application selected</Text>;
   }
 
-  // Now we know application is not null, store it in a local variable
-  // const application = props.application;
+  const application = props.application;
 
   const getSelectedScopesList = (): string[] => {
     return Object.keys(watchedValues).filter((scope) => watchedValues[scope]);
   };
 
+  const getUrl = (path: string): string => {
+    const scheme =
+      quayConfig?.config?.PREFERRED_URL_SCHEME ||
+      window.location.protocol.replace(':', '');
+    const hostname =
+      quayConfig?.config?.SERVER_HOSTNAME || window.location.host;
+    return `${scheme}://${hostname}${path}`;
+  };
+
+  const generateUrl = (): string => {
+    if (!application || !quayConfig?.config) return '';
+
+    const scopesString = getSelectedScopesList().join(' ');
+
+    const base =
+      selectedUser !== null
+        ? `/oauth/authorize/assignuser?username=${selectedUser}&`
+        : '/oauth/authorize?';
+
+    const params = new URLSearchParams({
+      response_type: 'token',
+      client_id: application.client_id,
+      scope: scopesString,
+      redirect_uri: getUrl(
+        quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
+      ),
+    });
+
+    return getUrl(`${base}${params.toString()}`);
+  };
+
   const handleGenerateToken = () => {
-    // TODO: Implement OAuth token generation flow
-    alert('OAuth token generation will be implemented in a future update.');
+    if (getSelectedScopesList().length === 0) return;
+    const url = generateUrl();
+    window.open(url, '_blank');
   };
 
   const assignUser = () => {
@@ -136,7 +169,6 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
             </Text>
           </HelperTextItem>
         </HelperText>
-
         <StackItem>
           <Stack hasGutter>
             {Object.entries(OAUTH_SCOPES).map(
@@ -153,7 +185,6 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
             )}
           </Stack>
         </StackItem>
-
         <StackItem>
           {!customUser ? (
             <Button
