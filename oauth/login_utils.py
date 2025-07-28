@@ -97,7 +97,11 @@ def get_sub_username_email_from_token(
             )
 
     # Call the login service's get_user_id() if it exists (e.g., RHSSO), otherwise use sub directly
-    if login_service and hasattr(login_service, 'get_user_id') and callable(getattr(login_service, 'get_user_id')):
+    if (
+        login_service
+        and hasattr(login_service, "get_user_id")
+        and callable(getattr(login_service, "get_user_id"))
+    ):
         user_id = login_service.get_user_id(decoded_id_token)
     else:
         user_id = decoded_id_token["sub"]
