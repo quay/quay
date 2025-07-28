@@ -23,6 +23,7 @@ export default function CreateOAuthApplicationModal(
       title="Create OAuth application"
       isOpen={props.isModalOpen}
       onClose={props.handleModalToggle}
+      data-testid="create-oauth-modal"
       actions={[
         <Button
           key="create"
@@ -30,6 +31,7 @@ export default function CreateOAuthApplicationModal(
           type="submit"
           form="create-oauth-form"
           isDisabled={!isValid || !formValues.name}
+          data-testid="create-oauth-submit"
         >
           Create application
         </Button>,
@@ -48,7 +50,7 @@ export default function CreateOAuthApplicationModal(
           required
           fieldId="app-name"
           helperText="The name of the application that is displayed to users"
-          data-testid="app-name"
+          data-testid="application-name-input"
         />
 
         <FormTextInput<OAuthApplicationFormData>
@@ -60,7 +62,7 @@ export default function CreateOAuthApplicationModal(
           type="text"
           fieldId="homepage-url"
           helperText="The URL to which the application will link in the authorization view"
-          data-testid="homepage-url"
+          data-testid="homepage-url-input"
         />
 
         <FormTextInput<OAuthApplicationFormData>
@@ -71,7 +73,7 @@ export default function CreateOAuthApplicationModal(
           placeholder="Description"
           fieldId="description"
           helperText="The user friendly description of the application"
-          data-testid="description"
+          data-testid="description-input"
         />
 
         <FormTextInput<OAuthApplicationFormData>
@@ -83,7 +85,7 @@ export default function CreateOAuthApplicationModal(
           type="email"
           fieldId="avatar-email"
           helperText="An e-mail address representing the avatar for the application"
-          data-testid="avatar-email"
+          data-testid="avatar-email-input"
         />
 
         <FormTextInput<OAuthApplicationFormData>
@@ -95,7 +97,7 @@ export default function CreateOAuthApplicationModal(
           type="text"
           fieldId="redirect-url"
           helperText="Allowed prefix for the application's OAuth redirection/callback URLs"
-          data-testid="redirect-url"
+          data-testid="redirect-url-input"
         />
       </Form>
     </Modal>
