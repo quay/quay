@@ -10,10 +10,17 @@ import requests
 from six import add_metaclass
 from six.moves.urllib.parse import quote
 
-from oauth.login import OAuthLoginException
 from util.config import URLSchemeAndHostname
 
 logger = logging.getLogger(__name__)
+
+
+class OAuthUserIdException(Exception):
+    """
+    Exception raised when user ID cannot be extracted from JWT token.
+    """
+
+    pass
 
 
 class OAuthEndpoint(object):
@@ -114,7 +121,7 @@ class OAuthService(object):
         """
         sub = decoded_id_token.get("sub")
         if not sub:
-            raise OAuthLoginException("Token missing 'sub' field")
+            raise OAuthUserIdException("Token missing 'sub' field")
         return sub
 
     def requires_form_encoding(self):
