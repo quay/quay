@@ -44,7 +44,7 @@ map $namespace $namespaced_http2_bucket {
 }
 
 {% if enable_rate_limits %}
-limit_req_zone $http_authorization zone=staticauth:10m rate=60r/s;
+limit_req_zone $http_authorization zone=staticauth:10m rate=120r/s;
 {% else %}
 limit_req_zone $request_id zone=staticauth:10m rate=300r/s;
 {% endif %}
