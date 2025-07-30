@@ -20,14 +20,12 @@ map $arg_scope $scope_namespace {
 }
 
 # Create namespace-based rate limiting bucket for auth endpoint
-# Falls back to $request_id if no namespace is found (effectively disabling rate limiting)
 map $scope_namespace $auth_namespace_bucket {
   {% for namespace in non_rate_limited_namespaces %}
-  "{{ namespace }}" $request_id;
+  "{{ namespace }}"  $request_id;
   {% endfor %}
   {% if enable_rate_limits %}
-  ~^(.+)$ $1;  # Use namespace if found
-  default $http_authorization;  # Fallback to auth header if no namespace
+  default $http_authorization;  # Fallback to auth header
   {% else %}
   default $request_id;  # Disable rate limiting when not enabled
   {% endif %}
@@ -65,13 +63,8 @@ map $namespace $namespaced_http2_bucket {
 }
 
 {% if enable_rate_limits %}
-# Original auth rate limiting by authorization header
-limit_req_zone $http_authorization zone=staticauth:10m rate=120r/s;
-
-# New namespace-based auth rate limiting
 limit_req_zone $auth_namespace_bucket zone=namespace_auth:10m rate=120r/s;
 {% else %}
-limit_req_zone $request_id zone=staticauth:10m rate=300r/s;
 limit_req_zone $request_id zone=namespace_auth:10m rate=300r/s;
 {% endif %}
 
