@@ -722,6 +722,7 @@ def request_authorization_code():
     scope = request.args.get("scope", None)
     state = request.args.get("state", None)
     assignment_uuid = request.args.get("assignment_uuid", None)
+    format_requested = request.args.get("format", "html").lower()
 
     if not get_authenticated_user():
         abort(401)
@@ -774,22 +775,38 @@ def request_authorization_code():
             },
         }
 
-        # Show the authorization page.
         has_dangerous_scopes = any([check_scope["dangerous"] for check_scope in scope_info])
-        return render_page_template_with_routedata(
-            "oauthorize.html",
-            scopes=scope_info,
-            has_dangerous_scopes=has_dangerous_scopes,
-            application=oauth_app_view,
-            enumerate=enumerate,
-            response_type=response_type,
-            client_id=client_id,
-            redirect_uri=redirect_uri,
-            scope=scope,
-            csrf_token_val=generate_csrf_token(),
-            state=state,
-            assignment_uuid=assignment_uuid,
-        )
+        
+        if format_requested == "json":
+            # Return the authorization data as JSON.
+            return jsonify({
+                "scopes": scope_info,
+                "has_dangerous_scopes": has_dangerous_scopes,
+                "application": oauth_app_view,
+                "response_type": response_type,
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "scope": scope,
+                "csrf_token_val": generate_csrf_token(),
+                "state": state,
+                "assignment_uuid": assignment_uuid,
+            })
+        else:
+            # Show the authorization page (default behavior).
+            return render_page_template_with_routedata(
+                "oauthorize.html",
+                scopes=scope_info,
+                has_dangerous_scopes=has_dangerous_scopes,
+                application=oauth_app_view,
+                enumerate=enumerate,
+                response_type=response_type,
+                client_id=client_id,
+                redirect_uri=redirect_uri,
+                scope=scope,
+                csrf_token_val=generate_csrf_token(),
+                state=state,
+                assignment_uuid=assignment_uuid,
+            )
 
     if response_type == "token":
         return provider.get_token_response(
