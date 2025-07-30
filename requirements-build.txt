@@ -361,6 +361,11 @@ wheel==0.41.2 \
     --hash=sha256:75909db2664838d015e3d9139004ee16711748a52c8f336b52882266540215d8
     # via -r requirements-build.in
 
+calver==2022.6.26 \
+    --hash=sha256:a1d7fcdd67797afc52ee36ffb8c8adf6643173864306547bfd1380cbce6310a0 \
+    --hash=sha256:e05493a3b17517ef1748fbe610da11f10485faa7c416b9d33fd4a52d74894f8b
+    # via -r requirements-build.in
+
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==80.8.0 \
     --hash=sha256:49f7af965996f26d43c8ae34539c8d99c5042fbff34302ea151eaa9c207cd257 \
