@@ -12,6 +12,7 @@ log_format lb_logs '$remote_addr ($proxy_protocol_addr) '
                    '- $remote_user [$time_local] '
                    '"$request" $status $body_bytes_sent '
                    '"$http_referer" "$http_user_agent" '
+                   'rate_limit_key="$auth_namespace_bucket" '
                    '($request_time $request_length $upstream_response_time)';
 
 types_hash_max_size 2048;
