@@ -14,8 +14,10 @@ export function useCurrentUser(enabled = true) {
     enabled: enabled,
   });
 
-  const isSuperUser =
-    config?.features?.SUPERUSERS_FULL_ACCESS && user?.super_user;
+  // Check both possible feature flag names for superuser support
+  const superUserFeatureEnabled =
+    config?.features?.SUPERUSERS_FULL_ACCESS || config?.features?.SUPER_USERS;
+  const isSuperUser = superUserFeatureEnabled && user?.super_user;
 
   return {user, loading, error, isSuperUser};
 }

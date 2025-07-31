@@ -36,6 +36,10 @@ import RegistryStatus from './RegistryStatus';
 import {NotificationDrawerListComponent} from 'src/components/notifications/NotificationDrawerList';
 import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
+import ServiceKeys from './Superuser/ServiceKeys/ServiceKeys';
+import ChangeLog from './Superuser/ChangeLog/ChangeLog';
+import UsageLogs from './Superuser/UsageLogs/UsageLogs';
+import Messages from './Superuser/Messages/Messages';
 
 const NavigationRoutes = [
   {
@@ -69,6 +73,23 @@ const NavigationRoutes = [
   {
     path: NavigationPath.repositoryDetail,
     Component: <RepositoryTagRouter />,
+  },
+  // Superuser routes
+  {
+    path: NavigationPath.serviceKeys,
+    Component: <ServiceKeys />,
+  },
+  {
+    path: NavigationPath.changeLog,
+    Component: <ChangeLog />,
+  },
+  {
+    path: NavigationPath.usageLogs,
+    Component: <UsageLogs />,
+  },
+  {
+    path: NavigationPath.messages,
+    Component: <Messages />,
   },
 ];
 

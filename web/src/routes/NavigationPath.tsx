@@ -45,6 +45,12 @@ export enum NavigationPath {
 
   repositoriesList = '/repository',
 
+  // Superuser sections
+  serviceKeys = '/service-keys',
+  changeLog = '/change-log',
+  usageLogs = '/usage-logs',
+  messages = '/messages',
+
   // Organization detail
   organizationDetail = '/organization/:organizationName',
 

@@ -12,6 +12,7 @@ import {formatDate} from 'src/libs/utils';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
 import {useQuery} from '@tanstack/react-query';
+import OrganizationOptionsKebab from './OrganizationOptionsKebab';
 import {useRepositories} from 'src/hooks/UseRepositories';
 
 interface CountProps {
@@ -52,6 +53,9 @@ export default function OrgTableData(props: OrganizationsTableItem) {
   //     queryClient.cancelQueries(['organization', props.name, 'repositories']);
   //   };
   // }, [props.name]);
+
+  const {isSuperUser} = useCurrentUser();
+
   // Get organization
   const {data: organization} = useQuery(
     ['organization', props.name],
@@ -100,7 +104,7 @@ export default function OrgTableData(props: OrganizationsTableItem) {
 
   let teamCountVal: string;
   if (!props.isUser) {
-    const {data: teams} = useQuery(
+    useQuery(
       ['organization', props.name, 'teams'],
       () => organization?.teams || [],
     );
@@ -151,6 +155,11 @@ export default function OrgTableData(props: OrganizationsTableItem) {
           lastModifiedDate={lastModifiedDate}
         ></RepoLastModifiedDate>
       </Td>
+      {isSuperUser && (
+        <Td dataLabel={ColumnNames.options}>
+          <OrganizationOptionsKebab name={props.name} isUser={props.isUser} />
+        </Td>
+      )}
     </>
   );
 }
