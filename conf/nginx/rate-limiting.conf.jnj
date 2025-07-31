@@ -15,7 +15,7 @@ map $http2 $http2_bucket {
 # Extract namespace from scope query parameter
 # Docker scope format: "repository:namespace/repo:actions"
 map $arg_scope $scope_namespace {
-  ~^repository:([^/]+)/.* $1;
+  ~^repository%3A(.+?)(%2F|%3A).* $1;
   default "";
 }
 
