@@ -15,6 +15,14 @@ from util.config import URLSchemeAndHostname
 logger = logging.getLogger(__name__)
 
 
+class OAuthUserIdException(Exception):
+    """
+    Exception raised when user ID cannot be extracted from JWT token.
+    """
+
+    pass
+
+
 class OAuthEndpoint(object):
     def __init__(self, base_url, params=None):
         self.base_url = base_url
@@ -106,6 +114,15 @@ class OAuthService(object):
         Performs validation of the client ID and secret, raising an exception on failure.
         """
         pass
+
+    def get_user_id(self, decoded_id_token: dict) -> str:
+        """
+        Returns the 'sub' field from the decoded ID token.
+        """
+        sub = decoded_id_token.get("sub")
+        if not sub:
+            raise OAuthUserIdException("Token missing 'sub' field")
+        return sub
 
     def requires_form_encoding(self):
         """
