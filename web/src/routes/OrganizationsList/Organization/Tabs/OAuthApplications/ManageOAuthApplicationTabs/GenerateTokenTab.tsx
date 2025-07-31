@@ -10,7 +10,6 @@ import {
   Stack,
   StackItem,
   Text,
-  TextVariants,
 } from '@patternfly/react-core';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {useForm} from 'react-hook-form';
@@ -18,6 +17,7 @@ import {IOAuthApplication} from 'src/hooks/UseOAuthApplications';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
+import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
 
 interface GenerateTokenTabProps {
@@ -32,6 +32,7 @@ interface GenerateTokenFormData {
 export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [customUser, setCustomUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
 
@@ -90,8 +91,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
 
   const handleGenerateToken = () => {
     if (getSelectedScopesList().length === 0) return;
-    const url = generateUrl();
-    window.open(url, '_blank');
+    setIsAuthModalOpen(true);
   };
 
   const assignUser = () => {
@@ -101,6 +101,37 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const cancelAssignUser = () => {
     setSelectedUser(null);
     setCustomUser(false);
+  };
+
+  const handleAuthModalConfirm = async () => {
+    const url = generateUrl();
+    const jsonUrl = url + (url.includes('?') ? '&' : '?') + 'format=json';
+
+    try {
+      const response = await fetch(jsonUrl, {
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Authorization data:', data);
+        setIsAuthModalOpen(false);
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Failed to get authorization data:', error);
+      // Fallback to original window.open approach
+      window.open(url, '_blank');
+      setIsAuthModalOpen(false);
+    }
+  };
+
+  const handleAuthModalClose = () => {
+    setIsAuthModalOpen(false);
   };
 
   return (
@@ -129,12 +160,12 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                 title="The token is used for authentication only and not authorization. While the token scope permits authentication to the API, additional permissions may be required for authorization. e.g. A token with the create repository scope will not permit creation of a repository without the user being granted the Create Repository team permission."
               />
             </Text>
-            <Text component={TextVariants.p}>
-              <Flex
-                spaceItems={{default: 'spaceItemsSm'}}
-                alignItems={{default: 'alignItemsCenter'}}
-              >
-                <FlexItem>
+            <Flex
+              spaceItems={{default: 'spaceItemsSm'}}
+              alignItems={{default: 'alignItemsCenter'}}
+            >
+              <FlexItem>
+                <Text>
                   The generated token will act on behalf of user{' '}
                   {!customUser && <strong>{user?.username || 'user'}</strong>}
                   {customUser && (
@@ -150,30 +181,30 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                       }}
                     />
                   )}
-                </FlexItem>
-                <FlexItem>
-                  {!customUser ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={assignUser}
-                      data-testid="assign-user-button"
-                    >
-                      Assign another user
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={cancelAssignUser}
-                      data-testid="cancel-assign-button"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </FlexItem>
-              </Flex>
-            </Text>
+                </Text>
+              </FlexItem>
+              <FlexItem>
+                {!customUser ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={assignUser}
+                    data-testid="assign-user-button"
+                  >
+                    Assign another user
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={cancelAssignUser}
+                    data-testid="cancel-assign-button"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </FlexItem>
+            </Flex>
           </HelperTextItem>
         </HelperText>
         <StackItem>
@@ -215,6 +246,20 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           )}
         </StackItem>
       </Stack>
+
+      {props.application && (
+        <GenerateTokenAuthorizationModal
+          isOpen={isAuthModalOpen}
+          onClose={handleAuthModalClose}
+          onConfirm={handleAuthModalConfirm}
+          application={props.application}
+          selectedScopes={getSelectedScopesList()}
+          scopesData={OAUTH_SCOPES}
+          hasDangerousScopes={getSelectedScopesList().some(
+            (scope) => OAUTH_SCOPES[scope]?.dangerous,
+          )}
+        />
+      )}
     </PageSection>
   );
 }
