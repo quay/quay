@@ -686,10 +686,15 @@ def oauth_local_handler():
         abort(401)
         return
 
+    format_requested = request.args.get("format", "html").lower()
+
     if not request.args.get("scope"):
         return render_page_template_with_routedata("message.html", message="Authorization canceled")
     else:
-        return render_page_template_with_routedata("generatedtoken.html")
+        if format_requested == "json":
+            return jsonify({"access_token": request.args.get("access_token")})
+        else:
+            return render_page_template_with_routedata("generatedtoken.html")
 
 
 @web.route("/oauth/denyapp", methods=["POST"])
@@ -776,21 +781,23 @@ def request_authorization_code():
         }
 
         has_dangerous_scopes = any([check_scope["dangerous"] for check_scope in scope_info])
-        
+
         if format_requested == "json":
             # Return the authorization data as JSON.
-            return jsonify({
-                "scopes": scope_info,
-                "has_dangerous_scopes": has_dangerous_scopes,
-                "application": oauth_app_view,
-                "response_type": response_type,
-                "client_id": client_id,
-                "redirect_uri": redirect_uri,
-                "scope": scope,
-                "csrf_token_val": generate_csrf_token(),
-                "state": state,
-                "assignment_uuid": assignment_uuid,
-            })
+            return jsonify(
+                {
+                    "scopes": scope_info,
+                    "has_dangerous_scopes": has_dangerous_scopes,
+                    "application": oauth_app_view,
+                    "response_type": response_type,
+                    "client_id": client_id,
+                    "redirect_uri": redirect_uri,
+                    "scope": scope,
+                    "csrf_token_val": generate_csrf_token(),
+                    "state": state,
+                    "assignment_uuid": assignment_uuid,
+                }
+            )
         else:
             # Show the authorization page (default behavior).
             return render_page_template_with_routedata(
@@ -840,6 +847,7 @@ def assign_user_to_app():
     redirect_uri = request.args.get("redirect_uri", None)
     scope = request.args.get("scope", None)
     username = request.args.get("username", None)
+    format_requested = request.args.get("format", "html").lower()
 
     if not features.ASSIGN_OAUTH_TOKEN:
         abort(404)
@@ -876,10 +884,12 @@ def assign_user_to_app():
             "client_id": application.client_id,
         },
     )
-
-    return render_page_template_with_routedata(
-        "message.html", message="Token assigned successfully"
-    )
+    if format_requested == "json":
+        return jsonify({"message": "Token assigned successfully"})
+    else:
+        return render_page_template_with_routedata(
+            "message.html", message="Token assigned successfully"
+        )
 
 
 @web.route("/oauth/access_token", methods=["POST"])
