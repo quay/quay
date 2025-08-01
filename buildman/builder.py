@@ -4,8 +4,7 @@ import os
 import socket
 import time
 
-from raven.conf import setup_logging
-from raven.handlers.logging import SentryHandler
+import sentry_sdk
 
 import features
 from app import (
@@ -98,9 +97,16 @@ if __name__ == "__main__":
     logging.getLogger("boto").setLevel(logging.WARN)
 
     if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
-        buildman_name = "%s:buildman" % socket.gethostname()
-        setup_logging(
-            SentryHandler(app.config.get("SENTRY_DSN", ""), name=buildman_name, level=logging.ERROR)
-        )
+        sentry_dsn = app.config.get("SENTRY_DSN", "")
+        if sentry_dsn:
+            buildman_name = "%s:buildman" % socket.gethostname()
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
+                traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
+                profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+            )
+            sentry_sdk.set_tag("service", "buildman")
+            sentry_sdk.set_tag("buildman", buildman_name)
 
     run_build_manager()

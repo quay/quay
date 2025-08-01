@@ -8,8 +8,8 @@ from functools import wraps
 from random import randint
 from threading import Event
 
+import sentry_sdk
 from apscheduler.schedulers.background import BackgroundScheduler
-from raven import Client
 
 from app import app
 from data.database import UseThenDisconnect
@@ -60,11 +60,19 @@ class Worker(object):
         self._operations = []
         self._stop = Event()
         self._terminated = Event()
-        self._raven_client = None
 
+        # Initialize Sentry if configured
         if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
-            worker_name = "%s:worker-%s" % (socket.gethostname(), self.__class__.__name__)
-            self._raven_client = Client(app.config.get("SENTRY_DSN", ""), name=worker_name)
+            sentry_dsn = app.config.get("SENTRY_DSN", "")
+            if sentry_dsn:
+                worker_name = "%s:worker-%s" % (socket.gethostname(), self.__class__.__name__)
+                sentry_sdk.init(
+                    dsn=sentry_dsn,
+                    environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
+                    traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
+                    profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+                )
+                sentry_sdk.set_tag("worker", worker_name)
 
     def is_healthy(self):
         return not self._stop.is_set()
@@ -86,9 +94,8 @@ class Worker(object):
                     return operation_func()
             except Exception:
                 logger.exception("Operation raised exception")
-                if self._raven_client:
-                    logger.debug("Logging exception to Sentry")
-                    self._raven_client.captureException()
+                # Sentry SDK automatically captures exceptions when configured
+                sentry_sdk.capture_exception()
 
         self._operations.append((_operation_func, operation_sec))
 
