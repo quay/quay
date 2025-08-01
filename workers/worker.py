@@ -61,11 +61,12 @@ class Worker(object):
         self._stop = Event()
         self._terminated = Event()
 
+        worker_name = "%s:worker-%s" % (socket.gethostname(), self.__class__.__name__)
+
         # Initialize Sentry if configured
         if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
             sentry_dsn = app.config.get("SENTRY_DSN", "")
             if sentry_dsn:
-                worker_name = "%s:worker-%s" % (socket.gethostname(), self.__class__.__name__)
                 sentry_sdk.init(
                     dsn=sentry_dsn,
                     environment=app.config.get("SENTRY_ENVIRONMENT", "production"),

@@ -96,10 +96,12 @@ if __name__ == "__main__":
     logging.getLogger("peewee").setLevel(logging.WARN)
     logging.getLogger("boto").setLevel(logging.WARN)
 
+    # Define buildman name for general use
+    buildman_name = "%s:buildman" % socket.gethostname()
+
     if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
         sentry_dsn = app.config.get("SENTRY_DSN", "")
         if sentry_dsn:
-            buildman_name = "%s:buildman" % socket.gethostname()
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
