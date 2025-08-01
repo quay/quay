@@ -25,7 +25,7 @@ map $scope_namespace $auth_namespace_bucket {
   "{{ namespace }}"  $request_id;
   {% endfor %}
   {% if enable_rate_limits %}
-  default $http_authorization;  # Fallback to auth header
+  default $scope_namespace;
   {% else %}
   default $request_id;  # Disable rate limiting when not enabled
   {% endif %}
