@@ -18,6 +18,7 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
+import TokenDisplayModal from 'src/components/modals/TokenDisplayModal';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
 
 interface GenerateTokenTabProps {
@@ -33,6 +34,8 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [customUser, setCustomUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState<string>('');
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
 
@@ -104,8 +107,11 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   };
 
   const handleAuthModalConfirm = async () => {
-    const url = generateUrl();
-    const jsonUrl = url + (url.includes('?') ? '&' : '?') + 'format=json';
+    const oauthUrl = generateUrl();
+    const jsonUrl =
+      oauthUrl + (oauthUrl.includes('?') ? '&' : '?') + 'format=json';
+
+    console.log('🚀 Trying direct API call:', jsonUrl);
 
     try {
       const response = await fetch(jsonUrl, {
@@ -115,23 +121,41 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
         },
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+
       if (response.ok) {
         const data = await response.json();
-        console.log('Authorization data:', data);
-        setIsAuthModalOpen(false);
+        console.log('✅ Response data:', data);
+        user;
+        // Check if token is directly in the response
+        if (data.access_token) {
+          console.log('🎉 Token found in response!');
+          setGeneratedToken(data.access_token);
+          setIsAuthModalOpen(false);
+          setIsTokenModalOpen(true);
+        } else {
+          console.log(
+            '🤔 No access_token in response. Available keys:',
+            Object.keys(data),
+          );
+          // Maybe we need to make another call with the CSRF token?
+        }
       } else {
-        throw new Error(`HTTP ${response.status}`);
+        console.error('❌ HTTP Error:', response.status);
       }
     } catch (error) {
-      console.error('Failed to get authorization data:', error);
-      // Fallback to original window.open approach
-      window.open(url, '_blank');
-      setIsAuthModalOpen(false);
+      console.error('💥 Fetch failed:', error);
     }
   };
 
   const handleAuthModalClose = () => {
     setIsAuthModalOpen(false);
+  };
+
+  const handleTokenModalClose = () => {
+    setIsTokenModalOpen(false);
+    setGeneratedToken('');
   };
 
   return (
@@ -258,6 +282,16 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           hasDangerousScopes={getSelectedScopesList().some(
             (scope) => OAUTH_SCOPES[scope]?.dangerous,
           )}
+        />
+      )}
+
+      {props.application && generatedToken && (
+        <TokenDisplayModal
+          isOpen={isTokenModalOpen}
+          onClose={handleTokenModalClose}
+          token={generatedToken}
+          applicationName={props.application.name}
+          scopes={getSelectedScopesList()}
         />
       )}
     </PageSection>
