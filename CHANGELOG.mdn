@@ -3,8 +3,11 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.14"></a>
+## [v3.9.14] - 0001-01-01
+
 <a name="v3.9.13"></a>
-## [v3.9.13] - 2025-06-11
+## [v3.9.13] - 2025-07-07
 ### Build
 - [f37f2ec4](https://github.com/quay/quay/commit/f37f2ec415ee43297ec9168c19b58c86f5e55597): Konflux 3.9 (PROJQUAY-8964) ([#3991](https://github.com/quay/quay/issues/3991))
 ### Cherrypick
@@ -17,6 +20,8 @@
 - [8a6702f5](https://github.com/quay/quay/commit/8a6702f596743c68d07a5fe5f51ecd56192dd0de): rpm lock for konflux builds (PROJQUAY-8930) ([#3996](https://github.com/quay/quay/issues/3996))
 - [9854973b](https://github.com/quay/quay/commit/9854973bd35995734a518808dfa188ac9565da5d): add artifacts lockfile (PROJQUAY-8931) ([#3933](https://github.com/quay/quay/issues/3933))
 - [a2c245d2](https://github.com/quay/quay/commit/a2c245d2e4d1dbb4b30b0b4eaabad8fdbece45c0): Add rust build dependencies for cryptography (PROJQUAY-8804) ([#3984](https://github.com/quay/quay/issues/3984))
+### [Redhat-3.9] Deps
+- [af75809c](https://github.com/quay/quay/commit/af75809c9e401e17aa5ffcae4a32d4856dd84c32): update pbkdf2 to version 3.1.3 (PROJQUAY-9094) ([#4117](https://github.com/quay/quay/issues/4117))
 ### [Redhat-3.9] Dockerfile
 - [e8ccdcbc](https://github.com/quay/quay/commit/e8ccdcbcdb15dad43912694f181d0abf46d620a8): set GOPATH env var before running go build in dockerfile (PROJQUAY-8789) ([#3839](https://github.com/quay/quay/issues/3839))
 ### [Redhat-3.9] Proxycache(Permissions)
@@ -1594,7 +1599,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.13...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.14...HEAD
+[v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
 [v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
