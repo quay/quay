@@ -1,4 +1,5 @@
-from raven.contrib.flask import Sentry as FlaskSentry
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 
 class FakeSentryClient(object):
@@ -26,7 +27,18 @@ class Sentry(object):
         sentry_type = app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry")
 
         if sentry_type == "Sentry":
-            sentry = FlaskSentry(app, register_signal=False)
+            sentry_dsn = app.config.get("SENTRY_DSN", "")
+            if sentry_dsn:
+                sentry_sdk.init(
+                    dsn=sentry_dsn,
+                    integrations=[FlaskIntegration()],
+                    environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
+                    traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
+                    profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+                )
+                sentry = FakeSentry()  # Keep compatibility with existing code
+            else:
+                sentry = FakeSentry()
         else:
             sentry = FakeSentry()
 
