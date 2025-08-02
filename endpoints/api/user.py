@@ -395,6 +395,11 @@ class User(ApiResource):
         """
         Update a users details such as password or email.
         """
+        # Global readonly superusers should not be able to modify user details  
+        from endpoints.api import allow_if_global_readonly_superuser
+        if allow_if_global_readonly_superuser():
+            abort(403, "Global readonly users cannot modify user details")
+            
         user = get_authenticated_user()
         user_data = request.get_json()
         previous_username = None
@@ -930,8 +935,6 @@ class Signout(ApiResource):
     """
 
     @nickname("logout")
-    @readonly_call_allowed
-    @restricted_user_readonly_call_allowed
     def post(self):
         """
         Request that the current user be signed out.
@@ -1017,6 +1020,11 @@ class DetachExternal(ApiResource):
         """
         Request that the current user be detached from the external login service.
         """
+        # Global readonly superusers should not be able to detach external logins
+        from endpoints.api import allow_if_global_readonly_superuser
+        if allow_if_global_readonly_superuser():
+            abort(403, "Global readonly users cannot detach external logins")
+            
         model.user.detach_external_login(get_authenticated_user(), service_id)
         return {"success": True}
 
