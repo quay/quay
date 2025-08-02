@@ -11,6 +11,14 @@ export function useCurrentUser() {
     error,
   } = useQuery(['user'], fetchUser, {
     staleTime: Infinity,
+    retry: (failureCount, error: any) => {
+      // Retry up to 5 times for 401 errors, then stop to prevent infinite loops
+      if (error?.response?.status === 401) {
+        return failureCount < 5;
+      }
+      // Default retry behavior for other errors
+      return failureCount < 3;
+    },
   });
 
   const isSuperUser =
