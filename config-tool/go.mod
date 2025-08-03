@@ -8,7 +8,7 @@ require (
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/aws/aws-sdk-go v1.45.24
-	github.com/coreos/go-oidc v2.2.1+incompatible
+	github.com/coreos/go-oidc v2.4.0+incompatible
 	github.com/creasty/defaults v1.7.0
 	github.com/dave/jennifer v1.7.0
 	github.com/go-chi/chi v4.1.2+incompatible
@@ -77,7 +77,7 @@ require (
 	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
+	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
