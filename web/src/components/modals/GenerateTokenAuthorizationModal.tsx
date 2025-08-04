@@ -31,6 +31,8 @@ interface GenerateTokenAuthorizationModalProps {
   selectedScopes: string[];
   scopesData: Record<string, OAuthScope>;
   hasDangerousScopes?: boolean;
+  isAssignmentMode?: boolean;
+  targetUsername?: string;
 }
 
 export default function GenerateTokenAuthorizationModal(
@@ -50,15 +52,17 @@ export default function GenerateTokenAuthorizationModal(
     });
   };
 
+  const isAssignment = props.isAssignmentMode && props.targetUsername;
+
   return (
     <Modal
       variant={ModalVariant.medium}
-      title={props.application.name}
+      title={isAssignment ? 'Assign Authorization?' : props.application.name}
       isOpen={props.isOpen}
       onClose={props.onClose}
       actions={[
         <Button key="authorize" variant="primary" onClick={props.onConfirm}>
-          Authorize Application
+          {isAssignment ? 'Assign token' : 'Authorize Application'}
         </Button>,
         <Button key="cancel" variant="link" onClick={props.onClose}>
           Cancel
@@ -70,14 +74,20 @@ export default function GenerateTokenAuthorizationModal(
           <StackItem>
             <Alert
               variant="warning"
-              title="This scope grants permissions which are potentially dangerous. Be careful when authorizing it!"
+              title={
+                isAssignment
+                  ? `Dangerous scopes will be granted to ${props.targetUsername}. Please ensure the scopes and the user are correct.`
+                  : 'This scope grants permissions which are potentially dangerous. Be careful when authorizing it!'
+              }
               isInline
             />
           </StackItem>
         )}
         <StackItem>
           <Text component={TextVariants.p}>
-            This application would like permission to:
+            {isAssignment
+              ? `This will prompt user ${props.targetUsername} to generate a token with the following permissions:`
+              : 'This application would like permission to:'}
           </Text>
         </StackItem>
         <StackItem>

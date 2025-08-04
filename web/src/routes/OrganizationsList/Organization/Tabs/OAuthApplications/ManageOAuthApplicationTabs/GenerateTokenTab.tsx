@@ -18,6 +18,8 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
+import EntitySearch from 'src/components/EntitySearch';
+import {Entity} from 'src/resources/UserResource';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
 
 interface GenerateTokenTabProps {
@@ -31,7 +33,7 @@ interface GenerateTokenFormData {
 
 export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [customUser, setCustomUser] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<Entity | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
@@ -72,21 +74,30 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
 
     const scopesString = getSelectedScopesList().join(' ');
 
-    const base =
-      selectedUser !== null
-        ? `/oauth/authorize/assignuser?username=${selectedUser}&`
-        : '/oauth/authorize?';
-
-    const params = new URLSearchParams({
-      response_type: 'token',
-      client_id: application.client_id,
-      scope: scopesString,
-      redirect_uri: getUrl(
-        quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
-      ),
-    });
-
-    return getUrl(`${base}${params.toString()}`);
+    if (selectedUser !== null) {
+      // For assignment, build URL manually to match Angular format
+      const params = new URLSearchParams({
+        username: selectedUser.name,
+        response_type: 'token',
+        client_id: application.client_id,
+        scope: scopesString,
+        redirect_uri: getUrl(
+          quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
+        ),
+      });
+      return getUrl(`/oauth/authorize/assignuser?${params.toString()}`);
+    } else {
+      // For generation, use existing format
+      const params = new URLSearchParams({
+        response_type: 'token',
+        client_id: application.client_id,
+        scope: scopesString,
+        redirect_uri: getUrl(
+          quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
+        ),
+      });
+      return getUrl(`/oauth/authorize?${params.toString()}`);
+    }
   };
 
   const handleGenerateToken = () => {
@@ -103,19 +114,44 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
     setCustomUser(false);
   };
 
+  const handleUserSelected = (entity: Entity) => {
+    setSelectedUser(entity);
+  };
+
+  const handleUserSearchError = () => {
+    // Handle search error if needed
+    console.error('Error searching for users');
+  };
+
+  const handleUserSearchClear = () => {
+    setSelectedUser(null);
+  };
+
   const handleAuthModalConfirm = () => {
-    const oauthUrl = generateUrl();
+    if (selectedUser !== null) {
+      // For assignment, use POST form submission to new window (like Angular)
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = generateUrl();
+      form.target = '_blank';
+      form.style.display = 'none';
 
-    // Open OAuth flow in popup window
-    const popup = window.open(
-      oauthUrl,
-      'oauth-authorization',
-      'width=600,height=700,scrollbars=yes,resizable=yes',
-    );
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    } else {
+      // For generation, use popup window (existing behavior)
+      const oauthUrl = generateUrl();
+      const popup = window.open(
+        oauthUrl,
+        'oauth-authorization',
+        'width=600,height=700,scrollbars=yes,resizable=yes',
+      );
 
-    if (!popup) {
-      console.error('Failed to open popup window');
-      return;
+      if (!popup) {
+        console.error('Failed to open popup window');
+        return;
+      }
     }
 
     setIsAuthModalOpen(false);
@@ -160,17 +196,23 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                   The generated token will act on behalf of user{' '}
                   {!customUser && <strong>{user?.username || 'user'}</strong>}
                   {customUser && (
-                    <input
-                      type="text"
-                      placeholder="User"
-                      value={selectedUser || ''}
-                      onChange={(e) => setSelectedUser(e.target.value)}
-                      data-testid="custom-user-input"
+                    <div
                       style={{
                         marginLeft: 'var(--pf-global--spacer--xs)',
                         marginRight: 'var(--pf-global--spacer--xs)',
+                        minWidth: '200px',
                       }}
-                    />
+                    >
+                      <EntitySearch
+                        org={props.orgName}
+                        includeTeams={false}
+                        placeholderText="Search for user..."
+                        onSelect={handleUserSelected}
+                        onError={handleUserSearchError}
+                        onClear={handleUserSearchClear}
+                        value={selectedUser?.name}
+                      />
+                    </div>
                   )}
                 </Text>
               </FlexItem>
@@ -249,6 +291,8 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           hasDangerousScopes={getSelectedScopesList().some(
             (scope) => OAUTH_SCOPES[scope]?.dangerous,
           )}
+          isAssignmentMode={customUser && selectedUser !== null}
+          targetUsername={selectedUser?.name}
         />
       )}
     </PageSection>
