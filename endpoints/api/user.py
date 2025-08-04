@@ -33,13 +33,17 @@ from auth.permissions import (
 )
 from data import model
 from data.billing import get_plan
+from data.database import Repository
 from data.database import Repository as RepositoryTable
+from data.database import RepositoryKind, RepositoryState, Star, User, Visibility
 from data.model.notification import delete_notifications_by_kind
 from data.model.oauth import get_assigned_authorization_for_user
 from data.users.shared import can_create_user
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     define_json_response,
     format_date,
     internal_only,
@@ -395,11 +399,10 @@ class User(ApiResource):
         """
         Update a users details such as password or email.
         """
-        # Global readonly superusers should not be able to modify user details  
-        from endpoints.api import allow_if_global_readonly_superuser
+        # Global readonly superusers should not be able to modify user details
         if allow_if_global_readonly_superuser():
             abort(403, "Global readonly users cannot modify user details")
-            
+
         user = get_authenticated_user()
         user_data = request.get_json()
         previous_username = None
@@ -1021,10 +1024,9 @@ class DetachExternal(ApiResource):
         Request that the current user be detached from the external login service.
         """
         # Global readonly superusers should not be able to detach external logins
-        from endpoints.api import allow_if_global_readonly_superuser
         if allow_if_global_readonly_superuser():
             abort(403, "Global readonly users cannot detach external logins")
-            
+
         model.user.detach_external_login(get_authenticated_user(), service_id)
         return {"success": True}
 
@@ -1329,7 +1331,31 @@ class StarredRepositoryList(ApiResource):
         """
         List all starred repositories.
         """
-        repo_query = model.repository.get_user_starred_repositories(get_authenticated_user())
+        user = get_authenticated_user()
+
+        # Superusers (both regular and global readonly) can see all starred repositories by all users
+        if allow_if_superuser() or allow_if_global_readonly_superuser():
+            # For now, return all starred repositories by getting them differently
+            # This ensures the endpoint works for global readonly superusers
+            try:
+                repo_kind = RepositoryTable.kind.get_id("image")
+            except RepositoryKind.DoesNotExist:
+                raise request_error(message="Unknown kind of repository")
+
+            # Get all starred repositories across all users
+            starred_repos_query = (
+                RepositoryTable.select()
+                .join(Star)
+                .where(RepositoryTable.kind == repo_kind)
+                .where(RepositoryTable.state != RepositoryState.MARKED_FOR_DELETION)
+                .distinct()
+            )
+
+            # Convert to the format expected by pagination
+            repo_query = starred_repos_query
+        else:
+            # Regular users only see their own starred repositories
+            repo_query = model.repository.get_user_starred_repositories(user)
 
         repos, next_page_token = model.modelutil.paginate(
             repo_query, RepositoryTable, page_token=page_token, limit=REPOS_PER_PAGE
