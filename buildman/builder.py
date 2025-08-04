@@ -30,6 +30,24 @@ EXTERNALLY_MANAGED = "external"
 DEFAULT_CONTROLLER_PORT = 8686
 
 
+def initialize_sentry():
+    """Initialize Sentry if configured."""
+    # Define buildman name for general use
+    buildman_name = "%s:buildman" % socket.gethostname()
+
+    if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
+        sentry_dsn = app.config.get("SENTRY_DSN", "")
+        if sentry_dsn:
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
+                traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
+                profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+            )
+            sentry_sdk.set_tag("service", "buildman")
+            sentry_sdk.set_tag("buildman", buildman_name)
+
+
 def run_build_manager():
     if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
@@ -96,19 +114,6 @@ if __name__ == "__main__":
     logging.getLogger("peewee").setLevel(logging.WARN)
     logging.getLogger("boto").setLevel(logging.WARN)
 
-    # Define buildman name for general use
-    buildman_name = "%s:buildman" % socket.gethostname()
-
-    if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
-        sentry_dsn = app.config.get("SENTRY_DSN", "")
-        if sentry_dsn:
-            sentry_sdk.init(
-                dsn=sentry_dsn,
-                environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
-                traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
-                profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
-            )
-            sentry_sdk.set_tag("service", "buildman")
-            sentry_sdk.set_tag("buildman", buildman_name)
+    initialize_sentry()
 
     run_build_manager()
