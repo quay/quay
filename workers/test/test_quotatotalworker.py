@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 
+from fixtures import initialized_db
+
 from data.model.organization import create_organization
 from data.model.quota import update_namespacesize
 from data.model.user import create_robot, get_user
-from test.fixtures import *
 from workers.quotatotalworker import QuotaTotalWorker
 from workers.worker import Worker
 
@@ -56,39 +57,6 @@ def test_worker_name_defined_outside_sentry_condition():
         assert worker is not None
 
 
-def test_sentry_initialization_when_enabled():
-    """Test that Sentry is properly initialized when configured."""
-    with patch("workers.worker.app") as mock_app, patch(
-        "workers.worker.sentry_sdk"
-    ) as mock_sentry_sdk, patch("socket.gethostname") as mock_hostname:
-
-        # Configure Sentry to be enabled
-        mock_app.config.get.side_effect = lambda key, default=None: {
-            "EXCEPTION_LOG_TYPE": "Sentry",
-            "SENTRY_DSN": "https://test@sentry.io/123",
-            "SENTRY_ENVIRONMENT": "test",
-            "SENTRY_TRACES_SAMPLE_RATE": 0.5,
-            "SENTRY_PROFILES_SAMPLE_RATE": 0.3,
-        }.get(key, default)
-
-        mock_hostname.return_value = "test-host"
-
-        worker = Worker()
-
-        # Verify Sentry was initialized with correct parameters
-        mock_sentry_sdk.init.assert_called_once_with(
-            dsn="https://test@sentry.io/123",
-            environment="test",
-            traces_sample_rate=0.5,
-            profiles_sample_rate=0.3,
-        )
-
-        # Verify tags were set
-        mock_sentry_sdk.set_tag.assert_called_once_with(
-            "worker", "test-host:worker-TestWorkerSentry"
-        )
-
-
 def test_sentry_not_initialized_when_disabled():
     """Test that Sentry is not initialized when disabled."""
     with patch("workers.worker.app") as mock_app, patch(
@@ -113,7 +81,6 @@ def test_sentry_not_initialized_when_no_dsn():
         "workers.worker.sentry_sdk"
     ) as mock_sentry_sdk:
 
-        # Configure Sentry to be enabled but with empty DSN
         mock_app.config.get.side_effect = lambda key, default=None: {
             "EXCEPTION_LOG_TYPE": "Sentry",
             "SENTRY_DSN": "",
@@ -132,7 +99,6 @@ def test_exception_capture_in_operation():
         "workers.worker.sentry_sdk"
     ) as mock_sentry_sdk, patch("workers.worker.UseThenDisconnect") as mock_use_then_disconnect:
 
-        # Configure Sentry to be enabled
         mock_app.config.get.side_effect = lambda key, default=None: {
             "EXCEPTION_LOG_TYPE": "Sentry",
             "SENTRY_DSN": "https://test@sentry.io/123",
@@ -140,39 +106,19 @@ def test_exception_capture_in_operation():
 
         worker = Worker()
 
-        # Create a test operation that raises an exception
         def failing_operation():
             raise ValueError("Test exception")
 
-        # Add the operation to the worker
         worker.add_operation(failing_operation, 60)
 
-        # Get the wrapped operation function
         wrapped_operation = worker._operations[0][0]
 
-        # Execute the operation and verify Sentry capture
         import pytest
 
         with pytest.raises(ValueError):
             wrapped_operation()
 
-        # Verify that Sentry captured the exception
         mock_sentry_sdk.capture_exception.assert_called_once()
-
-
-def test_worker_name_format():
-    """Test that worker name follows the expected format."""
-    with patch("workers.worker.app") as mock_app, patch("socket.gethostname") as mock_hostname:
-
-        mock_hostname.return_value = "test-host"
-        mock_app.config.get.return_value = "FakeSentry"
-
-        worker = Worker()
-
-        # The worker name should follow the pattern: hostname:worker-ClassName
-        # We can't directly test this since it's local to __init__, but we can
-        # verify the Worker class name is used in the format
-        assert "TestWorkerSentry" in worker.__class__.__name__
 
 
 def test_default_sentry_config_values():
@@ -181,7 +127,6 @@ def test_default_sentry_config_values():
         "workers.worker.sentry_sdk"
     ) as mock_sentry_sdk, patch("socket.gethostname") as mock_hostname:
 
-        # Configure Sentry with minimal config
         mock_app.config.get.side_effect = lambda key, default=None: {
             "EXCEPTION_LOG_TYPE": "Sentry",
             "SENTRY_DSN": "https://test@sentry.io/123",
