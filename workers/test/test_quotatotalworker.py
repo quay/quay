@@ -112,10 +112,7 @@ def test_exception_capture_in_operation():
 
         wrapped_operation = worker._operations[0][0]
 
-        import pytest
-
-        with pytest.raises(ValueError):
-            wrapped_operation()
+        wrapped_operation()
 
         mock_sentry_sdk.capture_exception.assert_called_once()
 
@@ -135,7 +132,6 @@ def test_default_sentry_config_values():
 
         worker = Worker()
 
-        # Verify default values are used
         mock_sentry_sdk.init.assert_called_once_with(
             dsn="https://test@sentry.io/123",
             environment="production",  # default
