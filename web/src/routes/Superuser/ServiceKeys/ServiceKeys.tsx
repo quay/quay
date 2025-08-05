@@ -45,6 +45,7 @@ import {Kebab} from 'src/components/toolbar/Kebab';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useServiceKeys} from 'src/hooks/UseServiceKeys';
 import {IServiceKey} from 'src/resources/ServiceKeysResource';
+import {CreateServiceKeyForm} from './CreateServiceKeyForm';
 import {Navigate} from 'react-router-dom';
 
 function ServiceKeysHeader() {
@@ -157,6 +158,7 @@ export default function ServiceKeys() {
     filteredKeys,
     loading,
     error,
+    refetch,
     search,
     setSearch,
     page,
@@ -208,6 +210,9 @@ export default function ServiceKeys() {
 
   // Delete modal state (bulk)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Create modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Row-level action modals
   const [editingKey, setEditingKey] = useState<IServiceKey | null>(null);
@@ -387,11 +392,9 @@ export default function ServiceKeys() {
             <ToolbarButton
               id="create-service-key-button"
               buttonValue="Create Preshareable Key"
-              Modal={() => <div>Create Modal Coming Soon</div>}
-              isModalOpen={false}
-              setModalOpen={() =>
-                console.log('Create modal not implemented yet')
-              }
+              Modal={<div />}
+              isModalOpen={isCreateModalOpen}
+              setModalOpen={setIsCreateModalOpen}
             />
             <ToolbarItem>
               {selectedKeys.length > 0 && (
@@ -586,6 +589,16 @@ export default function ServiceKeys() {
           </>
         )}
       </PageSection>
+
+      {/* Create Service Key Modal */}
+      <CreateServiceKeyForm
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          // Refresh the service keys data
+          refetch();
+        }}
+      />
 
       {/* Bulk Delete Confirmation Modal */}
       <Modal

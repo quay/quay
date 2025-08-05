@@ -49,7 +49,7 @@ export async function createServiceKey(
     '/api/v1/superuser/keys',
     keyData,
   );
-  assertHttpCode(response.status, 201);
+  assertHttpCode(response.status, 200);
   return response.data;
 }
 
