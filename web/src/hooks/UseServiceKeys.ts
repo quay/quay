@@ -35,6 +35,7 @@ export function useServiceKeys() {
     data: serviceKeys = [],
     isLoading: loading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['serviceKeys'],
     queryFn: fetchServiceKeys,
@@ -157,6 +158,7 @@ export function useServiceKeys() {
     // State
     loading,
     error,
+    refetch,
     page,
     setPage,
     perPage,
