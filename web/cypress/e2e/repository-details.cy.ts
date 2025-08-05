@@ -568,22 +568,6 @@ describe('Repository Details Page', () => {
   });
 
   it('changes expiration through kebab', () => {
-    const formattedDate = new Date();
-    const currentDateGB = formattedDate.toLocaleDateString('en-GB', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    // for some reason the date picker is always using UK date formats for the aria labels
-    const currentDateLong = formattedDate.toLocaleDateString(
-      navigator.language,
-      {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      },
-    );
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
@@ -597,17 +581,29 @@ describe('Repository Details Page', () => {
       hour: 'numeric',
       minute: '2-digit',
     });
+    const oneMonthFormatLong = nextMonth.toLocaleString(navigator.language, {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeStyle: 'short',
+      dateStyle: 'medium',
+    });
+
+    const currentDate = new Date();
+    const currentDateGB = currentDate.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const currentDateLong = currentDate.toLocaleDateString(navigator.language, {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeStyle: 'short',
+      dateStyle: 'medium',
+    });
 
     nextMonth.setHours(2);
     nextMonth.setMinutes(3);
     const formattedTime2 = nextMonth.toLocaleTimeString(navigator.language, {
       hour: 'numeric',
       minute: '2-digit',
-    });
-    const oneMonthFormatLong = nextMonth.toLocaleString(navigator.language, {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      timeStyle: 'short',
-      dateStyle: 'medium',
     });
 
     // Start
@@ -644,8 +640,20 @@ describe('Repository Details Page', () => {
       formattedTime2.replace(/ AM| PM/, ''),
     );
 
+    // Intercept the API call and wait for it to complete
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest').as(
+      'setExpiration',
+    );
+
     // remove AM/PM suffixes because the TimePicker adds those automatically
     cy.contains('Change Expiration').click();
+
+    // Wait for the API call to complete
+    cy.wait('@setExpiration');
+
+    // Wait for the DOM to update after the API call
+    cy.get('tbody:contains("latest")').should('exist');
+
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
@@ -661,7 +669,19 @@ describe('Repository Details Page', () => {
     });
     cy.contains('Change expiration').click();
     cy.contains('Clear').click();
+
+    // Intercept the API call for clearing expiration
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest').as(
+      'clearExpiration',
+    );
+
     cy.contains('Change Expiration').click();
+
+    // Wait for the API call to complete
+    cy.wait('@clearExpiration');
+
+    // Wait for the DOM to update after the API call
+    cy.get('tbody:contains("latest")').should('exist');
 
     const latestRowUpdatedNever = cy.get('tbody:contains("latest")');
     latestRowUpdatedNever.first().within(() => {
@@ -708,7 +728,20 @@ describe('Repository Details Page', () => {
     cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
+
+    // Intercept the API call and wait for it to complete
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest').as(
+      'setExpiration',
+    );
+
     cy.contains('Change Expiration').click();
+
+    // Wait for the API call to complete
+    cy.wait('@setExpiration');
+
+    // Wait for the DOM to update after the API call
+    cy.get('tbody:contains("latest")').should('exist');
+
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
@@ -755,7 +788,26 @@ describe('Repository Details Page', () => {
     cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime).click();
+
+    // Intercept the API calls for both tags
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest').as(
+      'setExpirationLatest',
+    );
+    cy.intercept(
+      'PUT',
+      '/api/v1/repository/user1/hello-world/tag/manifestlist',
+    ).as('setExpirationManifestlist');
+
     cy.contains('Change Expiration').click();
+
+    // Wait for both API calls to complete
+    cy.wait('@setExpirationLatest');
+    cy.wait('@setExpirationManifestlist');
+
+    // Wait for the DOM to update after the API calls
+    cy.get('tbody:contains("latest")').should('exist');
+    cy.get('tbody:contains("manifestlist")').should('exist');
+
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
