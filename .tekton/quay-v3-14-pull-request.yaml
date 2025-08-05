@@ -204,6 +204,8 @@ spec:
         value: registry.access.redhat.com/ubi8/ubi:latest
       - name: SOURCE_ARTIFACT
         value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+      - name: HERMETIC
+        value: $(params.hermetic)
       - name: SCRIPT
         value: |
           sed \
@@ -221,8 +223,6 @@ spec:
           value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:1dcc9805bdc20708f87126455c01e0c49be9d79f0c140220a71c85e49979b96d
         - name: kind
           value: task
-        - name: hermetic
-          value: "true"
         resolver: bundles
     - name: prefetch-dependencies
       params:
