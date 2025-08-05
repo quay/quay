@@ -593,7 +593,7 @@ describe('Repository Details Page', () => {
       month: 'long',
       day: 'numeric',
     });
-    const currentDateLong = currentDate.toLocaleDateString(navigator.language, {
+    const currentDateLong = currentDate.toLocaleString(navigator.language, {
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       timeStyle: 'short',
       dateStyle: 'medium',
@@ -651,17 +651,18 @@ describe('Repository Details Page', () => {
     // Wait for the API call to complete
     cy.wait('@setExpiration');
 
-    // Wait for the DOM to update after the API call
+    // Wait for the success message to appear, indicating the operation completed
+    cy.contains(
+      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
+    ).should('exist');
+
+    // Now wait for the DOM to update and find the updated row
     cy.get('tbody:contains("latest")').should('exist');
 
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
-
-    cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
-    ).should('exist');
 
     // Reset back to Never
     latestRow.first().within(() => {
@@ -680,16 +681,18 @@ describe('Repository Details Page', () => {
     // Wait for the API call to complete
     cy.wait('@clearExpiration');
 
-    // Wait for the DOM to update after the API call
+    // Wait for the success message to appear, indicating the operation completed
+    cy.contains(`Successfully set expiration for tag latest to never`).should(
+      'exist',
+    );
+
+    // Now wait for the DOM to update and find the updated row
     cy.get('tbody:contains("latest")').should('exist');
 
     const latestRowUpdatedNever = cy.get('tbody:contains("latest")');
     latestRowUpdatedNever.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
     });
-    cy.contains(`Successfully set expiration for tag latest to never`).should(
-      'exist',
-    );
   });
 
   it('changes expiration through tag row', () => {
@@ -739,16 +742,18 @@ describe('Repository Details Page', () => {
     // Wait for the API call to complete
     cy.wait('@setExpiration');
 
-    // Wait for the DOM to update after the API call
+    // Wait for the success message to appear, indicating the operation completed
+    cy.contains(
+      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
+    ).should('exist');
+
+    // Now wait for the DOM to update and find the updated row
     cy.get('tbody:contains("latest")').should('exist');
 
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
-    cy.contains(
-      `Successfully set expiration for tag latest to ${oneMonthFormatLong}`,
-    ).should('exist');
   });
 
   it('changes multiple tag expirations', () => {
@@ -804,7 +809,12 @@ describe('Repository Details Page', () => {
     cy.wait('@setExpirationLatest');
     cy.wait('@setExpirationManifestlist');
 
-    // Wait for the DOM to update after the API calls
+    // Wait for the success message to appear, indicating the operation completed
+    cy.contains(
+      `Successfully updated tag expirations to ${oneMonthFormatLong}`,
+    ).should('exist');
+
+    // Now wait for the DOM to update and find the updated rows
     cy.get('tbody:contains("latest")').should('exist');
     cy.get('tbody:contains("manifestlist")').should('exist');
 
@@ -812,9 +822,6 @@ describe('Repository Details Page', () => {
     latestRowUpdated.first().within(() => {
       cy.get(`[data-label="Expires"]`).should('have.text', ' a month');
     });
-    cy.contains(
-      `Successfully updated tag expirations to ${oneMonthFormatLong}`,
-    ).should('exist');
   });
 
   it('alerts on failure to change expiration', () => {
