@@ -63,17 +63,19 @@ class Worker(object):
 
         worker_name = "%s:worker-%s" % (socket.gethostname(), self.__class__.__name__)
 
-        # Initialize Sentry if configured
         if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
             sentry_dsn = app.config.get("SENTRY_DSN", "")
             if sentry_dsn:
-                sentry_sdk.init(
-                    dsn=sentry_dsn,
-                    environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
-                    traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
-                    profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
-                )
-                sentry_sdk.set_tag("worker", worker_name)
+                try:
+                    sentry_sdk.init(
+                        dsn=sentry_dsn,
+                        environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
+                        traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
+                        profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+                    )
+                    sentry_sdk.set_tag("worker", worker_name)
+                except Exception as e:
+                    logger.warning("Failed to initialize Sentry: %s", str(e))
 
     def is_healthy(self):
         return not self._stop.is_set()
