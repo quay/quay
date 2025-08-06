@@ -32,7 +32,6 @@ from endpoints.api.repotoken import *
 from endpoints.api.robot import *  # type: ignore[no-redef]
 from endpoints.api.search import *  # type: ignore
 from endpoints.api.secscan import *
-from endpoints.api.signing import *  # type: ignore[no-redef]
 from endpoints.api.subscribe import *  # type: ignore[no-redef]
 from endpoints.api.suconfig import *  # type: ignore[no-redef]
 from endpoints.api.superuser import *  # type: ignore
