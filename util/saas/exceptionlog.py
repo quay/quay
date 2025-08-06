@@ -1,3 +1,5 @@
+import logging
+
 import sentry_sdk
 
 
@@ -38,8 +40,6 @@ class Sentry(object):
                     # Return the initialized Sentry SDK object directly
                     sentry = initialized_sentry
                 except Exception as e:
-                    import logging
-
                     logger = logging.getLogger(__name__)
                     logger.warning("Failed to initialize Sentry: %s", str(e))
                     sentry = FakeSentry()
