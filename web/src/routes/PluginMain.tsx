@@ -24,7 +24,7 @@ import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import OverviewList from './OverviewList/OverviewList';
-import { LoadingPage } from 'src/components/LoadingPage';
+import {LoadingPage} from 'src/components/LoadingPage';
 
 const NavigationRoutes = [
   {
@@ -73,18 +73,13 @@ function PluginMain() {
   const [tokenReady, setTokenReady] = useState(false);
 
   useEffect(() => {
-    if (chrome?.auth) {
-      chrome.auth.getToken().then((token) => {
-        GlobalAuthState.bearerToken = token;
-        setTokenReady(true);
-      });
-    } else {
+    chrome?.auth?.getToken().then((token) => {
+      GlobalAuthState.bearerToken = token;
       setTokenReady(true);
-    }
-  }, [chrome]);
+    });
+  }, []);
 
   const {user, loading, error} = useCurrentUser(tokenReady);
-
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {

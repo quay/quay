@@ -3,7 +3,7 @@ import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useQuayConfig} from './UseQuayConfig';
 import {UpdateUserRequest, updateUser} from 'src/resources/UserResource';
 
-export function useCurrentUser(enabled: boolean = true) {
+export function useCurrentUser(enabled = true) {
   const config = useQuayConfig();
   const {
     data: user,
@@ -12,14 +12,6 @@ export function useCurrentUser(enabled: boolean = true) {
   } = useQuery(['user'], fetchUser, {
     staleTime: Infinity,
     enabled: enabled,
-    retry: (failureCount, error: any) => {
-      // Retry up to 5 times for 401 errors, then stop to prevent infinite loops
-      if (error?.response?.status === 401) {
-        return failureCount < 5;
-      }
-      // Default retry behavior for other errors
-      return failureCount < 3;
-    },
   });
 
   const isSuperUser =
