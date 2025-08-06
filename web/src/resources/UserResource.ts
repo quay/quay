@@ -87,6 +87,7 @@ export async function fetchEntities(
   searchInput: string,
   org: string,
   includeTeams?: boolean,
+  includeRobots?: boolean,
 ) {
   // Handles the case of robot accounts, API doesn't recognize anything before the + sign
   if (searchInput.indexOf('+') > -1) {
@@ -100,7 +101,17 @@ export async function fetchEntities(
   const response: AxiosResponse<EntitiesResponse> = await axios.get(searchUrl);
 
   assertHttpCode(response.status, 200);
-  return response.data?.results;
+
+  let results = response.data?.results || [];
+
+  // Filter out robots if includeRobots is false
+  if (includeRobots === false) {
+    results = results.filter(
+      (entity) => !(entity.kind === EntityKind.user && entity.is_robot),
+    );
+  }
+
+  return results;
 }
 
 export interface UpdateUserRequest {
