@@ -68,14 +68,23 @@ function PluginMain() {
   }
 
   const quayConfig = useQuayConfig();
-  const {user, loading, error} = useCurrentUser();
-
   const setIsPluginState = useSetRecoilState(IsPluginState);
   const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
+  const [tokenReady, setTokenReady] = useState(false);
 
-  chrome?.auth?.getToken().then((token) => {
-    GlobalAuthState.bearerToken = token;
-  });
+  useEffect(() => {
+    if (chrome?.auth) {
+      chrome.auth.getToken().then((token) => {
+        GlobalAuthState.bearerToken = token;
+        setTokenReady(true);
+      });
+    } else {
+      setTokenReady(true);
+    }
+  }, [chrome]);
+
+  const {user, loading, error} = useCurrentUser(tokenReady);
+
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -90,7 +99,7 @@ function PluginMain() {
     }
   }, [user]);
 
-  if (loading) {
+  if (!tokenReady || loading) {
     return <LoadingPage />;
   }
 
