@@ -19,11 +19,6 @@ bearer_token_decoded = Counter(
 
 ANONYMOUS_SUB = "(anonymous)"
 ALGORITHM = "RS256"
-CLAIM_TUF_ROOTS = "com.apostille.roots"
-CLAIM_TUF_ROOT = "com.apostille.root"
-QUAY_TUF_ROOT = "quay"
-SIGNER_TUF_ROOT = "signer"
-DISABLED_TUF_ROOT = "$disabled"
 
 # The number of allowed seconds of clock skew for a JWT. The iat, nbf and exp are adjusted with this
 # count.
@@ -165,27 +160,13 @@ def _generate_jwt_object(
     return jwt.encode(token_data, private_key, ALGORITHM, headers=token_headers)
 
 
-def build_context_and_subject(auth_context=None, tuf_roots=None):
+def build_context_and_subject(auth_context=None):
     """
     Builds the custom context field for the JWT signed token and returns it, along with the subject
     for the JWT signed token.
     """
     # Serialize to a dictionary.
     context = auth_context.to_signed_dict() if auth_context else {}
-
-    # TODO: remove once Apostille has been upgraded to not use the single root.
-    single_root = (
-        list(tuf_roots.values())[0]
-        if tuf_roots is not None and len(tuf_roots) == 1
-        else DISABLED_TUF_ROOT
-    )
-
-    context.update(
-        {
-            CLAIM_TUF_ROOTS: tuf_roots,
-            CLAIM_TUF_ROOT: single_root,
-        }
-    )
 
     if not auth_context or auth_context.is_anonymous:
         return (context, ANONYMOUS_SUB)

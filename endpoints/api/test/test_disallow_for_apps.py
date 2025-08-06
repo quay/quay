@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 
 from data import model
@@ -35,6 +33,7 @@ from endpoints.api.trigger import (
     TriggerBuildList,
 )
 from endpoints.test.shared import client_with_identity
+from test.fixtures import *
 
 BUILD_ARGS = {"build_uuid": "1234"}
 IMAGE_ARGS = {"imageid": "1234", "image_id": 1234}

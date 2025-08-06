@@ -196,7 +196,7 @@ class ServiceKey(
     )
 ):
     """
-    ServiceKey is an apostille signing key.
+    ServiceKey is a signing key.
 
     :type name: string
     :type kid: int

@@ -45,22 +45,14 @@ from util.names import (
     parse_robot_username,
 )
 from util.request import get_request_ip
-from util.security.registry_jwt import (
-    DISABLED_TUF_ROOT,
-    QUAY_TUF_ROOT,
-    SIGNER_TUF_ROOT,
-    build_context_and_subject,
-    generate_bearer_token,
-)
+from util.security.registry_jwt import build_context_and_subject, generate_bearer_token
 
 logger = logging.getLogger(__name__)
 
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour
 SCOPE_REGEX_TEMPLATE = r"^repository:((?:{}\/)?((?:[\.a-zA-Z0-9_\-]+\/)*[\.a-zA-Z0-9_\-]+)):((?:push|pull|\*)(?:,(?:push|pull|\*))*)$"
 
-scopeResult = namedtuple(
-    "scopeResult", ["actions", "namespace", "repository", "registry_and_repo", "tuf_root"]
-)
+scopeResult = namedtuple("scopeResult", ["actions", "namespace", "repository", "registry_and_repo"])
 
 
 @v2_bp.route("/auth")
@@ -169,11 +161,7 @@ def generate_registry_jwt(auth_result):
             event.publish_event_data("docker-cli", user_event_data)
 
     # Build the signed JWT.
-    tuf_roots = {
-        "%s/%s" % (scope_result.namespace, scope_result.repository): scope_result.tuf_root
-        for scope_result in scope_results
-    }
-    context, subject = build_context_and_subject(get_authenticated_context(), tuf_roots=tuf_roots)
+    context, subject = build_context_and_subject(get_authenticated_context())
     token = generate_bearer_token(
         audience_param, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, instance_keys
     )
@@ -185,16 +173,6 @@ def _get_scope_regex():
     hostname = re.escape(app.config["SERVER_HOSTNAME"])
     scope_regex_string = SCOPE_REGEX_TEMPLATE.format(hostname)
     return re.compile(scope_regex_string)
-
-
-def _get_tuf_root(repository_ref, namespace, reponame):
-    if not features.SIGNING or repository_ref is None or not repository_ref.trust_enabled:
-        return DISABLED_TUF_ROOT
-
-    # Users with write access to a repository will see signer-rooted TUF metadata
-    if ModifyRepositoryPermission(namespace, reponame).can():
-        return SIGNER_TUF_ROOT
-    return QUAY_TUF_ROOT
 
 
 def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
@@ -417,5 +395,4 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         namespace=namespace,
         repository=reponame,
         registry_and_repo=registry_and_repo,
-        tuf_root=_get_tuf_root(repository_ref, namespace, reponame),
     )

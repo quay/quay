@@ -7,7 +7,7 @@ from data import model
 from data.model.user import get_robot_and_metadata, get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
 from test.fixtures import *
-from util.security.registry_jwt import CLAIM_TUF_ROOTS, decode_bearer_token
+from util.security.registry_jwt import decode_bearer_token
 
 
 def get_robot_password(username):
@@ -403,7 +403,6 @@ def test_generate_registry_jwt(
         )
 
     assert decoded["access"] == expected_access
-    assert len(decoded["context"][CLAIM_TUF_ROOTS]) == len(expected_scopes)
 
     # Test visibility
     if scope == "repository:devtable/visibility:pull,push,*":
