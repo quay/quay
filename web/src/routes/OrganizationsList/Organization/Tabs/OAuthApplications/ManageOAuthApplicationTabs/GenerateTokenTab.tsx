@@ -195,27 +195,22 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                 <Text>
                   The generated token will act on behalf of user{' '}
                   {!customUser && <strong>{user?.username || 'user'}</strong>}
-                  {customUser && (
-                    <div
-                      style={{
-                        marginLeft: 'var(--pf-global--spacer--xs)',
-                        marginRight: 'var(--pf-global--spacer--xs)',
-                        minWidth: '200px',
-                      }}
-                    >
-                      <EntitySearch
-                        org={props.orgName}
-                        includeTeams={false}
-                        placeholderText="Search for user..."
-                        onSelect={handleUserSelected}
-                        onError={handleUserSearchError}
-                        onClear={handleUserSearchClear}
-                        value={selectedUser?.name}
-                      />
-                    </div>
-                  )}
                 </Text>
               </FlexItem>
+              {customUser && (
+                <FlexItem>
+                  <EntitySearch
+                    org={props.orgName}
+                    includeTeams={false}
+                    includeRobots={false}
+                    placeholderText="User"
+                    onSelect={handleUserSelected}
+                    onError={handleUserSearchError}
+                    onClear={handleUserSearchClear}
+                    value={selectedUser?.name}
+                  />
+                </FlexItem>
+              )}
               <FlexItem>
                 {!customUser ? (
                   <Button
