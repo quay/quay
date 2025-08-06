@@ -1,5 +1,4 @@
 import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
 
 
 class FakeSentryClient(object):
@@ -32,7 +31,6 @@ class Sentry(object):
                 try:
                     initialized_sentry = sentry_sdk.init(
                         dsn=sentry_dsn,
-                        integrations=[FlaskIntegration()],
                         environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
                         traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
                         profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),

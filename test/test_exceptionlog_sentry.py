@@ -52,9 +52,7 @@ class TestExceptionLogSentry:
             "SENTRY_PROFILES_SAMPLE_RATE": 0.3,
         }.get(key, default)
 
-        with patch("util.saas.exceptionlog.sentry_sdk") as mock_sentry_sdk, patch(
-            "util.saas.exceptionlog.FlaskIntegration"
-        ) as mock_flask_integration:
+        with patch("util.saas.exceptionlog.sentry_sdk") as mock_sentry_sdk:
             # Mock the return value of sentry_sdk.init
             mock_initialized_sentry = MagicMock()
             mock_sentry_sdk.init.return_value = mock_initialized_sentry
@@ -64,7 +62,6 @@ class TestExceptionLogSentry:
             # Verify Sentry SDK was initialized
             mock_sentry_sdk.init.assert_called_once_with(
                 dsn="https://test@sentry.io/123",
-                integrations=[mock_flask_integration()],
                 environment="test",
                 traces_sample_rate=0.5,
                 profiles_sample_rate=0.3,
@@ -98,9 +95,7 @@ class TestExceptionLogSentry:
             "SENTRY_DSN": "https://test@sentry.io/123",
         }.get(key, default)
 
-        with patch("util.saas.exceptionlog.sentry_sdk") as mock_sentry_sdk, patch(
-            "util.saas.exceptionlog.FlaskIntegration"
-        ) as mock_flask_integration:
+        with patch("util.saas.exceptionlog.sentry_sdk") as mock_sentry_sdk:
             # Mock the return value of sentry_sdk.init
             mock_initialized_sentry = MagicMock()
             mock_sentry_sdk.init.return_value = mock_initialized_sentry
@@ -110,7 +105,6 @@ class TestExceptionLogSentry:
             # Verify default values are used
             mock_sentry_sdk.init.assert_called_once_with(
                 dsn="https://test@sentry.io/123",
-                integrations=[mock_flask_integration()],
                 environment="production",  # default
                 traces_sample_rate=0.1,  # default
                 profiles_sample_rate=0.1,  # default
@@ -149,6 +143,34 @@ class TestExceptionLogSentry:
         # Verify extension was registered
         assert "sentry" in mock_app.extensions
         assert mock_app.extensions["sentry"] is sentry.state
+
+    def test_sentry_initialization_without_flask_integration(self):
+        """Test that Sentry initializes without any integrations."""
+        mock_app = MagicMock()
+        mock_app.config.get.return_value = "Sentry"
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "EXCEPTION_LOG_TYPE": "Sentry",
+            "SENTRY_DSN": "https://test@sentry.io/123",
+            "SENTRY_ENVIRONMENT": "test",
+        }.get(key, default)
+
+        with patch("util.saas.exceptionlog.sentry_sdk") as mock_sentry_sdk:
+            # Mock the return value of sentry_sdk.init
+            mock_initialized_sentry = MagicMock()
+            mock_sentry_sdk.init.return_value = mock_initialized_sentry
+
+            sentry = Sentry(mock_app)
+
+            # Verify Sentry SDK was initialized without any integrations
+            mock_sentry_sdk.init.assert_called_once_with(
+                dsn="https://test@sentry.io/123",
+                environment="test",
+                traces_sample_rate=0.1,
+                profiles_sample_rate=0.1,
+            )
+
+            # Verify the initialized Sentry SDK object is returned
+            assert sentry.state is mock_initialized_sentry
 
     def test_sentry_extensions_existing(self):
         """Test that Sentry extension works with existing extensions."""
