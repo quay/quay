@@ -47,14 +47,24 @@ axiosIns.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401) {
-      if (window?.insights?.chrome?.auth) {
-        // refresh token for plugin
-        GlobalAuthState.bearerToken =
-          await window.insights.chrome.auth.getToken();
-      } else {
-        // redirect to login page for standalone
-        window.location.href = '/signin';
+      // Check if this is a fresh login required error
+      const data = error.response?.data;
+      const isFreshLoginRequired =
+        data?.title === 'fresh_login_required' ||
+        data?.error_type === 'fresh_login_required';
+
+      if (!isFreshLoginRequired) {
+        // Only redirect for session expiry, not fresh login required
+        if (window?.insights?.chrome?.auth) {
+          // refresh token for plugin
+          GlobalAuthState.bearerToken =
+            await window.insights.chrome.auth.getToken();
+        } else {
+          // redirect to login page for standalone
+          window.location.href = '/signin';
+        }
       }
+      // For fresh login required, let the component handle it
     }
     throw error; // Rethrow error to be handled in components
   },
