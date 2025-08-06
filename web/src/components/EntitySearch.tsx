@@ -24,6 +24,7 @@ export default function EntitySearch(props: EntitySearchProps) {
   const {entities, isError, searchTerm, setSearchTerm} = useEntities(
     props.org,
     props?.includeTeams,
+    props?.includeRobots,
   );
   const id = props.id || 'entity-search';
 
@@ -138,25 +139,40 @@ export default function EntitySearch(props: EntitySearchProps) {
       shouldFocusToggleOnSelect
     >
       <SelectList id="entity-search-option-list">
-        {!searchTerm
-          ? props?.defaultOptions
-          : entities?.map((entity, index) => (
-              <SelectOption
-                data-testid={entity.name}
-                key={entity.name}
-                value={entity.name}
-                isFocused={focusedItemIndex === index}
-                onClick={() => {
-                  setSelectedEntityName(entity.name);
-                  if (props?.onSelect) {
-                    props.onSelect(entity);
-                  }
-                }}
-                description={getEntityKind(entity)}
-              >
-                {entity.name}
-              </SelectOption>
-            ))}
+        {!searchTerm ? (
+          props?.defaultOptions ||
+          (props.includeRobots === false && props.includeTeams === false ? (
+            <SelectOption key="not-permitted" value="" isDisabled>
+              Robot accounts and teams are not permitted
+            </SelectOption>
+          ) : null)
+        ) : entities?.length > 0 ? (
+          entities.map((entity, index) => (
+            <SelectOption
+              data-testid={entity.name}
+              key={entity.name}
+              value={entity.name}
+              isFocused={focusedItemIndex === index}
+              onClick={() => {
+                setSelectedEntityName(entity.name);
+                if (props?.onSelect) {
+                  props.onSelect(entity);
+                }
+              }}
+              description={getEntityKind(entity)}
+            >
+              {entity.name}
+            </SelectOption>
+          ))
+        ) : props.includeRobots === false && props.includeTeams === false ? (
+          <SelectOption key="not-permitted" value="" isDisabled>
+            Robot accounts and teams are not permitted
+          </SelectOption>
+        ) : (
+          <SelectOption key="no-results" value="" isDisabled>
+            No results found
+          </SelectOption>
+        )}
       </SelectList>
     </Select>
   );
@@ -165,11 +181,12 @@ export default function EntitySearch(props: EntitySearchProps) {
 interface EntitySearchProps {
   org: string;
   includeTeams?: boolean;
+  includeRobots?: boolean;
   onSelect: (selectedItem: Entity) => void;
   onClear?: () => void;
   onError?: () => void;
   id?: string;
-  defaultOptions?: any;
+  defaultOptions?: React.ReactNode;
   defaultSelection?: string;
   placeholderText?: string;
   value?: string;
