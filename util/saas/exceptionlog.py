@@ -30,14 +30,15 @@ class Sentry(object):
             sentry_dsn = app.config.get("SENTRY_DSN", "")
             if sentry_dsn:
                 try:
-                    sentry_sdk.init(
+                    initialized_sentry = sentry_sdk.init(
                         dsn=sentry_dsn,
                         integrations=[FlaskIntegration()],
                         environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
                         traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
                         profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
                     )
-                    sentry = FakeSentry()
+                    # Return the initialized Sentry SDK object directly
+                    sentry = initialized_sentry
                 except Exception as e:
                     import logging
 
@@ -55,4 +56,6 @@ class Sentry(object):
         return sentry
 
     def __getattr__(self, name):
+        if self.state is None:
+            return None
         return getattr(self.state, name, None)
