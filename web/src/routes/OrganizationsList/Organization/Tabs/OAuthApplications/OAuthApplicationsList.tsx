@@ -138,15 +138,7 @@ export default function OAuthApplicationsList(
     Name: {
       label: 'name',
       transformFunc: (oauthApplication: IOAuthApplication) => {
-        return (
-          <Button
-            variant="link"
-            isInline
-            onClick={() => openManageApplication(oauthApplication)}
-          >
-            {oauthApplication.name}
-          </Button>
-        );
+        return oauthApplication.name;
       },
     },
     ApplicationURI: {
@@ -155,6 +147,21 @@ export default function OAuthApplicationsList(
         return `${oauthApplication.application_uri}`;
       },
     },
+  };
+
+  // Separate mapping for table display (with interactive elements)
+  const tableDisplayTransformFuncs = {
+    Name: (oauthApplication: IOAuthApplication) => (
+      <Button
+        variant="link"
+        isInline
+        onClick={() => openManageApplication(oauthApplication)}
+      >
+        {oauthApplication.name}
+      </Button>
+    ),
+    ApplicationURI: (oauthApplication: IOAuthApplication) =>
+      `${oauthApplication.application_uri}`,
   };
 
   if (loading) {
@@ -273,14 +280,12 @@ export default function OAuthApplicationsList(
                           }}
                         />
                         <Td dataLabel={oauthApplicationColumnName.name}>
-                          {mapOfColNamesToTableData.Name.transformFunc(
-                            oauthApplication,
-                          )}
+                          {tableDisplayTransformFuncs.Name(oauthApplication)}
                         </Td>
                         <Td
                           dataLabel={oauthApplicationColumnName.application_uri}
                         >
-                          {mapOfColNamesToTableData.ApplicationURI.transformFunc(
+                          {tableDisplayTransformFuncs.ApplicationURI(
                             oauthApplication,
                           )}
                         </Td>
@@ -380,14 +385,12 @@ export default function OAuthApplicationsList(
                         }}
                       />
                       <Td dataLabel={oauthApplicationColumnName.name}>
-                        {mapOfColNamesToTableData.Name.transformFunc(
-                          oauthApplication,
-                        )}
+                        {tableDisplayTransformFuncs.Name(oauthApplication)}
                       </Td>
                       <Td
                         dataLabel={oauthApplicationColumnName.application_uri}
                       >
-                        {mapOfColNamesToTableData.ApplicationURI.transformFunc(
+                        {tableDisplayTransformFuncs.ApplicationURI(
                           oauthApplication,
                         )}
                       </Td>
