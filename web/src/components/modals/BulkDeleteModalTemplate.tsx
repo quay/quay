@@ -63,7 +63,7 @@ export const BulkDeleteModalTemplate = <T,>(
 
   useEffect(() => {
     setItemsMarkedForDelete(props.selectedItems);
-  }, []);
+  }, [props.selectedItems]);
 
   /* Function that transforms a given cell value with the transformation function if present
   else returns the default cell value */
