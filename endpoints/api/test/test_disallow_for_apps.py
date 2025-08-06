@@ -20,7 +20,6 @@ from endpoints.api.repositorynotification import (
     TestRepositoryNotification,
 )
 from endpoints.api.secscan import RepositoryManifestSecurity
-from endpoints.api.signing import RepositorySignatures
 from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.trigger import (
@@ -67,7 +66,6 @@ FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
         (RepositoryNotification, "post", NOTIFICATION_ARGS),
         (TestRepositoryNotification, "post", NOTIFICATION_ARGS),
         (RepositoryManifestSecurity, "get", MANIFEST_ARGS),
-        (RepositorySignatures, "get", None),
         (ListRepositoryTags, "get", None),
         (RepositoryTag, "put", TAG_ARGS),
         (RepositoryTag, "delete", TAG_ARGS),
