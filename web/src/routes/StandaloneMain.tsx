@@ -37,6 +37,7 @@ import ServiceKeys from './Superuser/ServiceKeys/ServiceKeys';
 import ChangeLog from './Superuser/ChangeLog/ChangeLog';
 import UsageLogs from './Superuser/UsageLogs/UsageLogs';
 import Messages from './Superuser/Messages/Messages';
+import {GlobalMessages} from 'src/components/GlobalMessages';
 
 const NavigationRoutes = [
   {
@@ -151,6 +152,7 @@ export function StandaloneMain() {
             </FlexItem>
           </Flex>
         </Banner>
+        <GlobalMessages />
         <Conditional if={quayConfig?.features?.BILLING}>
           <ErrorBoundary fallback={<>Error loading registry status</>}>
             <RegistryStatus />
