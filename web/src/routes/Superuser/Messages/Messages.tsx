@@ -2,9 +2,6 @@ import {
   PageSection,
   PageSectionVariants,
   Title,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
   Button,
   Spinner,
   Alert,
@@ -47,22 +44,23 @@ function MessagesHeader({onCreateMessage}: {onCreateMessage: () => void}) {
     <>
       <QuayBreadcrumb />
       <PageSection variant={PageSectionVariants.light} hasShadowBottom>
-        <Toolbar>
-          <ToolbarContent>
-            <ToolbarItem>
-              <Title headingLevel="h1">Messages</Title>
-            </ToolbarItem>
-            <ToolbarItem align={{default: 'alignRight'}}>
-              <Button
-                variant="primary"
-                icon={<PlusIcon />}
-                onClick={onCreateMessage}
-              >
-                Create Message
-              </Button>
-            </ToolbarItem>
-          </ToolbarContent>
-        </Toolbar>
+        <div
+          className="co-m-nav-title--row"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Title headingLevel="h1">Messages</Title>
+          <Button
+            variant="primary"
+            icon={<PlusIcon />}
+            onClick={onCreateMessage}
+          >
+            Create Message
+          </Button>
+        </div>
       </PageSection>
     </>
   );
@@ -287,6 +285,7 @@ export default function Messages() {
                   }
                   popperProps={{
                     enableFlip: true,
+                    position: 'right',
                   }}
                 >
                   <DropdownList>
