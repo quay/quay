@@ -81,8 +81,11 @@
     {% endfor %}
 
     {% if sentry_public_dsn %}
+      <script src="https://browser.sentry-cdn.com/7.100.0/bundle.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
       <script type="text/javascript">
-        Raven.config('{{ sentry_public_dsn }}').install();
+        Sentry.init({
+          dsn: '{{ sentry_public_dsn }}'
+        });
       </script>
     {% endif %}
 

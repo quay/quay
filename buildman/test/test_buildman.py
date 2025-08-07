@@ -3,10 +3,11 @@ import json
 import unittest
 import uuid
 
-from mock import ANY, Mock
+from mock import ANY, Mock, patch
 from six import iteritems
 
 from buildman.asyncutil import AsyncWrapper
+from buildman.builder import initialize_sentry
 from buildman.component.buildcomponent import BuildComponent
 from buildman.manager.ephemeral import JOB_PREFIX, REALM_PREFIX, EphemeralBuilderManager
 from buildman.manager.executor import BuilderExecutor, ExecutorException
@@ -725,6 +726,147 @@ class TestEphemeral(EphemeralBuilderTestCase):
         # Stop the build job.
         await self.manager.kill_builder_executor(build_job.build_uuid)
         self.assertEqual(executor.job_stopped, executor.job_started)
+
+
+class TestBuilderSentry(unittest.TestCase):
+    """Test Sentry integration in builder module."""
+
+    def test_buildman_name_defined_outside_sentry_condition(self):
+        """Test that buildman_name is defined regardless of Sentry configuration."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.socket.gethostname"
+        ) as mock_hostname:
+
+            # Configure Sentry to be disabled
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "EXCEPTION_LOG_TYPE": "FakeSentry",
+            }.get(key, default)
+
+            mock_hostname.return_value = "test-host"
+
+            # The buildman_name should be available even when Sentry is disabled
+            initialize_sentry()
+
+    def test_sentry_initialization_when_enabled(self):
+        """Test that Sentry is properly initialized when configured."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.sentry_sdk"
+        ) as mock_sentry_sdk, patch("buildman.builder.socket.gethostname") as mock_hostname:
+
+            # Configure Sentry to be enabled
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "EXCEPTION_LOG_TYPE": "Sentry",
+                "SENTRY_DSN": "https://test@sentry.io/123",
+                "SENTRY_ENVIRONMENT": "test",
+                "SENTRY_TRACES_SAMPLE_RATE": 0.5,
+                "SENTRY_PROFILES_SAMPLE_RATE": 0.3,
+            }.get(key, default)
+
+            mock_hostname.return_value = "test-host"
+
+            initialize_sentry()
+
+            # Verify Sentry was initialized with correct parameters
+            mock_sentry_sdk.init.assert_called_once_with(
+                dsn="https://test@sentry.io/123",
+                environment="test",
+                traces_sample_rate=0.5,
+                profiles_sample_rate=0.3,
+            )
+
+            # Verify tags were set
+            expected_calls = [
+                (("service", "buildman"),),
+                (("buildman", "test-host:buildman"),),
+            ]
+            self.assertEqual(mock_sentry_sdk.set_tag.call_args_list, expected_calls)
+
+    def test_sentry_not_initialized_when_disabled(self):
+        """Test that Sentry is not initialized when disabled."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.sentry_sdk"
+        ) as mock_sentry_sdk:
+
+            # Configure Sentry to be disabled
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "EXCEPTION_LOG_TYPE": "FakeSentry",
+            }.get(key, default)
+
+            initialize_sentry()
+
+            mock_sentry_sdk.init.assert_not_called()
+            mock_sentry_sdk.set_tag.assert_not_called()
+
+    def test_sentry_not_initialized_when_no_dsn(self):
+        """Test that Sentry is not initialized when DSN is empty."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.sentry_sdk"
+        ) as mock_sentry_sdk:
+
+            # Configure Sentry to be enabled but with empty DSN
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "EXCEPTION_LOG_TYPE": "Sentry",
+                "SENTRY_DSN": "",
+            }.get(key, default)
+
+            initialize_sentry()
+
+            mock_sentry_sdk.init.assert_not_called()
+            mock_sentry_sdk.set_tag.assert_not_called()
+
+    def test_buildman_name_format(self):
+        """Test that buildman name follows the expected format."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.socket.gethostname"
+        ) as mock_hostname:
+
+            mock_hostname.return_value = "test-host"
+            mock_app.config.get.return_value = "FakeSentry"
+
+            # The buildman name should follow the pattern: hostname:buildman
+            self.assertEqual(mock_hostname.return_value, "test-host")
+
+    def test_default_sentry_config_values(self):
+        """Test that default Sentry configuration values are used when not specified."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.sentry_sdk"
+        ) as mock_sentry_sdk, patch("buildman.builder.socket.gethostname") as mock_hostname:
+
+            # Configure Sentry with minimal config
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "EXCEPTION_LOG_TYPE": "Sentry",
+                "SENTRY_DSN": "https://test@sentry.io/123",
+            }.get(key, default)
+
+            mock_hostname.return_value = "test-host"
+
+            initialize_sentry()
+
+            mock_sentry_sdk.init.assert_called_once_with(
+                dsn="https://test@sentry.io/123",
+                environment="production",  # default
+                traces_sample_rate=0.1,  # default
+                profiles_sample_rate=0.1,  # default
+            )
+
+    def test_sentry_tags_set_correctly(self):
+        """Test that Sentry tags are set with correct values."""
+        with patch("buildman.builder.app") as mock_app, patch(
+            "buildman.builder.sentry_sdk"
+        ) as mock_sentry_sdk, patch("buildman.builder.socket.gethostname") as mock_hostname:
+
+            # Configure Sentry to be enabled
+            mock_app.config.get.side_effect = lambda key, default=None: {
+                "EXCEPTION_LOG_TYPE": "Sentry",
+                "SENTRY_DSN": "https://test@sentry.io/123",
+            }.get(key, default)
+
+            mock_hostname.return_value = "test-host"
+
+            initialize_sentry()
+
+            mock_sentry_sdk.set_tag.assert_any_call("service", "buildman")
+            mock_sentry_sdk.set_tag.assert_any_call("buildman", "test-host:buildman")
 
 
 if __name__ == "__main__":

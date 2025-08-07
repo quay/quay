@@ -1,7 +1,7 @@
 import { NgModule } from 'ng-metadata/core';
 import { INJECTED_CONFIG, INJECTED_FEATURES, INJECTED_ENDPOINTS } from "./constants/injected-values.constant";
 import { NAME_PATTERNS } from "./constants/name-patterns.constant";
-import * as Raven from "raven-js";
+import * as Sentry from "@sentry/browser";
 
 
 
@@ -116,7 +116,7 @@ function provideConfig($provide: ng.auto.IProvideService,
     $provide.decorator("$exceptionHandler", function ($delegate) {
       return function (ex, cause) {
         $delegate(ex, cause);
-        Raven.captureException(ex, { extra: { cause: cause } });
+        Sentry.captureException(ex, { extra: { cause: cause } });
       };
     });
   }
