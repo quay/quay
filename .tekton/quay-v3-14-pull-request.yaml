@@ -212,6 +212,7 @@ spec:
             -e '\#; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json#,\#|| cp /cachi2/output/deps/generic/aws-ip-ranges.json#d' \
             -e '/; microdnf -y module enable nginx:1.22 \\/d' \
             -e '/--enablerepo=ubi-8-codeready-builder-rpms \\/d' \
+            -e '/; microdnf -y reinstall tzdata \\/d' \
             Dockerfile > Dockerfile.tmp && mv Dockerfile.tmp Dockerfile
       runAfter:
       - clone-repository
