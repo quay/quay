@@ -1,6 +1,7 @@
 """
 Billing information, subscriptions, and plan information.
 """
+
 import datetime
 import json
 import time
@@ -515,6 +516,7 @@ class UserPlan(ApiResource):
                         "performer": user.username,
                         "ip": get_request_ip(),
                         "plan": price["stripeId"],
+                        "trial_period_days": price["free_trial_days"],
                     }
                 },
                 mode="subscription",
