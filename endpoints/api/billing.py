@@ -13,7 +13,7 @@ import features
 from app import app, billing, marketplace_subscriptions, marketplace_users
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import AdministerOrganizationPermission
+from auth.permissions import AdministerOrganizationPermission, GlobalReadOnlySuperUserPermission
 from data import model
 from data.billing import PLANS, get_plan, get_plan_using_rh_sku
 from data.model import InvalidOrganizationException, organization_skus
@@ -379,7 +379,7 @@ class OrganizationCard(ApiResource):
         Get the organization's credit card.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or GlobalReadOnlySuperUserPermission().can():
             organization = model.organization.get_organization(orgname)
             return get_card(organization)
 
@@ -702,7 +702,7 @@ class OrganizationPlan(ApiResource):
         """
         cus = None
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or GlobalReadOnlySuperUserPermission().can():
             private_repos = model.user.get_private_repo_count(orgname)
             organization = model.organization.get_organization(orgname)
             if organization.stripe_id:
@@ -761,7 +761,7 @@ class OrganizationInvoiceList(ApiResource):
         List the invoices for the specified orgnaization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or GlobalReadOnlySuperUserPermission().can():
             organization = model.organization.get_organization(orgname)
             if not organization.stripe_id:
                 raise NotFound()
@@ -887,7 +887,7 @@ class OrganizationInvoiceFieldList(ApiResource):
         List the invoice fields for the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or GlobalReadOnlySuperUserPermission().can():
             organization = model.organization.get_organization(orgname)
             if not organization.stripe_id:
                 raise NotFound()
@@ -962,7 +962,7 @@ class OrganizationRhSku(ApiResource):
         Get sku assigned to org
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or GlobalReadOnlySuperUserPermission().can():
             organization = model.organization.get_organization(orgname)
             query = model.organization_skus.get_org_subscriptions(organization.id)
 

@@ -58,7 +58,7 @@ services:
       target: final
     image: localhost/quay-local:latest
     volumes:
-      - "./conf:/quay-registry/conf"
+      - "./endpoints:/quay-registry/endpoints"
       - "./local-dev/stack:/quay-registry/conf/stack"
     ports:
       - "8080:8080"

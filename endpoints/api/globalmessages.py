@@ -8,6 +8,7 @@ from auth import scopes
 from auth.permissions import SuperUserPermission
 from endpoints.api import (
     ApiResource,
+    allow_if_superuser,
     nickname,
     require_fresh_login,
     require_scope,
@@ -116,7 +117,7 @@ class GlobalUserMessages(ApiResource):
         if not features.SUPER_USERS:
             abort(404)
 
-        if SuperUserPermission().can():
+        if allow_if_superuser():
             message_req = request.get_json()["message"]
             message = model.create_message(
                 message_req["severity"], message_req["media_type"], message_req["content"]
@@ -124,7 +125,6 @@ class GlobalUserMessages(ApiResource):
             if message is None:
                 abort(400)
             return make_response("", 201)
-
         abort(403)
 
 
@@ -143,7 +143,7 @@ class GlobalUserMessage(ApiResource):
         """
         Delete a message.
         """
-        if SuperUserPermission().can():
+        if allow_if_superuser():
             model.delete_message(uuid)
             return make_response("", 204)
 

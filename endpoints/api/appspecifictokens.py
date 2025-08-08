@@ -6,7 +6,7 @@ import logging
 import math
 from datetime import timedelta
 
-from flask import request
+from flask import abort, request
 
 import features
 from app import app
@@ -15,6 +15,8 @@ from data import model
 from endpoints.api import (
     ApiResource,
     NotFound,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     format_date,
     log_action,
     nickname,
@@ -138,7 +140,14 @@ class AppToken(ApiResource):
         """
         Returns a specific app token for the user.
         """
-        token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=get_authenticated_user())
+        user = get_authenticated_user()
+        # Superusers (both regular and global readonly) can see any user's app tokens
+        if allow_if_superuser() or allow_if_global_readonly_superuser():
+            # Allow access to any token, not just the current user's
+            token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=None)
+        else:
+            # Regular users can only access their own tokens
+            token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=user)
         if token is None:
             raise NotFound()
 
