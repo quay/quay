@@ -73,44 +73,28 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: ${NAME}-load-balancer-service
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-name: ${NAME}-load-balancer-service
-      service.beta.kubernetes.io/aws-load-balancer-type: external # external gets reconciled by the aws-load-balancer operator
-      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ${LOADBALANCER_NLB_TARGET_TYPE}
-      service.beta.kubernetes.io/aws-load-balancer-scheme: ${LOADBALANCER_NLB_SCHEME}
-      service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ${LOADBALANCER_NLB_IP_ADDR_TYPE}
-      service.beta.kubernetes.io/aws-load-balancer-subnets: ${LOADBALANCER_NLB_SUBNETS}
-      service.beta.kubernetes.io/aws-load-balancer-private-ipv4-addresses: ${LOADBALANCER_NLB_PRIVATE_IPS}
-      service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: red-hat-managed=true
+    name: ${NAME}-https-lb-svc
+    annotations: ${{HTTPS_LB_ANNOTATIONS}}
   spec:
     ports:
     - name: https
       protocol: TCP
-      port: ${{LOADBALANCER_SERVICE_PORT}}
-      targetPort: ${{LOADBALANCER_SERVICE_TARGET_PORT}}
+      port: ${{HTTPS_LB_SERVICE_PORT}}
+      targetPort: ${{HTTPS_LB_SERVICE_TARGET_PORT}}
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: v1
   kind: Service
   metadata:
-    name: ${NAME}-grpc-load-balancer-service
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-name: ${NAME}-grpc-load-balancer-service
-      service.beta.kubernetes.io/aws-load-balancer-type: external # external gets reconciled by the aws-load-balancer operator
-      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ${GRPC_NLB_TARGET_TYPE}
-      service.beta.kubernetes.io/aws-load-balancer-scheme: ${GRPC_NLB_SCHEME}
-      service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ${GRPC_NLB_IP_ADDR_TYPE}
-      service.beta.kubernetes.io/aws-load-balancer-subnets: ${GRPC_NLB_SUBNETS}
-      service.beta.kubernetes.io/aws-load-balancer-private-ipv4-addresses: ${GRPC_NLB_PRIVATE_IPS}
-      service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: red-hat-managed=true
+    name: ${NAME}-grpc-lb-svc
+    annotations: ${{GRPC_LB_ANNOTATIONS}}
   spec:
     ports:
     - name: grpc
       protocol: TCP
-      port: ${{GRPC_SERVICE_PORT}}
-      targetPort: ${{GRPC_SERVICE_TARGET_PORT}}
+      port: ${{GRPC_LB_SERVICE_PORT}}
+      targetPort: ${{GRPC_LB_SERVICE_TARGET_PORT}}
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
@@ -334,42 +318,6 @@ parameters:
   - name: QUAY_APP_COMPONENT_LABEL_VALUE
     value: "app-py3"
     displayName:  quay app selector label value
-  - name: LOADBALANCER_SERVICE_PORT
-    value: "443"
-    displayName: loadbalancer service port
-  - name: LOADBALANCER_SERVICE_TARGET_PORT
-    value: "8443"
-  - name: LOADBALANCER_NLB_TARGET_TYPE
-    value: instance
-    description: NLB Target type. instance (NodePort) or Ip (Pod Ip)
-  - name: LOADBALANCER_NLB_SCHEME
-    description: IP Scheme. internal or internet-facing
-    value: internal
-  - name: LOADBALANCER_NLB_IP_ADDR_TYPE
-    description: Ip address type
-    value: ipv4
-  - name: LOADBALANCER_NLB_SUBNETS
-    description: Subnets for the NLB. The Order must follow the IPs parameter.
-  - name: LOADBALANCER_NLB_PRIVATE_IPS
-    description: Private Ip Addresses for the NLB. The Order must follow the subnets parameter.
-  - name: GRPC_SERVICE_PORT
-    value: "443"
-  - name: GRPC_SERVICE_TARGET_PORT
-    value: "55443"
-    displayName: loadbalancer service target port
-  - name: GRPC_NLB_TARGET_TYPE
-    value: instance
-    description: NLB Target type. instance (NodePort) or Ip (Pod Ip)
-  - name: GRPC_NLB_SCHEME
-    description: IP Scheme. internal or internet-facing
-    value: internal
-  - name: GRPC_NLB_IP_ADDR_TYPE
-    description: Ip address type
-    value: ipv4
-  - name: GRPC_NLB_SUBNETS
-    description: Subnets for the NLB. The Order must follow the IPs parameter.
-  - name: GRPC_NLB_PRIVATE_IPS
-    description: Private Ip Addresses for the NLB. The Order must follow the subnets parameter.
   - name: QUAY_APP_CONFIG_SECRET
     value: ""
     displayName: quay app config secret
@@ -522,3 +470,37 @@ parameters:
     value: "4"
   - name: WORKER_COUNT_REGISTRY
     value: "28"
+  - name: HTTPS_LB_SERVICE_PORT
+    value: "443"
+    displayName: loadbalancer service port
+  - name: HTTPS_LB_SERVICE_TARGET_PORT
+    value: "8443"
+  - name: HTTPS_LB_ANNOTATIONS
+    value: |-
+      {
+        "service.beta.kubernetes.io/aws-load-balancer-name": "quay-py3-https-lb",
+        "service.beta.kubernetes.io/aws-load-balancer-type": "external",
+        "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
+        "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
+        "service.beta.kubernetes.io/aws-load-balancer-ip-address-type": "ipv4",
+        "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "red-hat-managed=true"
+      }
+    displayName: HTTPS service annotations.
+    description: HTTPS Service annotations.
+  - name: GRPC_LB_SERVICE_PORT
+    value: "443"
+  - name: GRPC_LB_SERVICE_TARGET_PORT
+    value: "55443"
+    displayName: loadbalancer service target port
+  - name: GRPC_LB_ANNOTATIONS
+    value: |-
+      {
+      "service.beta.kubernetes.io/aws-load-balancer-name": "quay-py3-grpc-lb",
+      "service.beta.kubernetes.io/aws-load-balancer-type": "external",
+      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
+      "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
+      "service.beta.kubernetes.io/aws-load-balancer-ip-address-type": "ipv4",
+      "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "red-hat-managed=true"
+      }
+    displayName: GRPC service annotations.
+    description: GRPC Service annotations.
