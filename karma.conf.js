@@ -21,7 +21,6 @@ module.exports = function(config) {
       'node_modules/underscore/underscore.js',
       'node_modules/restangular/dist/restangular.js',
       'node_modules/d3/d3.js',
-      'node_modules/raven-js/dist/raven.js',
       'node_modules/cal-heatmap/cal-heatmap.js',
 
       // Polyfills
