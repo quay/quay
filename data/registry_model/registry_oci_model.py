@@ -143,6 +143,14 @@ class OCIModel(RegistryDataInterface):
         assert tag is not None
         return tag.manifest
 
+    def get_manifest_list_size(self, repository_ref, manifest):
+        """
+        Returns the size of the manifest list in bytes as the aggregate of all child manifests sizes.
+        """
+        assert manifest.is_manifest_list
+        size = oci.tag.get_child_manifests_aggregate_size(repository_ref._db_id, manifest._db_id)
+        return int(size) if size is not None else None
+
     def lookup_manifest_by_digest(
         self,
         repository_ref,
