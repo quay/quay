@@ -142,7 +142,7 @@ arabic-reshaper==3.0.0
 cssselect2==0.7.0
 lxml==4.9.2
 python-bidi==0.4.2
-reportlab==3.6.13
+reportlab==4.4.3
 svglib==1.5.1
 tinycss2==1.2.1
 tqdm==4.65.0
