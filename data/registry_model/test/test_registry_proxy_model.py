@@ -24,7 +24,11 @@ from data.model import (
     user,
 )
 from data.model.blob import store_blob_record_and_temp_link
-from data.model.oci.manifest import get_or_create_manifest
+from data.model.oci.manifest import (
+    _ManifestAlreadyExists,
+    get_or_create_manifest,
+    is_child_manifest,
+)
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
 from data.model.repository import create_repository
@@ -1097,6 +1101,60 @@ class TestRegistryProxyModelLookupManifestByDigest:
         tag = Tag.get(manifest_id=manifest.id)
         assert tag.id == first_tag.id
         assert tag.lifetime_end_ms == first_tag.lifetime_end_ms
+
+    def test_manifest_already_exists_exception_and_retry(
+        self, create_repo, proxy_manifest_response
+    ):
+        """
+        Test that when a _ManifestAlreadyExists exception occurs during manifest creation,
+        the function properly retries and eventually succeeds.
+        """
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        proxy_mock = proxy_manifest_response(
+            UBI8_8_4_DIGEST, UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        )
+
+        mock_manifest = MagicMock()
+        mock_manifest.digest = UBI8_8_4_DIGEST
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+
+            with patch.object(ProxyModel, "_create_and_tag_manifest") as mock_create_method:
+                mock_create_method.side_effect = _ManifestAlreadyExists("Manifest already exists")
+
+                call_count = [0]
+
+                def mock_lookup(*args, **kwargs):
+                    call_count[0] += 1
+                    if call_count[0] == 1:
+                        # First call during the initial lookup returns None
+                        return None
+                    else:
+                        # Subsequent calls return our mock manifest
+                        return mock_manifest
+
+                with patch.object(
+                    super(ProxyModel, ProxyModel),
+                    "lookup_manifest_by_digest",
+                    side_effect=mock_lookup,
+                ):
+
+                    with patch("time.sleep") as mock_sleep:
+                        result = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_8_4_DIGEST)
+
+                        assert result is not None
+                        assert result.digest == UBI8_8_4_DIGEST
+                        mock_create_method.assert_called_once()
+                        assert mock_sleep.call_count >= 1
+                        assert call_count[0] >= 2
 
 
 class TestRegistryProxyModelGetRepoTag:
