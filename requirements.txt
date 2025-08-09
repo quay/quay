@@ -4,7 +4,7 @@ aniso8601 @ git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea049870
 APScheduler==3.10.4
 attrs==19.3.0
 Authlib==1.3.1
-aws-sam-translator==1.20.1
+aws-sam-translator==1.99.0
 azure-core==1.24.0
 azure-storage-blob==12.4.0
 Babel==2.13.0
