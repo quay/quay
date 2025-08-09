@@ -152,7 +152,7 @@ Cython==3.0.11
 flit_core==3.7.1
 toml==0.10.2
 tomli==2.2.1
-pip==22.2.1
+pip==25.2
 setuptools==65.5.1
 setuptools-rust==1.7.0
 setuptools-scm[toml]==4.1.2
