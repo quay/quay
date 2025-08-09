@@ -30,7 +30,7 @@ elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
 Flask==2.3.2
 Flask-Login==0.6.3
-Flask-Mail==0.9.1
+Flask-Mail==0.10.0
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.10
 geoip2==3.0.0
