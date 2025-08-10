@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/ncw/swift"
+	"github.com/ncw/swift/v2"
 	log "github.com/sirupsen/logrus"
 )
 
