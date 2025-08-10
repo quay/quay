@@ -46,7 +46,7 @@ require (
 
 require (
 	github.com/coreos/go-oidc/v3 v3.15.0
-	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.2 // indirect
 )
 
 require (
