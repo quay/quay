@@ -43,6 +43,13 @@ axiosIns.interceptors.request.use(async (config) => {
 // Catches errors thrown in axiosIns.interceptors.request.use
 axiosIns.interceptors.response.use(
   (response) => {
+    // Check for updated CSRF token in response headers (exactly like Angular)
+    // Backend sends 'X-Next-CSRF-Token' but axios normalizes to lowercase
+    const nextCsrfToken = response.headers['x-next-csrf-token'];
+    if (nextCsrfToken) {
+      // Update global CSRF token state (like Angular updates window.__token)
+      GlobalAuthState.csrfToken = nextCsrfToken;
+    }
     return response;
   },
   async (error) => {
