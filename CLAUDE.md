@@ -167,7 +167,7 @@ GLOBAL_READONLY_SUPER_USERS:
 ### Key Implementation Files
 
 - `util/config/superusermanager.py`: Core user management, contains `is_global_readonly_superuser()`
-- `auth/permissions.py`: Permission classes with global readonly support 
+- `auth/permissions.py`: Permission classes with global readonly support
 - `endpoints/api/__init__.py`: Contains `allow_if_global_readonly_superuser()` helper and `allow_if_superuser()` (modified to exclude global readonly users from write operations)
 - `endpoints/v2/__init__.py`: V2 API permission decorators with global readonly support
 
@@ -199,15 +199,37 @@ Global readonly superusers are blocked from write operations at multiple levels:
 2. **Superuser Function**: The `allow_if_superuser()` function excludes global readonly superusers from write privileges
 3. **Endpoint Level**: Individual endpoints may have additional checks
 
+### App Token Management
+
+The app token endpoints provide different levels of access based on user permissions:
+
+#### List App Tokens (`GET /api/v1/user/apptoken`)
+- **Superusers**: Can see all tokens across the application
+- **Global Read-Only Superusers**: Can see all tokens across the application (for auditing)
+- **Regular Users**: Can only see their own tokens
+- **Security**: Token codes are never included in list responses
+- **Filtering**: Supports `?expiring=true` parameter
+
+#### Individual App Token (`GET /api/v1/user/apptoken/<token_uuid>`)
+- **Superusers**: Can access any user's token with full token_code
+- **Global Read-Only Superusers**: Can access any user's token with full token_code
+- **Regular Users**: Can only access their own tokens with full token_code
+
 ### Testing Global Read Only Superuser Features
 
 ```bash
 # Test API v1 access
 curl -s -b cookies.txt "http://localhost:8080/api/v1/repository/private/repo"
 
-# Test API v2 access  
+# Test API v2 access
 TOKEN=$(curl -s -u quayadmin:password "http://localhost:8080/v2/auth?service=localhost:8080" | jq -r '.token')
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8080/v2/_catalog"
+
+# Test app token list access (global readonly superuser sees all tokens)
+curl -s -b cookies.txt "http://localhost:8080/api/v1/user/apptoken"
+
+# Test individual app token access (global readonly superuser can access any token)
+curl -s -b cookies.txt "http://localhost:8080/api/v1/user/apptoken/<token_uuid>"
 
 # Test write blocking (should return insufficient_scope)
 curl -s -b cookies.txt -X POST -H "Content-Type: application/json" \
