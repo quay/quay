@@ -3,6 +3,7 @@ import logging
 import time
 import urllib.parse
 from posixpath import join
+from typing import Optional
 
 import jwt
 from authlib.jose import JsonWebKey, KeySet
@@ -151,7 +152,12 @@ class OIDCLoginService(OAuthService):
         return bool(self.config.get("PUBLIC_CLIENT", False))
 
     def exchange_code_for_tokens(
-        self, app_config, http_client, code, redirect_suffix, code_verifier: str | None = None
+        self,
+        app_config,
+        http_client,
+        code,
+        redirect_suffix,
+        code_verifier: Optional[str] = None,
     ):
         # Exchange the code for the access token and id_token
         try:
@@ -185,7 +191,12 @@ class OIDCLoginService(OAuthService):
         return id_token, access_token
 
     def exchange_code_for_login(
-        self, app_config, http_client, code, redirect_suffix, code_verifier: str | None = None
+        self,
+        app_config,
+        http_client,
+        code,
+        redirect_suffix,
+        code_verifier: Optional[str] = None,
     ):
         # Exchange the code for the access token and id_token
         id_token, access_token = self.exchange_code_for_tokens(
