@@ -86,17 +86,40 @@ class AppTokens(ApiResource):
     @query_param("expiring", "If true, only returns those tokens expiring soon", type=truthy_bool)
     def get(self, parsed_args):
         """
-        Lists the app specific tokens for the user.
+        Lists the app specific tokens accessible to the user.
+
+        - Superusers: Can see all tokens across the application
+        - Global Read-Only Superusers: Can see all tokens across the application (but not token secrets)
+        - Regular Users: Can only see their own tokens
         """
+        user = get_authenticated_user()
         expiring = parsed_args["expiring"]
-        if expiring:
-            expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
-            token_expiration = convert_to_timedelta(expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW)
-            seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
-            soon = timedelta(seconds=seconds)
-            tokens = model.appspecifictoken.get_expiring_tokens(get_authenticated_user(), soon)
+
+        # Determine which tokens to retrieve based on user type
+        if allow_if_superuser() or allow_if_global_readonly_superuser():
+            # Superusers and global readonly superusers can see all tokens
+            if expiring:
+                expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
+                token_expiration = convert_to_timedelta(
+                    expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW
+                )
+                seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
+                soon = timedelta(seconds=seconds)
+                tokens = model.appspecifictoken.get_all_expiring_tokens(soon)
+            else:
+                tokens = model.appspecifictoken.list_all_tokens()
         else:
-            tokens = model.appspecifictoken.list_tokens(get_authenticated_user())
+            # Regular users see only their tokens
+            if expiring:
+                expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
+                token_expiration = convert_to_timedelta(
+                    expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW
+                )
+                seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
+                soon = timedelta(seconds=seconds)
+                tokens = model.appspecifictoken.get_expiring_tokens(user, soon)
+            else:
+                tokens = model.appspecifictoken.list_tokens(user)
 
         return {
             "tokens": [token_view(token, include_code=False) for token in tokens],
