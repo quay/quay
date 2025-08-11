@@ -18,6 +18,7 @@ from oauth.base import (
 )
 from oauth.login import OAuthLoginException
 from oauth.login_utils import get_sub_username_email_from_token
+from oauth.pkce import code_challenge, generate_code_verifier
 from util.security.jwtutil import InvalidTokenError, decode
 
 logger = logging.getLogger(__name__)
@@ -140,15 +141,32 @@ class OIDCLoginService(OAuthService):
             "OIDC": True,
         }
 
-    def exchange_code_for_tokens(self, app_config, http_client, code, redirect_suffix):
+    def pkce_enabled(self) -> bool:
+        return bool(self.config.get("USE_PKCE", False))
+
+    def pkce_method(self) -> str:
+        return self.config.get("PKCE_METHOD", "S256")
+
+    def public_client(self) -> bool:
+        return bool(self.config.get("PUBLIC_CLIENT", False))
+
+    def exchange_code_for_tokens(
+        self, app_config, http_client, code, redirect_suffix, code_verifier: str | None = None
+    ):
         # Exchange the code for the access token and id_token
         try:
+            extra_token_params = None
+            if self.pkce_enabled() and code_verifier:
+                extra_token_params = {"code_verifier": code_verifier}
+
             json_data = self.exchange_code(
                 app_config,
                 http_client,
                 code,
                 redirect_suffix=redirect_suffix,
                 form_encode=self.requires_form_encoding(),
+                extra_token_params=extra_token_params,
+                omit_client_secret=self.public_client(),
             )
         except OAuthExchangeCodeException as oce:
             raise OAuthLoginException(str(oce))
@@ -166,10 +184,12 @@ class OIDCLoginService(OAuthService):
 
         return id_token, access_token
 
-    def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix):
+    def exchange_code_for_login(
+        self, app_config, http_client, code, redirect_suffix, code_verifier: str | None = None
+    ):
         # Exchange the code for the access token and id_token
         id_token, access_token = self.exchange_code_for_tokens(
-            app_config, http_client, code, redirect_suffix
+            app_config, http_client, code, redirect_suffix, code_verifier=code_verifier
         )
 
         # Decode the id_token.

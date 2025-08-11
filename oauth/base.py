@@ -149,7 +149,9 @@ class OAuthService(object):
         """
         return self.config.get("LOGIN_BINDING_FIELD", None)
 
-    def get_auth_url(self, url_scheme_and_hostname, redirect_suffix, csrf_token, scopes):
+    def get_auth_url(
+        self, url_scheme_and_hostname, redirect_suffix, csrf_token, scopes, extra_auth_params=None
+    ):
         """
         Retrieves the authorization URL for this login service.
         """
@@ -164,6 +166,8 @@ class OAuthService(object):
             "scope": " ".join(scopes),
             "state": quote(csrf_token),
         }
+        if extra_auth_params:
+            params.update(extra_auth_params)
 
         return self.authorize_endpoint().with_params(params).to_url()
 
@@ -231,6 +235,8 @@ class OAuthService(object):
         form_encode=False,
         redirect_suffix="",
         client_auth=False,
+        extra_token_params=None,
+        omit_client_secret=False,
     ):
         """
         Exchanges an OAuth access code for associated OAuth token and other data.
@@ -241,6 +247,8 @@ class OAuthService(object):
             "grant_type": "authorization_code",
             "redirect_uri": self.get_redirect_uri(url_scheme_and_hostname, redirect_suffix),
         }
+        if extra_token_params:
+            payload.update(extra_token_params)
         headers = {"Accept": "application/json"}
 
         auth = None
@@ -248,7 +256,8 @@ class OAuthService(object):
             auth = (self.client_id(), self.client_secret())
         else:
             payload["client_id"] = self.client_id()
-            payload["client_secret"] = self.client_secret()
+            if not omit_client_secret and self.client_secret() is not None:
+                payload["client_secret"] = self.client_secret()
 
         token_url = self.token_endpoint().to_url()
 
