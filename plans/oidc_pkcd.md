@@ -128,5 +128,3 @@ Validation checks
 - Code changes: ~200–350 LOC.
 - Unit tests: ~150–250 LOC.
 - Docs: ~1–2 pages.
-
-

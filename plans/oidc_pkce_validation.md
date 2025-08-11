@@ -136,5 +136,3 @@ curl -s -b cookies.txt -c cookies.txt -H "X-Requested-With: XMLHttpRequest" -H "
 - Initial 502s from Quay are normal while warming up; wait ~5–10 seconds.
 - Local HTTP causes Keycloak non-secure cookie warnings; safe to ignore during dev.
 - Ignore unrelated `securityworker` log errors in Quay during this validation.
-
-
