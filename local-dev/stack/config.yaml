@@ -93,6 +93,7 @@ SOMEOIDC_LOGIN_CONFIG:
   DEBUGGING: true
   USE_PKCE: true
   PKCE_METHOD: "S256"
+  PUBLIC_CLIENT: true # omit client_secret during token request when client is public
 #RHSSO_LOGIN_CONFIG:
 #  CLIENT_ID: stage.quay.io
 #  CLIENT_SECRET: SECRET
