@@ -182,6 +182,7 @@ def token_handler_public_pkce(id_token, valid_code):
     @urlmatch(netloc=r"fakeoidc", path=r"/token")
     def handler(_, request):
         params = urllib.parse.parse_qs(request.body)
+        # Public clients must not send client_secret; assert it's absent
         if "client_secret" in params:
             return {"status_code": 400, "content": "client_secret should not be sent"}
         if params.get("code")[0] != valid_code:
