@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from data import model
 from endpoints.api.appspecifictokens import AppToken, AppTokens
@@ -172,3 +173,180 @@ def test_list_tokens_no_token_codes(app):
     finally:
         # Clean up
         token.delete_instance()
+
+
+def test_global_readonly_superuser_sees_all_tokens(app):
+    """Test that global read-only superusers can see all tokens across users"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
+        # Mock global readonly superuser
+        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        ):
+
+            with client_with_identity("reader", app) as cl:
+                # Global readonly superuser should see all tokens
+                resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
+                token_uuids = set([token["uuid"] for token in resp["tokens"]])
+
+                # Should see both tokens
+                assert devtable_token.uuid in token_uuids
+                assert reader_token.uuid in token_uuids
+
+                # Verify no token codes are included in list
+                for token in resp["tokens"]:
+                    assert "token_code" not in token
+
+        # Test that regular users still only see their own tokens
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
+            token_uuids = set([token["uuid"] for token in resp["tokens"]])
+
+            # DevTable should only see their token
+            assert devtable_token.uuid in token_uuids
+            assert reader_token.uuid not in token_uuids
+
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
+
+
+def test_global_readonly_superuser_expiring_tokens_all_users(app):
+    """Test that global read-only superusers see expiring tokens from all users"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    # Create expiring and non-expiring tokens for both users
+    soon_expiration = datetime.now() + timedelta(minutes=1)
+    far_expiration = datetime.now() + timedelta(days=30)
+
+    devtable_expiring = model.appspecifictoken.create_token(
+        devtable_user, "DevTable Expiring", soon_expiration
+    )
+    devtable_normal = model.appspecifictoken.create_token(
+        devtable_user, "DevTable Normal", far_expiration
+    )
+    reader_expiring = model.appspecifictoken.create_token(
+        reader_user, "Reader Expiring", soon_expiration
+    )
+    reader_normal = model.appspecifictoken.create_token(
+        reader_user, "Reader Normal", far_expiration
+    )
+
+    try:
+        # Mock global readonly superuser
+        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        ):
+
+            with client_with_identity("reader", app) as cl:
+                # Should see expiring tokens from all users
+                resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200).json
+                token_uuids = set([token["uuid"] for token in resp["tokens"]])
+
+                # Should see expiring tokens from both users
+                assert devtable_expiring.uuid in token_uuids
+                assert reader_expiring.uuid in token_uuids
+                # Should not see non-expiring tokens
+                assert devtable_normal.uuid not in token_uuids
+                assert reader_normal.uuid not in token_uuids
+
+    finally:
+        # Clean up
+        devtable_expiring.delete_instance()
+        devtable_normal.delete_instance()
+        reader_expiring.delete_instance()
+        reader_normal.delete_instance()
+
+
+def test_global_readonly_superuser_individual_token_access(app):
+    """Test that global read-only superusers can access any user's individual token"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
+        # Mock global readonly superuser
+        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        ):
+
+            with client_with_identity("reader", app) as cl:
+                # Should be able to access devtable's token
+                resp = conduct_api_call(
+                    cl, AppToken, "GET", {"token_uuid": devtable_token.uuid}, None, 200
+                ).json
+                assert resp["token"]["uuid"] == devtable_token.uuid
+                assert "token_code" in resp["token"]  # Should include full token
+
+                # Should be able to access reader's token
+                resp = conduct_api_call(
+                    cl, AppToken, "GET", {"token_uuid": reader_token.uuid}, None, 200
+                ).json
+                assert resp["token"]["uuid"] == reader_token.uuid
+                assert "token_code" in resp["token"]  # Should include full token
+
+        # Test that regular users can only access their own tokens
+        with client_with_identity("devtable", app) as cl:
+            # Should be able to access own token
+            resp = conduct_api_call(
+                cl, AppToken, "GET", {"token_uuid": devtable_token.uuid}, None, 200
+            ).json
+            assert resp["token"]["uuid"] == devtable_token.uuid
+
+            # Should NOT be able to access other user's token
+            conduct_api_call(cl, AppToken, "GET", {"token_uuid": reader_token.uuid}, None, 404)
+
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
+
+
+def test_regular_superuser_vs_global_readonly_token_access(app):
+    """Test the difference between regular superuser and global readonly superuser token access"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
+        # Test regular superuser (devtable is a superuser)
+        with patch("endpoints.api.allow_if_superuser", return_value=True), patch(
+            "endpoints.api.allow_if_global_readonly_superuser", return_value=False
+        ):
+
+            with client_with_identity("devtable", app) as cl:
+                # Regular superuser should also see all tokens
+                resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
+                token_uuids = set([token["uuid"] for token in resp["tokens"]])
+
+                assert devtable_token.uuid in token_uuids
+                assert reader_token.uuid in token_uuids
+
+        # Test global readonly superuser
+        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        ):
+
+            with client_with_identity("reader", app) as cl:
+                # Global readonly superuser should also see all tokens
+                resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
+                token_uuids = set([token["uuid"] for token in resp["tokens"]])
+
+                assert devtable_token.uuid in token_uuids
+                assert reader_token.uuid in token_uuids
+
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
