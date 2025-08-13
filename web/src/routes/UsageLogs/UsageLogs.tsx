@@ -61,12 +61,41 @@ export default function UsageLogs(props: UsageLogsProps) {
     });
   }, [logStartDate, logEndDate]);
 
-  const rangeValidator = (date: Date) => {
+  // Helper to parse date string back to Date object for comparison
+  const parseFormattedDate = (dateStr: string): Date => {
+    const [month, day, year] = dateStr.split('/');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
+
+  const startDateValidator = (date: Date) => {
     if (date < minDate) {
-      return 'Date is before the allowable range';
+      return 'Logs are only available for the past month';
     } else if (date > maxDate) {
-      return 'Date is after the allowable range';
+      return 'Cannot select future dates';
     }
+
+    // Check if start date is after end date
+    const endDate = parseFormattedDate(logEndDate);
+    if (date > endDate) {
+      return 'From date cannot be after To date';
+    }
+
+    return '';
+  };
+
+  const endDateValidator = (date: Date) => {
+    if (date < minDate) {
+      return 'Logs are only available for the past month';
+    } else if (date > maxDate) {
+      return 'Cannot select future dates';
+    }
+
+    // Check if end date is before start date
+    const startDate = parseFormattedDate(logStartDate);
+    if (date < startDate) {
+      return 'To date cannot be before From date';
+    }
+
     return '';
   };
 
@@ -90,7 +119,7 @@ export default function UsageLogs(props: UsageLogsProps) {
                 onChange={(_event, str) => {
                   setLogStartDate(formatDate(str));
                 }}
-                validators={[rangeValidator]}
+                validators={[startDateValidator]}
               />
             </SplitItem>
             <SplitItem>
@@ -99,7 +128,7 @@ export default function UsageLogs(props: UsageLogsProps) {
                 onChange={(_event, str) => {
                   setLogEndDate(formatDate(str));
                 }}
-                validators={[rangeValidator]}
+                validators={[endDateValidator]}
               />
             </SplitItem>
             <SplitItem>

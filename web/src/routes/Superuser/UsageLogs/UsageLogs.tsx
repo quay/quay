@@ -62,10 +62,41 @@ export default function UsageLogs() {
 
   const [chartHidden, setChartHidden] = React.useState<boolean>(false);
 
-  const rangeValidator = (date: Date): string => {
-    if (date > maxDate) {
+  // Helper to parse date string back to Date object for comparison
+  const parseFormattedDate = (dateStr: string): Date => {
+    const [month, day, year] = dateStr.split('/');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
+
+  const startDateValidator = (date: Date): string => {
+    if (date < minDate) {
+      return 'Logs are only available for the past month';
+    } else if (date > maxDate) {
       return 'Cannot select future dates';
     }
+
+    // Check if start date is after end date
+    const endDate = parseFormattedDate(logEndDate);
+    if (date > endDate) {
+      return 'From date cannot be after To date';
+    }
+
+    return '';
+  };
+
+  const endDateValidator = (date: Date): string => {
+    if (date < minDate) {
+      return 'Logs are only available for the past month';
+    } else if (date > maxDate) {
+      return 'Cannot select future dates';
+    }
+
+    // Check if end date is before start date
+    const startDate = parseFormattedDate(logStartDate);
+    if (date < startDate) {
+      return 'To date cannot be before From date';
+    }
+
     return '';
   };
 
@@ -75,7 +106,7 @@ export default function UsageLogs() {
 
   // Redirect non-superusers
   if (!isSuperUser) {
-    return <Navigate to="/organization" replace />;
+    return <Navigate to="/repository" replace />;
   }
 
   return (
@@ -101,7 +132,7 @@ export default function UsageLogs() {
                   onChange={(_event, str) => {
                     setLogStartDate(formatDate(str));
                   }}
-                  validators={[rangeValidator]}
+                  validators={[startDateValidator]}
                 />
               </SplitItem>
               <SplitItem>
@@ -111,7 +142,7 @@ export default function UsageLogs() {
                   onChange={(_event, str) => {
                     setLogEndDate(formatDate(str));
                   }}
-                  validators={[rangeValidator]}
+                  validators={[endDateValidator]}
                 />
               </SplitItem>
             </Split>
