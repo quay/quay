@@ -87,7 +87,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             <SplitItem>
               <DatePicker
                 value={logStartDate}
-                onChange={(_event, str, date) => {
+                onChange={(_event, str) => {
                   setLogStartDate(formatDate(str));
                 }}
                 validators={[rangeValidator]}
@@ -96,7 +96,7 @@ export default function UsageLogs(props: UsageLogsProps) {
             <SplitItem>
               <DatePicker
                 value={logEndDate}
-                onChange={(_event, str, date) => {
+                onChange={(_event, str) => {
                   setLogEndDate(formatDate(str));
                 }}
                 validators={[rangeValidator]}
@@ -232,6 +232,8 @@ export const logKinds = {
   start_build_trigger: 'Manual build trigger',
   cancel_build: 'Cancel build',
   login_success: 'Login success',
+  logout_success: 'Logout success',
+  change_repo_state: 'Change repository state',
   permanently_delete_tag: 'Permanently Delete Tag',
   autoprune_tag_delete: 'Autoprune worker tag deletion',
   create_namespace_autoprune_policy: 'Create Namespace Autoprune Policy',

@@ -160,7 +160,7 @@ export function StandaloneMain() {
         </Conditional>
         <Alerts />
         <Routes>
-          <Route index element={<Navigate to="/organization" replace />} />
+          <Route index element={<Navigate to="/repository" replace />} />
           {NavigationRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}
