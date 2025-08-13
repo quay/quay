@@ -8,11 +8,10 @@ import {
 } from '@patternfly/react-charts';
 import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
 
-import {useQuery} from '@tanstack/react-query';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
-import {useTheme} from 'src/contexts/ThemeContext';
 
 import './css/UsageLogs.scss';
 
@@ -22,9 +21,16 @@ interface UsageLogsGraphProps {
   repo: string;
   org: string;
   type: string;
+  isSuperuser?: boolean;
+  freshLogin?: {
+    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
+    isFreshLoginRequired: (error: unknown) => boolean;
+  };
 }
 
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
+  const queryClient = useQueryClient();
+
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
@@ -34,15 +40,54 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
       'usageLogs',
       props.starttime,
       props.endtime,
-      {org: props.org, repo: props.repo ? props.repo : 'isOrg', type: 'chart'},
+      {
+        org: props.org,
+        repo: props.repo ? props.repo : 'isOrg',
+        type: 'chart',
+        isSuperuser: props.isSuperuser,
+      },
     ],
-    () => {
-      return getAggregateLogs(
-        props.org,
-        props.repo,
-        props.starttime,
-        props.endtime,
-      );
+    async () => {
+      try {
+        return await getAggregateLogs(
+          props.org,
+          props.repo,
+          props.starttime,
+          props.endtime,
+          props.isSuperuser,
+        );
+      } catch (error: unknown) {
+        // Check if this is a fresh login required error and we have fresh login integration
+        if (
+          props.isSuperuser &&
+          props.freshLogin?.isFreshLoginRequired(error)
+        ) {
+          // Show fresh login modal with retry operation
+          props.freshLogin.showFreshLoginModal(async () => {
+            // Retry the query after successful verification
+            queryClient.invalidateQueries({
+              queryKey: [
+                'usageLogs',
+                props.starttime,
+                props.endtime,
+                {
+                  org: props.org,
+                  repo: props.repo ? props.repo : 'isOrg',
+                  type: 'chart',
+                  isSuperuser: props.isSuperuser,
+                },
+              ],
+            });
+          });
+
+          // Don't throw the error - the modal will handle retry
+          throw new Error('Fresh login required');
+        }
+        throw error;
+      }
+    },
+    {
+      retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
     },
   );
 
@@ -110,11 +155,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             }}
             legendAllowWrap
             legendComponent={
-              <ChartLegend
-                data={getLegendData()}
-                itemsPerRow={8}
-                theme={useTheme()}
-              />
+              <ChartLegend data={getLegendData()} itemsPerRow={8} />
             }
             legendPosition="right"
             legendOrientation={

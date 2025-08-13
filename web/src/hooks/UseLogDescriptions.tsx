@@ -19,10 +19,22 @@ export function useLogDescriptions() {
     return '';
   };
 
-  const getTriggerDescription = (service: string, config: Config) => {
+  const getConfigObject = (config: string | Config): Config => {
+    if (typeof config === 'string') {
+      try {
+        return JSON.parse(config);
+      } catch {
+        return {};
+      }
+    }
+    return config || {};
+  };
+
+  const getTriggerDescription = (service: string, config: string | Config) => {
+    const configObj = getConfigObject(config);
     let buildSource = '';
-    if (config) {
-      buildSource = config.build_source;
+    if (configObj) {
+      buildSource = configObj.build_source || '';
     }
 
     switch (service) {
@@ -377,8 +389,8 @@ export function useLogDescriptions() {
     build_dockerfile: function (metadata: Metadata) {
       if (metadata.trigger_id) {
         const triggerDescription = getTriggerDescription(
-          metadata['service'],
-          metadata['config'],
+          metadata.service,
+          (metadata.config as string | Config) || '',
         );
         return (
           `Build from Dockerfile for repository ${metadata.namespace}/${metadata.repo} triggered by ` +
@@ -406,7 +418,7 @@ export function useLogDescriptions() {
       }
     },
     org_change_tag_expiration: function (metadata: Metadata) {
-      `Change time machine window to ${metadata.tag_expiration}`;
+      return `Change time machine window to ${metadata.tag_expiration}`;
     },
     org_change_name: function (metadata: Metadata) {
       if (metadata.superuser) {
@@ -497,21 +509,21 @@ export function useLogDescriptions() {
     setup_repo_trigger: function (metadata: Metadata) {
       const triggerDescription = getTriggerDescription(
         metadata.service,
-        metadata.config,
+        (metadata.config as string | Config) || '',
       );
       return 'Setup build trigger - ' + triggerDescription;
     },
     delete_repo_trigger: function (metadata: Metadata) {
       const triggerDescription = getTriggerDescription(
-        metadata['service'],
-        metadata['config'],
+        metadata.service,
+        (metadata.config as string | Config) || '',
       );
       return 'Delete build trigger - ' + triggerDescription;
     },
     toggle_repo_trigger: function (metadata: Metadata) {
       const triggerDescription = getTriggerDescription(
-        metadata['service'],
-        metadata['config'],
+        metadata.service,
+        (metadata.config as string | Config) || '',
       );
       if (metadata.enabled) {
         return 'Build trigger enabled - ' + triggerDescription;
@@ -559,19 +571,19 @@ export function useLogDescriptions() {
     },
 
     service_key_approve: function (metadata: Metadata) {
-      `Approval of service key ${metadata.kid}`;
+      return `Approval of service key ${metadata.kid}`;
     },
     service_key_modify: function (metadata: Metadata) {
-      `Modification of service key ${metadata.kid}`;
+      return `Modification of service key ${metadata.kid}`;
     },
     service_key_delete: function (metadata: Metadata) {
-      `Deletion of service key ${metadata.kid}`;
+      return `Deletion of service key ${metadata.kid}`;
     },
     service_key_extend: function (metadata: Metadata) {
-      `Change of expiration of service key ${metadata.kid} from ${metadata.old_expiration_date}] to ${metadata.expiration_date}`;
+      return `Change of expiration of service key ${metadata.kid} from ${metadata.old_expiration_date} to ${metadata.expiration_date}`;
     },
     service_key_rotate: function (metadata: Metadata) {
-      `Automatic rotation of service key ${metadata.kid} by ${metadata.user_agent}`;
+      return `Automatic rotation of service key ${metadata.kid} by ${metadata.user_agent}`;
     },
 
     take_ownership: function (metadata: Metadata) {
@@ -614,8 +626,63 @@ export function useLogDescriptions() {
         return `Repository mirror ${metadata.verb} by Skopeo`;
       }
     },
+    start_build_trigger: function (metadata: Metadata) {
+      const triggerDescription = getTriggerDescription(
+        metadata.service,
+        (metadata.config as string | Config) || '',
+      );
+      return 'Manually start build from trigger - ' + triggerDescription;
+    },
+    cancel_build: function (metadata: Metadata) {
+      return `Cancel build ${metadata.build_uuid}`;
+    },
+    pull_repo_failed: function (metadata: Metadata) {
+      let message = `Pull from repository ${metadata.namespace}/${metadata.repo} failed`;
+
+      if (metadata.tag) {
+        message += ` for tag ${metadata.tag}`;
+      } else if (metadata.manifest_digest) {
+        message += ` for manifest ${metadata.manifest_digest}`;
+      }
+
+      if (metadata.message) {
+        message += ` with message ${metadata.message}`;
+      }
+
+      return message;
+    },
+    push_repo_failed: function (metadata: Metadata) {
+      let message = `Push to repository ${metadata.namespace}/${metadata.repo} failed`;
+
+      if (metadata.tag) {
+        message += ` for tag ${metadata.tag}`;
+      } else if (metadata.manifest_digest) {
+        message += ` for manifest ${metadata.manifest_digest}`;
+      }
+
+      if (metadata.message) {
+        message += ` with message ${metadata.message}`;
+      }
+
+      return message;
+    },
+    delete_tag_failed: function (metadata: Metadata) {
+      let message = `Delete tag ${metadata.namespace}/${metadata.repo} failed`;
+
+      if (metadata.tag) {
+        message += ` for tag ${metadata.tag}`;
+      } else if (metadata.manifest_digest) {
+        message += ` for manifest ${metadata.manifest_digest}`;
+      }
+
+      if (metadata.message) {
+        message += ` with message ${metadata.message}`;
+      }
+
+      return message;
+    },
     create_proxy_cache_config: function (metadata: Metadata) {
-      return 'Created proxy cache for namespace';
+      return `Create proxy cache for ${metadata.namespace} with upstream ${metadata.upstream_registry}`;
     },
     delete_proxy_cache_config: function () {
       return 'Deleted proxy cache for namespace';
@@ -627,7 +694,75 @@ export function useLogDescriptions() {
       return `Team syncing disabled for ${metadata.team}`;
     },
     login_success: function (metadata: Metadata) {
-      return `Successful login`;
+      if (metadata.type == 'v2auth') {
+        let message = 'Login to registry';
+
+        if (metadata.kind == 'app_specific_token') {
+          message += ` with app-specific token ${metadata.app_specific_token_title}`;
+        } else if (metadata.kind == 'robot') {
+          message += ` with robot ${metadata.robot}`;
+        }
+
+        return message;
+      } else {
+        return 'Login to Quay';
+      }
+    },
+    logout_success: function () {
+      return 'Logout from Quay';
+    },
+    login_failure: function (metadata: Metadata) {
+      if (metadata.type == 'v2auth') {
+        let message = 'Login to registry failed';
+
+        if (metadata.kind == 'app_specific_token') {
+          message += ` with app-specific token`;
+          if (metadata.app_specific_token_title) {
+            message += ` ${metadata.app_specific_token_title}`;
+          }
+          if (metadata.username) {
+            message += ` (owned by ${metadata.username})`;
+          }
+        } else if (metadata.kind == 'robot') {
+          message += ` with robot ${metadata.robot}`;
+          if (metadata.username) {
+            message += ` (owned by ${metadata.username})`;
+          }
+        } else if (metadata.kind == 'user') {
+          message += ` with user ${metadata.username}`;
+        }
+
+        if (metadata.message) {
+          message += ` with message: ${metadata.message}`;
+        }
+
+        return message;
+      } else if (metadata.type == 'quayauth') {
+        if (metadata.kind == 'user') {
+          let message = 'Login to Quay failed';
+          if (metadata.username) {
+            message += ` with username ${metadata.username}`;
+          }
+          if (metadata.message) {
+            message += ` with message: ${metadata.message}`;
+          }
+          return message;
+        } else if (metadata.kind == 'oauth') {
+          let message = 'API access to Quay failed';
+          if (metadata.token) {
+            message += ` with token ${metadata.token}`;
+            if (metadata.username && metadata.application_name) {
+              message += ` (owned by ${metadata.username} in application ${metadata.application_name})`;
+            }
+          }
+          if (metadata.message) {
+            message += ` with message: ${metadata.message}`;
+          }
+          return message;
+        }
+      } else {
+        return 'Login to Quay failed';
+      }
     },
     oauth_token_assigned: function (metadata) {
       return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
@@ -682,7 +817,7 @@ export function useLogDescriptions() {
   return descriptions;
 }
 
-function obfuscate_email(email: Array) {
+function obfuscate_email(email: string) {
   const email_array = email.split('@');
   return (
     email_array[0].substring(0, 2) +
