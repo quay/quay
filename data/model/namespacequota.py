@@ -188,9 +188,9 @@ def check_limits(namespace_name, size):
         default_size = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES", 0)
         return {
             "limit_bytes": default_size,
-            "severity_level": None
-            if (default_size == 0 or size < default_size)
-            else QuotaTypes.REJECT,
+            "severity_level": (
+                None if (default_size == 0 or size < default_size) else QuotaTypes.REJECT
+            ),
         }
 
     # Currently only one quota per namespace is supported

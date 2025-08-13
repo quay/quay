@@ -1,6 +1,7 @@
 """
 Billing information, subscriptions, and plan information.
 """
+
 import datetime
 import json
 import time
@@ -13,7 +14,10 @@ import features
 from app import app, billing, marketplace_subscriptions, marketplace_users
 from auth import scopes
 from auth.auth_context import get_authenticated_user
-from auth.permissions import AdministerOrganizationPermission, GlobalReadOnlySuperUserPermission
+from auth.permissions import (
+    AdministerOrganizationPermission,
+    GlobalReadOnlySuperUserPermission,
+)
 from data import model
 from data.billing import PLANS, get_plan, get_plan_using_rh_sku
 from data.model import InvalidOrganizationException, organization_skus

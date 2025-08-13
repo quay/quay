@@ -395,11 +395,7 @@ def require_user_permission(permission_class, scope=None):
                 if permission.can():
                     return func(self, *args, **kwargs)
 
-                if (
-                    features.SUPERUSERS_FULL_ACCESS
-                    and allow_for_superuser
-                    and allow_if_superuser()
-                ):
+                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser and allow_if_superuser():
                     return func(self, *args, **kwargs)
 
                 raise Unauthorized()
@@ -498,36 +494,40 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 def allow_if_superuser():
     # Global readonly superusers should not have write access
-    from auth.permissions import GlobalReadOnlySuperUserPermission
     if GlobalReadOnlySuperUserPermission().can():
         return False
     return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
 def allow_if_global_readonly_superuser():
-    import logging
-    logger = logging.getLogger(__name__)
-    
     ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
     config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
-    
-    logger.debug("allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s", ldap_filter, config_users)
-    
+
+    logger.debug(
+        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s",
+        ldap_filter,
+        config_users,
+    )
+
     if ldap_filter is None and config_users is None:
         logger.debug("allow_if_global_readonly_superuser: returning False - no config")
         return False
 
     context = get_authenticated_context()
     logger.debug("allow_if_global_readonly_superuser: context=%s", context)
-    
+
     if context is None or context.authed_user is None:
         logger.debug("allow_if_global_readonly_superuser: returning False - no context/user")
         return False
-        
+
     username = context.authed_user.username
     is_global_readonly = usermanager.is_global_readonly_superuser(username)
-    logger.debug("allow_if_global_readonly_superuser: user=%s, is_global_readonly=%s", username, is_global_readonly)
-    
+    logger.debug(
+        "allow_if_global_readonly_superuser: user=%s, is_global_readonly=%s",
+        username,
+        is_global_readonly,
+    )
+
     return is_global_readonly
 
 

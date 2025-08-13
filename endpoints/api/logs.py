@@ -1,6 +1,7 @@
 """
 Access usage logs for organizations or repositories.
 """
+
 from datetime import datetime, timedelta
 
 from flask import abort, request
@@ -454,7 +455,7 @@ class ExportUserLogs(ApiResource):
         # Global readonly superusers should not be able to export logs since it creates background jobs
         if allow_if_global_readonly_superuser():
             abort(403, "Global readonly users cannot export logs")
-            
+
         user = get_authenticated_user()
 
         start_time = parsed_args["starttime"]

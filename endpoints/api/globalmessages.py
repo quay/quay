@@ -1,9 +1,11 @@
 """
 Messages API.
 """
+
 from flask import abort, make_response, request
 
 import features
+from .globalmessages_models_pre_oci import pre_oci_model as model
 from auth import scopes
 from auth.permissions import SuperUserPermission
 from endpoints.api import (
@@ -17,8 +19,6 @@ from endpoints.api import (
     validate_json_request,
     verify_not_prod,
 )
-
-from .globalmessages_models_pre_oci import pre_oci_model as model
 
 
 @resource("/v1/messages")
