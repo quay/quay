@@ -57,6 +57,7 @@ export async function getAggregateLogs(
   const response: AxiosResponse = await axios.get(url, {
     params: {starttime: `${starttime}`, endtime: `${endtime}`},
   });
+
   assertHttpCode(response.status, 200);
   return response.data.aggregated;
 }

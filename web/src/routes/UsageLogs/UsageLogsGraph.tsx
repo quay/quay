@@ -31,6 +31,30 @@ interface UsageLogsGraphProps {
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const queryClient = useQueryClient();
 
+  // D3 Category20 colors (same as Angular)
+  const d3Category20Colors = [
+    '#1f77b4',
+    '#aec7e8',
+    '#ff7f0e',
+    '#ffbb78',
+    '#2ca02c',
+    '#98df8a',
+    '#d62728',
+    '#ff9896',
+    '#9467bd',
+    '#c5b0d5',
+    '#8c564b',
+    '#c49c94',
+    '#e377c2',
+    '#f7b6d2',
+    '#7f7f7f',
+    '#c7c7c7',
+    '#bcbd22',
+    '#dbdb8d',
+    '#17becf',
+    '#9edae5',
+  ];
+
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
@@ -102,14 +126,15 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     const logData = {};
     if (aggregateLogs) {
       aggregateLogs.forEach((log) => {
-        logData[log.kind] = logData[log.kind] || [];
-        logData[log.kind].push({
-          name: logKinds[log.kind],
-          x: new Date(log.datetime),
-          y: log.count,
-        });
-        // tslint:disable-next-line:curly
-        if (log.count > maxRange) maxRange = log.count;
+        if (logKinds[log.kind]) {
+          logData[log.kind] = logData[log.kind] || [];
+          logData[log.kind].push({
+            name: logKinds[log.kind],
+            x: new Date(log.datetime),
+            y: log.count,
+          });
+          if (log.count > maxRange) maxRange = log.count;
+        }
       });
       return logData;
     }
@@ -120,11 +145,19 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   function getLegendData() {
     const legends = [];
     const logKeys = Object.keys(logData);
-    logKeys.forEach((key) => {
+
+    logKeys.forEach((key, index) => {
       if (logKinds[key]) {
-        legends.push({name: logKinds[key]});
+        legends.push({
+          name: logKinds[key],
+          symbol: {
+            fill: d3Category20Colors[index % d3Category20Colors.length],
+            type: 'square',
+          },
+        });
       }
     });
+
     return legends;
   }
 
@@ -155,29 +188,44 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
             }}
             legendAllowWrap
             legendComponent={
-              <ChartLegend data={getLegendData()} itemsPerRow={8} />
+              <ChartLegend
+                data={getLegendData()}
+                itemsPerRow={6}
+                style={{
+                  labels: {fontSize: 11},
+                }}
+              />
             }
-            legendPosition="right"
-            legendOrientation={
-              getLegendData().length >= 12 ? 'horizontal' : 'vertical'
-            }
+            // @ts-expect-error PatternFly's type definitions are incomplete, but "top" works in practice
+            legendPosition="top"
+            legendOrientation="horizontal"
             name="usage-logs-graph"
             padding={{
               bottom: 50,
               left: 80,
-              right: 500, // Adjusted to accommodate legend
-              top: 50,
+              right: 50,
+              top: 120, // More space for legend above chart
             }}
             domainPadding={{x: 5 * Object.keys(logData).length}}
-            height={400}
-            width={1250}
+            height={500}
+            width={1200}
             scale={{x: 'time', y: 'linear'}}
           >
             <ChartAxis fixLabelOverlap />
             <ChartAxis dependentAxis showGrid />
             <ChartGroup offset={11}>
               {Object.keys(logData).map((logKind, index) => (
-                <ChartBar data={logData[logKind]} key={index} />
+                <ChartBar
+                  data={logData[logKind]}
+                  key={index}
+                  style={{
+                    data: {
+                      fill: d3Category20Colors[
+                        index % d3Category20Colors.length
+                      ],
+                    },
+                  }}
+                />
               ))}
             </ChartGroup>
           </Chart>
