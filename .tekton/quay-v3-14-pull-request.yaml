@@ -216,6 +216,8 @@ spec:
             -e '/; microdnf -y module enable nginx:1.22 \\/d' \
             -e '/--enablerepo=ubi-8-codeready-builder-rpms \\/d' \
             -e '/; microdnf -y reinstall tzdata \\/d' \
+            -e '/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz/ s|tar xvf |tar xvf /cachi2/output/deps/generic/|' \
+            -e '/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl/ s|grpcio-|/cachi2/output/deps/generic/grpcio-|' \
             Dockerfile > Dockerfile.tmp && mv Dockerfile.tmp Dockerfile
       runAfter:
       - clone-repository
