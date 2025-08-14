@@ -203,9 +203,9 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                       </Td>
                     )}
                     <Td>
-                      {log.performer?.name
-                        ? log.performer?.name
-                        : log.metadata?.performer}
+                      {log.performer?.name ||
+                        log.metadata?.performer ||
+                        '(anonymous)'}
                     </Td>
                     <Td>{log.ip}</Td>
                   </Tr>
