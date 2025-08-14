@@ -256,7 +256,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                     <Td>
                       {log.performer?.name
                         ? log.performer?.name
-                        : (log.metadata?.performer as string) || 'Unknown'}
+                        : (log.metadata?.performer as string) || '(anonymous)'}
                     </Td>
                     <Td>{log.ip}</Td>
                   </Tr>
