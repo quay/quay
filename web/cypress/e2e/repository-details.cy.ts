@@ -28,7 +28,7 @@ describe('Repository Details Page', () => {
       cy.get(`[data-label="Size"]`).should('have.text', '2.48 kB');
       cy.get(`[data-label="Last Modified"]`).should(
         'have.text',
-        formatDate('Thu, 27 Jul 2023 17:31:10 -0000'),
+        formatDate('Thu, 14 Aug 2025, 17:34:11 -0000'),
       );
       cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
       cy.get(`[data-label="Digest"]`).should(
@@ -807,7 +807,15 @@ describe('Tag history Tab', () => {
   const tagHistoryRows = [
     {
       change:
-        'latest was reverted to sha256f54a58bc1aac5e from sha2567e9b6e7ba2842c',
+        'latest was reverted to sha256f54a58bc1aac5e from sha256f54a58bc1aac5e',
+      date: 'Thu, 14 Aug 2025, 17:34:11 -0000',
+    },
+    {
+      change: 'latest was recreated pointing to sha256f54a58bc1aac5e',
+      date: 'Sun, 15 Jun 2025 12:04:30 -0000',
+    },
+    {
+      change: 'latest was deleted',
       date: 'Thu, 27 Jul 2023 17:31:10 -0000',
       revert: 'Restore to sha2567e9b6e7ba2842c',
     },
@@ -815,7 +823,6 @@ describe('Tag history Tab', () => {
       change:
         'latest was moved to sha2567e9b6e7ba2842c from sha256f54a58bc1aac5e',
       date: 'Thu, 27 Jul 2023 17:30:10 -0000',
-      revert: 'Revert to sha256f54a58bc1aac5e',
     },
     {
       change: 'latest was recreated pointing to sha256f54a58bc1aac5e',
@@ -824,7 +831,6 @@ describe('Tag history Tab', () => {
     {
       change: 'latest was deleted',
       date: 'Thu, 27 Jul 2023 17:30:10 -0000',
-      revert: 'Restore to sha256f54a58bc1aac5e',
     },
     {
       change: 'manifestlist was created pointing to sha2567693efac53eb85',
