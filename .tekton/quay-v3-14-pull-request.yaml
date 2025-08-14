@@ -18,6 +18,15 @@ metadata:
   name: quay-v3-14-on-pull-request
   namespace: quay-eng-tenant
 spec:
+  taskRunSpecs:
+    - pipelineTaskName: build-images
+      stepSpecs:
+        - name: build
+          computeResources:
+            requests:
+              memory: 12Gi
+            limits:
+              memory: 12Gi
   params:
   - name: git-url
     value: '{{source_url}}'
