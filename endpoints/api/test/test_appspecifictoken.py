@@ -77,8 +77,8 @@ def test_list_tokens_superuser(app):
         reader_token.delete_instance()
 
 
-def test_list_tokens_regular_user(app):
-    """Test that regular users only see their tokens"""
+def test_list_tokens_devtable_user(app):
+    """Test that devtable user only sees their tokens"""
     # Create tokens for multiple users
     devtable_user = model.user.get_user("devtable")
     reader_user = model.user.get_user("reader")
@@ -93,7 +93,22 @@ def test_list_tokens_regular_user(app):
             token_uuids = set([token["uuid"] for token in resp["tokens"]])
             assert devtable_token.uuid in token_uuids
             assert reader_token.uuid not in token_uuids
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
 
+
+def test_list_tokens_reader_user(app):
+    """Test that reader user only sees their tokens"""
+    # Create tokens for multiple users
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
         with client_with_identity("reader", app) as cl:
             # Reader user should only see their token
             resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
@@ -106,8 +121,8 @@ def test_list_tokens_regular_user(app):
         reader_token.delete_instance()
 
 
-def test_list_expiring_tokens_user_scoped(app):
-    """Test expiring token filtering is properly scoped by user"""
+def test_list_expiring_tokens_devtable_user_scoped(app):
+    """Test expiring token filtering is properly scoped for devtable user"""
     devtable_user = model.user.get_user("devtable")
     reader_user = model.user.get_user("reader")
 
@@ -137,7 +152,37 @@ def test_list_expiring_tokens_user_scoped(app):
             assert devtable_normal.uuid not in token_uuids
             assert reader_expiring.uuid not in token_uuids
             assert reader_normal.uuid not in token_uuids
+    finally:
+        # Clean up
+        devtable_expiring.delete_instance()
+        devtable_normal.delete_instance()
+        reader_expiring.delete_instance()
+        reader_normal.delete_instance()
 
+
+def test_list_expiring_tokens_reader_user_scoped(app):
+    """Test expiring token filtering is properly scoped for reader user"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    # Create expiring and non-expiring tokens for both users
+    soon_expiration = datetime.now() + timedelta(minutes=1)
+    far_expiration = datetime.now() + timedelta(days=30)
+
+    devtable_expiring = model.appspecifictoken.create_token(
+        devtable_user, "DevTable Expiring", soon_expiration
+    )
+    devtable_normal = model.appspecifictoken.create_token(
+        devtable_user, "DevTable Normal", far_expiration
+    )
+    reader_expiring = model.appspecifictoken.create_token(
+        reader_user, "Reader Expiring", soon_expiration
+    )
+    reader_normal = model.appspecifictoken.create_token(
+        reader_user, "Reader Normal", far_expiration
+    )
+
+    try:
         with client_with_identity("reader", app) as cl:
             # Reader user with expiring=True should only see their expiring token
             resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200).json
@@ -185,8 +230,8 @@ def test_global_readonly_superuser_sees_all_tokens(app):
 
     try:
         # Mock global readonly superuser
-        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
-            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=True
         ):
 
             with client_with_identity("reader", app) as cl:
@@ -202,7 +247,21 @@ def test_global_readonly_superuser_sees_all_tokens(app):
                 for token in resp["tokens"]:
                     assert "token_code" not in token
 
-        # Test that regular users still only see their own tokens
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
+
+
+def test_regular_user_sees_only_own_tokens(app):
+    """Test that regular users still only see their own tokens"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
         with client_with_identity("devtable", app) as cl:
             resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
             token_uuids = set([token["uuid"] for token in resp["tokens"]])
@@ -241,8 +300,8 @@ def test_global_readonly_superuser_expiring_tokens_all_users(app):
 
     try:
         # Mock global readonly superuser
-        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
-            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=True
         ):
 
             with client_with_identity("reader", app) as cl:
@@ -275,8 +334,8 @@ def test_global_readonly_superuser_individual_token_access(app):
 
     try:
         # Mock global readonly superuser
-        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
-            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=True
         ):
 
             with client_with_identity("reader", app) as cl:
@@ -294,7 +353,21 @@ def test_global_readonly_superuser_individual_token_access(app):
                 assert resp["token"]["uuid"] == reader_token.uuid
                 assert "token_code" in resp["token"]  # Should include full token
 
-        # Test that regular users can only access their own tokens
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
+
+
+def test_regular_user_individual_token_access_restrictions(app):
+    """Test that regular users can only access their own tokens"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
         with client_with_identity("devtable", app) as cl:
             # Should be able to access own token
             resp = conduct_api_call(
@@ -311,8 +384,8 @@ def test_global_readonly_superuser_individual_token_access(app):
         reader_token.delete_instance()
 
 
-def test_regular_superuser_vs_global_readonly_token_access(app):
-    """Test the difference between regular superuser and global readonly superuser token access"""
+def test_regular_superuser_token_access(app):
+    """Test that regular superusers can see all tokens"""
     devtable_user = model.user.get_user("devtable")
     reader_user = model.user.get_user("reader")
 
@@ -321,8 +394,8 @@ def test_regular_superuser_vs_global_readonly_token_access(app):
 
     try:
         # Test regular superuser (devtable is a superuser)
-        with patch("endpoints.api.allow_if_superuser", return_value=True), patch(
-            "endpoints.api.allow_if_global_readonly_superuser", return_value=False
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=True), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=False
         ):
 
             with client_with_identity("devtable", app) as cl:
@@ -333,9 +406,24 @@ def test_regular_superuser_vs_global_readonly_token_access(app):
                 assert devtable_token.uuid in token_uuids
                 assert reader_token.uuid in token_uuids
 
+    finally:
+        # Clean up
+        devtable_token.delete_instance()
+        reader_token.delete_instance()
+
+
+def test_global_readonly_superuser_token_access(app):
+    """Test that global readonly superusers can see all tokens"""
+    devtable_user = model.user.get_user("devtable")
+    reader_user = model.user.get_user("reader")
+
+    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
+
+    try:
         # Test global readonly superuser
-        with patch("endpoints.api.allow_if_superuser", return_value=False), patch(
-            "endpoints.api.allow_if_global_readonly_superuser", return_value=True
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=False), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=True
         ):
 
             with client_with_identity("reader", app) as cl:
