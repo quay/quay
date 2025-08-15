@@ -46,10 +46,12 @@ export const CreateServiceKeyForm: React.FC<CreateServiceKeyFormProps> = ({
       title="Create Preshareable Service Key"
       isOpen={isOpen}
       onClose={handleClose}
+      data-testid="create-service-key-modal"
       actions={[
         <Button
           key="create"
           variant="primary"
+          data-testid="create-key-submit"
           onClick={formHook.handleSubmit(formHook.onSubmit)}
           isLoading={formHook.isSubmitting}
           isDisabled={!formHook.isValid || formHook.isSubmitting}

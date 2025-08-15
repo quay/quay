@@ -78,6 +78,21 @@ export function QuaySidebar() {
     },
   ];
 
+  const getTestId = (title: string) => {
+    switch (title) {
+      case 'Service Keys':
+        return 'service-keys-nav';
+      case 'Change Log':
+        return 'change-log-nav';
+      case 'Usage Logs':
+        return 'usage-logs-nav';
+      case 'Messages':
+        return 'messages-nav';
+      default:
+        return undefined;
+    }
+  };
+
   const Navigation = (
     <Nav>
       <NavList>
@@ -86,6 +101,7 @@ export function QuaySidebar() {
             <NavItem
               key={route.navPath}
               isActive={location.pathname === route.navPath}
+              data-testid={getTestId(route.title)}
             >
               <Link to={route.navPath}>{route.title}</Link>
             </NavItem>
