@@ -33,6 +33,11 @@ import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedi
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
 import {NotificationDrawerListComponent} from 'src/components/notifications/NotificationDrawerList';
+import ServiceKeys from './Superuser/ServiceKeys/ServiceKeys';
+import ChangeLog from './Superuser/ChangeLog/ChangeLog';
+import UsageLogs from './Superuser/UsageLogs/UsageLogs';
+import Messages from './Superuser/Messages/Messages';
+import {GlobalMessages} from 'src/components/GlobalMessages';
 
 const NavigationRoutes = [
   {
@@ -62,6 +67,23 @@ const NavigationRoutes = [
   {
     path: NavigationPath.repositoryDetail,
     Component: <RepositoryTagRouter />,
+  },
+  // Superuser routes
+  {
+    path: NavigationPath.serviceKeys,
+    Component: <ServiceKeys />,
+  },
+  {
+    path: NavigationPath.changeLog,
+    Component: <ChangeLog />,
+  },
+  {
+    path: NavigationPath.usageLogs,
+    Component: <UsageLogs />,
+  },
+  {
+    path: NavigationPath.messages,
+    Component: <Messages />,
   },
 ];
 
@@ -130,6 +152,7 @@ export function StandaloneMain() {
             </FlexItem>
           </Flex>
         </Banner>
+        <GlobalMessages />
         <Conditional if={quayConfig?.features?.BILLING}>
           <ErrorBoundary fallback={<>Error loading registry status</>}>
             <RegistryStatus />
@@ -137,7 +160,7 @@ export function StandaloneMain() {
         </Conditional>
         <Alerts />
         <Routes>
-          <Route index element={<Navigate to="/organization" replace />} />
+          <Route index element={<Navigate to="/repository" replace />} />
           {NavigationRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}

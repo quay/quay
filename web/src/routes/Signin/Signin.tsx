@@ -41,7 +41,7 @@ export function Signin() {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
         GlobalAuthState.isLoggedIn = true;
-        navigate('/organization');
+        navigate('/repository');
       } else {
         setErr('Invalid login credentials');
       }
