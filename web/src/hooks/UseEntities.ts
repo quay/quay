@@ -1,14 +1,23 @@
 import {useEffect, useState} from 'react';
 import {Entity, fetchEntities} from 'src/resources/UserResource';
 
-export function useEntities(org: string, includeTeams?: boolean) {
+export function useEntities(
+  org: string,
+  includeTeams?: boolean,
+  includeRobots?: boolean,
+) {
   const [searchTerm, setSearchTerm] = useState<string>();
   const [isError, setIsError] = useState<boolean>();
   const [entities, setEntities] = useState<Entity[]>([]);
 
   const search = async () => {
     try {
-      const entityResults = await fetchEntities(searchTerm, org, includeTeams);
+      const entityResults = await fetchEntities(
+        searchTerm,
+        org,
+        includeTeams,
+        includeRobots,
+      );
       setEntities(entityResults);
     } catch (err) {
       setIsError(true);
