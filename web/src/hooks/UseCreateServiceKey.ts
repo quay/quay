@@ -101,6 +101,13 @@ export const useCreateServiceKey = (
     },
     expiration: {
       required: 'Expiration date is required',
+      validate: (value: string) => {
+        if (!value) return 'Expiration date is required';
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return 'Please enter a valid date and time';
+        if (date <= new Date()) return 'Expiration date must be in the future';
+        return true;
+      },
     },
   };
 

@@ -312,7 +312,11 @@ export default function ServiceKeys() {
 
   // Bulk actions (matching actual Angular behavior - only delete works)
   const kebabItems: ReactElement[] = [
-    <DropdownItem key="delete-keys" onClick={() => setIsDeleteModalOpen(true)}>
+    <DropdownItem
+      key="delete-keys"
+      onClick={() => setIsDeleteModalOpen(true)}
+      data-testid="bulk-delete-keys"
+    >
       Delete Keys
     </DropdownItem>,
   ];
@@ -382,6 +386,7 @@ export default function ServiceKeys() {
                 type="search"
                 id="service-keys-search-input"
                 name="service-keys-search"
+                data-testid="service-keys-search"
                 placeholder="Filter Keys..."
                 value={search.query}
                 onChange={(_event, val) =>
@@ -391,6 +396,7 @@ export default function ServiceKeys() {
             </ToolbarItem>
             <ToolbarButton
               id="create-service-key-button"
+              data-testid="create-service-key-button"
               buttonValue="Create Preshareable Key"
               Modal={<div />}
               isModalOpen={isCreateModalOpen}
@@ -403,6 +409,7 @@ export default function ServiceKeys() {
                   setKebabOpen={setKebabOpen}
                   kebabItems={kebabItems}
                   useActions={true}
+                  data-testid="bulk-actions-kebab"
                 />
               )}
             </ToolbarItem>
@@ -467,11 +474,13 @@ export default function ServiceKeys() {
                           isSelected: isKeySelected(key),
                           isDisabled: !isKeySelectable(),
                         }}
+                        data-testid={`select-${key.kid}`}
                       />
                       <Td dataLabel="Name">
                         <a
                           href="#"
                           style={{color: '#007acc'}}
+                          data-testid={`expand-${key.kid}`}
                           onClick={(e) => {
                             e.preventDefault();
                             setKeyExpanded(key, !isKeyExpanded(key));
@@ -548,7 +557,10 @@ export default function ServiceKeys() {
                     </Tr>
                     <Tr isExpanded={isKeyExpanded(key)}>
                       <Td colSpan={8}>
-                        <div style={{padding: '16px 0'}}>
+                        <div
+                          style={{padding: '16px 0'}}
+                          data-testid={`key-details-${key.kid}`}
+                        >
                           <div
                             style={{
                               fontWeight: 'bold',
@@ -607,6 +619,7 @@ export default function ServiceKeys() {
         titleIconVariant="warning"
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
+        data-testid="bulk-delete-modal"
         actions={[
           <Button
             key="delete"
@@ -614,6 +627,7 @@ export default function ServiceKeys() {
             onClick={handleBulkDelete}
             isLoading={isBulkDeleting}
             isDisabled={isBulkDeleting}
+            data-testid="confirm-bulk-delete"
           >
             Delete
           </Button>,
@@ -650,10 +664,12 @@ export default function ServiceKeys() {
         title="Set Friendly Name"
         isOpen={isNameModalOpen}
         onClose={() => setIsNameModalOpen(false)}
+        data-testid="set-name-modal"
         actions={[
           <Button
             key="save"
             variant="primary"
+            data-testid="save-name-button"
             onClick={handleUpdateName}
             isLoading={isUpdating}
             isDisabled={isUpdating}
@@ -674,6 +690,7 @@ export default function ServiceKeys() {
           <FormGroup label="Friendly Name" fieldId="name-input">
             <TextInput
               id="name-input"
+              data-testid="friendly-name-input"
               type="text"
               value={newName}
               onChange={(_event, value) => setNewName(value)}
@@ -689,10 +706,12 @@ export default function ServiceKeys() {
         title="Change Service Key Expiration"
         isOpen={isExpirationModalOpen}
         onClose={() => setIsExpirationModalOpen(false)}
+        data-testid="change-expiration-modal"
         actions={[
           <Button
             key="save"
             variant="primary"
+            data-testid="save-expiration-button"
             onClick={handleUpdateExpiration}
             isLoading={isUpdating}
             isDisabled={isUpdating}
@@ -714,6 +733,7 @@ export default function ServiceKeys() {
             <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
               <TextInput
                 id="expiration-input"
+                data-testid="expiration-date-input"
                 type="datetime-local"
                 value={newExpiration}
                 onChange={(_event, value) => setNewExpiration(value)}
@@ -756,10 +776,12 @@ export default function ServiceKeys() {
         titleIconVariant="warning"
         isOpen={isRowDeleteModalOpen}
         onClose={() => setIsRowDeleteModalOpen(false)}
+        data-testid="delete-service-key-modal"
         actions={[
           <Button
             key="delete"
             variant="danger"
+            data-testid="confirm-delete-button"
             onClick={handleRowDelete}
             isLoading={isDeleting}
             isDisabled={isDeleting}
