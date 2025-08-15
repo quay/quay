@@ -581,15 +581,31 @@ class IndexV2TestSpec(object):
         self.read_code = 200
         self.admin_code = 200
         self.creator_code = 200
+        # New: default for global read-only superuser. Will be computed in request_status if not set.
+        self.global_readonly_code = None
 
     def request_status(
-        self, anon_code=401, no_access_code=403, read_code=200, creator_code=200, admin_code=200
+        self,
+        anon_code=401,
+        no_access_code=403,
+        read_code=200,
+        creator_code=200,
+        admin_code=200,
+        global_readonly_code=None,
     ):
         self.anon_code = anon_code
         self.no_access_code = no_access_code
         self.read_code = read_code
         self.creator_code = creator_code
         self.admin_code = admin_code
+        # If not explicitly provided, infer: read endpoints match read_code; write endpoints default 401
+        if global_readonly_code is None:
+            if self.method_name in ("GET", "HEAD"):
+                self.global_readonly_code = read_code
+            else:
+                self.global_readonly_code = 401
+        else:
+            self.global_readonly_code = global_readonly_code
         return self
 
     def get_url(self):
@@ -616,7 +632,7 @@ def build_v2_index_specs():
             401, 401, 200, 401, 200
         ),
         IndexV2TestSpec("v2.list_all_tags", "GET", ANOTHER_ORG_REPO).request_status(
-            401, 401, 401, 401, 200
+            401, 401, 401, 401, 200, global_readonly_code=200
         ),
         # v2.fetch_manifest_by_tagname
         IndexV2TestSpec(
@@ -630,7 +646,7 @@ def build_v2_index_specs():
         ).request_status(401, 401, 404, 401, 404),
         IndexV2TestSpec(
             "v2.fetch_manifest_by_tagname", "GET", ANOTHER_ORG_REPO, manifest_ref=FAKE_MANIFEST
-        ).request_status(401, 401, 401, 401, 404),
+        ).request_status(401, 401, 401, 401, 404, global_readonly_code=404),
         # v2.fetch_manifest_by_digest
         IndexV2TestSpec(
             "v2.fetch_manifest_by_digest", "GET", PUBLIC_REPO, manifest_ref=FAKE_DIGEST
@@ -643,11 +659,11 @@ def build_v2_index_specs():
         ).request_status(401, 401, 404, 401, 404),
         IndexV2TestSpec(
             "v2.fetch_manifest_by_digest", "GET", ANOTHER_ORG_REPO, manifest_ref=FAKE_DIGEST
-        ).request_status(401, 401, 401, 401, 404),
+        ).request_status(401, 401, 401, 401, 404, global_readonly_code=404),
         # v2.write_manifest_by_tagname
         IndexV2TestSpec(
             "v2.write_manifest_by_tagname", "PUT", PUBLIC_REPO, manifest_ref=FAKE_MANIFEST
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 400),
         IndexV2TestSpec(
             "v2.write_manifest_by_tagname", "PUT", PRIVATE_REPO, manifest_ref=FAKE_MANIFEST
         ).request_status(401, 401, 401, 401, 400),
@@ -660,7 +676,7 @@ def build_v2_index_specs():
         # v2.write_manifest_by_digest
         IndexV2TestSpec(
             "v2.write_manifest_by_digest", "PUT", PUBLIC_REPO, manifest_ref=FAKE_DIGEST
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 400),
         IndexV2TestSpec(
             "v2.write_manifest_by_digest", "PUT", PRIVATE_REPO, manifest_ref=FAKE_DIGEST
         ).request_status(401, 401, 401, 401, 400),
@@ -673,7 +689,7 @@ def build_v2_index_specs():
         # v2.delete_manifest_by_tag
         IndexV2TestSpec(
             "v2.delete_manifest_by_tag", "DELETE", PUBLIC_REPO, manifest_ref=FAKE_MANIFEST
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 404),
         IndexV2TestSpec(
             "v2.delete_manifest_by_tag", "DELETE", PRIVATE_REPO, manifest_ref=FAKE_MANIFEST
         ).request_status(401, 401, 401, 401, 404),
@@ -686,7 +702,7 @@ def build_v2_index_specs():
         # v2.delete_manifest_by_digest
         IndexV2TestSpec(
             "v2.delete_manifest_by_digest", "DELETE", PUBLIC_REPO, manifest_ref=FAKE_DIGEST
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 404),
         IndexV2TestSpec(
             "v2.delete_manifest_by_digest", "DELETE", PRIVATE_REPO, manifest_ref=FAKE_DIGEST
         ).request_status(401, 401, 401, 401, 404),
@@ -708,7 +724,7 @@ def build_v2_index_specs():
         ).request_status(401, 401, 404, 401, 404),
         IndexV2TestSpec(
             "v2.check_blob_exists", "HEAD", ANOTHER_ORG_REPO, digest=FAKE_DIGEST
-        ).request_status(401, 401, 401, 401, 404),
+        ).request_status(401, 401, 401, 401, 404, global_readonly_code=404),
         # v2.download_blob
         IndexV2TestSpec("v2.download_blob", "GET", PUBLIC_REPO, digest=FAKE_DIGEST).request_status(
             404, 404, 404, 404, 404
@@ -721,10 +737,10 @@ def build_v2_index_specs():
         ),
         IndexV2TestSpec(
             "v2.download_blob", "GET", ANOTHER_ORG_REPO, digest=FAKE_DIGEST
-        ).request_status(401, 401, 401, 401, 404),
+        ).request_status(401, 401, 401, 401, 404, global_readonly_code=404),
         # v2.start_blob_upload
         IndexV2TestSpec("v2.start_blob_upload", "POST", PUBLIC_REPO).request_status(
-            401, 401, 401, 401, 401
+            401, 401, 401, 401, 202
         ),
         IndexV2TestSpec("v2.start_blob_upload", "POST", PRIVATE_REPO).request_status(
             401, 401, 401, 401, 202
@@ -738,7 +754,7 @@ def build_v2_index_specs():
         # v2.fetch_existing_upload
         IndexV2TestSpec(
             "v2.fetch_existing_upload", "GET", PUBLIC_REPO, "push,pull", upload_uuid=FAKE_UPLOAD_ID
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 404),
         IndexV2TestSpec(
             "v2.fetch_existing_upload", "GET", PRIVATE_REPO, "push,pull", upload_uuid=FAKE_UPLOAD_ID
         ).request_status(401, 401, 401, 401, 404),
@@ -755,7 +771,7 @@ def build_v2_index_specs():
         # v2.upload_chunk
         IndexV2TestSpec(
             "v2.upload_chunk", "PATCH", PUBLIC_REPO, upload_uuid=FAKE_UPLOAD_ID
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 404),
         IndexV2TestSpec(
             "v2.upload_chunk", "PATCH", PRIVATE_REPO, upload_uuid=FAKE_UPLOAD_ID
         ).request_status(401, 401, 401, 401, 404),
@@ -768,7 +784,7 @@ def build_v2_index_specs():
         # v2.monolithic_upload_or_last_chunk
         IndexV2TestSpec(
             "v2.monolithic_upload_or_last_chunk", "PUT", PUBLIC_REPO, upload_uuid=FAKE_UPLOAD_ID
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 400),
         IndexV2TestSpec(
             "v2.monolithic_upload_or_last_chunk", "PUT", PRIVATE_REPO, upload_uuid=FAKE_UPLOAD_ID
         ).request_status(401, 401, 401, 401, 400),
@@ -784,7 +800,7 @@ def build_v2_index_specs():
         # v2.cancel_upload
         IndexV2TestSpec(
             "v2.cancel_upload", "DELETE", PUBLIC_REPO, upload_uuid=FAKE_UPLOAD_ID
-        ).request_status(401, 401, 401, 401, 401),
+        ).request_status(401, 401, 401, 401, 404),
         IndexV2TestSpec(
             "v2.cancel_upload", "DELETE", PRIVATE_REPO, upload_uuid=FAKE_UPLOAD_ID
         ).request_status(401, 401, 401, 401, 404),

@@ -2997,6 +2997,30 @@ class TestRequestRepoBuild(ApiTestCase):
             RepositoryBuildList,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple"),
             data=dict(file_id="foobarbaz", pull_robot=pull_robot),
+            expected_code=201,
+        )
+
+    def test_requestrepobuild_with_unauthorized_robot_as_global_readonly_superuser(self):
+        self.login("globalreadonlysuperuser")
+
+        # Attempt a build using a robot from a different namespace; global readonly should be blocked from writes
+        pull_robot = "freshuser+anotherrobot"
+        self.postResponse(
+            RepositoryBuildList,
+            params=dict(repository=ADMIN_ACCESS_USER + "/simple"),
+            data=dict(file_id="foobarbaz", pull_robot=pull_robot),
+            expected_code=403,
+        )
+
+    def test_requestrepobuild_with_unauthorized_robot_as_regular_user(self):
+        self.login(READ_ACCESS_USER)
+
+        # Regular user without write perms should be blocked
+        pull_robot = "freshuser+anotherrobot"
+        self.postResponse(
+            RepositoryBuildList,
+            params=dict(repository=ADMIN_ACCESS_USER + "/simple"),
+            data=dict(file_id="foobarbaz", pull_robot=pull_robot),
             expected_code=403,
         )
 

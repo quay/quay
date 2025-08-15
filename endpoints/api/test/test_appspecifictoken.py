@@ -63,39 +63,37 @@ def test_list_tokens_superuser(app):
 
     try:
         with client_with_identity("devtable", app) as cl:
-            # Regular user should only see their own tokens
+            # devtable is a superuser, so should see all tokens
             resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
             token_uuids = set([token["uuid"] for token in resp["tokens"]])
             assert devtable_token.uuid in token_uuids
-            assert reader_token.uuid not in token_uuids
+            assert reader_token.uuid in token_uuids  # Superuser sees all tokens
 
-        # Note: In a real test environment, we would test with an actual superuser
-        # For now, this test verifies the regular user behavior
     finally:
         # Clean up
         devtable_token.delete_instance()
         reader_token.delete_instance()
 
 
-def test_list_tokens_devtable_user(app):
-    """Test that devtable user only sees their tokens"""
+def test_list_tokens_regular_user(app):
+    """Test that regular users only see their own tokens"""
     # Create tokens for multiple users
-    devtable_user = model.user.get_user("devtable")
+    freshuser = model.user.get_user("freshuser")
     reader_user = model.user.get_user("reader")
 
-    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    freshuser_token = model.appspecifictoken.create_token(freshuser, "Freshuser Token")
     reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
 
     try:
-        with client_with_identity("devtable", app) as cl:
-            # DevTable user should only see their token
+        with client_with_identity("freshuser", app) as cl:
+            # Fresh user (regular user) should only see their own token
             resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
             token_uuids = set([token["uuid"] for token in resp["tokens"]])
-            assert devtable_token.uuid in token_uuids
+            assert freshuser_token.uuid in token_uuids
             assert reader_token.uuid not in token_uuids
     finally:
         # Clean up
-        devtable_token.delete_instance()
+        freshuser_token.delete_instance()
         reader_token.delete_instance()
 
 
@@ -121,8 +119,8 @@ def test_list_tokens_reader_user(app):
         reader_token.delete_instance()
 
 
-def test_list_expiring_tokens_devtable_user_scoped(app):
-    """Test expiring token filtering is properly scoped for devtable user"""
+def test_list_expiring_tokens_superuser_scoped(app):
+    """Test expiring token filtering for superuser - should see expiring tokens from all users"""
     devtable_user = model.user.get_user("devtable")
     reader_user = model.user.get_user("reader")
 
@@ -145,12 +143,12 @@ def test_list_expiring_tokens_devtable_user_scoped(app):
 
     try:
         with client_with_identity("devtable", app) as cl:
-            # DevTable user with expiring=True should only see their expiring token
+            # DevTable user (superuser) with expiring=True should see ALL expiring tokens
             resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200).json
             token_uuids = set([token["uuid"] for token in resp["tokens"]])
             assert devtable_expiring.uuid in token_uuids
+            assert reader_expiring.uuid in token_uuids  # Superuser sees all
             assert devtable_normal.uuid not in token_uuids
-            assert reader_expiring.uuid not in token_uuids
             assert reader_normal.uuid not in token_uuids
     finally:
         # Clean up
@@ -255,24 +253,24 @@ def test_global_readonly_superuser_sees_all_tokens(app):
 
 def test_regular_user_sees_only_own_tokens(app):
     """Test that regular users still only see their own tokens"""
-    devtable_user = model.user.get_user("devtable")
+    freshuser = model.user.get_user("freshuser")
     reader_user = model.user.get_user("reader")
 
-    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    freshuser_token = model.appspecifictoken.create_token(freshuser, "Freshuser Token")
     reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
 
     try:
-        with client_with_identity("devtable", app) as cl:
+        with client_with_identity("freshuser", app) as cl:
             resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
             token_uuids = set([token["uuid"] for token in resp["tokens"]])
 
-            # DevTable should only see their token
-            assert devtable_token.uuid in token_uuids
+            # Freshuser should only see their token
+            assert freshuser_token.uuid in token_uuids
             assert reader_token.uuid not in token_uuids
 
     finally:
         # Clean up
-        devtable_token.delete_instance()
+        freshuser_token.delete_instance()
         reader_token.delete_instance()
 
 
@@ -361,26 +359,27 @@ def test_global_readonly_superuser_individual_token_access(app):
 
 def test_regular_user_individual_token_access_restrictions(app):
     """Test that regular users can only access their own tokens"""
-    devtable_user = model.user.get_user("devtable")
+    freshuser = model.user.get_user("freshuser")
     reader_user = model.user.get_user("reader")
 
-    devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
+    freshuser_token = model.appspecifictoken.create_token(freshuser, "Freshuser Token")
     reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
 
     try:
-        with client_with_identity("devtable", app) as cl:
+        with client_with_identity("freshuser", app) as cl:
             # Should be able to access own token
             resp = conduct_api_call(
-                cl, AppToken, "GET", {"token_uuid": devtable_token.uuid}, None, 200
+                cl, AppToken, "GET", {"token_uuid": freshuser_token.uuid}, None, 200
             ).json
-            assert resp["token"]["uuid"] == devtable_token.uuid
+            assert resp["token"]["uuid"] == freshuser_token.uuid
+            assert "token_code" in resp["token"]
 
             # Should NOT be able to access other user's token
             conduct_api_call(cl, AppToken, "GET", {"token_uuid": reader_token.uuid}, None, 404)
 
     finally:
         # Clean up
-        devtable_token.delete_instance()
+        freshuser_token.delete_instance()
         reader_token.delete_instance()
 
 
