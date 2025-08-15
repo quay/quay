@@ -8,6 +8,10 @@ from io import BufferedIOBase, BytesIO, StringIO
 from itertools import chain
 from uuid import uuid4
 
+from util.metrics.otel import StatusCode, get_tracecontext, trace
+
+tracer = trace.get_tracer("cloud.py")
+
 import boto3.session
 import botocore.config
 import botocore.exceptions
@@ -157,17 +161,61 @@ class _CloudStorage(BaseStorageV2):
         if deferred_refreshable_credentials:
             self._session._session._credentials = deferred_refreshable_credentials
 
+    def add_tracing_headers(self, request, **kwargs):
+        name = f"boto3.{str(kwargs.get('event_name', 'before-send.s3.unknown')).split('.')[-1]}"
+        with tracer.start_as_current_span(name) as span:
+            sctx = span.get_span_context()
+            span.set_attribute("method", str(request.method))
+            span.set_attribute("User-Agent", str(request.headers.get("User-Agent")))
+            span.set_attribute("hook-name", str(kwargs.get("event_name", "unknown")))
+            span.set_attribute("Authorization", str(request.headers.get("Authorization")))
+
+            try:
+                request.headers[
+                    "traceparent"
+                ] = f"00-{hex(sctx.trace_id)[2:]}-{hex(sctx.span_id)[2:]}-01"
+                request.headers["x-b3-traceid"] = hex(sctx.trace_id)[2:]
+                request.headers["x-b3-spanid"] = hex(sctx.span_id)[2:]
+                request.headers["x-b3-parentspanid"] = hex(sctx.span_id)[2:]
+                request.headers["x-b3-sampled"] = "1"
+                logger.error(f"[OTEL] request {request.headers}")
+            except Exception as trerr:
+                logger.error(f"OTEL {trerr}")
+
+    def create_trace(self, operation_name, params, **kwargs):
+        try:
+            # ctx = get_tracecontext()
+            name = "boto3." + str(operation_name)
+            with tracer.start_as_current_span(name) as span:
+                for k in params:
+                    span.set_attribute(k, str(params[k]))
+                for k in kwargs:
+                    span.set_attribute(k, str(kwargs[k]))
+                span.set_status(StatusCode.OK)
+        except Exception as trerr:
+            logger.error(f"OTEL createtraces {trerr}")
+
     def _initialize_cloud_conn(self):
         if not self._initialized:
-            # Low-level client. Needed to generate presigned urls
-            self._cloud_conn = self._session.client("s3", **self._connect_kwargs)
-            self._cloud_bucket = self._session.resource("s3", **self._connect_kwargs).Bucket(
-                self._bucket_name
-            )
-            # This will raise a ClientError if the bucket does ot exists.
-            # We actually want an exception raised if the bucket does not exists (same as in boto2)
-            self._cloud_conn.head_bucket(Bucket=self._bucket_name)
-            self._initialized = True
+            with tracer.start_as_current_span(
+                "s3/initialize",
+            ) as span:
+
+                span.set_status(StatusCode.ERROR)
+                for k in self._connect_kwargs:
+                    span.set_attribute(k, str(self._connect_kwargs[k]))
+                self._session.events.register("before-send.s3.*", self.add_tracing_headers)
+                # Low-level client. Needed to generate presigned urls
+                self._cloud_conn = self._session.client("s3", **self._connect_kwargs)
+                self._cloud_bucket = self._session.resource("s3", **self._connect_kwargs).Bucket(
+                    self._bucket_name
+                )
+
+                # This will raise a ClientError if the bucket does ot exists.
+                # We actually want an exception raised if the bucket does not exists (same as in boto2)
+                self._cloud_conn.head_bucket(Bucket=self._bucket_name)
+                span.set_status(StatusCode.OK)
+                self._initialized = True
 
     def _debug_key(self, obj):
         """
@@ -222,6 +270,7 @@ class _CloudStorage(BaseStorageV2):
     def get_cloud_bucket(self):
         return self._cloud_bucket
 
+    @tracer.start_as_current_span("s3/get_content")
     def get_content(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -236,6 +285,7 @@ class _CloudStorage(BaseStorageV2):
 
             raise
 
+    @tracer.start_as_current_span("s3/put_content")
     def put_content(self, path, content):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -246,22 +296,38 @@ class _CloudStorage(BaseStorageV2):
     def get_supports_resumable_downloads(self):
         return True
 
+    @tracer.start_as_current_span("s3/get_direct_download_url")
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         self._initialize_cloud_conn()
         path = self._init_path(path)
 
-        client_method = "get_object"
-        if head:
-            client_method = "head_object"
+        with tracer.start_as_current_span(
+            "s3/presigned_url",
+            attributes=dict(
+                path=str(path),
+                request_ip=str(request_ip),
+                expires_in=expires_in,
+                requires_cors=requires_cors,
+                head=head,
+            ),
+        ) as span:
 
-        return self.get_cloud_conn().generate_presigned_url(
-            client_method,
-            Params={"Bucket": self._bucket_name, "Key": path},
-            ExpiresIn=expires_in,
-        )
+            client_method = "get_object"
+            if head:
+                client_method = "head_object"
 
+            uri = self.get_cloud_conn().generate_presigned_url(
+                client_method,
+                Params={"Bucket": self._bucket_name, "Key": path},
+                ExpiresIn=expires_in,
+            )
+            span.set_attribute("presign_url", uri)
+            span.set_status(StatusCode.OK)
+            return uri
+
+    @tracer.start_as_current_span("s3/get_direct_upload_url")
     def get_direct_upload_url(self, path, mime_type, requires_cors=True):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -275,8 +341,10 @@ class _CloudStorage(BaseStorageV2):
             ExpiresIn=300,
         )
 
+    @tracer.start_as_current_span("s3/stream_read")
     def stream_read(self, path):
         self._initialize_cloud_conn()
+
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -293,8 +361,10 @@ class _CloudStorage(BaseStorageV2):
                 break
             yield data
 
+    @tracer.start_as_current_span("s3/stream_read_file")
     def stream_read_file(self, path):
         self._initialize_cloud_conn()
+
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -305,9 +375,11 @@ class _CloudStorage(BaseStorageV2):
             raise
         return StreamReadKeyAsFile(obj.get()["Body"])
 
+    @tracer.start_as_current_span("s3/__initiate_multipart_upload")
     def __initiate_multipart_upload(self, path, content_type, content_encoding):
         # Minimum size of upload part size on S3 is 5MB
         self._initialize_cloud_conn()
+
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
 
@@ -421,8 +493,10 @@ class _CloudStorage(BaseStorageV2):
 
         return total_bytes_written, write_error
 
+    @tracer.start_as_current_span("s3/exists")
     def exists(self, path):
         self._initialize_cloud_conn()
+
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -433,8 +507,10 @@ class _CloudStorage(BaseStorageV2):
             raise
         return True
 
+    @tracer.start_as_current_span("s3/remove")
     def remove(self, path):
         self._initialize_cloud_conn()
+
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -454,8 +530,10 @@ class _CloudStorage(BaseStorageV2):
                 obj = self.get_cloud_bucket().Object(content["Key"])
                 obj.delete()
 
+    @tracer.start_as_current_span("s3/checksum")
     def get_checksum(self, path):
         self._initialize_cloud_conn()
+
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -467,6 +545,7 @@ class _CloudStorage(BaseStorageV2):
 
         return obj.e_tag[1:-1][:7]
 
+    @tracer.start_as_current_span("s3/copy_to")
     def copy_to(self, destination, path):
         """
         Copies the given path from this storage to the destination storage.
@@ -537,6 +616,7 @@ class _CloudStorage(BaseStorageV2):
 
         return random_uuid, metadata
 
+    @tracer.start_as_current_span("s3/stream_upload_chunk")
     def stream_upload_chunk(self, uuid, offset, length, in_fp, storage_metadata, content_type=None):
         self._initialize_cloud_conn()
 
@@ -640,6 +720,7 @@ class _CloudStorage(BaseStorageV2):
             ):
                 yield subchunk
 
+    @tracer.start_as_current_span("s3/complete_chunked_upload")
     def complete_chunked_upload(self, uuid, final_path, storage_metadata, force_client_side=False):
         self._initialize_cloud_conn()
         chunk_list = self._chunk_list_from_metadata(storage_metadata)
@@ -721,6 +802,7 @@ class _CloudStorage(BaseStorageV2):
             # pass that to stream_write to chunk and upload the final object.
             self._client_side_chunk_join(final_path, chunk_list)
 
+    @tracer.start_as_current_span("s3/cancel_chunked_upload")
     def cancel_chunked_upload(self, uuid, storage_metadata):
         self._initialize_cloud_conn()
 
@@ -728,6 +810,7 @@ class _CloudStorage(BaseStorageV2):
         for chunk in self._chunk_list_from_metadata(storage_metadata):
             self.remove(chunk.path)
 
+    @tracer.start_as_current_span("s3/clean_partial_uploads")
     def clean_partial_uploads(self, deletion_date_threshold):
         self._initialize_cloud_conn()
         path = self._init_path("uploads")
