@@ -3,8 +3,13 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.15"></a>
+## [v3.9.15] - 2025-08-15
+### Deps
+- Update dependencies (PROJQUAY-9295)
+
 <a name="v3.9.14"></a>
-## [v3.9.14] - 0001-01-01
+## [v3.9.14] - 2025-08-01
 
 <a name="v3.9.13"></a>
 ## [v3.9.13] - 2025-07-07
@@ -1599,7 +1604,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.14...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.15...HEAD
+[v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
 [v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
