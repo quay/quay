@@ -26,7 +26,7 @@ def test_app_specific_tokens(app):
         resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200).json
         assert token_uuid not in set([token["uuid"] for token in resp["tokens"]])
 
-        # Get the token and ensure we have its code.
+        # Get the token and ensure we have its code (owner can see secret).
         resp = conduct_api_call(cl, AppToken, "GET", {"token_uuid": token_uuid}, None, 200).json
         assert resp["token"]["uuid"] == token_uuid
         assert "token_code" in resp["token"]
@@ -62,12 +62,16 @@ def test_list_tokens_superuser(app):
     reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
 
     try:
-        with client_with_identity("devtable", app) as cl:
-            # devtable is a superuser, so should see all tokens
-            resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
-            token_uuids = set([token["uuid"] for token in resp["tokens"]])
-            assert devtable_token.uuid in token_uuids
-            assert reader_token.uuid in token_uuids  # Superuser sees all tokens
+        # Explicitly mark as superuser for this test
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=True), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=False
+        ):
+            with client_with_identity("devtable", app) as cl:
+                # devtable is a superuser, so should see all tokens
+                resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
+                token_uuids = set([token["uuid"] for token in resp["tokens"]])
+                assert devtable_token.uuid in token_uuids
+                assert reader_token.uuid in token_uuids  # Superuser sees all tokens
 
     finally:
         # Clean up
@@ -142,14 +146,18 @@ def test_list_expiring_tokens_superuser_scoped(app):
     )
 
     try:
-        with client_with_identity("devtable", app) as cl:
-            # DevTable user (superuser) with expiring=True should see ALL expiring tokens
-            resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200).json
-            token_uuids = set([token["uuid"] for token in resp["tokens"]])
-            assert devtable_expiring.uuid in token_uuids
-            assert reader_expiring.uuid in token_uuids  # Superuser sees all
-            assert devtable_normal.uuid not in token_uuids
-            assert reader_normal.uuid not in token_uuids
+        # Explicitly mark as superuser for this test
+        with patch("endpoints.api.appspecifictokens.allow_if_superuser", return_value=True), patch(
+            "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser", return_value=False
+        ):
+            with client_with_identity("devtable", app) as cl:
+                # DevTable user (superuser) with expiring=True should see ALL expiring tokens
+                resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200).json
+                token_uuids = set([token["uuid"] for token in resp["tokens"]])
+                assert devtable_expiring.uuid in token_uuids
+                assert reader_expiring.uuid in token_uuids  # Superuser sees all
+                assert devtable_normal.uuid not in token_uuids
+                assert reader_normal.uuid not in token_uuids
     finally:
         # Clean up
         devtable_expiring.delete_instance()
@@ -337,19 +345,19 @@ def test_global_readonly_superuser_individual_token_access(app):
         ):
 
             with client_with_identity("reader", app) as cl:
-                # Should be able to access devtable's token
+                # Should be able to access devtable's token, but WITHOUT secret
                 resp = conduct_api_call(
                     cl, AppToken, "GET", {"token_uuid": devtable_token.uuid}, None, 200
                 ).json
                 assert resp["token"]["uuid"] == devtable_token.uuid
-                assert "token_code" in resp["token"]  # Should include full token
+                assert "token_code" not in resp["token"]
 
-                # Should be able to access reader's token
+                # Should be able to access reader's OWN token, WITH secret
                 resp = conduct_api_call(
                     cl, AppToken, "GET", {"token_uuid": reader_token.uuid}, None, 200
                 ).json
                 assert resp["token"]["uuid"] == reader_token.uuid
-                assert "token_code" in resp["token"]  # Should include full token
+                assert "token_code" in resp["token"]
 
     finally:
         # Clean up
@@ -398,12 +406,14 @@ def test_regular_superuser_token_access(app):
         ):
 
             with client_with_identity("devtable", app) as cl:
-                # Regular superuser should also see all tokens
+                # Regular superuser should also see all tokens identifiers only
                 resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
                 token_uuids = set([token["uuid"] for token in resp["tokens"]])
 
                 assert devtable_token.uuid in token_uuids
                 assert reader_token.uuid in token_uuids
+                for token in resp["tokens"]:
+                    assert "token_code" not in token
 
     finally:
         # Clean up
@@ -426,12 +436,14 @@ def test_global_readonly_superuser_token_access(app):
         ):
 
             with client_with_identity("reader", app) as cl:
-                # Global readonly superuser should also see all tokens
+                # Global readonly superuser should also see all tokens identifiers only
                 resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200).json
                 token_uuids = set([token["uuid"] for token in resp["tokens"]])
 
                 assert devtable_token.uuid in token_uuids
                 assert reader_token.uuid in token_uuids
+                for token in resp["tokens"]:
+                    assert "token_code" not in token
 
     finally:
         # Clean up

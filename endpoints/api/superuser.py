@@ -75,6 +75,7 @@ def get_services():
 
 
 @resource("/v1/superuser/aggregatelogs")
+@internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserAggregateLogs(ApiResource):
     """
@@ -94,10 +95,8 @@ class SuperUserAggregateLogs(ApiResource):
         import logging
 
         logger = logging.getLogger(__name__)
-        is_global_readonly = allow_if_global_readonly_superuser()
-        logger.error("CLAUDE DEBUG: aggregatelogs - is_global_readonly=%s", is_global_readonly)
 
-        if is_global_readonly or SuperUserPermission().can():
+        if allow_if_global_readonly_superuser() or SuperUserPermission().can():
             (start_time, end_time) = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
             )

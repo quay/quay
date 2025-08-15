@@ -255,7 +255,8 @@ class TestAppTokenGlobalReadOnlySuperuserBehavior:
                     )
 
                     assert resp.json["token"]["uuid"] == test_token.uuid
-                    assert "token_code" in resp.json["token"]  # Should include full token
+                    # Global read-only superuser must not see token secret
+                    assert "token_code" not in resp.json["token"]
 
         finally:
             # Clean up
@@ -522,6 +523,9 @@ class TestOrganizationOperationalData:
     def test_organization_proxy_cache_accessible(self, app):
         """Test that organization proxy cache configuration is accessible to global readonly superusers."""
         from endpoints.api.organization import OrganizationProxyCacheConfig
+
+        if OrganizationProxyCacheConfig is None:
+            pytest.skip("Proxy cache endpoint not registered (feature disabled in this run)")
 
         # Note: These endpoints may not currently implement allow_if_global_readonly_superuser
         # This test validates the endpoint structure and expected behavior
@@ -1213,6 +1217,9 @@ class TestExtendedRepositoryWriteOperationsBlocking:
         """Test that tag expiration operations are blocked for global readonly superusers."""
         from endpoints.api.tag import TagTimeMachineDelete
 
+        if TagTimeMachineDelete is None:
+            pytest.skip("Tag time-machine endpoint not registered (feature disabled in this run)")
+
         # Tag expiration should be blocked for global readonly superusers
         with client_with_identity("reader", app) as cl:
             # Test tag expiration - should be blocked
@@ -1241,6 +1248,9 @@ class TestExtendedRepositoryWriteOperationsBlocking:
         """Test that mirror synchronization is blocked for global readonly superusers."""
         from endpoints.api.mirror import RepoMirrorSyncNowResource
 
+        if RepoMirrorSyncNowResource is None:
+            pytest.skip("Repo mirror endpoint not registered (feature disabled in this run)")
+
         # Mirror sync should be blocked for global readonly superusers
         with client_with_identity("reader", app) as cl:
             # Test mirror sync - should be blocked
@@ -1267,6 +1277,9 @@ class TestExtendedRepositoryWriteOperationsBlocking:
     def test_repository_state_change_blocked(self, app):
         """Test that repository state changes are blocked for global readonly superusers."""
         from endpoints.api.repository import RepositoryStateResource
+
+        if RepositoryStateResource is None:
+            pytest.skip("Repository state endpoint not registered in this run")
 
         # Repository state changes should be blocked for global readonly superusers
         with client_with_identity("reader", app) as cl:

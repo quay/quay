@@ -1,6 +1,7 @@
 import datetime
 import inspect
 import os
+import os as _os
 import shutil
 from collections import namedtuple
 
@@ -14,6 +15,9 @@ from mock import patch
 from peewee import InternalError, SqliteDatabase
 
 import features
+
+# Ensure application loads test configuration at import time
+_os.environ.setdefault("TEST", "1")
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model

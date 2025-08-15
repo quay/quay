@@ -9,8 +9,9 @@ from datetime import timedelta
 from flask import abort, request
 
 import features
-from app import app
+from app import app, usermanager
 from auth.auth_context import get_authenticated_user
+from auth.permissions import SuperUserPermission
 from data import model
 from endpoints.api import (
     ApiResource,
@@ -93,10 +94,13 @@ class AppTokens(ApiResource):
         - Regular Users: Can only see their own tokens
         """
         user = get_authenticated_user()
+        # In API v1, allow_if_superuser() reflects the current request context's superuser status.
+        # Use it directly to ensure tests and runtime align.
+        is_superuser = bool(allow_if_superuser())
         expiring = parsed_args["expiring"]
 
         # Determine which tokens to retrieve based on user type
-        if allow_if_superuser() or allow_if_global_readonly_superuser():
+        if is_superuser or allow_if_global_readonly_superuser():
             # Superusers and global readonly superusers can see all tokens
             if expiring:
                 expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
@@ -164,9 +168,11 @@ class AppToken(ApiResource):
         Returns a specific app token for the user.
         """
         user = get_authenticated_user()
-        # Superusers (both regular and global readonly) can see any user's app tokens
-        if allow_if_superuser() or allow_if_global_readonly_superuser():
-            # Allow access to any token, not just the current user's
+        is_superuser = bool(allow_if_superuser())
+
+        # Superusers (both regular and global readonly) can see any user's app tokens, but must
+        # never receive the secret token code unless they are the owner of the token.
+        if is_superuser or allow_if_global_readonly_superuser():
             token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=None)
         else:
             # Regular users can only access their own tokens
@@ -174,8 +180,11 @@ class AppToken(ApiResource):
         if token is None:
             raise NotFound()
 
+        # Include the token_code only if the authenticated user is the owner of the token.
+        include_code = user is not None and token.user_id == user.id
+
         return {
-            "token": token_view(token, include_code=True),
+            "token": token_view(token, include_code=include_code),
         }
 
     @require_user_admin()

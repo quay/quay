@@ -21,7 +21,8 @@ STATIC_FONTS_DIR = os.path.join(STATIC_DIR, "fonts/")
 STATIC_WEBFONTS_DIR = os.path.join(STATIC_DIR, "webfonts/")
 TEMPLATE_DIR = os.path.join(ROOT_DIR, "templates/")
 
-IS_TESTING = "TEST" in os.environ
+# Treat pytest execution as testing as well, so feature flags from TestConfig are applied
+IS_TESTING = "TEST" in os.environ or "PYTEST_CURRENT_TEST" in os.environ
 IS_BUILDING = "BUILDING" in os.environ
 IS_KUBERNETES = "KUBERNETES_SERVICE_HOST" in os.environ
 OVERRIDE_CONFIG_DIRECTORY = os.path.join(CONF_DIR, "stack/")

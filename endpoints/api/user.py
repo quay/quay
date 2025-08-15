@@ -35,7 +35,9 @@ from data import model
 from data.billing import get_plan
 from data.database import Repository
 from data.database import Repository as RepositoryTable
-from data.database import RepositoryKind, RepositoryState, Star, User, Visibility
+from data.database import RepositoryKind, RepositoryState, Star
+from data.database import User as DBUser
+from data.database import Visibility
 from data.model.notification import delete_notifications_by_kind
 from data.model.oauth import get_assigned_authorization_for_user
 from data.users.shared import can_create_user
@@ -69,7 +71,13 @@ from endpoints.decorators import (
     readonly_call_allowed,
     restricted_user_readonly_call_allowed,
 )
-from endpoints.exception import DownstreamIssue, InvalidRequest, InvalidToken, NotFound
+from endpoints.exception import (
+    DownstreamIssue,
+    Forbidden,
+    InvalidRequest,
+    InvalidToken,
+    NotFound,
+)
 from oauth.oidc import DiscoveryFailureException
 from util.names import parse_single_urn
 from util.request import get_request_ip
@@ -401,7 +409,7 @@ class User(ApiResource):
         """
         # Global readonly superusers should not be able to modify user details
         if allow_if_global_readonly_superuser():
-            abort(403, "Global readonly users cannot modify user details")
+            raise Forbidden("Global readonly users cannot modify user details")
 
         user = get_authenticated_user()
         user_data = request.get_json()
@@ -1025,7 +1033,7 @@ class DetachExternal(ApiResource):
         """
         # Global readonly superusers should not be able to detach external logins
         if allow_if_global_readonly_superuser():
-            abort(403, "Global readonly users cannot detach external logins")
+            raise Forbidden("Global readonly users cannot detach external logins")
 
         model.user.detach_external_login(get_authenticated_user(), service_id)
         return {"success": True}
