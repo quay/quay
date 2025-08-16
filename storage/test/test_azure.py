@@ -47,11 +47,13 @@ def fake_azure_storage(files=None):
         if request.method == "HEAD":
             return {
                 "status_code": 200 if filename in files else 404,
-                "headers": {
-                    "ETag": "foobar",
-                }
-                if filename in files
-                else {"x-ms-error-code": "ResourceNotFound"},
+                "headers": (
+                    {
+                        "ETag": "foobar",
+                    }
+                    if filename in files
+                    else {"x-ms-error-code": "ResourceNotFound"}
+                ),
                 "content": "",
             }
 
@@ -204,9 +206,12 @@ def test_stream_write():
     ],
 )
 def test_chunked_uploading(chunk_size):
-    with fake_azure_storage() as s, patch(
-        "storage.azurestorage.generate_blob_sas",
-        return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+    with (
+        fake_azure_storage() as s,
+        patch(
+            "storage.azurestorage.generate_blob_sas",
+            return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+        ),
     ):
         string_data = b"hello world!"
         chunks = [
@@ -250,9 +255,12 @@ def test_copy_to():
 
     with fake_azure_storage(files=files) as s:
         s.put_content("hello", b"hello world")
-        with fake_azure_storage(files=files) as s2, patch(
-            "storage.azurestorage.generate_blob_sas",
-            return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+        with (
+            fake_azure_storage(files=files) as s2,
+            patch(
+                "storage.azurestorage.generate_blob_sas",
+                return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+            ),
         ):
             s.copy_to(s2, "hello")
             assert s2.exists("hello")

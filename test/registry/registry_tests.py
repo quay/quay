@@ -590,7 +590,7 @@ def test_pull_publicrepo_anonymous(
         "newrepo",
         "latest",
         basic_images,
-        credentials=("devtable", "password"),
+        credentials=("reader", "password"),
         expected_failure=Failures.UNAUTHORIZED,
     )
 
@@ -641,7 +641,7 @@ def test_pull_publicrepo_no_anonymous_access(
         "newrepo",
         "latest",
         basic_images,
-        credentials=("devtable", "password"),
+        credentials=("reader", "password"),
         expected_failure=Failures.UNAUTHORIZED,
     )
 
