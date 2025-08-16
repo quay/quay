@@ -151,5 +151,5 @@ typing_extensions==4.8.0
 tzdata==2023.3
 wrapt==1.13.3
 zipp==3.19.2
-zope.event==5.0
+zope.event==5.1.1
 zope.interface==5.4.0
