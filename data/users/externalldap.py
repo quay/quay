@@ -2,6 +2,10 @@ import logging
 import os
 from collections import namedtuple
 
+from util.metrics.otel import StatusCode, get_tracecontext, trace
+
+tracer = trace.get_tracer("externalldap.py")
+
 import ldap
 from ldap.controls import SimplePagedResultsControl
 from ldap.filter import escape_filter_chars, filter_format
@@ -38,6 +42,7 @@ class LDAPConnectionBuilder(object):
         timeout=None,
         network_timeout=None,
         referrals=_DEFAULT_REFERRALS,
+        ctx=None,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -48,6 +53,13 @@ class LDAPConnectionBuilder(object):
         self._referrals = int(referrals)
 
     def get_connection(self):
+
+        with tracer.start_as_current_span(
+            f"LDAP get_connection {id(self)} {self._ldap_uri}",
+        ) as span:
+            span.set_attribute("uri", self._ldap_uri)
+            span.set_attribute("dn", self._user_dn)
+            span.set_attribute("timeout", self._network_timeout or _DEFAULT_NETWORK_TIMEOUT)
         return LDAPConnection(
             self._ldap_uri,
             self._user_dn,
@@ -69,6 +81,7 @@ class LDAPConnection(object):
         timeout=None,
         network_timeout=None,
         referrals=_DEFAULT_REFERRALS,
+        ctx=None,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -78,33 +91,49 @@ class LDAPConnection(object):
         self._network_timeout = network_timeout
         self._referrals = int(referrals)
         self._conn = None
+        self._ctx = ctx
 
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
-        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
-        self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
-        self._conn.set_option(
-            ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
-        )
-        self._conn.set_option(ldap.OPT_TIMEOUT, self._timeout or _DEFAULT_TIMEOUT)
-        self._conn.set_option(ldap.OPT_X_KEEPALIVE_IDLE, _DEFAULT_KEEPALIVE_IDLE)
-        self._conn.set_option(ldap.OPT_X_KEEPALIVE_INTERVAL, _DEFAULT_KEEPALIVE_INTERVAL)
-        self._conn.set_option(ldap.OPT_X_KEEPALIVE_PROBES, _DEFAULT_KEEPALIVE_PROBES)
-        self._conn.set_option(ldap.OPT_RESTART, ldap.OPT_ON)
+        with tracer.start_as_current_span(
+            f"LDAP initialize {id(self)}",
+        ) as span:
+            span.set_attribute("uri", self._ldap_uri)
+            span.set_attribute("timeout", self._network_timeout or _DEFAULT_NETWORK_TIMEOUT)
+            span.set_attribute("binddn", self._user_dn)
+            self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
+            self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
+            self._conn.set_option(
+                ldap.OPT_NETWORK_TIMEOUT,
+                self._network_timeout or _DEFAULT_NETWORK_TIMEOUT,
+            )
+            self._conn.set_option(ldap.OPT_TIMEOUT, self._timeout or _DEFAULT_TIMEOUT)
+            self._conn.set_option(ldap.OPT_X_KEEPALIVE_IDLE, _DEFAULT_KEEPALIVE_IDLE)
+            self._conn.set_option(ldap.OPT_X_KEEPALIVE_INTERVAL, _DEFAULT_KEEPALIVE_INTERVAL)
+            self._conn.set_option(ldap.OPT_X_KEEPALIVE_PROBES, _DEFAULT_KEEPALIVE_PROBES)
+            self._conn.set_option(ldap.OPT_RESTART, ldap.OPT_ON)
 
-        if self._allow_tls_fallback:
-            logger.debug("TLS Fallback enabled in LDAP")
-            self._conn.set_option(ldap.OPT_X_TLS_TRY, 1)
+            if self._allow_tls_fallback:
+                logger.debug("TLS Fallback enabled in LDAP")
+                self._conn.set_option(ldap.OPT_X_TLS_TRY, 1)
 
-        # Must come _after_ all other TLS options
-        self._conn.set_option(ldap.OPT_X_TLS_NEWCTX, ldap.OPT_OFF)
+            # Must come _after_ all other TLS options
+            self._conn.set_option(ldap.OPT_X_TLS_NEWCTX, ldap.OPT_OFF)
 
-        self._conn.simple_bind_s(self._user_dn, self._user_pw)
+            span.set_status(StatusCode.ERROR)
+            self._conn.simple_bind_s(self._user_dn, self._user_pw)
+            span.set_status(StatusCode.OK)
         return self._conn
 
     def __exit__(self, exc_type, value, tb):
-        self._conn.unbind_s()
+        with tracer.start_as_current_span(
+            f"LDAP close {id(self)} {self._ldap_uri}",
+        ) as span:
+            span.set_attribute("uri", self._ldap_uri)
+            span.set_attribute("binddn", self._user_dn)
+            span.set_status(StatusCode.OK)
+            self._conn.unbind_s()
 
 
 class LDAPUsers(FederatedUsers):
@@ -229,7 +258,10 @@ class LDAPUsers(FederatedUsers):
         filter_global_readonly_superusers=False,
     ):
         query = "(|({0}={2}{3})({1}={2}{3}))".format(
-            self._uid_attr, self._email_attr, escape_filter_chars(username_or_email), suffix
+            self._uid_attr,
+            self._email_attr,
+            escape_filter_chars(username_or_email),
+            suffix,
         )
 
         query = self._add_user_filter(query)
@@ -252,24 +284,48 @@ class LDAPUsers(FederatedUsers):
             query = self._add_global_readonly_superuser_filter(query)
 
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
-        try:
-            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query), None)
-        except ldap.REFERRAL as re:
-            referral_dn = self._get_ldap_referral_dn(re)
-            if not referral_dn:
-                return (None, "Failed to follow referral when looking up username")
-
+        with tracer.start_as_current_span(
+            f"LDAP search {id(self)}",
+            attributes={
+                "suffix": suffix,
+                "filter": query,
+            },
+        ) as span:
             try:
-                subquery = "(%s=%s)" % (self._uid_attr, username_or_email)
-                subquery = self._add_user_filter(subquery)
-                return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
-            except ldap.LDAPError:
-                logger.debug("LDAP referral search exception")
-                return (None, "Username not found")
+                span.set_status(StatusCode.OK)
+                return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query), None)
+            except ldap.REFERRAL as re:
+                referral_dn = self._get_ldap_referral_dn(re)
+                if not referral_dn:
+                    span.set_status(StatusCode.ERROR)
+                    span.set_attribute(
+                        "error", "Failed to follow referral when looking up username"
+                    )
+                    span.set_attribute("details", str(re))
+                    return (None, "Failed to follow referral when looking up username")
 
-        except ldap.LDAPError:
-            logger.debug("LDAP search exception")
-            return (None, "Username not found")
+                try:
+                    subquery = "(%s=%s)" % (self._uid_attr, username_or_email)
+                    subquery = self._add_user_filter(subquery)
+                    span.add_event(
+                        "LDAP subquery {id(self)}",
+                        attributes={"filter": subquery, "suffix": referral_dn},
+                    )
+                    span.set_status(StatusCode.OK)
+                    return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
+                except ldap.LDAPError as ldaperr:
+                    span.set_status(StatusCode.ERROR)
+                    span.set_attribute("error", "LDAP referral search exception")
+                    span.set_attribute("details", str(ldaperr))
+                    logger.debug("LDAP referral search exception")
+                    return (None, "Username not found")
+
+            except ldap.LDAPError as ldaperr:
+                span.set_status(StatusCode.ERROR)
+                span.set_attribute("error", "LDAP referral search exception")
+                span.set_attribute("details", str(ldaperr))
+                logger.debug("LDAP search exception")
+                return (None, "Username not found")
 
     def _ldap_user_search(
         self,
@@ -298,33 +354,60 @@ class LDAPUsers(FederatedUsers):
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
 
-        with self._ldap.get_connection() as conn:
-            logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
+        with tracer.start_as_current_span(
+            f"LDAP search {id(self)}",
+            attributes={
+                "username_or_email": username_or_email,
+                "suffix": suffix,
+                "superuser": filter_superusers,
+                "restricted": filter_restricted_users,
+                "readonly": filter_global_readonly_superusers,
+            },
+        ) as span:
+            with self._ldap.get_connection() as conn:
+                try:
+                    with self._ldap.get_connection():
+                        pass
+                except ldap.INVALID_CREDENTIALS:
+                    return (None, "LDAP Admin dn or password is invalid")
 
-            for user_search_dn in self._user_dns:
-                (pairs, err_msg) = self._ldap_user_search_with_rdn(
-                    conn,
-                    username_or_email,
-                    user_search_dn,
-                    suffix=suffix,
-                    filter_superusers=filter_superusers,
-                    filter_restricted_users=filter_restricted_users,
-                    filter_global_readonly_superusers=filter_global_readonly_superusers,
-                )
-                if pairs is not None and len(pairs) > 0:
-                    break
+                logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
 
-            if err_msg is not None:
-                return (None, err_msg)
+                for user_search_dn in self._user_dns:
+                    span.add_event(
+                        f"LDAP {id(self)} user_search {user_search_dn}",
+                        attributes={
+                            "search_dn": user_search_dn,
+                            "suffix": suffix,
+                            "superuser": filter_superusers,
+                            "restricted": filter_restricted_users,
+                            "readonly": filter_global_readonly_superusers,
+                        },
+                    )
+                    (pairs, err_msg) = self._ldap_user_search_with_rdn(
+                        conn,
+                        username_or_email,
+                        user_search_dn,
+                        suffix=suffix,
+                        filter_superusers=filter_superusers,
+                        filter_restricted_users=filter_restricted_users,
+                        filter_global_readonly_superusers=filter_global_readonly_superusers,
+                    )
+                    if pairs is not None and len(pairs) > 0:
+                        break
 
-            dn_lst = [pair[0] for pair in pairs]
-            logger.debug("Found matching DNs: %s" % dn_lst)
+                if err_msg is not None:
+                    return (None, err_msg)
 
-            results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
+                span.set_status(StatusCode.OK)
+                dn_lst = [pair[0] for pair in pairs]
+                logger.debug("Found matching DNs: %s" % dn_lst)
 
-            # Filter out pairs without DNs. Some LDAP impls will return such pairs.
-            with_dns = [result for result in results if result.dn]
-            return (with_dns, None)
+                results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
+
+                # Filter out pairs without DNs. Some LDAP impls will return such pairs.
+                with_dns = [result for result in results if result.dn]
+                return (with_dns, None)
 
     def _ldap_single_user_search(
         self,
@@ -333,34 +416,41 @@ class LDAPUsers(FederatedUsers):
         filter_restricted_users=False,
         filter_global_readonly_superusers=False,
     ):
-        try:
-            lookup_robot(username_or_email)
-            return (None, f"LDAP lookup for robots disabled {username_or_email}")
-        except InvalidRobotException:
-            # continue with LDAP lookup
-            pass
+        with tracer.start_as_current_span(
+            f"LDAP _ldap_single_user_search {id(self)}",
+            attributes={
+                "username": username_or_email,
+                "superuser": filter_superusers,
+                "restricted": filter_restricted_users,
+                "global_readonly": filter_global_readonly_superusers,
+            },
+        ) as span:
+            with_dns, err_msg = self._ldap_user_search(
+                username_or_email,
+                filter_superusers=filter_superusers,
+                filter_restricted_users=filter_restricted_users,
+                filter_global_readonly_superusers=filter_global_readonly_superusers,
+            )
+            if err_msg is not None:
+                span.set_status(StatusCode.ERROR)
+                return (None, err_msg)
 
-        with_dns, err_msg = self._ldap_user_search(
-            username_or_email,
-            filter_superusers=filter_superusers,
-            filter_restricted_users=filter_restricted_users,
-            filter_global_readonly_superusers=filter_global_readonly_superusers,
-        )
-        if err_msg is not None:
-            return (None, err_msg)
+            # Make sure we have at least one result.
+            if len(with_dns) < 1:
+                span.set_attribute("error", "Invalid username or password.")
+                span.set_status(StatusCode.ERROR)
+                return (None, "Invalid username or password.")
 
-        # Make sure we have at least one result.
-        if len(with_dns) < 1:
-            return (None, "Invalid username or password.")
+            # If we have found a single pair, then return it.
+            if len(with_dns) == 1:
+                span.set_status(StatusCode.OK)
+                return (with_dns[0], None)
 
-        # If we have found a single pair, then return it.
-        if len(with_dns) == 1:
-            return (with_dns[0], None)
-
-        # Otherwise, there are multiple pairs with DNs, so find the one with the mail
-        # attribute (if any).
-        with_mail = [result for result in with_dns if result.attrs.get(self._email_attr)]
-        return (with_mail[0] if with_mail else with_dns[0], None)
+            # Otherwise, there are multiple pairs with DNs, so find the one with the mail
+            # attribute (if any).
+            with_mail = [result for result in with_dns if result.attrs.get(self._email_attr)]
+            span.set_status(StatusCode.OK)
+            return (with_mail[0] if with_mail else with_dns[0], None)
 
     def _build_user_information(self, response):
         if not response.get(self._uid_attr):
@@ -381,61 +471,113 @@ class LDAPUsers(FederatedUsers):
         return (UserInformation(username=username, email=email, id=username), None)
 
     def ping(self):
-        try:
-            with self._ldap.get_connection():
-                pass
-        except ldap.INVALID_CREDENTIALS:
-            return (False, "LDAP Admin dn or password is invalid")
-        except ldap.LDAPError as lde:
-            logger.exception("Exception when trying to health check LDAP")
-            return (False, str(lde))
+        with tracer.start_as_current_span(
+            f"LDAP ping {id(self)}",
+        ) as span:
 
-        return (True, None)
+            try:
+                with self._ldap.get_connection():
+                    pass
+            except ldap.INVALID_CREDENTIALS:
+                return (False, "LDAP Admin dn or password is invalid")
+            except ldap.LDAPError as lde:
+                logger.exception("Exception when trying to health check LDAP")
+                return (False, str(lde))
+
+            return (True, None)
 
     def at_least_one_user_exists(self, filter_superusers=False, filter_restricted_users=False):
         logger.debug("Checking if any users exist in LDAP")
-        try:
-            with self._ldap.get_connection():
-                pass
-        except ldap.INVALID_CREDENTIALS:
-            return (None, "LDAP Admin dn or password is invalid")
 
-        has_pagination = not self._force_no_pagination
-        with self._ldap.get_connection() as conn:
-            for user_search_dn in self._user_dns:
-                search_flt = "(objectClass=*)"
+        with tracer.start_as_current_span(
+            f"LDAP search {id(self)}",
+            attributes={
+                "superuser": filter_superusers,
+                "restricted": filter_restricted_users,
+            },
+        ) as span:
 
-                search_flt = self._add_user_filter(search_flt)
+            try:
+                with self._ldap.get_connection():
+                    pass
+            except ldap.INVALID_CREDENTIALS:
+                return (None, "LDAP Admin dn or password is invalid")
+            has_pagination = not self._force_no_pagination
+            span.set_attribute("pagination", has_pagination)
+            with self._ldap.get_connection() as conn:
+                for user_search_dn in self._user_dns:
+                    search_flt = "(objectClass=*)"
 
-                if filter_restricted_users:
-                    if self._ldap_restricted_user_filter:
-                        search_flt = self._add_restricted_user_filter(search_flt)
-                    else:
-                        return (False, "Superuser filter not set")
-                elif filter_superusers:
-                    if self._ldap_superuser_filter:
-                        search_flt = self._add_superuser_filter(search_flt)
-                    else:
-                        return (False, "Restricted user filter not set")
+                    search_flt = self._add_user_filter(search_flt)
 
-                lc = ldap.controls.libldap.SimplePagedResultsControl(
-                    criticality=True, size=1, cookie=""
-                )
-                try:
-                    if has_pagination:
-                        msgid = conn.search_ext(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
+                    if filter_restricted_users:
+                        span.add_event(
+                            "LDAP restricted_user_filter {id(self)}",
+                            attributes={
+                                "suffix": search_flt,
+                                "restricted_users": filter_restricted_users,
+                            },
                         )
-                        _, rdata, _, serverctrls = conn.result3(msgid)
-                    else:
-                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
-                        _, rdata = conn.result(msgid)
+                        if self._ldap_restricted_user_filter:
+                            search_flt = self._add_restricted_user_filter(search_flt)
+                        else:
+                            return (False, "Superuser filter not set")
+                    elif filter_superusers:
+                        span.add_event(
+                            "LDAP super_user_filter {id(self)}",
+                            attributes={
+                                "suffix": search_flt,
+                                "superuser": self._ldap_superuser_filter,
+                            },
+                        )
+                        if self._ldap_superuser_filter:
+                            search_flt = self._add_superuser_filter(search_flt)
+                        else:
+                            return (False, "Restricted user filter not set")
 
-                    for entry in rdata:  # Handles both lists and iterators.
-                        return (True, None)
+                    lc = ldap.controls.libldap.SimplePagedResultsControl(
+                        criticality=True, size=1, cookie=""
+                    )
+                    try:
+                        if has_pagination:
+                            with tracer.start_as_current_span(
+                                f"LDAP search_ext {id(self)}",
+                                attributes={
+                                    "suffix": user_search_dn,
+                                    "filter": search_flt,
+                                    "paged": True,
+                                },
+                            ) as sspan:
+                                msgid = conn.search_ext(
+                                    user_search_dn,
+                                    ldap.SCOPE_SUBTREE,
+                                    search_flt,
+                                    serverctrls=[lc],
+                                )
+                                _, rdata, _, serverctrls = conn.result3(msgid)
+                                sspan.set_status(StatusCode.OK)
+                        else:
+                            with tracer.start_as_current_span(
+                                f"LDAP search_ext {id(self)}",
+                                attributes={
+                                    "suffix": user_search_dn,
+                                    "filter": search_flt,
+                                },
+                            ) as sspan:
+                                msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
+                                _, rdata = conn.result(msgid)
+                                sspan.set_status(StatusCode.OK)
 
-                except ldap.LDAPError as lde:
-                    return (False, str(lde) or "Could not find DN %s" % user_search_dn)
+                        for entry in rdata:  # Handles both lists and iterators.
+                            span.set_status(StatusCode.OK)
+                            return (True, None)
+
+                    except ldap.LDAPError as lde:
+                        span.set_status(StatusCode.ERROR)
+                        return (
+                            False,
+                            str(lde) or "Could not find DN %s" % user_search_dn,
+                        )
 
         return (False, None)
 
@@ -443,14 +585,24 @@ class LDAPUsers(FederatedUsers):
         """
         Looks up a username or email in LDAP.
         """
-        logger.debug("Looking up LDAP username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
-        if err_msg is not None:
-            return (None, err_msg)
+        with tracer.start_as_current_span(
+            f"LDAP get_user {id(self)}",
+            attributes={"username": username_or_email},
+        ) as span:
+            logger.debug("Looking up LDAP username or email %s", username_or_email)
+            (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+            if err_msg is not None:
+                span.add_event(
+                    "LDAP get_user not found",
+                    attributes={"username": username_or_email},
+                )
+                span.set_status(StatusCode.ERROR)
+                return (None, err_msg)
 
-        logger.debug("Found user for LDAP username or email %s", username_or_email)
-        _, found_response = found_user
-        return self._build_user_information(found_response)
+            logger.debug("Found user for LDAP username or email %s", username_or_email)
+            _, found_response = found_user
+            span.set_status(StatusCode.OK)
+            return self._build_user_information(found_response)
 
     def query_users(self, query, limit=20):
         """
@@ -459,21 +611,31 @@ class LDAPUsers(FederatedUsers):
         if not query:
             return (None, self.federated_service, "Empty query")
 
-        logger.debug("Got query %s with limit %s", query, limit)
-        (results, err_msg) = self._ldap_user_search(query, limit=limit, suffix="*")
-        if err_msg is not None:
-            return (None, self.federated_service, err_msg)
+        with tracer.start_as_current_span(
+            f"LDAP query_user {id(self)}",
+        ) as span:
 
-        final_results = []
-        for result in results[0:limit]:
-            credentials, err_msg = self._build_user_information(result.attrs)
+            logger.debug("Got query %s with limit %s", query, limit)
+            (results, err_msg) = self._ldap_user_search(query, limit=limit, suffix="*")
             if err_msg is not None:
-                continue
+                span.add_event(
+                    "LDAP query_user error",
+                    attributes={"query": query, "error": err_msg},
+                )
+                span.set_status(StatusCode.ERROR)
+                return (None, self.federated_service, err_msg)
 
-            final_results.append(credentials)
+            final_results = []
+            for result in results[0:limit]:
+                credentials, err_msg = self._build_user_information(result.attrs)
+                if err_msg is not None:
+                    continue
 
-        logger.debug("For query %s found results %s", query, final_results)
-        return (final_results, self.federated_service, None)
+                final_results.append(credentials)
+
+            logger.debug("For query %s found results %s", query, final_results)
+            span.set_status(StatusCode.OK)
+            return (final_results, self.federated_service, None)
 
     def verify_credentials(self, username_or_email, password):
         """
@@ -483,35 +645,59 @@ class LDAPUsers(FederatedUsers):
         if not password:
             return (None, "Anonymous binding not allowed.")
 
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
-        if found_user is None:
-            return (None, err_msg)
+        with tracer.start_as_current_span(
+            f"LDAP _ldap_single_user_search {id(self)}",
+            attributes={
+                "username": username_or_email,
+            },
+        ) as span:
+            (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
+            span.set_status(StatusCode.OK)
+            if found_user is None:
+                span.set_status(StatusCode.ERROR)
+                return (None, err_msg)
 
         found_dn, found_response = found_user
         logger.debug("Found user for LDAP username %s; validating password", username_or_email)
         logger.debug("DN %s found: %s", found_dn, found_response)
 
         # First validate the password by binding as the user
-        try:
-            with LDAPConnection(self._ldap_uri, found_dn, password, self._allow_tls_fallback):
-                pass
-        except ldap.REFERRAL as re:
-            referral_dn = self._get_ldap_referral_dn(re)
-            if not referral_dn:
-                return (None, "Invalid username or password.")
-
+        with tracer.start_as_current_span(
+            f"LDAP authentication {id(self)}",
+            attributes={
+                "suffix": found_dn,
+                "uri": self._ldap_uri,
+                "tls_fallback": self._allow_tls_fallback,
+            },
+        ) as span:
             try:
-                with LDAPConnection(
-                    self._ldap_uri, referral_dn, password, self._allow_tls_fallback
-                ):
+                with LDAPConnection(self._ldap_uri, found_dn, password, self._allow_tls_fallback):
                     pass
+                span.set_status(StatusCode.OK)
+            except ldap.REFERRAL as re:
+                referral_dn = self._get_ldap_referral_dn(re)
+                if not referral_dn:
+                    span.set_status(StatusCode.ERROR)
+                    span.set_attribute("error", "Invalid username or password.")
+                    return (None, "Invalid username or password.")
+
+                try:
+                    with LDAPConnection(
+                        self._ldap_uri, referral_dn, password, self._allow_tls_fallback
+                    ):
+                        pass
+                        span.set_status(StatusCode.OK)
+                except ldap.INVALID_CREDENTIALS:
+                    span.set_status(StatusCode.ERROR)
+                    span.set_attribute("error", "Invalid username or password.")
+                    logger.debug("Invalid LDAP credentials")
+                    return (None, "Invalid username or password.")
+
             except ldap.INVALID_CREDENTIALS:
+                span.set_status(StatusCode.ERROR)
+                span.set_attribute("error", "Invalid username or password.")
                 logger.debug("Invalid LDAP credentials")
                 return (None, "Invalid username or password.")
-
-        except ldap.INVALID_CREDENTIALS:
-            logger.debug("Invalid LDAP credentials")
-            return (None, "Invalid username or password.")
 
         return self._build_user_information(found_response)
 
@@ -524,59 +710,89 @@ class LDAPUsers(FederatedUsers):
         if not group_lookup_args.get("group_dn"):
             return (False, "Missing group_dn")
 
-        (it, err) = self.iterate_group_members(
-            group_lookup_args, page_size=1, disable_pagination=disable_pagination
-        )
-        if err is not None:
-            return (False, err)
+        with tracer.start_as_current_span(
+            f"LDAP check_group_lookup_args {id(self)}",
+            attributes={
+                "group_lookup": group_lookup_args,
+            },
+        ) as span:
+            span.set_status(StatusCode.OK)
+            with tracer.start_as_current_span(
+                "iterate_group_members",
+            ) as tspan:
+                (it, err) = self.iterate_group_members(
+                    group_lookup_args,
+                    page_size=1,
+                    disable_pagination=disable_pagination,
+                )
+                tspan.set_status(StatusCode.OK)
+                if err is not None:
+                    tspan.set_status(StatusCode.ERROR)
+                    return (False, err)
 
-        if not next(it, False):
-            return (False, "Group does not exist or is empty")
+            if not next(it, False):
+                span.set_status(StatusCode.ERROR)
+                return (False, "Group does not exist or is empty")
 
-        return (True, None)
+            return (True, None)
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         try:
-            with self._ldap.get_connection():
-                pass
+            with tracer.start_as_current_span(
+                f"LDAP iterate_group_members {id(self)}",
+                attributes={
+                    "group_lookup": group_lookup_args,
+                },
+            ) as span:
+                span.set_status(StatusCode.OK)
+                with self._ldap.get_connection():
+                    pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
 
         group_dn = group_lookup_args["group_dn"]
         memberof_attr = self._memberof_attr
         page_size = page_size or _DEFAULT_PAGE_SIZE
-        return (self._iterate_members(group_dn, memberof_attr, page_size, disable_pagination), None)
+        return (
+            self._iterate_members(group_dn, memberof_attr, page_size, disable_pagination),
+            None,
+        )
 
     def is_superuser(self, username_or_email: str) -> bool:
         if not username_or_email:
             return False
 
-        try:
-            lookup_robot(username_or_email)
-            return False  # Robots are not in LDAP so return False as not being a superuser
-        except InvalidRobotException:
-            # continue with LDAP lookup
-            pass
-
-        logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_superusers=True
-        )
-        if found_user is None:
-            logger.debug("LDAP superuser %s not found: %s", username_or_email, err_msg)
-            return False
+        with tracer.start_as_current_span(
+            f"LDAP is_superuser {id(self)}",
+            attributes={"username": username_or_email},
+        ) as span:
+            logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
+            (found_user, err_msg) = self._ldap_single_user_search(
+                username_or_email, filter_superusers=True
+            )
+            span.set_status(StatusCode.OK)
+            if found_user is None:
+                span.set_status(StatusCode.ERROR)
+                logger.debug("LDAP superuser %s not found: %s", username_or_email, err_msg)
+                return False
 
         logger.debug("Found superuser for LDAP username or email %s", username_or_email)
         return True
 
     def has_superusers(self) -> bool:
-        has_superusers, _ = self.at_least_one_user_exists(filter_superusers=True)
+        with tracer.start_as_current_span(
+            f"LDAP has_superusers {id(self)}",
+        ) as span:
+            has_superusers, _ = self.at_least_one_user_exists(filter_superusers=True)
+            if has_superusers:
+                span.set_status(StatusCode.OK)
+            else:
+                span.set_status(StatusCode.ERROR)
         return has_superusers
 
     def is_global_readonly_superuser(self, username_or_email: str) -> bool:
         if not username_or_email:
             return False
-
         try:
             lookup_robot(username_or_email)
             return False  # Robots are not in LDAP so return False as not being a superuser
@@ -584,22 +800,32 @@ class LDAPUsers(FederatedUsers):
             # continue with LDAP lookup
             pass
 
-        logger.debug(
-            "Looking up LDAP global readonly superuser username or email %s", username_or_email
-        )
-        (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_global_readonly_superusers=True
-        )
-        if found_user is None:
-            logger.debug(
-                "LDAP global readonly superuser %s not found: %s", username_or_email, err_msg
-            )
-            return False
+        with tracer.start_as_current_span(
+            f"LDAP is_global_readonly_superuser {id(self)}",
+            attributes={"username": username_or_email},
+        ) as span:
 
-        logger.debug(
-            "Found global readonly superuser for LDAP username or email %s", username_or_email
-        )
-        return True
+            logger.debug(
+                "Looking up LDAP global readonly superuser username or email %s", username_or_email
+            )
+            (found_user, err_msg) = self._ldap_single_user_search(
+                username_or_email, filter_global_readonly_superusers=True
+            )
+            if found_user is None:
+                logger.debug(
+                    "LDAP global readonly superuser %s not found: %s",
+                    username_or_email,
+                    err_msg,
+                )
+                span.set_status(StatusCode.ERROR)
+                return False
+
+            span.set_status(StatusCode.OK)
+            logger.debug(
+                "Found global readonly superuser for LDAP username or email %s",
+                username_or_email,
+            )
+            return True
 
     def is_restricted_user(self, username_or_email: str) -> bool:
         if not username_or_email:
@@ -615,23 +841,42 @@ class LDAPUsers(FederatedUsers):
             # continue with LDAP lookup
             pass
 
-        logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, filter_restricted_users=True
-        )
-        if found_user is None:
-            logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
-            return False
+        with tracer.start_as_current_span(
+            f"LDAP is_global_readonly_superuser {id(self)}",
+            attributes={"username": username_or_email},
+        ) as span:
 
-        logger.debug("Found restricted user for LDAP username or email %s", username_or_email)
-        return True
+            logger.debug(
+                "Looking up LDAP restricted user username or email %s",
+                username_or_email,
+            )
+            (found_user, err_msg) = self._ldap_single_user_search(
+                username_or_email,
+                filter_restricted_users=True,
+            )
+            if found_user is None:
+                logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
+                span.set_status(StatusCode.ERROR)
+                return False
 
-    def has_restricted_users(self) -> bool:
-        if self._ldap_restricted_user_filter is None and self.at_least_one_user_exists():
+            logger.debug("Found restricted user for LDAP username or email %s", username_or_email)
+            span.set_status(StatusCode.OK)
             return True
 
-        has_restricted_users, _ = self.at_least_one_user_exists(filter_restricted_users=True)
-        return has_restricted_users
+    def has_restricted_users(self) -> bool:
+        with tracer.start_as_current_span(
+            f"LDAP has_restricted_users {id(self)}",
+        ) as span:
+            if self._ldap_restricted_user_filter is None and self.at_least_one_user_exists():
+                span.set_status(StatusCode.OK)
+                return True
+
+            has_restricted_users, _ = self.at_least_one_user_exists(filter_restricted_users=True)
+            if has_restricted_users:
+                span.set_status(StatusCode.OK)
+            else:
+                span.set_status(StatusCode.ERROR)
+            return has_restricted_users
 
     def _iterate_members(self, group_dn, memberof_attr, page_size, disable_pagination):
         has_pagination = not (self._force_no_pagination or disable_pagination)
@@ -648,7 +893,9 @@ class LDAPUsers(FederatedUsers):
 
                 # Conduct the initial search for users that are a member of the group.
                 logger.debug(
-                    "Conducting LDAP search of DN: %s and filter %s", user_search_dn, search_flt
+                    "Conducting LDAP search of DN: %s and filter %s",
+                    user_search_dn,
+                    search_flt,
                 )
                 try:
                     if has_pagination:
@@ -661,7 +908,10 @@ class LDAPUsers(FederatedUsers):
                         )
                     else:
                         msgid = conn.search(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
+                            user_search_dn,
+                            ldap.SCOPE_SUBTREE,
+                            search_flt,
+                            attrlist=attributes,
                         )
                 except ldap.LDAPError as lde:
                     logger.exception(
