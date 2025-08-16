@@ -29,7 +29,7 @@ semantic-version==2.10.0
     #   setuptools-rust
 setuptools-rust==1.10.2
     # via -r requirements-build.in
-setuptools-scm[toml]==8.1.0
+setuptools-scm[toml]==9.2.0
     # via -r requirements-build.in
 six==1.17.0
     # via -r requirements-build.in
