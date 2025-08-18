@@ -27,7 +27,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
-    - linux-mxlarge/arm64
+    - linux-m2xlarge/arm64
     - linux/ppc64le
     - linux/s390x
   - name: dockerfile
