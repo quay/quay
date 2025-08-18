@@ -3,8 +3,13 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.10/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.10.14"></a>
+## [v3.10.14] - 2025-08-15
+### Deps
+- Update dependencies (PROJQUAY-9308)
+
 <a name="v3.10.13"></a>
-## [v3.10.13] - 0001-01-01
+## [v3.10.13] - 2025-07-28
 
 <a name="v3.10.12"></a>
 ## [v3.10.12] - 2025-07-07
@@ -496,6 +501,9 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.14"></a>
+## [v3.9.14] - 2025-08-01
 
 <a name="v3.9.13"></a>
 ## [v3.9.13] - 2025-07-07
@@ -1328,7 +1336,7 @@
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
-### Doc 
+### Doc
 - [34cd7d09](https://github.com/quay/quay/commit/34cd7d09188cabe90af78ed6ef7b3cb048cfe309): update Instructions for Deploying on OpenShift ([#1537](https://github.com/quay/quay/issues/1537))
 ### Dockerfile
 - [f0f31e0b](https://github.com/quay/quay/commit/f0f31e0b7a864c5322c6d7981d9f4afa4ad8e8e3): use nodejs ubi8 image to build frontends ([#1355](https://github.com/quay/quay/issues/1355))
@@ -2090,7 +2098,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.13...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.14...HEAD
+[v3.10.14]: https://github.com/quay/quay/compare/v3.10.13...v3.10.14
 [v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
 [v3.10.12]: https://github.com/quay/quay/compare/v3.10.11...v3.10.12
 [v3.10.11]: https://github.com/quay/quay/compare/v3.10.10...v3.10.11
@@ -2104,7 +2113,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.13...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.14...v3.10.0
+[v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
 [v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
