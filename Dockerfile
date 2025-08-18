@@ -125,18 +125,19 @@ RUN CYPRESS_INSTALL_BINARY=0 npm clean-install
 COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
-# Pushgateway grabs pushgateway.
-FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
-ENV OS=linux
+# Pushgateway: build from source using Go toolset
+FROM registry.access.redhat.com/ubi8/go-toolset:latest AS pushgateway
 ARG PUSHGATEWAY_VERSION=1.11.1
+ENV OS=linux
+WORKDIR /src
+USER root
+RUN set -ex && dnf -y --setopt=tsflags=nodocs install git && dnf -y clean all
 RUN set -ex\
 	; ARCH=$(uname -m) ; echo $ARCH \
-	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then ARCH="arm64" ; fi \
-    ; TARBALL="pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" \
-    ; URL="https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/${TARBALL}" \
-    ; curl -sSL ${URL} | tar xz  "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" \
-    || tar -xzf /cachi2/output/deps/generic/${TARBALL} "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
-	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
+	; if [ "$ARCH" == "x86_64" ] ; then GOARCH="amd64" ; elif [ "$ARCH" == "aarch64" ] ; then GOARCH="arm64" ; else GOARCH="$ARCH" ; fi \
+	; export GOOS="${OS}" GOARCH="${GOARCH}" CGO_ENABLED=0 \
+	; git clone --depth 1 --branch "v${PUSHGATEWAY_VERSION}" https://github.com/prometheus/pushgateway \
+	; cd pushgateway && go build -trimpath -ldflags "-s -w" -o /usr/local/bin/pushgateway .\
 	;
 
 # Config-tool builds the go binary in the configtool.
