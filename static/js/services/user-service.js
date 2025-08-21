@@ -56,7 +56,7 @@ function(ApiService, CookieService, $rootScope, Config, $location, $timeout) {
               '$created': new Date()
             })
           } catch (e) {
-            window.console.log(e);
+            // Mixpanel error - ignore silently in production
           }
         }
 
@@ -67,7 +67,7 @@ function(ApiService, CookieService, $rootScope, Config, $location, $timeout) {
               id: userResponse.username
             });
           } catch (e) {
-            window.console.log(e);
+            // Mixpanel error - ignore silently in production
           }
         }
 

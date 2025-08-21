@@ -318,7 +318,6 @@ angular.module('quay').directive('repoPanelMirror', function () {
        * Disable `Accept Unsigned Images`
        */
       vm.disableUnsignedImages = function() {
-        console.log("disabling unsigned images");
         let data = {
           'fieldName': 'Accept Unsigned Images',
           'values': {

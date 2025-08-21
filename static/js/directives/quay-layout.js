@@ -138,7 +138,8 @@ angular.module('quay').directive('quayStaticInclude', function($compile, $templa
           $scope.$eval($attr.onload);
         }
       }).catch(function(err) {
-        console.log(err)
+        // Error loading template - fail silently in production
+        // TODO: Consider proper error handling/logging mechanism
       });
     }
   };

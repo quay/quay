@@ -407,7 +407,6 @@ angular.module('quay').directive('tagOperationsDialog', function () {
 
         'askPermanentlyDeleteTag': function(tag, manifest_digest) {
           if ($scope.alertOnTagOpsDisabled()) {
-            console.log("alertOnTagOpsDisabled")
             return;
           }
 
