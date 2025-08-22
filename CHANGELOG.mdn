@@ -1,10 +1,13 @@
 ## Red Hat Quay Release Notes
 
-[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.12/html/red_hat_quay_release_notes/index)
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
+
+<a name="v3.12.12"></a>
+## [v3.12.12] - 0001-01-01
 
 <a name="v3.12.11"></a>
-## [v3.12.11] - 2025-07-07
+## [v3.12.11] - 2025-07-16
 ### Build
 - [8120e00f](https://github.com/quay/quay/commit/8120e00f1533eb1d511aa7804da9074254ca1f17): Konflux-3.12 (PROJQUAY-8968) ([#4015](https://github.com/quay/quay/issues/4015))
 ### [Redhat-3.12] Deps
@@ -331,6 +334,11 @@
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
 
+<a name="v3.11.12"></a>
+## [v3.11.12] - 2025-07-09
+### [Redhat-3.11] Deps
+- [7732a98b](https://github.com/quay/quay/commit/7732a98b8a499322e1341a436b0b315f60a85a8d): update pbkdf2 to version 3.1.3 (PROJQUAY-9092) ([#4115](https://github.com/quay/quay/issues/4115))
+
 <a name="v3.11.11"></a>
 ## [v3.11.11] - 2025-06-11
 ### Build
@@ -621,6 +629,30 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.13"></a>
+## [v3.10.13] - 2025-07-28
+
+<a name="v3.10.12"></a>
+## [v3.10.12] - 2025-07-07
+### Build
+- [7f3c064e](https://github.com/quay/quay/commit/7f3c064e1d6e00133513b05a557c259b8ef05cb3): Konflux 3.10 (PROJQUAY-8960) ([#3990](https://github.com/quay/quay/issues/3990))
+### Cherrypick
+- [e126527b](https://github.com/quay/quay/commit/e126527b13e06f76c612ccdd9d4e0039ac03c876): updating hack script for gathering python dependencies on konflux (PROJQUAY-8804) ([#3989](https://github.com/quay/quay/issues/3989))
+### Ci
+- [1cba8b2a](https://github.com/quay/quay/commit/1cba8b2af27b603dceaa0e108928737d690a9e93): fixing app type import (PROJQUAY-8991) ([#4038](https://github.com/quay/quay/issues/4038))
+### Deps
+- [afe5cf89](https://github.com/quay/quay/commit/afe5cf89c7fbf0931bad42081d827ba14dde05c3): upgrading gevent (PROJQUAY-8938) ([#4031](https://github.com/quay/quay/issues/4031))
+### [Redhat-3.10] Build
+- [550cf42e](https://github.com/quay/quay/commit/550cf42e69eb0b3606dc9af164e595fadd46f048): rpm lock for konflux builds (PROJQUAY-8930) ([#3995](https://github.com/quay/quay/issues/3995))
+- [f57c4ef2](https://github.com/quay/quay/commit/f57c4ef2860a134f4310e5ef490999461cd9f3fd): add artifacts lockfile (PROJQUAY-8931) ([#3934](https://github.com/quay/quay/issues/3934))
+- [b38b3da1](https://github.com/quay/quay/commit/b38b3da12c6e345ee21abf95c07b429afbd7fc1f): Add rust build dependencies for cryptography (PROJQUAY-8804) ([#3983](https://github.com/quay/quay/issues/3983))
+### [Redhat-3.10] Deps
+- [7f865c9a](https://github.com/quay/quay/commit/7f865c9a49a25a291d3760538f22451aac4dec4e): update pbkdf2 to version 3.1.3 (PROJQUAY-9093)  ([#4116](https://github.com/quay/quay/issues/4116))
+### [Redhat-3.10] Dockerfile
+- [c6543e84](https://github.com/quay/quay/commit/c6543e84a435c122d68481e6c4bfec8a0d3da1ef): set GOPATH env var before running go build in dockerfile (PROJQUAY-8789) ([#4011](https://github.com/quay/quay/issues/4011))
+### [Redhat-3.10] Proxycache(Permissions)
+- [eb689941](https://github.com/quay/quay/commit/eb6899410d9794ebc4b1cfec7e596b24dc1a4891): CVE-2025-4374 (PROJQUAY-8892) ([#3963](https://github.com/quay/quay/issues/3963))
 
 <a name="v3.10.11"></a>
 ## [v3.10.11] - 2025-05-22
@@ -1091,6 +1123,30 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.14"></a>
+## [v3.9.14] - 2025-08-01
+
+<a name="v3.9.13"></a>
+## [v3.9.13] - 2025-07-07
+### Build
+- [f37f2ec4](https://github.com/quay/quay/commit/f37f2ec415ee43297ec9168c19b58c86f5e55597): Konflux 3.9 (PROJQUAY-8964) ([#3991](https://github.com/quay/quay/issues/3991))
+### Cherrypick
+- [ba021117](https://github.com/quay/quay/commit/ba0211174394ed37f43abb65f49f71c3844af002): 3.9 cherry pick (PROJQUAY-0000) ([#3988](https://github.com/quay/quay/issues/3988))
+### Ci
+- [2b7da175](https://github.com/quay/quay/commit/2b7da175e16fef40e594dad4dd2a992582abdf46): fixing app type import (PROJQUAY-8991) ([#4039](https://github.com/quay/quay/issues/4039))
+### Deps
+- [7c900360](https://github.com/quay/quay/commit/7c900360097a755d37fa187df5b78661e974bced): upgrading gevent (PROJQUAY-8938) ([#4033](https://github.com/quay/quay/issues/4033))
+### [Redhat-3.9] Build
+- [8a6702f5](https://github.com/quay/quay/commit/8a6702f596743c68d07a5fe5f51ecd56192dd0de): rpm lock for konflux builds (PROJQUAY-8930) ([#3996](https://github.com/quay/quay/issues/3996))
+- [9854973b](https://github.com/quay/quay/commit/9854973bd35995734a518808dfa188ac9565da5d): add artifacts lockfile (PROJQUAY-8931) ([#3933](https://github.com/quay/quay/issues/3933))
+- [a2c245d2](https://github.com/quay/quay/commit/a2c245d2e4d1dbb4b30b0b4eaabad8fdbece45c0): Add rust build dependencies for cryptography (PROJQUAY-8804) ([#3984](https://github.com/quay/quay/issues/3984))
+### [Redhat-3.9] Deps
+- [af75809c](https://github.com/quay/quay/commit/af75809c9e401e17aa5ffcae4a32d4856dd84c32): update pbkdf2 to version 3.1.3 (PROJQUAY-9094) ([#4117](https://github.com/quay/quay/issues/4117))
+### [Redhat-3.9] Dockerfile
+- [e8ccdcbc](https://github.com/quay/quay/commit/e8ccdcbcdb15dad43912694f181d0abf46d620a8): set GOPATH env var before running go build in dockerfile (PROJQUAY-8789) ([#3839](https://github.com/quay/quay/issues/3839))
+### [Redhat-3.9] Proxycache(Permissions)
+- [f86e344a](https://github.com/quay/quay/commit/f86e344ad2cdf35846b7932f930c6efa9e0dda34): CVE-2025-4374 (PROJQUAY-8892) ([#3964](https://github.com/quay/quay/issues/3964))
 
 <a name="v3.9.12"></a>
 ## [v3.9.12] - 2025-05-22
@@ -2664,7 +2720,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.12.11...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.12.12...HEAD
+[v3.12.12]: https://github.com/quay/quay/compare/v3.12.11...v3.12.12
 [v3.12.11]: https://github.com/quay/quay/compare/v3.12.10...v3.12.11
 [v3.12.10]: https://github.com/quay/quay/compare/v3.12.9...v3.12.10
 [v3.12.9]: https://github.com/quay/quay/compare/v3.12.8...v3.12.9
@@ -2676,7 +2733,8 @@
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.11...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.12...v3.12.0
+[v3.11.12]: https://github.com/quay/quay/compare/v3.11.11...v3.11.12
 [v3.11.11]: https://github.com/quay/quay/compare/v3.11.10...v3.11.11
 [v3.11.10]: https://github.com/quay/quay/compare/v3.11.9...v3.11.10
 [v3.11.9]: https://github.com/quay/quay/compare/v3.11.8...v3.11.9
@@ -2688,7 +2746,9 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.11...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.13...v3.11.0
+[v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
+[v3.10.12]: https://github.com/quay/quay/compare/v3.10.11...v3.10.12
 [v3.10.11]: https://github.com/quay/quay/compare/v3.10.10...v3.10.11
 [v3.10.10]: https://github.com/quay/quay/compare/v3.10.9...v3.10.10
 [v3.10.9]: https://github.com/quay/quay/compare/v3.10.8...v3.10.9
@@ -2700,7 +2760,9 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.12...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.14...v3.10.0
+[v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
+[v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
 [v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
 [v3.9.10]: https://github.com/quay/quay/compare/v3.9.9...v3.9.10
