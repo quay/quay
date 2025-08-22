@@ -27,6 +27,7 @@ from endpoints.decorators import (
     anon_protect,
     check_pushes_disabled,
     check_readonly,
+    check_repository_state,
     disallow_for_account_recovery_mode,
     inject_registry_model,
     parse_repository_name,
@@ -68,7 +69,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
@@ -142,7 +143,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
@@ -270,6 +271,7 @@ def _doesnt_accept_schema_v1():
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@check_repository_state
 @log_unauthorized_push
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
@@ -295,6 +297,7 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@check_repository_state
 @log_unauthorized_push
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
@@ -372,6 +375,7 @@ def _parse_manifest(content_type, request_data):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@check_repository_state
 @log_unauthorized_delete
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
@@ -409,6 +413,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@check_repository_state
 @log_unauthorized_delete
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect

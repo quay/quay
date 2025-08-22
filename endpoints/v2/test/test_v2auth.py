@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from flask import url_for
 
@@ -8,6 +6,7 @@ from app import instance_keys
 from data import model
 from data.model.user import get_robot_and_metadata, get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
+from test.fixtures import *
 from util.security.registry_jwt import CLAIM_TUF_ROOTS, decode_bearer_token
 
 
@@ -27,9 +26,11 @@ def get_robot_password(username):
             "devtable",
             "password",
             400 if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"] else 200,
-            []
-            if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
-            else ["devtable/simple/foo/bar/baz:pull"],
+            (
+                []
+                if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
+                else ["devtable/simple/foo/bar/baz:pull"]
+            ),
             True,
             "private",
             False,
