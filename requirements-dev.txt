@@ -52,7 +52,7 @@ types-pytz==2023.3.1.1
 types-PyYAML==5.4.12
 types-redis==3.5.14
 types-requests==2.25.11
-types-setuptools==68.2.0.0
+types-setuptools==80.9.0.20250822
 types-six==1.16.21.20240513
 types-stripe==3.5.2.14
 types-termcolor==1.1.2
