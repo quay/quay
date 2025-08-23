@@ -48,7 +48,7 @@ types-pytz==2021.3.0
 types-PyYAML==5.4.12
 types-redis==3.5.14
 types-requests==2.25.11
-types-setuptools==57.4.2
+types-setuptools==80.9.0.20250822
 types-six==1.16.2
 types-termcolor==1.1.2
 types-tzlocal==3.0.0
