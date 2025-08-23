@@ -47,7 +47,7 @@ types-mock==5.1.0.2
 types-protobuf==3.18.0
 types-psutil==5.9.5.13
 types-pyOpenSSL==20.0.9
-types-python-dateutil==2.8.19.14
+types-python-dateutil==2.9.0.20250822
 types-pytz==2023.3.1.1
 types-PyYAML==5.4.12
 types-redis==3.5.14
