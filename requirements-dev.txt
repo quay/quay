@@ -41,7 +41,7 @@ types-futures==3.3.1
 types-geoip2==3.0.0
 types-html5lib==1.1.11.15
 types-ipaddress==1.0.8
-types-jsonschema==4.17.0.8
+types-jsonschema==4.25.1.20250822
 types-maxminddb==1.5.0
 types-mock==5.1.0.2
 types-protobuf==3.18.0
