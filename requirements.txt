@@ -143,7 +143,7 @@ packaging==23.2
 pbr==5.11.1
 pycparser==2.21
 python-bidi==0.4.2
-reportlab==3.6.13
+reportlab==4.4.3
 svglib==1.5.1
 tinycss2==1.2.1
 tqdm==4.66.1
