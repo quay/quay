@@ -321,7 +321,7 @@ setuptools-rust==1.7.0 \
     --hash=sha256:071099885949132a2180d16abf907b60837e74b4085047ba7e9c0f5b365310c1 \
     --hash=sha256:c7100999948235a38ae7e555fe199aa66c253dc384b125f5d85473bf81eae3a3
     # via -r requirements-build.in
-setuptools-scm==7.1.0 \
+setuptools-scm==9.2.0 \
     --hash=sha256:6c508345a771aad7d56ebff0e70628bf2b0ec7573762be9960214730de278f27 \
     --hash=sha256:73988b6d848709e2af142aa48c986ea29592bbcfca5375678064708205253d8e
     # via
