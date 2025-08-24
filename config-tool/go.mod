@@ -32,6 +32,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+require gopkg.in/yaml.v2 v2.4.0 // indirect
+
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
@@ -80,5 +82,4 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
