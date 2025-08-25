@@ -1609,15 +1609,36 @@ CONFIG_SCHEMA = {
                     "description": "name of service in otel spans",
                     "x-example": "quay",
                 },
-                "dt_api_url": {
+                "OTEL_EXPORTER_OTLP_ENDPOINT": {
                     "type": "string",
-                    "description": "url for dynatrace api",
-                    "x-example": "https://dynatrace-api.example",
+                    "description": "url for OTLP api environment overwrites",
+                    "x-example": "https://dynatrace-api.example:443",
                 },
-                "dt_api_token": {
+                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": {
                     "type": "string",
-                    "description": "token for dynatrace api",
-                    "x-example": "sometoken",
+                    "description": "url for OTLP api environment overwrites",
+                    "x-example": "https://dynatrace-api.example:443",
+                },
+                "OTEL_EXPORTER_OTLP_HEADERS": {
+                    "type": "object",
+                    "description": "headers to include in API calls",
+                    "x-example": {"Authorization": "Bearer api-token", "X-Org-Tenant": "some"},
+                    "items": {"type": "dict"},
+                },
+                "OTEL_EXPORTER_OTLP_INSECURE": {
+                    "type": "boolean",
+                    "description": "skip ssl verification for API connections",
+                    "x-example": "true",
+                },
+                "OTEL_EXPORTER_OTLP_PROTOCOL": {
+                    "type": "string",
+                    "description": "MUST be one of: grpc, http/protobuf, http/json",
+                    "x-example": "http/protobuf",
+                },
+                "OTEL_TRACES_SAMPLER_ARG": {
+                    "type": "float",
+                    "description": "Sampling decission rate as float",
+                    "x-example": "0.001 # ( 1 / 1000)",
                 },
             },
         },
