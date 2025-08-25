@@ -95,6 +95,11 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     proxy_ssl_name $3;
     proxy_ssl_server_name on;
 
+    # nginx prior to 1.23 does not use TLSv1.3 for proxy.,
+    # this breaks _storage_proxy pulls when only TLSv1.3 is enabled.
+    # https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_protocols
+    proxy_ssl_protocols TLSv1.2 TLSv1.3;
+
     add_header Host $3;
 
     proxy_buffering off;
