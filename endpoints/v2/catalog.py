@@ -1,5 +1,9 @@
 from collections import namedtuple
 
+from util.metrics.otel import trace
+
+tracer = trace.get_tracer("quay.endpoints.v2.catalog")
+
 from flask import jsonify
 
 import features
@@ -26,6 +30,9 @@ class Repository(namedtuple("Repository", ["id", "namespace_name", "name"])):
 @process_registry_jwt_auth()
 @anon_protect
 @paginate()
+@tracer.start_as_current_span(
+    "quay.endpoints.v2.catalog.catalog_search", record_exception=True, set_status_on_exception=True
+)
 def catalog_search(start_id, limit, pagination_callback):
     def _load_catalog():
         include_public = bool(features.PUBLIC_CATALOG)
