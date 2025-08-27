@@ -198,7 +198,15 @@ def user_view(user, previous_username=None):
         user_response.update(
             {
                 "organizations": [
-                    org_view(o, user_admin=is_admin) for o in list(organizations.values())
+                    # the filter check is introduced as PUBLIC_NAMESPACES populated without the
+                    # appropriate organisations being present will return None which will fail
+                    # the org_view function calling o.username
+                    # if you change the logic below adjust the unittest in file
+                    # endpoints/api/test/test_user.py -> test_endpoints_donot_return_none
+                    org_view(o, user_admin=is_admin)
+                    for o in filter(
+                        lambda x: not isinstance(x, type(None)), list(organizations.values())
+                    )
                 ],
             }
         )
