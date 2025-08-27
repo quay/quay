@@ -6,15 +6,18 @@ import logging
 import math
 from datetime import timedelta
 
-from flask import request
+from flask import abort, request
 
 import features
-from app import app
+from app import app, usermanager
 from auth.auth_context import get_authenticated_user
+from auth.permissions import SuperUserPermission
 from data import model
 from endpoints.api import (
     ApiResource,
     NotFound,
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
     format_date,
     log_action,
     nickname,
@@ -84,17 +87,43 @@ class AppTokens(ApiResource):
     @query_param("expiring", "If true, only returns those tokens expiring soon", type=truthy_bool)
     def get(self, parsed_args):
         """
-        Lists the app specific tokens for the user.
+        Lists the app specific tokens accessible to the user.
+
+        - Superusers: Can see all tokens across the application
+        - Global Read-Only Superusers: Can see all tokens across the application (but not token secrets)
+        - Regular Users: Can only see their own tokens
         """
+        user = get_authenticated_user()
+        # In API v1, allow_if_superuser() reflects the current request context's superuser status.
+        # Use it directly to ensure tests and runtime align.
+        is_superuser = bool(allow_if_superuser())
         expiring = parsed_args["expiring"]
-        if expiring:
-            expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
-            token_expiration = convert_to_timedelta(expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW)
-            seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
-            soon = timedelta(seconds=seconds)
-            tokens = model.appspecifictoken.get_expiring_tokens(get_authenticated_user(), soon)
+
+        # Determine which tokens to retrieve based on user type
+        if is_superuser or allow_if_global_readonly_superuser():
+            # Superusers and global readonly superusers can see all tokens
+            if expiring:
+                expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
+                token_expiration = convert_to_timedelta(
+                    expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW
+                )
+                seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
+                soon = timedelta(seconds=seconds)
+                tokens = model.appspecifictoken.get_all_expiring_tokens(soon)
+            else:
+                tokens = model.appspecifictoken.list_all_tokens()
         else:
-            tokens = model.appspecifictoken.list_tokens(get_authenticated_user())
+            # Regular users see only their tokens
+            if expiring:
+                expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
+                token_expiration = convert_to_timedelta(
+                    expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW
+                )
+                seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
+                soon = timedelta(seconds=seconds)
+                tokens = model.appspecifictoken.get_expiring_tokens(user, soon)
+            else:
+                tokens = model.appspecifictoken.list_tokens(user)
 
         return {
             "tokens": [token_view(token, include_code=False) for token in tokens],
@@ -138,12 +167,24 @@ class AppToken(ApiResource):
         """
         Returns a specific app token for the user.
         """
-        token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=get_authenticated_user())
+        user = get_authenticated_user()
+        is_superuser = bool(allow_if_superuser())
+
+        # Superusers (both regular and global readonly) can see any user's app tokens, but must
+        # never receive the secret token code unless they are the owner of the token.
+        if is_superuser or allow_if_global_readonly_superuser():
+            token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=None)
+        else:
+            # Regular users can only access their own tokens
+            token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=user)
         if token is None:
             raise NotFound()
 
+        # Include the token_code only if the authenticated user is the owner of the token.
+        include_code = user is not None and token.user_id == user.id
+
         return {
-            "token": token_view(token, include_code=True),
+            "token": token_view(token, include_code=include_code),
         }
 
     @require_user_admin()

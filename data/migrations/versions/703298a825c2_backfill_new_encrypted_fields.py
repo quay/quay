@@ -5,6 +5,7 @@ Revision ID: 703298a825c2
 Revises: c13c8052f7a6
 Create Date: 2019-08-19 16:07:48.109889
 """
+
 # revision identifiers, used by Alembic.
 revision = "703298a825c2"
 down_revision = "c13c8052f7a6"
