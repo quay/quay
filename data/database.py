@@ -12,7 +12,7 @@ from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 from datetime import datetime
 from enum import Enum, IntEnum, unique
-from random import SystemRandom
+from random import SystemRandom, uniform
 
 import rehash
 import toposort
@@ -224,6 +224,51 @@ class CallableProxy(Proxy):
 
 class RetryOperationalError(object):
     def execute_sql(self, sql, params=None, commit=True):
+        """Execute SQL with SQLite-specific retry logic for database locks."""
+        # SQLite-specific retry logic with exponential backoff
+        if isinstance(self, (SqliteDatabase, PooledSqliteDatabase)):
+            return self._execute_sql_sqlite_retry(sql, params, commit)
+        else:
+            # retain original logic for non-SQLite databases
+            return self._execute_sql_original(sql, params, commit)
+
+    def _execute_sql_sqlite_retry(self, sql, params=None, commit=True):
+        """SQLite-specific retry logic with exponential backoff for database locks."""
+        MAX_RETRIES = 5
+        BASE_DELAY = 0.1
+        MAX_DELAY = 30.0
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                return super(RetryOperationalError, self).execute_sql(sql, params, commit)
+            except (OperationalError, InterfaceError) as pe:
+                if isinstance(pe, InterfaceError) and not str(pe) == "(0, '')":
+                    raise
+
+                # Only retry SQLite "database is locked" errors
+                if "database is locked" in str(pe) and attempt < MAX_RETRIES - 1:
+                    if not self.is_closed():
+                        self.close()
+
+                    # Exponential backoff with jitter
+                    delay = min(BASE_DELAY * (2**attempt) + uniform(0, 0.1), MAX_DELAY)
+                    logger.debug(
+                        "SQLite database lock detected, retrying in %.2fs (attempt %d/%d)",
+                        delay,
+                        attempt + 1,
+                        MAX_RETRIES,
+                    )
+                    time.sleep(delay)
+                    continue
+                else:
+                    # Fall back to original retry logic for non-lock errors
+                    return self._execute_sql_original(sql, params, commit)
+
+        # If all retries exhausted, raise the last exception
+        raise
+
+    def _execute_sql_original(self, sql, params=None, commit=True):
+        """Original retry logic for non-SQLite databases"""
         try:
             cursor = super(RetryOperationalError, self).execute_sql(sql, params, commit)
         except (OperationalError, InterfaceError) as pe:
