@@ -20,6 +20,7 @@ import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
 import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
+import {GlobalAuthState} from 'src/resources/AuthResource';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
 
 interface GenerateTokenTabProps {
@@ -96,7 +97,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
         ),
       });
-      return getUrl(`/oauth/authorize?${params.toString()}`);
+      return getUrl(`/oauth/authorizeapp?${params.toString()}`);
     }
   };
 
@@ -128,31 +129,35 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   };
 
   const handleAuthModalConfirm = () => {
-    if (selectedUser !== null) {
-      // For assignment, use POST form submission to new window (like Angular)
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = generateUrl();
-      form.target = '_blank';
-      form.style.display = 'none';
+    // Use POST form submission for both assignment and generation
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = generateUrl();
+    form.target = '_blank';
+    form.style.display = 'none';
 
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-    } else {
-      // For generation, use popup window (existing behavior)
-      const oauthUrl = generateUrl();
-      const popup = window.open(
-        oauthUrl,
-        'oauth-authorization',
-        'width=600,height=700,scrollbars=yes,resizable=yes',
-      );
+    // Extract URL parameters and add them as form fields
+    const url = new URL(generateUrl());
+    url.searchParams.forEach((value, key) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
 
-      if (!popup) {
-        console.error('Failed to open popup window');
-        return;
-      }
+    // Add CSRF token for POST request
+    if (GlobalAuthState.csrfToken) {
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = '_csrf_token';
+      csrfInput.value = GlobalAuthState.csrfToken;
+      form.appendChild(csrfInput);
     }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
 
     setIsAuthModalOpen(false);
   };
