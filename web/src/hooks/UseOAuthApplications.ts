@@ -51,13 +51,13 @@ export function useFetchOAuthApplications(org: string) {
   );
 
   const filteredOAuthApplications =
-    search.query !== ''
-      ? oauthApplications?.filter((permission) =>
+    search.query !== '' && oauthApplications
+      ? oauthApplications.filter((permission) =>
           permission.name.includes(search.query),
         )
-      : oauthApplications;
+      : oauthApplications || [];
 
-  const paginatedOAuthApplications = filteredOAuthApplications?.slice(
+  const paginatedOAuthApplications = filteredOAuthApplications.slice(
     page * perPage - perPage,
     page * perPage - perPage + perPage,
   );
