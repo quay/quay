@@ -623,23 +623,58 @@ describe('Organization OAuth Applications', () => {
       cy.wait('@getCurrentUser');
       cy.wait('@getConfig');
 
-      // Mock window.open to capture the call (after page loads)
-      cy.window().then((win) => {
-        cy.stub(win, 'open').as('windowOpen');
-      });
-
       // Select scopes
       cy.get('[data-testid="scope-repo:read"]').check();
       cy.get('[data-testid="scope-repo:write"]').check();
 
-      // Click generate token
+      // Click generate token to open modal
       cy.get('[data-testid="generate-token-button"]').click();
 
-      // Verify window.open was called with correct OAuth URL
-      cy.get('@windowOpen').should(
-        'have.been.calledWith',
-        Cypress.sinon.match(/http:\/\/localhost:8080\/oauth\/authorize\?/),
-      );
+      // Modal should appear
+      cy.get('[role="dialog"]').should('be.visible');
+      cy.contains('Authorize Application').should('be.visible');
+
+      // Capture form data during submission
+      const capturedFormData: Record<string, string> = {};
+      let capturedFormAction = '';
+      let capturedFormMethod = '';
+      let capturedFormTarget = '';
+
+      cy.window().then((win) => {
+        const submitStub = cy.stub(win.HTMLFormElement.prototype, 'submit');
+        submitStub.callsFake(function () {
+          // Capture form properties
+          capturedFormAction = this.action;
+          capturedFormMethod = this.method;
+          capturedFormTarget = this.target;
+
+          // Capture form data
+          const inputs = this.querySelectorAll('input[type="hidden"]');
+          inputs.forEach((input) => {
+            const inputElement = input as HTMLInputElement;
+            capturedFormData[inputElement.name] = inputElement.value;
+          });
+        });
+        submitStub.as('formSubmit');
+      });
+
+      // Click authorize in modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // Verify the form was created and submitted with correct data
+      cy.get('@formSubmit')
+        .should('have.been.called')
+        .then(() => {
+          // Check form properties
+          expect(capturedFormAction).to.include('/oauth/authorizeapp');
+          expect(capturedFormMethod.toLowerCase()).to.equal('post');
+          expect(capturedFormTarget).to.equal('_blank');
+
+          // Check form data
+          expect(capturedFormData.client_id).to.exist;
+          expect(capturedFormData.scope).to.contain('repo:read repo:write');
+          expect(capturedFormData.response_type).to.equal('token');
+        });
     });
 
     it('should handle user assignment functionality', () => {
@@ -656,11 +691,11 @@ describe('Organization OAuth Applications', () => {
       cy.get('[data-testid="assign-user-button"]').click();
 
       // Check UI changes for user assignment
-      cy.get('[data-testid="custom-user-input"]').should('exist');
+      cy.get('#entity-search-input').should('exist');
       cy.get('[data-testid="cancel-assign-button"]').should('exist');
 
       // Enter custom user
-      cy.get('[data-testid="custom-user-input"]').type('customuser');
+      cy.get('#entity-search-input').type('customuser');
 
       // Button text should change
       cy.get('[data-testid="generate-token-button"]').should(
