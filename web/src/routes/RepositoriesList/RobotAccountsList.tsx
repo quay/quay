@@ -149,12 +149,10 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   // Fetching teams
   useQuery(
     ['organization', props.organizationName, 'teams'],
-    ({signal}) => {
-      fetchOrg(props.organizationName, signal).then((response) => {
-        setTeams(Object['values'](response?.teams));
-        return response?.teams;
-      });
-      return [];
+    async ({signal}) => {
+      const response = await fetchOrg(props.organizationName, signal);
+      setTeams(Object['values'](response?.teams));
+      return response?.teams;
     },
     {
       enabled: !props.isUser,
