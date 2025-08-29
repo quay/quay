@@ -859,19 +859,32 @@ describe('Organization OAuth Applications', () => {
       cy.wait('@getOrg');
       cy.wait('@getOAuthApplications');
 
-      // Ensure we're on the OAuth Applications tab
+      // Ensure we're on the OAuth Applications tab and wait for content to load
       cy.contains('OAuth Applications').click();
 
-      // Select applications
-      cy.get(
-        'tbody tr:first-child td:first-child input[type="checkbox"]',
-      ).check({force: true});
-      cy.get(
-        'tbody tr:nth-child(2) td:first-child input[type="checkbox"]',
-      ).check({force: true});
+      // Wait for the OAuth Applications tab content to be visible
+      cy.get('[data-testid="oauth-applications-table"], tbody tr', {
+        timeout: 10000,
+      }).should('be.visible');
 
-      // Click bulk delete
+      // Select applications with explicit waits
+      cy.get('tbody tr:first-child td:first-child input[type="checkbox"]')
+        .should('be.visible')
+        .check({force: true})
+        .should('be.checked');
+
+      cy.get('tbody tr:nth-child(2) td:first-child input[type="checkbox"]')
+        .should('be.visible')
+        .check({force: true})
+        .should('be.checked');
+
+      // Wait for UI state to update after selection
+      cy.wait(500);
+
+      // Wait for bulk delete button to be enabled (now that we're on the right tab)
       cy.get('[data-testid="default-perm-bulk-delete-icon"]')
+        .should('be.visible')
+        .should('not.be.disabled')
         .first()
         .click({force: true});
 
