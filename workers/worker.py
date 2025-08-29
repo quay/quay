@@ -10,7 +10,12 @@ from threading import Event
 
 import sentry_sdk
 from apscheduler.schedulers.background import BackgroundScheduler
+from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.stdlib import StdlibIntegration
 
+import features
 from app import app
 from data.database import UseThenDisconnect
 from util.log import logfile_path
@@ -67,11 +72,43 @@ class Worker(object):
             sentry_dsn = app.config.get("SENTRY_DSN", "")
             if sentry_dsn:
                 try:
+                    integrations = []
+
+                    # Always include logging integration
+                    integrations.append(
+                        LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+                    )
+
+                    # Only add Flask and SQLAlchemy integrations if OpenTelemetry is not enabled
+                    if not getattr(features, "OTEL_TRACING", False):
+                        integrations.extend(
+                            [
+                                FlaskIntegration(transaction_style="endpoint"),
+                                SqlalchemyIntegration(),
+                                StdlibIntegration(),
+                            ]
+                        )
+                    else:
+                        logger.info(
+                            "OpenTelemetry enabled - using minimal Sentry integrations for worker"
+                        )
+
                     sentry_sdk.init(
                         dsn=sentry_dsn,
                         environment=app.config.get("SENTRY_ENVIRONMENT", "production"),
                         traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 0.1),
                         profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 0.1),
+                        integrations=integrations,
+                        default_integrations=False,
+                        auto_session_tracking=True,
+                        # Fix connection pool issues
+                        transport=sentry_sdk.transport.make_transport(
+                            {
+                                "pool_connections": 10,  # Instead of 1
+                                "pool_maxsize": 20,  # Max connections per pool
+                                "max_retries": 3,  # Retry failed sends
+                            }
+                        ),
                     )
                     sentry_sdk.set_tag("worker", worker_name)
                 except Exception as e:
