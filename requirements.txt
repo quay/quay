@@ -65,7 +65,7 @@ oauthlib==3.2.2
 orderedmultidict==1.0.1
 os-service-types==1.7.0
 oslo.config==7.0.0
-oslo.i18n==3.25.1
+oslo.i18n==6.6.0
 oslo.serialization==2.29.2
 oslo.utils==4.12.2
 packaging==21.3
