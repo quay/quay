@@ -37,7 +37,7 @@ tomli==2.2.1
     # via
     #   -r requirements-build.in
     #   setuptools-scm
-typing-extensions==4.12.2
+typing-extensions==4.15.0
     # via
     #   -r requirements-build.in
     #   setuptools-scm
