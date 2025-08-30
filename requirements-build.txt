@@ -223,7 +223,7 @@ hatchling==1.18.0 \
     #   -r requirements-build.in
     #   hatch-fancy-pypi-readme
     #   hatch-vcs
-maturin==1.7.5 \
+maturin==1.9.4 \
     --hash=sha256:0d2d04ab5f47c1bc2b075a5d8255d9a72921e8dceebf9f9e9884f09d67f7cdd6 \
     --hash=sha256:5563d61cfa2fcd7d1552022df6566300f229fa3aed62020c93a750fa3dca9a99 \
     --hash=sha256:71cbcfd4a74aac3eafe99a1cd73d83af8049f572986ff4e0e5e4d8fec9c66a93 \
