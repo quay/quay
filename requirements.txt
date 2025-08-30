@@ -118,7 +118,7 @@ six==1.17.0
 soupsieve==1.9.5
 splunk-sdk==2.1.0
 SQLAlchemy==1.4.49
-stevedore==5.1.0
+stevedore==5.5.0
 stringscore==0.1.0
 stripe==5.5.0
 supervisor==4.2.5
