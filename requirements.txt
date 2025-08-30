@@ -1,5 +1,5 @@
 akamai-edgeauth==0.3.2
-alembic==1.13.1
+alembic==1.16.5
 aniso8601 @ git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90
 APScheduler==3.10.4
 attrs==19.3.0
