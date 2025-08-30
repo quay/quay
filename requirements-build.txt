@@ -317,7 +317,7 @@ semantic-version==2.10.0 \
     # via
     #   -r requirements-build.in
     #   setuptools-rust
-setuptools-rust==1.7.0 \
+setuptools-rust==1.12.0 \
     --hash=sha256:071099885949132a2180d16abf907b60837e74b4085047ba7e9c0f5b365310c1 \
     --hash=sha256:c7100999948235a38ae7e555fe199aa66c253dc384b125f5d85473bf81eae3a3
     # via -r requirements-build.in
