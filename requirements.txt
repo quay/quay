@@ -138,7 +138,7 @@ idna==3.4
 lxml==4.9.3
 oslo.config==7.0.0
 oslo.i18n==3.25.1
-oslo.serialization==2.29.2
+oslo.serialization==5.8.0
 oslo.utils==6.2.1
 packaging==23.2
 pbr==5.11.1
