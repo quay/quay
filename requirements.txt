@@ -66,7 +66,7 @@ orderedmultidict==1.0.1
 os-service-types==1.7.0
 oslo.config==7.0.0
 oslo.i18n==3.25.1
-oslo.serialization==2.29.2
+oslo.serialization==5.8.0
 oslo.utils==4.12.2
 packaging==21.3
 pbr==5.10.0
