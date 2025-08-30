@@ -30,7 +30,7 @@ tox
 tox-docker
 tqdm
 types-boto==2.49.2
-types-cachetools==4.2.10
+types-cachetools==6.2.0.20250827
 types-cryptography==3.3.7
 types-Deprecated==1.2.3
 types-docutils==0.17.1
