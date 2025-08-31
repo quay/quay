@@ -19,8 +19,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	auth "github.com/abbot/go-http-auth"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/quay/quay/config-tool/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"golang.org/x/crypto/bcrypt"
