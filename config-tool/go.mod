@@ -1,6 +1,8 @@
 module github.com/quay/quay/config-tool
 
-go 1.21
+go 1.23.0
+
+toolchain go1.24.6
 
 require (
 	cuelang.org/go v0.6.0
@@ -73,7 +75,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/appengine v1.6.7 // indirect
