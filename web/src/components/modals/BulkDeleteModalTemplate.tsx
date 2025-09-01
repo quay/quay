@@ -169,6 +169,7 @@ export const BulkDeleteModalTemplate = <T,>(
           type="text"
           onChange={(_event, value) => setConfirmDeletionInput(value)}
           aria-label="text input example"
+          data-testid="bulk-delete-confirmation-input"
         />
       </PageSection>
     </Modal>
