@@ -101,3 +101,11 @@ def for_manifest_referrers(repository_id, manifest_digest, cache_config):
     """
     cache_ttl = cache_config.get("manifest_referrers_cache_ttl", "60s")
     return CacheKey(f"manifest_referrers__{repository_id}_{manifest_digest}", cache_ttl)
+
+
+def for_robot_lookup(robot_username, cache_config):
+    """
+    Returns a cache key for robot lookup.
+    """
+    cache_ttl = cache_config.get("robot_lookup_cache_ttl", "300s")
+    return CacheKey(f"robot_lookup__{robot_username}", cache_ttl)
