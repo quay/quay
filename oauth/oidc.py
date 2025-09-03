@@ -146,7 +146,11 @@ class OIDCLoginService(OAuthService):
         return bool(self.config.get("USE_PKCE", False))
 
     def pkce_method(self) -> str:
-        return self.config.get("PKCE_METHOD", "S256")
+        method = self.config.get("PKCE_METHOD", "S256")
+        allowed_methods = {"S256", "plain"}
+        if method not in allowed_methods:
+            raise ValueError(f"Invalid PKCE method '{method}'. Must be one of: {allowed_methods}")
+        return method
 
     def public_client(self) -> bool:
         return bool(self.config.get("PUBLIC_CLIENT", False))
@@ -336,7 +340,7 @@ class OIDCLoginService(OAuthService):
                 # Decode again with verify_signature=False, and log the decoded token to allow for easier debugging.
                 nonverified = decode(
                     token,
-                    self._get_public_key(kid, force_refresh=True),
+                    None,  # No key needed for non-verified decode
                     algorithms=ALLOWED_ALGORITHMS,
                     audience=self.client_id(),
                     issuer=self._issuer,

@@ -122,7 +122,7 @@ def _register_service(login_service):
         if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
             session_key = f"_oauth_pkce_{login_service.service_id()}"
             data = session.pop(session_key, None)
-            if data and data.get("verifier"):
+            if data and hasattr(data, "get") and data.get("verifier"):
                 kwargs["code_verifier"] = data.get("verifier")
         try:
             lid, lusername, lemail, additional_info = login_service.exchange_code_for_login(
@@ -181,7 +181,7 @@ def _register_service(login_service):
         if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
             session_key = f"_oauth_pkce_{login_service.service_id()}"
             data = session.pop(session_key, None)
-            if data and data.get("verifier"):
+            if data and hasattr(data, "get") and data.get("verifier"):
                 kwargs["code_verifier"] = data.get("verifier")
         try:
             lid, lusername, _, _ = login_service.exchange_code_for_login(
@@ -238,7 +238,7 @@ def _register_service(login_service):
         if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
             session_key = f"_oauth_pkce_{login_service.service_id()}"
             data = session.pop(session_key, None)
-            if data and data.get("verifier"):
+            if data and hasattr(data, "get") and data.get("verifier"):
                 kwargs["code_verifier"] = data.get("verifier")
         try:
             idtoken, _ = login_service.exchange_code_for_tokens(

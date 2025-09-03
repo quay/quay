@@ -264,7 +264,7 @@ class OAuthService(object):
         def perform_request():
             attempts = 0
             max_attempts = 3
-            timeout = 5 / 1000
+            base_timeout = 0.5  # Start with 500ms
 
             while attempts < max_attempts:
                 if self._is_testing:
@@ -272,8 +272,10 @@ class OAuthService(object):
 
                 try:
                     if form_encode:
+                        form_headers = headers.copy()
+                        form_headers["Content-Type"] = "application/x-www-form-urlencoded"
                         return http_client.post(
-                            token_url, data=payload, headers=headers, auth=auth, timeout=5
+                            token_url, data=payload, headers=form_headers, auth=auth, timeout=5
                         )
                     else:
                         return http_client.post(
@@ -282,6 +284,8 @@ class OAuthService(object):
                 except requests.ConnectionError:
                     logger.debug("Got ConnectionError during OAuth token exchange, retrying.")
                     attempts += 1
+                    # Exponential backoff: 0.5s, 1.0s, 2.0s
+                    timeout = base_timeout * (2**attempts)
                     time.sleep(timeout)
 
         get_access_token = perform_request()
