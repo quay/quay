@@ -3,8 +3,35 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.14/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.14.5"></a>
+## [v3.14.5] - 2025-09-02
+### Deps
+- [f595cd2f](https://github.com/quay/quay/commit/f595cd2ff83267698e6bb80d1a1fd671094c8f7e): upgrading crypto and azure config-tool packages (PROJQUAY-9159) ([#4186](https://github.com/quay/quay/issues/4186))
+### Konflux
+- [9eae3154](https://github.com/quay/quay/commit/9eae315449d44c90bfc06417c2b8349fcc075d81): update rpms lockfile (PROJQUAY-0000) ([#4213](https://github.com/quay/quay/issues/4213))
+- [56a3c3fa](https://github.com/quay/quay/commit/56a3c3fa7e52c4703ccfcc8d8a9165a0b75af99d): build platforms (PROJQUAY-8804) ([#4197](https://github.com/quay/quay/issues/4197))
+- [3fa8a935](https://github.com/quay/quay/commit/3fa8a935cb0e87f3ffa5e0599c58ce883d9eb1c4): update to nodejs-22 (PROJQUAY-9279) ([#4195](https://github.com/quay/quay/issues/4195))
+- [90cb62bf](https://github.com/quay/quay/commit/90cb62bf253c17decee8d1dc0188cc418f699c5f): add additional base images (PROJQUAY-9279) ([#4187](https://github.com/quay/quay/issues/4187))
+- [f5fbd793](https://github.com/quay/quay/commit/f5fbd79360e2d0d0e025c87c94b464cd5a9c5eec): update rpm lock file (PROJQUAY-0000) ([#4183](https://github.com/quay/quay/issues/4183))
+### [Redhat 3.14] Deps
+- [8caa4ee2](https://github.com/quay/quay/commit/8caa4ee2f924adf22b325c6055a2f0d578ddf2c7): update sha.js to 2.4.12 (PROJQUAY-9340) ([#4219](https://github.com/quay/quay/issues/4219))
+### [Redhat-3.14] Db
+- [a5424835](https://github.com/quay/quay/commit/a542483538c261745ccbbc6acb73b317d3704e93): enable WAL mode and other PRAGMA stmts for SQLite to avoid db locking during concurrent writes (PROJQUAY-8758) ([#4208](https://github.com/quay/quay/issues/4208))
+### [Redhat-3.14] Deps
+- [19186753](https://github.com/quay/quay/commit/191867530acebb1d9baa8d4d4bec10ef1d2de548): update cipher-base to version 1.0.6 (PROJQUAY-9334) ([#4225](https://github.com/quay/quay/issues/4225))
+### [Redhat-3.14] Dockerfile
+- [c85ebb44](https://github.com/quay/quay/commit/c85ebb44bc642110fcd463de4bd0d2e8fea98404): update nodejs-16 to nodejs-18 (PROJQUAY-0000) ([#4178](https://github.com/quay/quay/issues/4178))
+### [Redhat-3.14] Ldap
+- [ca378de8](https://github.com/quay/quay/commit/ca378de84cb275264a18c10a64f2bd4b09ce66fd): Get federated login identifier and use that when checking user privileges in FederatedUserManager (PROJQUAY-8879) (PROJQUAY-5880) ([#4182](https://github.com/quay/quay/issues/4182))
+### [Redhat-3.14] Quota
+- [54cbf8d6](https://github.com/quay/quay/commit/54cbf8d6169cdff8527ff7f36b568b20e2b3f65d): only create notification if one doesn't already exist (PROJQUAY-8857) ([#4237](https://github.com/quay/quay/issues/4237))
+### [Redhat-3.14] Ui
+- [6e81ac64](https://github.com/quay/quay/commit/6e81ac64ea7b8c83749dcd20be099e6c9a9f9317): conditionally rendering site unavailable message (PROJQUAY-7270) ([#4204](https://github.com/quay/quay/issues/4204))
+
 <a name="v3.14.4"></a>
-## [v3.14.4] - 2025-07-25
+## [v3.14.4] - 2025-08-05
+### Chore
+- [b26f4709](https://github.com/quay/quay/commit/b26f4709afbdf762e8cf9d02ac1a97bf971880f5): add hermetic param to run oci script (PROJQUAY-0000) ([#4170](https://github.com/quay/quay/issues/4170))
 ### Federationuser(Ldap)
 - [7b2e13cc](https://github.com/quay/quay/commit/7b2e13cc37ece2917d8344eb7aec3b646b0dcea5): avoid doing LDAP lookups for Robot accounts (PROJQUAY-5137) ([#4147](https://github.com/quay/quay/issues/4147))
 ### Konflux
@@ -236,6 +263,29 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [ff9b0bfb](https://github.com/quay/quay/commit/ff9b0bfb26108458747afad2eec248e037ebd6c8): looking up layer by artifact type (PROJQUAY-8644) ([#3703](https://github.com/quay/quay/issues/3703))
 ### [Redhat-3.14] Bug
 - [f17e1f94](https://github.com/quay/quay/commit/f17e1f94210170ed63fff7af024e38aa6e5564a2): Fix security url template variable (PROJQUAY-8650) ([#3719](https://github.com/quay/quay/issues/3719))
+
+<a name="v3.13.8"></a>
+## [v3.13.8] - 2025-08-19
+
+<a name="v3.13.7"></a>
+## [v3.13.7] - 2025-07-08
+### Build
+- [81b18893](https://github.com/quay/quay/commit/81b18893f133485d7192e3455c7a9cb440153591): Konflux 3.13 (PROJQUAY-8969) ([#4032](https://github.com/quay/quay/issues/4032))
+### Cherrypick
+- [fad2b745](https://github.com/quay/quay/commit/fad2b74539a582d3d6439e114cb3f2255b909201): updating hack script for gathering python dependencies on konflux (PROJQUAY-0000) ([#3979](https://github.com/quay/quay/issues/3979))
+### Chore(Deps)
+- [8410a242](https://github.com/quay/quay/commit/8410a2423006802e54855ad5ad84fe928d54f961): update konflux references ([#3915](https://github.com/quay/quay/issues/3915))
+### [Redhat-3.13] Build
+- [f0ace543](https://github.com/quay/quay/commit/f0ace54367964f6ff811c89d6f3343fc8b50df09): add artifacts lockfile (PROJQUAY-8931) ([#3937](https://github.com/quay/quay/issues/3937))
+- [81c585bb](https://github.com/quay/quay/commit/81c585bb701ec699e01a641458f6babafdef2334): Add rust build dependencies for cryptography (PROJQUAY-8804) ([#3980](https://github.com/quay/quay/issues/3980))
+- [211f6bac](https://github.com/quay/quay/commit/211f6bac7315d8119620e7aa0cd65e522e376efc): rpm lock for konflux builds (PROJQUAY-8930) ([#3985](https://github.com/quay/quay/issues/3985))
+### [Redhat-3.13] Ci
+- [8b2d10a4](https://github.com/quay/quay/commit/8b2d10a4c8f03812e7921a107cbd31da339fafe8): fixing app type import (PROJQUAY-8991) ([#4035](https://github.com/quay/quay/issues/4035))
+- [35b3f7e0](https://github.com/quay/quay/commit/35b3f7e0fec35ccb3f9699eda4721dea601c2282): Oci fix (PROJQUAY-0000) ([#4026](https://github.com/quay/quay/issues/4026))
+### [Redhat-3.13] Deps
+- [172c3e49](https://github.com/quay/quay/commit/172c3e493eebaf1aff176eb6f511c0b9fc73eb03): update pbkdf2 to version 3.1.3 (PROJQUAY-9090) ([#4112](https://github.com/quay/quay/issues/4112))
+### [Redhat-3.13] Dockerfile
+- [6b5564cb](https://github.com/quay/quay/commit/6b5564cb4ec77d38bb287f0ae460541fba3ef084): set GOPATH env var before running go build in dockerfile (PROJQUAY-8789) ([#4017](https://github.com/quay/quay/issues/4017))
 
 <a name="v3.13.6"></a>
 ## [v3.13.6] - 2025-05-27
@@ -477,6 +527,13 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.11"></a>
+## [v3.12.11] - 2025-07-16
+### Build
+- [8120e00f](https://github.com/quay/quay/commit/8120e00f1533eb1d511aa7804da9074254ca1f17): Konflux-3.12 (PROJQUAY-8968) ([#4015](https://github.com/quay/quay/issues/4015))
+### [Redhat-3.12] Deps
+- [56cc7fa1](https://github.com/quay/quay/commit/56cc7fa16a8a093d8106b2aaba8e2d6193aae905): update pbkdf2 to version 3.1.3 (PROJQUAY-9091) ([#4114](https://github.com/quay/quay/issues/4114))
 
 <a name="v3.12.10"></a>
 ## [v3.12.10] - 2025-06-11
@@ -799,6 +856,16 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
 
+<a name="v3.11.13"></a>
+## [v3.11.13] - 2025-08-27
+### [Redhat 3.11] Deps
+- [cba878d9](https://github.com/quay/quay/commit/cba878d9c5b6f7cb7c2096cc519abf5e716ee560): update sha.js to 2.4.12 (PROJQUAY-9343) ([#4222](https://github.com/quay/quay/issues/4222))
+
+<a name="v3.11.12"></a>
+## [v3.11.12] - 2025-07-09
+### [Redhat-3.11] Deps
+- [7732a98b](https://github.com/quay/quay/commit/7732a98b8a499322e1341a436b0b315f60a85a8d): update pbkdf2 to version 3.1.3 (PROJQUAY-9092) ([#4115](https://github.com/quay/quay/issues/4115))
+
 <a name="v3.11.11"></a>
 ## [v3.11.11] - 2025-06-11
 ### Build
@@ -1089,6 +1156,9 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.13"></a>
+## [v3.10.13] - 2025-07-28
 
 <a name="v3.10.12"></a>
 ## [v3.10.12] - 2025-07-07
@@ -1580,6 +1650,12 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.15"></a>
+## [v3.9.15] - 2025-08-15
+
+<a name="v3.9.14"></a>
+## [v3.9.14] - 2025-08-01
 
 <a name="v3.9.13"></a>
 ## [v3.9.13] - 2025-07-07
@@ -3174,19 +3250,23 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.14.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.14.5...HEAD
+[v3.14.5]: https://github.com/quay/quay/compare/v3.14.4...v3.14.5
 [v3.14.4]: https://github.com/quay/quay/compare/v3.14.3...v3.14.4
 [v3.14.3]: https://github.com/quay/quay/compare/v3.14.2...v3.14.3
 [v3.14.2]: https://github.com/quay/quay/compare/v3.14.1...v3.14.2
 [v3.14.1]: https://github.com/quay/quay/compare/v3.14.0...v3.14.1
-[v3.14.0]: https://github.com/quay/quay/compare/v3.13.6...v3.14.0
+[v3.14.0]: https://github.com/quay/quay/compare/v3.13.8...v3.14.0
+[v3.13.8]: https://github.com/quay/quay/compare/v3.13.7...v3.13.8
+[v3.13.7]: https://github.com/quay/quay/compare/v3.13.6...v3.13.7
 [v3.13.6]: https://github.com/quay/quay/compare/v3.13.5...v3.13.6
 [v3.13.5]: https://github.com/quay/quay/compare/v3.13.4...v3.13.5
 [v3.13.4]: https://github.com/quay/quay/compare/v3.13.3...v3.13.4
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.10...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.11...v3.13.0
+[v3.12.11]: https://github.com/quay/quay/compare/v3.12.10...v3.12.11
 [v3.12.10]: https://github.com/quay/quay/compare/v3.12.9...v3.12.10
 [v3.12.9]: https://github.com/quay/quay/compare/v3.12.8...v3.12.9
 [v3.12.8]: https://github.com/quay/quay/compare/v3.12.7...v3.12.8
@@ -3197,7 +3277,9 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.11...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.13...v3.12.0
+[v3.11.13]: https://github.com/quay/quay/compare/v3.11.12...v3.11.13
+[v3.11.12]: https://github.com/quay/quay/compare/v3.11.11...v3.11.12
 [v3.11.11]: https://github.com/quay/quay/compare/v3.11.10...v3.11.11
 [v3.11.10]: https://github.com/quay/quay/compare/v3.11.9...v3.11.10
 [v3.11.9]: https://github.com/quay/quay/compare/v3.11.8...v3.11.9
@@ -3209,7 +3291,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.12...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.13...v3.11.0
+[v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
 [v3.10.12]: https://github.com/quay/quay/compare/v3.10.11...v3.10.12
 [v3.10.11]: https://github.com/quay/quay/compare/v3.10.10...v3.10.11
 [v3.10.10]: https://github.com/quay/quay/compare/v3.10.9...v3.10.10
@@ -3222,7 +3305,9 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.13...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.15...v3.10.0
+[v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
+[v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
 [v3.9.11]: https://github.com/quay/quay/compare/v3.9.10...v3.9.11
