@@ -31,6 +31,8 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
+import {useFetchOrganizationQuota} from 'src/hooks/UseQuotaManagement';
+import {bytesToHumanReadable} from 'src/resources/QuotaResource';
 
 interface RepoListHeaderProps {
   shouldRender: boolean;
@@ -62,8 +64,26 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
-  const {repos, loading, error, search, setSearch, searchFilter} =
-    useRepositories(currentOrg);
+
+  // Fetch quota information for the organization
+  const {organizationQuota} = useFetchOrganizationQuota(currentOrg);
+  const {
+    repos,
+    loading,
+    error,
+    setPerPage,
+    setPage,
+    search,
+    setSearch,
+    searchFilter,
+    page,
+    perPage,
+    totalResults,
+  } = useRepositories(currentOrg);
+
+  repos?.sort((r1, r2) => {
+    return r1.last_modified > r2.last_modified ? -1 : 1;
+  });
 
   const repositoryList: RepoListTableItem[] = repos?.map((repo) => {
     return {
@@ -74,6 +94,35 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       size: repo.quota_report?.quota_bytes,
     } as RepoListTableItem;
   });
+
+  // Calculate total quota consumed from all repositories
+  const calculateTotalQuotaConsumed = (): number => {
+    if (!repos || !Array.isArray(repos)) return 0;
+    return repos.reduce((total, repo) => {
+      return total + (repo.quota_report?.quota_bytes || 0);
+    }, 0);
+  };
+
+  const totalQuotaConsumed = calculateTotalQuotaConsumed();
+
+  const formatQuotaDisplay = () => {
+    const consumedHuman = bytesToHumanReadable(totalQuotaConsumed);
+    const consumedDisplay =
+      totalQuotaConsumed > 0
+        ? `${consumedHuman.value} ${consumedHuman.unit}`
+        : '0 B';
+
+    if (organizationQuota?.limit_bytes) {
+      const totalHuman = bytesToHumanReadable(organizationQuota.limit_bytes);
+      const totalDisplay = `${totalHuman.value} ${totalHuman.unit}`;
+      const percentage = Math.round(
+        (totalQuotaConsumed / organizationQuota.limit_bytes) * 100,
+      );
+      return `${consumedDisplay} (${percentage}%) of ${totalDisplay}`;
+    }
+
+    return consumedDisplay;
+  };
 
   // Use unified table hook for sorting, filtering, and pagination
   const {
@@ -274,6 +323,15 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       <RepoListHeader shouldRender={currentOrg === null} />
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
+        {quayConfig?.features?.QUOTA_MANAGEMENT &&
+          quayConfig?.features?.EDIT_QUOTA &&
+          currentOrg && (
+            <div style={{marginBottom: '1em'}}>
+              <Title headingLevel="h4" size="md">
+                Total Quota Consumed: <span>{formatQuotaDisplay()}</span>
+              </Title>
+            </div>
+          )}
         <RepositoryToolBar
           search={search}
           setSearch={setSearch}
