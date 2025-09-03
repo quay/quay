@@ -615,15 +615,38 @@ def test_exchange_code_for_login_with_pkce(
     userinfo_handler,
     jwks_handler,
     valid_code,
+    preferred_username,
+    mailing_feature,
+    email_verified,
 ):
     # Login flow with code_verifier
     with HTTMock(jwks_handler, token_handler_pkce, userinfo_handler, discovery_handler):
-        lid, lusername, lemail, additional_info = pkce_oidc_service.exchange_code_for_login(
-            app_config, http_client, valid_code, "", code_verifier="test-verifier"
-        )
-        assert lid == "cooluser"
-        assert lusername == "cooluser"
-        assert lemail == "foo@example.com"
+        if mailing_feature and not email_verified:
+            # Should fail because there isn't a verified email address.
+            with pytest.raises(OAuthLoginException):
+                pkce_oidc_service.exchange_code_for_login(
+                    app_config, http_client, valid_code, "", code_verifier="test-verifier"
+                )
+        else:
+            # Should succeed.
+            lid, lusername, lemail, additional_info = pkce_oidc_service.exchange_code_for_login(
+                app_config, http_client, valid_code, "", code_verifier="test-verifier"
+            )
+
+            assert lid == "cooluser"
+
+            if email_verified:
+                assert lemail == "foo@example.com"
+            else:
+                assert lemail is None
+
+            if preferred_username is not None:
+                if preferred_username.find("@") >= 0:
+                    preferred_username = preferred_username[0 : preferred_username.find("@")]
+
+                assert lusername == preferred_username
+            else:
+                assert lusername == lid
 
 
 def test_exchange_code_validcode(

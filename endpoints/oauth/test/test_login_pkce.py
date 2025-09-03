@@ -170,7 +170,7 @@ class TestOAuthLoginPKCE:
         expected_key = f"_oauth_pkce_{service_id}"
 
         # Verify the session key format matches expectation
-        assert expected_key == f"_oauth_pkce_testoidc"
+        assert expected_key == "_oauth_pkce_testoidc"
 
     def test_oauth_login_session_data_structure(self, mock_pkce_service):
         """Test session data structure validation"""
