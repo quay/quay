@@ -5,6 +5,7 @@ Revision ID: 49e1138ed12d
 Revises: 703298a825c2
 Create Date: 2019-08-19 16:07:48.109889
 """
+
 # revision identifiers, used by Alembic.
 revision = "49e1138ed12d"
 down_revision = "703298a825c2"

@@ -76,6 +76,7 @@ def get_services():
 
 @resource("/v1/superuser/aggregatelogs")
 @internal_only
+@show_if(features.SUPER_USERS)
 class SuperUserAggregateLogs(ApiResource):
     """
     Resource for fetching aggregated logs for the current user.
@@ -91,7 +92,11 @@ class SuperUserAggregateLogs(ApiResource):
         """
         Returns the aggregated logs for the current system.
         """
-        if SuperUserPermission().can():
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        if allow_if_global_readonly_superuser() or SuperUserPermission().can():
             (start_time, end_time) = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
             )
@@ -188,7 +193,7 @@ class ChangeLog(ApiResource):
         """
         Returns the change log for this installation.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             with open(os.path.join(ROOT_DIR, "CHANGELOG.md"), "r") as f:
                 return {"log": f.read()}
 
@@ -541,6 +546,10 @@ class SuperUserList(ApiResource):
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             raise InvalidRequest("Cannot create a user in a non-database auth system")
 
+        # Block global readonly superusers from creating users
+        if allow_if_global_readonly_superuser():
+            raise InvalidRequest("Global readonly users cannot create users")
+
         user_information = request.get_json()
         if SuperUserPermission().can():
             # Generate a temporary password for the user.
@@ -649,7 +658,7 @@ class SuperUserManagement(ApiResource):
         """
         Returns information about the specified user.
         """
-        if SuperUserPermission().can():
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
             user = pre_oci_model.get_nonrobot_user(username)
             if user is None:
                 raise NotFound()

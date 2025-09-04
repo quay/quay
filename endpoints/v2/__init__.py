@@ -178,7 +178,11 @@ def oci_tag_paginate(
 
 
 def _require_repo_permission(permission_class, scopes=None, allow_public=False):
-    def _require_permission(allow_for_superuser=False, disallow_for_restricted_users=False):
+    def _require_permission(
+        allow_for_superuser=False,
+        allow_for_global_readonly_superuser=False,
+        disallow_for_restricted_users=False,
+    ):
         def wrapper(func):
             @wraps(func)
             def wrapped(namespace_name, repo_name, *args, **kwargs):
@@ -221,13 +225,33 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                 if permission.can():
                     return func(namespace_name, repo_name, *args, **kwargs)
 
-                # Superusers' extra permissions
-                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
+                # Superusers' extra permissions: always allow authenticated superusers,
+                # independent of feature flag, but do not grant writes to global readonly users
+                if allow_for_superuser:
                     context = get_authenticated_context()
+                    if (
+                        context is not None
+                        and context.authed_user is not None
+                        and usermanager.is_superuser(context.authed_user.username)
+                        and not usermanager.is_global_readonly_superuser(
+                            context.authed_user.username
+                        )
+                    ):
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
-                    if context is not None and context.authed_user is not None:
-                        if usermanager.is_superuser(context.authed_user.username):
-                            return func(namespace_name, repo_name, *args, **kwargs)
+                # Global readonly superusers' extra permissions
+                # Only honor this bypass for read permissions.
+                if (
+                    allow_for_global_readonly_superuser
+                    and permission_class is ReadRepositoryPermission
+                ):
+                    context = get_authenticated_context()
+                    if (
+                        context is not None
+                        and context.authed_user is not None
+                        and usermanager.is_global_readonly_superuser(context.authed_user.username)
+                    ):
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
                 repository = namespace_name + "/" + repo_name
                 if allow_public:
@@ -254,7 +278,9 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                         if (
                             context is not None
                             and context.authed_user is not None
-                            and usermanager.is_global_readonly_superuser(context.authed_user)
+                            and usermanager.is_global_readonly_superuser(
+                                context.authed_user.username
+                            )
                         ):
                             return func(namespace_name, repo_name, *args, **kwargs)
 
