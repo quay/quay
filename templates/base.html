@@ -85,7 +85,7 @@
       </script>
     {% else %}
       <script type="text/javascript">
-        // FakeSentry wrapper when Sentry is not available
+        // FakeSentry wrapper when Sentry is not loaded yet/not available
         window.Sentry = {
           captureException: function() {},
           setUser: function() {},
