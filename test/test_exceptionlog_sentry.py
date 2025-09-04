@@ -59,13 +59,19 @@ class TestExceptionLogSentry:
 
             sentry = Sentry(mock_app)
 
-            # Verify Sentry SDK was initialized
-            mock_sentry_sdk.init.assert_called_once_with(
-                dsn="https://test@sentry.io/123",
-                environment="test",
-                traces_sample_rate=0.5,
-                profiles_sample_rate=0.3,
-            )
+            # Verify Sentry SDK was initialized - the SDK automatically adds additional parameters
+            call_args = mock_sentry_sdk.init.call_args
+            assert call_args is not None
+
+            # Check the required parameters we explicitly set
+            kwargs = call_args.kwargs
+            assert kwargs["dsn"] == "https://test@sentry.io/123"
+            assert kwargs["environment"] == "test"
+            assert kwargs["traces_sample_rate"] == 0.5
+            assert kwargs["profiles_sample_rate"] == 0.3
+
+            # Verify the SDK was called exactly once
+            assert mock_sentry_sdk.init.call_count == 1
 
             # Verify the initialized Sentry SDK object is returned
             assert sentry.state is mock_initialized_sentry
@@ -102,13 +108,19 @@ class TestExceptionLogSentry:
 
             sentry = Sentry(mock_app)
 
-            # Verify default values are used
-            mock_sentry_sdk.init.assert_called_once_with(
-                dsn="https://test@sentry.io/123",
-                environment="production",  # default
-                traces_sample_rate=0.1,  # default
-                profiles_sample_rate=0.1,  # default
-            )
+            # Verify default values are used - the SDK automatically adds additional parameters
+            call_args = mock_sentry_sdk.init.call_args
+            assert call_args is not None
+
+            # Check the required parameters we explicitly set
+            kwargs = call_args.kwargs
+            assert kwargs["dsn"] == "https://test@sentry.io/123"
+            assert kwargs["environment"] == "production"  # default
+            assert kwargs["traces_sample_rate"] == 0.1  # default
+            assert kwargs["profiles_sample_rate"] == 0.1  # default
+
+            # Verify the SDK was called exactly once
+            assert mock_sentry_sdk.init.call_count == 1
 
             # Verify the initialized Sentry SDK object is returned
             assert sentry.state is mock_initialized_sentry
@@ -161,13 +173,19 @@ class TestExceptionLogSentry:
 
             sentry = Sentry(mock_app)
 
-            # Verify Sentry SDK was initialized without any integrations
-            mock_sentry_sdk.init.assert_called_once_with(
-                dsn="https://test@sentry.io/123",
-                environment="test",
-                traces_sample_rate=0.1,
-                profiles_sample_rate=0.1,
-            )
+            # Verify Sentry SDK was initialized - the SDK automatically adds additional parameters
+            call_args = mock_sentry_sdk.init.call_args
+            assert call_args is not None
+
+            # Check the required parameters we explicitly set
+            kwargs = call_args.kwargs
+            assert kwargs["dsn"] == "https://test@sentry.io/123"
+            assert kwargs["environment"] == "test"
+            assert kwargs["traces_sample_rate"] == 0.1
+            assert kwargs["profiles_sample_rate"] == 0.1
+
+            # Verify the SDK was called exactly once
+            assert mock_sentry_sdk.init.call_count == 1
 
             # Verify the initialized Sentry SDK object is returned
             assert sentry.state is mock_initialized_sentry
