@@ -1,4 +1,5 @@
 import axios from 'src/libs/axios';
+import {AxiosError} from 'axios';
 
 export interface IQuotaLimit {
   id: string;
@@ -31,10 +32,29 @@ export async function fetchOrganizationQuota(
   orgName: string,
   signal?: AbortSignal,
 ): Promise<IQuota[]> {
-  const response = await axios.get(`/api/v1/organization/${orgName}/quota`, {
-    signal,
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`/api/v1/organization/${orgName}/quota`, {
+      signal,
+    });
+    return response.data;
+  } catch (error: unknown) {
+    // Handle AbortController cancellations gracefully
+    if (error instanceof Error && error.name === 'CanceledError') {
+      return [];
+    }
+    // Handle AxiosError specifically
+    if (error instanceof AxiosError) {
+      if (error.code === 'ERR_CANCELED') {
+        return [];
+      }
+      // Return empty array for 404 (no quota configured) or permission errors
+      if (error.response?.status === 404 || error.response?.status === 403) {
+        return [];
+      }
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 // Create organization quota

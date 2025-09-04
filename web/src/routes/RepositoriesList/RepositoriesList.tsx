@@ -110,7 +110,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     const consumedDisplay =
       totalQuotaConsumed > 0
         ? `${consumedHuman.value} ${consumedHuman.unit}`
-        : '0 B';
+        : '0.00 KiB';
 
     if (organizationQuota?.limit_bytes) {
       const totalHuman = bytesToHumanReadable(organizationQuota.limit_bytes);

@@ -433,6 +433,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
           variant="info"
           title="No Quota Configured"
           style={{marginBottom: '1em'}}
+          data-testid="no-quota-alert"
         />
       )}
 
@@ -462,6 +463,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   render={({field: {value, onChange}}) => (
                     <Select
                       id="quota-unit-select"
+                      data-testid="quota-unit-select"
                       isOpen={isUnitSelectOpen}
                       selected={value}
                       onSelect={(_event, selection) => {
@@ -475,6 +477,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           onClick={() => setIsUnitSelectOpen(!isUnitSelectOpen)}
                           isDisabled={hasQuota && props.isUser}
                           style={{minWidth: '90px'}}
+                          data-testid="quota-unit-select-toggle"
                         >
                           {value}
                         </MenuToggle>
@@ -496,7 +499,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
 
       {/* Quota Policy Section */}
       {hasQuota && (
-        <FormGroup label="Quota Policy" fieldId="quota-limits">
+        <FormGroup
+          label="Quota Policy"
+          fieldId="quota-limits"
+          data-testid="quota-policy-section"
+        >
           <Flex
             direction={{default: 'column'}}
             spaceItems={{default: 'spaceItemsXs'}}
@@ -532,6 +539,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                 isCompact
                 isPlain
                 style={{maxWidth: '600px'}}
+                data-testid={`quota-limit-${limit.id}`}
               >
                 <CardBody>
                   <Flex
@@ -600,6 +608,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                 value={limit.limit_percent}
                                 min={1}
                                 max={100}
+                                data-testid="limit-percent-input"
+                                aria-label="Edit limit percentage"
                                 onChange={(_event, value) => {
                                   const numValue = parseInt(value, 10);
                                   if (
@@ -638,6 +648,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           size="sm"
                           onClick={() => handleUpdateLimit(limit.id, limit)}
                           isDisabled={!hasLimitChanged(limit.id)}
+                          data-testid="update-limit-button"
                         >
                           Update
                         </Button>
@@ -645,6 +656,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           variant="danger"
                           size="sm"
                           onClick={() => handleDeleteLimit(limit.id)}
+                          data-testid="remove-limit-button"
                         >
                           Remove
                         </Button>
@@ -657,7 +669,12 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
 
             {/* Add new limit card */}
             {
-              <Card isCompact isPlain style={{maxWidth: '600px'}}>
+              <Card
+                isCompact
+                isPlain
+                style={{maxWidth: '600px'}}
+                data-testid="add-limit-form"
+              >
                 <CardBody>
                   <Flex
                     justifyContent={{default: 'justifyContentFlexStart'}}
@@ -686,6 +703,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                             }
                             toggle={(toggleRef) => (
                               <MenuToggle
+                                data-testid="new-limit-type-select"
                                 ref={toggleRef}
                                 onClick={() =>
                                   setIsNewLimitTypeSelectOpen(
@@ -716,6 +734,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                 value={newLimit.limit_percent}
                                 min={1}
                                 max={100}
+                                data-testid="new-limit-percent-input"
+                                aria-label="New limit percentage"
                                 onChange={(_event, value) => {
                                   const numValue = parseInt(value, 10);
                                   if (
@@ -750,6 +770,12 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                         size="sm"
                         icon={<PlusIcon />}
                         onClick={handleAddLimit}
+                        data-testid="add-limit-button"
+                        isDisabled={
+                          !newLimit.type ||
+                          newLimit.limit_percent === '' ||
+                          newLimit.limit_percent === 0
+                        }
                       >
                         Add Limit
                       </Button>
@@ -765,6 +791,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                 variant="info"
                 title="Note: No quota policy defined. Users will be able to exceed the storage quota set above."
                 isInline
+                data-testid="no-policy-info"
               />
             )}
           </Flex>
@@ -778,6 +805,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
           variant="primary"
           type="submit"
           isDisabled={!isValid || parseFloat(formValues.quotaValue || '0') <= 0}
+          data-testid="apply-quota-button"
         >
           Apply
         </Button>
@@ -787,6 +815,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
             id="delete-quota"
             variant="danger"
             onClick={handleDeleteQuota}
+            data-testid="remove-quota-button"
           >
             Remove
           </Button>
@@ -802,7 +831,12 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         actions={[
-          <Button key="confirm" variant="danger" onClick={confirmDeleteQuota}>
+          <Button
+            key="confirm"
+            variant="danger"
+            onClick={confirmDeleteQuota}
+            data-testid="confirm-delete-quota"
+          >
             OK
           </Button>,
           <Button
