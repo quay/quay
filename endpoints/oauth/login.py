@@ -23,7 +23,6 @@ from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME, csrf_protect, generate_csrf_to
 from endpoints.web import index, render_page_template_with_routedata
 from oauth.login import ExportComplianceException, OAuthLoginException
 from oauth.login_utils import _attach_service, _conduct_oauth_login
-from oauth.pkce import code_challenge, generate_code_verifier
 from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)

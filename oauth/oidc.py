@@ -19,7 +19,6 @@ from oauth.base import (
 )
 from oauth.login import OAuthLoginException
 from oauth.login_utils import get_sub_username_email_from_token
-from oauth.pkce import code_challenge, generate_code_verifier
 from util.security.jwtutil import InvalidTokenError, decode
 
 logger = logging.getLogger(__name__)
