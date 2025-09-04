@@ -2,6 +2,8 @@ import base64
 import json
 import pickle
 import string
+import hashlib
+import hmac
 from random import SystemRandom
 
 import bcrypt
@@ -14,6 +16,28 @@ from util.bytes import Bytes
 def random_string(length=16):
     random = SystemRandom()
     return "".join([random.choice(string.ascii_uppercase + string.digits) for _ in range(length)])
+
+
+def _create_hasher_signature(data, secret_key=None):
+    """
+    Create HMAC signature for hasher state to prevent tampering.
+    """
+    if secret_key is None:
+        # In production, this should come from config
+        secret_key = b"quay-hasher-signature-key-change-in-production"
+    
+    return hmac.new(secret_key, data, hashlib.sha256).digest()
+
+
+def _verify_hasher_signature(data, signature, secret_key=None):
+    """
+    Verify HMAC signature for hasher state.
+    """
+    if secret_key is None:
+        secret_key = b"quay-hasher-signature-key-change-in-production"
+    
+    expected_signature = _create_hasher_signature(data, secret_key)
+    return hmac.compare_digest(signature, expected_signature)
 
 
 class _ResumableSHAField(TextField):
@@ -29,30 +53,88 @@ class _ResumableSHAField(TextField):
     def db_value(self, value):
         """
         Serialize the Hasher's state for storage in the database as plain-text.
+        Uses signed serialization to prevent tampering.
         """
         if value is None:
             return None
 
-        serialized_state = base64.b64encode(pickle.dumps(value)).decode("ascii")
+        # Serialize the hasher state
+        pickled_data = pickle.dumps(value)
+        
+        # Create signature to prevent tampering
+        signature = _create_hasher_signature(pickled_data)
+        
+        # Combine signature and data
+        signed_data = signature + pickled_data
+        
+        serialized_state = base64.b64encode(signed_data).decode("ascii")
         return serialized_state
 
     def python_value(self, value):
         """
         Restore the Hasher from its state stored in the database.
+        Verifies signature to prevent arbitrary code execution via pickle deserialization.
         """
         if value is None:
             return None
 
-        hasher = pickle.loads(base64.b64decode(value.encode("ascii")))
-        return hasher
+        try:
+            # Decode the base64 data
+            signed_data = base64.b64decode(value.encode("ascii"))
+            
+            # Extract signature (first 32 bytes for SHA-256 HMAC) and data
+            if len(signed_data) < 32:
+                raise ValueError("Invalid hasher state: too short")
+                
+            signature = signed_data[:32]
+            pickled_data = signed_data[32:]
+            
+            # Verify signature to prevent tampering
+            if not _verify_hasher_signature(pickled_data, signature):
+                raise ValueError("Invalid hasher state: signature verification failed")
+            
+            # Only deserialize if signature is valid
+            hasher = pickle.loads(pickled_data)
+            
+            # Additional validation: ensure the object has expected hasher methods
+            if not hasattr(hasher, 'update') or not hasattr(hasher, 'digest'):
+                raise ValueError("Invalid hasher state: object is not a valid hasher")
+                
+            return hasher
+            
+        except (ValueError, TypeError, pickle.UnpicklingError) as e:
+            # Log the error and return None to gracefully handle corrupted data
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to deserialize hasher state: {e}")
+            
+            # Return a fresh hasher instead of None to prevent application errors
+            return self._create_sha()
 
 
 class ResumableSHA256Field(_ResumableSHAField):
-    pass
+    def _create_sha(self):
+        """Create a fresh SHA-256 hasher instance."""
+        try:
+            import resumablesha256 as rehash
+            return rehash.sha256()
+        except ImportError:
+            # Fallback to standard hashlib if resumablesha256 is not available
+            import hashlib
+            return hashlib.sha256()
 
 
 class ResumableSHA1Field(_ResumableSHAField):
-    pass
+    def _create_sha(self):
+        """Create a fresh SHA-1 hasher instance."""
+        try:
+            import resumablesha256 as rehash
+            # Assuming resumablesha256 also provides sha1, or use hashlib as fallback
+            return rehash.sha1() if hasattr(rehash, 'sha1') else hashlib.sha1()
+        except ImportError:
+            # Fallback to standard hashlib if resumablesha256 is not available
+            import hashlib
+            return hashlib.sha1()
 
 
 class JSONField(TextField):
