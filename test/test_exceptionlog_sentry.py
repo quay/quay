@@ -59,11 +59,9 @@ class TestExceptionLogSentry:
 
             sentry = Sentry(mock_app)
 
-            # Verify Sentry SDK was initialized - the SDK automatically adds additional parameters
             call_args = mock_sentry_sdk.init.call_args
             assert call_args is not None
 
-            # Check the required parameters we explicitly set
             kwargs = call_args.kwargs
             assert kwargs["dsn"] == "https://test@sentry.io/123"
             assert kwargs["environment"] == "test"

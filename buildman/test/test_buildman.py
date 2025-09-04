@@ -766,21 +766,17 @@ class TestBuilderSentry(unittest.TestCase):
 
             initialize_sentry()
 
-            # Verify Sentry was initialized - the SDK automatically adds additional parameters
             call_args = mock_sentry_sdk.init.call_args
             assert call_args is not None
 
-            # Check the required parameters we explicitly set
             kwargs = call_args.kwargs
             assert kwargs["dsn"] == "https://test@sentry.io/123"
             assert kwargs["environment"] == "test"
             assert kwargs["traces_sample_rate"] == 0.5
             assert kwargs["profiles_sample_rate"] == 0.3
 
-            # Verify the SDK was called exactly once
             assert mock_sentry_sdk.init.call_count == 1
 
-            # Verify tags were set
             expected_calls = [
                 (("service", "buildman"),),
                 (("buildman", "test-host:buildman"),),
@@ -848,11 +844,9 @@ class TestBuilderSentry(unittest.TestCase):
 
             initialize_sentry()
 
-            # Verify Sentry SDK was initialized - the SDK automatically adds additional parameters
             call_args = mock_sentry_sdk.init.call_args
             assert call_args is not None
 
-            # Check the required parameters we explicitly set
             kwargs = call_args.kwargs
             assert kwargs["dsn"] == "https://test@sentry.io/123"
             assert kwargs["environment"] == "production"  # default
