@@ -23,6 +23,8 @@ htmlcov
 .npm-debug.log
 Dockerfile-e
 .vscode
+.cursorindexingignore
+.specstory/
 *.iml
 .DS_Store
 .pytest_cache/*
