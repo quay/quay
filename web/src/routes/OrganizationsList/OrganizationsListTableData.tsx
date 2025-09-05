@@ -3,16 +3,15 @@ import {Skeleton} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
-import {
-  fetchRepositoriesForNamespace,
-  IRepository,
-} from 'src/resources/RepositoryResource';
+import {IRepository} from 'src/resources/RepositoryResource';
 import {fetchMembersForOrg} from 'src/resources/MembersResource';
 import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
+import OrganizationOptionsKebab from './OrganizationOptionsKebab';
 import {useRepositories} from 'src/hooks/UseRepositories';
 
 interface CountProps {
@@ -51,6 +50,9 @@ export default function OrgTableData(props: OrganizationsTableItem) {
   //     queryClient.cancelQueries(['organization', props.name, 'repositories']);
   //   };
   // }, [props.name]);
+
+  const {isSuperUser} = useCurrentUser();
+
   // Get organization
   const {data: organization} = useQuery(
     ['organization', props.name],
@@ -89,11 +91,13 @@ export default function OrgTableData(props: OrganizationsTableItem) {
     );
     return recentRepo.last_modified || -1;
   };
-  const lastModifiedDate = getLastModifiedRepoTime(repositories);
+  const lastModifiedDate = getLastModifiedRepoTime(
+    Array.isArray(repositories) ? repositories.flat() : repositories || [],
+  );
 
   let teamCountVal: string;
   if (!props.isUser) {
-    const {data: teams} = useQuery(
+    useQuery(
       ['organization', props.name, 'teams'],
       () => organization?.teams || [],
     );
@@ -126,6 +130,11 @@ export default function OrgTableData(props: OrganizationsTableItem) {
           lastModifiedDate={lastModifiedDate}
         ></RepoLastModifiedDate>
       </Td>
+      {isSuperUser && (
+        <Td dataLabel={ColumnNames.options}>
+          <OrganizationOptionsKebab name={props.name} isUser={props.isUser} />
+        </Td>
+      )}
     </>
   );
 }
