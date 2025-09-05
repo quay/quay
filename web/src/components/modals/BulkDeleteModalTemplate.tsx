@@ -63,7 +63,7 @@ export const BulkDeleteModalTemplate = <T,>(
 
   useEffect(() => {
     setItemsMarkedForDelete(props.selectedItems);
-  }, []);
+  }, [props.selectedItems]);
 
   /* Function that transforms a given cell value with the transformation function if present
   else returns the default cell value */
@@ -169,6 +169,7 @@ export const BulkDeleteModalTemplate = <T,>(
           type="text"
           onChange={(_event, value) => setConfirmDeletionInput(value)}
           aria-label="text input example"
+          data-testid="bulk-delete-confirmation-input"
         />
       </PageSection>
     </Modal>
