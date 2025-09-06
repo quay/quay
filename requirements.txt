@@ -106,7 +106,7 @@ splunk-sdk==1.7.4
 SQLAlchemy==1.4.49
 stevedore==5.1.0
 stringscore==0.1.0
-stripe==5.5.0
+stripe==12.5.1
 supervisor==4.2.5
 supervisor-logging==0.0.9
 supervisor-stdout @ git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380
