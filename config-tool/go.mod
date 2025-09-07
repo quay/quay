@@ -24,7 +24,7 @@ require (
 	github.com/ncw/swift v1.0.52
 	github.com/olekukonko/tablewriter v0.0.5-0.20200416053754-163badb3bac6
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.10.1
 	github.com/swaggo/http-swagger v1.3.3
 	github.com/swaggo/swag v1.8.1
 	golang.org/x/crypto v0.14.0
@@ -47,7 +47,7 @@ require (
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.8.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/onsi/gomega v1.10.3 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20200921180117-858c6e7e6b7e // indirect
 	github.com/rs/xid v1.4.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	go.opentelemetry.io/otel v0.13.0 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
