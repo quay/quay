@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 from data.logs_model.logs_producer import LogSendException
 from data.logs_model.logs_producer.interface import LogProducerInterface
 from data.logs_model.logs_producer.util import logs_json_serializer
+from util.aws_sts import create_aws_client
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +56,13 @@ class KinesisStreamLogsProducer(LogProducerInterface):
         read_timeout=None,
         max_retries=None,
         max_pool_connections=None,
+        sts_role_arn=None,
     ):
         self._stream_name = stream_name
         self._aws_region = aws_region
         self._aws_access_key = aws_access_key
         self._aws_secret_key = aws_secret_key
+        self._sts_role_arn = sts_role_arn
         self._connect_timeout = connect_timeout or DEFAULT_CONNECT_TIMEOUT
         self._read_timeout = read_timeout or DEFAULT_READ_TIMEOUT
         self._max_retries = max_retries or MAX_RETRY_ATTEMPTS
@@ -71,13 +74,15 @@ class KinesisStreamLogsProducer(LogProducerInterface):
             retries={"max_attempts": self._max_retries},
             max_pool_connections=self._max_pool_connections,
         )
-        self._producer = boto3.client(
-            "kinesis",
-            use_ssl=True,
-            region_name=self._aws_region,
-            aws_access_key_id=self._aws_access_key,
-            aws_secret_access_key=self._aws_secret_key,
+
+        self._producer = create_aws_client(
+            service_name="kinesis",
+            region=self._aws_region,
+            access_key=self._aws_access_key,
+            secret_key=self._aws_secret_key,
+            sts_role_arn=self._sts_role_arn,
             config=client_config,
+            use_ssl=True,
         )
 
     def send(self, logentry):

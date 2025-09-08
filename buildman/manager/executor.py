@@ -23,6 +23,7 @@ from _init import OVERRIDE_CONFIG_DIRECTORY, ROOT_DIR
 from app import app
 from buildman.container_cloud_config import CloudConfigContext
 from buildman.server import SECURE_GRPC_SERVER_PORT
+from util.aws_sts import create_aws_client
 
 logger = logging.getLogger(__name__)
 
@@ -234,11 +235,12 @@ class EC2Executor(BuilderExecutor):
         """
         Creates an ec2 connection which can be used to manage instances.
         """
-        return boto3.client(
-            "ec2",
-            region_name=self.executor_config["EC2_REGION"],
-            aws_access_key_id=self.executor_config["AWS_ACCESS_KEY"],
-            aws_secret_access_key=self.executor_config["AWS_SECRET_KEY"],
+        return create_aws_client(
+            service_name="ec2",
+            region=self.executor_config["EC2_REGION"],
+            access_key=self.executor_config.get("AWS_ACCESS_KEY"),
+            secret_key=self.executor_config.get("AWS_SECRET_KEY"),
+            sts_role_arn=self.executor_config.get("STS_ROLE_ARN"),
         )
 
     @property
