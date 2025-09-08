@@ -26,6 +26,7 @@ class SplunkHECLogsProducer(LogProducerInterface):
         index=None,
         splunk_host=None,
         splunk_sourcetype=None,
+        timeout=10,
     ):
         splunk_port = port if port else (443 if verify_ssl else 80)
         self.hec_url = f"{url_scheme}://{host}:{splunk_port}/services/collector/event"
@@ -39,6 +40,7 @@ class SplunkHECLogsProducer(LogProducerInterface):
         self.index = index
         self.splunk_host = splunk_host
         self.splunk_sourcetype = splunk_sourcetype
+        self.timeout = timeout
 
     def send(self, log):
         try:
@@ -63,6 +65,7 @@ class SplunkHECLogsProducer(LogProducerInterface):
                 headers=self.headers,
                 data=log_data,
                 verify=self.ssl_verify_context,
+                timeout=self.timeout,
             )
             response.raise_for_status()
         except Exception as e:
