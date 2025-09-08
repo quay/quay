@@ -452,6 +452,7 @@ def test_splunk_hec_logs_producer(
                         verify=splunk_hec_logs_model_config["LOGS_MODEL_CONFIG"][
                             "splunk_hec_config"
                         ]["ssl_ca_path"],
+                        timeout=10,
                     )
                 ]
                 mock_post.assert_has_calls(expected_post_args)
