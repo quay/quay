@@ -106,12 +106,17 @@ RUN set -ex\
 
 # Build-static downloads the static javascript.
 FROM registry.access.redhat.com/ubi8/nodejs-22 AS build-static
+ARG BUILD_ANGULAR=true
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
-RUN npm run --quiet build
+RUN if [ "$BUILD_ANGULAR" = "true" ]; then \
+        npm run --quiet build; \
+    else \
+        mkdir -p static && echo "Angular build skipped" > static/.angular_skipped; \
+    fi
 
 # Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-22:latest as build-ui
@@ -168,6 +173,7 @@ ENV QUAYCONF /quay-registry/conf
 ENV QUAYRUN /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
 ENV PYTHONPATH $QUAYPATH
+ENV DEFAULT_UI=angular
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #

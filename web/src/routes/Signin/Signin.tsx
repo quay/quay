@@ -7,7 +7,7 @@ import {
 } from '@patternfly/react-core';
 import logo from 'src/assets/quay.svg';
 import {GlobalAuthState, loginUser} from 'src/resources/AuthResource';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate, Link} from 'react-router-dom';
 import {useRecoilState} from 'recoil';
 import {AuthState} from 'src/atoms/AuthState';
 import axios, {getCsrfToken} from 'src/libs/axios';
@@ -107,6 +107,14 @@ export function Signin() {
       backgroundImgSrc="assets/images/rh_login.jpeg"
       textContent="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
       loginTitle="Log in to your account"
+      loginSubtitle={
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          Don't have an account?{' '}
+          <Link to="/createaccount" style={{ color: 'var(--pf-v5-global--link--Color)' }}>
+            Create account
+          </Link>
+        </div>
+      }
     >
       {loginForm}
     </LoginPage>
