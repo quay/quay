@@ -45,16 +45,27 @@ location / {
     root {{static_dir}}/patternfly/;
     index index.html;
 
-    # Show new UI if patternfly cookie is set
-    if ($cookie_patternfly) {
-        # catch new static paths and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/tag) /index.html break;
+    # Set default UI based on environment
+    set $default_ui "{{ default_ui | default('angular') }}";
+    set $use_new_ui $cookie_patternfly;
+
+    # If no cookie is set, use environment default
+    if ($cookie_patternfly = "") {
+        set $use_new_ui $default_ui;
     }
 
-    # Show old UI if patternfly cookie is not set
-    if ($cookie_patternfly != "true") {
+    # Show new UI if cookie or default is set to "true"/"react"
+    if ($use_new_ui ~ "^(true|react)$") {
+        # catch new static paths and direct to /index.html
+        rewrite ^(/overview|/organization|/repository|/tag|/signin|/createaccount) /index.html break;
+    }
+
+    # Route to Angular UI when available and not using React UI
+    {% if angular_available %}
+    if ($use_new_ui !~ "^(true|react)$") {
         proxy_pass   http://web_app_server;
     }
+    {% endif %}
 }
 
 # Capture traffic that needs to go to web_app, see /web.py

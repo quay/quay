@@ -1,0 +1,23 @@
+/* Create Account page styles */
+.create-account-form {
+  max-width: 400px;
+}
+
+.create-account-form .pf-v5-c-form__group {
+  margin-bottom: 1rem;
+}
+
+.create-account-form .pf-v5-c-button {
+  margin-top: 1rem;
+}
+
+.create-account-link {
+  text-align: center;
+  margin-top: 1rem;
+  color: var(--pf-v5-global--link--Color);
+  text-decoration: none;
+}
+
+.create-account-link:hover {
+  text-decoration: underline;
+}
