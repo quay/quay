@@ -1,18 +1,15 @@
-import {Td} from '@patternfly/react-table';
+import {QuayTd as Td} from '../../components/QuayTable';
 import {Skeleton} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
-import {
-  fetchRepositoriesForNamespace,
-  IRepository,
-} from 'src/resources/RepositoryResource';
+import {IRepository} from 'src/resources/RepositoryResource';
 import {fetchMembersForOrg} from 'src/resources/MembersResource';
 import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import {useRepositories} from 'src/hooks/UseRepositories';
 
 interface CountProps {
@@ -89,7 +86,13 @@ export default function OrgTableData(props: OrganizationsTableItem) {
     );
     return recentRepo.last_modified || -1;
   };
-  const lastModifiedDate = getLastModifiedRepoTime(repositories);
+  const lastModifiedDate = getLastModifiedRepoTime(
+    Array.isArray(repositories) &&
+      repositories.length > 0 &&
+      !Array.isArray(repositories[0])
+      ? (repositories as IRepository[])
+      : [],
+  );
 
   let teamCountVal: string;
   if (!props.isUser) {

@@ -1,15 +1,9 @@
 import {Spinner} from '@patternfly/react-core';
-import {
-  ExpandableRowContent,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Tbody,
-  Td,
-} from '@patternfly/react-table';
+import {ExpandableRowContent} from '@patternfly/react-table';
+import {Table, Thead, Tr, Th, Tbody, Td} from '../../../components/QuayTable';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
+import {QuayThSortProps as ThProps} from '../../../components/QuayTable';
 import {Tag, Manifest} from 'src/resources/TagResource';
 import {useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
@@ -251,13 +245,23 @@ export default function TagsTable(props: TableProps) {
           <Tr>
             <Th />
             <Th />
-            <Th>Tag</Th>
-            <Th>Security</Th>
-            <Th>Size</Th>
-            <Th>Last Modified</Th>
-            <Th>Expires</Th>
-            <Th>Manifest</Th>
-            <Th>Pull</Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(2)}>
+              Tag
+            </Th>
+            <Th modifier="wrap">Security</Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(4)}>
+              Size
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(5)}>
+              Last Modified
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
+              Expires
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
+              Manifest
+            </Th>
+            <Th modifier="wrap">Pull</Th>
             <Th />
           </Tr>
         </Thead>
@@ -296,6 +300,7 @@ interface TableProps {
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
+  getSortableSort?: (columnIndex: number) => ThProps['sort'];
 }
 
 interface RowProps {
