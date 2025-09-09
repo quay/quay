@@ -6,7 +6,15 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
-import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
+import {
+  QuayTable,
+  QuayTbody,
+  QuayTd,
+  QuayTh,
+  QuayThead,
+  QuayTr,
+} from '../../components/QuayTable';
+import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue} from 'recoil';
 import {
@@ -57,9 +65,6 @@ export default function OrganizationsList() {
   const [err, setErr] = useState<string[]>();
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
-  const [perPage, setPerPage] = useState<number>(20);
-  const [page, setPage] = useState<number>(1);
-
   const {
     organizationsTableDetails,
     loading,
@@ -71,14 +76,19 @@ export default function OrganizationsList() {
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
 
-  const filteredOrgs = searchFilter
-    ? organizationsTableDetails?.filter(searchFilter)
-    : organizationsTableDetails;
-
-  const paginatedOrganizationsList = filteredOrgs?.slice(
-    page * perPage - perPage,
-    page * perPage - perPage + perPage,
-  );
+  // Use unified table hook for sorting and pagination (Name column only)
+  const {
+    paginatedData: paginatedOrganizationsList,
+    sortedData: sortedOrgs,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(organizationsTableDetails || [], {
+    columns: {
+      1: (org) => org.name, // Name column only
+    },
+    filter: searchFilter,
+    initialPerPage: 20,
+  });
 
   const isOrgSelectable = (org) => org.name !== ''; // Arbitrary logic for this example
 
@@ -289,31 +299,33 @@ export default function OrganizationsList() {
           selectedOrganization={selectedOrganization}
           deleteKebabIsOpen={deleteModalIsOpen}
           deleteModal={deleteModal}
-          organizationsList={filteredOrgs}
-          perPage={perPage}
-          page={page}
-          setPage={setPage}
-          setPerPage={setPerPage}
+          organizationsList={sortedOrgs}
+          perPage={paginationProps.perPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          setPerPage={paginationProps.setPerPage}
           setSelectedOrganization={setSelectedOrganization}
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
         />
-        <Table aria-label="Selectable table" variant="compact">
-          <Thead>
-            <Tr>
-              <Th />
-              <Th>{ColumnNames.name}</Th>
-              <Th>{ColumnNames.repoCount}</Th>
-              <Th>{ColumnNames.teamsCount}</Th>
-              <Th>{ColumnNames.membersCount}</Th>
-              <Th>{ColumnNames.robotsCount}</Th>
-              <Th>{ColumnNames.lastModified}</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
+        <QuayTable aria-label="Selectable table" variant="compact">
+          <QuayThead>
+            <QuayTr>
+              <QuayTh />
+              <QuayTh sort={getSortableSort(1)} modifier="wrap">
+                {ColumnNames.name}
+              </QuayTh>
+              <QuayTh>{ColumnNames.repoCount}</QuayTh>
+              <QuayTh>{ColumnNames.teamsCount}</QuayTh>
+              <QuayTh>{ColumnNames.membersCount}</QuayTh>
+              <QuayTh>{ColumnNames.robotsCount}</QuayTh>
+              <QuayTh>{ColumnNames.lastModified}</QuayTh>
+            </QuayTr>
+          </QuayThead>
+          <QuayTbody>
             {paginatedOrganizationsList?.map((org, rowIndex) => (
-              <Tr key={org.name}>
-                <Td
+              <QuayTr key={org.name}>
+                <QuayTd
                   select={{
                     rowIndex,
                     onSelect: (_event, isSelecting) =>
@@ -326,17 +338,14 @@ export default function OrganizationsList() {
                   name={org.name}
                   isUser={org.isUser}
                 ></OrgTableData>
-              </Tr>
+              </QuayTr>
             ))}
-          </Tbody>
-        </Table>
+          </QuayTbody>
+        </QuayTable>
         <PanelFooter>
           <ToolbarPagination
-            itemsList={filteredOrgs}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
+            itemsList={sortedOrgs}
+            {...paginationProps}
             bottom={true}
           />
         </PanelFooter>
