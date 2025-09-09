@@ -26,6 +26,7 @@ import {
 } from 'src/resources/TagResource';
 import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -35,28 +36,38 @@ export default function TagsList(props: TagsProps) {
   const searchFilter = useRecoilValue(searchTagsFilterState);
   const resetSearch = useResetRecoilState(searchTagsState);
 
-  const filteredTags: Tag[] = searchFilter ? tags.filter(searchFilter) : tags;
-
-  // Pagination related states
-  const [perPage, setPerPage] = useState<number>(20);
-  const [page, setPage] = useState<number>(1);
-  const paginatedTags: Tag[] = filteredTags.slice(
-    (page - 1) * perPage,
-    page * perPage,
-  );
+  // Use unified table hook for sorting, filtering, and pagination
+  const {
+    paginatedData: paginatedTags,
+    sortedData: sortedTags,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(tags, {
+    columns: {
+      2: (item: Tag) => item.name, // Tag Name
+      4: (item: Tag) => item.size || 0, // Size
+      5: (item: Tag) => item.last_modified, // Last Modified
+      6: (item: Tag) => item.expiration || '', // Expires
+      7: (item: Tag) => item.manifest_digest, // Manifest
+    },
+    filter: searchFilter,
+    initialPerPage: 20,
+  });
 
   // Control selected tags
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const selectAllTags = (isSelecting = true) => {
-    setSelectedTags(isSelecting ? tags.map((t) => t.name) : []);
+    setSelectedTags(isSelecting ? sortedTags.map((t) => t.name) : []);
   };
-  const selectTag = (tag: Tag, rowIndex = 0, isSelecting = true) =>
+  const selectTag = (tag: Tag, rowIndex?: number, isSelecting = true) => {
+    // rowIndex parameter is kept for interface compatibility but not used in this implementation
     setSelectedTags((prevSelected) => {
       const otherSelectedtagNames = prevSelected.filter((r) => r !== tag.name);
       return isSelecting
         ? [...otherSelectedtagNames, tag.name]
         : otherSelectedtagNames;
     });
+  };
 
   const loadTags = async () => {
     const getManifest = async (tag: Tag) => {
@@ -64,6 +75,7 @@ export default function TagsList(props: TagsProps) {
         props.organization,
         props.repository,
         tag.manifest_digest,
+        true, // include_modelcard
       );
       tag.manifest_list = JSON.parse(manifestResp.manifest_data);
     };
@@ -90,10 +102,10 @@ export default function TagsList(props: TagsProps) {
         page++;
         setLoading(false);
       } while (hasAdditional);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       setLoading(false);
-      setErr(addDisplayError('Unable to get tags', error));
+      setErr(addDisplayError('Unable to get tags', error as Error));
     }
   };
 
@@ -122,14 +134,14 @@ export default function TagsList(props: TagsProps) {
         <TagsToolbar
           organization={props.organization}
           repository={props.repository}
-          tagCount={filteredTags.length}
+          tagCount={sortedTags.length}
           loadTags={loadTags}
-          TagList={filteredTags}
+          TagList={sortedTags}
           paginatedTags={paginatedTags}
-          perPage={perPage}
-          page={page}
-          setPage={setPage}
-          setPerPage={setPerPage}
+          perPage={paginationProps.perPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          setPerPage={paginationProps.setPerPage}
           selectTag={selectTag}
           repoDetails={props.repoDetails}
         />
@@ -143,17 +155,11 @@ export default function TagsList(props: TagsProps) {
           selectTag={selectTag}
           loadTags={loadTags}
           repoDetails={props.repoDetails}
+          getSortableSort={getSortableSort}
         />
       </ErrorBoundary>
       <PanelFooter>
-        <ToolbarPagination
-          itemsList={filteredTags}
-          perPage={perPage}
-          page={page}
-          setPage={setPage}
-          setPerPage={setPerPage}
-          bottom={true}
-        />
+        <ToolbarPagination {...paginationProps} bottom={true} />
       </PanelFooter>
     </PageSection>
   );
