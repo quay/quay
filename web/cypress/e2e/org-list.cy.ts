@@ -8,6 +8,30 @@ describe('Org List Page', () => {
       .then((token) => {
         cy.loginByCSRF(token);
       });
+
+    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
+
+    // Intercept the /validateproxycache API call
+    cy.intercept('POST', '/api/v1/organization/*/validateproxycache', (req) => {
+      const {upstream_registry_username, upstream_registry_password} = req.body;
+      if (upstream_registry_username && upstream_registry_password) {
+        req.reply({
+          statusCode: 202,
+          body: 'Valid',
+        });
+      } else {
+        req.reply({
+          statusCode: 202,
+          body: 'Anonymous',
+        });
+      }
+    }).as('validateProxyCache');
+
+    // Intercept the /proxycache API call
+    cy.intercept('POST', '/api/v1/organization/*/proxycache', {
+      statusCode: 201,
+      body: 'Created',
+    }).as('createProxyCache');
   });
 
   it('Search Filter', () => {
@@ -39,7 +63,7 @@ describe('Org List Page', () => {
   });
 
   it('Create Org', () => {
-    cy.intercept('/organization').as('getOrganization');
+    cy.intercept('GET', '/organization').as('getOrganization');
     cy.visit('/organization');
     cy.wait('@getOrganization');
 
@@ -47,11 +71,18 @@ describe('Org List Page', () => {
     cy.get('#create-organization-button').click();
     cy.get('#create-org-cancel').click();
 
+    cy.intercept('POST', '/organization').as('createOrganization');
+
     // Create Org
     cy.get('#create-organization-button').click();
     cy.get('#create-org-name-input').type('cypress');
     cy.get('#create-org-email-input').type('cypress@redhat.com');
-    cy.get('#create-org-confirm').click({timeout: 10000});
+    cy.get('[data-testid="create-org-confirm"]').click();
+
+    cy.wait('@createOrganization').then((interception) => {
+      expect(interception.response?.statusCode).to.eq(201);
+      expect(interception.response?.body).to.eq('Created');
+    });
 
     cy.get('#orgslist-search-input').type('cypress');
     cy.contains('1 - 1 of 1');
@@ -70,6 +101,97 @@ describe('Org List Page', () => {
     cy.contains('Enter a valid email: email@provider.com');
     cy.get('#create-org-confirm').should('be.disabled');
     cy.get('#create-org-cancel').click();
+  });
+
+  it('Can create org with anonymous proxy cache configuration', () => {
+    const orgName = 'cypress';
+    cy.intercept('/organization').as('getOrganization');
+    cy.visit('/organization');
+    cy.wait('@getOrganization');
+
+    // Create Org
+    cy.get('#create-organization-button').click();
+    cy.get('#create-org-name-input').type(orgName);
+    cy.get('#create-org-email-input').type('cypress@redhat.com');
+    // enable proxy cache config
+    cy.get('[data-testid="radio-controlled-yes"]').check();
+    cy.get('[data-testid="remote-registry-input"]').type('docker.io');
+    cy.get('[data-testid="create-org-confirm"]').click();
+
+    // Wait for the validateproxycache API call and assert the response
+    cy.wait('@validateProxyCache', {timeout: 10000}).then((interception) => {
+      expect(interception.response?.statusCode).to.eq(202);
+      expect(interception.response?.body).to.eq('Anonymous');
+    });
+
+    // Wait for the proxycache API call and assert the response
+    cy.wait('@createProxyCache', {timeout: 10000}).then((interception) => {
+      expect(interception.response?.statusCode).to.eq(201);
+      expect(interception.response?.body).to.eq('Created');
+    });
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains(`Successfully created ${orgName} organization`)
+      .should('exist');
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains('Successfully configured proxy cache')
+      .should('exist');
+  });
+
+  it('Can create org with proxy cache having registry credentials', () => {
+    const orgName = 'cypress';
+    cy.intercept('/organization').as('getOrganization');
+    cy.visit('/organization');
+    cy.wait('@getOrganization');
+
+    // Create Org
+    cy.get('#create-organization-button').click();
+    cy.get('#create-org-name-input').type(orgName);
+    cy.get('#create-org-email-input').type('cypress@redhat.com');
+    // enable proxy cache config
+    cy.get('[data-testid="radio-controlled-yes"]').check();
+    cy.get('[data-testid="remote-registry-input"]').type('docker.io');
+    cy.get('[data-testid="remote-registry-username"]').type('testuser1');
+    cy.get('[data-testid="remote-registry-password"]').type('testpass');
+    cy.get('[data-testid="remote-registry-expiration"]').clear().type('76400');
+    cy.get('[data-testid="remote-registry-insecure"]').check();
+    cy.get('[data-testid="create-org-confirm"]').click();
+
+    // Wait for the validateproxycache API call and assert the response
+    cy.wait('@validateProxyCache', {timeout: 10000}).then((interception) => {
+      expect(interception.response?.statusCode).to.eq(202);
+      expect(interception.response?.body).to.eq('Valid');
+    });
+
+    // Wait for the proxycache API call and assert the response
+    cy.wait('@createProxyCache', {timeout: 10000}).then((interception) => {
+      expect(interception.response?.statusCode).to.eq(201);
+      expect(interception.response?.body).to.eq('Created');
+    });
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains(`Successfully created ${orgName} organization`)
+      .should('exist');
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains('Successfully configured proxy cache')
+      .should('exist');
+  });
+
+  it('shows proxy label for an organization with proxy cache configuration', () => {
+    const orgName = 'prometheus';
+    cy.intercept('/organization').as('getOrganization');
+    cy.visit('/organization');
+    cy.wait('@getOrganization');
+
+    cy.get('#orgslist-search-input').type(orgName);
+    cy.contains('1 - 1 of 1');
+    cy.get(`[data-testid="proxy-org-${orgName}"]`).should('exist');
   });
 
   it('Delete Org', () => {

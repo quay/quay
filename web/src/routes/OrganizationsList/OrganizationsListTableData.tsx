@@ -1,19 +1,18 @@
 import {Td} from '@patternfly/react-table';
-import {Skeleton} from '@patternfly/react-core';
+import {Label, Skeleton} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
-import {
-  fetchRepositoriesForNamespace,
-  IRepository,
-} from 'src/resources/RepositoryResource';
+import {IRepository} from 'src/resources/RepositoryResource';
 import {fetchMembersForOrg} from 'src/resources/MembersResource';
 import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import {useRepositories} from 'src/hooks/UseRepositories';
+import {useFetchProxyCacheConfig} from 'src/hooks/UseProxyCache';
+import Conditional from 'src/components/empty/Conditional';
 
 interface CountProps {
   count: string | number;
@@ -104,10 +103,21 @@ export default function OrgTableData(props: OrganizationsTableItem) {
     teamCountVal = 'N/A';
   }
 
+  const {fetchedProxyCacheConfig} = useFetchProxyCacheConfig(props.name);
+
   return (
     <>
       <Td dataLabel={ColumnNames.name}>
-        <Link to={props.name}>{props.name}</Link>
+        <Link to={props.name}>{props.name}&nbsp;&nbsp;</Link>
+        <Conditional if={!!fetchedProxyCacheConfig?.upstream_registry}>
+          <Label
+            key={props.name}
+            color="blue"
+            data-testid={`proxy-org-${props.name}`}
+          >
+            proxy
+          </Label>
+        </Conditional>
       </Td>
       <Td dataLabel={ColumnNames.repoCount}>
         <Count count={repoCount}></Count>

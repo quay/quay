@@ -31,6 +31,7 @@ import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
 import './css/Organizations.scss';
+import {useAlerts} from 'src/hooks/UseAlerts';
 
 export interface OrganizationsTableItem {
   name: string;
