@@ -61,6 +61,7 @@ export interface QuayThProps {
   modifier?: 'wrap' | 'nowrap' | 'truncate' | 'fitContent';
   sort?: PFThProps['sort'];
   width?: 10 | 15 | 20 | 25 | 30 | 35 | 40 | 45 | 50 | 60 | 70 | 80 | 90 | 100;
+  id?: string;
 }
 
 export interface QuayTdProps {
@@ -73,6 +74,7 @@ export interface QuayTdProps {
   colSpan?: number;
   expand?: PFTdProps['expand'];
   style?: React.CSSProperties;
+  cellPadding?: string;
 }
 
 // Forward ref components that properly handle all PatternFly props
@@ -129,13 +131,14 @@ export const QuayTr = React.forwardRef<HTMLTableRowElement, QuayTrProps>(
 );
 
 export const QuayTh = React.forwardRef<HTMLTableCellElement, QuayThProps>(
-  ({children, className, modifier, sort, width}, ref) => (
+  ({children, className, modifier, sort, width, id}, ref) => (
     // @ts-expect-error - PatternFly Th has problematic pointer event types that are false positives
     <PFTh
       className={className}
       modifier={modifier}
       sort={sort}
       width={width}
+      id={id}
       ref={ref}
     >
       {children}
@@ -155,6 +158,7 @@ export const QuayTd = React.forwardRef<HTMLTableCellElement, QuayTdProps>(
       colSpan,
       expand,
       style,
+      cellPadding,
     },
     ref,
   ) => (
@@ -168,6 +172,7 @@ export const QuayTd = React.forwardRef<HTMLTableCellElement, QuayTdProps>(
       colSpan={colSpan}
       expand={expand}
       style={style}
+      cellPadding={cellPadding}
       ref={ref}
     >
       {children}
@@ -186,7 +191,27 @@ QuayTd.displayName = 'QuayTd';
 // Export ThProps type for useTableSort compatibility
 export type {ThProps as QuayThSortProps} from '@patternfly/react-table';
 
-// Convenience exports with shorter names
+// Re-export all PatternFly table components we don't override
+export {
+  ExpandableRowContent,
+  TableText,
+  Caption,
+  InnerScrollContainer,
+  OuterScrollContainer,
+  SortByDirection,
+} from '@patternfly/react-table';
+
+// Export types
+export type {
+  ThProps,
+  TdProps,
+  TrProps,
+  TbodyProps,
+  TheadProps,
+  TableProps,
+} from '@patternfly/react-table';
+
+// Convenience exports with shorter names (our wrapped components)
 export {
   QuayTable as Table,
   QuayThead as Thead,
