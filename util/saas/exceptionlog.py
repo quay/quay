@@ -99,24 +99,6 @@ class Sentry(object):
         app.extensions["sentry"] = sentry
         return sentry
 
-    def test_sentry_connection(self):
-        """Test the Sentry connection by sending a test message."""
-        if self.state is None:
-            return False
-
-        if isinstance(self.state, FakeSentry):
-            return False
-
-        try:
-            sentry_sdk.capture_message("Manual Sentry connection test", level="info")
-            logger = logging.getLogger(__name__)
-            logger.info("Sentry connection test message sent successfully")
-            return True
-        except Exception as e:
-            logger = logging.getLogger(__name__)
-            logger.error("Sentry connection test failed: %s", str(e))
-            return False
-
     def __getattr__(self, name):
         if self.state is None:
             return None
