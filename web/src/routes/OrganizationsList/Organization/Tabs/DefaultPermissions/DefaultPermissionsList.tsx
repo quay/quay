@@ -11,7 +11,14 @@ import {
   DropdownItem,
   DropdownList,
 } from '@patternfly/react-core';
-import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
+import {
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+} from '../../../../../components/QuayTable';
 import {useState} from 'react';
 import {
   IDefaultPermission,
@@ -28,6 +35,7 @@ import RequestError from 'src/components/errors/RequestError';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 import ErrorModal from 'src/components/errors/ErrorModal';
+import {usePaginatedSortableTable} from '../../../../../hooks/usePaginatedSortableTable';
 
 export const permissionColumnNames = {
   repoCreatedBy: 'Repository Created By',
@@ -48,15 +56,31 @@ export default function DefaultPermissionsList(
     loading,
     errorLoadingPermissions,
     defaultPermissions,
-    paginatedPermissions,
-    filteredPermissions,
-    page,
-    setPage,
-    perPage,
-    setPerPage,
     search,
     setSearch,
   } = useFetchDefaultPermissions(props.orgName);
+
+  const searchFilter =
+    search.query !== ''
+      ? (permission: IDefaultPermission) =>
+          permission.createdBy.includes(search.query)
+      : undefined;
+
+  const {
+    paginatedData: paginatedPermissions,
+    filteredData: filteredPermissions,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(defaultPermissions || [], {
+    columns: {
+      1: (item: IDefaultPermission) => item.createdBy, // Repository Created By
+      2: (item: IDefaultPermission) => item.appliedTo, // Permission Applied To
+      3: (item: IDefaultPermission) => item.permission, // Permission
+    },
+    filter: searchFilter,
+    initialPerPage: 20,
+    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Repository Created By ascending
+  });
 
   const [selectedPermissions, setSelectedPermissions] = useState<
     IDefaultPermission[]
@@ -187,10 +211,10 @@ export default function DefaultPermissionsList(
           allItems={filteredPermissions}
           paginatedItems={paginatedPermissions}
           onItemSelect={onSelectPermission}
-          page={page}
-          setPage={setPage}
-          perPage={perPage}
-          setPerPage={setPerPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          perPage={paginationProps.perPage}
+          setPerPage={paginationProps.setPerPage}
           search={search}
           setSearch={setSearch}
           searchOptions={[permissionColumnNames.repoCreatedBy]}
@@ -217,9 +241,15 @@ export default function DefaultPermissionsList(
             <Thead>
               <Tr>
                 <Th />
-                <Th>{permissionColumnNames.repoCreatedBy}</Th>
-                <Th>{permissionColumnNames.permAppliedTo}</Th>
-                <Th>{permissionColumnNames.permission}</Th>
+                <Th sort={getSortableSort(1)}>
+                  {permissionColumnNames.repoCreatedBy}
+                </Th>
+                <Th sort={getSortableSort(2)}>
+                  {permissionColumnNames.permAppliedTo}
+                </Th>
+                <Th sort={getSortableSort(3)}>
+                  {permissionColumnNames.permission}
+                </Th>
                 <Th />
               </Tr>
             </Thead>
