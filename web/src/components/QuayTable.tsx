@@ -75,6 +75,7 @@ export interface QuayTdProps {
   expand?: PFTdProps['expand'];
   style?: React.CSSProperties;
   cellPadding?: string;
+  id?: string;
 }
 
 // Forward ref components that properly handle all PatternFly props
@@ -159,6 +160,7 @@ export const QuayTd = React.forwardRef<HTMLTableCellElement, QuayTdProps>(
       expand,
       style,
       cellPadding,
+      id,
     },
     ref,
   ) => (
@@ -173,6 +175,7 @@ export const QuayTd = React.forwardRef<HTMLTableCellElement, QuayTdProps>(
       expand={expand}
       style={style}
       cellPadding={cellPadding}
+      id={id}
       ref={ref}
     >
       {children}
