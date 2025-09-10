@@ -178,7 +178,7 @@ build-image-quay: .build-image-quay-stamp
 node_modules: node_modules/.npm-install-stamp
 
 node_modules/.npm-install-stamp: package.json package-lock.json | build-image-local-dev-frontend
-	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-install --entrypoint="npm install --ignore-engines" local-dev-frontend
 # if npm install fails for some reason, it may have already created
 # node_modules, so we cannot rely on the directory timestamps and should mark
 # successfull runs of npm install with a stamp file.
