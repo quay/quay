@@ -1,5 +1,5 @@
 import {Spinner} from '@patternfly/react-core';
-import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '../../../components/QuayTable';
 import {useEffect, useState} from 'react';
 import {useRepositoryPermissions} from 'src/hooks/UseRepositoryPermissions';
 import PermissionsToolbar from './PermissionsToolbar';
@@ -10,21 +10,35 @@ import PermissionsKebab from './PermissionsKebab';
 import {DrawerContentType} from '../Types';
 import Entity from 'src/components/Entity';
 import {EntityKind} from 'src/resources/UserResource';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
 export default function Permissions(props: PermissionsProps) {
-  const {
-    members,
-    paginatedMembers,
-    loading,
-    error,
-    page,
-    setPage,
-    perPage,
-    setPerPage,
-    search,
-    setSearch,
-  } = useRepositoryPermissions(props.org, props.repo);
+  const {members, loading, error, search, setSearch} = useRepositoryPermissions(
+    props.org,
+    props.repo,
+  );
   const [selectedMembers, setSelectedMembers] = useState<RepoMember[]>([]);
+
+  const searchFilter =
+    search.query !== ''
+      ? (member: RepoMember) =>
+          member.name.toLowerCase().includes(search.query.toLowerCase())
+      : undefined;
+
+  const {
+    paginatedData: paginatedMembers,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(members || [], {
+    columns: {
+      1: (item: RepoMember) => item.name, // Account
+      2: (item: RepoMember) => item.type, // Type
+      3: (item: RepoMember) => item.role, // Permissions
+    },
+    filter: searchFilter,
+    initialPerPage: 20,
+    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Account ascending
+  });
 
   const onSelectMember = (
     member: RepoMember,
@@ -60,10 +74,10 @@ export default function Permissions(props: PermissionsProps) {
         allItems={members}
         paginatedItems={paginatedMembers}
         selectedItems={selectedMembers}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
+        page={paginationProps.page}
+        setPage={paginationProps.setPage}
+        perPage={paginationProps.perPage}
+        setPerPage={paginationProps.setPerPage}
         searchOptions={[PermissionsColumnNames.account]}
         search={search}
         setSearch={setSearch}
@@ -75,9 +89,11 @@ export default function Permissions(props: PermissionsProps) {
         <Thead>
           <Tr>
             <Th />
-            <Th>{PermissionsColumnNames.account}</Th>
-            <Th>{PermissionsColumnNames.type}</Th>
-            <Th>{PermissionsColumnNames.permissions}</Th>
+            <Th sort={getSortableSort(1)}>{PermissionsColumnNames.account}</Th>
+            <Th sort={getSortableSort(2)}>{PermissionsColumnNames.type}</Th>
+            <Th sort={getSortableSort(3)}>
+              {PermissionsColumnNames.permissions}
+            </Th>
             <Th />
           </Tr>
         </Thead>
