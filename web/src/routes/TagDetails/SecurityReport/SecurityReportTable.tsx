@@ -9,8 +9,8 @@ import {
   Tbody,
   Td,
   ExpandableRowContent,
-  ThProps,
-} from '@patternfly/react-table';
+} from '../../../components/QuayTable';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 import {SecurityReportMetadataTable} from './SecurityReportMetadataTable';
 import {
   PageSection,
@@ -64,75 +64,38 @@ function TableTitle() {
 
 export default function SecurityReportTable({features}: SecurityDetailsProps) {
   const [vulnList, setVulnList] = useState<VulnerabilityListItem[]>([]);
-  const [filteredVulnList, setFilteredVulnList] = useState<
-    VulnerabilityListItem[]
-  >([]);
-
-  // Sorting states
-  const [activeSortIndex, setActiveSortIndex] = React.useState<number | null>(
-    1,
-  );
-  const [activeSortDirection, setActiveSortDirection] = React.useState<
-    'asc' | 'desc' | null
-  >('desc');
-
-  // Pagination state
-  const [page, setPage] = useState<number>(1);
-  const [perPage, setPerPage] = useState<number>(20);
-
-  const paginatedVulns: VulnerabilityListItem[] = filteredVulnList.slice(
-    (page - 1) * perPage,
-    page * perPage,
-  );
-
-  function sortVulnerabilities(sortIndex, direction) {
-    setFilteredVulnList((prevVulnList) => {
-      return prevVulnList.sort((a, b) => {
-        const aValue = VulnSeverityOrder[getSortableRowValues(a)[sortIndex]];
-        const bValue = VulnSeverityOrder[getSortableRowValues(b)[sortIndex]];
-        if (direction === 'desc') {
-          return (aValue as number) - (bValue as number);
-        }
-        return (bValue as number) - (aValue as number);
-      });
-    });
-  }
-
   const [expandedVulnKeys, setExpandedVulnKeys] = React.useState<string[]>([]);
 
-  const sortBySeverity = (columnIndex: number): ThProps['sort'] => ({
-    sortBy: {
-      index: activeSortIndex,
-      direction: activeSortDirection,
+  // Use unified table hook for sorting, filtering, and pagination
+  const {
+    paginatedData: paginatedVulns,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(vulnList, {
+    columns: {
+      0: (vuln: VulnerabilityListItem) => vuln.Advisory, // Advisory
+      1: (vuln: VulnerabilityListItem) =>
+        VulnSeverityOrder[vuln.Severity] || 999, // Severity (preserve custom order)
+      2: (vuln: VulnerabilityListItem) => vuln.PackageName, // Package
+      3: (vuln: VulnerabilityListItem) => vuln.CurrentVersion, // Current Version
+      4: (vuln: VulnerabilityListItem) => vuln.FixedInVersion || 'zzz', // Fixed in Version (null values sort to end)
     },
-    onSort: (_event, index, direction) => {
-      setActiveSortIndex(index);
-      setActiveSortDirection(direction);
-      sortVulnerabilities(index, direction);
-    },
-    columnIndex,
+    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Severity (asc because lower VulnSeverityOrder numbers = higher severity)
+    initialPerPage: 20,
   });
-
-  const getSortableRowValues = (
-    vulnerability: VulnerabilityListItem,
-  ): (string | number)[] => {
-    const {Advisory, Severity, PackageName, CurrentVersion, FixedInVersion} =
-      vulnerability;
-    return [Advisory, Severity, PackageName, CurrentVersion, FixedInVersion];
-  };
 
   function TableHead() {
     return (
       <Thead>
         <Tr>
           <Th />
-          <Th>{columnNames.advisory}</Th>
-          <Th sort={sortBySeverity(1)} id="severity-sort">
+          <Th sort={getSortableSort(0)}>{columnNames.advisory}</Th>
+          <Th sort={getSortableSort(1)} id="severity-sort">
             {columnNames.severity}
           </Th>
-          <Th>{columnNames.package}</Th>
-          <Th>{columnNames.currentVersion}</Th>
-          <Th>{columnNames.fixedInVersion}</Th>
+          <Th sort={getSortableSort(2)}>{columnNames.package}</Th>
+          <Th sort={getSortableSort(3)}>{columnNames.currentVersion}</Th>
+          <Th sort={getSortableSort(4)}>{columnNames.fixedInVersion}</Th>
         </Tr>
       </Thead>
     );
@@ -162,10 +125,10 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
 
   useEffect(() => {
     if (features) {
-      const vulnList: VulnerabilityListItem[] = [];
+      const vulnListData: VulnerabilityListItem[] = [];
       features.map((feature: Feature) => {
         feature.Vulnerabilities.map((vulnerability: Vulnerability) => {
-          vulnList.push({
+          vulnListData.push({
             PackageName: feature.Name,
             CurrentVersion: feature.Version,
             Description: vulnerability.Description,
@@ -178,12 +141,9 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           } as VulnerabilityListItem);
         });
       });
-      setVulnList(vulnList);
-      setFilteredVulnList(vulnList);
-      sortVulnerabilities(activeSortIndex, activeSortDirection);
+      setVulnList(vulnListData);
     } else {
       setVulnList([]);
-      setFilteredVulnList([]);
     }
   }, [features]);
 
@@ -193,17 +153,11 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
       <Toolbar>
         <ToolbarContent>
           <SecurityReportFilter
-            setPage={setPage}
+            setPage={paginationProps.setPage}
             vulnList={vulnList}
-            setFilteredVulnList={setFilteredVulnList}
+            setFilteredVulnList={() => undefined}
           />
-          <ToolbarPagination
-            itemsList={filteredVulnList}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
-          />
+          <ToolbarPagination {...paginationProps} />
         </ToolbarContent>
       </Toolbar>
       <Table
@@ -306,17 +260,6 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           </Tbody>
         )}
       </Table>
-      <Toolbar>
-        <ToolbarContent>
-          <ToolbarPagination
-            itemsList={filteredVulnList}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
-          />
-        </ToolbarContent>
-      </Toolbar>
     </PageSection>
   );
 }
