@@ -38,7 +38,7 @@ class Sentry(object):
             if sentry_dsn:
                 try:
                     logger = logging.getLogger(__name__)
-                    logger.info("Initializing Sentry with DSN: %s", sentry_dsn[:50] + "...")
+                    logger.info("Initializing Sentry with DSN: %s...", sentry_dsn[:10])
 
                     integrations = []
 
