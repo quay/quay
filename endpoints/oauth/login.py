@@ -117,9 +117,15 @@ def _register_service(login_service):
 
         # Exchange the OAuth code for login information.
         code = request.values.get("code")
+        kwargs = {}
+        if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
+            session_key = f"_oauth_pkce_{login_service.service_id()}"
+            data = session.pop(session_key, None)
+            if data and hasattr(data, "get") and data.get("verifier"):
+                kwargs["code_verifier"] = data.get("verifier")
         try:
             lid, lusername, lemail, additional_info = login_service.exchange_code_for_login(
-                app.config, client, code, ""
+                app.config, client, code, "", **kwargs
             )
         except OAuthLoginException as ole:
             logger.exception("Got login exception")
@@ -170,9 +176,15 @@ def _register_service(login_service):
 
         # Exchange the OAuth code for login information.
         code = request.values.get("code")
+        kwargs = {}
+        if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
+            session_key = f"_oauth_pkce_{login_service.service_id()}"
+            data = session.pop(session_key, None)
+            if data and hasattr(data, "get") and data.get("verifier"):
+                kwargs["code_verifier"] = data.get("verifier")
         try:
             lid, lusername, _, _ = login_service.exchange_code_for_login(
-                app.config, client, code, "/attach"
+                app.config, client, code, "/attach", **kwargs
             )
         except OAuthLoginException as ole:
             return _render_ologin_error(login_service.service_name(), str(ole))
@@ -221,8 +233,16 @@ def _register_service(login_service):
 
         # Exchange the OAuth code for the ID token.
         code = request.values.get("code")
+        kwargs = {}
+        if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
+            session_key = f"_oauth_pkce_{login_service.service_id()}"
+            data = session.pop(session_key, None)
+            if data and hasattr(data, "get") and data.get("verifier"):
+                kwargs["code_verifier"] = data.get("verifier")
         try:
-            idtoken, _ = login_service.exchange_code_for_tokens(app.config, client, code, "/cli")
+            idtoken, _ = login_service.exchange_code_for_tokens(
+                app.config, client, code, "/cli", **kwargs
+            )
         except OAuthLoginException as ole:
             return _render_ologin_error(login_service.service_name(), str(ole))
 
