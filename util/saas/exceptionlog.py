@@ -37,6 +37,9 @@ class Sentry(object):
             sentry_dsn = app.config.get("SENTRY_DSN", "")
             if sentry_dsn:
                 try:
+                    logger = logging.getLogger(__name__)
+                    logger.info("Initializing Sentry with DSN: %s...", sentry_dsn[:10])
+
                     integrations = []
 
                     # Always include logging integration
@@ -54,9 +57,11 @@ class Sentry(object):
                                 StdlibIntegration(),
                             ]
                         )
+                        logger.info(
+                            "Sentry initialized with full integrations (Flask, SQLAlchemy, Stdlib)"
+                        )
                     else:
                         # When OTEL is enabled, use minimal integrations to avoid conflicts
-                        logger = logging.getLogger(__name__)
                         logger.info("OpenTelemetry enabled - using minimal Sentry integrations")
 
                     initialized_sentry = sentry_sdk.init(
@@ -67,12 +72,22 @@ class Sentry(object):
                         integrations=integrations,
                         default_integrations=False,
                         auto_session_tracking=True,
+                        transport=sentry_sdk.transport.make_transport(
+                            {
+                                "pool_connections": 10,  # Instead of default 1
+                                "pool_maxsize": 20,  # Max connections per pool
+                                "max_retries": 3,  # Retry failed sends
+                            }
+                        ),
                     )
                     # Return the initialized Sentry SDK object directly
                     sentry = initialized_sentry
+
+                    logger.info("Sentry initialization completed successfully")
+
                 except Exception as e:
                     logger = logging.getLogger(__name__)
-                    logger.warning("Failed to initialize Sentry: %s", str(e))
+                    logger.error("Failed to initialize Sentry: %s", str(e), exc_info=True)
                     sentry = FakeSentry()
             else:
                 sentry = FakeSentry()
