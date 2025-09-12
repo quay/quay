@@ -74,9 +74,11 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     assert result.status in MAPPED_STATUSES
     return {
         "status": MAPPED_STATUSES[result.status].value,
-        "data": result.security_information.to_dict()
-        if result.security_information is not None
-        else None,
+        "data": (
+            result.security_information.to_dict()
+            if result.security_information is not None
+            else None
+        ),
     }
 
 

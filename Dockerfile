@@ -36,7 +36,7 @@ RUN set -ex\
 	; dnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
-FROM registry.access.redhat.com/ubi8/nodejs-22 AS config-editor
+FROM registry.access.redhat.com/ubi8/nodejs-16 AS config-editor
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 config-tool/pkg/lib/editor/ ./
 RUN set -ex\
@@ -109,7 +109,7 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi8/nodejs-22 AS build-static
+FROM registry.access.redhat.com/ubi8/nodejs-16 AS build-static
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 package.json package-lock.json  ./
 RUN npm clean-install
@@ -118,7 +118,7 @@ COPY --chown=1001:0 *.json *.js  ./
 RUN npm run --quiet build
 
 # Build React UI
-FROM registry.access.redhat.com/ubi8/nodejs-22:latest as build-ui
+FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web/package.json web/package-lock.json  ./
 RUN CYPRESS_INSTALL_BINARY=0 npm clean-install

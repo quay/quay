@@ -712,14 +712,13 @@ class ProxyModel(OCIModel):
 
         for layer in manifest.filesystem_layers:
             self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
-            username = self._user.username if self._user else None
             queue_id = proxy_cache_blob_queue.put(
                 [self._namespace_name, str(repo_id), str(layer.digest)],
                 json.dumps(
                     {
                         "digest": str(layer.digest),
                         "repo_id": repo_id,
-                        "username": username,
+                        "username": self._user.username,
                         "namespace": self._namespace_name,
                     }
                 ),

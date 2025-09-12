@@ -24,6 +24,7 @@ EXTERNAL_JS = [
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/js/bootstrap-datepicker.min.js",
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js",
     "cdn.jsdelivr.net/g/bootbox@4.1.0,underscorejs@1.5.2,restangular@1.2.0,d3js@3.3.3",
+    "cdn.ravenjs.com/3.1.0/angular/raven.min.js",
     "cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.min.js",
     "cdnjs.cloudflare.com/ajax/libs/angular-recaptcha/4.1.3/angular-recaptcha.min.js",
     "cdnjs.cloudflare.com/ajax/libs/ng-tags-input/3.1.1/ng-tags-input.min.js",

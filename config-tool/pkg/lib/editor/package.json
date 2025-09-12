@@ -40,7 +40,7 @@
     "moment-timezone": "^0.5.35",
     "ng-metadata": "^4.0.1",
     "node-forge": "^0.10.0",
-    "@sentry/browser": "^7.100.0",
+    "raven-js": "^3.1.0",
     "restangular": "^1.6.1",
     "rxjs": "5.5.7",
     "showdown": "^1.6.4",

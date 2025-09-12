@@ -94,8 +94,9 @@ else:
     app.config.from_object(DefaultConfig())
     app.teardown_request(database.close_db_filter)
 
-# Load the override config via the provider.
-config_provider.update_app_config(app.config)
+# Load the override config via the provider unless running tests, where TestConfig should prevail.
+if not is_testing:
+    config_provider.update_app_config(app.config)
 
 # Check if TESTING is properly set
 if app.config.get("TESTING", False):

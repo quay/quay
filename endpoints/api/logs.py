@@ -1,6 +1,7 @@
 """
 Access usage logs for organizations or repositories.
 """
+
 from datetime import datetime, timedelta
 
 from flask import abort, request
@@ -34,7 +35,7 @@ from endpoints.api import (
     show_if,
     validate_json_request,
 )
-from endpoints.exception import NotFound, Unauthorized
+from endpoints.exception import Forbidden, NotFound, Unauthorized
 
 LOGS_PER_PAGE = 20
 SERVICE_LEVEL_LOG_KINDS = set(
@@ -451,6 +452,10 @@ class ExportUserLogs(ApiResource):
         """
         Returns the aggregated logs for the current user.
         """
+        # Global readonly superusers should not be able to export logs since it creates background jobs
+        if allow_if_global_readonly_superuser():
+            raise Forbidden("Global readonly users cannot export logs")
+
         user = get_authenticated_user()
 
         start_time = parsed_args["starttime"]
@@ -491,7 +496,7 @@ class ExportOrgLogs(ApiResource):
         Exports the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or (allow_if_superuser() and not allow_if_global_readonly_superuser()):
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 

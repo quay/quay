@@ -74,14 +74,3 @@ class RHSSOOAuthService(OIDCLoginService):
                 )
 
         return sub, lusername, email_address, additional_info
-
-    def get_user_id(self, decoded_id_token: dict) -> str:
-        """
-        RHSSO now uses digit values for `sub` field. Old value is retained in `deprecated_sub`.
-        Returns `deprecated_sub` if it exists, otherwise returns `sub`.
-        """
-        sub = decoded_id_token.get("sub")
-        if not sub:
-            raise OAuthLoginException("Token missing 'sub' field")
-
-        return decoded_id_token.get("deprecated_sub", sub)

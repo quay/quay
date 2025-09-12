@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser';
+import * as Raven from 'raven-js';
 
 
 /**
@@ -60,9 +60,9 @@ function(ApiService, CookieService, $rootScope, Config, $location, $timeout) {
           }
         }
 
-        if (window.Sentry !== undefined) {
+        if (window.Raven !== undefined) {
           try {
-            Sentry.setUser({
+            Raven.setUser({
               email: userResponse.email,
               id: userResponse.username
             });
@@ -73,8 +73,8 @@ function(ApiService, CookieService, $rootScope, Config, $location, $timeout) {
 
         CookieService.putPermanent('quay.loggedin', 'true');
       } else {
-        if (window.Sentry !== undefined) {
-          Sentry.setUser(null);
+        if (window.Raven !== undefined) {
+          Raven.setUser();
         }
       }
 

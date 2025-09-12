@@ -3,7 +3,7 @@ import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useQuayConfig} from './UseQuayConfig';
 import {UpdateUserRequest, updateUser} from 'src/resources/UserResource';
 
-export function useCurrentUser(enabled = true) {
+export function useCurrentUser() {
   const config = useQuayConfig();
   const {
     data: user,
@@ -11,7 +11,6 @@ export function useCurrentUser(enabled = true) {
     error,
   } = useQuery(['user'], fetchUser, {
     staleTime: Infinity,
-    enabled: enabled,
   });
 
   const isSuperUser =

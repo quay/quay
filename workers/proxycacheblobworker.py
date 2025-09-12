@@ -33,7 +33,7 @@ class ProxyCacheBlobWorker(QueueWorker):
 
         repo_name = repository.lookup_repository(repo_id).name
         repo_ref = RepositoryReference.for_id(repo_id)
-        user_ref = user.get_username(username) if username else None
+        user_ref = user.get_username(username)
 
         registry_proxy_model = ProxyModel(
             namespace_name,

@@ -46,7 +46,7 @@ packages = [
     "psutil",
     "PyJWT",
     "pyOpenSSL",
-    "sentry-sdk",
+    "raven",
     "requests",
     "Werkzeug",
     "xhtml2pdf",

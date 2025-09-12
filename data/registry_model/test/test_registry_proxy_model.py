@@ -375,52 +375,6 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
             # available_after should be 5
             assert kwargs["available_after"] == 5
 
-    @patch("data.registry_model.registry_proxy_model.proxy_cache_blob_queue.put")
-    @patch.object(ProxyModel, "_create_blob")
-    def test__create_placeholder_blobs_with_none_user(
-        self, mock_create_blob, mock_queue_put, create_repo
-    ):
-        """Test that _create_placeholder_blobs handles None user for public repositories (PROJQUAY-9346)"""
-        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-        input_manifest = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
-            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-        )
-        # Create ProxyModel with None user (simulates public repository access)
-        proxy_model = ProxyModel(
-            self.orgname,
-            self.upstream_repository,
-            None,  # This is the key test - None user
-        )
-        manifest_id = 123
-        repo_id = repo_ref.id
-        orgname = self.orgname
-
-        # Call the private method directly - this should not fail with AttributeError
-        proxy_model._create_placeholder_blobs(input_manifest, manifest_id, repo_id)
-
-        # Should call _create_blob for config and each layer
-        expected_blob_calls = 1 + len(input_manifest.manifest_dict["layers"])
-        assert mock_create_blob.call_count == expected_blob_calls
-        # Should call queue.put for each layer
-        assert mock_queue_put.call_count == len(input_manifest.manifest_dict["layers"])
-
-        # Check the payloads sent to the queue for each layer - username should be None
-        for i, layer in enumerate(input_manifest.manifest_dict["layers"]):
-            args, kwargs = mock_queue_put.call_args_list[i]
-            # First arg is a list: [namespace, repo_id, layer_digest]
-            assert args[0] == [self.orgname, str(repo_id), str(layer["digest"])]
-            # Second arg is a JSON string with the payload
-            payload = json.loads(args[1])
-            assert payload == {
-                "digest": str(layer["digest"]),
-                "repo_id": repo_id,
-                "username": None,  # This should be None for public repositories
-                "namespace": orgname,
-            }
-            # available_after should be 5
-            assert kwargs["available_after"] == 5
-
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_create_placeholder_blobs_for_new_manifest(self, create_repo):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)

@@ -6302,7 +6302,6 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 202	98	29	29	\N	2023-11-07 19:54:14.934915	172.18.0.1	{}
 203	97	1	\N	\N	2023-11-07 19:54:19.160078	172.18.0.1	{"type": "quayauth", "useragent": "Mozilla/5.0"}
 204	76	6	1	\N	2024-11-26 13:28:52.179631	172.20.0.1	{"upstream_registry": "docker.io"}
-205	46	1	1	1	2025-08-14 17:34:11.334478	10.89.0.5	{"username": "user1", "repo": "hello-world", "tag": "latest", "manifest_digest": "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"}
 \.
 
 
@@ -7759,8 +7758,7 @@ COPY public.tag (id, name, repository_id, manifest_id, lifetime_start_ms, lifeti
 13	latest	1	1	1690479048814	1690479058287	f	t	1	\N	f
 15	$temp-cfb6beff-645a-479d-be37-73ce2631b3c7	1	1	1690479070649	1690479370649	t	f	1	\N	f
 14	latest	1	12	1690479058287	1690479070667	f	f	1	\N	f
-16	latest	1	1	1749989070667	1755192851329	f	t	1	\N	f
-17	latest	1	1	1755192851329	\N	f	t	1	\N	f
+16	latest	1	1	1690479070667	\N	f	t	1	\N	f
 \.
 
 
@@ -8290,7 +8288,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 205, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 204, true);
 
 
 --
@@ -8661,7 +8659,7 @@ SELECT pg_catalog.setval('public.star_id_seq', 1, false);
 -- Name: tag_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.tag_id_seq', 17, true);
+SELECT pg_catalog.setval('public.tag_id_seq', 16, true);
 
 
 --

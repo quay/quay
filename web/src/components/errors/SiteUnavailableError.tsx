@@ -21,17 +21,10 @@ export default function SiteUnavailableError() {
             headingLevel="h1"
           />
           <EmptyStateBody>
-            {window?.location?.hostname === 'quay.io' ||
-            window?.location?.hostname === 'stage.quay.io' ? (
-              <>
-                Try refreshing the page. If the problem persists, contact your
-                organization administrator or visit our{' '}
-                <a href="https://status.redhat.com">status page</a> for known
-                outages.
-              </>
-            ) : (
-              'Try refreshing the page. If the problem persists, contact your organization administrator.'
-            )}
+            Try refreshing the page. If the problem persists, contact your
+            organization administrator or visit our{' '}
+            <a href="https://status.redhat.com">status page</a> for known
+            outages.
           </EmptyStateBody>
           <EmptyStateFooter>
             <Button title="Home" onClick={() => window.location.reload()}>

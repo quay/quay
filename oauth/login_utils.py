@@ -48,11 +48,8 @@ def get_username_from_userinfo(user_info, config={}):
 
 
 def get_sub_username_email_from_token(
-    decoded_id_token, user_info=None, login_service=None, mailing=False, fetch_groups=False
+    decoded_id_token, user_info=None, config={}, mailing=False, fetch_groups=False
 ):
-    # Get config from service if available
-    config = login_service.config if login_service else {}
-
     if not user_info:
         user_info = decoded_id_token
 
@@ -96,13 +93,7 @@ def get_sub_username_email_from_token(
                 config.get("PREFERRED_GROUP_CLAIM_NAME", None)
             )
 
-    # Call the login service's get_user_id() method to extract user ID from token
-    if login_service:
-        user_id = login_service.get_user_id(decoded_id_token)
-    else:
-        user_id = decoded_id_token["sub"]
-
-    return user_id, lusername, email_address, additional_info
+    return decoded_id_token["sub"], lusername, email_address, additional_info
 
 
 def _oauthresult(
