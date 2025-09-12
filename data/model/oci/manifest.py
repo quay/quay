@@ -191,13 +191,13 @@ def create_manifest(
             config_media_type=manifest.config_media_type,
             layers_compressed_size=manifest.layers_compressed_size,
             subject_backfilled=True,  # TODO(kleesc): Remove once backfill is done
-            subject=manifest.subject.digest
-            if manifest.subject
-            else None,  # TODO(kleesc): Remove once fully on JSONB only
+            subject=(
+                manifest.subject.digest if manifest.subject else None
+            ),  # TODO(kleesc): Remove once fully on JSONB only
             artifact_type_backfilled=True,  # TODO(kleesc): Remove once backfill is done
-            artifact_type=manifest.artifact_type
-            if manifest.artifact_type
-            else None,  # TODO(kleesc): Remove once fully on JSONB only
+            artifact_type=(
+                manifest.artifact_type if manifest.artifact_type else None
+            ),  # TODO(kleesc): Remove once fully on JSONB only
         )
     except IntegrityError as e:
         # NOTE: An IntegrityError means (barring a bug) that the manifest was created by

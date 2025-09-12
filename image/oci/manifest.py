@@ -346,9 +346,11 @@ class OCIManifest(ManifestInterface):
                 v1_layer_id = digest_history.hexdigest()
 
                 yield OCIManifestImageLayer(
-                    history=config.synthesized_history
-                    if index == len(self.filesystem_layers) - 1
-                    else None,
+                    history=(
+                        config.synthesized_history
+                        if index == len(self.filesystem_layers) - 1
+                        else None
+                    ),
                     blob_layer=filesystem_layer,
                     blob_digest=str(filesystem_layer.digest),
                     v1_id=v1_layer_id,

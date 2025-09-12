@@ -76,27 +76,15 @@
 
     {% endblock %}
 
-    {% if sentry_public_dsn %}
-      <script src="https://browser.sentry-cdn.com/7.100.0/bundle.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
-      <script type="text/javascript">
-        Sentry.init({
-          dsn: '{{ sentry_public_dsn }}'
-        });
-      </script>
-    {% else %}
-      <script type="text/javascript">
-        // FakeSentry wrapper when Sentry is not available
-        window.Sentry = {
-          captureException: function() {},
-          setUser: function() {},
-          init: function() {}
-        };
-      </script>
-    {% endif %}
-
     {% for script_path in main_scripts %}
       <script src="/static/{{ script_path }}"></script>
     {% endfor %}
+
+    {% if sentry_public_dsn %}
+      <script type="text/javascript">
+        Raven.config('{{ sentry_public_dsn }}').install();
+      </script>
+    {% endif %}
 
     {% if google_analytics_key %}
       <script>

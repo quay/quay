@@ -188,9 +188,9 @@ def check_limits(namespace_name, size):
         default_size = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES", 0)
         return {
             "limit_bytes": default_size,
-            "severity_level": None
-            if (default_size == 0 or size < default_size)
-            else QuotaTypes.REJECT,
+            "severity_level": (
+                None if (default_size == 0 or size < default_size) else QuotaTypes.REJECT
+            ),
         }
 
     # Currently only one quota per namespace is supported
@@ -222,25 +222,17 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
         admins = organization.get_admin_users(namespace_user)
 
         for admin in admins:
-            # Check if notification already exists with the same kind and metadata
-            if not notification.notification_exists_with_metadata(
-                admin, notification_kind, **metadata
-            ):
-                notification.create_notification(
-                    notification_kind,
-                    admin,
-                    metadata,
-                )
-    else:
-        # Check if notification already exists with the same kind and metadata
-        if not notification.notification_exists_with_metadata(
-            namespace_user, notification_kind, **metadata
-        ):
             notification.create_notification(
                 notification_kind,
-                namespace_user,
+                admin,
                 metadata,
             )
+    else:
+        notification.create_notification(
+            notification_kind,
+            namespace_user,
+            metadata,
+        )
 
 
 def get_namespace_size(namespace_name):

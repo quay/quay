@@ -3,11 +3,12 @@ package shared
 import (
 	"context"
 	"fmt"
-	"os"
+	"net/url"
 	"strconv"
 	"time"
+	"os"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
 	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
@@ -189,9 +190,9 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 				break
 			}
 			assumeRoleInput := &sts.AssumeRoleWithWebIdentityInput{
-				RoleArn:          aws.String(roleToAssumeArn),
-				RoleSessionName:  aws.String("quay"),
-				DurationSeconds:  aws.Int64(durationSeconds),
+				RoleArn:         aws.String(roleToAssumeArn),
+				RoleSessionName: aws.String("quay"),
+				DurationSeconds: aws.Int64(durationSeconds),
 				WebIdentityToken: aws.String(string(webIdentityToken)),
 			}
 			assumeRoleOutput, err := svc.AssumeRoleWithWebIdentity(assumeRoleInput)
@@ -530,7 +531,7 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 
 func validateAzureGateway(opts Options, endpointURL, storageName, accountName, accountKey, containerName, token, fgName string) (bool, ValidationError) {
 
-	credential, err := azblob.NewSharedKeyCredential(accountName, accountKey)
+	credentials, err := azblob.NewSharedKeyCredential(accountName, accountKey)
 	if err != nil {
 		return false, ValidationError{
 			FieldGroup: fgName,
@@ -539,26 +540,21 @@ func validateAzureGateway(opts Options, endpointURL, storageName, accountName, a
 		}
 	}
 
-	client, err := azblob.NewClientWithSharedKeyCredential(endpointURL, credential, nil)
-	if err != nil {
-		return false, ValidationError{
-			FieldGroup: fgName,
-			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			Message:    "Could not create Azure storage client. Error: " + err.Error(),
-		}
-	}
+	p := azblob.NewPipeline(credentials, azblob.PipelineOptions{})
+	u, err := url.Parse(endpointURL)
+
+	serviceURL := azblob.NewServiceURL(*u, p)
+	containerURL := serviceURL.NewContainerURL(containerName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Verify the container exists
-	containerClient := client.ServiceClient().NewContainerClient(containerName)
-	_, err = containerClient.GetProperties(ctx, nil)
+	_, err = containerURL.GetAccountInfo(ctx)
 	if err != nil {
 		return false, ValidationError{
 			FieldGroup: fgName,
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			Message:    "Could not access container in Azure storage. Error: " + err.Error(),
+			Message:    "Could not connect to Azure storage. Error: " + err.Error(),
 		}
 	}
 

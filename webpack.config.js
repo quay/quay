@@ -19,7 +19,7 @@ let config = {
     angular: "angular",
     jquery: "$",
     moment: "moment",
-    "@sentry/browser": "Sentry",
+    "raven-js": "Raven",
   },
   module: {
     rules: [

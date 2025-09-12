@@ -453,12 +453,7 @@ def _db_from_url(
 
     drivers = _SCHEME_DRIVERS[parsed_url.drivername]
     driver = drivers.driver
-    # Skip connection pooling for SQLite - use single connection
-    if (
-        allow_pooling
-        and os.getenv("DB_CONNECTION_POOLING", "false").lower() == "true"
-        and parsed_url.drivername != "sqlite"
-    ):
+    if allow_pooling and os.getenv("DB_CONNECTION_POOLING", "false").lower() == "true":
         driver = drivers.pooled_driver
         db_kwargs["stale_timeout"] = db_kwargs.get("stale_timeout", None)
         db_kwargs["max_connections"] = db_kwargs.get("max_connections", None)
@@ -500,56 +495,6 @@ def _db_from_url(
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
     if parsed_url.drivername.find("mysql") >= 0:
         created.compound_select_parentheses = 0
-
-    # Configure SQLite-specific PRAGMA statements for database locking optimization
-    if parsed_url.drivername == "sqlite":
-
-        def _configure_sqlite_pragmas(db_instance):
-            """Configure SQLite-specific PRAGMA statements to prevent database locks."""
-            try:
-                # Set busy timeout to 10 seconds to handle concurrent access
-                db_instance.execute_sql("PRAGMA busy_timeout = 10000;")
-                db_instance.execute_sql("PRAGMA journal_mode = WAL;")
-                db_instance.execute_sql(
-                    "PRAGMA wal_autocheckpoint = 1000;"
-                )  # Set WAL checkpointing to 1000 pages
-                db_instance.execute_sql(
-                    "PRAGMA synchronous = NORMAL;"
-                )  # Balance durability/performance
-
-                # Verify the PRAGMA settings were applied
-                busy_timeout_result = db_instance.execute_sql("PRAGMA busy_timeout;")
-                journal_mode_result = db_instance.execute_sql("PRAGMA journal_mode;")
-
-                # Extract actual values from results
-                busy_timeout_value = (
-                    busy_timeout_result.fetchone()[0] if busy_timeout_result else "unknown"
-                )
-                journal_mode_value = (
-                    journal_mode_result.fetchone()[0] if journal_mode_result else "unknown"
-                )
-
-                logger.info(
-                    "Applied SQLite PRAGMA statements for database: %s - busy_timeout: %s, journal_mode: %s",
-                    parsed_url.database,
-                    busy_timeout_value,
-                    journal_mode_value,
-                )
-            except Exception as e:
-                logger.warning(
-                    "Failed to configure SQLite optimizations for %s: %s", parsed_url.database, e
-                )
-
-        # Override connect method to apply PRAGMA statements on each connection
-        original_connect = created.connect
-
-        def enhanced_connect(reuse_if_open=False):
-            result = original_connect(reuse_if_open)
-            _configure_sqlite_pragmas(created)
-            return result
-
-        created.connect = enhanced_connect
-
     return created
 
 

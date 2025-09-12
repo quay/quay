@@ -12,25 +12,6 @@ map $http2 $http2_bucket {
   default $connection;          # HTTP2 case: use the connection serial number to limit.
 }
 
-# Extract namespace from scope query parameter
-# Docker scope format: "repository:namespace/repo:actions"
-map $arg_scope $scope_namespace {
-  ~^repository%3A(.+?)(%2F|%3A).* $1;
-  default "";
-}
-
-# Create namespace-based rate limiting bucket for auth endpoint
-map $scope_namespace $auth_namespace_bucket {
-  {% for namespace in non_rate_limited_namespaces %}
-  "{{ namespace }}"  $request_id;
-  {% endfor %}
-  {% if enable_rate_limits %}
-  default $http_authorization;  # Fallback to auth header
-  {% else %}
-  default $request_id;  # Disable rate limiting when not enabled
-  {% endif %}
-}
-
 map $uri:$http_user_agent $miner_tag_block {
     "~/api/v1/repository/team-helium/miner/tag/:curl/*" 1;
     default 0;
@@ -63,9 +44,9 @@ map $namespace $namespaced_http2_bucket {
 }
 
 {% if enable_rate_limits %}
-limit_req_zone $auth_namespace_bucket zone=namespace_auth:10m rate=120r/s;
+limit_req_zone $http_authorization zone=staticauth:10m rate=60r/s;
 {% else %}
-limit_req_zone $request_id zone=namespace_auth:10m rate=300r/s;
+limit_req_zone $request_id zone=staticauth:10m rate=300r/s;
 {% endif %}
 
 limit_req_zone $http1_bucket zone=dynamicauth_very_light_http1:10m rate=60r/s;

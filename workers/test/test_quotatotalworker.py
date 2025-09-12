@@ -1,9 +1,9 @@
+from test.fixtures import *
 from unittest.mock import MagicMock, patch
 
 from data.model.organization import create_organization
 from data.model.quota import update_namespacesize
 from data.model.user import create_robot, get_user
-from test.fixtures import *
 from workers.quotatotalworker import QuotaTotalWorker
 
 ORG_NAME = "orgdoesnotexist"

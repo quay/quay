@@ -146,37 +146,6 @@ def delete_matching_notifications(target, kind_name, **kwargs):
         notification.delete_instance()
 
 
-def notification_exists_with_metadata(target, kind_name, **kwargs):
-    """
-    Check if a notification with the given kind and metadata already exists for the target.
-    Returns True if a matching notification exists, False otherwise.
-    """
-    kind_ref = NotificationKind.get(name=kind_name)
-
-    # Load all notifications for the user with the given kind.
-    notifications = Notification.select().where(
-        Notification.target == target, Notification.kind == kind_ref
-    )
-
-    # For each, match the metadata to the specified values.
-    for notification in notifications:
-        matches = True
-        try:
-            metadata = json.loads(notification.metadata_json)
-        except:
-            continue
-
-        for key, value in kwargs.items():
-            if not key in metadata or metadata[key] != value:
-                matches = False
-                break
-
-        if matches:
-            return True
-
-    return False
-
-
 def increment_notification_failure_count(uuid):
     """
     This increments the number of failures by one.

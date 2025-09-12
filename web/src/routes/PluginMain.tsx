@@ -24,7 +24,6 @@ import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import OverviewList from './OverviewList/OverviewList';
-import {LoadingPage} from 'src/components/LoadingPage';
 
 const NavigationRoutes = [
   {
@@ -68,18 +67,14 @@ function PluginMain() {
   }
 
   const quayConfig = useQuayConfig();
+  const {user, loading, error} = useCurrentUser();
+
   const setIsPluginState = useSetRecoilState(IsPluginState);
   const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
-  const [tokenReady, setTokenReady] = useState(false);
 
-  useEffect(() => {
-    chrome?.auth?.getToken().then((token) => {
-      GlobalAuthState.bearerToken = token;
-      setTokenReady(true);
-    });
-  }, []);
-
-  const {user, loading, error} = useCurrentUser(tokenReady);
+  chrome?.auth?.getToken().then((token) => {
+    GlobalAuthState.bearerToken = token;
+  });
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -94,8 +89,8 @@ function PluginMain() {
     }
   }, [user]);
 
-  if (!tokenReady || loading) {
-    return <LoadingPage />;
+  if (loading) {
+    return null;
   }
 
   return (
@@ -163,7 +158,7 @@ function PluginMain() {
 
 // Wraps the plugin with necessary context providers
 export default function PluginMainRoot() {
-  // initialize the client only on initial render
+  // initialize the client only on itial render
   const queryClient = useMemo(() => {
     return new QueryClient({
       defaultOptions: {

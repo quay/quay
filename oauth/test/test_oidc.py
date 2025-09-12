@@ -12,8 +12,6 @@ from cryptography.hazmat.primitives import serialization
 from httmock import HTTMock, urlmatch
 from six.moves.urllib.parse import quote
 
-from oauth.base import OAuthUserIdException
-from oauth.login_utils import get_sub_username_email_from_token
 from oauth.oidc import OAuthLoginException, OIDCLoginService, PasswordGrantException
 from util.config import URLSchemeAndHostname
 
@@ -472,30 +470,6 @@ def test_password_grant_for_login(
     with HTTMock(discovery_handler, token_handler_password_grant):
         response = oidc_service.password_grant_for_login("someusername", "somepassword")
         assert response.get("access_token") == "sometoken"
-
-
-def test_get_user_id_missing_sub_raises_exception(oidc_service):
-    """Test that missing sub field raises OAuthUserIdException."""
-    decoded_token = {
-        "other_field": "value",
-    }
-
-    with pytest.raises(OAuthUserIdException, match="Token missing 'sub' field"):
-        oidc_service.get_user_id(decoded_token)
-
-
-def test_get_sub_username_email_without_login_service():
-    """Test get_sub_username_email_from_token fallback when no login_service."""
-    decoded_token = {
-        "sub": "token_sub",
-        "email": "test@example.com",
-        "email_verified": True,
-    }
-
-    user_id, username, email, additional_info = get_sub_username_email_from_token(decoded_token)
-
-    # Should fallback to decoded_id_token["sub"] when no login_service
-    assert user_id == "token_sub"
 
 
 def test_load_keys_from_url():

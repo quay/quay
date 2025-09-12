@@ -30,7 +30,7 @@ describe('Repositories List Page', () => {
       cy.get(`[data-label="Visibility"]`).contains('private');
       //cy.get(`[data-label="Size"]`).contains('2.42 kB');
       cy.get(`[data-label="Last Modified"]`).contains(
-        formatDate('Thu, 14 Aug 2025, 17:34:11 -0000'),
+        formatDate('Thu, 27 Jul 2023 17:31:10 -0000'),
       );
     });
   });
@@ -51,7 +51,7 @@ describe('Repositories List Page', () => {
       cy.get(`[data-label="Visibility"]`).contains('private');
       //cy.get(`[data-label="Size"]`).contains('2.42 kB');
       cy.get(`[data-label="Last Modified"]`).contains(
-        formatDate('Thu, 14 Aug 2025, 17:34:11 -0000'),
+        formatDate('Thu, 27 Jul 2023 17:31:10 -0000'),
       );
     });
   });
