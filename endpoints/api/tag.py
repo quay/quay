@@ -31,9 +31,25 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
+from util.pullmetrics import create_redis_client_from_config, get_pull_metrics_tracker
+
+# Initialize pull metrics tracker for tag API
+_pull_metrics_tracker = None
 
 
-def _tag_dict(tag):
+def _get_pull_metrics_tracker():
+    """Get or create a pull metrics tracker instance."""
+    global _pull_metrics_tracker
+    if _pull_metrics_tracker is None:
+        redis_config = app.config.get("USER_EVENTS_REDIS")
+        if redis_config:
+            redis_client = create_redis_client_from_config(redis_config)
+            if redis_client:
+                _pull_metrics_tracker = get_pull_metrics_tracker(redis_client)
+    return _pull_metrics_tracker
+
+
+def _tag_dict(tag, repository_id=None):
     tag_info = {
         "name": tag.name,
         "reversion": tag.reversion,
@@ -56,6 +72,33 @@ def _tag_dict(tag):
     if tag.lifetime_end_ts is not None:
         expiration = format_date(datetime.utcfromtimestamp(tag.lifetime_end_ts))
         tag_info["expiration"] = expiration
+
+    # Add pull metrics if available
+    if repository_id and tag.manifest_digest:
+        try:
+            pull_tracker = _get_pull_metrics_tracker()
+            if pull_tracker:
+                pull_metrics = pull_tracker.get_tag_pull_metrics(
+                    str(repository_id), tag.name, tag.manifest_digest
+                )
+                if pull_metrics:
+                    tag_info["pull_count"] = pull_metrics.get("pull_count", 0)
+                    last_pull_ts = pull_metrics.get("last_pull_timestamp", 0)
+                    if last_pull_ts > 0:
+                        tag_info["last_pull_timestamp"] = last_pull_ts
+                        tag_info["last_pull_date"] = format_date(
+                            datetime.utcfromtimestamp(last_pull_ts)
+                        )
+                else:
+                    # No pull metrics found, set defaults
+                    tag_info["pull_count"] = 0
+        except Exception as e:
+            # Don't fail the entire request if pull metrics fail
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning("Failed to get pull metrics for tag %s: %s", tag.name, str(e))
+            tag_info["pull_count"] = 0
 
     return tag_info
 
@@ -108,7 +151,7 @@ class ListRepositoryTags(RepositoryParamResource):
             custom_abort(400, message=str(error))
 
         return {
-            "tags": [_tag_dict(tag) for tag in history],
+            "tags": [_tag_dict(tag, repository_id=repo_ref.id) for tag in history],
             "page": page,
             "has_additional": has_more,
         }

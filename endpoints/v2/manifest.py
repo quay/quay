@@ -54,9 +54,40 @@ from notifications import spawn_notification
 from util.audit import track_and_log
 from util.bytes import Bytes
 from util.names import VALID_TAG_PATTERN
+from util.pullmetrics import create_redis_client_from_config, get_pull_metrics_tracker
 from util.registry.replication import queue_replication_batch
 
 logger = logging.getLogger(__name__)
+
+# Initialize pull metrics tracker
+_pull_metrics_tracker = None
+
+
+def _get_pull_metrics_tracker():
+    """Get or create a pull metrics tracker instance."""
+    global _pull_metrics_tracker
+    if _pull_metrics_tracker is None:
+        redis_config = app.config.get("USER_EVENTS_REDIS")
+        if redis_config:
+            redis_client = create_redis_client_from_config(redis_config)
+            if redis_client:
+                _pull_metrics_tracker = get_pull_metrics_tracker(redis_client)
+    return _pull_metrics_tracker
+
+
+def _record_pull_event(repository_ref, manifest_digest, tag_name=None):
+    """Record a pull event in Redis for metrics tracking."""
+    try:
+        pull_tracker = _get_pull_metrics_tracker()
+        if pull_tracker and repository_ref and manifest_digest:
+            repo_id = str(repository_ref.id)
+            if tag_name:
+                pull_tracker.record_tag_pull(repo_id, tag_name, manifest_digest)
+            else:
+                pull_tracker.record_digest_pull(repo_id, manifest_digest)
+    except Exception as e:
+        logger.warning("Failed to record pull event: %s", str(e))
+
 
 BASE_MANIFEST_ROUTE = '/<repopath:repository>/manifests/<regex("{0}"):manifest_ref>'
 MANIFEST_DIGEST_ROUTE = BASE_MANIFEST_ROUTE.format(digest_tools.DIGEST_PATTERN)
@@ -127,6 +158,9 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
     )
     image_pulls.labels("v2", "tag", 200).inc()
 
+    # Record pull metrics in Redis
+    _record_pull_event(repository_ref, manifest_digest, tag_name=manifest_ref)
+
     return Response(
         manifest_bytes.as_unicode(),
         status=200,
@@ -172,6 +206,9 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
 
     track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
     image_pulls.labels("v2", "manifest", 200).inc()
+
+    # Record pull metrics in Redis
+    _record_pull_event(repository_ref, manifest.digest)
 
     return Response(
         manifest.internal_manifest_bytes.as_unicode(),
