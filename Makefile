@@ -187,7 +187,7 @@ node_modules/.npm-install-stamp: package.json package-lock.json | build-image-lo
 .PHONY: local-dev-clean
 local-dev-clean:
 	rm -f ./conf/jwtproxy_conf.yaml ./conf/mitm.cert ./conf/mitm.key ./conf/quay.kid ./conf/quay.pem ./conf/supervisord.conf
-	rm -rf ./conf/__pycache__ ./static/build
+	rm -rf ./conf/__pycache__ ./static/build ./web/dist ./web/node_modules
 
 .PHONY: local-dev-build-frontend
 local-dev-build:: local-dev-build-frontend
@@ -230,6 +230,14 @@ update-testdata: local-dev-clean node_modules | build-image-quay
 	"
 	cd ./web/ && npm run quay:dump
 	$(DOCKER_COMPOSE) down
+
+.PHONY: local-dev-up-react
+local-dev-up-react: local-dev-clean | build-image-quay
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm local-dev-react
+	$(DOCKER_COMPOSE) up -d redis quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 
 local-docker-rebuild:
 	$(DOCKER_COMPOSE) up -d --build redis

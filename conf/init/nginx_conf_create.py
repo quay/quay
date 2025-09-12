@@ -104,10 +104,10 @@ def generate_server_config(config):
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
     manifests_endpoint_read_timeout = config.get("MANIFESTS_ENDPOINT_READ_TIMEOUT", None)
 
-    # Get default UI setting from environment dockerfile or config
-    default_ui = os.getenv("DEFAULT_UI") or config.get("DEFAULT_UI", "angular")
+    # Get default UI setting from config
+    default_ui = config.get("DEFAULT_UI", "angular")
     # Check if Angular UI assets are available
-    angular_available = os.path.exists(os.path.join(STATIC_DIR, "js"))
+    angular_available = os.path.exists(os.path.join(STATIC_DIR, "build"))
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),

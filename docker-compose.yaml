@@ -69,6 +69,21 @@ services:
       - -c
       - npm run watch
 
+  local-dev-react:
+    user: ${DOCKER_USER:-root}
+    container_name: quay-local-dev-react
+    build:
+      context: .
+      target: build-ui
+    image: localhost/quay-react:latest
+    volumes:
+      - ".:/quay-registry"
+    working_dir: /quay-registry/web
+    entrypoint:
+      - sh
+      - -c
+      - mkdir -p ../static/patternfly && npm run build && cp -r dist/* ../static/patternfly/
+
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
