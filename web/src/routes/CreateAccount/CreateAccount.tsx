@@ -26,7 +26,8 @@ export function CreateAccount() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const {createAccountWithAutoLogin, isLoading, error, setError} = useCreateAccount();
+  const {createAccountWithAutoLogin, isLoading, error, setError} =
+    useCreateAccount();
   const quayConfig = useQuayConfig();
 
   let logoUrl = logo;
@@ -37,14 +38,17 @@ export function CreateAccount() {
   const validateUsername = (username: string): ValidatedOptions => {
     if (!username) return ValidatedOptions.default;
     if (username.length < 3) return ValidatedOptions.error;
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9\-_.]*$/.test(username)) return ValidatedOptions.error;
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9\-_.]*$/.test(username))
+      return ValidatedOptions.error;
     return ValidatedOptions.success;
   };
 
   const validateEmail = (email: string): ValidatedOptions => {
     if (!email) return ValidatedOptions.default;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email) ? ValidatedOptions.success : ValidatedOptions.error;
+    return emailRegex.test(email)
+      ? ValidatedOptions.success
+      : ValidatedOptions.error;
   };
 
   const validatePassword = (password: string): ValidatedOptions => {
@@ -53,9 +57,13 @@ export function CreateAccount() {
     return ValidatedOptions.success;
   };
 
-  const validateConfirmPassword = (confirmPassword: string): ValidatedOptions => {
+  const validateConfirmPassword = (
+    confirmPassword: string,
+  ): ValidatedOptions => {
     if (!confirmPassword) return ValidatedOptions.default;
-    return confirmPassword === password ? ValidatedOptions.success : ValidatedOptions.error;
+    return confirmPassword === password
+      ? ValidatedOptions.success
+      : ValidatedOptions.error;
   };
 
   const isFormValid = () => {
@@ -108,11 +116,20 @@ export function CreateAccount() {
         />
         <FormHelperText>
           <HelperText>
-            <HelperTextItem 
-              variant={validateUsername(username) === ValidatedOptions.error ? 'error' : 'default'}
-              icon={validateUsername(username) === ValidatedOptions.error ? <ExclamationCircleIcon /> : undefined}
+            <HelperTextItem
+              variant={
+                validateUsername(username) === ValidatedOptions.error
+                  ? 'error'
+                  : 'default'
+              }
+              icon={
+                validateUsername(username) === ValidatedOptions.error ? (
+                  <ExclamationCircleIcon />
+                ) : undefined
+              }
             >
-              Username must be at least 3 characters and contain only letters, numbers, hyphens, underscores, and periods
+              Username must be at least 3 characters and contain only letters,
+              numbers, hyphens, underscores, and periods
             </HelperTextItem>
           </HelperText>
         </FormHelperText>
@@ -135,9 +152,17 @@ export function CreateAccount() {
         />
         <FormHelperText>
           <HelperText>
-            <HelperTextItem 
-              variant={validateEmail(email) === ValidatedOptions.error ? 'error' : 'default'}
-              icon={validateEmail(email) === ValidatedOptions.error ? <ExclamationCircleIcon /> : undefined}
+            <HelperTextItem
+              variant={
+                validateEmail(email) === ValidatedOptions.error
+                  ? 'error'
+                  : 'default'
+              }
+              icon={
+                validateEmail(email) === ValidatedOptions.error ? (
+                  <ExclamationCircleIcon />
+                ) : undefined
+              }
             >
               Please enter a valid email address
             </HelperTextItem>
@@ -162,9 +187,17 @@ export function CreateAccount() {
         />
         <FormHelperText>
           <HelperText>
-            <HelperTextItem 
-              variant={validatePassword(password) === ValidatedOptions.error ? 'error' : 'default'}
-              icon={validatePassword(password) === ValidatedOptions.error ? <ExclamationCircleIcon /> : undefined}
+            <HelperTextItem
+              variant={
+                validatePassword(password) === ValidatedOptions.error
+                  ? 'error'
+                  : 'default'
+              }
+              icon={
+                validatePassword(password) === ValidatedOptions.error ? (
+                  <ExclamationCircleIcon />
+                ) : undefined
+              }
             >
               Password must be at least 8 characters long
             </HelperTextItem>
@@ -189,9 +222,19 @@ export function CreateAccount() {
         />
         <FormHelperText>
           <HelperText>
-            <HelperTextItem 
-              variant={validateConfirmPassword(confirmPassword) === ValidatedOptions.error ? 'error' : 'default'}
-              icon={validateConfirmPassword(confirmPassword) === ValidatedOptions.error ? <ExclamationCircleIcon /> : undefined}
+            <HelperTextItem
+              variant={
+                validateConfirmPassword(confirmPassword) ===
+                ValidatedOptions.error
+                  ? 'error'
+                  : 'default'
+              }
+              icon={
+                validateConfirmPassword(confirmPassword) ===
+                ValidatedOptions.error ? (
+                  <ExclamationCircleIcon />
+                ) : undefined
+              }
             >
               Passwords must match
             </HelperTextItem>
@@ -215,9 +258,12 @@ export function CreateAccount() {
       </FormGroup>
 
       <FormGroup>
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+        <div style={{textAlign: 'center', marginTop: '16px'}}>
           Already have an account?{' '}
-          <Link to="/signin" style={{ color: 'var(--pf-v5-global--link--Color)' }}>
+          <Link
+            to="/signin"
+            style={{color: 'var(--pf-v5-global--link--Color)'}}
+          >
             Sign in
           </Link>
         </div>

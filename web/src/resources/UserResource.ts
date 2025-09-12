@@ -120,7 +120,11 @@ export interface CreateUserRequest {
   email: string;
 }
 
-export async function createUser(username: string, password: string, email: string) {
+export async function createUser(
+  username: string,
+  password: string,
+  email: string,
+) {
   const response = await axios.post('/api/v1/user/', {
     username,
     password,

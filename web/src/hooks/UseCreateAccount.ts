@@ -2,7 +2,11 @@ import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {AxiosError} from 'axios';
 import {createUser} from 'src/resources/UserResource';
-import {loginUser, GlobalAuthState, getCsrfToken} from 'src/resources/AuthResource';
+import {
+  loginUser,
+  GlobalAuthState,
+  getCsrfToken,
+} from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 
 export function useCreateAccount() {
@@ -28,18 +32,18 @@ export function useCreateAccount() {
       // Auto-login after successful account creation
       try {
         const loginResponse = await loginUser(username, password);
-        
+
         if (loginResponse.success === true) {
           // Login successful, set auth state and redirect
           await getCsrfToken();
           GlobalAuthState.isLoggedIn = true;
           navigate('/organization');
-          return { success: true };
+          return {success: true};
         }
       } catch (loginErr) {
         // Auto-login failed, redirect to signin with message
         navigate('/signin?account_created=true&auto_login_failed=true');
-        return { success: true, autoLoginFailed: true };
+        return {success: true, autoLoginFailed: true};
       }
     } catch (err) {
       const authErr = err instanceof AxiosError && err.response;
@@ -48,7 +52,7 @@ export function useCreateAccount() {
       } else {
         setError(addDisplayError('Unable to create account', err));
       }
-      return { success: false };
+      return {success: false};
     } finally {
       setIsLoading(false);
     }
