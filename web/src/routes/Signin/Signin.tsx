@@ -88,9 +88,12 @@ export function Signin() {
         onLoginButtonClick={(e) => onLoginButtonClick(e)}
         loginButtonLabel="Log in"
       />
-      <div style={{ textAlign: 'center', marginTop: '16px' }}>
+      <div style={{textAlign: 'center', marginTop: '16px'}}>
         Don't have an account?{' '}
-        <Link to="/createaccount" style={{ color: 'var(--pf-v5-global--link--Color)' }}>
+        <Link
+          to="/createaccount"
+          style={{color: 'var(--pf-v5-global--link--Color)'}}
+        >
           Create account
         </Link>
       </div>
