@@ -22,7 +22,7 @@ export async function loginUser(username: string, password: string) {
     username: username,
     password: password,
   });
-  if (response.data == 'success') {
+  if (response.data.success === true) {
     GlobalAuthState.isLoggedIn = true;
     GlobalAuthState.csrfToken = undefined;
   }

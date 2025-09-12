@@ -14,22 +14,19 @@ import {
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import logo from 'src/assets/quay.svg';
-import {useNavigate, Link} from 'react-router-dom';
+import {Link} from 'react-router-dom';
 import axios from 'src/libs/axios';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {AxiosError} from 'axios';
 import './CreateAccount.css';
-import {addDisplayError} from 'src/resources/ErrorHandling';
+import {useCreateAccount} from 'src/hooks/UseCreateAccount';
 
 export function CreateAccount() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [err, setErr] = useState<string>();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const navigate = useNavigate();
+  const {createAccountWithAutoLogin, isLoading, error, setError} = useCreateAccount();
   const quayConfig = useQuayConfig();
 
   let logoUrl = logo;
@@ -75,43 +72,20 @@ export function CreateAccount() {
   ) => {
     e.preventDefault();
     if (!isFormValid()) {
-      setErr('Please fill in all fields correctly');
+      setError('Please fill in all fields correctly');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const response = await axios.post('/api/v1/user/', {
-        username: username,
-        password: password,
-        email: email,
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        // Account created successfully, redirect to signin
-        navigate('/signin?account_created=true');
-      }
-    } catch (err) {
-      const authErr = err instanceof AxiosError && err.response;
-      if (authErr && err.response.status === 409) {
-        setErr('Username or email already exists');
-      } else if (authErr && err.response.status === 400) {
-        setErr('Invalid account information provided');
-      } else {
-        setErr(addDisplayError('Unable to create account', err));
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    await createAccountWithAutoLogin(username, password, email);
   };
 
   const errMessage = (
     <Alert
       id="form-error-alert"
       isInline
-      actionClose={<AlertActionCloseButton onClose={() => setErr(null)} />}
+      actionClose={<AlertActionCloseButton onClose={() => setError(null)} />}
       variant="danger"
-      title={err}
+      title={error}
     />
   );
 
@@ -225,7 +199,7 @@ export function CreateAccount() {
         </FormHelperText>
       </FormGroup>
 
-      {err && errMessage}
+      {error && errMessage}
 
       <FormGroup>
         <Button
