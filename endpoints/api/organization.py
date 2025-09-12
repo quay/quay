@@ -17,6 +17,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     OrganizationMemberPermission,
     SuperUserPermission,
     ViewTeamPermission,
@@ -86,10 +87,11 @@ def team_view(orgname, team):
 def org_view(o, teams):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
+    is_global_readonly = GlobalReadOnlySuperUserPermission().can()
 
     view = {
         "name": o.username,
-        "email": o.email if is_admin else "",
+        "email": o.email if is_admin or is_global_readonly else "",
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
@@ -151,6 +153,10 @@ class OrganizationList(ApiResource):
         """
         Create a new organization.
         """
+        # Block global readonly superusers from creating organizations
+        if allow_if_global_readonly_superuser():
+            raise request_error(message="Global readonly users cannot create organizations")
+
         if features.SUPERUSERS_ORG_CREATION_ONLY and not SuperUserPermission().can():
             raise Unauthorized()
 
@@ -253,7 +259,7 @@ class Organization(ApiResource):
             raise NotFound()
 
         teams = None
-        if OrganizationMemberPermission(orgname).can():
+        if OrganizationMemberPermission(orgname).can() or GlobalReadOnlySuperUserPermission().can():
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 
@@ -984,9 +990,9 @@ class OrganizationProxyCacheConfig(ApiResource):
                     "create_proxy_cache_config",
                     orgname,
                     {
-                        "upstream_registry": data["upstream_registry"]
-                        if data["upstream_registry"]
-                        else None
+                        "upstream_registry": (
+                            data["upstream_registry"] if data["upstream_registry"] else None
+                        )
                     },
                 )
                 return "Created", 201
