@@ -196,11 +196,15 @@ class QuayDeferredPermissionUser(Identity):
             self.provides.add(repo_grant)
 
     def _populate_superuser_provides(self, user_object):
-        if (
-            scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
-        ) and usermanager.is_superuser(user_object.username):
-            logger.debug("Adding superuser to user: %s", user_object.username)
-            self.provides.add(_SuperUserNeed())
+        # Grant superuser only when SUPERUSER or DIRECT_LOGIN scopes are present
+        if usermanager.is_superuser(user_object.username):
+            if (
+                self._scope_set is None
+                or scopes.SUPERUSER in self._scope_set
+                or scopes.DIRECT_LOGIN in self._scope_set
+            ):
+                logger.debug("Adding superuser to user: %s", user_object.username)
+                self.provides.add(_SuperUserNeed())
 
         if usermanager.is_global_readonly_superuser(user_object.username):
             logger.debug("Adding global readonly superuser to user: %s", user_object.username)

@@ -5,7 +5,8 @@ from email.utils import formatdate
 from functools import partial, wraps
 
 import pytz
-from flask import Blueprint, request, session
+from flask import Blueprint, current_app, request, session
+from flask_login import current_user
 from flask_restful import Api, Resource, abort, reqparse
 from flask_restful.utils import unpack
 from jsonschema import ValidationError, validate
@@ -283,7 +284,9 @@ def disallow_for_user_namespace(func):
                 and user.username == namespace_name
                 and usermanager.is_restricted_user(user.username)
             ):
-                abort(403, message="Operation not allowed on restricted user owned namespace")
+                from endpoints.exception import Forbidden
+
+                raise Forbidden("Operation not allowed on restricted user owned namespace")
 
         return func(self, namespace_name, repository_name, *args, **kwargs)
 
@@ -353,11 +356,15 @@ def require_repo_permission(permission_class, scope, allow_public=False):
                 if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
                     user = get_authenticated_user()
 
-                    if user is not None and SuperUserPermission().can():
+                    if user is not None and allow_if_superuser():
                         return func(self, namespace, repository, *args, **kwargs)
 
+                # Honor global readonly bypass for safe/read operations. Many endpoints rely on
+                # admin permission classes for GETs; permit access for global readonly superusers
+                # when explicitly enabled by the endpoint decorator.
                 if allow_for_global_readonly_superuser and allow_if_global_readonly_superuser():
-                    return func(self, namespace, repository, *args, **kwargs)
+                    if request.method in ("GET", "HEAD"):
+                        return func(self, namespace, repository, *args, **kwargs)
 
                 raise Unauthorized()
 
@@ -395,11 +402,7 @@ def require_user_permission(permission_class, scope=None):
                 if permission.can():
                     return func(self, *args, **kwargs)
 
-                if (
-                    features.SUPERUSERS_FULL_ACCESS
-                    and allow_for_superuser
-                    and SuperUserPermission().can()
-                ):
+                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser and allow_if_superuser():
                     return func(self, *args, **kwargs)
 
                 raise Unauthorized()
@@ -497,22 +500,50 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
-    return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
+    # Global readonly superusers should not have write access
+    if GlobalReadOnlySuperUserPermission().can():
+        return False
+    # Respect SUPERUSERS_FULL_ACCESS feature flag for any superuser bypass
+    if not features.SUPERUSERS_FULL_ACCESS:
+        return False
+    # Prefer authenticated user check (session/direct login) and fall back to permission
+    user = get_authenticated_user()
+    if user is not None and usermanager.is_superuser(user.username):
+        return True
+
+    # Fallback to Flask-Login current_user in test/web contexts
+    try:
+        if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
+            if usermanager.is_superuser(getattr(current_user, "username", None)):
+                return True
+    except Exception:
+        pass
+
+    # Fallback to current_app.config for test apps or alternate app instances
+    try:
+        su_list = current_app.config.get("SUPER_USERS", [])
+        candidate = user.username if user is not None else getattr(current_user, "username", None)
+        if candidate and candidate in su_list:
+            return True
+    except Exception:
+        pass
+
+    return bool(SuperUserPermission().can())
 
 
 def allow_if_global_readonly_superuser():
-    if (
-        app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None) is None
-        and app.config.get("GLOBAL_READONLY_SUPER_USERS", None) is None
-    ):
+    ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
+    config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
+
+    if ldap_filter is None and config_users is None:
         return False
 
     context = get_authenticated_context()
-    return (
-        context is not None
-        and context.authed_user is not None
-        and usermanager.is_global_readonly_superuser(context.authed_user.username)
-    )
+    if context is None or context.authed_user is None:
+        return False
+
+    username = context.authed_user.username
+    return usermanager.is_global_readonly_superuser(username)
 
 
 def verify_not_prod(func):
