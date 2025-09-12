@@ -37,7 +37,7 @@ export function Signin() {
     e.preventDefault();
     try {
       const response = await loginUser(username, password);
-      if (response.success) {
+      if (response.success === true) {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
         GlobalAuthState.isLoggedIn = true;
@@ -71,22 +71,30 @@ export function Signin() {
   );
 
   const loginForm = (
-    <LoginForm
-      showHelperText={err != null}
-      helperText={errMessage}
-      usernameLabel="Username"
-      usernameValue={username}
-      onChangeUsername={(_event, v) => setUsername(v)}
-      isValidUsername={true}
-      passwordLabel="Password"
-      passwordValue={password}
-      onChangePassword={(_event, v) => setPassword(v)}
-      isValidPassword={true}
-      isRememberMeChecked={rememberMe}
-      onChangeRememberMe={(_event, v) => setRememberMe(v)}
-      onLoginButtonClick={(e) => onLoginButtonClick(e)}
-      loginButtonLabel="Log in"
-    />
+    <>
+      <LoginForm
+        showHelperText={err != null}
+        helperText={errMessage}
+        usernameLabel="Username"
+        usernameValue={username}
+        onChangeUsername={(_event, v) => setUsername(v)}
+        isValidUsername={true}
+        passwordLabel="Password"
+        passwordValue={password}
+        onChangePassword={(_event, v) => setPassword(v)}
+        isValidPassword={true}
+        isRememberMeChecked={rememberMe}
+        onChangeRememberMe={(_event, v) => setRememberMe(v)}
+        onLoginButtonClick={(e) => onLoginButtonClick(e)}
+        loginButtonLabel="Log in"
+      />
+      <div style={{ textAlign: 'center', marginTop: '16px' }}>
+        Don't have an account?{' '}
+        <Link to="/createaccount" style={{ color: 'var(--pf-v5-global--link--Color)' }}>
+          Create account
+        </Link>
+      </div>
+    </>
   );
 
   return (
@@ -97,14 +105,6 @@ export function Signin() {
       backgroundImgSrc="assets/images/rh_login.jpeg"
       textContent="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
       loginTitle="Log in to your account"
-      loginSubtitle={
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          Don't have an account?{' '}
-          <Link to="/createaccount" style={{ color: 'var(--pf-v5-global--link--Color)' }}>
-            Create account
-          </Link>
-        </div>
-      }
     >
       {loginForm}
     </LoginPage>
