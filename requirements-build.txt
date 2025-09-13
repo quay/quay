@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --output-file=requirements-build.txt requirements-build.in
 #
-cffi==1.17.1
+cffi==2.0.0
     # via -r requirements-build.in
 cython==0.29.37
 cython==3.0.2
