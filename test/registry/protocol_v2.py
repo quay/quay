@@ -81,9 +81,8 @@ class V2Protocol(RegistryProtocol):
             Failures.DISALLOWED_LIBRARY_NAMESPACE: 400,
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
-            Failures.MIRROR_MISCONFIGURED: 401,
+            Failures.MIRROR_MISCONFIGURED: 500,
             Failures.MIRROR_ROBOT_MISSING: 401,
-            Failures.READ_ONLY: 405,
             Failures.READONLY_REGISTRY: 405,
         },
         V2ProtocolSteps.PUT_MANIFEST: {
@@ -95,7 +94,7 @@ class V2Protocol(RegistryProtocol):
             Failures.UNSUPPORTED_CONTENT_TYPE: 415,
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
-            Failures.MIRROR_MISCONFIGURED: 401,
+            Failures.MIRROR_MISCONFIGURED: 500,
             Failures.MIRROR_ROBOT_MISSING: 401,
             Failures.READONLY_REGISTRY: 405,
             Failures.INVALID_MANIFEST: 400,
@@ -104,7 +103,7 @@ class V2Protocol(RegistryProtocol):
             Failures.INVALID_MANIFEST_IN_LIST: 400,
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
-            Failures.MIRROR_MISCONFIGURED: 401,
+            Failures.MIRROR_MISCONFIGURED: 500,
             Failures.MIRROR_ROBOT_MISSING: 401,
             Failures.READONLY_REGISTRY: 405,
         },
@@ -291,9 +290,11 @@ class V2Protocol(RegistryProtocol):
 
         headers = {
             "Authorization": "Bearer " + token,
-            "Accept": ",".join(options.accept_mimetypes)
-            if options.accept_mimetypes is not None
-            else "*/*",
+            "Accept": (
+                ",".join(options.accept_mimetypes)
+                if options.accept_mimetypes is not None
+                else "*/*"
+            ),
         }
 
         # Push all blobs.
@@ -505,9 +506,11 @@ class V2Protocol(RegistryProtocol):
 
         headers = {
             "Authorization": "Bearer " + token,
-            "Accept": ",".join(options.accept_mimetypes)
-            if options.accept_mimetypes is not None
-            else "*/*",
+            "Accept": (
+                ",".join(options.accept_mimetypes)
+                if options.accept_mimetypes is not None
+                else "*/*"
+            ),
         }
 
         # Build fake manifests.

@@ -5,9 +5,10 @@ from flask import Response
 from flask import abort as flask_abort
 from flask import redirect, request, url_for
 
-from app import app, get_app_url, model_cache, storage
-from auth.auth_context import get_authenticated_user
-from auth.permissions import ReadRepositoryPermission
+import features
+from app import app, get_app_url, model_cache, storage, usermanager
+from auth.auth_context import get_authenticated_context, get_authenticated_user
+from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data import database
 from data.model import namespacequota
@@ -45,6 +46,7 @@ from endpoints.v2.errors import (
     LayerTooLarge,
     NameUnknown,
     QuotaExceeded,
+    Unauthorized,
     Unsupported,
 )
 from util.cache import cache_control
@@ -63,7 +65,7 @@ BLOB_CONTENT_TYPE = "application/octet-stream"
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_allowed
 @cache_control(max_age=31436000)
 @inject_registry_model()
@@ -92,7 +94,7 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_allowed
 @check_region_blacklisted(BlobDownloadGeoBlocked)
 @cache_control(max_age=31536000)
@@ -257,13 +259,25 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@log_unauthorized("push_repo_failed")
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@log_unauthorized("push_repo_failed")
 @anon_protect
 @check_readonly
 @check_pushes_disabled
 def start_blob_upload(namespace_name, repo_name):
+
+    # Enforce write permission with superuser bypass explicitly to handle JWT-only contexts.
+    context = get_authenticated_context()
+    if context is None or context.authed_user is None:
+        repository = f"{namespace_name}/{repo_name}"
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        repository = f"{namespace_name}/{repo_name}"
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
 
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -333,13 +347,24 @@ def start_blob_upload(namespace_name, repo_name):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
+    # Enforce write permission with superuser bypass BEFORE revealing whether an upload exists.
+    context = get_authenticated_context()
+    repository = f"{namespace_name}/{repo_name}"
+    if context is None or context.authed_user is None:
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+    # Now check if the upload exists.
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
@@ -362,7 +387,6 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 @check_pushes_disabled
@@ -370,6 +394,24 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
+
+    # Enforce write permission with superuser bypass BEFORE revealing whether an upload exists.
+    context = get_authenticated_context()
+    repository = f"{namespace_name}/{repo_name}"
+    if context is None or context.authed_user is None:
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+    # Check existence next.
+    uploader = retrieve_blob_upload_manager(
+        repository_ref, upload_uuid, storage, _upload_settings()
+    )
+    if uploader is None:
+        raise BlobUploadUnknown()
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
@@ -380,12 +422,6 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
                 repository_ref, "quota_error", {"severity": "Reject"}
             )
             raise QuotaExceeded
-
-    uploader = retrieve_blob_upload_manager(
-        repository_ref, upload_uuid, storage, _upload_settings()
-    )
-    if uploader is None:
-        raise BlobUploadUnknown()
 
     # Upload the chunk for the blob.
     _upload_chunk(uploader)
@@ -406,12 +442,23 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 
-    # Ensure the digest is present before proceeding.
+    # Enforce write permission with superuser bypass BEFORE validating args or existence to ensure
+    # anonymous/no-access users receive 401.
+    context = get_authenticated_context()
+    repository = f"{namespace_name}/{repo_name}"
+    if context is None or context.authed_user is None:
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+    # Ensure the digest is present before proceeding for authorized users.
     digest = request.args.get("digest", None)
     if digest is None:
         raise BlobUploadInvalid(detail={"reason": "Missing digest arg on monolithic upload"})
@@ -420,6 +467,12 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
+
+    uploader = retrieve_blob_upload_manager(
+        repository_ref, upload_uuid, storage, _upload_settings()
+    )
+    if uploader is None:
+        raise BlobUploadUnknown()
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
@@ -430,12 +483,6 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
                 repository_ref, "quota_error", {"severity": "Reject"}
             )
             raise QuotaExceeded
-
-    uploader = retrieve_blob_upload_manager(
-        repository_ref, upload_uuid, storage, _upload_settings()
-    )
-    if uploader is None:
-        raise BlobUploadUnknown()
 
     # Upload the chunk for the blob and commit it once complete.
     with complete_when_uploaded(uploader):
@@ -459,19 +506,36 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 @check_pushes_disabled
 def cancel_upload(namespace_name, repo_name, upload_uuid):
+    # Anonymous users must receive 401 regardless of upload UUID to avoid leak of protected resource.
+    context = get_authenticated_context()
+    if context is None or context.authed_user is None:
+        repository = f"{namespace_name}/{repo_name}"
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
+
+    # Determine superuser via config (works for JWT contexts without Flask-Principal grants)
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+
+    # Enforce write permission for authenticated non-superusers before revealing whether an upload exists.
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        repository = f"{namespace_name}/{repo_name}"
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
 
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
     if uploader is None:
+        # Per spec and existing tests, respond with 404 for unknown uploads even if
+        # the user lacks write permission, to avoid information leakage.
         raise BlobUploadUnknown()
 
     uploader.cancel_upload()
@@ -482,6 +546,7 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@check_repository_state
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
