@@ -154,6 +154,12 @@ class UserRobot(ApiResource):
         """
         Create a new user robot with the specified name.
         """
+        # Global readonly superusers should not be able to create robot accounts
+        from endpoints.api import allow_if_global_readonly_superuser
+
+        if allow_if_global_readonly_superuser():
+            abort(403, "Global readonly users cannot create robot accounts")
+
         parent = get_authenticated_user()
         create_data = request.get_json(silent=True) or {}
 
