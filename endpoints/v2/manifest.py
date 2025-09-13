@@ -4,7 +4,9 @@ from functools import wraps
 from flask import Response, request, url_for
 
 import features
-from app import app, model_cache, storage
+from app import app, model_cache, storage, usermanager
+from auth.auth_context import get_authenticated_context
+from auth.permissions import ModifyRepositoryPermission
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
@@ -33,7 +35,7 @@ from endpoints.decorators import (
     parse_repository_name,
 )
 from endpoints.metrics import image_pulls, image_pushes
-from endpoints.v2 import require_repo_read, require_repo_write, v2_bp
+from endpoints.v2 import require_repo_read, v2_bp
 from endpoints.v2.errors import (
     ManifestInvalid,
     ManifestUnknown,
@@ -41,6 +43,7 @@ from endpoints.v2.errors import (
     NameUnknown,
     QuotaExceeded,
     TagExpired,
+    Unauthorized,
 )
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -69,7 +72,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=False)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
@@ -143,7 +146,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=False)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
@@ -271,14 +274,26 @@ def _doesnt_accept_schema_v1():
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@log_unauthorized_push
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@log_unauthorized_push
 @anon_protect
 @check_readonly
 @check_pushes_disabled
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
+    # Enforce write permission for non-anonymous/no-access users first.
+    context = get_authenticated_context()
+    repository = f"{namespace_name}/{repo_name}"
+    if context is None or context.authed_user is None:
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+    # Now validate payload for authorized users.
     parsed = _parse_manifest(request.content_type, request.data)
+
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
 
 
@@ -297,13 +312,24 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@log_unauthorized_push
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@log_unauthorized_push
 @anon_protect
 @check_readonly
 @check_pushes_disabled
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
+    # Enforce write permission for non-anonymous/no-access users first.
+    context = get_authenticated_context()
+    repository = f"{namespace_name}/{repo_name}"
+    if context is None or context.authed_user is None:
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+        context.authed_user.username
+    )
+    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+        raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+    # Now validate payload for authorized users.
     parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:
         image_pushes.labels("v2", 400, "").inc()
@@ -375,9 +401,8 @@ def _parse_manifest(content_type, request_data):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@log_unauthorized_delete
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@log_unauthorized_delete
 @anon_protect
 @check_readonly
 @check_pushes_disabled
@@ -395,6 +420,18 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         if repository_ref is None:
             raise NameUnknown("repository not found")
 
+        # Enforce write permission first for anonymous/no-access users.
+        context = get_authenticated_context()
+        repository = f"{namespace_name}/{repo_name}"
+        if context is None or context.authed_user is None:
+            raise Unauthorized(repository=repository, scopes=["pull", "push"])
+        is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+            context.authed_user.username
+        )
+        if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+            raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+        # Check existence next.
         manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
         if manifest is None:
             raise ManifestUnknown()
@@ -413,9 +450,8 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@log_unauthorized_delete
 @check_repository_state
-@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
+@log_unauthorized_delete
 @anon_protect
 @check_readonly
 @check_pushes_disabled
@@ -430,6 +466,18 @@ def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
         if repository_ref is None:
             raise NameUnknown("repository not found")
 
+        # Enforce write permission first for anonymous/no-access users.
+        context = get_authenticated_context()
+        repository = f"{namespace_name}/{repo_name}"
+        if context is None or context.authed_user is None:
+            raise Unauthorized(repository=repository, scopes=["pull", "push"])
+        is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
+            context.authed_user.username
+        )
+        if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
+            raise Unauthorized(repository=repository, scopes=["pull", "push"])
+
+        # Check existence next.
         tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
         if tag is None:
             raise ManifestUnknown()
