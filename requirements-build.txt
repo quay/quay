@@ -342,7 +342,7 @@ tomli==2.0.1 \
     #   mypy
     #   setuptools-rust
     #   setuptools-scm
-trove-classifiers==2023.9.19 \
+trove-classifiers==2025.9.11.17 \
     --hash=sha256:3e700af445c802f251ce2b741ee78d2e5dfa5ab8115b933b89ca631b414691c9 \
     --hash=sha256:55460364fe248294386d4dfa5d16544ec930493ecc6bd1db07a0d50afb37018e
     # via
