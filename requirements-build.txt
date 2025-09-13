@@ -19,7 +19,7 @@ packaging==24.2
     #   setuptools-scm
 pbr==6.1.0
     # via -r requirements-build.in
-pycparser==2.22
+pycparser==2.23
     # via
     #   -r requirements-build.in
     #   cffi
