@@ -133,7 +133,7 @@ Werkzeug==2.3.6
 wrapt==1.13.3
 xhtml2pdf==0.2.6
 zipp==2.1.0
-zope.event==4.5.0
+zope.event==6.0
 zope.interface==5.4.0
 
 # Indirect dependencies
