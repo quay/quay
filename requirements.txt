@@ -130,7 +130,7 @@ wheel==0.38.4
 PyNaCl==1.5.0
 PyPDF3==1.0.6
 arabic-reshaper==3.0.0
-cffi==1.16.0
+cffi==2.0.0
 cssselect2==0.7.0
 furl==2.1.0
 html5lib==1.1
