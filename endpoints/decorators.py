@@ -385,7 +385,7 @@ def check_repository_state(f):
 
             if mirror is None:
                 abort(
-                    401,
+                    500,
                     "Repository %s/%s is set as a mirror but the Mirror configuration is missing."
                     % (namespace_name, repo_name),
                 )
