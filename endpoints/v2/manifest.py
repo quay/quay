@@ -35,7 +35,7 @@ from endpoints.decorators import (
     parse_repository_name,
 )
 from endpoints.metrics import image_pulls, image_pushes
-from endpoints.v2 import require_repo_read, v2_bp
+from endpoints.v2 import require_repo_read, require_repo_write, v2_bp
 from endpoints.v2.errors import (
     ManifestInvalid,
     ManifestUnknown,
