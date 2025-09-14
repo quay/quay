@@ -276,20 +276,11 @@ def _doesnt_accept_schema_v1():
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
 @log_unauthorized_push
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 @check_pushes_disabled
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
-    # Enforce write permission for non-anonymous/no-access users first.
-    context = get_authenticated_context()
-    repository = f"{namespace_name}/{repo_name}"
-    if context is None or context.authed_user is None:
-        raise Unauthorized(repository=repository, scopes=["pull", "push"])
-    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
-        context.authed_user.username
-    )
-    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
-        raise Unauthorized(repository=repository, scopes=["pull", "push"])
 
     # Now validate payload for authorized users.
     parsed = _parse_manifest(request.content_type, request.data)
@@ -314,20 +305,11 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
 @log_unauthorized_push
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 @check_pushes_disabled
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
-    # Enforce write permission for non-anonymous/no-access users first.
-    context = get_authenticated_context()
-    repository = f"{namespace_name}/{repo_name}"
-    if context is None or context.authed_user is None:
-        raise Unauthorized(repository=repository, scopes=["pull", "push"])
-    is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
-        context.authed_user.username
-    )
-    if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
-        raise Unauthorized(repository=repository, scopes=["pull", "push"])
 
     # Now validate payload for authorized users.
     parsed = _parse_manifest(request.content_type, request.data)
@@ -403,6 +385,7 @@ def _parse_manifest(content_type, request_data):
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
 @log_unauthorized_delete
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 @check_pushes_disabled
@@ -452,6 +435,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @check_repository_state
 @log_unauthorized_delete
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 @check_pushes_disabled
