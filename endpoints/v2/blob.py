@@ -335,6 +335,7 @@ def start_blob_upload(namespace_name, repo_name):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
