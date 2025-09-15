@@ -384,15 +384,35 @@ def check_repository_state(f):
             robot = mirror.internal_robot if mirror is not None else None
 
             if mirror is None:
+                # For registry routes, status differs by protocol: v1 expects 500, v2 expects 401.
+                path = getattr(request, "path", "") or ""
+                is_v2 = path.startswith("/v2/")
+                is_v1 = path.startswith("/v1/")
+                status = 401
+                if is_v2:
+                    status = 401
+                elif is_v1:
+                    status = 500
+
                 abort(
-                    401,
+                    status,
                     "Repository %s/%s is set as a mirror but the Mirror configuration is missing."
                     % (namespace_name, repo_name),
                 )
 
             elif robot is None:
+                # For registry routes, status differs by protocol: v1 expects 400, v2 expects 401.
+                path = getattr(request, "path", "") or ""
+                is_v2 = path.startswith("/v2/")
+                is_v1 = path.startswith("/v1/")
+                status = 401
+                if is_v2:
+                    status = 401
+                elif is_v1:
+                    status = 400
+
                 abort(
-                    401,
+                    status,
                     "Repository %s/%s is configured for mirroring but no robot is assigned."
                     % (namespace_name, repo_name),
                 )
