@@ -384,8 +384,10 @@ def check_repository_state(f):
             robot = mirror.internal_robot if mirror is not None else None
 
             if mirror is None:
+                # v2 endpoints expect 500 on misconfiguration; v1 expects 401.
+                status_code = 500 if request.path.startswith("/v2/") else 401
                 abort(
-                    500,
+                    status_code,
                     "Repository %s/%s is set as a mirror but the Mirror configuration is missing."
                     % (namespace_name, repo_name),
                 )
