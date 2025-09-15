@@ -52,7 +52,12 @@ export function ConfirmationModal(props: ConfirmationModalProps) {
       isOpen={props.modalOpen}
       onClose={props.toggleModal}
       actions={[
-        <Button key="confirm" variant="primary" onClick={handleModalConfirm}>
+        <Button
+          key="confirm"
+          variant="primary"
+          onClick={handleModalConfirm}
+          data-testid={props.confirmButtonTestId}
+        >
           {props.buttonText}
         </Button>,
         <Button key="cancel" variant="link" onClick={props.toggleModal}>
@@ -76,4 +81,5 @@ type ConfirmationModalProps = {
   makePublic?: boolean;
   selectAllRepos?: (isSelecting) => void;
   handleModalConfirm?: () => void;
+  confirmButtonTestId?: string;
 };
