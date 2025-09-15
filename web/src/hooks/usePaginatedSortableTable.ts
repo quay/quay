@@ -91,7 +91,10 @@ export function usePaginatedSortableTable<T>(
 
         let result = 0;
         if (typeof aValue === 'string' && typeof bValue === 'string') {
-          result = aValue.localeCompare(bValue);
+          result = aValue.localeCompare(bValue, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          });
         } else if (typeof aValue === 'number' && typeof bValue === 'number') {
           result = aValue - bValue;
         }
