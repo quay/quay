@@ -182,6 +182,9 @@ def appconfig(database_uri):
         "MAIL_DEFAULT_SENDER": "admin@example.com",
         "DATABASE_SECRET_KEY": "anothercrazykey!",
         "FEATURE_PROXY_CACHE": True,
+        # Ensure superuser features mirror TestConfig for endpoints tests
+        "FEATURE_SUPER_USERS": True,
+        "FEATURE_SUPERUSERS_FULL_ACCESS": True,
         "ACTION_LOG_AUDIT_LOGINS": True,
         "ACTION_LOG_AUDIT_LOGIN_FAILURES": True,
         "ACTION_LOG_AUDIT_PULL_FAILURES": True,
