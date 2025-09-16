@@ -54,7 +54,8 @@ export default function MembersViewList(props: MembersViewListProps) {
   } = usePaginatedSortableTable(allMembers || [], {
     columns: {
       1: (item: IMembers) => item.name, // User name
-      2: (item: IMembers) => item.teams?.length || 0, // Teams count
+      2: (item: IMembers) =>
+        item.teams?.map((team) => team.name).join(', ') || '', // Teams (preserve original order for sorting)
       3: (item: IMembers) => item.repositories?.length || 0, // Direct repository permissions count
     },
     filter: searchFilter,
