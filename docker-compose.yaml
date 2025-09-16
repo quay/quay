@@ -74,21 +74,29 @@ services:
     container_name: quay-local-dev-react
     build:
       context: .
+      args:
+        BUILD_ANGULAR: false
       target: build-ui
     image: localhost/quay-react:latest
     volumes:
       - ".:/quay-registry"
-    working_dir: /quay-registry/web
+    working_dir: /quay-registry
     entrypoint:
       - sh
       - -c
-      - mkdir -p ../static/patternfly && npm run build && cp -r dist/* ../static/patternfly/
-
+      - |
+        echo "Copying React files to host volume..."
+        mkdir -p static/patternfly
+        cp -r /opt/app-root/dist/* static/patternfly/
+        echo "React files ready for nginx"
+        tail -f /dev/null
   quay:
     user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
     build:
       context: .
+      args:
+        BUILD_ANGULAR: ${BUILD_ANGULAR:-true}
       target: final
     image: localhost/quay-local:latest
     volumes:

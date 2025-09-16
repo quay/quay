@@ -99,7 +99,7 @@ export function Signin() {
         loginButtonLabel={loginButtonLabel}
       />
       <div style={{textAlign: 'center', marginTop: '16px'}}>
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <Link
           to="/createaccount"
           style={{color: 'var(--pf-v5-global--link--Color)'}}
