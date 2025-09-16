@@ -187,7 +187,7 @@ node_modules/.npm-install-stamp: package.json package-lock.json | build-image-lo
 .PHONY: local-dev-clean
 local-dev-clean:
 	rm -f ./conf/jwtproxy_conf.yaml ./conf/mitm.cert ./conf/mitm.key ./conf/quay.kid ./conf/quay.pem ./conf/supervisord.conf
-	rm -rf ./conf/__pycache__ ./static/build ./web/dist ./web/node_modules
+	rm -rf ./conf/__pycache__ ./static/build ./web/dist ./web/node_modules ./static/patternfly ./web/static
 
 .PHONY: local-dev-build-frontend
 local-dev-build:: local-dev-build-frontend
@@ -233,11 +233,16 @@ update-testdata: local-dev-clean node_modules | build-image-quay
 
 .PHONY: local-dev-up-react
 local-dev-up-react: local-dev-clean | build-image-quay
-	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm local-dev-react
+	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-react
 	$(DOCKER_COMPOSE) up -d redis quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay
-	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	# Wait for React files to be copied
+	while ! test -e ./static/patternfly/index.html; do echo "Waiting for React files..."; sleep 2; done
+	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) stop quay
+	BUILD_ANGULAR=false DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	# Wait for backend to be ready
+	while ! docker exec quay-quay test -e /tmp/gunicorn_web.sock 2>/dev/null; do echo "Waiting for backend..."; sleep 3; done
+	@echo "You can now access the React frontend at http://localhost:8080"
 
 local-docker-rebuild:
 	$(DOCKER_COMPOSE) up -d --build redis
