@@ -154,6 +154,12 @@ class UserRobot(ApiResource):
         """
         Create a new user robot with the specified name.
         """
+        # Global readonly superusers should not be able to create robot accounts
+        from endpoints.api import allow_if_global_readonly_superuser
+
+        if allow_if_global_readonly_superuser():
+            abort(403, "Global readonly users cannot create robot accounts")
+
         parent = get_authenticated_user()
         create_data = request.get_json(silent=True) or {}
 
@@ -221,10 +227,11 @@ class OrgRobotList(ApiResource):
         """
         permission = OrganizationMemberPermission(orgname)
         if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
-            include_token = (
-                AdministerOrganizationPermission(orgname).can()
-                or allow_if_global_readonly_superuser()
-            ) and parsed_args.get("token", True)
+            # Only organization admins may view robot tokens. Global read-only superusers can view
+            # robot lists but must not receive token secrets.
+            include_token = AdministerOrganizationPermission(orgname).can() and parsed_args.get(
+                "token", True
+            )
             include_permissions = AdministerOrganizationPermission(
                 orgname
             ).can() and parsed_args.get("permissions", False)
