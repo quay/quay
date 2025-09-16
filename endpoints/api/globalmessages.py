@@ -18,6 +18,7 @@ from endpoints.api import (
     validate_json_request,
     verify_not_prod,
 )
+from endpoints.decorators import readonly_call_allowed
 
 
 @resource("/v1/messages")
@@ -109,6 +110,7 @@ class GlobalUserMessages(ApiResource):
     @nickname("createGlobalMessage")
     @validate_json_request("CreateMessage")
     @require_scope(scopes.SUPERUSER)
+    @readonly_call_allowed
     def post(self):
         """
         Create a message.
