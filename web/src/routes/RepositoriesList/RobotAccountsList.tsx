@@ -182,7 +182,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       3: (item: IRobot) => item.teams?.length || 0, // Teams count
       4: (item: IRobot) => item.repositories?.length || 0, // Repositories count
       5: (item: IRobot) =>
-        item.last_accessed === 'Never' ? '' : item.last_accessed, // Last accessed
+        item.last_accessed === 'Never'
+          ? 0
+          : new Date(item.last_accessed).getTime(), // Last accessed (timestamp for proper date sorting)
       6: (item: IRobot) => item.created, // Created
     },
     filter: searchFilter,
