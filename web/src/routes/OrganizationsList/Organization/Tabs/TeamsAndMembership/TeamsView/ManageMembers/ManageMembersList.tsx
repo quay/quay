@@ -29,7 +29,7 @@ import {
   TextListItem,
   TextListItemVariants,
 } from '@patternfly/react-core';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
 import {
   Table,
@@ -102,8 +102,12 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     setSearch,
   } = useFetchTeamMembersForOrg(organizationName, teamName);
 
-  // Get the appropriate data source based on table mode
-  const getCurrentDataSource = () => {
+  const [tableMode, setTableMode] = useState<TableModeType>(
+    TableModeType.AllMembers,
+  );
+
+  // Get the appropriate data source based on table mode (memoized for reactivity)
+  const currentDataSource = useMemo(() => {
     switch (tableMode) {
       case TableModeType.AllMembers:
         return allMembers || [];
@@ -114,15 +118,15 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       case TableModeType.Invited:
         return invited || [];
       default:
-        return [];
+        return allMembers || [];
     }
-  };
+  }, [tableMode, allMembers, teamMembers, robotAccounts, invited]);
 
   const {
     paginatedData: paginatedCurrentMembers,
     getSortableSort,
     paginationProps,
-  } = usePaginatedSortableTable(getCurrentDataSource(), {
+  } = usePaginatedSortableTable(currentDataSource, {
     columns: {
       1: (item: ITeamMember) => item.name, // Team member
       2: (item: ITeamMember) => getAccountTypeForMember(item), // Account
@@ -135,12 +139,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
 
   // Use the paginated data from our sortable table hook
   const tableMembersList = paginatedCurrentMembers;
-  const allMembersList = getCurrentDataSource();
+  const allMembersList = currentDataSource;
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<ITeamMember[]>(
     [],
-  );
-  const [tableMode, setTableMode] = useState<TableModeType>(
-    TableModeType.AllMembers,
   );
   const {addAlert} = useAlerts();
 

@@ -33,7 +33,7 @@ export const memberViewColumnNames = {
 
 export default function MembersViewList(props: MembersViewListProps) {
   const {
-    filteredMembers: allMembers,
+    members: allMembers,
     loading,
     error,
     search,

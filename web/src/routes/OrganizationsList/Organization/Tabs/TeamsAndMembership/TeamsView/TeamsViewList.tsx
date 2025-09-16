@@ -44,8 +44,7 @@ export const teamViewColumnNames = {
 
 export default function TeamsViewList(props: TeamsViewListProps) {
   const {
-    teams,
-    filteredTeams: allTeams,
+    teams: allTeams,
     isLoadingTeams,
     error,
     search,
@@ -180,7 +179,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
       handleModalToggle={handleDeleteModalToggle}
       handleBulkDeletion={bulkRemoveTeams}
       isModalOpen={deleteModalIsOpen}
-      selectedItems={teams?.filter((team) =>
+      selectedItems={allTeams?.filter((team) =>
         selectedTeams.some((selected) => team.name === selected.name),
       )}
       resourceName={'teams'}
