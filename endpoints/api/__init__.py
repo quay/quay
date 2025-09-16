@@ -502,22 +502,7 @@ def allow_if_superuser():
 
     if GlobalReadOnlySuperUserPermission().can():
         return False
-
-    # Prefer principal-based permission
-    if bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()):
-        return True
-
-    # Fallback to authenticated context user (covers test harness differences)
-    context = get_authenticated_context()
-    if (
-        features.SUPERUSERS_FULL_ACCESS
-        and context is not None
-        and context.authed_user is not None
-        and usermanager.is_superuser(context.authed_user.username)
-    ):
-        return True
-
-    return False
+    return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
 def allow_if_global_readonly_superuser():
