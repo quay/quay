@@ -14,6 +14,9 @@ from mock import patch
 from peewee import InternalError, SqliteDatabase
 
 import features
+
+# Ensure application loads test configuration at import time
+os.environ.setdefault("TEST", "1")
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model
@@ -182,9 +185,6 @@ def appconfig(database_uri):
         "MAIL_DEFAULT_SENDER": "admin@example.com",
         "DATABASE_SECRET_KEY": "anothercrazykey!",
         "FEATURE_PROXY_CACHE": True,
-        # Ensure superuser features mirror TestConfig for endpoints tests
-        "FEATURE_SUPER_USERS": True,
-        "FEATURE_SUPERUSERS_FULL_ACCESS": True,
         "ACTION_LOG_AUDIT_LOGINS": True,
         "ACTION_LOG_AUDIT_LOGIN_FAILURES": True,
         "ACTION_LOG_AUDIT_PULL_FAILURES": True,
