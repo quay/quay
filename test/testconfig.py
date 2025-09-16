@@ -46,6 +46,7 @@ class TestConfig(DefaultConfig):
     USERFILES_PATH = "userfiles/"
 
     FEATURE_SUPER_USERS = True
+    FEATURE_SUPERUSERS_FULL_ACCESS = True
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
