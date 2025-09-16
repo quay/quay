@@ -2988,7 +2988,7 @@ class TestRequestRepoBuild(ApiTestCase):
             expected_code=404,
         )
 
-    def test_requestrepobuild_with_unauthorized_robot(self):
+    def test_requestrepobuild_superuser_with_unauthorized_robot(self):
         self.login(ADMIN_ACCESS_USER)
 
         # Request a (fake) build.
@@ -2996,6 +2996,37 @@ class TestRequestRepoBuild(ApiTestCase):
         self.postResponse(
             RepositoryBuildList,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple"),
+            data=dict(file_id="foobarbaz", pull_robot=pull_robot),
+            expected_code=201,
+        )
+
+    def test_requestrepobuild_regular_user_with_own_org_robot(self):
+        self.login(READ_ACCESS_USER)
+
+        # Ensure the regular user can write to the org repo and is an org admin (owner).
+        model.permission.set_user_repo_permission(READ_ACCESS_USER, ORGANIZATION, ORG_REPO, "write")
+        owners = model.team.get_organization_team(ORGANIZATION, "owners")
+        reader_user = model.user.get_user(READ_ACCESS_USER)
+        model.team.add_user_to_team(reader_user, owners)
+
+        pull_robot = ORGANIZATION + "+coolrobot"
+        self.postResponse(
+            RepositoryBuildList,
+            params=dict(repository=ORGANIZATION + "/" + ORG_REPO),
+            data=dict(file_id="foobarbaz", pull_robot=pull_robot),
+            expected_code=201,
+        )
+
+    def test_requestrepobuild_regular_user_with_other_org_robot(self):
+        self.login(READ_ACCESS_USER)
+
+        # Ensure the regular user can write to the org repo used for building.
+        model.permission.set_user_repo_permission(READ_ACCESS_USER, ORGANIZATION, ORG_REPO, "write")
+
+        pull_robot = ADMIN_ACCESS_USER + "+dtrobot"
+        self.postResponse(
+            RepositoryBuildList,
+            params=dict(repository=ORGANIZATION + "/" + ORG_REPO),
             data=dict(file_id="foobarbaz", pull_robot=pull_robot),
             expected_code=403,
         )
