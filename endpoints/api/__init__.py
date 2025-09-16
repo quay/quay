@@ -497,6 +497,11 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
+    # Global readonly superusers should not have write access
+    from auth.permissions import GlobalReadOnlySuperUserPermission
+
+    if GlobalReadOnlySuperUserPermission().can():
+        return False
     return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
