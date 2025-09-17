@@ -3,8 +3,15 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.13/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.9"></a>
+## [v3.13.9] - 2025-09-01
+### [Redhat 3.13] Deps
+- [156e60b3](https://github.com/quay/quay/commit/156e60b38df2428c20d33a509088407fb0166943): update sha.js to 2.4.12 (PROJQUAY-9341) ([#4220](https://github.com/quay/quay/issues/4220))
+### [Redhat-3.13] Deps
+- [f8084d9c](https://github.com/quay/quay/commit/f8084d9c826e4b5cdccce016c19c333ad075af43): update cipher-base to version 1.0.6 (PROJQUAY-9335) ([#4226](https://github.com/quay/quay/issues/4226))
+
 <a name="v3.13.8"></a>
-## [v3.13.8] - 0001-01-01
+## [v3.13.8] - 2025-08-19
 
 <a name="v3.13.7"></a>
 ## [v3.13.7] - 2025-07-08
@@ -595,6 +602,11 @@
 ### [Redhat-3.12] Webhook
 - [c048af73](https://github.com/quay/quay/commit/c048af73b4601e93b268fc30d156108c77e85b21): Fix failure in sending webhook POST requests (PROJQUAY-7468) ([#3027](https://github.com/quay/quay/issues/3027))
 
+<a name="v3.11.13"></a>
+## [v3.11.13] - 2025-08-27
+### [Redhat 3.11] Deps
+- [cba878d9](https://github.com/quay/quay/commit/cba878d9c5b6f7cb7c2096cc519abf5e716ee560): update sha.js to 2.4.12 (PROJQUAY-9343) ([#4222](https://github.com/quay/quay/issues/4222))
+
 <a name="v3.11.12"></a>
 ## [v3.11.12] - 2025-07-09
 ### [Redhat-3.11] Deps
@@ -890,6 +902,13 @@
 - [85216682](https://github.com/quay/quay/commit/85216682c75041e8ab79f2980943ec401f3aa337): show repository autoprune tab only for repo write permission (PROJQUAY-6780) ([#2733](https://github.com/quay/quay/issues/2733))
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
+
+<a name="v3.10.14"></a>
+## [v3.10.14] - 2025-09-01
+### [Redhat 3.10] Deps
+- [cb03e58a](https://github.com/quay/quay/commit/cb03e58a869c3dfe955c55764236adab0c099180): update sha.js to 2.4.12 (PROJQUAY-9344) ([#4223](https://github.com/quay/quay/issues/4223))
+### [Redhat-3.10] Deps
+- [677d1f24](https://github.com/quay/quay/commit/677d1f24098c6687771c6b22d70f36beb54138b2): update cipher-base to version 1.0.6 (PROJQUAY-9338) ([#4233](https://github.com/quay/quay/issues/4233))
 
 <a name="v3.10.13"></a>
 ## [v3.10.13] - 2025-07-28
@@ -1384,6 +1403,9 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.15"></a>
+## [v3.9.15] - 2025-08-15
 
 <a name="v3.9.14"></a>
 ## [v3.9.14] - 2025-08-01
@@ -2981,7 +3003,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.8...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.9...HEAD
+[v3.13.9]: https://github.com/quay/quay/compare/v3.13.8...v3.13.9
 [v3.13.8]: https://github.com/quay/quay/compare/v3.13.7...v3.13.8
 [v3.13.7]: https://github.com/quay/quay/compare/v3.13.6...v3.13.7
 [v3.13.6]: https://github.com/quay/quay/compare/v3.13.5...v3.13.6
@@ -3002,7 +3025,8 @@
 [v3.12.3]: https://github.com/quay/quay/compare/v3.12.2...v3.12.3
 [v3.12.2]: https://github.com/quay/quay/compare/v3.12.1...v3.12.2
 [v3.12.1]: https://github.com/quay/quay/compare/v3.12.0...v3.12.1
-[v3.12.0]: https://github.com/quay/quay/compare/v3.11.12...v3.12.0
+[v3.12.0]: https://github.com/quay/quay/compare/v3.11.13...v3.12.0
+[v3.11.13]: https://github.com/quay/quay/compare/v3.11.12...v3.11.13
 [v3.11.12]: https://github.com/quay/quay/compare/v3.11.11...v3.11.12
 [v3.11.11]: https://github.com/quay/quay/compare/v3.11.10...v3.11.11
 [v3.11.10]: https://github.com/quay/quay/compare/v3.11.9...v3.11.10
@@ -3015,7 +3039,8 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.13...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.14...v3.11.0
+[v3.10.14]: https://github.com/quay/quay/compare/v3.10.13...v3.10.14
 [v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
 [v3.10.12]: https://github.com/quay/quay/compare/v3.10.11...v3.10.12
 [v3.10.11]: https://github.com/quay/quay/compare/v3.10.10...v3.10.11
@@ -3029,7 +3054,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.14...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.15...v3.10.0
+[v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
 [v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
 [v3.9.12]: https://github.com/quay/quay/compare/v3.9.11...v3.9.12
