@@ -1,6 +1,7 @@
 """
 Manage the tags of a repository.
 """
+
 from datetime import datetime
 
 from flask import abort, request
@@ -47,7 +48,11 @@ def _tag_dict(tag):
 
     tag_info["manifest_digest"] = tag.manifest_digest
     tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
-    tag_info["size"] = tag.manifest_layers_size
+    tag_info["size"] = (
+        registry_model.get_manifest_list_size(tag.repository, tag.manifest)
+        if tag.manifest.is_manifest_list
+        else tag.manifest_layers_size
+    )
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         last_modified = format_date(datetime.utcfromtimestamp(tag.lifetime_start_ts))

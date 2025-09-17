@@ -119,6 +119,19 @@ def get_child_manifests(repo_id: int, manifest_id: int):
     )
 
 
+def get_child_manifests_aggregate_size(repo_id: int, manifest_id: int):
+    return (
+        Manifest.select(fn.Sum(Manifest.layers_compressed_size))
+        .join(ManifestChild, on=(Manifest.id == ManifestChild.child_manifest))
+        .where(
+            (ManifestChild.repository == repo_id)
+            & (ManifestChild.manifest == manifest_id)
+            & (Manifest.layers_compressed_size.is_null(False))
+        )
+        .scalar()
+    )
+
+
 def tag_names_for_manifest(manifest_id, limit=None):
     """
     Returns the names of the tags pointing to the given manifest.

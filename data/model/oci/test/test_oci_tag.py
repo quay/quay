@@ -21,6 +21,7 @@ from data.model.oci.tag import (
     filter_to_visible_tags,
     find_matching_tag,
     get_child_manifests,
+    get_child_manifests_aggregate_size,
     get_current_tag,
     get_epoch_timestamp_ms,
     get_expired_tag,
@@ -667,6 +668,14 @@ def test_remove_tag_from_timemachine_submanifests(initialized_db):
         assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
         assert tag.hidden
         assert tag.name.startswith("$temp-")
+
+
+def test_calculate_manifest_list_aggregate_size(initialized_db):
+    repository = create_repository("devtable", "newrepo", None)
+    tag = _create_manifest_list(repository)
+    size = get_child_manifests_aggregate_size(repository.id, tag.manifest)
+
+    assert size == len("foo") + len("bar")
 
 
 def _create_manifest_list(repository):
