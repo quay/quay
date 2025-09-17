@@ -35,18 +35,26 @@ export default function CollaboratorsViewList(
 ) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const {filteredCollaborators, loading, error, search, setSearch} =
+  const {collaborators, loading, error, search, setSearch} =
     useFetchCollaborators(props.organizationName);
+
+  const searchFilter =
+    search.query !== ''
+      ? (collaborator: IMembers) =>
+          collaborator.name.toLowerCase().includes(search.query.toLowerCase())
+      : undefined;
 
   const {
     paginatedData: paginatedCollaborators,
+    filteredData: filteredCollaborators,
     getSortableSort,
     paginationProps,
-  } = usePaginatedSortableTable(filteredCollaborators || [], {
+  } = usePaginatedSortableTable(collaborators || [], {
     columns: {
       1: (item: IMembers) => item.name, // User name
       2: (item: IMembers) => item.repositories?.length || 0, // Direct repository permissions count
     },
+    filter: searchFilter,
     initialPerPage: 20,
     initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: User name ascending
   });
