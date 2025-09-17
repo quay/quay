@@ -461,6 +461,33 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "PULL_METRICS_REDIS": {
+            "type": "object",
+            "description": "Connection information for Redis for pull metrics analytics storage",
+            "required": ["host"],
+            "properties": {
+                "host": {
+                    "type": "string",
+                    "description": "The hostname at which Redis is accessible",
+                    "x-example": "my.redis.cluster",
+                },
+                "port": {
+                    "type": "number",
+                    "description": "The port at which Redis is accessible",
+                    "x-example": 6379,
+                },
+                "password": {
+                    "type": "string",
+                    "description": "The password to connect to the Redis instance",
+                    "x-example": "mypassword",
+                },
+                "db": {
+                    "type": "number",
+                    "description": "The Redis database number to use for pull metrics",
+                    "x-example": 1,
+                },
+            },
+        },
         # OAuth configuration.
         "GITHUB_LOGIN_CONFIG": {
             "type": ["object", "null"],

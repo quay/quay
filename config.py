@@ -262,6 +262,9 @@ class DefaultConfig(ImmutableConfig):
     # Real-time user events
     USER_EVENTS_REDIS = {"host": "localhost"}
 
+    # Pull metrics analytics storage
+    PULL_METRICS_REDIS = {"host": "localhost", "db": 1}
+
     # Stripe config
     BILLING_TYPE = "FakeStripe"
 

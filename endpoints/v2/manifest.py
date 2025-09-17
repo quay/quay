@@ -67,7 +67,7 @@ def _get_pull_metrics_tracker():
     """Get or create a pull metrics tracker instance."""
     global _pull_metrics_tracker
     if _pull_metrics_tracker is None:
-        redis_config = app.config.get("USER_EVENTS_REDIS")
+        redis_config = app.config.get("PULL_METRICS_REDIS")
         if redis_config:
             redis_client = create_redis_client_from_config(redis_config)
             if redis_client:
