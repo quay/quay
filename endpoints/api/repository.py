@@ -28,6 +28,7 @@ from data.database import RepositoryState
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_global_readonly_superuser,
     allow_if_superuser,
     format_date,
     log_action,
@@ -132,6 +133,10 @@ class RepositoryList(ApiResource):
         """
         Create a new repository.
         """
+        # Block global readonly superusers from creating repositories
+        if allow_if_global_readonly_superuser():
+            raise request_error(message="Global readonly users cannot create repositories")
+
         owner = get_authenticated_user()
         req = request.get_json()
 
@@ -141,6 +146,7 @@ class RepositoryList(ApiResource):
         namespace_name = req["namespace"] if "namespace" in req else owner.username
 
         permission = CreateRepositoryPermission(namespace_name)
+
         if (permission.can() or allow_if_superuser()) and not (
             features.RESTRICTED_USERS
             and usermanager.is_restricted_user(owner.username)
