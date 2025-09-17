@@ -46,6 +46,7 @@ class TestConfig(DefaultConfig):
     USERFILES_PATH = "userfiles/"
 
     FEATURE_SUPER_USERS = True
+    FEATURE_SUPERUSERS_FULL_ACCESS = True
     FEATURE_BILLING = True
     FEATURE_MAILING = True
     SUPER_USERS = ["devtable"]
@@ -56,6 +57,7 @@ class TestConfig(DefaultConfig):
     LICENSE_EXPIRATION_WARNING = datetime.now() + timedelta(weeks=520)
 
     FEATURE_GITHUB_BUILD = True
+    FEATURE_BUILD_SUPPORT = True
 
     CLOUDWATCH_NAMESPACE = None
 

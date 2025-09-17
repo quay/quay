@@ -1,6 +1,9 @@
 import json
 from enum import Enum, unique
 from io import BytesIO
+from typing import Dict
+
+from digest.checksums import compute_simple, compute_tarsum
 from test.registry.protocols import (
     Failures,
     ProtocolOptions,
@@ -8,9 +11,6 @@ from test.registry.protocols import (
     PushResult,
     RegistryProtocol,
 )
-from typing import Dict
-
-from digest.checksums import compute_simple, compute_tarsum
 
 
 @unique
