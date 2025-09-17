@@ -62,21 +62,13 @@ location / {
     # Show new UI if cookie or default is set to "true"/"react"
     if ($use_new_ui ~ "^(true|react)$") {
         # catch new static paths and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/signin|/createaccount) /index.html last;
+        rewrite ^(/overview|/organization|/repository|/signin|/createaccount) /index.html break;
     }
 
-    # Route to Angular UI when not using React
+    # Show old UI if not using React
     if ($use_new_ui !~ "^(true|react)$") {
         proxy_pass http://web_app_server;
     }
-
-    # Universal fallback for API endpoints, missing routes
-    try_files $uri $uri/ @backend_fallback;
-}
-
-# Backend fallback handler
-location @backend_fallback {
-    proxy_pass http://web_app_server;
 }
 
 # Capture traffic that needs to go to web_app, see /web.py
