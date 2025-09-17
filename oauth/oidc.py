@@ -3,6 +3,7 @@ import logging
 import time
 import urllib.parse
 from posixpath import join
+from typing import Optional
 
 import jwt
 from authlib.jose import JsonWebKey, KeySet
@@ -140,15 +141,41 @@ class OIDCLoginService(OAuthService):
             "OIDC": True,
         }
 
-    def exchange_code_for_tokens(self, app_config, http_client, code, redirect_suffix):
+    def pkce_enabled(self) -> bool:
+        return bool(self.config.get("USE_PKCE", False))
+
+    def pkce_method(self) -> str:
+        method = self.config.get("PKCE_METHOD", "S256")
+        allowed_methods = {"S256", "plain"}
+        if method not in allowed_methods:
+            raise ValueError(f"Invalid PKCE method '{method}'. Must be one of: {allowed_methods}")
+        return method
+
+    def public_client(self) -> bool:
+        return bool(self.config.get("PUBLIC_CLIENT", False))
+
+    def exchange_code_for_tokens(
+        self,
+        app_config,
+        http_client,
+        code,
+        redirect_suffix,
+        code_verifier: Optional[str] = None,
+    ):
         # Exchange the code for the access token and id_token
         try:
+            extra_token_params = None
+            if self.pkce_enabled() and code_verifier:
+                extra_token_params = {"code_verifier": code_verifier}
+
             json_data = self.exchange_code(
                 app_config,
                 http_client,
                 code,
                 redirect_suffix=redirect_suffix,
                 form_encode=self.requires_form_encoding(),
+                extra_token_params=extra_token_params,
+                omit_client_secret=self.public_client(),
             )
         except OAuthExchangeCodeException as oce:
             raise OAuthLoginException(str(oce))
@@ -166,10 +193,17 @@ class OIDCLoginService(OAuthService):
 
         return id_token, access_token
 
-    def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix):
+    def exchange_code_for_login(
+        self,
+        app_config,
+        http_client,
+        code,
+        redirect_suffix,
+        code_verifier: Optional[str] = None,
+    ):
         # Exchange the code for the access token and id_token
         id_token, access_token = self.exchange_code_for_tokens(
-            app_config, http_client, code, redirect_suffix
+            app_config, http_client, code, redirect_suffix, code_verifier=code_verifier
         )
 
         # Decode the id_token.
@@ -305,7 +339,7 @@ class OIDCLoginService(OAuthService):
                 # Decode again with verify_signature=False, and log the decoded token to allow for easier debugging.
                 nonverified = decode(
                     token,
-                    self._get_public_key(kid, force_refresh=True),
+                    None,  # No key needed for non-verified decode
                     algorithms=ALLOWED_ALGORITHMS,
                     audience=self.client_id(),
                     issuer=self._issuer,
