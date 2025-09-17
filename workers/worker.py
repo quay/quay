@@ -101,14 +101,6 @@ class Worker(object):
                         integrations=integrations,
                         default_integrations=False,
                         auto_session_tracking=True,
-                        # Fix connection pool issues
-                        transport=sentry_sdk.transport.make_transport(
-                            {
-                                "pool_connections": 10,  # Instead of 1
-                                "pool_maxsize": 20,  # Max connections per pool
-                                "max_retries": 3,  # Retry failed sends
-                            }
-                        ),
                     )
                     sentry_sdk.set_tag("worker", worker_name)
                 except Exception as e:
