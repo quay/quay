@@ -72,13 +72,6 @@ class Sentry(object):
                         integrations=integrations,
                         default_integrations=False,
                         auto_session_tracking=True,
-                        transport=sentry_sdk.transport.make_transport(
-                            {
-                                "pool_connections": 10,  # Instead of default 1
-                                "pool_maxsize": 20,  # Max connections per pool
-                                "max_retries": 3,  # Retry failed sends
-                            }
-                        ),
                     )
                     # Return the initialized Sentry SDK object directly
                     sentry = initialized_sentry
