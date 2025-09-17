@@ -6,6 +6,7 @@ from flask import session
 
 from auth.permissions import SuperUserPermission
 from health.services import check_all_services, check_warning_services
+from util.aws_sts import create_aws_client
 
 logger = logging.getLogger(__name__)
 
@@ -137,10 +138,13 @@ class RDSAwareHealthCheck(HealthCheck):
         app,
         config_provider,
         instance_keys,
-        access_key,
-        secret_key,
+        access_key=None,
+        secret_key=None,
         db_instance="quay",
         region="us-east-1",
+        sts_role_arn=None,
+        web_identity_token_file=None,
+        role_session_name=None,
     ):
         # Note: We skip the redis check because if redis is down, we don't want ELB taking the
         # machines out of service. Redis is not considered a high avaliability-required service.
@@ -152,6 +156,9 @@ class RDSAwareHealthCheck(HealthCheck):
         self.secret_key = secret_key
         self.db_instance = db_instance
         self.region = region
+        self.sts_role_arn = sts_role_arn
+        self.web_identity_token_file = web_identity_token_file
+        self.role_session_name = role_session_name
 
     @classmethod
     def check_names(cls):
@@ -182,12 +189,15 @@ class RDSAwareHealthCheck(HealthCheck):
         Returns the status of the RDS instance as reported by AWS.
         """
         try:
-            session = boto3.session.Session(
-                aws_access_key_id=self.access_key,
-                aws_secret_access_key=self.secret_key,
-                region_name=self.region,
+            client = create_aws_client(
+                service_name="rds",
+                region=self.region,
+                access_key=self.access_key,
+                secret_key=self.secret_key,
+                sts_role_arn=self.sts_role_arn,
+                web_identity_token_file=self.web_identity_token_file,
+                role_session_name=self.role_session_name,
             )
-            client = session.client("rds")
             instances = client.describe_db_instances()["DBInstances"]
             matches = [i for i in instances if i["DBInstanceIdentifier"] == self.db_instance]
 
