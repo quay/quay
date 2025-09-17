@@ -27,14 +27,15 @@ def start_cloudwatch_sender(metrics, app):
     namespace = app.config.get("CLOUDWATCH_NAMESPACE")
     region = app.config.get("CLOUDWATCH_AWS_REGION", "us-east-1")
 
-    # OpenShift STS support
-    sts_role_arn = app.config.get("CLOUDWATCH_STS_ROLE_ARN")
+    role_arn = app.config.get("CLOUDWATCH_ROLE_ARN")
+    role_session_name = app.config.get("CLOUDWATCH_ROLE_SESSION_NAME", "quay-cloudwatch-sender")
+    web_identity_token_file = app.config.get("CLOUDWATCH_WEB_IDENTITY_TOKEN_FILE")
 
     if not namespace:
         logger.debug("CloudWatch not configured")
         return
 
-    sender = CloudWatchSender(metrics, access_key, secret_key, namespace, region, sts_role_arn)
+    sender = CloudWatchSender(metrics, access_key, secret_key, namespace, region, role_arn)
     sender.start()
 
 
@@ -45,7 +46,15 @@ class CloudWatchSender(Thread):
     """
 
     def __init__(
-        self, metrics, aws_access_key, aws_secret_key, namespace, region, sts_role_arn=None
+        self,
+        metrics,
+        aws_access_key,
+        aws_secret_key,
+        namespace,
+        region,
+        aws_role_arn=None,
+        aws_session_name=None,
+        aws_web_identity_token_file=None,
     ):
         Thread.__init__(self)
         self.daemon = True
@@ -55,7 +64,9 @@ class CloudWatchSender(Thread):
         self._metrics = metrics
         self._namespace = namespace
         self._region = region
-        self._sts_role_arn = sts_role_arn
+        self._aws_role_arn = aws_role_arn
+        self._aws_session_name = aws_session_name
+        self._aws_web_identity_token_file = aws_web_identity_token_file
 
     def run(self):
         try:
@@ -66,7 +77,9 @@ class CloudWatchSender(Thread):
                 region=self._region,
                 access_key=self._aws_access_key,
                 secret_key=self._aws_secret_key,
-                sts_role_arn=self._sts_role_arn,
+                role_arn=self._aws_role_arn,
+                session_name=self._aws_session_name,
+                web_identity_token_file=self._aws_web_identity_token_file,
             )
         except:
             logger.exception("Failed to connect to CloudWatch.")

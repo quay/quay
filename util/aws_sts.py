@@ -19,7 +19,7 @@ def create_aws_client(
     access_key: Optional[str] = None,
     secret_key: Optional[str] = None,
     session_token: Optional[str] = None,
-    sts_role_arn: Optional[str] = None,
+    role_arn: Optional[str] = None,
     web_identity_token_file: Optional[str] = None,
     role_session_name: Optional[str] = None,
     **client_kwargs: Any,
@@ -29,7 +29,7 @@ def create_aws_client(
 
     This function provides a unified way to create AWS clients that can use either:
     1. Traditional IAM user credentials (access_key/secret_key)
-    2. OpenShift STS with ISRA (sts_role_arn)
+    2. OpenShift STS with ISRA (role_arn)
 
     Args:
         service_name: AWS service name (e.g., 's3', 'kinesis', 'cloudwatch')
@@ -37,7 +37,7 @@ def create_aws_client(
         access_key: AWS access key ID (for traditional auth)
         secret_key: AWS secret access key (for traditional auth)
         session_token: AWS session token (for traditional auth)
-        sts_role_arn: IAM role ARN for STS authentication
+        role_arn: IAM role ARN for STS authentication
         web_identity_token_file: Path to service account token file
         role_session_name: Session name for STS role assumption
         **client_kwargs: Additional arguments passed to boto3.client()
@@ -56,11 +56,11 @@ def create_aws_client(
         role_session_name = f"quay-{service_name}-sts"
 
     # If STS role ARN is provided, use OpenShift STS authentication
-    if sts_role_arn:
+    if role_arn:
         return _create_sts_client(
             service_name=service_name,
             region=region,
-            sts_role_arn=sts_role_arn,
+            role_arn=role_arn,
             web_identity_token_file=web_identity_token_file,
             role_session_name=role_session_name,
             **client_kwargs,
@@ -84,7 +84,7 @@ def create_aws_client(
 def _create_sts_client(
     service_name: str,
     region: Optional[str],
-    sts_role_arn: str,
+    role_arn: str,
     web_identity_token_file: str,
     role_session_name: str,
     **client_kwargs: Any,
@@ -103,7 +103,7 @@ def _create_sts_client(
         web_identity_token = token_file.read().strip()
 
     response = sts_client.assume_role_with_web_identity(
-        RoleArn=sts_role_arn,
+        RoleArn=role_arn,
         RoleSessionName=role_session_name,
         WebIdentityToken=web_identity_token,
     )

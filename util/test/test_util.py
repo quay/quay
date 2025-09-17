@@ -110,7 +110,7 @@ class TestCreateAwsClient:
         result = create_aws_client(
             service_name="s3",
             region="us-east-1",
-            sts_role_arn="arn:aws:iam::123456789012:role/test-role",
+            role_arn="arn:aws:iam::123456789012:role/test-role",
         )
 
         assert result == mock_client
@@ -153,7 +153,7 @@ class TestCreateStsClient:
         result = _create_sts_client(
             service_name="s3",
             region="us-east-1",
-            sts_role_arn="arn:aws:iam::123456789012:role/test-role",
+            role_arn="arn:aws:iam::123456789012:role/test-role",
             web_identity_token_file="/test/token/file",
             role_session_name="test-session",
         )
@@ -202,7 +202,7 @@ class TestCreateStsClient:
         result = _create_sts_client(
             service_name="kinesis",
             region=None,
-            sts_role_arn="arn:aws:iam::123456789012:role/test-role",
+            role_arn="arn:aws:iam::123456789012:role/test-role",
             web_identity_token_file="/test/token/file",
             role_session_name="test-session",
         )

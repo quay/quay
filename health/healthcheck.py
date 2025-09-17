@@ -142,9 +142,9 @@ class RDSAwareHealthCheck(HealthCheck):
         secret_key=None,
         db_instance="quay",
         region="us-east-1",
-        sts_role_arn=None,
-        web_identity_token_file=None,
+        role_arn=None,
         role_session_name=None,
+        web_identity_token_file=None,
     ):
         # Note: We skip the redis check because if redis is down, we don't want ELB taking the
         # machines out of service. Redis is not considered a high avaliability-required service.
@@ -156,7 +156,7 @@ class RDSAwareHealthCheck(HealthCheck):
         self.secret_key = secret_key
         self.db_instance = db_instance
         self.region = region
-        self.sts_role_arn = sts_role_arn
+        self.role_arn = role_arn
         self.web_identity_token_file = web_identity_token_file
         self.role_session_name = role_session_name
 
@@ -194,7 +194,7 @@ class RDSAwareHealthCheck(HealthCheck):
                 region=self.region,
                 access_key=self.access_key,
                 secret_key=self.secret_key,
-                sts_role_arn=self.sts_role_arn,
+                role_arn=self.role_arn,
                 web_identity_token_file=self.web_identity_token_file,
                 role_session_name=self.role_session_name,
             )

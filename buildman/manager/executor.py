@@ -240,7 +240,9 @@ class EC2Executor(BuilderExecutor):
             region=self.executor_config["EC2_REGION"],
             access_key=self.executor_config.get("AWS_ACCESS_KEY"),
             secret_key=self.executor_config.get("AWS_SECRET_KEY"),
-            sts_role_arn=self.executor_config.get("STS_ROLE_ARN"),
+            role_arn=self.executor_config.get("AWS_ROLE_ARN"),
+            role_session_name=self.executor_config.get("AWS_ROLE_SESSION_NAME"),
+            web_identity_token_file=self.executor_config.get("AWS_WEB_IDENTITY_TOKEN_FILE"),
         )
 
     @property

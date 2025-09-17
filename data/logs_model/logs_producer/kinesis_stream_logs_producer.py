@@ -56,13 +56,18 @@ class KinesisStreamLogsProducer(LogProducerInterface):
         read_timeout=None,
         max_retries=None,
         max_pool_connections=None,
-        sts_role_arn=None,
+        aws_role_arn=None,
+        aws_role_session_name=None,
+        aws_web_identity_token_file=None,
     ):
         self._stream_name = stream_name
         self._aws_region = aws_region
         self._aws_access_key = aws_access_key
         self._aws_secret_key = aws_secret_key
-        self._sts_role_arn = sts_role_arn
+        self._aws_role_arn = aws_role_arn
+        self._aws_role_session_name = aws_role_session_name
+        self._aws_web_identity_token_file = aws_web_identity_token_file
+
         self._connect_timeout = connect_timeout or DEFAULT_CONNECT_TIMEOUT
         self._read_timeout = read_timeout or DEFAULT_READ_TIMEOUT
         self._max_retries = max_retries or MAX_RETRY_ATTEMPTS
@@ -80,9 +85,11 @@ class KinesisStreamLogsProducer(LogProducerInterface):
             region=self._aws_region,
             access_key=self._aws_access_key,
             secret_key=self._aws_secret_key,
-            sts_role_arn=self._sts_role_arn,
+            role_arn=self._aws_role_arn,
+            role_session_name=self._aws_role_session_name,
             config=client_config,
             use_ssl=True,
+            web_identity_token_file=self._aws_web_identity_token_file,
         )
 
     def send(self, logentry):
