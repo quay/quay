@@ -1,6 +1,7 @@
 import json
 import re
 import string
+from typing import Any, Generator, Optional, Tuple, Union
 
 from peewee import OperationalError
 from text_unidecode import unidecode
@@ -20,21 +21,48 @@ VALID_SERVICE_KEY_NAME_REGEX = r"^[\s a-zA-Z0-9\-_:/]*$"
 INVALID_USERNAME_CHARACTERS = r"[^a-z0-9_-]"
 
 
-def validate_label_key(label_key):
+def validate_label_key(label_key: str) -> bool:
+    """
+    Validate a label key according to Kubernetes label key constraints.
+    
+    Args:
+        label_key: The label key to validate
+        
+    Returns:
+        True if the label key is valid, False otherwise
+    """
     if len(label_key) > 255:
         return False
 
     return bool(re.match(VALID_LABEL_KEY_REGEX, label_key))
 
 
-def validate_email(email_address):
+def validate_email(email_address: str) -> bool:
+    """
+    Validate an email address using basic regex pattern.
+    
+    Args:
+        email_address: The email address to validate
+        
+    Returns:
+        True if the email address has a valid format, False otherwise
+    """
     if not email_address:
         return False
 
     return bool(re.match(r"[^@]+@[^@]+\.[^@]+", email_address))
 
 
-def validate_username(username):
+def validate_username(username: str) -> Tuple[bool, str]:
+    """
+    Validate a username according to Docker Registry API spec restrictions.
+    
+    Args:
+        username: The username to validate
+        
+    Returns:
+        A tuple of (is_valid, error_message). If valid, error_message is empty.
+    """
     # Based off the restrictions defined in the Docker Registry API spec
     if not re.match(VALID_USERNAME_REGEX, username):
         return (False, "Namespace must match expression " + VALID_USERNAME_REGEX)
@@ -50,14 +78,32 @@ def validate_username(username):
     return (True, "")
 
 
-def validate_password(password):
+def validate_password(password: str) -> bool:
+    """
+    Validate a password meets minimum security requirements.
+    
+    Args:
+        password: The password to validate
+        
+    Returns:
+        True if password is valid (no whitespace, minimum 8 characters), False otherwise
+    """
     # No whitespace and minimum length of 8
     if re.search(r"\s", password):
         return False
     return len(password) > 7
 
 
-def validate_robot_token(token):
+def validate_robot_token(token: str) -> bool:
+    """
+    Validate a robot token format.
+    
+    Args:
+        token: The robot token to validate
+        
+    Returns:
+        True if token is exactly 64 characters of uppercase letters and digits, False otherwise
+    """
     if len(token) != 64:
         return False
 
@@ -68,7 +114,16 @@ def validate_robot_token(token):
     return True
 
 
-def _gen_filler_chars(num_filler_chars):
+def _gen_filler_chars(num_filler_chars: int) -> Generator[str, None, None]:
+    """
+    Generate all possible filler character combinations of a given length.
+    
+    Args:
+        num_filler_chars: Number of filler characters to generate
+        
+    Yields:
+        All possible character combinations using VALID_CHARACTERS
+    """
     if num_filler_chars == 0:
         yield ""
     else:
@@ -77,7 +132,19 @@ def _gen_filler_chars(num_filler_chars):
                 yield char + suffix
 
 
-def generate_valid_usernames(input_username):
+def generate_valid_usernames(input_username: Union[str, bytes]) -> Generator[str, None, None]:
+    """
+    Generate valid usernames based on an input username by normalizing and adding suffixes.
+    
+    Args:
+        input_username: The input username to normalize (can be string or bytes)
+        
+    Yields:
+        Valid usernames that comply with username validation rules
+        
+    Raises:
+        UnicodeDecodeError: If input_username bytes cannot be decoded as UTF-8
+    """
     if isinstance(input_username, bytes):
         try:
             input_username = input_username.decode("utf-8")
@@ -104,7 +171,16 @@ def generate_valid_usernames(input_username):
         num_filler_chars += 1
 
 
-def is_json(value):
+def is_json(value: str) -> bool:
+    """
+    Check if a string contains valid JSON.
+    
+    Args:
+        value: The string to check for valid JSON format
+        
+    Returns:
+        True if the string is valid JSON (object or array), False otherwise
+    """
     if (value.startswith("{") and value.endswith("}")) or (
         value.startswith("[") and value.endswith("]")
     ):
@@ -116,7 +192,16 @@ def is_json(value):
     return False
 
 
-def validate_postgres_precondition(driver):
+def validate_postgres_precondition(driver: Any) -> None:
+    """
+    Validate that required PostgreSQL extensions are installed.
+    
+    Args:
+        driver: Database driver/connection object
+        
+    Raises:
+        OperationalError: If pg_trgm extension is not installed
+    """
     cursor = driver.execute_sql("SELECT extname FROM pg_extension", ("public",))
     if "pg_trgm" not in [extname for extname, in cursor.fetchall()]:
         raise OperationalError(
@@ -127,5 +212,14 @@ def validate_postgres_precondition(driver):
         )
 
 
-def validate_service_key_name(name):
+def validate_service_key_name(name: Optional[str]) -> bool:
+    """
+    Validate a service key name format.
+    
+    Args:
+        name: The service key name to validate (can be None)
+        
+    Returns:
+        True if name is None or matches the valid service key name regex, False otherwise
+    """
     return name is None or bool(re.match(VALID_SERVICE_KEY_NAME_REGEX, name))
