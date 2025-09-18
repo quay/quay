@@ -61,18 +61,15 @@ type ExecutorArgs struct {
 	MinimumRetryThreshold   int           `default:"" validate:"" json:"MINIMUM_RETRY_THRESHOLD" yaml:"MINIMUM_RETRY_THRESHOLD"`
 	SSHAuthorizedKeys       []interface{} `default:"" validate:"" json:"SSH_AUTHORIZED_KEYS,omitempty" yaml:"SSH_AUTHORIZED_KEYS,omitempty"`
 	// ec2 fields
-	EC2Region               string        `default:"" validate:"" json:"EC2_REGION,omitempty" yaml:"EC2_REGION,omitempty"`
-	CoreOSAMI               string        `default:"" validate:"" json:"COREOS_AMI,omitempty" yaml:"COREOS_AMI,omitempty"`
-	AwsAccessKey            string        `default:"" validate:"" json:"AWS_ACCESS_KEY,omitempty" yaml:"AWS_ACCESS_KEY,omitempty"`
-	AwsSecretKey            string        `default:"" validate:"" json:"AWS_SECRET_KEY,omitempty" yaml:"AWS_SECRET_KEY,omitempty"`
-	AwsRoleArn              string        `default:"" validate:"" json:"AWS_ROLE_ARN,omitempty" yaml:"AWS_ROLE_ARN,omitempty"`
-	AwsRoleSessionName      string        `default:"" validate:"" json:"AWS_ROLE_SESSION_NAME,omitempty" yaml:"AWS_ROLE_SESSION_NAME,omitempty"`
-	AwsWebIdentityTokenFile string        `default:"" validate:"" json:"AWS_WEB_IDENTITY_TOKEN_FILE,omitempty" yaml:"AWS_WEB_IDENTITY_TOKEN_FILE,omitempty"`
-	EC2InstanceType         string        `default:"" validate:"" json:"EC2_INSTANCE_TYPE,omitempty" yaml:"EC2_INSTANCE_TYPE,omitempty"`
-	EC2VPCSubnetID          string        `default:"" validate:"" json:"EC2_VPC_SUBNET_ID,omitempty" yaml:"EC2_VPC_SUBNET_ID,omitempty"`
-	EC2SecurityGroupIDs     []interface{} `default:"" validate:"" json:"EC2_SECURITY_GROUP_IDS,omitempty" yaml:"EC2_SECURITY_GROUP_IDS,omitempty"`
-	EC2KeyName              string        `default:"" validate:"" json:"EC2_KEY_NAME,omitempty" yaml:"EC2_KEY_NAME,omitempty"`
-	BlockDeviceSize         int           `default:"" validate:"" json:"BLOCK_DEVICE_SIZE,omitempty" yaml:"BLOCK_DEVICE_SIZE,omitempty"`
+	EC2Region           string        `default:"" validate:"" json:"EC2_REGION,omitempty" yaml:"EC2_REGION,omitempty"`
+	CoreOSAMI           string        `default:"" validate:"" json:"COREOS_AMI,omitempty" yaml:"COREOS_AMI,omitempty"`
+	AwsAccessKey        string        `default:"" validate:"" json:"AWS_ACCESS_KEY,omitempty" yaml:"AWS_ACCESS_KEY,omitempty"`
+	AwsSecretKey        string        `default:"" validate:"" json:"AWS_SECRET_KEY,omitempty" yaml:"AWS_SECRET_KEY,omitempty"`
+	EC2InstanceType     string        `default:"" validate:"" json:"EC2_INSTANCE_TYPE,omitempty" yaml:"EC2_INSTANCE_TYPE,omitempty"`
+	EC2VPCSubnetID      string        `default:"" validate:"" json:"EC2_VPC_SUBNET_ID,omitempty" yaml:"EC2_VPC_SUBNET_ID,omitempty"`
+	EC2SecurityGroupIDs []interface{} `default:"" validate:"" json:"EC2_SECURITY_GROUP_IDS,omitempty" yaml:"EC2_SECURITY_GROUP_IDS,omitempty"`
+	EC2KeyName          string        `default:"" validate:"" json:"EC2_KEY_NAME,omitempty" yaml:"EC2_KEY_NAME,omitempty"`
+	BlockDeviceSize     int           `default:"" validate:"" json:"BLOCK_DEVICE_SIZE,omitempty" yaml:"BLOCK_DEVICE_SIZE,omitempty"`
 }
 
 // NewBuildManagerFieldGroup creates a new BitbucketBuildTriggerFieldGroup
