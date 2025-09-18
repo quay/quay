@@ -1,0 +1,43 @@
+{
+  "users": [
+    {
+      "username": "user1",
+      "email": "user1@example.com",
+      "verified": true,
+      "avatar": {
+        "name": "user1",
+        "hash": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "color": "#ffff00",
+        "kind": "user"
+      },
+      "super_user": false,
+      "enabled": true
+    },
+    {
+      "username": "user2",
+      "email": "user2@example.com",
+      "verified": true,
+      "avatar": {
+        "name": "user2",
+        "hash": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+        "color": "#00ffff",
+        "kind": "user"
+      },
+      "super_user": false,
+      "enabled": true
+    },
+    {
+      "username": "disableduser",
+      "email": "disabled@example.com",
+      "verified": false,
+      "avatar": {
+        "name": "disableduser",
+        "hash": "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3",
+        "color": "#cccccc",
+        "kind": "user"
+      },
+      "super_user": false,
+      "enabled": false
+    }
+  ]
+}
