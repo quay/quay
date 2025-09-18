@@ -102,6 +102,15 @@ def app_config(http_client, mailing_feature):
                 },
             },
         },
+        "AZUREAD_LOGIN_CONFIG": {
+            "CLIENT_ID": "azure-client-id",
+            "CLIENT_SECRET": "azure-client-secret",
+            "SERVICE_NAME": "Azure Active Directory",
+            "SERVICE_ICON": "http://some/icon",
+            "OIDC_SERVER": "http://fakeoidc",
+            "OIDC_RESOURCE": "https://myapp.example.com",
+            "DEBUGGING": True,
+        },
         "HTTPCLIENT": http_client,
         "TESTING": True,
     }
@@ -120,6 +129,11 @@ def another_oidc_service(app_config):
 @pytest.fixture()
 def oidc_withparams_service(app_config):
     return OIDCLoginService(app_config, "OIDCWITHPARAMS_LOGIN_CONFIG")
+
+
+@pytest.fixture()
+def azuread_service(app_config):
+    return OIDCLoginService(app_config, "AZUREAD_LOGIN_CONFIG")
 
 
 @pytest.fixture()
@@ -205,6 +219,50 @@ def token_handler_password_grant(oidc_service):
 
         if params.get("password")[0] != "somepassword":
             return {"status_code": 401, "content": "Invalid login credentials"}
+
+        content = {
+            "access_token": "sometoken",
+        }
+        return {"status_code": 200, "content": json.dumps(content)}
+
+    return handler
+
+
+@pytest.fixture()
+def token_handler_azuread_password_grant(azuread_service):
+    @urlmatch(netloc=r"fakeoidc", path=r"/token")
+    def handler(_, request):
+
+        params = urllib.parse.parse_qs(request.body)
+        if params.get("client_id")[0] != azuread_service.client_id():
+            return {"status_code": 401, "content": "Invalid client id"}
+
+        if params.get("client_secret")[0] != azuread_service.client_secret():
+            return {"status_code": 401, "content": "Invalid client secret"}
+
+        if params.get("grant_type")[0] != "password":
+            return {"status_code": 400, "content": "Invalid authorization type"}
+
+        if params.get("username")[0] != "someusername":
+            return {"status_code": 401, "content": "Invalid login credentials"}
+
+        if params.get("password")[0] != "somepassword":
+            return {"status_code": 401, "content": "Invalid login credentials"}
+
+        # Azure AD requires the 'resource' parameter
+        if not params.get("resource"):
+            return {
+                "status_code": 400,
+                "content": json.dumps(
+                    {
+                        "error": "invalid_request",
+                        "error_description": "AADSTS900144: The request body must contain the following parameter: 'resource'.",
+                    }
+                ),
+            }
+
+        if params.get("resource")[0] != "https://myapp.example.com":
+            return {"status_code": 400, "content": "Invalid resource parameter"}
 
         content = {
             "access_token": "sometoken",
@@ -471,6 +529,16 @@ def test_password_grant_for_login(
 ):
     with HTTMock(discovery_handler, token_handler_password_grant):
         response = oidc_service.password_grant_for_login("someusername", "somepassword")
+        assert response.get("access_token") == "sometoken"
+
+
+def test_azuread_password_grant_with_resource_parameter(
+    azuread_service,
+    discovery_handler,
+    token_handler_azuread_password_grant,
+):
+    with HTTMock(discovery_handler, token_handler_azuread_password_grant):
+        response = azuread_service.password_grant_for_login("someusername", "somepassword")
         assert response.get("access_token") == "sometoken"
 
 
