@@ -22,17 +22,14 @@ type LogsModelConfigStruct struct {
 
 // KinesisStreamConfigStruct represents the KinesisStreamConfigStruct config fields
 type KinesisStreamConfigStruct struct {
-	Retries                 int    `default:"" validate:"" json:"retries,omitempty" yaml:"retries,omitempty"`
-	ReadTimeout             int    `default:"" validate:"" json:"read_timeout,omitempty" yaml:"read_timeout,omitempty"`
-	MaxPoolConnections      int    `default:"" validate:"" json:"max_pool_connections,omitempty" yaml:"max_pool_connections,omitempty"`
-	AwsRegion               string `default:"" validate:"" json:"aws_region,omitempty" yaml:"aws_region,omitempty"`
-	ConnectTimeout          int    `default:"" validate:"" json:"connect_timeout,omitempty" yaml:"connect_timeout,omitempty"`
-	AwsSecretKey            string `default:"" validate:"" json:"aws_secret_key,omitempty" yaml:"aws_secret_key,omitempty"`
-	AwsRoleArn              string `default:"" validate:"" json:"aws_role_arn,omitempty" yaml:"aws_role_arn,omitempty"`
-	AwsRoleSessionName      string `default:"" validate:"" json:"aws_role_session_name,omitempty" yaml:"aws_role_session_name,omitempty"`
-	AwsWebIdentityTokenFile string `default:"" validate:"" json:"aws_web_identity_token_file,omitempty" yaml:"aws_web_identity_token_file,omitempty"`
-	StreamName              string `default:"" validate:"" json:"stream_name,omitempty" yaml:"stream_name,omitempty"`
-	AwsAccessKey            string `default:"" validate:"" json:"aws_access_key,omitempty" yaml:"aws_access_key,omitempty"`
+	Retries            int    `default:"" validate:"" json:"retries,omitempty" yaml:"retries,omitempty"`
+	ReadTimeout        int    `default:"" validate:"" json:"read_timeout,omitempty" yaml:"read_timeout,omitempty"`
+	MaxPoolConnections int    `default:"" validate:"" json:"max_pool_connections,omitempty" yaml:"max_pool_connections,omitempty"`
+	AwsRegion          string `default:"" validate:"" json:"aws_region,omitempty" yaml:"aws_region,omitempty"`
+	ConnectTimeout     int    `default:"" validate:"" json:"connect_timeout,omitempty" yaml:"connect_timeout,omitempty"`
+	AwsSecretKey       string `default:"" validate:"" json:"aws_secret_key,omitempty" yaml:"aws_secret_key,omitempty"`
+	StreamName         string `default:"" validate:"" json:"stream_name,omitempty" yaml:"stream_name,omitempty"`
+	AwsAccessKey       string `default:"" validate:"" json:"aws_access_key,omitempty" yaml:"aws_access_key,omitempty"`
 }
 
 // ElasticsearchConfigStruct represents the ElasticsearchConfigStruct config fields
