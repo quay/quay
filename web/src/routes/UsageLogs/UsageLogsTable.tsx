@@ -9,13 +9,13 @@ import {
 } from '@patternfly/react-core';
 import {
   Table,
+  TableText,
   Tbody,
   Td,
   Th,
   Thead,
   Tr,
-  TableText,
-} from '../../components/QuayTable';
+} from '@patternfly/react-table';
 import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';

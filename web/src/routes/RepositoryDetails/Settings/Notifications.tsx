@@ -15,7 +15,7 @@ import {
   Th,
   Thead,
   Tr,
-} from '../../../components/QuayTable';
+} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import Empty from 'src/components/empty/Empty';

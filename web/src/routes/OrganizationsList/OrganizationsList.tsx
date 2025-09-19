@@ -6,14 +6,7 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
-import {
-  QuayTable,
-  QuayTbody,
-  QuayTd,
-  QuayTh,
-  QuayThead,
-  QuayTr,
-} from '../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue} from 'recoil';
@@ -304,24 +297,24 @@ export default function OrganizationsList() {
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
         />
-        <QuayTable aria-label="Selectable table" variant="compact">
-          <QuayThead>
-            <QuayTr>
-              <QuayTh />
-              <QuayTh sort={getSortableSort(1)} modifier="wrap">
+        <Table aria-label="Selectable table" variant="compact">
+          <Thead>
+            <Tr>
+              <Th />
+              <Th sort={getSortableSort(1)} modifier="wrap">
                 {ColumnNames.name}
-              </QuayTh>
-              <QuayTh>{ColumnNames.repoCount}</QuayTh>
-              <QuayTh>{ColumnNames.teamsCount}</QuayTh>
-              <QuayTh>{ColumnNames.membersCount}</QuayTh>
-              <QuayTh>{ColumnNames.robotsCount}</QuayTh>
-              <QuayTh>{ColumnNames.lastModified}</QuayTh>
-            </QuayTr>
-          </QuayThead>
-          <QuayTbody>
+              </Th>
+              <Th>{ColumnNames.repoCount}</Th>
+              <Th>{ColumnNames.teamsCount}</Th>
+              <Th>{ColumnNames.membersCount}</Th>
+              <Th>{ColumnNames.robotsCount}</Th>
+              <Th>{ColumnNames.lastModified}</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
             {paginatedOrganizationsList?.map((org, rowIndex) => (
-              <QuayTr key={org.name}>
-                <QuayTd
+              <Tr key={org.name}>
+                <Td
                   select={{
                     rowIndex,
                     onSelect: (_event, isSelecting) =>
@@ -334,10 +327,10 @@ export default function OrganizationsList() {
                   name={org.name}
                   isUser={org.isUser}
                 ></OrgTableData>
-              </QuayTr>
+              </Tr>
             ))}
-          </QuayTbody>
-        </QuayTable>
+          </Tbody>
+        </Table>
         <PanelFooter>
           <ToolbarPagination
             itemsList={sortedOrgs}

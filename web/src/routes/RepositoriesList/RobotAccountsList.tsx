@@ -9,14 +9,15 @@ import {
   DropdownItem,
 } from '@patternfly/react-core';
 import {
-  Table,
   ExpandableRowContent,
-  Thead,
-  Tr,
-  Th,
+  Table,
   Tbody,
   Td,
-} from '../../components/QuayTable';
+  Th,
+  Thead,
+  Tr,
+} from '@patternfly/react-table';
+
 import {Link} from 'react-router-dom';
 import {RobotAccountColumnNames} from './ColumnNames';
 
@@ -613,7 +614,11 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           setIsModalOpen={setRobotFederationModalOpen}
           namespace={props.organizationName}
         />
-        <Table aria-label="Expandable table" variant="compact">
+        <Table
+          aria-label="Expandable table"
+          variant="compact"
+          id="robot-accounts-table"
+        >
           <Thead>
             <Tr>
               <Th />

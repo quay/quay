@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react';
 import {Spinner} from '@patternfly/react-core';
-import {Table, Thead, Tr, Th, Tbody, Td} from '../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useAllTags} from 'src/hooks/UseTags';
 import {Tag} from 'src/resources/TagResource';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
@@ -89,7 +89,11 @@ export default function TagHistory(props: TagHistoryProps) {
         setPerPage={paginationProps.setPerPage}
         total={isNullOrUndefined(filteredTags) ? 0 : filteredTags.length}
       />
-      <Table aria-label="Tag history table" variant="compact">
+      <Table
+        aria-label="Tag history table"
+        variant="compact"
+        id="tag-history-table"
+      >
         <Thead>
           <Tr>
             <Th sort={getSortableSort(0)}>Tag change</Th>

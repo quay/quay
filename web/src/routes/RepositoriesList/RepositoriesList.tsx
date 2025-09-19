@@ -7,7 +7,7 @@ import {
   PanelFooter,
   DropdownItem,
 } from '@patternfly/react-core';
-import {Table, Thead, Tr, Th, Tbody, Td} from '../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useRecoilState} from 'recoil';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {Link, useLocation} from 'react-router-dom';
