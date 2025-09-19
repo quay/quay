@@ -105,7 +105,10 @@ def generate_server_config(config):
     manifests_endpoint_read_timeout = config.get("MANIFESTS_ENDPOINT_READ_TIMEOUT", None)
 
     # Get default UI setting from config
-    default_ui = config.get("DEFAULT_UI", "angular")
+    default_ui = config.get("DEFAULT_UI", "angular").lower()
+    # Validate against allowed values
+    if default_ui not in ["angular", "react"]:
+        default_ui = "angular"
     # Check if Angular UI assets are available
     angular_available = os.path.exists(os.path.join(STATIC_DIR, "build"))
 
