@@ -162,3 +162,215 @@ describe('Signin page', () => {
     cy.url().should('include', '/signin');
   });
 });
+
+describe('Forgot Password functionality', () => {
+  beforeEach(() => {
+    // Mock config with mailing enabled
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          MAILING: true,
+          DIRECT_LOGIN: true,
+          USER_CREATION: true,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfig');
+
+    cy.visit('/signin');
+    cy.wait('@getConfig');
+  });
+
+  it('Shows forgot password link when conditions are met', () => {
+    cy.contains('Forgot Password?').should('be.visible');
+  });
+
+  it('Switches to forgot password view', () => {
+    cy.contains('Forgot Password?').click();
+    cy.contains('Please enter the e-mail address for your account').should(
+      'be.visible',
+    );
+    cy.contains('Back to Sign In').should('be.visible');
+  });
+
+  it('Sends recovery email successfully', () => {
+    cy.intercept('POST', '/api/v1/user/recovery', {
+      statusCode: 200,
+      body: {status: 'sent'},
+    }).as('sendRecovery');
+
+    cy.contains('Forgot Password?').click();
+    cy.get('#recovery-email').type('test@example.com');
+    cy.contains('Send Recovery Email').click();
+
+    cy.wait('@sendRecovery').then((interception) => {
+      expect(interception.request.body).to.deep.equal({
+        email: 'test@example.com',
+      });
+    });
+
+    cy.contains(
+      'Instructions on how to reset your password have been sent',
+    ).should('be.visible');
+  });
+
+  it('Handles recovery email errors', () => {
+    cy.intercept('POST', '/api/v1/user/recovery', {
+      statusCode: 400,
+      body: {message: 'User not found'},
+    }).as('sendRecoveryError');
+
+    cy.contains('Forgot Password?').click();
+    cy.get('#recovery-email').type('notfound@example.com');
+    cy.contains('Send Recovery Email').click();
+
+    cy.wait('@sendRecoveryError');
+    cy.contains('User not found').should('be.visible');
+  });
+
+  it('Handles organization account recovery', () => {
+    cy.intercept('POST', '/api/v1/user/recovery', {
+      statusCode: 200,
+      body: {
+        status: 'org',
+        orgemail: 'admin@org.com',
+        orgname: 'testorg',
+      },
+    }).as('sendOrgRecovery');
+
+    cy.contains('Forgot Password?').click();
+    cy.get('#recovery-email').type('admin@org.com');
+    cy.contains('Send Recovery Email').click();
+
+    cy.wait('@sendOrgRecovery');
+    cy.contains('admin@org.com').should('be.visible');
+    cy.contains('testorg').should('be.visible');
+  });
+
+  it('Does not show forgot password when mailing is disabled', () => {
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          MAILING: false,
+          DIRECT_LOGIN: true,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfigNoMailing');
+
+    cy.visit('/signin');
+    cy.wait('@getConfigNoMailing');
+    cy.contains('Forgot Password?').should('not.exist');
+  });
+
+  it('Does not show forgot password for non-Database auth', () => {
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          MAILING: true,
+          DIRECT_LOGIN: true,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'LDAP',
+        },
+        external_login: [],
+      },
+    }).as('getConfigLDAP');
+
+    cy.visit('/signin');
+    cy.wait('@getConfigLDAP');
+    cy.contains('Forgot Password?').should('not.exist');
+  });
+});
+
+describe('Create Account functionality', () => {
+  beforeEach(() => {
+    cy.visit('/signin');
+  });
+
+  it('Shows create account link when all conditions are met', () => {
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          USER_CREATION: true,
+          DIRECT_LOGIN: true,
+          INVITE_ONLY_USER_CREATION: false,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfigCreateAccount');
+
+    cy.wait('@getConfigCreateAccount');
+    cy.contains("Don't have an account?").should('be.visible');
+    cy.contains('Create account').should('be.visible');
+  });
+
+  it('Shows invitation message when invite-only is enabled', () => {
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          USER_CREATION: true,
+          DIRECT_LOGIN: true,
+          INVITE_ONLY_USER_CREATION: true,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfigInviteOnly');
+
+    cy.wait('@getConfigInviteOnly');
+    cy.contains('Invitation required to sign up').should('be.visible');
+    cy.contains('Create account').should('not.exist');
+  });
+
+  it('Does not show create account for non-Database auth', () => {
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          USER_CREATION: true,
+          DIRECT_LOGIN: true,
+          INVITE_ONLY_USER_CREATION: false,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'OIDC',
+        },
+        external_login: [],
+      },
+    }).as('getConfigOIDC');
+
+    cy.wait('@getConfigOIDC');
+    cy.contains("Don't have an account?").should('not.exist');
+    cy.contains('Create account').should('not.exist');
+  });
+
+  it('Does not show create account when USER_CREATION is false', () => {
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          USER_CREATION: false,
+          DIRECT_LOGIN: true,
+          INVITE_ONLY_USER_CREATION: false,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfigNoUserCreation');
+
+    cy.wait('@getConfigNoUserCreation');
+    cy.contains("Don't have an account?").should('not.exist');
+    cy.contains('Create account').should('not.exist');
+  });
+});
