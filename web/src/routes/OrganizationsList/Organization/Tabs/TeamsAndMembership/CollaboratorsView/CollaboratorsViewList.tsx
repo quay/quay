@@ -6,14 +6,7 @@ import {
   Spinner,
 } from '@patternfly/react-core';
 import CollaboratorsViewToolbar from './CollaboratorsViewToolbar';
-import {
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '../../../../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useFetchCollaborators} from 'src/hooks/UseMembers';
 import {useEffect, useState} from 'react';
 import {IMembers} from 'src/resources/MembersResource';

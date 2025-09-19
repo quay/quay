@@ -2,14 +2,14 @@ import {useEffect, useState} from 'react';
 import {Vulnerability, Feature} from 'src/resources/TagResource';
 import React from 'react';
 import {
+  ExpandableRowContent,
   Table,
-  Thead,
-  Tr,
-  Th,
   Tbody,
   Td,
-  ExpandableRowContent,
-} from '../../../components/QuayTable';
+  Th,
+  Thead,
+  Tr,
+} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 import {SecurityReportMetadataTable} from './SecurityReportMetadataTable';
 import {
@@ -66,6 +66,20 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
   const [vulnList, setVulnList] = useState<VulnerabilityListItem[]>([]);
   const [expandedVulnKeys, setExpandedVulnKeys] = React.useState<string[]>([]);
 
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [isFixedOnlyChecked, setIsFixedOnlyChecked] = useState<boolean>(false);
+
+  // Combined filter function for search term and fixable-only
+  const searchFilter = (vuln: VulnerabilityListItem) => {
+    const searchStr = vuln.PackageName + vuln.Advisory;
+    const matchesSearch = searchStr
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesFixable = !isFixedOnlyChecked || Boolean(vuln.FixedInVersion);
+    return matchesSearch && matchesFixable;
+  };
+
   // Use unified table hook for sorting, filtering, and pagination
   const {
     paginatedData: paginatedVulns,
@@ -80,8 +94,9 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
       3: (vuln: VulnerabilityListItem) => vuln.CurrentVersion, // Current Version
       4: (vuln: VulnerabilityListItem) => vuln.FixedInVersion || 'zzz', // Fixed in Version (null values sort to end)
     },
-    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Severity (asc because lower VulnSeverityOrder numbers = higher severity)
+    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Severity (asc = Critical first because Critical=0, High=1, etc.)
     initialPerPage: 20,
+    filter: searchFilter,
   });
 
   function TableHead() {
@@ -155,7 +170,10 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           <SecurityReportFilter
             setPage={paginationProps.setPage}
             vulnList={vulnList}
-            setFilteredVulnList={() => undefined}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            isFixedOnlyChecked={isFixedOnlyChecked}
+            setIsFixedOnlyChecked={setIsFixedOnlyChecked}
           />
           <ToolbarPagination {...paginationProps} />
         </ToolbarContent>

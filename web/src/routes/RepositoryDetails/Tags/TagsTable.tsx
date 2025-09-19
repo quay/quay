@@ -1,9 +1,16 @@
 import {Spinner} from '@patternfly/react-core';
-import {ExpandableRowContent} from '@patternfly/react-table';
-import {Table, Thead, Tr, Th, Tbody, Td} from '../../../components/QuayTable';
+import {
+  ExpandableRowContent,
+  Table,
+  Thead,
+  Tr,
+  Th,
+  ThProps,
+  Tbody,
+  Td,
+} from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {QuayThSortProps as ThProps} from '../../../components/QuayTable';
 import {Tag, Manifest} from 'src/resources/TagResource';
 import {useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';

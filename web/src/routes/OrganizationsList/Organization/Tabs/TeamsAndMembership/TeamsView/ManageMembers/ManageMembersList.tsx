@@ -31,14 +31,7 @@ import {
 } from '@patternfly/react-core';
 import {useEffect, useState, useMemo} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
-import {
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '../../../../../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import './css/ManageMembers.css';
 import {
   ITeamMember,
