@@ -1,12 +1,5 @@
 import {useEffect, useState} from 'react';
-import {
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '../../../../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {Link, useSearchParams} from 'react-router-dom';
 import {
   Dropdown,

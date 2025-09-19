@@ -7,13 +7,13 @@ import {
 } from 'src/resources/TagResource';
 import {
   Table,
-  Thead,
-  Tr,
-  Th,
   Tbody,
   Td,
-  QuayThSortProps as ThProps,
-} from '../../../components/QuayTable';
+  Th,
+  ThProps,
+  Thead,
+  Tr,
+} from '@patternfly/react-table';
 import {
   PageSection,
   PageSectionVariants,

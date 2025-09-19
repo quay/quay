@@ -18,7 +18,7 @@ import {
   TimesCircleIcon,
   UserIcon,
 } from '@patternfly/react-icons';
-import {Table, Tbody, Td, Th, Thead, Tr} from '../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import LinkOrPlainText from 'src/components/LinkOrPlainText';
 import {LoadingPage} from 'src/components/LoadingPage';

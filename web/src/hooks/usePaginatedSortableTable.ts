@@ -1,5 +1,5 @@
 import {useState, useMemo} from 'react';
-import {QuayThSortProps as ThProps} from '../components/QuayTable';
+import {ThProps} from '@patternfly/react-table';
 
 export interface PaginatedSortableTableConfig<T> {
   columns: Record<number, (item: T) => string | number>;
