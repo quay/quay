@@ -1,4 +1,5 @@
-import {QuayTd as Td} from '../../components/QuayTable';
+import {Td} from '@patternfly/react-table';
+
 import {Skeleton} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';

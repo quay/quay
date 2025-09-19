@@ -1,5 +1,5 @@
 import {Spinner} from '@patternfly/react-core';
-import {Table, Tbody, Td, Th, Thead, Tr} from '../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {useRepositoryPermissions} from 'src/hooks/UseRepositoryPermissions';
 import PermissionsToolbar from './PermissionsToolbar';

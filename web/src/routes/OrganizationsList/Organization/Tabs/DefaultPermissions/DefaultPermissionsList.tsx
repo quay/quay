@@ -11,14 +11,7 @@ import {
   DropdownItem,
   DropdownList,
 } from '@patternfly/react-core';
-import {
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
-} from '../../../../../components/QuayTable';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {
   IDefaultPermission,
