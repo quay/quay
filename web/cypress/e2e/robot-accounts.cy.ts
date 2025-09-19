@@ -20,7 +20,7 @@ describe('Robot Accounts Page', () => {
       'GET',
       `${Cypress.env(
         'REACT_QUAY_APP_API_URL',
-      )}/api/v1/organization/testorg/robots/testrobot`,
+      )}/api/v1/organization/testorg/robots/testrobot*`,
     ).as('getRobotCredentials');
   });
 
@@ -43,8 +43,11 @@ describe('Robot Accounts Page', () => {
 
     cy.visit('/organization/testorg?tab=Robotaccounts');
 
-    // select first robot
-    cy.contains('a', 'testorg+testrobot').click();
+    // Wait for robot accounts to load and be visible
+    cy.get('#robot-accounts-table').should('be.visible');
+
+    // select first robot (testrobot2 appears first due to sorting)
+    cy.contains('a', 'testorg+testrobot2').should('be.visible').click();
 
     cy.wait('@getRobotCredentials').then((interception) => {
       testrobotToken = interception.response.body.token;
@@ -69,7 +72,7 @@ describe('Robot Accounts Page', () => {
 
     cy.get('@serverHostname').then((serverHostname) => {
       cy.get('@testrobotToken').then((testrobotToken) => {
-        const robotCredential = 'testorg+testrobot:' + testrobotToken;
+        const robotCredential = 'testorg+testrobot2:' + testrobotToken;
         const encodedRobotCredential = btoa(robotCredential);
 
         const expectedAuthJson = {
@@ -102,7 +105,7 @@ describe('Robot Accounts Page', () => {
     // examine generated secret again and verify it is scoped to the registry
     cy.get('@serverHostname').then((serverHostname) => {
       cy.get('@testrobotToken').then((testrobotToken) => {
-        const robotCredential = 'testorg+testrobot:' + testrobotToken;
+        const robotCredential = 'testorg+testrobot2:' + testrobotToken;
         const encodedRobotCredential = btoa(robotCredential);
 
         const expectedAuthJson = {

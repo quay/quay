@@ -33,6 +33,7 @@ import {DrawerContentType} from '../Types';
 import {NotificationsColumnNames} from './ColumnNames';
 import NotificationsKebab from './NotificationsKebab';
 import NotificationsToolbar from './NotificationsToolbar';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
 export default function Notifications({
   org,
@@ -43,19 +44,24 @@ export default function Notifications({
     RepoNotification[]
   >([]);
   const [expandedUuids, setExpandedUuids] = useState<string[]>([]);
+  const {notifications, loading, error, filter, setFilter, resetFilter} =
+    useNotifications(org, repo);
+
   const {
-    notifications,
-    loading,
-    error,
-    paginatedNotifications,
-    page,
-    setPage,
-    perPage,
-    setPerPage,
-    filter,
-    setFilter,
-    resetFilter,
-  } = useNotifications(org, repo);
+    paginatedData: paginatedNotifications,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(notifications || [], {
+    columns: {
+      2: (item: RepoNotification) => item.title || '(Untitled)', // Title
+      3: (item: RepoNotification) => item.event, // Event
+      4: (item: RepoNotification) => item.method, // Notification
+      5: (item: RepoNotification) =>
+        isNotificationEnabled(item) ? 'Enabled' : 'Disabled', // Status
+    },
+    initialPerPage: 20,
+    initialSort: {columnIndex: 2, direction: 'asc'}, // Default sort: Title ascending
+  });
 
   const isExpanded = (uuid: string) => expandedUuids.includes(uuid);
   const setExpanded = (uuid: string, isExpanding = true) =>
@@ -119,10 +125,10 @@ export default function Notifications({
         allItems={notifications}
         paginatedItems={paginatedNotifications}
         selectedItems={selectedNotifications}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
+        page={paginationProps.page}
+        setPage={paginationProps.setPage}
+        perPage={paginationProps.perPage}
+        setPerPage={paginationProps.setPerPage}
         onItemSelect={onSelectNotification}
         deselectAll={() => setSelectedNotifications([])}
         setDrawerContent={props.setDrawerContent}
@@ -135,10 +141,12 @@ export default function Notifications({
           <Tr>
             <Th />
             <Th />
-            <Th>{NotificationsColumnNames.title}</Th>
-            <Th>{NotificationsColumnNames.event}</Th>
-            <Th>{NotificationsColumnNames.notification}</Th>
-            <Th>{NotificationsColumnNames.status}</Th>
+            <Th sort={getSortableSort(2)}>{NotificationsColumnNames.title}</Th>
+            <Th sort={getSortableSort(3)}>{NotificationsColumnNames.event}</Th>
+            <Th sort={getSortableSort(4)}>
+              {NotificationsColumnNames.notification}
+            </Th>
+            <Th sort={getSortableSort(5)}>{NotificationsColumnNames.status}</Th>
             <Th />
           </Tr>
         </Thead>
