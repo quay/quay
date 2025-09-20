@@ -77,7 +77,7 @@ coherent-licensed==0.4.1 \
     --hash=sha256:8ce06acba9cc78726ab9a46977212b10c982a306083e688d19717383144c04b7 \
     --hash=sha256:bb28482f2fad5e71ed3e333e0b7389e2c3d960869de825dfefc519aeebc69cc7
     # via -r requirements-build.in
-cython==3.0.12 \
+cython==3.1.4 \
     --hash=sha256:0038c9bae46c459669390e53a1ec115f8096b2e4647ae007ff1bf4e6dee92806 \
     --hash=sha256:0faa5e39e5c8cdf6f9c3b1c3f24972826e45911e7f5b99cf99453fca5432f45e \
     --hash=sha256:120681093772bf3600caddb296a65b352a0d3556e962b9b147efcfb8e8c9801b \
