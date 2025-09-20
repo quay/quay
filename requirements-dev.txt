@@ -39,7 +39,7 @@ types-enum34==1.1.8
 types-freezegun==1.1.10
 types-futures==3.3.1
 types-geoip2==3.0.0
-types-html5lib==1.1.11.15
+types-html5lib==1.1.11.20250917
 types-ipaddress==1.0.8
 types-jsonschema==4.17.0.8
 types-maxminddb==1.5.0
