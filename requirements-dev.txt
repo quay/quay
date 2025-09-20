@@ -4,7 +4,7 @@ git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77
 bencode.py==4.0.0
 black==24.4.2
 flake8==4.0.1
-boto3-stubs==1.14.9.0
+boto3-stubs==1.40.35
 fakeredis==1.6.1
 freezegun==0.3.12
 httmock==1.4.0
