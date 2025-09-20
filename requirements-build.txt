@@ -238,7 +238,7 @@ maturin==1.7.5 \
     --hash=sha256:f05ccbdfe96ad58d70dba9c3eed090726db8ccbaf07ec03852113ca2fec6d84b \
     --hash=sha256:f6c80fa7d67f58fd2cecbcdf309e2c3c5cd6f965216191de73af6cf947ef2ab8
     # via -r requirements-build.in
-mypy==1.15.0 \
+mypy==1.18.2 \
     --hash=sha256:1124a18bc11a6a62887e3e137f37f53fbae476dc36c185d549d4f837a2a6a14e \
     --hash=sha256:171a9ca9a40cd1843abeca0e405bc1940cd9b305eaeea2dda769ba096932bb22 \
     --hash=sha256:1905f494bfd7d85a23a88c5d97840888a7bd516545fc5aaedff0267e0bb54e2f \
