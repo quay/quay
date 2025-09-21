@@ -31,22 +31,9 @@ from endpoints.api import (
 from endpoints.exception import InvalidRequest, NotFound
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
-from util.pullmetrics import create_redis_client_from_config, get_pull_metrics_tracker
 
-# Initialize pull metrics tracker for tag API
-_pull_metrics_tracker = None
-
-
-def _get_pull_metrics_tracker():
-    """Get or create a pull metrics tracker instance."""
-    global _pull_metrics_tracker
-    if _pull_metrics_tracker is None:
-        redis_config = app.config.get("PULL_METRICS_REDIS")
-        if redis_config:
-            redis_client = create_redis_client_from_config(redis_config)
-            if redis_client:
-                _pull_metrics_tracker = get_pull_metrics_tracker(redis_client)
-    return _pull_metrics_tracker
+# Note: Pull metrics are now served from database, not Redis
+# Redis is used only for write-side (recording pull events) via manifest endpoints
 
 
 def _tag_dict(tag, repository_id=None):
@@ -73,25 +60,22 @@ def _tag_dict(tag, repository_id=None):
         expiration = format_date(datetime.utcfromtimestamp(tag.lifetime_end_ts))
         tag_info["expiration"] = expiration
 
-    # Add pull metrics if available
-    if repository_id and tag.manifest_digest:
+    # Add pull metrics from database (persistent storage)
+    if repository_id and tag.name:
         try:
-            pull_tracker = _get_pull_metrics_tracker()
-            if pull_tracker:
-                pull_metrics = pull_tracker.get_tag_pull_metrics(
-                    str(repository_id), tag.name, tag.manifest_digest
-                )
-                if pull_metrics:
-                    tag_info["pull_count"] = pull_metrics.get("pull_count", 0)
-                    last_pull_ts = pull_metrics.get("last_pull_timestamp", 0)
-                    if last_pull_ts > 0:
-                        tag_info["last_pull_timestamp"] = last_pull_ts
-                        tag_info["last_pull_date"] = format_date(
-                            datetime.utcfromtimestamp(last_pull_ts)
-                        )
-                else:
-                    # No pull metrics found, set defaults
-                    tag_info["pull_count"] = 0
+            from data.model.pull_statistics import get_tag_pull_statistics
+
+            # Get pull statistics from database
+            tag_stats = get_tag_pull_statistics(repository_id, tag.name)
+            if tag_stats:
+                tag_info["pull_count"] = tag_stats.tag_pull_count
+                if tag_stats.last_tag_pull_date:
+                    last_pull_ts = int(tag_stats.last_tag_pull_date.timestamp())
+                    tag_info["last_pull_timestamp"] = last_pull_ts
+                    tag_info["last_pull_date"] = format_date(tag_stats.last_tag_pull_date)
+            else:
+                # No pull metrics found, set defaults
+                tag_info["pull_count"] = 0
         except Exception as e:
             # Don't fail the entire request if pull metrics fail
             import logging

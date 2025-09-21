@@ -1,8 +1,13 @@
 """
-Utility module for tracking pull metrics in Redis.
+Utility module for recording pull events to Redis (write-only).
 
-This module provides functionality to capture and retrieve pull events for images,
-supporting both tag and digest pulls with real-time metrics tracking.
+This module provides functionality to capture pull events for images during docker pulls.
+Events are stored temporarily in Redis and processed by RedisFlushWorker into persistent database storage.
+
+Architecture:
+- Docker Pull → Redis (this module) - Fast, non-blocking writes
+- Redis → Database (RedisFlushWorker) - Background aggregation
+- Database → UI (pull_statistics model) - Consistent reads
 """
 import json
 import logging
@@ -16,12 +21,16 @@ logger = logging.getLogger(__name__)
 
 class PullMetricsTracker:
     """
-    Tracks pull metrics in Redis for real-time reporting.
+    Records pull metrics to Redis for background processing (write-only).
 
-    Implements the pull metrics tracking approach:
-    - Pull Events → Redis Cache
-    - Redis keys: pull_events:repo:{repository_id}:tag:{tag_name}:{manifest_digest}
-    - Redis keys: pull_events:repo:{repository_id}:digest:{manifest_digest}
+    Architecture:
+    - WRITE: Pull Events → Redis (fast, non-blocking)
+    - PROCESS: Redis → Worker → Database (background aggregation)
+    - READ: UI ← Database (persistent, consistent)
+
+    Redis keys:
+    - pull_events:repo:{repository_id}:tag:{tag_name}:{manifest_digest}
+    - pull_events:repo:{repository_id}:digest:{manifest_digest}
     """
 
     def __init__(self, redis_client):
@@ -123,76 +132,9 @@ class PullMetricsTracker:
                 str(e),
             )
 
-    def get_tag_pull_metrics(
-        self, repository_id: str, tag_name: str, manifest_digest: str
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get pull metrics for a specific tag.
-
-        Args:
-            repository_id: The repository ID
-            tag_name: The tag name
-            manifest_digest: The manifest digest
-
-        Returns:
-            Dictionary with pull metrics or None if no data found
-        """
-        try:
-            key = self._get_tag_pull_key(repository_id, tag_name, manifest_digest)
-            metrics = self.redis_client.hgetall(key)
-
-            if not metrics:
-                return None
-
-            return {
-                "pull_count": int(metrics.get("pull_count", 0)),
-                "last_pull_timestamp": int(metrics.get("last_pull_timestamp", 0)),
-                "pull_method": metrics.get("pull_method", "tag"),
-            }
-
-        except Exception as e:
-            logger.warning(
-                "Failed to get tag pull metrics for repo=%s, tag=%s: %s",
-                repository_id,
-                tag_name,
-                str(e),
-            )
-            return None
-
-    def get_digest_pull_metrics(
-        self, repository_id: str, manifest_digest: str
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get pull metrics for a specific manifest digest.
-
-        Args:
-            repository_id: The repository ID
-            manifest_digest: The manifest digest
-
-        Returns:
-            Dictionary with pull metrics or None if no data found
-        """
-        try:
-            key = self._get_digest_pull_key(repository_id, manifest_digest)
-            metrics = self.redis_client.hgetall(key)
-
-            if not metrics:
-                return None
-
-            return {
-                "pull_count": int(metrics.get("pull_count", 0)),
-                "last_pull_timestamp": int(metrics.get("last_pull_timestamp", 0)),
-                "pull_method": metrics.get("pull_method", "digest"),
-            }
-
-        except Exception as e:
-            logger.warning(
-                "Failed to get digest pull metrics for repo=%s, digest=%s: %s",
-                repository_id,
-                manifest_digest,
-                str(e),
-            )
-            return None
+    # Note: Redis read methods removed - pull metrics are now served exclusively from database
+    # Redis is used only for fast, non-blocking writes during pull operations
+    # The RedisFlushWorker processes Redis data into persistent database storage
 
 
 def get_pull_metrics_tracker(redis_client) -> PullMetricsTracker:
