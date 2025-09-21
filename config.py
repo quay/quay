@@ -726,6 +726,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether pull logs are disabled for free namespace.
     FEATURE_DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES = False
 
+    # Pull metrics analytics
+    FEATURE_PULL_METRICS_ANALYTICS = True
+
     # Feature Flag: If set to true, no account using blacklisted email addresses will be allowed
     # to be created.
     FEATURE_BLACKLISTED_EMAILS = False
