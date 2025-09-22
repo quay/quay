@@ -24,6 +24,8 @@ import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembership
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import OAuthApplicationsList from './Tabs/OAuthApplications/OAuthApplicationsList';
+import ExternalLoginsList from './Tabs/ExternalLogins/ExternalLoginsList';
+import {useExternalLogins} from 'src/hooks/UseExternalLogins';
 
 export enum OrganizationDrawerContentType {
   None,
@@ -38,6 +40,7 @@ export default function Organization() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {organization, isUserOrganization} = useOrganization(organizationName);
+  const {shouldShowExternalLoginsTab} = useExternalLogins();
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
     searchParams.get('tab') || 'Repositories',
@@ -124,6 +127,11 @@ export default function Organization() {
         />
       ),
       visible: fetchTabVisibility('Robot accounts'),
+    },
+    {
+      name: 'External logins',
+      component: <ExternalLoginsList />,
+      visible: isUserOrganization && shouldShowExternalLoginsTab(),
     },
     {
       name: 'Default permissions',

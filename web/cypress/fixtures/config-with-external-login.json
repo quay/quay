@@ -1,0 +1,25 @@
+{
+  "features": {
+    "DIRECT_LOGIN": true,
+    "GITHUB_LOGIN": true,
+    "GOOGLE_LOGIN": true,
+    "MAILING": true,
+    "USER_CREATION": true
+  },
+  "config": {
+    "AUTHENTICATION_TYPE": "Database"
+  },
+  "external_login": [
+    {
+      "id": "github",
+      "title": "GitHub",
+      "icon": "github"
+    },
+    {
+      "id": "google",
+      "title": "Google",
+      "icon": "google"
+    }
+  ],
+  "registry_state": "normal"
+}

@@ -1,0 +1,19 @@
+{
+  "features": {
+    "DIRECT_LOGIN": false,
+    "GITHUB_LOGIN": true,
+    "MAILING": false,
+    "USER_CREATION": false
+  },
+  "config": {
+    "AUTHENTICATION_TYPE": "External"
+  },
+  "external_login": [
+    {
+      "id": "github",
+      "title": "GitHub",
+      "icon": "github"
+    }
+  ],
+  "registry_state": "normal"
+}
