@@ -144,7 +144,7 @@ export default function AddTagModal(props: AddTagModalProps) {
               createTag({tag: value, manifest: props.manifest});
             }}
           >
-            {existingTagInfo?.exists ? 'Move Tag' : 'Create Tag'}
+            {existingTagInfo?.exists ? 'Move tag' : 'Create tag'}
           </Button>,
         ]}
       >
