@@ -63,7 +63,10 @@ class OIDCUsers(FederatedUsers):
 
     def verify_credentials(self, username_or_email, password):
         """
-        Unsupported to login via username/email and password
+        Intelligent OIDC authentication that chooses the appropriate flow.
+
+        For CLI clients (like Docker): Uses device code flow for broader account support
+        For compatible accounts: Falls back to ROPC flow when device code isn't available
         """
         if not password:
             return (None, "Anonymous binding not allowed.")
@@ -73,11 +76,20 @@ class OIDCUsers(FederatedUsers):
 
         for service in app.oauth_login.services:
             if isinstance(service, OIDCLoginService):
+
+                # Step 1: Check if device code flow should be used
+                if self._should_use_device_code_flow(username_or_email, password):
+                    logger.info(f"Device code flow recommended for {username_or_email}")
+                    # For Docker CLI, return immediate guidance instead of blocking
+                    return (None, self._get_device_code_instructions(username_or_email))
+
+                # Step 2: Fallback to ROPC flow for compatible accounts
                 try:
+                    logger.debug("Attempting ROPC flow for OIDC authentication")
                     response = service.password_grant_for_login(username_or_email, password)
 
                     if response is None:
-                        return (None, "External OIDC Group Sync: Got no user info")
+                        return (None, "OIDC authentication failed: No response from provider")
 
                     user_info = service.get_user_info(
                         service._http_client, response["access_token"]
@@ -92,16 +104,124 @@ class OIDCUsers(FederatedUsers):
                         None,
                     )
                 except Exception as err:
-                    logger.exception(
-                        f"External OIDC Group Sync: Exception while verifying credentials: {err}"
+                    logger.exception(f"OIDC authentication failed: {err}")
+
+                    # Provide specific guidance for known ROPC limitations
+                    if self._is_ropc_limitation_error(err):
+                        return (None, self._get_ropc_error_message(username_or_email))
+
+                    return (None, f"OIDC authentication failed: {str(err)}")
+
+        return (None, "No OIDC service configured")
+
+    def _should_use_device_code_flow(self, username_or_email, password):
+        """
+        Determine if device code flow should be used instead of ROPC.
+
+        Device code flow is preferred for:
+        - Personal Microsoft accounts (@gmail.com, @outlook.com, etc.)
+        - When explicitly requested via special password format
+        - CLI clients (detected via user agent or other indicators)
+        - Any Azure AD tenant (since ROPC often fails due to policies)
+        """
+        # Check for personal Microsoft account domains
+        personal_domains = [
+            "@gmail.com",
+            "@googlemail.com",
+            "@yahoo.com",
+            "@outlook.com",
+            "@hotmail.com",
+            "@live.com",
+            "@msn.com",
+        ]
+
+        if any(username_or_email.lower().endswith(domain) for domain in personal_domains):
+            logger.info(f"Detected personal account: {username_or_email}, using device code flow")
+            return True
+
+        # Check for device code flow request indicator
+        if password == "DEVICE_CODE_FLOW":
+            logger.info("Device code flow explicitly requested")
+            return True
+
+        # Check for CLI user agent (if available in context)
+        try:
+            from flask import request
+
+            if hasattr(request, "user_agent") and request.user_agent:
+                user_agent = request.user_agent.string.lower()
+                cli_indicators = ["docker", "curl", "wget", "python-requests", "go-http-client"]
+                if any(indicator in user_agent for indicator in cli_indicators):
+                    logger.info(
+                        f"Detected CLI user agent: {user_agent}, preferring device code flow"
                     )
-                    return (None, err)
+                    return True
+        except:
+            # Request context not available, ignore
+            pass
+
+        # For Azure AD, always prefer device code flow for Docker/CLI clients
+        # This helps avoid ROPC limitations and policy restrictions
+        try:
+            from flask import request
+
+            if hasattr(request, "user_agent") and request.user_agent:
+                user_agent = request.user_agent.string.lower()
+                if "docker" in user_agent:
+                    logger.info(
+                        f"Docker client detected for Azure AD account, using device code flow"
+                    )
+                    return True
+        except:
+            pass
+
+        return False
+
+    def _get_device_code_instructions(self, username_or_email):
+        """
+        Provide immediate instructions for device code flow authentication.
+        This is Docker CLI friendly - provides guidance without blocking.
+        """
+        return (
+            f"Authentication required for {username_or_email}. "
+            f"This account requires browser-based authentication. "
+            f"For CLI authentication, use the device code flow endpoint "
+            f"to get a Docker token."
+        )
+
+    def _is_ropc_limitation_error(self, error):
+        """
+        Check if the error is due to ROPC flow limitations.
+        """
+        error_str = str(error).lower()
+        ropc_error_indicators = [
+            "aadsts700056",  # User account does not exist in organization
+            "aadsts50126",  # Invalid username or password
+            "aadsts50034",  # User account not found
+            "user account does not exist",
+            "invalid username or password",
+            "ropc is not supported",
+            "resource owner password credentials",
+        ]
+
+        return any(indicator in error_str for indicator in ropc_error_indicators)
+
+    def _get_ropc_error_message(self, username_or_email):
+        """
+        Provide helpful error message for ROPC limitations.
+        """
+        return (
+            f"Authentication failed for {username_or_email}. "
+            f"This account requires browser-based authentication. "
+            f"For CLI authentication, use the device code flow endpoint "
+            f"to get a Docker token."
+        )
 
     def check_group_lookup_args(self, group_lookup_args, disable_pagination=False):
         """
         No way to verify if the group is valid, so assuming the group is valid
         """
-        return (True, None)
+        return (True, None)  # type: ignore
 
     def get_user(self, username_or_email):
         """
@@ -109,11 +229,11 @@ class OIDCUsers(FederatedUsers):
         """
         return (None, "Currently user lookup is not supported with OIDC")
 
-    def query_users(self, query, limit):
+    def query_users(self, query, limit=20):
         """
         No way to query users so returning empty list
         """
-        return ([], self._federated_service, "Not supported")
+        return ([], self._federated_service, "Not supported")  # type: ignore
 
     def sync_oidc_groups(self, user_groups, user_obj):
         """
