@@ -57,9 +57,8 @@ export default function AddTagModal(props: AddTagModalProps) {
         tagName,
         true,
       );
-      const existingTag = tagsResponse.tags.find(
-        (tag) => tag.name === tagName,
-      );
+
+      const existingTag = tagsResponse.tags.find((tag) => tag.name === tagName);
 
       if (existingTag) {
         setExistingTagInfo({
@@ -121,7 +120,8 @@ export default function AddTagModal(props: AddTagModalProps) {
         id="add-tag-modal"
         header={
           <Title headingLevel="h2">
-            {existingTagInfo?.exists ? 'Move' : 'Add'} tag to manifest {props.manifest.substring(0, 19)}
+            {existingTagInfo?.exists ? 'Move' : 'Add'} tag to manifest{' '}
+            {props.manifest.substring(0, 19)}
           </Title>
         }
         aria-label="Add tag modal"
