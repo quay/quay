@@ -24,6 +24,9 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {usePasswordRecovery} from 'src/hooks/UsePasswordRecovery';
 import {useQuayState} from 'src/hooks/UseQuayState';
 import {ReCaptcha} from 'src/components/ReCaptcha';
+import {useExternalLogins} from 'src/hooks/UseExternalLogins';
+import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
+import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
 
 type ViewType = 'signin' | 'forgotPassword';
 
@@ -51,6 +54,23 @@ export function Signin() {
     setError: setRecoveryError,
   } = usePasswordRecovery();
 
+  const {
+    externalLogins,
+    hasExternalLogins,
+    shouldShowDirectLogin,
+    shouldAutoRedirectSSO,
+  } = useExternalLogins();
+
+  const {startExternalLogin, isAuthenticating: isExternalAuth} =
+    useExternalLoginAuth();
+
+  useEffect(() => {
+    if (shouldAutoRedirectSSO() && externalLogins.length > 0) {
+      const singleProvider = externalLogins[0];
+      startExternalLogin(singleProvider);
+    }
+  }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin]);
+
   let logoUrl = logo;
   if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
     logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
@@ -67,7 +87,7 @@ export function Signin() {
     return (
       quayConfig.features?.MAILING === true &&
       quayConfig.config?.AUTHENTICATION_TYPE === 'Database' &&
-      quayConfig.features?.DIRECT_LOGIN === true
+      shouldShowDirectLogin()
     );
   };
 
@@ -77,7 +97,7 @@ export function Signin() {
       !inReadOnlyMode &&
       quayConfig.features?.USER_CREATION === true &&
       quayConfig.config?.AUTHENTICATION_TYPE === 'Database' &&
-      quayConfig.features?.DIRECT_LOGIN === true &&
+      shouldShowDirectLogin() &&
       !quayConfig.features?.INVITE_ONLY_USER_CREATION &&
       !inAccountRecoveryMode
     );
@@ -276,63 +296,98 @@ export function Signin() {
 
   const loginForm = (
     <>
-      <LoginForm
-        showHelperText={err != null}
-        helperText={errMessage}
-        usernameLabel="Username"
-        usernameValue={username}
-        onChangeUsername={(_event, v) => setUsername(v)}
-        isValidUsername={true}
-        passwordLabel="Password"
-        passwordValue={password}
-        onChangePassword={(_event, v) => setPassword(v)}
-        isValidPassword={true}
-        isRememberMeChecked={rememberMe}
-        onChangeRememberMe={(_event, v) => setRememberMe(v)}
-        onLoginButtonClick={(e) => onLoginButtonClick(e)}
-        loginButtonLabel={loginButtonLabel}
-      />
-      <div className="signin-form-links">
-        {showCreateAccount() && (
-          <>
-            Don&apos;t have an account?{' '}
-            <Link
-              to="/createaccount"
-              style={{color: 'var(--pf-v5-global--link--Color)'}}
-            >
-              Create account
-            </Link>
-            <br />
-          </>
-        )}
+      {hasExternalLogins() && (
+        <div className="external-login-section">
+          {externalLogins.map((provider) => (
+            <ExternalLoginButton
+              key={provider.id}
+              provider={provider}
+              redirectUrl={searchParams.get('redirect_url') || undefined}
+              disabled={isExternalAuth}
+            />
+          ))}
 
-        {showInvitationMessage() && (
-          <>
-            <span>Invitation required to sign up</span>
-            <br />
-          </>
-        )}
+          {shouldShowDirectLogin() && (
+            <div className="login-divider">
+              <span>or</span>
+            </div>
+          )}
+        </div>
+      )}
 
-        {showForgotPassword() && currentView !== 'forgotPassword' && (
-          <button
-            type="button"
-            className="signin-link-button"
-            onClick={() => handleViewChange('forgotPassword')}
-          >
-            Forgot Password?
-          </button>
-        )}
+      {shouldShowDirectLogin() && (
+        <>
+          <LoginForm
+            showHelperText={err != null}
+            helperText={errMessage}
+            usernameLabel="Username"
+            usernameValue={username}
+            onChangeUsername={(_event, v) => setUsername(v)}
+            isValidUsername={true}
+            passwordLabel="Password"
+            passwordValue={password}
+            onChangePassword={(_event, v) => setPassword(v)}
+            isValidPassword={true}
+            isRememberMeChecked={rememberMe}
+            onChangeRememberMe={(_event, v) => setRememberMe(v)}
+            onLoginButtonClick={(e) => onLoginButtonClick(e)}
+            loginButtonLabel={loginButtonLabel}
+          />
 
-        {currentView === 'forgotPassword' && (
-          <button
-            type="button"
-            className="signin-link-button"
-            onClick={() => handleViewChange('signin')}
-          >
-            Back to Sign In
-          </button>
-        )}
-      </div>
+          <div className="signin-form-links">
+            {showCreateAccount() && (
+              <>
+                Don&apos;t have an account?{' '}
+                <Link
+                  to="/createaccount"
+                  style={{color: 'var(--pf-v5-global--link--Color)'}}
+                >
+                  Create account
+                </Link>
+                <br />
+              </>
+            )}
+
+            {showInvitationMessage() && (
+              <>
+                <span>Invitation required to sign up</span>
+                <br />
+              </>
+            )}
+
+            {showForgotPassword() && currentView !== 'forgotPassword' && (
+              <button
+                type="button"
+                className="signin-link-button"
+                onClick={() => handleViewChange('forgotPassword')}
+              >
+                Forgot Password?
+              </button>
+            )}
+
+            {currentView === 'forgotPassword' && (
+              <button
+                type="button"
+                className="signin-link-button"
+                onClick={() => handleViewChange('signin')}
+              >
+                Back to Sign In
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {!shouldShowDirectLogin() && !hasExternalLogins() && (
+        <Alert
+          variant="info"
+          isInline
+          title="Direct login is disabled"
+          data-testid="no-login-options-alert"
+        >
+          Please contact your administrator for login instructions.
+        </Alert>
+      )}
     </>
   );
 

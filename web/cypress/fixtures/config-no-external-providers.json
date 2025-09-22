@@ -1,0 +1,12 @@
+{
+  "features": {
+    "DIRECT_LOGIN": true,
+    "MAILING": true,
+    "USER_CREATION": true
+  },
+  "config": {
+    "AUTHENTICATION_TYPE": "Database"
+  },
+  "external_login": [],
+  "registry_state": "normal"
+}
