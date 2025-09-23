@@ -2,6 +2,8 @@ import React from 'react';
 import {Button, Spinner} from '@patternfly/react-core';
 import {ExternalLoginProvider} from 'src/hooks/UseExternalLogins';
 import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
+import {IconImageView} from 'src/components/IconImageView';
+import './ExternalLoginButton.css';
 
 interface ExternalLoginButtonProps {
   provider: ExternalLoginProvider;
@@ -61,7 +63,7 @@ export function ExternalLoginButton({
       {isAuthenticating ? (
         <Spinner size="sm" className="external-login-spinner" />
       ) : (
-        <span className="external-login-icon" data-icon={provider.icon}></span>
+        <IconImageView value={provider.icon} className="external-login-icon" />
       )}
       <span className="external-login-text">
         {action !== 'attach' && (
