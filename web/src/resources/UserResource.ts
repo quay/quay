@@ -1,4 +1,4 @@
-import {AxiosResponse} from 'axios';
+import {AxiosResponse, AxiosError} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
@@ -162,6 +162,32 @@ export async function createClientKey(password: string): Promise<string> {
   return response.data.key;
 }
 
+interface ApiErrorResponse {
+  detail?: string;
+  message?: string;
+}
+
+export class UserDeleteError extends Error {
+  public username: string;
+
+  constructor(message: string, username: string, error: AxiosError) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    super(`${message}: ${apiError?.detail || error.message}`);
+    this.username = username;
+
+    Object.setPrototypeOf(this, UserDeleteError.prototype);
+  }
+}
+
+export async function deleteUser(): Promise<void> {
+  try {
+    const response: AxiosResponse = await axios.delete('/api/v1/user/');
+    assertHttpCode(response.status, 204);
+  } catch (err) {
+    throw new UserDeleteError('Failed to delete user account', '', err);
+  }
+}
+
 export interface ConvertUserRequest {
   plan?: string;
   adminUser: string;
@@ -174,4 +200,88 @@ export async function convert(
   const updateUserUrl = `/api/v1/user/convert`;
   const response = await axios.post(updateUserUrl, convertUserRequest);
   assertHttpCode(response.status, 200);
+}
+
+// Application Token interfaces and functions
+export interface IApplicationToken {
+  uuid: string;
+  title: string;
+  last_accessed: string | null;
+  created: string;
+  expiration: string | null;
+  token_code?: string; // Only included when creating or getting specific token
+}
+
+export interface ApplicationTokensResponse {
+  tokens: IApplicationToken[];
+  only_expiring: boolean;
+}
+
+export interface CreateApplicationTokenRequest {
+  title: string;
+}
+
+export interface CreateApplicationTokenResponse {
+  token: IApplicationToken;
+}
+
+export class ApplicationTokenError extends Error {
+  public tokenId: string;
+
+  constructor(message: string, tokenId: string, error: AxiosError) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    super(`${message}: ${apiError?.detail || error.message}`);
+    this.tokenId = tokenId;
+
+    Object.setPrototypeOf(this, ApplicationTokenError.prototype);
+  }
+}
+
+export async function fetchApplicationTokens(): Promise<ApplicationTokensResponse> {
+  try {
+    const response: AxiosResponse<ApplicationTokensResponse> = await axios.get(
+      '/api/v1/user/apptoken',
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to fetch application tokens',
+      '',
+      err,
+    );
+  }
+}
+
+export async function createApplicationToken(
+  title: string,
+): Promise<CreateApplicationTokenResponse> {
+  try {
+    const request: CreateApplicationTokenRequest = {title};
+    const response: AxiosResponse<CreateApplicationTokenResponse> =
+      await axios.post('/api/v1/user/apptoken', request);
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to create application token',
+      '',
+      err,
+    );
+  }
+}
+
+export async function revokeApplicationToken(tokenUuid: string): Promise<void> {
+  try {
+    const response: AxiosResponse = await axios.delete(
+      `/api/v1/user/apptoken/${tokenUuid}`,
+    );
+    assertHttpCode(response.status, 204);
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to revoke application token',
+      tokenUuid,
+      err,
+    );
+  }
 }

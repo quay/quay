@@ -18,16 +18,24 @@ describe('Org Settings Page', () => {
   });
 
   it('General Settings', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.USER_METADATA = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithUserMetadata');
+    });
+
     cy.visit('/organization/projectquay?tab=Settings');
+    cy.wait('@getConfigWithUserMetadata');
+
+    // Wait for the form to load
+    cy.get('#org-settings-email').should('be.visible');
 
     // Type a bad e-mail
     cy.get('#org-settings-email').clear();
     cy.get('#org-settings-email').type('this is not a good e-mail');
     cy.contains('Please enter a valid email address');
 
-    // Leave empty
+    // Leave empty (email field is not required, so no error should appear)
     cy.get('#org-settings-email').clear();
-    cy.contains('Please enter email associate with namespace');
 
     // check is disabled
     cy.get('#save-org-settings').should('be.disabled');
@@ -79,10 +87,16 @@ describe('Org Settings Page', () => {
   });
 
   it('Billing Information', () => {
+    cy.fixture('config.json').then((config) => {
+      config.features.BILLING = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithBilling');
+    });
+
     cy.visit('/organization/projectquay?tab=Settings');
+    cy.wait('@getConfigWithBilling');
 
     // navigate to billing tab
-    cy.get('#pf-tab-1-billinginformation').click();
+    cy.contains('Billing information').click();
 
     // Type a bad e-mail
     cy.get('#billing-settings-invoice-email').clear();
@@ -104,7 +118,7 @@ describe('Org Settings Page', () => {
 
     // refresh page, navigate to billing tab and check if email is saved
     cy.reload();
-    cy.get('#pf-tab-1-billinginformation').click();
+    cy.contains('Billing information').click();
     cy.get('#billing-settings-invoice-email').should(
       'have.value',
       'invoice-email@redhat.com',
