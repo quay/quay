@@ -1,12 +1,9 @@
 import {
   ActionGroup,
-  Alert,
   Button,
-  Checkbox,
   Flex,
   FlexItem,
   Form,
-  FormAlert,
   FormGroup,
   FormHelperText,
   FormSelect,
@@ -17,6 +14,7 @@ import {
   HelperTextItem,
   TextInput,
 } from '@patternfly/react-core';
+import {useForm, Controller} from 'react-hook-form';
 import moment from 'moment';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
@@ -41,9 +39,18 @@ import DesktopNotificationsModal from 'src/components/modals/DesktopNotification
 import DeleteAccountModal from 'src/components/modals/DeleteAccountModal';
 import {getCookie, setPermanentCookie} from 'src/libs/cookieUtils';
 import {useDeleteAccount} from 'src/hooks/UseDeleteAccount';
+import {FormTextInput} from 'src/components/forms/FormTextInput';
+import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 
-type validate = 'success' | 'warning' | 'error' | 'default';
-const normalize = (value) => (value === null ? '' : value);
+// Form data interface for react-hook-form
+interface GeneralSettingsFormData {
+  email: string;
+  fullName: string;
+  company: string;
+  location: string;
+  tagExpirationS: string;
+  desktopNotifications: boolean;
+}
 
 type GeneralSettingsProps = {
   organizationName: string;
@@ -58,7 +65,6 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
     useOrganization(organizationName);
-  const [error, setError] = useState<string>('');
   const {addAlert} = useAlerts();
 
   const {updateOrgSettings} = useOrganizationSettings({
@@ -113,10 +119,26 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     }
   }, [quayConfig]);
 
+  // Initialize react-hook-form
+  const {
+    control,
+    handleSubmit,
+    formState: {errors, isDirty},
+    reset,
+    setValue,
+  } = useForm<GeneralSettingsFormData>({
+    mode: 'onChange',
+    defaultValues: {
+      email: '',
+      fullName: '',
+      company: '',
+      location: '',
+      tagExpirationS: quayConfig?.config?.TAG_EXPIRATION_OPTIONS?.[0] || '',
+      desktopNotifications: false,
+    },
+  });
+
   // Time Machine
-  const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions[quayConfig?.config?.TAG_EXPIRATION_OPTIONS[0]],
-  );
   const namespaceTimeMachineExpiry = isUserOrganization
     ? user?.tag_expiration_s
     : (organization as IOrganization)?.tag_expiration_s;
@@ -125,11 +147,6 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const namespaceEmail = isUserOrganization
     ? user?.email || ''
     : organization?.email || '';
-  const [emailFormValue, setEmailFormValue] = useState<string>('');
-  const [fullNameValue, setFullNameValue] = useState<string>('');
-  const [companyValue, setCompanyValue] = useState<string>('');
-  const [locationValue, setLocationValue] = useState<string>('');
-  const [validated, setValidated] = useState<validate>('default');
 
   // Password modal state
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -138,7 +155,6 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const [isAccountTypeModalOpen, setIsAccountTypeModalOpen] = useState(false);
 
   // Desktop notifications state
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
   const [pendingNotificationChange, setPendingNotificationChange] = useState<
     boolean | null
@@ -148,22 +164,40 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
 
   useEffect(() => {
-    setEmailFormValue(namespaceEmail);
-    setFullNameValue(user?.family_name || '');
-    setCompanyValue(user?.company || '');
-    setLocationValue(user?.location || '');
+    // Find the correct time machine option
+    let tagExpirationValue =
+      quayConfig?.config?.TAG_EXPIRATION_OPTIONS?.[0] || '';
     for (const key of Object.keys(timeMachineOptions)) {
       const optionSeconds = parseTimeDuration(key).asSeconds();
-
       if (optionSeconds === namespaceTimeMachineExpiry) {
-        setTimeMachineFormValue(optionSeconds.toString());
+        tagExpirationValue = optionSeconds.toString();
         break;
       }
     }
 
+    // Reset form with actual data
+    reset({
+      email: namespaceEmail,
+      fullName: user?.family_name || '',
+      company: user?.company || '',
+      location: user?.location || '',
+      tagExpirationS: tagExpirationValue,
+      desktopNotifications: false, // Will be set by initializeNotificationsState
+    });
+
     // Initialize desktop notifications state
     initializeNotificationsState();
-  }, [loading, isUserLoading, isUserOrganization, timeMachineOptions]);
+  }, [
+    loading,
+    isUserLoading,
+    isUserOrganization,
+    timeMachineOptions,
+    reset,
+    namespaceEmail,
+    user,
+    namespaceTimeMachineExpiry,
+    quayConfig,
+  ]);
 
   const initializeNotificationsState = () => {
     // Check if browser notifications are supported and not denied
@@ -177,10 +211,10 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         getCookie('quay.enabledDesktopNotifications') === 'on';
       const browserGranted = window.Notification.permission === 'granted';
 
-      setNotificationsEnabled(cookieEnabled && browserGranted);
+      setValue('desktopNotifications', cookieEnabled && browserGranted);
     } else {
       setBrowserPermissionDenied(true);
-      setNotificationsEnabled(false);
+      setValue('desktopNotifications', false);
     }
   };
 
@@ -206,14 +240,14 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           const permission = await window.Notification.requestPermission();
           if (permission === 'granted') {
             setPermanentCookie('quay.enabledDesktopNotifications', 'on');
-            setNotificationsEnabled(true);
+            setValue('desktopNotifications', true);
           } else {
             setBrowserPermissionDenied(permission === 'denied');
-            setNotificationsEnabled(false);
+            setValue('desktopNotifications', false);
           }
         } catch (error) {
           console.error('Error requesting notification permission:', error);
-          setNotificationsEnabled(false);
+          setValue('desktopNotifications', false);
         }
       } else if (
         window.Notification &&
@@ -221,12 +255,12 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       ) {
         // Permission already granted, just enable
         setPermanentCookie('quay.enabledDesktopNotifications', 'on');
-        setNotificationsEnabled(true);
+        setValue('desktopNotifications', true);
       }
     } else {
       // Turning OFF notifications
       setPermanentCookie('quay.enabledDesktopNotifications', 'off');
-      setNotificationsEnabled(false);
+      setValue('desktopNotifications', false);
     }
 
     setPendingNotificationChange(null);
@@ -286,101 +320,48 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   // const hasActiveBilling = subscriptionStatus === 'valid';
   const hasActiveBilling = false; // Placeholder for now
 
-  const handleEmailChange = (emailFormValue: string) => {
-    setEmailFormValue(emailFormValue);
-    if (namespaceEmail == emailFormValue) {
-      setValidated('default');
-      setError('');
-      return;
-    }
-
-    if (!emailFormValue) {
-      setValidated('error');
-      setError('Please enter email associate with namespace');
-      return;
-    }
-
-    if (namespaceEmail != emailFormValue) {
-      if (isValidEmail(emailFormValue)) {
-        setValidated('success');
-        setError('');
-      } else {
-        setValidated('error');
-        setError('Please enter a valid email address');
-      }
-    }
-  };
-
-  const checkForChanges = () => {
-    if (
-      !isUserOrganization &&
-      normalize(namespaceEmail) != normalize(emailFormValue)
-    ) {
-      return validated == 'success';
-    }
-
-    return (
-      (moment.duration(timeMachineFormValue, 'seconds').asSeconds() !=
-        namespaceTimeMachineExpiry ||
-        normalize(namespaceEmail) != normalize(emailFormValue) ||
-        normalize(user?.family_name) != normalize(fullNameValue) ||
-        normalize(user?.company) != normalize(companyValue) ||
-        normalize(user?.location) != normalize(locationValue)) &&
-      validated != 'error'
-    );
-  };
-
-  const updateSettings = async () => {
+  const onSubmit = async (data: GeneralSettingsFormData) => {
     try {
       if (!isUserOrganization) {
-        const response = await updateOrgSettings({
-          tag_expiration_s:
-            moment.duration(timeMachineFormValue, 'seconds') !=
-            moment.duration(namespaceTimeMachineExpiry, 'seconds')
-              ? moment.duration(timeMachineFormValue, 'seconds').asSeconds()
-              : null,
-          email: namespaceEmail != emailFormValue ? emailFormValue : null,
+        // Update organization settings
+        const orgUpdateData = {
+          tag_expiration_s: data.tagExpirationS
+            ? parseTimeDuration(data.tagExpirationS).asSeconds()
+            : null,
+          email: data.email !== namespaceEmail ? data.email : null,
           isUser: isUserOrganization,
-        });
-        return response;
+        };
+        await updateOrgSettings(orgUpdateData);
       } else {
-        let updateRequest: UpdateUserRequest = {
-          email: normalize(emailFormValue).trim(),
-          company: normalize(companyValue).trim(),
-          location: normalize(locationValue).trim(),
-          family_name: normalize(fullNameValue).trim(),
+        // Update user settings
+        const userUpdateRequest: UpdateUserRequest = {
+          email: data.email.trim(),
+          company: data.company.trim(),
+          location: data.location.trim(),
+          family_name: data.fullName.trim(),
         };
 
-        if (quayConfig?.features?.CHANGE_TAG_EXPIRATION) {
-          updateRequest = {
-            ...updateRequest,
-            tag_expiration_s:
-              moment.duration(timeMachineFormValue, 'seconds') !=
-              moment.duration(namespaceTimeMachineExpiry, 'seconds')
-                ? moment.duration(timeMachineFormValue, 'seconds').asSeconds()
-                : null,
-          };
+        if (
+          quayConfig?.features?.CHANGE_TAG_EXPIRATION &&
+          data.tagExpirationS
+        ) {
+          userUpdateRequest.tag_expiration_s = parseTimeDuration(
+            data.tagExpirationS,
+          ).asSeconds();
         }
-        const response = await updateUser(updateRequest);
-        return response;
+
+        await updateUser(userUpdateRequest);
       }
+
+      // Reset form to mark as clean
+      reset(data);
     } catch (error) {
       addDisplayError('Unable to update namespace settings', error);
     }
   };
 
-  const onSubmit = (e) => {
-    e.preventDefault();
-    updateSettings();
-  };
-
   return (
-    <Form id="form-form" maxWidth="70%">
-      {validated === 'error' && (
-        <FormAlert>
-          <Alert variant="danger" title={error} aria-live="polite" isInline />
-        </FormAlert>
-      )}
+    <Form id="form-form" maxWidth="70%" onSubmit={handleSubmit(onSubmit)}>
       <FormGroup isInline label="Organization" fieldId="form-organization">
         <TextInput
           isDisabled
@@ -427,68 +408,52 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </FormGroup>
       )}
 
-      <FormGroup isInline label="Email" fieldId="form-email">
-        <TextInput
-          type="email"
-          id="org-settings-email"
-          value={emailFormValue}
-          onChange={(_event, emailFormValue) =>
-            handleEmailChange(emailFormValue)
-          }
-        />
-
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem>
-              The e-mail address associated with the organization.
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
+      <FormTextInput<GeneralSettingsFormData>
+        name="email"
+        control={control}
+        errors={errors}
+        label="Email"
+        fieldId="form-email"
+        type="email"
+        helperText="The e-mail address associated with the organization."
+        customValidation={(value: string) =>
+          isValidEmail(value) || 'Please enter a valid email address'
+        }
+      />
 
       {isUserOrganization && quayConfig?.features.USER_METADATA === true && (
         <Grid hasGutter>
           <GridItem span={6}>
-            <FormGroup
-              isInline
+            <FormTextInput<GeneralSettingsFormData>
+              name="fullName"
+              control={control}
+              errors={errors}
               label="Full name"
               fieldId="org-settings-fullname"
-            >
-              <TextInput
-                type="text"
-                id="org-settings-fullname"
-                value={fullNameValue}
-                onChange={(_, value) => {
-                  setFullNameValue(value);
-                }}
-              />
-            </FormGroup>
+              isStack={false}
+            />
           </GridItem>
 
           <GridItem span={6}>
-            <FormGroup isInline label="Company" fieldId="company">
-              <TextInput
-                type="text"
-                id="org-settings-company"
-                value={companyValue}
-                onChange={(_, value) => {
-                  setCompanyValue(value);
-                }}
-              />
-            </FormGroup>
+            <FormTextInput<GeneralSettingsFormData>
+              name="company"
+              control={control}
+              errors={errors}
+              label="Company"
+              fieldId="company"
+              isStack={false}
+            />
           </GridItem>
 
           <GridItem span={6}>
-            <FormGroup isInline label="Location" fieldId="location">
-              <TextInput
-                type="text"
-                id="org-settings-location"
-                value={locationValue}
-                onChange={(_, value) => {
-                  setLocationValue(value);
-                }}
-              />
-            </FormGroup>
+            <FormTextInput<GeneralSettingsFormData>
+              name="location"
+              control={control}
+              errors={errors}
+              label="Location"
+              fieldId="location"
+              isStack={false}
+            />
           </GridItem>
         </Grid>
       )}
@@ -522,48 +487,52 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         )}
 
       {isUserOrganization && (
-        <FormGroup
-          isInline
-          label="Desktop Notifications"
+        <FormCheckbox<GeneralSettingsFormData>
+          name="desktopNotifications"
+          control={control}
+          label="Enable desktop notifications"
           fieldId="form-notifications"
-        >
-          <Checkbox
-            id="desktop-notifications"
-            isChecked={notificationsEnabled}
-            isDisabled={browserPermissionDenied}
-            onChange={(_event, checked) => handleNotificationToggle(checked)}
-            label="Enable desktop notifications"
-          />
-          {browserPermissionDenied && (
-            <FormHelperText>
-              <HelperText>
-                <HelperTextItem>
-                  Desktop notifications have been disabled, or are unavailable,
-                  in your browser.
-                </HelperTextItem>
-              </HelperText>
-            </FormHelperText>
-          )}
-        </FormGroup>
+          description={
+            browserPermissionDenied
+              ? 'Desktop notifications have been disabled, or are unavailable, in your browser.'
+              : undefined
+          }
+          isStack={false}
+          customOnChange={async (checked, onChange) => {
+            await handleNotificationToggle(checked);
+            onChange(checked);
+          }}
+        />
       )}
 
       {quayConfig?.features?.CHANGE_TAG_EXPIRATION && (
         <FormGroup isInline label="Time machine" fieldId="form-time-machine">
-          <FormSelect
-            placeholder="Time Machine"
-            aria-label="Time Machine select"
-            data-testid="tag-expiration-picker"
-            value={timeMachineFormValue}
-            onChange={(_, val) => setTimeMachineFormValue(val)}
-          >
-            {Object.entries(timeMachineOptions).map(([key, value], index) => (
-              <FormSelectOption
-                key={index}
-                value={moment.duration(parseTimeDuration(key)).asSeconds()}
-                label={value}
-              />
-            ))}
-          </FormSelect>
+          <Controller
+            name="tagExpirationS"
+            control={control}
+            render={({field: {value, onChange}}) => (
+              <FormSelect
+                placeholder="Time Machine"
+                aria-label="Time Machine select"
+                data-testid="tag-expiration-picker"
+                value={value}
+                onChange={(_, val) => onChange(val)}
+              >
+                {Object.entries(timeMachineOptions).map(
+                  ([key, value], index) => (
+                    <FormSelectOption
+                      key={index}
+                      value={moment
+                        .duration(parseTimeDuration(key))
+                        .asSeconds()
+                        .toString()}
+                      label={value}
+                    />
+                  ),
+                )}
+              </FormSelect>
+            )}
+          />
 
           <FormHelperText>
             <HelperText>
@@ -581,8 +550,8 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           id="save-org-settings"
           variant="primary"
           type="submit"
-          onClick={(event) => onSubmit(event)}
-          isDisabled={!checkForChanges()}
+          onClick={handleSubmit(onSubmit)}
+          isDisabled={!isDirty}
         >
           Save
         </Button>

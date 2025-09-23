@@ -87,7 +87,7 @@ export const CliConfiguration = () => {
         </Button>
       </Flex>
 
-      <Divider className="pf-v5-u-my-lg" />
+      <Divider className="pf-v5-u-my-sm" />
 
       {/* Docker CLI and other Application Tokens Section */}
       <Flex
@@ -192,6 +192,10 @@ export const CliConfiguration = () => {
                           </MenuToggle>
                         )}
                         shouldFocusToggleOnSelect
+                        popperProps={{
+                          position: 'right',
+                          enableFlip: true,
+                        }}
                       >
                         <DropdownList>
                           <DropdownItem
