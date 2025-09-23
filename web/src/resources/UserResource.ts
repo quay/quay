@@ -181,3 +181,87 @@ export async function convert(
   const response = await axios.post(updateUserUrl, convertUserRequest);
   assertHttpCode(response.status, 200);
 }
+
+// Application Token interfaces and functions
+export interface IApplicationToken {
+  uuid: string;
+  title: string;
+  last_accessed: string | null;
+  created: string;
+  expiration: string | null;
+  token_code?: string; // Only included when creating or getting specific token
+}
+
+export interface ApplicationTokensResponse {
+  tokens: IApplicationToken[];
+  only_expiring: boolean;
+}
+
+export interface CreateApplicationTokenRequest {
+  title: string;
+}
+
+export interface CreateApplicationTokenResponse {
+  token: IApplicationToken;
+}
+
+export class ApplicationTokenError extends Error {
+  public tokenId: string;
+
+  constructor(message: string, tokenId: string, error: AxiosError) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    super(`${message}: ${apiError?.detail || error.message}`);
+    this.tokenId = tokenId;
+
+    Object.setPrototypeOf(this, ApplicationTokenError.prototype);
+  }
+}
+
+export async function fetchApplicationTokens(): Promise<ApplicationTokensResponse> {
+  try {
+    const response: AxiosResponse<ApplicationTokensResponse> = await axios.get(
+      '/api/v1/user/apptoken',
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to fetch application tokens',
+      '',
+      err,
+    );
+  }
+}
+
+export async function createApplicationToken(
+  title: string,
+): Promise<CreateApplicationTokenResponse> {
+  try {
+    const request: CreateApplicationTokenRequest = {title};
+    const response: AxiosResponse<CreateApplicationTokenResponse> =
+      await axios.post('/api/v1/user/apptoken', request);
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to create application token',
+      '',
+      err,
+    );
+  }
+}
+
+export async function revokeApplicationToken(tokenUuid: string): Promise<void> {
+  try {
+    const response: AxiosResponse = await axios.delete(
+      `/api/v1/user/apptoken/${tokenUuid}`,
+    );
+    assertHttpCode(response.status, 204);
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to revoke application token',
+      tokenUuid,
+      err,
+    );
+  }
+}

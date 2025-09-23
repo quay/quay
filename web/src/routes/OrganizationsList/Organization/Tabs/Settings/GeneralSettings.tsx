@@ -126,9 +126,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     ? user?.email || ''
     : organization?.email || '';
   const [emailFormValue, setEmailFormValue] = useState<string>('');
-  const [fullNameValue, setFullNameValue] = useState<string>(null);
-  const [companyValue, setCompanyValue] = useState<string>(null);
-  const [locationValue, setLocationValue] = useState<string>(null);
+  const [fullNameValue, setFullNameValue] = useState<string>('');
+  const [companyValue, setCompanyValue] = useState<string>('');
+  const [locationValue, setLocationValue] = useState<string>('');
   const [validated, setValidated] = useState<validate>('default');
 
   // Password modal state
@@ -149,9 +149,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
-    setFullNameValue(user?.family_name || null);
-    setCompanyValue(user?.company || null);
-    setLocationValue(user?.location || null);
+    setFullNameValue(user?.family_name || '');
+    setCompanyValue(user?.company || '');
+    setLocationValue(user?.location || '');
     for (const key of Object.keys(timeMachineOptions)) {
       const optionSeconds = parseTimeDuration(key).asSeconds();
 
