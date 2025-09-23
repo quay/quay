@@ -4,6 +4,7 @@ import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
 import Avatar from 'src/components/Avatar';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {
   fetchRepositoriesForNamespace,
   IRepository,
@@ -43,6 +44,8 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
 // Get and assemble data from multiple endpoints to show in Org table
 // Only necessary because current API structure does not return all required data
 export default function OrgTableData(props: OrganizationsTableItem) {
+  // Get current user data for user avatars
+  const {user: currentUser} = useCurrentUser();
   // const queryClient = useQueryClient();
   // useEffect(() => {
   //   return () => {
@@ -109,9 +112,18 @@ export default function OrgTableData(props: OrganizationsTableItem) {
     <>
       <Td dataLabel={ColumnNames.name}>
         <Flex alignItems={{default: 'alignItemsCenter'}}>
-          {organization?.avatar && (
+          {/* Show avatar for organizations OR current user */}
+          {((props.isUser &&
+            currentUser?.username === props.name &&
+            currentUser?.avatar) ||
+            (!props.isUser && organization?.avatar)) && (
             <FlexItem spacer={{default: 'spacerSm'}}>
-              <Avatar avatar={organization.avatar} size="sm" />
+              <Avatar
+                avatar={
+                  props.isUser ? currentUser?.avatar : organization?.avatar
+                }
+                size="sm"
+              />
             </FlexItem>
           )}
           <FlexItem>
