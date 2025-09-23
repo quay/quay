@@ -2,6 +2,7 @@ import {
   ActionGroup,
   Alert,
   Button,
+  Checkbox,
   Flex,
   FlexItem,
   Form,
@@ -36,6 +37,8 @@ import Alerts from 'src/routes/Alerts';
 import Avatar from 'src/components/Avatar';
 import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
 import ChangeAccountTypeModal from 'src/components/modals/ChangeAccountTypeModal';
+import DesktopNotificationsModal from 'src/components/modals/DesktopNotificationsModal';
+import {getCookie, setPermanentCookie} from 'src/libs/cookieUtils';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const normalize = (value) => (value === null ? '' : value);
@@ -132,6 +135,14 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   // Account type modal state
   const [isAccountTypeModalOpen, setIsAccountTypeModalOpen] = useState(false);
 
+  // Desktop notifications state
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
+  const [pendingNotificationChange, setPendingNotificationChange] = useState<
+    boolean | null
+  >(null);
+  const [browserPermissionDenied, setBrowserPermissionDenied] = useState(false);
+
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
     setFullNameValue(user?.family_name || null);
@@ -145,7 +156,82 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         break;
       }
     }
+
+    // Initialize desktop notifications state
+    initializeNotificationsState();
   }, [loading, isUserLoading, isUserOrganization, timeMachineOptions]);
+
+  const initializeNotificationsState = () => {
+    // Check if browser notifications are supported and not denied
+    if (typeof window !== 'undefined' && window.Notification) {
+      const browserPermissionDenied =
+        window.Notification.permission === 'denied';
+      setBrowserPermissionDenied(browserPermissionDenied);
+
+      // Check cookie state and browser permission
+      const cookieEnabled =
+        getCookie('quay.enabledDesktopNotifications') === 'on';
+      const browserGranted = window.Notification.permission === 'granted';
+
+      setNotificationsEnabled(cookieEnabled && browserGranted);
+    } else {
+      setBrowserPermissionDenied(true);
+      setNotificationsEnabled(false);
+    }
+  };
+
+  const handleNotificationToggle = (checked: boolean) => {
+    if (browserPermissionDenied) {
+      return; // Cannot toggle if browser permission is denied
+    }
+
+    setPendingNotificationChange(checked);
+    setNotificationsModalOpen(true);
+  };
+
+  const handleNotificationConfirm = async () => {
+    if (pendingNotificationChange === null) return;
+
+    const enabling = pendingNotificationChange;
+
+    if (enabling) {
+      // Turning ON notifications
+      if (window.Notification && window.Notification.permission === 'default') {
+        // Request permission first
+        try {
+          const permission = await window.Notification.requestPermission();
+          if (permission === 'granted') {
+            setPermanentCookie('quay.enabledDesktopNotifications', 'on');
+            setNotificationsEnabled(true);
+          } else {
+            setBrowserPermissionDenied(permission === 'denied');
+            setNotificationsEnabled(false);
+          }
+        } catch (error) {
+          console.error('Error requesting notification permission:', error);
+          setNotificationsEnabled(false);
+        }
+      } else if (
+        window.Notification &&
+        window.Notification.permission === 'granted'
+      ) {
+        // Permission already granted, just enable
+        setPermanentCookie('quay.enabledDesktopNotifications', 'on');
+        setNotificationsEnabled(true);
+      }
+    } else {
+      // Turning OFF notifications
+      setPermanentCookie('quay.enabledDesktopNotifications', 'off');
+      setNotificationsEnabled(false);
+    }
+
+    setPendingNotificationChange(null);
+  };
+
+  const handleNotificationModalClose = () => {
+    setNotificationsModalOpen(false);
+    setPendingNotificationChange(null);
+  };
 
   const handleEmailChange = (emailFormValue: string) => {
     setEmailFormValue(emailFormValue);
@@ -382,6 +468,32 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           </FormGroup>
         )}
 
+      {isUserOrganization && (
+        <FormGroup
+          isInline
+          label="Desktop Notifications"
+          fieldId="form-notifications"
+        >
+          <Checkbox
+            id="desktop-notifications"
+            isChecked={notificationsEnabled}
+            isDisabled={browserPermissionDenied}
+            onChange={(_event, checked) => handleNotificationToggle(checked)}
+            label="Enable desktop notifications"
+          />
+          {browserPermissionDenied && (
+            <FormHelperText>
+              <HelperText>
+                <HelperTextItem>
+                  Desktop notifications have been disabled, or are unavailable,
+                  in your browser.
+                </HelperTextItem>
+              </HelperText>
+            </FormHelperText>
+          )}
+        </FormGroup>
+      )}
+
       {quayConfig?.features?.CHANGE_TAG_EXPIRATION && (
         <FormGroup isInline label="Time machine" fieldId="form-time-machine">
           <FormSelect
@@ -437,6 +549,13 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       <ChangeAccountTypeModal
         isOpen={isAccountTypeModalOpen}
         onClose={() => setIsAccountTypeModalOpen(false)}
+      />
+
+      <DesktopNotificationsModal
+        isOpen={notificationsModalOpen}
+        onClose={handleNotificationModalClose}
+        onConfirm={handleNotificationConfirm}
+        isEnabling={pendingNotificationChange === true}
       />
     </Form>
   );
