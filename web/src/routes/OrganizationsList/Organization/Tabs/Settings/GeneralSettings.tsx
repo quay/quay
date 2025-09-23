@@ -35,6 +35,7 @@ import {UpdateUserRequest} from 'src/resources/UserResource';
 import Alerts from 'src/routes/Alerts';
 import Avatar from 'src/components/Avatar';
 import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
+import ChangeAccountTypeModal from 'src/components/modals/ChangeAccountTypeModal';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const normalize = (value) => (value === null ? '' : value);
@@ -127,6 +128,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   // Password modal state
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  // Account type modal state
+  const [isAccountTypeModalOpen, setIsAccountTypeModalOpen] = useState(false);
 
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
@@ -350,18 +354,33 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </Grid>
       )}
 
-      {isUserOrganization && (
-        <FormGroup isInline label="Password" fieldId="form-password">
-          <Button
-            variant="link"
-            isInline
-            onClick={() => setIsPasswordModalOpen(true)}
-            style={{padding: 0}}
-          >
-            Change password
-          </Button>
-        </FormGroup>
-      )}
+      {isUserOrganization &&
+        quayConfig?.config?.AUTHENTICATION_TYPE === 'Database' && (
+          <FormGroup isInline label="Password" fieldId="form-password">
+            <Button
+              variant="link"
+              isInline
+              onClick={() => setIsPasswordModalOpen(true)}
+              style={{padding: 0}}
+            >
+              Change password
+            </Button>
+          </FormGroup>
+        )}
+
+      {isUserOrganization &&
+        quayConfig?.config?.AUTHENTICATION_TYPE === 'Database' && (
+          <FormGroup isInline label="Account Type" fieldId="form-account-type">
+            <Button
+              variant="link"
+              isInline
+              onClick={() => setIsAccountTypeModalOpen(true)}
+              style={{padding: 0}}
+            >
+              Individual account
+            </Button>
+          </FormGroup>
+        )}
 
       {quayConfig?.features?.CHANGE_TAG_EXPIRATION && (
         <FormGroup isInline label="Time machine" fieldId="form-time-machine">
@@ -413,6 +432,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       <ChangePasswordModal
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
+      />
+
+      <ChangeAccountTypeModal
+        isOpen={isAccountTypeModalOpen}
+        onClose={() => setIsAccountTypeModalOpen(false)}
       />
     </Form>
   );
