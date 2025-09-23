@@ -38,7 +38,9 @@ import Avatar from 'src/components/Avatar';
 import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
 import ChangeAccountTypeModal from 'src/components/modals/ChangeAccountTypeModal';
 import DesktopNotificationsModal from 'src/components/modals/DesktopNotificationsModal';
+import DeleteAccountModal from 'src/components/modals/DeleteAccountModal';
 import {getCookie, setPermanentCookie} from 'src/libs/cookieUtils';
+import {useDeleteAccount} from 'src/hooks/UseDeleteAccount';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const normalize = (value) => (value === null ? '' : value);
@@ -142,6 +144,8 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     boolean | null
   >(null);
   const [browserPermissionDenied, setBrowserPermissionDenied] = useState(false);
+  // Delete account state
+  const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
 
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
@@ -232,6 +236,55 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     setNotificationsModalOpen(false);
     setPendingNotificationChange(null);
   };
+
+  const deleteAccountMutator = useDeleteAccount({
+    onSuccess: () => {
+      // Account deleted successfully - redirect to signin
+      window.location.href = '/signin';
+    },
+    onError: (err) => {
+      addAlert({
+        title: err.message || 'Failed to delete account',
+        variant: AlertVariant.Failure,
+        key: 'delete-account-error',
+      });
+    },
+  });
+
+  const handleDeleteAccount = () => {
+    setDeleteAccountModalOpen(true);
+  };
+
+  const handleDeleteAccountConfirm = async () => {
+    setDeleteAccountModalOpen(false);
+
+    try {
+      if (isUserOrganization) {
+        await deleteAccountMutator.deleteUser();
+      } else {
+        await deleteAccountMutator.deleteOrg(organizationName);
+      }
+    } catch (error) {
+      // Error handling is done in the onError callback
+    }
+  };
+
+  const handleDeleteAccountModalClose = () => {
+    setDeleteAccountModalOpen(false);
+  };
+
+  // Determine namespace info for delete modal
+  const namespaceName = isUserOrganization
+    ? user?.username
+    : organization?.name;
+  const namespaceTitle = isUserOrganization ? 'account' : 'organization';
+
+  // Check if deletion should be blocked (Database auth only, like Angular)
+  const canShowDelete = quayConfig?.config?.AUTHENTICATION_TYPE === 'Database';
+
+  // TODO: Add billing subscription check here if needed
+  // const hasActiveBilling = subscriptionStatus === 'valid';
+  const hasActiveBilling = false; // Placeholder for now
 
   const handleEmailChange = (emailFormValue: string) => {
     setEmailFormValue(emailFormValue);
@@ -524,21 +577,40 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       )}
 
       <ActionGroup>
-        <Flex
-          justifyContent={{default: 'justifyContentFlexEnd'}}
-          width={'100%'}
+        <Button
+          id="save-org-settings"
+          variant="primary"
+          type="submit"
+          onClick={(event) => onSubmit(event)}
+          isDisabled={!checkForChanges()}
         >
-          <Button
-            id="save-org-settings"
-            variant="primary"
-            type="submit"
-            onClick={(event) => onSubmit(event)}
-            isDisabled={!checkForChanges()}
-          >
-            Save
-          </Button>
-        </Flex>
+          Save
+        </Button>
+
+        {canShowDelete && (
+          <>
+            {hasActiveBilling ? (
+              <Flex alignItems={{default: 'alignItemsCenter'}}>
+                <FlexItem spacer={{default: 'spacerSm'}}>
+                  <i
+                    className="fa fa-exclamation-triangle"
+                    style={{color: '#f0ad4e'}}
+                  />
+                </FlexItem>
+                <FlexItem>
+                  You must cancel your billing subscription before this{' '}
+                  {namespaceTitle} can be deleted.
+                </FlexItem>
+              </Flex>
+            ) : (
+              <Button variant="danger" onClick={handleDeleteAccount}>
+                Delete {namespaceTitle}
+              </Button>
+            )}
+          </>
+        )}
       </ActionGroup>
+
       <Alerts />
 
       <ChangePasswordModal
@@ -556,6 +628,15 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         onClose={handleNotificationModalClose}
         onConfirm={handleNotificationConfirm}
         isEnabling={pendingNotificationChange === true}
+      />
+
+      <DeleteAccountModal
+        isOpen={deleteAccountModalOpen}
+        onClose={handleDeleteAccountModalClose}
+        onConfirm={handleDeleteAccountConfirm}
+        namespaceName={namespaceName || ''}
+        namespaceTitle={namespaceTitle}
+        isLoading={deleteAccountMutator.loading}
       />
     </Form>
   );

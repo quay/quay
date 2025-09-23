@@ -1,4 +1,4 @@
-import {AxiosResponse} from 'axios';
+import {AxiosResponse, AxiosError} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
@@ -140,6 +140,32 @@ export async function createClientKey(password: string): Promise<string> {
   const response = await axios.post(updateUserUrl, {password});
   assertHttpCode(response.status, 200);
   return response.data.key;
+}
+
+interface ApiErrorResponse {
+  detail?: string;
+  message?: string;
+}
+
+export class UserDeleteError extends Error {
+  public username: string;
+
+  constructor(message: string, username: string, error: AxiosError) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    super(`${message}: ${apiError?.detail || error.message}`);
+    this.username = username;
+
+    Object.setPrototypeOf(this, UserDeleteError.prototype);
+  }
+}
+
+export async function deleteUser(): Promise<void> {
+  try {
+    const response: AxiosResponse = await axios.delete('/api/v1/user/');
+    assertHttpCode(response.status, 204);
+  } catch (err) {
+    throw new UserDeleteError('Failed to delete user account', '', err);
+  }
 }
 
 export interface ConvertUserRequest {
