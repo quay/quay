@@ -36,6 +36,7 @@ import ErrorModal from '../errors/ErrorModal';
 import {useQueryClient} from '@tanstack/react-query';
 import 'src/components/header/HeaderToolbar.css';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import Avatar from 'src/components/Avatar';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
@@ -201,7 +202,9 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       ref={toggleRef}
       onClick={onDropdownToggle}
       isExpanded={isDropdownOpen}
-      icon={<UserIcon />}
+      icon={
+        user?.avatar ? <Avatar avatar={user.avatar} size="sm" /> : <UserIcon />
+      }
       id="user-menu-toggle"
       aria-label="User menu"
     >

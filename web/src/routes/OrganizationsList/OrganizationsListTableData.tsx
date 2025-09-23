@@ -1,8 +1,9 @@
 import {Td} from '@patternfly/react-table';
-import {Skeleton} from '@patternfly/react-core';
+import {Skeleton, Flex, FlexItem} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
+import Avatar from 'src/components/Avatar';
 import {
   fetchRepositoriesForNamespace,
   IRepository,
@@ -107,7 +108,16 @@ export default function OrgTableData(props: OrganizationsTableItem) {
   return (
     <>
       <Td dataLabel={ColumnNames.name}>
-        <Link to={props.name}>{props.name}</Link>
+        <Flex alignItems={{default: 'alignItemsCenter'}}>
+          {organization?.avatar && (
+            <FlexItem spacer={{default: 'spacerSm'}}>
+              <Avatar avatar={organization.avatar} size="sm" />
+            </FlexItem>
+          )}
+          <FlexItem>
+            <Link to={props.name}>{props.name}</Link>
+          </FlexItem>
+        </Flex>
       </Td>
       <Td dataLabel={ColumnNames.repoCount}>
         <Count count={repoCount}></Count>

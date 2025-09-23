@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Flex,
+  FlexItem,
   Form,
   FormAlert,
   FormGroup,
@@ -32,6 +33,7 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import {UpdateUserRequest} from 'src/resources/UserResource';
 import Alerts from 'src/routes/Alerts';
+import Avatar from 'src/components/Avatar';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const normalize = (value) => (value === null ? '' : value);
@@ -242,12 +244,41 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
         <FormHelperText>
           <HelperText>
-            <HelperTextItem>
+            <HelperTextItem variant="indeterminate">
               Namespace names cannot be changed once set.
             </HelperTextItem>
           </HelperText>
         </FormHelperText>
       </FormGroup>
+
+      {(isUserOrganization ? user?.avatar : organization?.avatar) && (
+        <FormGroup isInline label="Avatar" fieldId="form-avatar">
+          <Flex
+            direction={{default: 'column'}}
+            alignItems={{default: 'alignItemsFlexStart'}}
+          >
+            <FlexItem spacer={{default: 'spacerSm'}}>
+              <Avatar
+                avatar={
+                  isUserOrganization ? user?.avatar : organization?.avatar
+                }
+                size="md"
+              />
+            </FlexItem>
+            <FlexItem>
+              <HelperText>
+                <HelperTextItem variant="indeterminate">
+                  Avatar is generated based off of{' '}
+                  {isUserOrganization
+                    ? 'your username'
+                    : 'the organization name'}
+                  .
+                </HelperTextItem>
+              </HelperText>
+            </FlexItem>
+          </Flex>
+        </FormGroup>
+      )}
 
       <FormGroup isInline label="Email" fieldId="form-email">
         <TextInput

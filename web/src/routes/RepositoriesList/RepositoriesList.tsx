@@ -6,6 +6,8 @@ import {
   Title,
   PanelFooter,
   DropdownItem,
+  Flex,
+  FlexItem,
 } from '@patternfly/react-core';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useRecoilState} from 'recoil';
@@ -35,6 +37,8 @@ import {LoadingPage} from 'src/components/LoadingPage';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
+import Avatar from 'src/components/Avatar';
+import {generateAvatarFromName} from 'src/libs/avatarUtils';
 
 interface RepoListHeaderProps {
   shouldRender: boolean;
@@ -349,27 +353,39 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                     }}
                   />
                   <Td dataLabel={RepositoryListColumnNames.name}>
-                    {currentOrg == null ? (
-                      <Link
-                        to={getRepoDetailPath(
-                          location.pathname,
-                          repo.namespace,
-                          repo.name,
+                    <Flex alignItems={{default: 'alignItemsCenter'}}>
+                      <FlexItem spacer={{default: 'spacerSm'}}>
+                        <Avatar
+                          avatar={generateAvatarFromName(
+                            currentOrg == null ? repo.namespace : currentOrg,
+                          )}
+                          size="sm"
+                        />
+                      </FlexItem>
+                      <FlexItem>
+                        {currentOrg == null ? (
+                          <Link
+                            to={getRepoDetailPath(
+                              location.pathname,
+                              repo.namespace,
+                              repo.name,
+                            )}
+                          >
+                            {repo.namespace}/{repo.name}
+                          </Link>
+                        ) : (
+                          <Link
+                            to={getRepoDetailPath(
+                              location.pathname,
+                              repo.namespace,
+                              repo.name,
+                            )}
+                          >
+                            {repo.name}
+                          </Link>
                         )}
-                      >
-                        {repo.namespace}/{repo.name}
-                      </Link>
-                    ) : (
-                      <Link
-                        to={getRepoDetailPath(
-                          location.pathname,
-                          repo.namespace,
-                          repo.name,
-                        )}
-                      >
-                        {repo.name}
-                      </Link>
-                    )}
+                      </FlexItem>
+                    </Flex>
                   </Td>
                   <Td dataLabel={RepositoryListColumnNames.visibility}>
                     {repo.is_public ? 'public' : 'private'}
