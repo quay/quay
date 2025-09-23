@@ -19,8 +19,8 @@ proxy_redirect off;
 proxy_set_header Transfer-Encoding $http_transfer_encoding;
 absolute_redirect off;
 
-# Handle signin based on UI type for backward compatibility
-location /signin {
+# Handle React UI routes for both Angular and React UI
+location ~ ^/(signin|updateuser)$ {
     {% if angular_available %}
     # Only proxy to backend when Angular is available AND user is using Angular
     if ($use_new_ui !~ "^(true|react)$") {
