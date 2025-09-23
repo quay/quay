@@ -498,9 +498,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
               : undefined
           }
           isStack={false}
-          customOnChange={async (checked, onChange) => {
+          customOnChange={async (checked) => {
+            // Wait to change cb state until after user confirms in modal
             await handleNotificationToggle(checked);
-            onChange(checked);
           }}
         />
       )}
