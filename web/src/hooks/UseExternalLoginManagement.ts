@@ -1,6 +1,6 @@
-import {useQuery} from '@tanstack/react-query';
 import {useExternalLogins} from './UseExternalLogins';
 import {useExternalLoginAuth} from './UseExternalLoginAuth';
+import {useCurrentUser} from './UseCurrentUser';
 
 interface ExternalLoginInfo {
   service: string;
@@ -9,21 +9,10 @@ interface ExternalLoginInfo {
   };
 }
 
-interface User {
-  logins?: Array<{
-    service: string;
-    metadata?: {
-      service_username?: string;
-    };
-  }>;
-}
-
 export function useExternalLoginManagement() {
   const {externalLogins} = useExternalLogins();
   const {detachExternalLogin} = useExternalLoginAuth();
-
-  // For now, mock the user data - in real implementation this would come from user context
-  const user: User = {logins: []};
+  const {user} = useCurrentUser();
 
   const userExternalLogins = user?.logins || [];
 

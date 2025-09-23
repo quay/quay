@@ -1,0 +1,18 @@
+.external-login-button .external-login-icon.icon-image {
+  margin-right: 8px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Ensure PatternFly SVG icons are sized correctly in buttons */
+.external-login-button .external-login-icon.icon-image svg {
+  width: 24px;
+  height: 24px;
+}
+
+.external-login-spinner {
+  margin-right: 8px;
+}

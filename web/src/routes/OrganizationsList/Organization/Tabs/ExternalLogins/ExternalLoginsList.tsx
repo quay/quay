@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   PageSection,
   PageSectionVariants,
@@ -11,6 +10,9 @@ import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {useExternalLoginManagement} from 'src/hooks/UseExternalLoginManagement';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
+import {IconImageView} from 'src/components/IconImageView';
+import AuthorizedApplicationsList from '../AuthorizedApplications/AuthorizedApplicationsList';
+import './ExternalLoginsList.css';
 
 export default function ExternalLoginsList() {
   const quayConfig = useQuayConfig();
@@ -47,86 +49,96 @@ export default function ExternalLoginsList() {
   }
 
   return (
-    <PageSection
-      variant={PageSectionVariants.light}
-      data-testid="external-logins-tab"
-    >
-      <TextContent>
-        <Text component={TextVariants.h1}>External Logins</Text>
-        <Text component={TextVariants.p}>
-          The external logins panel lists all supported external login
-          providers, which can be used for one-click OAuth-based login to Quay.
-          Accounts can be attached or detached by clicking the associated button
-          below.
-        </Text>
-      </TextContent>
-
-      <Table
-        aria-label="External login providers table"
-        className="external-logins-table"
-        data-testid="external-logins-table"
+    <>
+      <PageSection
+        variant={PageSectionVariants.light}
+        data-testid="external-logins-tab"
       >
-        <Thead>
-          <Tr>
-            <Th>Provider</Th>
-            <Th>Account Status</Th>
-            {quayConfig?.features?.DIRECT_LOGIN && <Th>Attach/Detach</Th>}
-          </Tr>
-        </Thead>
-        <Tbody>
-          {externalLogins.map((provider) => {
-            const isAttached = isProviderAttached(provider.id);
-            const loginInfo = externalLoginInfo[provider.id];
+        <TextContent>
+          <Text component={TextVariants.h1}>External Logins</Text>
+          <Text component={TextVariants.p}>
+            The external logins panel lists all supported external login
+            providers, which can be used for one-click OAuth-based login to
+            Quay. Accounts can be attached or detached by clicking the
+            associated button below.
+          </Text>
+        </TextContent>
 
-            return (
-              <Tr key={provider.id}>
-                <Td>
-                  <div className="provider-info">
-                    <span className="provider-icon">🔗</span>
-                    {provider.title}
-                  </div>
-                </Td>
-                <Td data-testid={`provider-status-${provider.id}`}>
-                  {isAttached ? (
-                    <span className="account-status-attached">
-                      Attached to {provider.title} account
-                      {loginInfo?.metadata?.service_username && (
-                        <strong style={{marginLeft: '4px'}}>
-                          {loginInfo.metadata.service_username}
-                        </strong>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="account-status-unattached">
-                      Not attached to {provider.title}
-                    </span>
-                  )}
-                </Td>
-                {quayConfig?.features?.DIRECT_LOGIN && (
+        <Table
+          aria-label="External login providers table"
+          className="external-logins-table"
+          data-testid="external-logins-table"
+        >
+          <Thead>
+            <Tr>
+              <Th>Provider</Th>
+              <Th>Account Status</Th>
+              {quayConfig?.features?.DIRECT_LOGIN && <Th>Attach/Detach</Th>}
+            </Tr>
+          </Thead>
+          <Tbody>
+            {externalLogins.map((provider) => {
+              const isAttached = isProviderAttached(provider.id);
+              const loginInfo = externalLoginInfo[provider.id];
+
+              return (
+                <Tr key={provider.id}>
                   <Td>
-                    {!isAttached ? (
-                      <ExternalLoginButton
-                        provider={provider}
-                        action="attach"
-                        isLink={true}
+                    <div className="provider-info">
+                      <IconImageView
+                        value={provider.icon}
+                        className="provider-icon"
                       />
+                      {provider.title}
+                    </div>
+                  </Td>
+                  <Td data-testid={`provider-status-${provider.id}`}>
+                    {isAttached ? (
+                      <span className="account-status-attached">
+                        Attached to {provider.title} account
+                        {loginInfo?.metadata?.service_username && (
+                          <strong style={{marginLeft: '4px'}}>
+                            {loginInfo.metadata.service_username}
+                          </strong>
+                        )}
+                      </span>
                     ) : (
-                      <button
-                        type="button"
-                        className="signin-link-button"
-                        onClick={() => handleDetach(provider.id)}
-                        data-testid={`detach-${provider.id}`}
-                      >
-                        Detach Account
-                      </button>
+                      <span className="account-status-unattached">
+                        Not attached to {provider.title}
+                      </span>
                     )}
                   </Td>
-                )}
-              </Tr>
-            );
-          })}
-        </Tbody>
-      </Table>
-    </PageSection>
+                  {quayConfig?.features?.DIRECT_LOGIN && (
+                    <Td>
+                      {!isAttached ? (
+                        <ExternalLoginButton
+                          provider={provider}
+                          action="attach"
+                          isLink={true}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className="signin-link-button"
+                          onClick={() => handleDetach(provider.id)}
+                          data-testid={`detach-${provider.id}`}
+                        >
+                          Detach Account
+                        </button>
+                      )}
+                    </Td>
+                  )}
+                </Tr>
+              );
+            })}
+          </Tbody>
+        </Table>
+      </PageSection>
+
+      <div style={{margin: '25px 0'}} />
+
+      {/* Add Authorized Applications section */}
+      <AuthorizedApplicationsList />
+    </>
   );
 }
