@@ -34,6 +34,7 @@ import {IOrganization} from 'src/resources/OrganizationResource';
 import {UpdateUserRequest} from 'src/resources/UserResource';
 import Alerts from 'src/routes/Alerts';
 import Avatar from 'src/components/Avatar';
+import ChangePasswordModal from 'src/components/modals/ChangePasswordModal';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const normalize = (value) => (value === null ? '' : value);
@@ -123,6 +124,9 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const [companyValue, setCompanyValue] = useState<string>(null);
   const [locationValue, setLocationValue] = useState<string>(null);
   const [validated, setValidated] = useState<validate>('default');
+
+  // Password modal state
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
@@ -346,6 +350,19 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </Grid>
       )}
 
+      {isUserOrganization && (
+        <FormGroup isInline label="Password" fieldId="form-password">
+          <Button
+            variant="link"
+            isInline
+            onClick={() => setIsPasswordModalOpen(true)}
+            style={{padding: 0}}
+          >
+            Change password
+          </Button>
+        </FormGroup>
+      )}
+
       {quayConfig?.features?.CHANGE_TAG_EXPIRATION && (
         <FormGroup isInline label="Time machine" fieldId="form-time-machine">
           <FormSelect
@@ -392,6 +409,11 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         </Flex>
       </ActionGroup>
       <Alerts />
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
     </Form>
   );
 };
