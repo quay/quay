@@ -19,6 +19,8 @@ include /etc/nginx/mime.types;
 
 default_type application/octet-stream;
 
+server_tokens off;
+
 access_log /var/log/nginx/access.log;
 error_log /var/log/nginx/error.log;
 client_body_temp_path /tmp/nginx 1 2;
