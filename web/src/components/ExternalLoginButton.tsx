@@ -12,6 +12,7 @@ interface ExternalLoginButtonProps {
   action?: 'login' | 'attach';
   onSignInStarted?: (provider: ExternalLoginProvider) => void;
   disabled?: boolean;
+  onClearErrors?: () => void;
 }
 
 export function ExternalLoginButton({
@@ -21,6 +22,7 @@ export function ExternalLoginButton({
   action = 'login',
   onSignInStarted,
   disabled = false,
+  onClearErrors,
 }: ExternalLoginButtonProps) {
   const {isAuthenticating, startExternalLogin} = useExternalLoginAuth();
 
@@ -28,6 +30,12 @@ export function ExternalLoginButton({
     if (onSignInStarted) {
       onSignInStarted(provider);
     }
+
+    // Clear any previous external login errors
+    if (onClearErrors) {
+      onClearErrors();
+    }
+
     await startExternalLogin(provider, redirectUrl);
   };
 

@@ -31,7 +31,8 @@ export function useExternalLogins() {
   const shouldShowDirectLogin = () => {
     if (!quayConfig) return true;
     return (
-      quayConfig.features?.DIRECT_LOGIN === true || externalLogins.length === 0
+      quayConfig.features?.DIRECT_LOGIN === true &&
+      quayConfig.config?.AUTHENTICATION_TYPE !== 'OIDC'
     );
   };
 

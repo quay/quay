@@ -125,24 +125,6 @@ describe('Signin page', () => {
     cy.url().should('include', '/createaccount');
   });
 
-  it('Shows account created success message', () => {
-    // Visit signin page with account created parameter
-    cy.visit('/signin?account_created=true');
-
-    // Should show success message (this would need to be implemented)
-    // This test documents expected behavior
-    cy.url().should('include', 'account_created=true');
-  });
-
-  it('Shows auto-login failed message', () => {
-    // Visit signin page with auto login failed parameter
-    cy.visit('/signin?account_created=true&auto_login_failed=true');
-
-    // Should show appropriate message (this would need to be implemented)
-    // This test documents expected behavior
-    cy.url().should('include', 'auto_login_failed=true');
-  });
-
   it('Form validation works', () => {
     setupFailedSignin({}); // Empty body - no success property
 

@@ -23,12 +23,16 @@ export function useExternalLoginAuth() {
         );
         return response.data.auth_url;
       } catch (err) {
-        throw new Error(
-          addDisplayError(
-            'Could not load external login service information. Please contact your service administrator.',
-            err,
-          ),
-        );
+        // Try to extract meaningful error message from response
+        let errorMessage = 'Could not load external login service information';
+
+        if (axios.isAxiosError(err) && err.response?.data?.error_message) {
+          errorMessage = err.response.data.error_message;
+        } else if (axios.isAxiosError(err) && err.response?.data?.message) {
+          errorMessage = err.response.data.message;
+        }
+
+        throw new Error(errorMessage);
       }
     },
     [],
@@ -49,7 +53,23 @@ export function useExternalLoginAuth() {
           window.location.href = authUrl;
         }, 250);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Authentication failed');
+        let errorMessage = 'Authentication failed';
+
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+
+        // More specific error messages for common scenarios
+        if (errorMessage.includes('Network Error')) {
+          errorMessage =
+            'Unable to connect to authentication service. Please try again.';
+        } else if (errorMessage.includes('timeout')) {
+          errorMessage = 'Authentication request timed out. Please try again.';
+        }
+
+        setError(errorMessage);
         setIsAuthenticating(false);
       }
     },
