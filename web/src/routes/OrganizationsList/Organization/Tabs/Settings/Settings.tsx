@@ -23,25 +23,29 @@ export default function Settings(props: SettingsProps) {
     {
       name: 'General settings',
       id: 'generalsettings',
-      content: <GeneralSettings organizationName={props.organizationName} />,
+      content: () => (
+        <GeneralSettings organizationName={props.organizationName} />
+      ),
       visible: true,
     },
     {
       name: 'Billing information',
       id: 'billinginformation',
-      content: <BillingInformation organizationName={props.organizationName} />,
+      content: () => (
+        <BillingInformation organizationName={props.organizationName} />
+      ),
       visible: quayConfig?.features?.BILLING,
     },
     {
       name: 'CLI configuration',
       id: 'cliconfig',
-      content: <CliConfiguration />,
+      content: () => <CliConfiguration />,
       visible: isUserOrganization,
     },
     {
       name: 'Auto-Prune Policies',
       id: 'autoprunepolicies',
-      content: (
+      content: () => (
         <AutoPruning
           org={props.organizationName}
           isUser={props.isUserOrganization}
@@ -52,7 +56,7 @@ export default function Settings(props: SettingsProps) {
     {
       name: 'Proxy Cache',
       id: 'proxycacheconfig',
-      content: (
+      content: () => (
         <ProxyCacheConfig
           organizationName={props.organizationName}
           isUser={props.isUserOrganization}
@@ -77,8 +81,6 @@ export default function Settings(props: SettingsProps) {
             .map((tab, tabIndex) => (
               <Tab
                 key={tab.id}
-                id={tab.id}
-                data-testid={tab.name}
                 eventKey={tabIndex}
                 title={
                   <TabTitleText className="pf-v5-u-text-nowrap">
@@ -94,7 +96,7 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfCenter'}}
         style={{padding: '20px'}}
       >
-        {tabs.filter((tab) => tab.visible === true)[activeTabIndex]?.content}
+        {tabs.filter((tab) => tab.visible === true)[activeTabIndex]?.content()}
       </FlexItem>
     </Flex>
   );

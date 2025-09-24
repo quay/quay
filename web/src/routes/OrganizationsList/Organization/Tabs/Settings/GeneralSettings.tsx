@@ -123,7 +123,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const {
     control,
     handleSubmit,
-    formState: {errors, isDirty},
+    formState: {errors, isDirty, isValid},
     reset,
     setValue,
   } = useForm<GeneralSettingsFormData>({
@@ -133,7 +133,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       fullName: '',
       company: '',
       location: '',
-      tagExpirationS: quayConfig?.config?.TAG_EXPIRATION_OPTIONS?.[0] || '',
+      tagExpirationS: '', // Will be set properly in useEffect when data loads
       desktopNotifications: false,
     },
   });
@@ -164,13 +164,19 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
 
   useEffect(() => {
+    // Don't initialize until timeMachineOptions is loaded
+    if (Object.keys(timeMachineOptions).length === 0) {
+      return;
+    }
+
     // Find the correct time machine option
     let tagExpirationValue =
       quayConfig?.config?.TAG_EXPIRATION_OPTIONS?.[0] || '';
+
     for (const key of Object.keys(timeMachineOptions)) {
       const optionSeconds = parseTimeDuration(key).asSeconds();
       if (optionSeconds === namespaceTimeMachineExpiry) {
-        tagExpirationValue = optionSeconds.toString();
+        tagExpirationValue = optionSeconds.toString(); // Convert to string to match FormSelectOption values
         break;
       }
     }
@@ -324,13 +330,20 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     try {
       if (!isUserOrganization) {
         // Update organization settings
+        let tagExpirationSeconds = null;
+        if (data.tagExpirationS !== undefined && data.tagExpirationS !== '') {
+          const seconds = parseInt(data.tagExpirationS, 10);
+          if (!isNaN(seconds) && seconds >= 0) {
+            tagExpirationSeconds = seconds;
+          }
+        }
+
         const orgUpdateData = {
-          tag_expiration_s: data.tagExpirationS
-            ? parseTimeDuration(data.tagExpirationS).asSeconds()
-            : null,
+          tag_expiration_s: tagExpirationSeconds,
           email: data.email !== namespaceEmail ? data.email : null,
           isUser: isUserOrganization,
         };
+
         await updateOrgSettings(orgUpdateData);
       } else {
         // Update user settings
@@ -343,11 +356,13 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
         if (
           quayConfig?.features?.CHANGE_TAG_EXPIRATION &&
-          data.tagExpirationS
+          data.tagExpirationS !== undefined &&
+          data.tagExpirationS !== ''
         ) {
-          userUpdateRequest.tag_expiration_s = parseTimeDuration(
-            data.tagExpirationS,
-          ).asSeconds();
+          const seconds = parseInt(data.tagExpirationS, 10);
+          if (!isNaN(seconds) && seconds >= 0) {
+            userUpdateRequest.tag_expiration_s = seconds;
+          }
         }
 
         await updateUser(userUpdateRequest);
@@ -380,7 +395,12 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
       </FormGroup>
 
       {(isUserOrganization ? user?.avatar : organization?.avatar) && (
-        <FormGroup isInline label="Avatar" fieldId="form-avatar">
+        <FormGroup
+          isInline
+          label="Avatar"
+          fieldId="form-avatar"
+          data-testid="form-avatar"
+        >
           <Flex
             direction={{default: 'column'}}
             alignItems={{default: 'alignItemsFlexStart'}}
@@ -391,6 +411,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
                   isUserOrganization ? user?.avatar : organization?.avatar
                 }
                 size="md"
+                data-testid="avatar"
               />
             </FlexItem>
             <FlexItem>
@@ -413,7 +434,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
         control={control}
         errors={errors}
         label="Email"
-        fieldId="form-email"
+        fieldId="org-settings-email"
         type="email"
         helperText="The e-mail address associated with the organization."
         customValidation={(value: string) =>
@@ -440,7 +461,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
               control={control}
               errors={errors}
               label="Company"
-              fieldId="company"
+              fieldId="org-settings-company"
               isStack={false}
             />
           </GridItem>
@@ -451,7 +472,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
               control={control}
               errors={errors}
               label="Location"
-              fieldId="location"
+              fieldId="org-settings-location"
               isStack={false}
             />
           </GridItem>
@@ -492,6 +513,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           control={control}
           label="Enable desktop notifications"
           fieldId="form-notifications"
+          data-testid="form-notifications"
           description={
             browserPermissionDenied
               ? 'Desktop notifications have been disabled, or are unavailable, in your browser.'
@@ -551,7 +573,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
           variant="primary"
           type="submit"
           onClick={handleSubmit(onSubmit)}
-          isDisabled={!isDirty}
+          isDisabled={!isDirty || !isValid}
         >
           Save
         </Button>
