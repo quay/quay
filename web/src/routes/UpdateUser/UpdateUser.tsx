@@ -65,7 +65,13 @@ export default function UpdateUser() {
         return;
       }
 
-      setUsername(user.username || '');
+      const initialUsername = user.username || '';
+      setUsername(initialUsername);
+
+      // Validate pre-filled username
+      if (initialUsername) {
+        validateUsername(initialUsername);
+      }
     }
   }, [user, userLoading, navigate]);
 

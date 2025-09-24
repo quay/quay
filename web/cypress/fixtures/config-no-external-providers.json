@@ -8,5 +8,9 @@
     "AUTHENTICATION_TYPE": "Database"
   },
   "external_login": [],
-  "registry_state": "normal"
+  "registry_state": "normal",
+  "quay_io": {
+    "enabled": true,
+    "url": "https://quay.io"
+  }
 }

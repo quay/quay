@@ -40,6 +40,9 @@ export function Signin() {
   const [currentView, setCurrentView] = useState<ViewType>('signin');
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [externalLoginError, setExternalLoginError] = useState<string | null>(
+    null,
+  );
 
   const {inReadOnlyMode, inAccountRecoveryMode} = useQuayState();
 
@@ -61,8 +64,11 @@ export function Signin() {
     shouldAutoRedirectSSO,
   } = useExternalLogins();
 
-  const {startExternalLogin, isAuthenticating: isExternalAuth} =
-    useExternalLoginAuth();
+  const {
+    startExternalLogin,
+    isAuthenticating: isExternalAuth,
+    error: hookError,
+  } = useExternalLoginAuth();
 
   useEffect(() => {
     if (shouldAutoRedirectSSO() && externalLogins.length > 0) {
@@ -70,6 +76,38 @@ export function Signin() {
       startExternalLogin(singleProvider);
     }
   }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin]);
+
+  // Check for external login errors in URL parameters
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const errorDescription = searchParams.get('error_description');
+
+    if (errorParam) {
+      if (errorDescription) {
+        setExternalLoginError(errorDescription);
+      } else if (errorParam === 'access_denied') {
+        setExternalLoginError('Login was cancelled or access denied');
+      } else {
+        setExternalLoginError(`External login failed: ${errorParam}`);
+      }
+
+      // Clear error parameters from URL
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('error');
+      newParams.delete('error_description');
+      const newUrl = `${window.location.pathname}${
+        newParams.toString() ? '?' + newParams.toString() : ''
+      }`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
+
+  // Capture hook errors
+  useEffect(() => {
+    if (hookError) {
+      setExternalLoginError(hookError);
+    }
+  }, [hookError]);
 
   let logoUrl = logo;
   if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
@@ -296,6 +334,25 @@ export function Signin() {
 
   const loginForm = (
     <>
+      {/* External login error display */}
+      {externalLoginError && (
+        <Alert
+          id="external-login-error-alert"
+          data-testid="external-login-error"
+          isInline
+          actionClose={
+            <AlertActionCloseButton
+              onClose={() => setExternalLoginError(null)}
+            />
+          }
+          variant="danger"
+          title="External login failed"
+          style={{marginBottom: '16px'}}
+        >
+          {externalLoginError}
+        </Alert>
+      )}
+
       {hasExternalLogins() && (
         <div className="external-login-section">
           {externalLogins.map((provider) => (
@@ -304,6 +361,7 @@ export function Signin() {
               provider={provider}
               redirectUrl={searchParams.get('redirect_url') || undefined}
               disabled={isExternalAuth}
+              onClearErrors={() => setExternalLoginError(null)}
             />
           ))}
 
