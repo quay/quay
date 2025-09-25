@@ -137,8 +137,9 @@ class RDSAwareHealthCheck(HealthCheck):
         app,
         config_provider,
         instance_keys,
-        access_key,
-        secret_key,
+        access_key=None,
+        secret_key=None,
+        use_sts=False,
         db_instance="quay",
         region="us-east-1",
     ):
@@ -150,6 +151,7 @@ class RDSAwareHealthCheck(HealthCheck):
 
         self.access_key = access_key
         self.secret_key = secret_key
+        self.use_sts = use_sts
         self.db_instance = db_instance
         self.region = region
 
@@ -177,16 +179,22 @@ class RDSAwareHealthCheck(HealthCheck):
 
         return self.calculate_overall_health(service_statuses, skip=skip, notes=notes)
 
+    def _get_session(self):
+        if self.use_sts:
+            return boto3.session.Session(region_name=self.region)
+        else:
+            return boto3.session.Session(
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+                region_name=self.region,
+            )
+
     def _get_rds_status(self):
         """
         Returns the status of the RDS instance as reported by AWS.
         """
         try:
-            session = boto3.session.Session(
-                aws_access_key_id=self.access_key,
-                aws_secret_access_key=self.secret_key,
-                region_name=self.region,
-            )
+            session = self._get_session()
             client = session.client("rds")
             instances = client.describe_db_instances()["DBInstances"]
             matches = [i for i in instances if i["DBInstanceIdentifier"] == self.db_instance]

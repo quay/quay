@@ -234,12 +234,18 @@ class EC2Executor(BuilderExecutor):
         """
         Creates an ec2 connection which can be used to manage instances.
         """
-        return boto3.client(
-            "ec2",
-            region_name=self.executor_config["EC2_REGION"],
-            aws_access_key_id=self.executor_config["AWS_ACCESS_KEY"],
-            aws_secret_access_key=self.executor_config["AWS_SECRET_KEY"],
-        )
+        use_sts = self.executor_config.get("USE_STS", False)
+        if use_sts:
+            # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#assume-role-with-web-identity-provider
+            # we let boto handle refreshes using environment variables passed to the app
+            return boto3.client("ec2", region_name=self.executor_config["EC2_REGION"])
+        else:
+            return boto3.client(
+                "ec2",
+                region_name=self.executor_config["EC2_REGION"],
+                aws_access_key_id=self.executor_config["AWS_ACCESS_KEY"],
+                aws_secret_access_key=self.executor_config["AWS_SECRET_KEY"],
+            )
 
     @property
     def running_builders_count(self):
