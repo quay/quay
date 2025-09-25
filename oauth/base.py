@@ -149,7 +149,9 @@ class OAuthService(object):
         """
         return self.config.get("LOGIN_BINDING_FIELD", None)
 
-    def get_auth_url(self, url_scheme_and_hostname, redirect_suffix, csrf_token, scopes):
+    def get_auth_url(
+        self, url_scheme_and_hostname, redirect_suffix, csrf_token, scopes, extra_auth_params=None
+    ):
         """
         Retrieves the authorization URL for this login service.
         """
@@ -164,6 +166,8 @@ class OAuthService(object):
             "scope": " ".join(scopes),
             "state": quote(csrf_token),
         }
+        if extra_auth_params:
+            params.update(extra_auth_params)
 
         return self.authorize_endpoint().with_params(params).to_url()
 
@@ -231,6 +235,8 @@ class OAuthService(object):
         form_encode=False,
         redirect_suffix="",
         client_auth=False,
+        extra_token_params=None,
+        omit_client_secret=False,
     ):
         """
         Exchanges an OAuth access code for associated OAuth token and other data.
@@ -241,6 +247,8 @@ class OAuthService(object):
             "grant_type": "authorization_code",
             "redirect_uri": self.get_redirect_uri(url_scheme_and_hostname, redirect_suffix),
         }
+        if extra_token_params:
+            payload.update(extra_token_params)
         headers = {"Accept": "application/json"}
 
         auth = None
@@ -248,14 +256,15 @@ class OAuthService(object):
             auth = (self.client_id(), self.client_secret())
         else:
             payload["client_id"] = self.client_id()
-            payload["client_secret"] = self.client_secret()
+            if not omit_client_secret and self.client_secret() is not None:
+                payload["client_secret"] = self.client_secret()
 
         token_url = self.token_endpoint().to_url()
 
         def perform_request():
             attempts = 0
             max_attempts = 3
-            timeout = 5 / 1000
+            base_timeout = 0.5  # Start with 500ms
 
             while attempts < max_attempts:
                 if self._is_testing:
@@ -263,8 +272,10 @@ class OAuthService(object):
 
                 try:
                     if form_encode:
+                        form_headers = headers.copy()
+                        form_headers["Content-Type"] = "application/x-www-form-urlencoded"
                         return http_client.post(
-                            token_url, data=payload, headers=headers, auth=auth, timeout=5
+                            token_url, data=payload, headers=form_headers, auth=auth, timeout=5
                         )
                     else:
                         return http_client.post(
@@ -273,6 +284,8 @@ class OAuthService(object):
                 except requests.ConnectionError:
                     logger.debug("Got ConnectionError during OAuth token exchange, retrying.")
                     attempts += 1
+                    # Exponential backoff: 0.5s, 1.0s, 2.0s
+                    timeout = base_timeout * (2**attempts)
                     time.sleep(timeout)
 
         get_access_token = perform_request()
