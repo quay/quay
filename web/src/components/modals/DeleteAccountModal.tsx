@@ -48,6 +48,7 @@ export default function DeleteAccountModal({
       title={`Delete ${namespaceTitle}`}
       isOpen={isOpen}
       onClose={handleClose}
+      data-testid="delete-account-modal"
       actions={[
         <Button
           key="delete"
@@ -55,6 +56,7 @@ export default function DeleteAccountModal({
           onClick={handleConfirm}
           isDisabled={!canDelete}
           isLoading={isLoading}
+          data-testid="delete-account-confirm"
         >
           Delete {namespaceTitle}
         </Button>,
@@ -84,7 +86,7 @@ export default function DeleteAccountModal({
 
         <FormGroup fieldId="verification">
           <TextInput
-            id="verification"
+            id="delete-confirmation-input"
             type="text"
             value={verification}
             onChange={(_event, value) => setVerification(value)}

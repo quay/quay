@@ -118,6 +118,7 @@ export default function ChangePasswordModal({
       title="Change Password"
       isOpen={isOpen}
       onClose={handleClose}
+      data-testid="change-password-modal"
       actions={[
         <Button
           key="change"
@@ -125,6 +126,7 @@ export default function ChangePasswordModal({
           onClick={handleSubmit}
           isDisabled={!canSubmit}
           isLoading={isSubmitting}
+          data-testid="change-password-submit"
         >
           Change Password
         </Button>,

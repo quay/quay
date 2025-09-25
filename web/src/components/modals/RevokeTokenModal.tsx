@@ -42,12 +42,14 @@ export default function RevokeTokenModal({
       title="Revoke Application Token"
       isOpen={isOpen}
       onClose={onClose}
+      data-testid="revoke-token-modal"
       actions={[
         <Button
           key="revoke"
           variant="danger"
           onClick={handleRevoke}
           isLoading={revokeTokenMutator.isLoading}
+          data-testid="revoke-token-confirm"
         >
           Revoke Token
         </Button>,

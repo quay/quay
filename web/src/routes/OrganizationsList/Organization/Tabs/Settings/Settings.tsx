@@ -77,18 +77,21 @@ export default function Settings(props: SettingsProps) {
           role="region"
         >
           {tabs
-            .filter((tab) => tab.visible === true)
-            .map((tab, tabIndex) => (
+            ?.filter((tab) => tab.visible === true)
+            ?.map((tab, tabIndex) => (
               <Tab
                 key={tab.id}
                 eventKey={tabIndex}
                 title={
-                  <TabTitleText className="pf-v5-u-text-nowrap">
+                  <TabTitleText
+                    className="pf-v5-u-text-nowrap"
+                    id={`pf-tab-${tabIndex}-${tab.id}`}
+                  >
                     {tab.name}
                   </TabTitleText>
                 }
               />
-            ))}
+            )) || []}
         </Tabs>
       </FlexItem>
 
@@ -96,7 +99,9 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfCenter'}}
         style={{padding: '20px'}}
       >
-        {tabs.filter((tab) => tab.visible === true)[activeTabIndex]?.content()}
+        {tabs
+          ?.filter((tab) => tab.visible === true)
+          [activeTabIndex]?.content?.()}
       </FlexItem>
     </Flex>
   );

@@ -31,12 +31,14 @@ export default function ChangeAccountTypeModal({
 }: ChangeAccountTypeModalProps) {
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
-  const [convertStep, setConvertStep] = useState(0);
-  const [accountType, setAccountType] = useState('user');
+  const canConvert = user?.organizations?.length === 0;
+  const [convertStep, setConvertStep] = useState(canConvert ? 1 : 0); // Start at step 1 if can convert
+  const [accountType, setAccountType] = useState('organization'); // Default to organization
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [error, setError] = useState<string>('');
+  const orgCount = user?.organizations?.length || 0;
 
   const convertAccountMutator = useConvertAccount({
     onSuccess: () => {
@@ -45,22 +47,19 @@ export default function ChangeAccountTypeModal({
     },
     onError: (error) => {
       setError(error?.response?.data?.detail || 'Failed to convert account');
-      setConvertStep(0); // Go back to beginning on error
+      setConvertStep(canConvert ? 1 : 0); // Go back to appropriate starting step
     },
   });
 
   const handleClose = () => {
-    setConvertStep(0);
-    setAccountType('user');
+    setConvertStep(canConvert ? 1 : 0);
+    setAccountType('organization');
     setAdminUsername('');
     setAdminPassword('');
     setSelectedPlan('');
     setError('');
     onClose();
   };
-
-  const canConvert = user?.organizations?.length === 0;
-  const orgCount = user?.organizations?.length || 0;
 
   const handleShowConvertForm = () => {
     setConvertStep(1);
@@ -118,18 +117,22 @@ export default function ChangeAccountTypeModal({
           <br />
           <p>Please leave the following organizations first:</p>
           <List>
-            {user?.organizations?.map((org) => (
-              <ListItem key={org.name}>
-                <Flex alignItems={{default: 'alignItemsCenter'}}>
-                  <FlexItem spacer={{default: 'spacerSm'}}>
-                    <Avatar avatar={org.avatar} size="sm" />
-                  </FlexItem>
-                  <FlexItem>
-                    <a href={`/organization/${org.name}`}>{org.name}</a>
-                  </FlexItem>
-                </Flex>
-              </ListItem>
-            ))}
+            {user?.organizations
+              ?.filter((org) => org && org.name)
+              ?.map((org) => (
+                <ListItem key={org.name}>
+                  <Flex alignItems={{default: 'alignItemsCenter'}}>
+                    {org.avatar && (
+                      <FlexItem spacer={{default: 'spacerSm'}}>
+                        <Avatar avatar={org.avatar} size="sm" />
+                      </FlexItem>
+                    )}
+                    <FlexItem>
+                      <a href={`/organization/${org.name}`}>{org.name}</a>
+                    </FlexItem>
+                  </Flex>
+                </ListItem>
+              ))}
           </List>
         </div>
       ) : (
@@ -252,7 +255,12 @@ export default function ChangeAccountTypeModal({
     if (convertStep === 0) {
       if (!canConvert) {
         return [
-          <Button key="close" variant="primary" onClick={handleClose}>
+          <Button
+            key="close"
+            variant="primary"
+            data-testid="change-account-type-modal-close"
+            onClick={handleClose}
+          >
             Close
           </Button>,
         ];
@@ -286,6 +294,7 @@ export default function ChangeAccountTypeModal({
           variant="primary"
           onClick={handleNextStep}
           isDisabled={!adminUsername || !adminPassword}
+          data-testid="account-type-next"
         >
           {quayConfig?.features?.BILLING ? 'Choose billing' : 'Convert Account'}
         </Button>,
@@ -300,6 +309,7 @@ export default function ChangeAccountTypeModal({
           variant="primary"
           onClick={handleNextStep}
           isDisabled={!selectedPlan}
+          data-testid="account-type-convert"
         >
           Convert Account
         </Button>,
@@ -330,6 +340,7 @@ export default function ChangeAccountTypeModal({
       title="Change Account Type"
       isOpen={isOpen}
       onClose={handleClose}
+      data-testid="change-account-type-modal"
       actions={convertStep < 3 ? getStepActions() : []}
     >
       {error && (

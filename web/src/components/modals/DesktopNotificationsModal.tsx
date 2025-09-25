@@ -22,20 +22,35 @@ export default function DesktopNotificationsModal({
   return (
     <Modal
       variant={ModalVariant.small}
-      title="Confirm"
+      title={
+        isEnabling
+          ? 'Enable Desktop Notifications'
+          : 'Disable Desktop Notifications'
+      }
       isOpen={isOpen}
       onClose={onClose}
+      data-testid="desktop-notifications-modal"
       actions={[
-        <Button key="confirm" variant="primary" onClick={handleConfirm}>
+        <Button
+          key="confirm"
+          variant="primary"
+          onClick={handleConfirm}
+          data-testid="notification-confirm"
+        >
           OK
         </Button>,
-        <Button key="cancel" variant="link" onClick={onClose}>
+        <Button
+          key="cancel"
+          variant="link"
+          onClick={onClose}
+          data-testid="notification-cancel"
+        >
           Cancel
         </Button>,
       ]}
     >
       <p>
-        Are you sure you want to turn {isEnabling ? 'on' : 'off'} browser
+        Are you sure you want to turn {isEnabling ? 'on' : 'off'} desktop
         notifications?
       </p>
     </Modal>

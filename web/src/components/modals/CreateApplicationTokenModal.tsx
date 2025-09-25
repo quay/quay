@@ -69,8 +69,14 @@ export default function CreateApplicationTokenModal({
         title="Application Token Created"
         isOpen={isOpen}
         onClose={handleClose}
+        data-testid="create-token-modal"
         actions={[
-          <Button key="done" variant="primary" onClick={handleClose}>
+          <Button
+            key="done"
+            variant="primary"
+            onClick={handleClose}
+            data-testid="create-token-close"
+          >
             Done
           </Button>,
         ]}
@@ -97,6 +103,7 @@ export default function CreateApplicationTokenModal({
               clickTip="Copied"
               variant="expansion"
               isReadOnly
+              data-testid="copy-token-button"
             >
               {createdToken.token_code}
             </ClipboardCopy>
@@ -113,6 +120,7 @@ export default function CreateApplicationTokenModal({
       title="Create Application Token"
       isOpen={isOpen}
       onClose={handleClose}
+      data-testid="create-token-modal"
       actions={[
         <Button
           key="create"
@@ -120,6 +128,7 @@ export default function CreateApplicationTokenModal({
           onClick={handleCreate}
           isDisabled={!canCreate}
           isLoading={createTokenMutator.isLoading}
+          data-testid="create-token-submit"
         >
           Create Token
         </Button>,

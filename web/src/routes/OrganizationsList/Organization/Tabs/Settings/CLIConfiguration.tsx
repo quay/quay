@@ -187,6 +187,7 @@ export const CliConfiguration = () => {
                             variant="plain"
                             onClick={() => toggleDropdown(token.uuid)}
                             isExpanded={dropdownOpen[token.uuid] || false}
+                            data-testid="token-actions-dropdown"
                           >
                             <EllipsisVIcon />
                           </MenuToggle>

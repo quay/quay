@@ -7,12 +7,14 @@ interface AvatarProps {
   avatar: IAvatar;
   size?: AvatarSize;
   className?: string;
+  'data-testid'?: string;
 }
 
 export default function Avatar({
   avatar,
   size = 'md',
   className = '',
+  'data-testid': dataTestId,
 }: AvatarProps) {
   const firstLetter = avatar.name ? avatar.name.charAt(0).toUpperCase() : '?';
 
@@ -50,6 +52,7 @@ export default function Avatar({
       style={avatarStyle}
       title={`${avatar.name} avatar`}
       aria-label={`${avatar.name} avatar`}
+      data-testid={dataTestId}
     >
       {firstLetter}
     </div>
