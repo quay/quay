@@ -6,6 +6,8 @@ import 'src/App.css';
 import {LoadingPage} from 'src/components/LoadingPage';
 import {useAnalytics} from 'src/hooks/UseAnalytics';
 import {Signin} from 'src/routes/Signin/Signin';
+import {CreateAccount} from 'src/routes/CreateAccount/CreateAccount';
+import UpdateUser from 'src/routes/UpdateUser/UpdateUser';
 import {StandaloneMain} from 'src/routes/StandaloneMain';
 import {ThemeProvider} from './contexts/ThemeContext';
 
@@ -20,6 +22,8 @@ export default function App() {
             <Routes>
               <Route path="/*" element={<StandaloneMain />} />
               <Route path="/signin" element={<Signin />} />
+              <Route path="/createaccount" element={<CreateAccount />} />
+              <Route path="/updateuser" element={<UpdateUser />} />
             </Routes>
           </Suspense>
         </BrowserRouter>

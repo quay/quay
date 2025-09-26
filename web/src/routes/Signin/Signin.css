@@ -1,3 +1,134 @@
 .pf-v5-c-brand {
-    --pf-v5-c-brand--Height: 3em;
+  --pf-v5-c-brand--Height: 3em;
+}
+
+/* Forgot password form styling */
+.forgot-password-form {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.forgot-password-form h4 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--pf-v5-global--Color--200);
+  font-weight: 400;
+}
+
+/* reCAPTCHA styling */
+.captcha {
+  display: block;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.captcha > div {
+  display: inline-block;
+}
+
+/* Forgot password and create account link styling */
+.signin-link-button {
+  background: none;
+  border: none;
+  color: var(--pf-v5-global--link--Color);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0;
+  margin-top: 8px;
+}
+
+.signin-link-button:hover {
+  color: var(--pf-v5-global--link--Color--hover);
+  text-decoration: underline;
+}
+
+.signin-link-button:focus {
+  outline: 2px solid var(--pf-v5-global--active-color--100);
+  outline-offset: 2px;
+}
+
+/* Center alignment for signin form links */
+.signin-form-links {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.signin-form-links > * + * {
+  margin-top: 8px;
+}
+
+/* External login section */
+.external-login-section {
+  margin-bottom: 20px;
+}
+
+/* External login buttons */
+.external-login-button {
+  margin-bottom: 10px;
+}
+
+.external-login-button .external-login-spinner {
+  margin-right: 8px;
+}
+
+.external-login-button .external-login-text {
+  vertical-align: middle;
+}
+
+.external-login-button .external-login-icon {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* Login divider */
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.login-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--pf-v5-global--BorderColor--100);
+  z-index: 1;
+}
+
+.login-divider span {
+  background: var(--pf-v5-global--BackgroundColor--100);
+  padding: 0 10px;
+  color: var(--pf-v5-global--Color--200);
+  position: relative;
+  z-index: 2;
+}
+
+/* External logins management tab */
+.external-logins-table {
+  margin-top: 20px;
+}
+
+.external-logins-table .provider-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.external-logins-table .provider-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.external-logins-table .account-status-attached {
+  color: var(--pf-v5-global--success-color--100);
+}
+
+.external-logins-table .account-status-unattached {
+  color: var(--pf-v5-global--Color--200);
 }
