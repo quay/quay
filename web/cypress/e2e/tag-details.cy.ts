@@ -100,6 +100,16 @@ describe('Tag Details Page', () => {
     cy.contains('Quay Security Reporting has recognized 49 packages');
   });
 
+  it('switch to layers tab', () => {
+    cy.visit('/repository/user1/hello-world/tag/latest');
+    cy.get('button').contains('Layers').click();
+    cy.url().should(
+      'include',
+      '/repository/user1/hello-world/tag/latest?tab=layers',
+    );
+    cy.contains('Manifest Layers');
+  });
+
   it('switch to security report tab via vulnerabilities field', () => {
     cy.visit('/repository/user1/hello-world/tag/latest');
     cy.contains('12 High').click();
