@@ -41,11 +41,11 @@ export function useRepositories(organization?: string) {
     queryKey: ['organization', organization || 'all', 'repositories'],
     keepPreviousData: true,
     placeholderData: [],
-    queryFn: async ({signal}) => {
+    queryFn: async ({signal}): Promise<IRepository[]> => {
       // Reset partial results at the start of a new query
       setPartialResults([]);
 
-      return currentOrganization
+      const result = currentOrganization
         ? fetchRepositoriesForNamespace(currentOrganization, {
             signal,
             onPartialResult: handlePartialResults,
@@ -55,6 +55,9 @@ export function useRepositories(organization?: string) {
             signal,
             onPartialResult: handlePartialResults,
           });
+
+      // Ensure we always return IRepository[]
+      return result as Promise<IRepository[]>;
     },
   });
 
