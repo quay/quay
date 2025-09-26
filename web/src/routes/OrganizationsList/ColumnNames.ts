@@ -5,6 +5,7 @@ const ColumnNames = {
   membersCount: 'Members',
   robotsCount: 'Robots',
   lastModified: 'Last Modified',
+  options: '',
 };
 
 export default ColumnNames;
