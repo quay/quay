@@ -39,7 +39,7 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     # Registry size is only viewable by superusers, don't calculate if not used
-    if not all(
+    if not any(
         [
             any(
                 [
