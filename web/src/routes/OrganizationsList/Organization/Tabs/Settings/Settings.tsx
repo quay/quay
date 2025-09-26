@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import React, {useState} from 'react';
 import {Tabs, Tab, TabTitleText, Flex, FlexItem} from '@patternfly/react-core';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -15,7 +15,7 @@ export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const quayConfig = useQuayConfig();
 
-  const handleTabClick = (event, tabIndex) => {
+  const handleTabClick = (event: React.MouseEvent, tabIndex: number) => {
     setActiveTabIndex(tabIndex);
   };
 
@@ -23,25 +23,29 @@ export default function Settings(props: SettingsProps) {
     {
       name: 'General settings',
       id: 'generalsettings',
-      content: <GeneralSettings organizationName={props.organizationName} />,
+      content: () => (
+        <GeneralSettings organizationName={props.organizationName} />
+      ),
       visible: true,
     },
     {
       name: 'Billing information',
       id: 'billinginformation',
-      content: <BillingInformation organizationName={props.organizationName} />,
+      content: () => (
+        <BillingInformation organizationName={props.organizationName} />
+      ),
       visible: quayConfig?.features?.BILLING,
     },
     {
       name: 'CLI configuration',
       id: 'cliconfig',
-      content: <CliConfiguration />,
+      content: () => <CliConfiguration />,
       visible: isUserOrganization,
     },
     {
       name: 'Auto-Prune Policies',
       id: 'autoprunepolicies',
-      content: (
+      content: () => (
         <AutoPruning
           org={props.organizationName}
           isUser={props.isUserOrganization}
@@ -52,7 +56,7 @@ export default function Settings(props: SettingsProps) {
     {
       name: 'Proxy Cache',
       id: 'proxycacheconfig',
-      content: (
+      content: () => (
         <ProxyCacheConfig
           organizationName={props.organizationName}
           isUser={props.isUserOrganization}
@@ -73,16 +77,21 @@ export default function Settings(props: SettingsProps) {
           role="region"
         >
           {tabs
-            .filter((tab) => tab.visible === true)
-            .map((tab, tabIndex) => (
+            ?.filter((tab) => tab.visible === true)
+            ?.map((tab, tabIndex) => (
               <Tab
                 key={tab.id}
-                id={tab.id}
-                data-testid={tab.name}
                 eventKey={tabIndex}
-                title={<TabTitleText>{tab.name}</TabTitleText>}
+                title={
+                  <TabTitleText
+                    className="pf-v5-u-text-nowrap"
+                    id={`pf-tab-${tabIndex}-${tab.id}`}
+                  >
+                    {tab.name}
+                  </TabTitleText>
+                }
               />
-            ))}
+            )) || []}
         </Tabs>
       </FlexItem>
 
@@ -90,7 +99,9 @@ export default function Settings(props: SettingsProps) {
         alignSelf={{default: 'alignSelfCenter'}}
         style={{padding: '20px'}}
       >
-        {tabs.filter((tab) => tab.visible === true).at(activeTabIndex).content}
+        {tabs
+          ?.filter((tab) => tab.visible === true)
+          [activeTabIndex]?.content?.()}
       </FlexItem>
     </Flex>
   );

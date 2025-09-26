@@ -8,7 +8,10 @@ describe('Organization settings - Proxy-cache configuration', () => {
       .then((token) => {
         cy.loginByCSRF(token);
       });
-    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
+    cy.fixture('config.json').then((config) => {
+      config.features.PROXY_CACHE = true;
+      cy.intercept('GET', '/config', config).as('getConfigWithProxyCache');
+    });
 
     // Intercept the /validateproxycache API call
     cy.intercept('POST', '/api/v1/organization/*/validateproxycache', (req) => {
@@ -40,7 +43,8 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
   it('can create anonymous proxy cache configuration for an organization', () => {
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.get('[data-testid="Proxy Cache"]').click();
+    cy.wait('@getConfigWithProxyCache');
+    cy.contains('Proxy Cache').click();
     createAnonymousProxyCacheConfig(cy);
 
     // Wait for the validateproxycache API call and assert the response
@@ -63,7 +67,8 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
   it('can create proxy cache configuration with registry credentials for an organization', () => {
     cy.visit('/organization/projectquay?tab=Settings');
-    cy.get('[data-testid="Proxy Cache"]').click();
+    cy.wait('@getConfigWithProxyCache');
+    cy.contains('Proxy Cache').click();
 
     cy.get('[data-testid="remote-registry-input"]').type('docker.io');
     cy.get('[data-testid="remote-registry-username"]').type('testuser1');
@@ -93,7 +98,8 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
   it('can delete proxy cache configuration for an organization', () => {
     cy.visit('/organization/prometheus?tab=Settings');
-    cy.get('[data-testid="Proxy Cache"]').click();
+    cy.wait('@getConfigWithProxyCache');
+    cy.contains('Proxy Cache').click();
 
     cy.get('[data-testid="delete-proxy-cache-btn"]').click();
     // verify success alert
@@ -104,6 +110,7 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
   it('proxy cache config is not shown for user organization', () => {
     cy.visit('/organization/user1?tab=Settings');
-    cy.get('[data-testid="Proxy Cache"]').should('not.exist');
+    cy.wait('@getConfigWithProxyCache');
+    cy.contains('Proxy Cache').should('not.exist');
   });
 });
