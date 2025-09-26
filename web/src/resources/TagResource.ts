@@ -43,7 +43,15 @@ export interface Manifest {
 }
 
 export interface Layer {
-  size: number;
+  index: number;
+  compressed_size: number;
+  is_remote: boolean;
+  urls: string[];
+  command: string[];
+  comment: string;
+  author: string;
+  blob_digest: string;
+  created_datetime: string;
 }
 
 export interface Platform {
@@ -69,8 +77,9 @@ export interface ManifestByDigestResponse {
   digest: string;
   is_manifest_list: boolean;
   manifest_data: string;
-  config_media_type?: any;
-  layers?: any;
+  config_media_type?: string;
+  layers?: Layer[];
+  layers_compressed_size?: number;
   modelcard?: string;
 }
 
@@ -79,9 +88,9 @@ export interface SecurityDetailsResponse {
   data: Data;
 }
 export interface Data {
-  Layer: Layer;
+  Layer: SecurityLayer;
 }
-export interface Layer {
+export interface SecurityLayer {
   Name: string;
   ParentName: string;
   NamespaceName: string;
@@ -140,7 +149,7 @@ export const VulnerabilityOrder = {
   [VulnerabilitySeverity.Unknown]: 5,
 };
 
-// TODO: Support cancelation signal here
+// TODO: Support cancellation signal here
 export async function getTags(
   org: string,
   repo: string,
@@ -244,12 +253,6 @@ export async function deleteLabel(
   }
 }
 
-interface TagLocation {
-  org: string;
-  repo: string;
-  tag: string;
-}
-
 export async function bulkDeleteTags(
   org: string,
   repo: string,
@@ -328,11 +331,13 @@ export async function getManifestByDigest(
   org: string,
   repo: string,
   digest: string,
-  include_modelcard: boolean,
+  include_modelcard = false,
 ) {
-  const response: AxiosResponse<ManifestByDigestResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}?include_modelcard=true`,
-  );
+  const url = `/api/v1/repository/${org}/${repo}/manifest/${digest}${
+    include_modelcard ? '?include_modelcard=true' : ''
+  }`;
+  const response: AxiosResponse<ManifestByDigestResponse> =
+    await axios.get(url);
   assertHttpCode(response.status, 200);
   return response.data;
 }
@@ -399,6 +404,7 @@ export async function restoreTag(
       manifest_digest: digest,
     },
   );
+  assertHttpCode(response.status, 200);
 }
 
 export async function permanentlyDeleteTag(
@@ -415,4 +421,5 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
+  assertHttpCode(response.status, 200);
 }
