@@ -121,6 +121,16 @@
         style="width: 90px;">
       <a ng-click="orderBy('size')" data-title="The compressed size of the tag's image" data-container="body" bs-tooltip>Size</a>
     </td>
+    <td class="hidden-xs hidden-sm"
+        ng-class="tablePredicateClass('pull_count', options.predicate, options.reverse)"
+        style="width: 80px;">
+      <a ng-click="orderBy('pull_count')" data-title="Number of times this tag has been pulled" data-container="body" bs-tooltip>Pull Count</a>
+    </td>
+    <td class="hidden-xs hidden-sm"
+        ng-class="tablePredicateClass('last_pull_timestamp', options.predicate, options.reverse)"
+        style="width: 120px;">
+      <a ng-click="orderBy('last_pull_timestamp')" data-title="When this tag was last pulled" data-container="body" bs-tooltip>Last Pulled</a>
+    </td>
     <td class="hidden-sm hidden-xs hidden-md"
         ng-class="tablePredicateClass('expiration_date', options.predicate, options.reverse)"
         style="width: 140px;">
@@ -192,6 +202,20 @@
       <td class="hidden-xs">
         <span bo-text="tag.size | bytes" bo-if="!tag.is_manifest_list"></span>
         <span bo-if="tag.is_manifest_list">N/A</span>
+      </td>
+
+      <!-- Pull Count -->
+      <td class="hidden-xs hidden-sm">
+        <span ng-if="tag.pull_count !== undefined" style="font-weight: bold;" bo-text="tag.pull_count"></span>
+        <span ng-if="tag.pull_count === undefined" style="color: #999;">-</span>
+      </td>
+
+      <!-- Last Pulled -->
+      <td class="hidden-xs hidden-sm">
+        <span ng-if="tag.last_pull_date">
+          <time-ago datetime="tag.last_pull_date"></time-ago>
+        </span>
+        <span ng-if="!tag.last_pull_date" style="color: #999;">-</span>
       </td>
 
       <!-- Expiration -->
@@ -293,6 +317,12 @@
         <span bo-text="manifest.layers_compressed_size | bytes"></span>
       </td>
 
+      <!-- Pull Count (empty for manifest list items) -->
+      <td class="hidden-xs hidden-sm"></td>
+
+      <!-- Last Pulled (empty for manifest list items) -->
+      <td class="hidden-xs hidden-sm"></td>
+
       <td colspan="1" class="hidden-xs hidden-sm hidden-md"></td>
 
       <td class="hidden-xs hidden-sm image-id-col">
@@ -315,12 +345,12 @@
     <!-- Expanded View -->
     <tr ng-if="expandedView" class="expanded-viewport" ng-class="{'manifest-list': tag.is_manifest_list}">
       <td class="checkbox-col"></td>
-      <td class="labels-col" colspan="{{5 + (repository.trust_enabled ? 1 : 0) + (Features.SECURITY_SCANNER ? 1 : 0) }}">
+      <td class="labels-col" colspan="{{7 + (repository.trust_enabled ? 1 : 0) + (Features.SECURITY_SCANNER ? 1 : 0) }}">
         <!-- Image ID -->
         <div class="image-id-row">
           <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
         </div>
-        
+
         <!-- Labels -->
         <div class="manifest-label-list" repository="repository"
              manifest-digest="tag.manifest_digest" cache="labelCache"></div>

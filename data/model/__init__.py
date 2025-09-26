@@ -242,6 +242,7 @@ from data.model import (
     organization_skus,
     permission,
     proxy_cache,
+    pull_statistics,
     release,
     repo_mirror,
     repository,

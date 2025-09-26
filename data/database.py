@@ -2187,6 +2187,53 @@ class TagNotificationSuccess(BaseModel):
     method = ForeignKeyField(ExternalNotificationMethod, null=False)
 
 
+class TagPullStatistics(BaseModel):
+    """
+    Statistics for pull requests by tag name.
+    """
+
+    repository = ForeignKeyField(Repository, index=True)
+    tag_name = CharField(max_length=255, index=True)
+    tag_pull_count = IntegerField(default=0)
+    last_tag_pull_date = DateTimeField(null=True)
+    current_manifest_digest = CharField(max_length=255, null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Composite primary key on repository_id and tag_name
+            (("repository", "tag_name"), True),
+            # Index for efficient queries by pull count
+            (("repository", "tag_pull_count"), False),
+            # Index for efficient queries by last pull date
+            (("repository", "last_tag_pull_date"), False),
+        )
+
+
+class ManifestPullStatistics(BaseModel):
+    """
+    Statistics for pull requests by manifest digest.
+    """
+
+    repository = ForeignKeyField(Repository, index=True)
+    manifest_digest = CharField(max_length=255, index=True)
+    manifest_pull_count = IntegerField(default=0)
+    last_manifest_pull_date = DateTimeField(null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Composite primary key on repository_id and manifest_digest
+            (("repository", "manifest_digest"), True),
+            # Index for efficient queries by pull count
+            (("repository", "manifest_pull_count"), False),
+            # Index for efficient queries by last pull date
+            (("repository", "last_manifest_pull_date"), False),
+        )
+
+
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {

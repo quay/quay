@@ -32,8 +32,11 @@ from endpoints.exception import InvalidRequest, NotFound
 from util.names import TAG_ERROR, TAG_REGEX
 from util.parsing import truthy_bool
 
+# Note: Pull metrics are now served from database, not Redis
+# Redis is used only for write-side (recording pull events) via manifest endpoints
 
-def _tag_dict(tag):
+
+def _tag_dict(tag, repository_id=None):
     tag_info = {
         "name": tag.name,
         "reversion": tag.reversion,
@@ -56,6 +59,30 @@ def _tag_dict(tag):
     if tag.lifetime_end_ts is not None:
         expiration = format_date(datetime.utcfromtimestamp(tag.lifetime_end_ts))
         tag_info["expiration"] = expiration
+
+    # Add pull metrics from database (persistent storage)
+    if repository_id and tag.name:
+        try:
+            from data.model.pull_statistics import get_tag_pull_statistics
+
+            # Get pull statistics from database
+            tag_stats = get_tag_pull_statistics(repository_id, tag.name)
+            if tag_stats:
+                tag_info["pull_count"] = tag_stats.tag_pull_count
+                if tag_stats.last_tag_pull_date:
+                    last_pull_ts = int(tag_stats.last_tag_pull_date.timestamp())
+                    tag_info["last_pull_timestamp"] = last_pull_ts
+                    tag_info["last_pull_date"] = format_date(tag_stats.last_tag_pull_date)
+            else:
+                # No pull metrics found, set defaults
+                tag_info["pull_count"] = 0
+        except Exception as e:
+            # Don't fail the entire request if pull metrics fail
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning("Failed to get pull metrics for tag %s: %s", tag.name, str(e))
+            tag_info["pull_count"] = 0
 
     return tag_info
 
@@ -108,7 +135,7 @@ class ListRepositoryTags(RepositoryParamResource):
             custom_abort(400, message=str(error))
 
         return {
-            "tags": [_tag_dict(tag) for tag in history],
+            "tags": [_tag_dict(tag, repository_id=repo_ref.id) for tag in history],
             "page": page,
             "has_additional": has_more,
         }
