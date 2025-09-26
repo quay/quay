@@ -37,6 +37,14 @@ class PasswordGrantException(Exception):
     pass
 
 
+class DeviceCodeException(Exception):
+    """
+    Exception raised when device code flow fails.
+    """
+
+    pass
+
+
 class DiscoveryFailureException(Exception):
     """
     Exception raised when OIDC discovery fails.
@@ -367,6 +375,147 @@ class OIDCLoginService(OAuthService):
             )
 
         return json_data
+
+    def device_authorization_endpoint(self):
+        """
+        Returns the device authorization endpoint from OIDC discovery.
+        If not available, constructs it from the authorization endpoint.
+        """
+        device_auth_endpoint = self._oidc_config().get("device_authorization_endpoint")
+        if device_auth_endpoint:
+            return OAuthEndpoint(device_auth_endpoint)
+
+        # Fallback: construct from authorization endpoint (common pattern)
+        auth_endpoint = self._oidc_config().get("authorization_endpoint", "")
+        if auth_endpoint:
+            # Replace /authorize with /devicecode (common Azure AD pattern)
+            device_endpoint = auth_endpoint.replace("/authorize", "/devicecode")
+            return OAuthEndpoint(device_endpoint)
+
+        raise DeviceCodeException("Device authorization endpoint not available")
+
+    def initiate_device_code_flow(self):
+        """
+        Initiates the device code flow by requesting device and user codes.
+        Returns device code response with user_code, device_code, verification_uri, etc.
+        """
+        try:
+            device_auth_url = self.device_authorization_endpoint().to_url()
+        except DeviceCodeException as e:
+            raise DeviceCodeException(f"Device code flow not supported: {str(e)}")
+
+        payload = {
+            "client_id": self.client_id(),
+            "scope": " ".join(self.get_login_scopes()),
+        }
+
+        # Some providers require client_secret for device code flow
+        if self.client_secret():
+            payload["client_secret"] = self.client_secret()
+
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        try:
+            response = self._http_client.post(
+                device_auth_url, data=payload, headers=headers, timeout=10
+            )
+
+            if response.status_code != 200:
+                logger.debug("Device code initiation failed: %s", response.text)
+                raise DeviceCodeException(
+                    f"Device code initiation failed with status {response.status_code}: {response.text}"
+                )
+
+            device_code_response = response.json()
+
+            # Validate required fields
+            required_fields = ["device_code", "user_code", "verification_uri"]
+            missing_fields = [
+                field for field in required_fields if field not in device_code_response
+            ]
+            if missing_fields:
+                raise DeviceCodeException(
+                    f"Missing required fields in device code response: {missing_fields}"
+                )
+
+            return device_code_response
+
+        except Exception as e:
+            if isinstance(e, DeviceCodeException):
+                raise
+            raise DeviceCodeException(f"Device code initiation request failed: {str(e)}")
+
+    def poll_for_token(self, device_code, interval=5, max_attempts=60):
+        """
+        Polls the token endpoint for device code completion.
+        Returns token response when user completes authentication.
+        """
+        token_url = self.token_endpoint().to_url()
+
+        payload = {
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            "client_id": self.client_id(),
+            "device_code": device_code,
+        }
+
+        if self.client_secret():
+            payload["client_secret"] = self.client_secret()
+
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        for attempt in range(max_attempts):
+            try:
+                response = self._http_client.post(
+                    token_url, data=payload, headers=headers, timeout=10
+                )
+
+                if response.status_code == 200:
+                    token_response = response.json()
+
+                    # Validate we got the required tokens
+                    if not token_response.get("access_token"):
+                        raise DeviceCodeException("Missing access_token in response")
+
+                    return token_response
+
+                elif response.status_code == 400:
+                    error_response = response.json()
+                    error_code = error_response.get("error", "unknown_error")
+
+                    if error_code == "authorization_pending":
+                        # User hasn't completed auth yet, continue polling
+                        if attempt < max_attempts - 1:  # Don't sleep on last attempt
+                            time.sleep(interval)
+                        continue
+                    elif error_code == "slow_down":
+                        # Provider requests slower polling
+                        interval = min(interval + 1, 10)
+                        if attempt < max_attempts - 1:
+                            time.sleep(interval)
+                        continue
+                    elif error_code in ["access_denied", "expired_token"]:
+                        # User denied or token expired
+                        raise DeviceCodeException(f"Device code flow failed: {error_code}")
+                    else:
+                        # Other error
+                        raise DeviceCodeException(f"Token polling failed: {error_code}")
+
+                else:
+                    raise DeviceCodeException(
+                        f"Token polling failed with status {response.status_code}"
+                    )
+
+            except Exception as e:
+                if isinstance(e, DeviceCodeException):
+                    raise
+                # Network error, wait and retry
+                if attempt < max_attempts - 1:
+                    time.sleep(interval)
+                continue
+
+        raise DeviceCodeException(
+            "Device code flow timed out - user did not complete authentication"
+        )
 
 
 class _PublicKeyCache(TTLCache):
