@@ -346,6 +346,11 @@ class OIDCLoginService(OAuthService):
             "client_secret": self.client_secret(),
             "scope": " ".join(self.get_login_scopes()),
         }
+
+        # Azure AD requires the 'resource' parameter for OAuth password grant requests
+        if self.config.get("OIDC_RESOURCE"):
+            payload["resource"] = self.config["OIDC_RESOURCE"]
+
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
         token_url = self.token_endpoint().to_url()
