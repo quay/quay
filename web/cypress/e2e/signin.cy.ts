@@ -9,6 +9,22 @@ describe('Signin page', () => {
       body: {csrf_token: 'test-token'},
     }).as('getCsrfToken');
 
+    // Mock config endpoint to ensure LoginForm renders
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          DIRECT_LOGIN: true,
+          USER_CREATION: true,
+          MAILING: true,
+          INVITE_ONLY_USER_CREATION: false,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfig');
+
     cy.visit('/signin');
   });
 
@@ -179,7 +195,7 @@ describe('Forgot Password functionality', () => {
   });
 
   it('Sends recovery email successfully', () => {
-    cy.intercept('POST', '/api/v1/user/recovery', {
+    cy.intercept('POST', '/api/v1/recovery', {
       statusCode: 200,
       body: {status: 'sent'},
     }).as('sendRecovery');
@@ -200,7 +216,7 @@ describe('Forgot Password functionality', () => {
   });
 
   it('Handles recovery email errors', () => {
-    cy.intercept('POST', '/api/v1/user/recovery', {
+    cy.intercept('POST', '/api/v1/recovery', {
       statusCode: 400,
       body: {message: 'User not found'},
     }).as('sendRecoveryError');
@@ -214,7 +230,7 @@ describe('Forgot Password functionality', () => {
   });
 
   it('Handles organization account recovery', () => {
-    cy.intercept('POST', '/api/v1/user/recovery', {
+    cy.intercept('POST', '/api/v1/recovery', {
       statusCode: 200,
       body: {
         status: 'org',

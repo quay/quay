@@ -1,4 +1,5 @@
 import {useState, useCallback} from 'react';
+import {useQueryClient} from '@tanstack/react-query';
 import axios from 'src/libs/axios';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {ExternalLoginProvider} from './UseExternalLogins';
@@ -8,11 +9,12 @@ export function useExternalLoginAuth() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const quayConfig = useQuayConfig();
+  const queryClient = useQueryClient();
 
   const getAuthorizationUrl = useCallback(
     async (
       provider: ExternalLoginProvider,
-      action: string = 'login',
+      action = 'login',
     ): Promise<string> => {
       try {
         const response = await axios.post(
@@ -39,12 +41,16 @@ export function useExternalLoginAuth() {
   );
 
   const startExternalLogin = useCallback(
-    async (provider: ExternalLoginProvider, redirectUrl?: string) => {
+    async (
+      provider: ExternalLoginProvider,
+      redirectUrl?: string,
+      action?: string,
+    ) => {
       setIsAuthenticating(true);
       setError(null);
 
       try {
-        const authUrl = await getAuthorizationUrl(provider, 'login');
+        const authUrl = await getAuthorizationUrl(provider, action || 'login');
 
         const finalRedirectUrl = redirectUrl || window.location.toString();
         localStorage.setItem('quay.redirectAfterLoad', finalRedirectUrl);
@@ -84,11 +90,12 @@ export function useExternalLoginAuth() {
 
       try {
         await axios.post(`/api/v1/detachexternal/${providerId}`);
+        queryClient.invalidateQueries(['user']);
       } catch (err) {
         throw new Error(addDisplayError('Could not detach service', err));
       }
     },
-    [quayConfig?.features?.DIRECT_LOGIN],
+    [quayConfig?.features?.DIRECT_LOGIN, queryClient],
   );
 
   return {

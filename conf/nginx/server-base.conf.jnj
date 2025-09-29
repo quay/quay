@@ -19,21 +19,6 @@ proxy_redirect off;
 proxy_set_header Transfer-Encoding $http_transfer_encoding;
 absolute_redirect off;
 
-# Handle React UI routes for both Angular and React UI
-location ~ ^/(signin|updateuser)$ {
-    {% if angular_available %}
-    # Only proxy to backend when Angular is available AND user is using Angular
-    if ($use_new_ui !~ "^(true|react)$") {
-        proxy_pass   http://web_app_server;
-        break;
-    }
-    {% endif %}
-
-    # For React UI, serve from React directory
-    root {{static_dir}}/patternfly/;
-    try_files /index.html =404;
-}
-
 location /angular {
     # Expire cookie and switch to old UI
     add_header Set-Cookie "patternfly=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
@@ -41,7 +26,7 @@ location /angular {
 }
 
 location /react {
-    # Set cookie and witch to new UI
+    # Set cookie and switch to new UI
     add_header Set-Cookie "patternfly=true; path=/; SameSite=Lax; HttpOnly;" always;
     return 302 /?$args;
 }
@@ -62,7 +47,7 @@ location / {
     # Show new UI if cookie or default is set to "true"/"react"
     if ($use_new_ui ~* "^(true|react)$") {
         # catch new static paths and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/signin|/createaccount) /index.html break;
+        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth2/[^/]+/callback|/updateuser|/user/(.*)) /index.html break;
     }
 
     # Show old UI if not using React
@@ -77,7 +62,7 @@ location ~* ^(/config|/csrf_token|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/
 }
 
 # Capture old UI paths that aren't present in new UI
-location ~* ^(/user/(.*)|/search) {
+location ~* ^(/search) {
     proxy_pass   http://web_app_server;
 }
 

@@ -7,11 +7,11 @@ describe('External Login Authentication', () => {
     // Mock common API calls to prevent uncaught exceptions
     cy.intercept('GET', '/api/v1/user/', {
       statusCode: 401,
-      body: {message: 'Unauthorized'}
+      body: {message: 'Unauthorized'},
     }).as('getUser');
 
     cy.intercept('GET', '/csrf_token', {
-      body: {csrf_token: 'test-csrf-token'}
+      body: {csrf_token: 'test-csrf-token'},
     }).as('getCsrfToken');
   });
 
@@ -125,7 +125,9 @@ describe('External Login Authentication', () => {
     cy.wait('@getConfig');
 
     // Should display info message
-    cy.get('[data-testid="no-login-options-alert"]', {timeout: 10000}).should('be.visible');
+    cy.get('[data-testid="no-login-options-alert"]', {timeout: 10000}).should(
+      'be.visible',
+    );
     cy.get('[data-testid="no-login-options-alert"]').should(
       'contain.text',
       'Direct login is disabled',

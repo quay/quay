@@ -50,7 +50,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const {themePreference, setThemePreference} = useTheme();
   const config = useQuayConfig();
-  const showUIToggle = !config?.features?.UI_V2;
+  const showUIToggle = config?.features?.UI_V2;
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
