@@ -1,4 +1,4 @@
-import {useEffect, useState, ReactNode} from 'react';
+import {useEffect, useState} from 'react';
 import {
   Flex,
   FlexItem,
@@ -14,12 +14,7 @@ import {
   FormGroup,
   AlertActionLink,
   HelperText,
-  AlertGroup,
   FormHelperText,
-  NumberInput,
-  Select,
-  MenuToggleElement,
-  MenuToggle,
 } from '@patternfly/react-core';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
@@ -47,7 +42,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
     loading: userUpdateLoading,
     error: userUpdateError,
   } = useUpdateUser({
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully updated settings',
         variant: AlertVariant.Success,
@@ -82,7 +77,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
 
   const {updateOrgSettings} = useOrganizationSettings({
     name: organizationName,
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully updated settings',
         variant: AlertVariant.Success,
@@ -111,11 +106,11 @@ export const BillingInformation = (props: BillingInformationProps) => {
 
   // total number of private repos allowed (stripe subscription + RH subscription watch)
   const [totalPrivate, setTotalPrivate] = useState(
-    currentPlan?.privateRepos || 0,
+    currentPlan?.usedPrivateRepos || 0,
   );
 
   const addMarketplacePrivate = (marketplacePrivate: number) => {
-    const sum = marketplacePrivate + (currentPlan?.privateRepos || 0);
+    const sum = marketplacePrivate + (currentPlan?.usedPrivateRepos || 0);
     setTotalPrivate(sum);
   };
 
@@ -124,7 +119,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
     loading: convertAccountLoading,
     error: convertAccountError,
   } = useConvertAccount({
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully converted account',
         variant: AlertVariant.Success,
@@ -156,7 +151,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
       } else {
         setValidated('default');
       }
-    } else if (isUserOrganization) {
+    } else if (isUserOrganization && user) {
       setInvoiceEmail(user.invoice_email || false);
       setInvoiceEmailAddress(user.invoice_email_address || '');
       if (user.invoice_email_address) {
@@ -176,7 +171,13 @@ export const BillingInformation = (props: BillingInformationProps) => {
         <FormAlert>
           <Alert
             variant="danger"
-            title={((error as AxiosError).response.data as any).error_message}
+            title={
+              (
+                error as AxiosError & {
+                  response?: {data?: {error_message?: string}};
+                }
+              )?.response?.data?.error_message || 'An error occurred'
+            }
             aria-live="polite"
             isInline
           />
@@ -214,7 +215,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
       <FormGroup fieldId="checkbox">
         <Checkbox
           id="checkbox"
-          label="Send receipts via email."
+          label="Send receipts via email"
           aria-label="Send receipts via email"
           isChecked={invoiceEmail}
           onChange={() => {
@@ -277,7 +278,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
             isChecked={accountType == 'organization'}
             description="Multiple users and teams that share access and billing under a single namespace"
           />
-          {user.organizations.length > 0 && accountType == 'organization' && (
+          {user?.organizations?.length > 0 && accountType == 'organization' && (
             <Alert
               isInline
               variant="warning"
@@ -298,7 +299,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
               </p>
             </Alert>
           )}
-          {!user.organizations.length && accountType == 'organization' && (
+          {!user?.organizations?.length && accountType == 'organization' && (
             <>
               <Alert
                 isInline
@@ -326,7 +327,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
                 <HelperText>
                   The username and password for the account that will become an
                   administrator of the organization. Note that this account must
-                  be a seperate registered account from the account that you are
+                  be a separate registered account from the account that you are
                   trying to convert, and must already exist
                 </HelperText>
                 <FormGroup
@@ -382,7 +383,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
           width={'100%'}
           style={{
             display:
-              !user.organizations.length && accountType == 'organization'
+              !user?.organizations?.length && accountType == 'organization'
                 ? 'none'
                 : 'undefined',
           }}
@@ -422,7 +423,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
 
       <UserConvertConflictsModal
         isModalOpen={convertConflictModalOpen}
-        items={user.organizations}
+        items={user?.organizations || []}
         handleModalToggle={() => setConvertConflictModalOpen(false)}
         mapOfColNamesToTableData={{}}
       />
