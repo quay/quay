@@ -29,6 +29,22 @@ logger = logging.getLogger(__name__)
 client = app.config["HTTPCLIENT"]
 oauthlogin = Blueprint("oauthlogin", __name__)
 
+
+def get_pkce_verifier(session_data):
+    """
+    Safely extract PKCE verifier from session data.
+
+    Args:
+        session_data: Data retrieved from session (could be any type)
+
+    Returns:
+        str: The PKCE verifier if present and valid, None otherwise
+    """
+    if isinstance(session_data, dict) and "verifier" in session_data:
+        return session_data["verifier"]
+    return None
+
+
 oauthlogin_csrf_protect = csrf_protect(
     OAUTH_CSRF_TOKEN_NAME, "state", all_methods=True, check_header=False
 )
@@ -121,8 +137,9 @@ def _register_service(login_service):
         if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
             session_key = f"_oauth_pkce_{login_service.service_id()}"
             data = session.pop(session_key, None)
-            if data and hasattr(data, "get") and data.get("verifier"):
-                kwargs["code_verifier"] = data.get("verifier")
+            verifier = get_pkce_verifier(data)
+            if verifier:
+                kwargs["code_verifier"] = verifier
         try:
             lid, lusername, lemail, additional_info = login_service.exchange_code_for_login(
                 app.config, client, code, "", **kwargs
@@ -180,8 +197,9 @@ def _register_service(login_service):
         if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
             session_key = f"_oauth_pkce_{login_service.service_id()}"
             data = session.pop(session_key, None)
-            if data and hasattr(data, "get") and data.get("verifier"):
-                kwargs["code_verifier"] = data.get("verifier")
+            verifier = get_pkce_verifier(data)
+            if verifier:
+                kwargs["code_verifier"] = verifier
         try:
             lid, lusername, _, _ = login_service.exchange_code_for_login(
                 app.config, client, code, "/attach", **kwargs
@@ -237,8 +255,9 @@ def _register_service(login_service):
         if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
             session_key = f"_oauth_pkce_{login_service.service_id()}"
             data = session.pop(session_key, None)
-            if data and hasattr(data, "get") and data.get("verifier"):
-                kwargs["code_verifier"] = data.get("verifier")
+            verifier = get_pkce_verifier(data)
+            if verifier:
+                kwargs["code_verifier"] = verifier
         try:
             idtoken, _ = login_service.exchange_code_for_tokens(
                 app.config, client, code, "/cli", **kwargs
