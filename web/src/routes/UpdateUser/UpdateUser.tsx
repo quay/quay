@@ -20,10 +20,10 @@ import {useUsernameValidation} from 'src/hooks/UseUsernameValidation';
 import {UpdateUserRequest} from 'src/resources/UserResource';
 
 function isValidUsername(username: string): boolean {
-  if (!username || username.length < 4) {
+  if (!username || username.length < 2) {
     return false;
   }
-  return /^[a-zA-Z0-9]+$/.test(username);
+  return /^(?=.{2,255}$)([a-z0-9]+(?:[._-][a-z0-9]+)*)$/i.test(username);
 }
 
 export default function UpdateUser() {
@@ -124,7 +124,7 @@ export default function UpdateUser() {
         return 'Could not check username';
       case 'editing':
         return !isValidUsername(username)
-          ? 'Usernames must be alphanumeric and be at least four characters in length'
+          ? 'Usernames must be alphanumeric and be at least two characters in length'
           : '';
       default:
         return '';
@@ -199,7 +199,9 @@ export default function UpdateUser() {
                 type="submit"
                 variant="primary"
                 isDisabled={
-                  usernameState !== 'confirmed' || !isValidUsername(username)
+                  usernameState === 'existing' ||
+                  usernameState === 'error' ||
+                  !isValidUsername(username)
                 }
                 isLoading={isUpdating}
               >

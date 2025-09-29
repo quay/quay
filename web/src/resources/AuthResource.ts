@@ -63,9 +63,12 @@ interface ExternalLoginAuthRequest {
   kind: string;
 }
 
-export async function getExternalLoginAuthUrl(serviceId: string, action: string = 'login') {
+export async function getExternalLoginAuthUrl(
+  serviceId: string,
+  action = 'login',
+) {
   const response = await axios.post(`/api/v1/externallogin/${serviceId}`, {
-    kind: action
+    kind: action,
   });
   assertHttpCode(response.status, 200);
   return response.data;

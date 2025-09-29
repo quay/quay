@@ -42,9 +42,10 @@ export default function Organization() {
   const {organization, isUserOrganization} = useOrganization(organizationName);
   const {shouldShowExternalLoginsTab} = useExternalLogins();
 
-  const [activeTabKey, setActiveTabKey] = useState<string>(
-    searchParams.get('tab') || 'Repositories',
-  );
+  const [activeTabKey, setActiveTabKey] = useState<string>(() => {
+    const tab = searchParams.get('tab') || 'Repositories';
+    return tab === 'external' ? 'Externallogins' : tab;
+  });
 
   const onTabSelect = useCallback(
     (_event: React.MouseEvent<HTMLElement, MouseEvent>, tabKey: string) => {

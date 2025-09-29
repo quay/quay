@@ -48,8 +48,8 @@ export default function AuthorizedApplicationsList() {
         <Text component={TextVariants.p}>
           The authorized applications panel lists applications you have
           authorized to view information and perform actions on your behalf. You
-          can revoke any of your authorizations by clicking "Revoke
-          Authorization" from the kebab menu.
+          can revoke any of your authorizations by clicking &quot;Revoke
+          Authorization&quot; from the kebab menu.
         </Text>
       </TextContent>
 

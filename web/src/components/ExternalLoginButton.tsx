@@ -36,7 +36,7 @@ export function ExternalLoginButton({
       onClearErrors();
     }
 
-    await startExternalLogin(provider, redirectUrl);
+    await startExternalLogin(provider, redirectUrl, action);
   };
 
   const buttonText =

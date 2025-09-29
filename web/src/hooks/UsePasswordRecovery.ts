@@ -32,7 +32,7 @@ export function usePasswordRecovery() {
         payload.recaptcha_response = recaptchaResponse;
       }
 
-      const response = await axios.post('/api/v1/user/recovery', payload);
+      const response = await axios.post('/api/v1/recovery', payload);
       setResult(response.data);
       return response.data;
     } catch (err) {
