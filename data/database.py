@@ -1479,6 +1479,45 @@ class RepositoryActionCount(BaseModel):
         )
 
 
+class TagPullStatistics(BaseModel):
+    repository = ForeignKeyField(Repository)
+    tag_name = CharField(max_length=255)
+    tag_pull_count = BigIntegerField(default=0)
+    last_tag_pull_date = DateTimeField(default=datetime.utcnow)
+    current_manifest_digest = CharField(max_length=255, null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Composite unique constraint for (repository, tag_name)
+            (("repository", "tag_name"), True),
+            # Indexes for query performance
+            ("last_tag_pull_date",),
+            ("tag_pull_count",),
+            ("repository",),
+        )
+
+
+class ManifestPullStatistics(BaseModel):
+    repository = ForeignKeyField(Repository)
+    manifest_digest = CharField(max_length=255)
+    manifest_pull_count = BigIntegerField(default=0)
+    last_manifest_pull_date = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Composite unique constraint for (repository, manifest_digest)
+            (("repository", "manifest_digest"), True),
+            # Indexes for query performance
+            ("last_manifest_pull_date",),
+            ("manifest_pull_count",),
+            ("repository",),
+        )
+
+
 class OAuthApplication(BaseModel):
     client_id = CharField(index=True, default=random_string_generator(length=20))
     secure_client_secret = EncryptedCharField(default_token_length=40, null=True)
