@@ -871,6 +871,8 @@ class User(BaseModel):
                     RepositoryAutoPrunePolicy,
                     OauthAssignedToken,
                     TagNotificationSuccess,
+                    TagPullStatistics,
+                    ManifestPullStatistics,
                 }
                 | appr_classes
                 | v22_classes
@@ -1093,6 +1095,8 @@ class Repository(BaseModel):
                 QuotaRepositorySize,
                 RepositoryAutoPrunePolicy,
                 TagNotificationSuccess,
+                TagPullStatistics,
+                ManifestPullStatistics,
             }
             | appr_classes
             | v22_classes
