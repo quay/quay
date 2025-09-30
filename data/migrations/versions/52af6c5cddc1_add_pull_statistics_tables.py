@@ -1,14 +1,14 @@
 """"add_pull_statistics_tables"
 
 Revision ID: 52af6c5cddc1
-Revises: fc47c1ec019f
+Revises: 3e8cc74a1e7b
 Create Date: 2024-09-29 12:00:00.000000
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "52af6c5cddc1"
-down_revision = "fc47c1ec019f"
+down_revision = "3e8cc74a1e7b"
 
 import sqlalchemy as sa
 
