@@ -1,10 +1,14 @@
 import {
+  Button,
   DropdownItem,
+  Modal,
+  ModalVariant,
   PageSection,
   PageSectionVariants,
   PanelFooter,
   Title,
 } from '@patternfly/react-core';
+import PropTypes from 'prop-types';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -25,7 +29,14 @@ import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useDeleteOrganizations} from 'src/hooks/UseDeleteOrganizations';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {
+  useRegistrySize,
+  useQueueRegistrySizeCalculation,
+} from 'src/hooks/UseRegistrySize';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
+import {formatSize} from 'src/libs/utils';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import ColumnNames from './ColumnNames';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
@@ -38,18 +49,57 @@ export interface OrganizationsTableItem {
   isUser: boolean;
 }
 
-function OrgListHeader() {
+function OrgListHeader({
+  registrySize,
+  formatLastRan,
+  getRegistrySizeStatus,
+  handleCalculateClick,
+  isQueuing,
+  showRegistrySize,
+}) {
   return (
     <>
       <QuayBreadcrumb />
       <PageSection variant={PageSectionVariants.light} hasShadowBottom>
-        <div className="co-m-nav-title--row">
+        <div className="co-m-nav-title--row pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-flex-end">
           <Title headingLevel="h1">Organizations</Title>
+
+          {/* Registry Size Display - Inline with header for superusers */}
+          {showRegistrySize && (
+            <div className="pf-v5-u-font-size-sm pf-v5-u-mb-xs">
+              <span>
+                Total Registry Size:{' '}
+                {registrySize
+                  ? formatSize(registrySize.size_bytes)
+                  : '0.00 KiB'}
+                , Updated: {formatLastRan(registrySize?.last_ran || null)}
+                {getRegistrySizeStatus()}
+              </span>{' '}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleCalculateClick}
+                isDisabled={isQueuing}
+                className="pf-v5-u-ml-md"
+              >
+                {isQueuing ? 'Calculating...' : 'Calculate'}
+              </Button>
+            </div>
+          )}
         </div>
       </PageSection>
     </>
   );
 }
+
+OrgListHeader.propTypes = {
+  registrySize: PropTypes.object,
+  formatLastRan: PropTypes.func.isRequired,
+  getRegistrySizeStatus: PropTypes.func.isRequired,
+  handleCalculateClick: PropTypes.func.isRequired,
+  isQueuing: PropTypes.bool.isRequired,
+  showRegistrySize: PropTypes.bool.isRequired,
+};
 
 export default function OrganizationsList() {
   const [isOrganizationModalOpen, setOrganizationModalOpen] = useState(false);
@@ -58,6 +108,27 @@ export default function OrganizationsList() {
   const [err, setErr] = useState<string[]>();
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
+  const [isCalculateModalOpen, setCalculateModalOpen] = useState(false);
+
+  // Get current user for superuser check
+  const {user} = useCurrentUser();
+  const quayConfig = useQuayConfig();
+
+  // Registry size data (only fetch if superuser)
+  const {registrySize, refetch: refetchRegistrySize} = useRegistrySize();
+
+  // Registry size calculation mutation
+  const {queueCalculation, isQueuing} = useQueueRegistrySizeCalculation({
+    onSuccess: () => {
+      setCalculateModalOpen(false);
+      // Refetch after a short delay to allow backend processing
+      setTimeout(() => refetchRegistrySize(), 1000);
+    },
+    onError: (errorMsg) => {
+      setErr([errorMsg]);
+      setCalculateModalOpen(false);
+    },
+  });
   const {
     organizationsTableDetails,
     loading,
@@ -68,6 +139,41 @@ export default function OrganizationsList() {
   } = useOrganizations();
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
+
+  // Helper function to format the last updated time
+  const formatLastRan = (lastRan: number | null): string => {
+    if (!lastRan) return 'Never';
+    const date = new Date(lastRan);
+    return `${date.toLocaleDateString('en-US')} ${date.toLocaleTimeString(
+      'en-US',
+    )}`;
+  };
+
+  // Helper function to get registry size status text
+  const getRegistrySizeStatus = () => {
+    if (!registrySize) return '';
+
+    if (registrySize.running) return ', Calculating...';
+    if (registrySize.queued) return ', Calculation queued';
+    if (
+      !registrySize.last_ran &&
+      !registrySize.queued &&
+      !registrySize.running
+    ) {
+      return ', Calculation required';
+    }
+    return '';
+  };
+
+  // Handle calculate button click
+  const handleCalculateClick = () => {
+    setCalculateModalOpen(true);
+  };
+
+  // Confirm registry size calculation
+  const confirmCalculation = () => {
+    queueCalculation();
+  };
 
   // Use unified table hook for sorting and pagination (Name column only)
   const {
@@ -235,7 +341,14 @@ export default function OrganizationsList() {
   if (loading) {
     return (
       <>
-        <OrgListHeader />
+        <OrgListHeader
+          registrySize={null}
+          formatLastRan={() => 'Never'}
+          getRegistrySizeStatus={() => ''}
+          handleCalculateClick={() => undefined}
+          isQueuing={false}
+          showRegistrySize={false}
+        />
         <LoadingPage />
       </>
     );
@@ -245,7 +358,14 @@ export default function OrganizationsList() {
   if (error) {
     return (
       <>
-        <OrgListHeader />
+        <OrgListHeader
+          registrySize={null}
+          formatLastRan={() => 'Never'}
+          getRegistrySizeStatus={() => ''}
+          handleCalculateClick={() => undefined}
+          isQueuing={false}
+          showRegistrySize={false}
+        />
         <RequestError message={error as string} />
       </>
     );
@@ -255,7 +375,14 @@ export default function OrganizationsList() {
   if (!loading && !organizationsTableDetails?.length) {
     return (
       <>
-        <OrgListHeader />
+        <OrgListHeader
+          registrySize={null}
+          formatLastRan={() => 'Never'}
+          getRegistrySizeStatus={() => ''}
+          handleCalculateClick={() => undefined}
+          isQueuing={false}
+          showRegistrySize={false}
+        />
         <Empty
           icon={CubesIcon}
           title="Collaborate and share projects across teams"
@@ -276,8 +403,20 @@ export default function OrganizationsList() {
 
   return (
     <>
-      <OrgListHeader />
+      <OrgListHeader
+        registrySize={registrySize}
+        formatLastRan={formatLastRan}
+        getRegistrySizeStatus={getRegistrySizeStatus}
+        handleCalculateClick={handleCalculateClick}
+        isQueuing={isQueuing}
+        showRegistrySize={
+          user?.super_user &&
+          quayConfig?.features?.QUOTA_MANAGEMENT &&
+          quayConfig?.features?.EDIT_QUOTA
+        }
+      />
       <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
+
       <PageSection variant={PageSectionVariants.light}>
         <OrganizationToolBar
           search={search}
@@ -343,6 +482,36 @@ export default function OrganizationsList() {
           />
         </PanelFooter>
       </PageSection>
+
+      {/* Calculate Registry Size Confirmation Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        title="Confirm Registry Size Calculation"
+        isOpen={isCalculateModalOpen}
+        onClose={() => setCalculateModalOpen(false)}
+        actions={[
+          <Button
+            key="confirm"
+            variant="primary"
+            onClick={confirmCalculation}
+            isDisabled={isQueuing}
+          >
+            {isQueuing ? 'Queuing...' : 'Calculate'}
+          </Button>,
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={() => setCalculateModalOpen(false)}
+          >
+            Cancel
+          </Button>,
+        ]}
+      >
+        <p>Are you sure you want to queue registry size calculation?</p>
+        <p style={{color: 'red', marginTop: '1em'}}>
+          This is a database intensive operation. Use with caution.
+        </p>
+      </Modal>
     </>
   );
 }

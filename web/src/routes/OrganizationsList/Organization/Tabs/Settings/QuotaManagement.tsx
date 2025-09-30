@@ -25,6 +25,7 @@ import {useForm, Controller} from 'react-hook-form';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {AlertVariant as AlertVariantState} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {
   useFetchOrganizationQuota,
   useCreateOrganizationQuota,
@@ -64,6 +65,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     props.organizationName,
   );
 
+  // Check if current user is superuser for readonly mode
+  const {user} = useCurrentUser();
+  const isReadOnly = !user?.super_user;
+
   // Initialize react-hook-form
   const form = useForm<QuotaFormData>({
     defaultValues: defaultFormValues,
@@ -102,6 +107,9 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const {addAlert, clearAllAlerts} = useAlerts();
+
+  // Check if there's already a "Reject" limit to prevent adding duplicates
+  const hasRejectLimit = limits.some((limit) => limit.type === 'Reject');
 
   // Initialize form with existing quota data
   useEffect(() => {
@@ -436,6 +444,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
           data-testid="no-quota-alert"
         />
       )}
+      {isReadOnly && (
+        <Alert
+          variant="info"
+          title="View Only"
+          style={{marginBottom: '1em'}}
+          data-testid="readonly-quota-alert"
+        >
+          Quota settings can only be modified by superusers.
+        </Alert>
+      )}
 
       {/* Storage Quota Section */}
       <FormGroup label="Storage quota" fieldId="quota-input">
@@ -454,6 +472,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   customValidation={validateQuota}
                   data-testid="quota-value-input"
                   isStack={false}
+                  disabled={isReadOnly}
                 />
               </GridItem>
               <GridItem span={2}>
@@ -475,7 +494,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                         <MenuToggle
                           ref={toggleRef}
                           onClick={() => setIsUnitSelectOpen(!isUnitSelectOpen)}
-                          isDisabled={hasQuota && props.isUser}
+                          isDisabled={isReadOnly || (hasQuota && props.isUser)}
                           style={{minWidth: '90px'}}
                           data-testid="quota-unit-select-toggle"
                         >
@@ -583,7 +602,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                     [limit.id]: !editingLimits[limit.id],
                                   })
                                 }
-                                isDisabled={false}
+                                isDisabled={isReadOnly}
                                 style={{width: '120px'}}
                               >
                                 {limit.type}
@@ -631,7 +650,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                   }
                                 }}
                                 style={{width: '120px'}}
-                                isDisabled={false}
+                                isDisabled={isReadOnly}
                               />
                             </FlexItem>
                             <FlexItem>
@@ -647,7 +666,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           variant="primary"
                           size="sm"
                           onClick={() => handleUpdateLimit(limit.id, limit)}
-                          isDisabled={!hasLimitChanged(limit.id)}
+                          isDisabled={isReadOnly || !hasLimitChanged(limit.id)}
                           data-testid="update-limit-button"
                         >
                           Update
@@ -657,6 +676,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                           size="sm"
                           onClick={() => handleDeleteLimit(limit.id)}
                           data-testid="remove-limit-button"
+                          isDisabled={isReadOnly}
                         >
                           Remove
                         </Button>
@@ -711,14 +731,22 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                   )
                                 }
                                 style={{width: '120px'}}
+                                isDisabled={isReadOnly}
                               >
                                 {newLimit.type || ''}
                               </MenuToggle>
                             )}
                           >
                             {QUOTA_LIMIT_TYPES.map((type) => (
-                              <SelectOption key={type} value={type}>
+                              <SelectOption
+                                key={type}
+                                value={type}
+                                isDisabled={type === 'Reject' && hasRejectLimit}
+                              >
                                 {type}
+                                {type === 'Reject' &&
+                                  hasRejectLimit &&
+                                  ' (already exists)'}
                               </SelectOption>
                             ))}
                           </Select>
@@ -755,6 +783,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                                   }
                                 }}
                                 style={{width: '120px'}}
+                                isDisabled={isReadOnly}
                               />
                             </FlexItem>
                             <FlexItem>
@@ -772,6 +801,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                         onClick={handleAddLimit}
                         data-testid="add-limit-button"
                         isDisabled={
+                          isReadOnly ||
                           !newLimit.type ||
                           newLimit.limit_percent === '' ||
                           newLimit.limit_percent === 0
@@ -804,7 +834,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
           id="save-quota"
           variant="primary"
           type="submit"
-          isDisabled={!isValid || parseFloat(formValues.quotaValue || '0') <= 0}
+          isDisabled={
+            isReadOnly ||
+            !isValid ||
+            parseFloat(formValues.quotaValue || '0') <= 0
+          }
           data-testid="apply-quota-button"
         >
           Apply
@@ -816,6 +850,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
             variant="danger"
             onClick={handleDeleteQuota}
             data-testid="remove-quota-button"
+            isDisabled={isReadOnly}
           >
             Remove
           </Button>

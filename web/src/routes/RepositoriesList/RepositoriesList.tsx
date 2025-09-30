@@ -67,19 +67,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   // Fetch quota information for the organization
   const {organizationQuota} = useFetchOrganizationQuota(currentOrg);
-  const {
-    repos,
-    loading,
-    error,
-    setPerPage,
-    setPage,
-    search,
-    setSearch,
-    searchFilter,
-    page,
-    perPage,
-    totalResults,
-  } = useRepositories(currentOrg);
+  const {repos, loading, error, search, setSearch, searchFilter} =
+    useRepositories(currentOrg);
 
   repos?.sort((r1, r2) => {
     return r1.last_modified > r2.last_modified ? -1 : 1;
@@ -92,6 +81,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       is_public: repo.is_public,
       last_modified: repo.last_modified,
       size: repo.quota_report?.quota_bytes,
+      configured_quota: repo.quota_report?.configured_quota,
     } as RepoListTableItem;
   });
 
@@ -434,8 +424,26 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                   {quayConfig?.features.QUOTA_MANAGEMENT &&
                   quayConfig?.features.EDIT_QUOTA ? (
                     <Td dataLabel={RepositoryListColumnNames.size}>
-                      {' '}
-                      {formatSize(repo.size)}
+                      {(() => {
+                        const sizeDisplay =
+                          repo.size != null ? formatSize(repo.size) : '';
+
+                        if (repo.configured_quota) {
+                          const percentage =
+                            repo.size != null
+                              ? Math.round(
+                                  (repo.size / repo.configured_quota) * 100,
+                                )
+                              : 0;
+
+                          // Combine size and percentage: "1.5 GiB (45%)" or "N/A (0%)"
+                          const displaySize = sizeDisplay || 'N/A';
+                          return `${displaySize} (${percentage}%)`;
+                        }
+
+                        // No configured quota - just show size or empty
+                        return sizeDisplay;
+                      })()}
                     </Td>
                   ) : (
                     <></>
@@ -462,6 +470,7 @@ export interface RepoListTableItem {
   is_public: boolean;
   size: number;
   last_modified?: number;
+  configured_quota?: number;
 }
 
 interface RepositoriesListProps {

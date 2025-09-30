@@ -45,7 +45,7 @@ export function formatSize(sizeInBytes: number) {
   return (
     (sizeInBytes / Math.pow(1024, i)).toFixed(2) +
     ' ' +
-    ['B', 'kB', 'MB', 'GB', 'TB'][i]
+    ['B', 'KiB', 'MiB', 'GiB', 'TiB'][i]
   );
 }
 
