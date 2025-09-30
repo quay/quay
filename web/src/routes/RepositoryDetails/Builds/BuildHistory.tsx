@@ -42,6 +42,7 @@ import StartBuildModal from './BuildHistoryStartBuildModal';
 import ManuallyStartTrigger from './BuildHistoryManuallyStartTriggerModal';
 import {Link, useLocation} from 'react-router-dom';
 import {getBuildInfoPath} from 'src/routes/NavigationPath';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
 const ONE_DAY_IN_SECONDS = 24 * 3600;
 const RESOURCE_URLS = {
@@ -80,10 +81,27 @@ export default function BuildHistory(props: BuildHistoryProps) {
     useState<boolean>(false);
   const [manualTrigger, setManualTrigger] =
     useState<RepositoryBuildTrigger>(null);
-  const {builds, isError, error, isLoading} = useBuilds(
-    props.org,
-    props.repo,
-    buildsSinceInSeconds,
+  const {
+    builds: allBuilds,
+    isError,
+    error,
+    isLoading,
+  } = useBuilds(props.org, props.repo, buildsSinceInSeconds);
+
+  const {paginatedData: builds, getSortableSort} = usePaginatedSortableTable(
+    allBuilds || [],
+    {
+      columns: {
+        0: (item: RepositoryBuild) => item.id, // Build ID
+        1: (item: RepositoryBuild) => item.phase, // Status
+        2: (item: RepositoryBuild) =>
+          item.manual_user || item.trigger?.service || '', // Triggered by
+        3: (item: RepositoryBuild) => item.started, // Date started
+        4: (item: RepositoryBuild) => item.tags?.join(', ') || '', // Tags
+      },
+      initialPerPage: 50, // Show more builds by default
+      initialSort: {columnIndex: 3, direction: 'desc'}, // Default sort: Date started descending (newest first)
+    },
   );
 
   if (isLoading) {
@@ -172,11 +190,11 @@ export default function BuildHistory(props: BuildHistoryProps) {
         <Table aria-label="Repository builds table" variant="compact">
           <Thead>
             <Tr>
-              <Th>Build ID</Th>
-              <Th>Status</Th>
-              <Th>Triggered by</Th>
-              <Th>Date started</Th>
-              <Th>Tags</Th>
+              <Th sort={getSortableSort(0)}>Build ID</Th>
+              <Th sort={getSortableSort(1)}>Status</Th>
+              <Th sort={getSortableSort(2)}>Triggered by</Th>
+              <Th sort={getSortableSort(3)}>Date started</Th>
+              <Th sort={getSortableSort(4)}>Tags</Th>
             </Tr>
           </Thead>
           <Tbody>
