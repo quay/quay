@@ -7,7 +7,7 @@ import {
   PanelFooter,
   DropdownItem,
 } from '@patternfly/react-core';
-import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useRecoilState} from 'recoil';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {Link, useLocation} from 'react-router-dom';
@@ -17,11 +17,7 @@ import {selectedReposState} from 'src/atoms/RepositoryState';
 import {formatDate, formatSize} from 'src/libs/utils';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
 import {RepositoryToolBar} from 'src/routes/RepositoriesList/RepositoryToolBar';
-import {
-  addDisplayError,
-  BulkOperationError,
-  isErrorString,
-} from 'src/resources/ErrorHandling';
+import {addDisplayError, BulkOperationError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
 import Empty from 'src/components/empty/Empty';
 import {CubesIcon} from '@patternfly/react-icons';
@@ -31,10 +27,10 @@ import ErrorModal from 'src/components/errors/ErrorModal';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryListColumnNames} from './ColumnNames';
-import {LoadingPage} from 'src/components/LoadingPage';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
+import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 
 interface RepoListHeaderProps {
   shouldRender: boolean;
@@ -66,23 +62,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
-  const {
-    repos,
-    loading,
-    error,
-    setPerPage,
-    setPage,
-    search,
-    setSearch,
-    searchFilter,
-    page,
-    perPage,
-    totalResults,
-  } = useRepositories(currentOrg);
-
-  repos?.sort((r1, r2) => {
-    return r1.last_modified > r2.last_modified ? -1 : 1;
-  });
+  const {repos, loading, error, search, setSearch, searchFilter} =
+    useRepositories(currentOrg);
 
   const repositoryList: RepoListTableItem[] = repos?.map((repo) => {
     return {
@@ -94,21 +75,30 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     } as RepoListTableItem;
   });
 
+  // Use unified table hook for sorting, filtering, and pagination
+  const {
+    paginatedData: paginatedRepositoryList,
+    filteredData: filteredRepos,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(repositoryList || [], {
+    columns: {
+      0: (item: RepoListTableItem) =>
+        currentOrg == null ? `${item.namespace}/${item.name}` : item.name, // Name
+      1: (item: RepoListTableItem) => (item.is_public ? 'public' : 'private'), // Visibility
+      2: (item: RepoListTableItem) => item.size || 0, // Size
+      3: (item: RepoListTableItem) => item.last_modified || 0, // Last Modified
+    },
+    initialSort: {columnIndex: 3, direction: 'desc'}, // Default sort: Last Modified descending
+    filter: searchFilter,
+    initialPerPage: 20,
+  });
+
   useEffect(() => {
     if (search.currentOrganization !== currentOrg) {
       setSearch({...search, query: '', currentOrganization: currentOrg});
     }
   }, [currentOrg]);
-
-  // Filtering Repositories after applied filter
-  const filteredRepos = searchFilter
-    ? repositoryList.filter(searchFilter)
-    : repositoryList;
-
-  const paginatedRepositoryList = filteredRepos?.slice(
-    page * perPage - perPage,
-    page * perPage - perPage + perPage,
-  );
 
   // Select related states
   const [selectedRepoNames, setSelectedRepoNames] =
@@ -239,7 +229,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
       handleModalToggle={handleDeleteModalToggle}
       handleBulkDeletion={deleteRepositories}
       isModalOpen={isDeleteModalOpen}
-      selectedItems={repositoryList.filter((repo) =>
+      selectedItems={filteredRepos.filter((repo) =>
         selectedRepoNames.some(
           (selected) => repo.namespace + '/' + repo.name === selected,
         ),
@@ -249,17 +239,18 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   );
 
   // Return component Error state
-  if (isErrorString(error as any)) {
+  if (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return (
       <>
         <RepoListHeader shouldRender={currentOrg === null} />
-        <RequestError message={error as any} />
+        <RequestError message={errorMessage} />
       </>
     );
   }
 
   // Return component Empty state
-  if (!loading && !repositoryList?.length) {
+  if (!loading && !filteredRepos?.length) {
     return (
       <Empty
         icon={CubesIcon}
@@ -286,7 +277,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         <RepositoryToolBar
           search={search}
           setSearch={setSearch}
-          total={totalResults}
+          total={paginationProps.total}
           currentOrg={currentOrg}
           pageModal={createRepoModal}
           showPageButton={true}
@@ -305,10 +296,10 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           toggleMakePrivateClick={toggleMakePrivateClick}
           selectAllRepos={selectAllRepos}
           repositoryList={filteredRepos}
-          perPage={perPage}
-          page={page}
-          setPage={setPage}
-          setPerPage={setPerPage}
+          perPage={paginationProps.perPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          setPerPage={paginationProps.setPerPage}
           setSelectedRepoNames={setSelectedRepoNames}
           paginatedRepositoryList={paginatedRepositoryList}
           onSelectRepo={onSelectRepo}
@@ -317,19 +308,27 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           <Thead>
             <Tr>
               <Th />
-              <Th>{RepositoryListColumnNames.name}</Th>
-              <Th>{RepositoryListColumnNames.visibility}</Th>
+              <Th modifier="wrap" sort={getSortableSort(0)}>
+                {RepositoryListColumnNames.name}
+              </Th>
+              <Th modifier="wrap" sort={getSortableSort(1)}>
+                {RepositoryListColumnNames.visibility}
+              </Th>
               {quayConfig?.features.QUOTA_MANAGEMENT &&
               quayConfig?.features.EDIT_QUOTA ? (
-                <Th>{RepositoryListColumnNames.size}</Th>
+                <Th modifier="wrap" sort={getSortableSort(2)}>
+                  {RepositoryListColumnNames.size}
+                </Th>
               ) : (
                 <></>
               )}
-              <Th>{RepositoryListColumnNames.lastModified}</Th>
+              <Th modifier="wrap" sort={getSortableSort(3)}>
+                {RepositoryListColumnNames.lastModified}
+              </Th>
             </Tr>
           </Thead>
           <Tbody data-testid="repository-list-table">
-            {repositoryList.length === 0 ? (
+            {filteredRepos.length === 0 ? (
               // Repo table loading icon
               <Tr>
                 <Td>
@@ -392,15 +391,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
           </Tbody>
         </Table>
         <PanelFooter>
-          <ToolbarPagination
-            total={totalResults}
-            itemsList={filteredRepos}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
-            bottom={true}
-          />
+          <ToolbarPagination {...paginationProps} bottom={true} />
         </PanelFooter>
       </PageSection>
     </>
@@ -412,7 +403,7 @@ export interface RepoListTableItem {
   name: string;
   is_public: boolean;
   size: number;
-  last_modified: number;
+  last_modified?: number;
 }
 
 interface RepositoriesListProps {

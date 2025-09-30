@@ -16,6 +16,7 @@ import {AlertVariant} from 'src/atoms/AlertState';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import CollaboratorsDeleteModal from './CollaboratorsDeleteModal';
 import Conditional from 'src/components/empty/Conditional';
+import {usePaginatedSortableTable} from '../../../../../../hooks/usePaginatedSortableTable';
 
 export const collaboratorViewColumnNames = {
   username: 'User name',
@@ -27,18 +28,29 @@ export default function CollaboratorsViewList(
 ) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  const {collaborators, loading, error, search, setSearch} =
+    useFetchCollaborators(props.organizationName);
+
+  const searchFilter =
+    search.query !== ''
+      ? (collaborator: IMembers) =>
+          collaborator.name.toLowerCase().includes(search.query.toLowerCase())
+      : undefined;
+
   const {
-    filteredCollaborators,
-    paginatedCollaborators,
-    loading,
-    error,
-    page,
-    setPage,
-    perPage,
-    setPerPage,
-    search,
-    setSearch,
-  } = useFetchCollaborators(props.organizationName);
+    paginatedData: paginatedCollaborators,
+    filteredData: filteredCollaborators,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(collaborators || [], {
+    columns: {
+      1: (item: IMembers) => item.name, // User name
+      2: (item: IMembers) => item.repositories?.length || 0, // Direct repository permissions count
+    },
+    filter: searchFilter,
+    initialPerPage: 20,
+    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: User name ascending
+  });
 
   const [selectedCollaborators, setSelectedCollaborators] = useState<
     IMembers[]
@@ -93,10 +105,10 @@ export default function CollaboratorsViewList(
           allItems={filteredCollaborators}
           paginatedItems={paginatedCollaborators}
           onItemSelect={onSelectCollaborator}
-          page={page}
-          setPage={setPage}
-          perPage={perPage}
-          setPerPage={setPerPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          perPage={paginationProps.perPage}
+          setPerPage={paginationProps.setPerPage}
           search={search}
           setSearch={setSearch}
           searchOptions={[collaboratorViewColumnNames.username]}
@@ -108,8 +120,12 @@ export default function CollaboratorsViewList(
           <Thead>
             <Tr>
               <Th />
-              <Th>{collaboratorViewColumnNames.username}</Th>
-              <Th>{collaboratorViewColumnNames.directRepositoryPermissions}</Th>
+              <Th sort={getSortableSort(1)}>
+                {collaboratorViewColumnNames.username}
+              </Th>
+              <Th sort={getSortableSort(2)}>
+                {collaboratorViewColumnNames.directRepositoryPermissions}
+              </Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -155,10 +171,10 @@ export default function CollaboratorsViewList(
         <PanelFooter>
           <ToolbarPagination
             itemsList={filteredCollaborators}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
+            perPage={paginationProps.perPage}
+            page={paginationProps.page}
+            setPage={paginationProps.setPage}
+            setPerPage={paginationProps.setPerPage}
             bottom={true}
           />
         </PanelFooter>

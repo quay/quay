@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react';
 import {Spinner} from '@patternfly/react-core';
-import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
+import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useAllTags} from 'src/hooks/UseTags';
 import {Tag} from 'src/resources/TagResource';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
@@ -13,6 +13,7 @@ import TagActionDescription from './TagHistoryTagActionDescription';
 import PermanentlyDeleteTag from './TagHistoryPermanentlyDeleteTag';
 import TagHistoryToolBar from './TagHistoryToolbar';
 import RequestError from 'src/components/errors/RequestError';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
 export default function TagHistory(props: TagHistoryProps) {
   const quayConfig = useQuayConfig();
@@ -24,21 +25,18 @@ export default function TagHistory(props: TagHistoryProps) {
     props.org,
     props.repo,
   );
-  const [page, setPage] = useState<number>(1);
-  const [perPage, setPerPage] = useState<number>(20);
-
   // Memo these to prevent recalculating on every render
-  const {tagList, tagEntries} = useMemo(
+  const {tagList} = useMemo(
     () => processTags(tags, showFuture),
     [lastUpdated, showFuture],
   );
   const filteredTags = useMemo(() => {
-    const fitleredByQuery: TagEntry[] = tagList.filter((tag) =>
+    const filteredByQuery: TagEntry[] = tagList.filter((tag) =>
       tag.tag.name.includes(query),
     );
     const filteredByStartTime: TagEntry[] = !isNullOrUndefined(startTime)
-      ? fitleredByQuery.filter((tag) => tag.time >= startTime.getTime())
-      : fitleredByQuery;
+      ? filteredByQuery.filter((tag) => tag.time >= startTime.getTime())
+      : filteredByQuery;
     const filteredByEndTime: TagEntry[] = !isNullOrUndefined(endTime)
       ? filteredByStartTime.filter((tag) => tag.time < endTime.getTime())
       : filteredByStartTime;
@@ -53,10 +51,18 @@ export default function TagHistory(props: TagHistoryProps) {
   const isReadOnlyMode: boolean =
     quayConfig?.config?.REGISTRY_STATE === 'readonly';
 
-  const paginatedTags = filteredTags.slice(
-    (page - 1) * perPage,
-    page * perPage,
-  );
+  const {
+    paginatedData: paginatedTags,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(filteredTags || [], {
+    columns: {
+      0: (item: TagEntry) => item.tag.name, // Tag change (tag name)
+      1: (item: TagEntry) => item.time, // Modified date/time
+    },
+    initialPerPage: 20,
+    initialSort: {columnIndex: 1, direction: 'desc'}, // Default sort: Modified date/time descending (newest first)
+  });
 
   if (loadingTags) {
     return <Spinner size="md" />;
@@ -77,17 +83,21 @@ export default function TagHistory(props: TagHistoryProps) {
         setStartTime={setStartTime}
         endTime={endTime}
         setEndTime={setEndTime}
-        page={page}
-        setPage={setPage}
-        perPage={perPage}
-        setPerPage={setPerPage}
-        total={isNullOrUndefined(tagList) ? 0 : tagList.length}
+        page={paginationProps.page}
+        setPage={paginationProps.setPage}
+        perPage={paginationProps.perPage}
+        setPerPage={paginationProps.setPerPage}
+        total={isNullOrUndefined(filteredTags) ? 0 : filteredTags.length}
       />
-      <Table aria-label="Tag history table" variant="compact">
+      <Table
+        aria-label="Tag history table"
+        variant="compact"
+        id="tag-history-table"
+      >
         <Thead>
           <Tr>
-            <Th>Tag change</Th>
-            <Th>Modified date/time</Th>
+            <Th sort={getSortableSort(0)}>Tag change</Th>
+            <Th sort={getSortableSort(1)}>Modified date/time</Th>
             <Conditional if={!isReadOnlyMode && props.repoDetails?.can_write}>
               <Th>Revert</Th>
             </Conditional>
@@ -102,7 +112,7 @@ export default function TagHistory(props: TagHistoryProps) {
             </Conditional>
           </Tr>
         </Thead>
-        <Tbody id="tag-history-table">
+        <Tbody>
           {paginatedTags.map((tagEntry) => (
             <Tr key={`${tagEntry.digest}-${tagEntry.action}-${tagEntry.time}`}>
               <Td data-label="tag-change">
@@ -239,7 +249,7 @@ function processTags(tags: Tag[], showFuture: boolean) {
   }
 
   tagList.sort((a, b) => b.time - a.time);
-  tagEntries.forEach((value, key) => value.sort((a, b) => b.time - a.time));
+  tagEntries.forEach((value) => value.sort((a, b) => b.time - a.time));
   return {tagList, tagEntries};
 }
 
