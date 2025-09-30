@@ -61,10 +61,14 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
     with db_transaction():
         for update in tag_updates:
             try:
-                # Parse timestamp
-                last_pull = datetime.fromisoformat(
-                    update["last_pull_timestamp"].replace("Z", "+00:00")
-                )
+                # Parse timestamp - handle both datetime objects and ISO strings
+                last_pull_timestamp = update["last_pull_timestamp"]
+                if isinstance(last_pull_timestamp, datetime):
+                    last_pull = last_pull_timestamp
+                elif isinstance(last_pull_timestamp, str):
+                    last_pull = datetime.fromisoformat(last_pull_timestamp.replace("Z", "+00:00"))
+                else:
+                    raise ValueError(f"Invalid timestamp format: {last_pull_timestamp}")
 
                 # Try to get existing record
                 try:
@@ -127,10 +131,14 @@ def bulk_upsert_manifest_statistics(manifest_updates: List[Dict]) -> int:
     with db_transaction():
         for update in manifest_updates:
             try:
-                # Parse timestamp
-                last_pull = datetime.fromisoformat(
-                    update["last_pull_timestamp"].replace("Z", "+00:00")
-                )
+                # Parse timestamp - handle both datetime objects and ISO strings
+                last_pull_timestamp = update["last_pull_timestamp"]
+                if isinstance(last_pull_timestamp, datetime):
+                    last_pull = last_pull_timestamp
+                elif isinstance(last_pull_timestamp, str):
+                    last_pull = datetime.fromisoformat(last_pull_timestamp.replace("Z", "+00:00"))
+                else:
+                    raise ValueError(f"Invalid timestamp format: {last_pull_timestamp}")
 
                 # Try to get existing record
                 try:

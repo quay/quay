@@ -173,11 +173,11 @@ class TestPullStatistics:
         stats = get_tag_pull_statistics(self.repo_id, "v2.0")
 
         assert stats is not None
-        assert stats.repository.id == self.repo_id
-        assert stats.tag_name == "v2.0"
-        assert stats.tag_pull_count == 25
-        assert stats.last_tag_pull_date == datetime(2024, 1, 15, 10, 30, 0)
-        assert stats.current_manifest_digest == "sha256:test789"
+        assert stats["repository_id"] == self.repo_id
+        assert stats["tag_name"] == "v2.0"
+        assert stats["pull_count"] == 25
+        assert stats["last_pull_date"] == datetime(2024, 1, 15, 10, 30, 0)
+        assert stats["current_manifest_digest"] == "sha256:test789"
 
     def test_get_tag_pull_statistics_missing(self, initialized_db):
         """Test retrieving non-existent tag pull statistics."""
@@ -197,10 +197,10 @@ class TestPullStatistics:
         stats = get_manifest_pull_statistics(self.repo_id, "sha256:test999")
 
         assert stats is not None
-        assert stats.repository.id == self.repo_id
-        assert stats.manifest_digest == "sha256:test999"
-        assert stats.manifest_pull_count == 42
-        assert stats.last_manifest_pull_date == datetime(2024, 1, 20, 14, 45, 0)
+        assert stats["repository_id"] == self.repo_id
+        assert stats["manifest_digest"] == "sha256:test999"
+        assert stats["pull_count"] == 42
+        assert stats["last_pull_date"] == datetime(2024, 1, 20, 14, 45, 0)
 
     def test_get_manifest_pull_statistics_missing(self, initialized_db):
         """Test retrieving non-existent manifest pull statistics."""
