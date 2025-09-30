@@ -109,6 +109,11 @@ def purge_repository(repo, force=False):
         ManifestSecurityStatus.select().where(ManifestSecurityStatus.repository == repo).count()
         == 0
     )
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+    assert (
+        ManifestPullStatistics.select().where(ManifestPullStatistics.repository == repo).count()
+        == 0
+    )
     # Delete auto-prune policy associated with the repository
     RepositoryAutoPrunePolicy.delete().where(RepositoryAutoPrunePolicy.repository == repo).execute()
 
