@@ -285,7 +285,7 @@ def setup_database_for_testing(testcase):
         models_missing_data = find_models_missing_data()
         if models_missing_data:
             raise RuntimeError(
-                "%s models are missing data: %s", len(models_missing_data), models_missing_data
+                f"{len(models_missing_data)} models are missing data: {models_missing_data}"
             )
 
         # Enable foreign key constraints.
@@ -1444,6 +1444,8 @@ WHITELISTED_EMPTY_MODELS = [
     "NamespaceAutoPrunePolicy",
     "AutoPruneTaskStatus",
     "TagNotificationSuccess",
+    "TagPullStatistics",
+    "ManifestPullStatistics",
 ]
 
 
