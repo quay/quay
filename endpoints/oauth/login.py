@@ -29,6 +29,31 @@ logger = logging.getLogger(__name__)
 client = app.config["HTTPCLIENT"]
 oauthlogin = Blueprint("oauthlogin", __name__)
 
+
+def get_pkce_code_verifier(login_service):
+    """
+    Safely extract PKCE code verifier from session for the given login service.
+
+    This function checks if PKCE is enabled for the login service, retrieves
+    the verifier from the session, and performs defensive type checking.
+
+    Args:
+        login_service: The OAuth login service object
+
+    Returns:
+        str: The PKCE code verifier if present and valid, None otherwise
+    """
+    if not (hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled()):
+        return None
+
+    session_key = f"_oauth_pkce_{login_service.service_id()}"
+    data = session.pop(session_key, None)
+
+    if isinstance(data, dict) and "verifier" in data:
+        return data["verifier"]
+    return None
+
+
 oauthlogin_csrf_protect = csrf_protect(
     OAUTH_CSRF_TOKEN_NAME, "state", all_methods=True, check_header=False
 )
@@ -117,9 +142,13 @@ def _register_service(login_service):
 
         # Exchange the OAuth code for login information.
         code = request.values.get("code")
+        kwargs = {}
+        verifier = get_pkce_code_verifier(login_service)
+        if verifier:
+            kwargs["code_verifier"] = verifier
         try:
             lid, lusername, lemail, additional_info = login_service.exchange_code_for_login(
-                app.config, client, code, ""
+                app.config, client, code, "", **kwargs
             )
         except OAuthLoginException as ole:
             logger.exception("Got login exception")
@@ -170,9 +199,13 @@ def _register_service(login_service):
 
         # Exchange the OAuth code for login information.
         code = request.values.get("code")
+        kwargs = {}
+        verifier = get_pkce_code_verifier(login_service)
+        if verifier:
+            kwargs["code_verifier"] = verifier
         try:
             lid, lusername, _, _ = login_service.exchange_code_for_login(
-                app.config, client, code, "/attach"
+                app.config, client, code, "/attach", **kwargs
             )
         except OAuthLoginException as ole:
             return _render_ologin_error(login_service.service_name(), str(ole))
@@ -221,8 +254,14 @@ def _register_service(login_service):
 
         # Exchange the OAuth code for the ID token.
         code = request.values.get("code")
+        kwargs = {}
+        verifier = get_pkce_code_verifier(login_service)
+        if verifier:
+            kwargs["code_verifier"] = verifier
         try:
-            idtoken, _ = login_service.exchange_code_for_tokens(app.config, client, code, "/cli")
+            idtoken, _ = login_service.exchange_code_for_tokens(
+                app.config, client, code, "/cli", **kwargs
+            )
         except OAuthLoginException as ole:
             return _render_ologin_error(login_service.service_name(), str(ole))
 
