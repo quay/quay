@@ -18,7 +18,8 @@ func TestValidateRedis(t *testing.T) {
 	}{
 
 		{name: "NotSpecified", config: map[string]interface{}{}, want: "invalid"},
-		{name: "Works", config: map[string]interface{}{"BUILDLOGS_REDIS": map[string]interface{}{"host": "redis", "port": 6379}, "USER_EVENTS_REDIS": map[string]interface{}{"host": "redis", "port": 6379}}, want: "valid"},
+		{name: "RequiredOnly", config: map[string]interface{}{"BUILDLOGS_REDIS": map[string]interface{}{"host": "redis", "port": 6379}, "USER_EVENTS_REDIS": map[string]interface{}{"host": "redis", "port": 6379}}, want: "valid"},
+		{name: "WithOptionalPullMetrics", config: map[string]interface{}{"BUILDLOGS_REDIS": map[string]interface{}{"host": "redis", "port": 6379}, "USER_EVENTS_REDIS": map[string]interface{}{"host": "redis", "port": 6379}, "PULL_METRICS_REDIS": map[string]interface{}{"host": "redis", "port": 6379, "db": 1}}, want: "valid"},
 	}
 
 	// Iterate through tests
