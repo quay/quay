@@ -54,21 +54,13 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
         PullStatisticsException: If bulk operation fails
     """
     if not tag_updates:
-        logger.debug("bulk_upsert_tag_statistics: Empty update list, returning 0")
         return 0
-
-    logger.info(f"bulk_upsert_tag_statistics: Processing {len(tag_updates)} updates")
-    logger.debug(f"bulk_upsert_tag_statistics: Updates: {tag_updates}")
 
     rows_affected = 0
 
     with db_transaction():
-        for i, update in enumerate(tag_updates):
+        for update in tag_updates:
             try:
-                logger.debug(
-                    f"Processing update {i+1}/{len(tag_updates)}: repository_id={update.get('repository_id')}, tag_name={update.get('tag_name')}"
-                )
-
                 # Parse timestamp - handle both datetime objects and ISO strings
                 last_pull_timestamp = update["last_pull_timestamp"]
                 if isinstance(last_pull_timestamp, datetime):
@@ -84,9 +76,6 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                         TagPullStatistics.repository == update["repository_id"],
                         TagPullStatistics.tag_name == update["tag_name"],
                     )
-                    logger.debug(
-                        f"Found existing record for repository_id={update['repository_id']}, tag_name={update['tag_name']}"
-                    )
 
                     # Update existing record
                     existing.tag_pull_count += update["pull_count"]
@@ -94,14 +83,9 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                     existing.current_manifest_digest = update["manifest_digest"]
                     existing.save()
                     rows_affected += 1
-                    logger.debug(f"Updated existing record successfully")
 
                 except TagPullStatistics.DoesNotExist:
                     # Create new record
-                    logger.debug(
-                        f"No existing record found, creating new record for repository_id={update['repository_id']}, tag_name={update['tag_name']}"
-                    )
-
                     try:
                         TagPullStatistics.create(
                             repository=update["repository_id"],
@@ -111,30 +95,16 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                             current_manifest_digest=update["manifest_digest"],
                         )
                         rows_affected += 1
-                        logger.debug(f"Created new record successfully")
                     except Exception as create_error:
                         logger.error(
                             f"Failed to create new record: {type(create_error).__name__}: {create_error}"
                         )
-                        logger.error(f"Update data: {update}")
                         raise
 
             except (ValueError, KeyError, IntegrityError) as e:
-                logger.error(
-                    f"Failed to upsert tag statistics (known exception types): {type(e).__name__}: {e}"
-                )
-                logger.error(f"Update data: {update}")
+                logger.error(f"Failed to upsert tag statistics: {e}")
                 raise PullStatisticsException(f"Bulk upsert failed: {e}")
-            except Exception as e:
-                logger.error(
-                    f"Failed to upsert tag statistics (unexpected exception): {type(e).__name__}: {e}"
-                )
-                logger.error(f"Update data: {update}")
-                raise PullStatisticsException(f"Bulk upsert failed with unexpected error: {e}")
 
-    logger.info(
-        f"bulk_upsert_tag_statistics: Completed successfully, {rows_affected} rows affected"
-    )
     return rows_affected
 
 

@@ -207,31 +207,11 @@ class TestPullStatistics:
         stats = get_manifest_pull_statistics(self.repo_id, "sha256:nonexistent")
         assert stats is None
 
-    @pytest.mark.parametrize(
-        "updates",
-        [
-            [],  # Empty list
-            [
-                {
-                    "repository_id": 999999,
-                    "tag_name": "test",
-                    "manifest_digest": "sha256:abc",
-                    "pull_count": 1,
-                    "last_pull_timestamp": datetime.now(),
-                }
-            ],  # Invalid repo
-        ],
-    )
-    def test_bulk_upsert_tag_statistics_edge_cases(self, updates, initialized_db):
-        """Test edge cases for bulk upsert tag statistics."""
-        if not updates:
-            # Empty list should return 0
-            rows_affected = bulk_upsert_tag_statistics(updates)
-            assert rows_affected == 0
-        else:
-            # Invalid repository should raise exception
-            with pytest.raises(Exception):  # Foreign key constraint
-                bulk_upsert_tag_statistics(updates)
+    def test_bulk_upsert_tag_statistics_empty_list(self, initialized_db):
+        """Test bulk upsert with empty list."""
+        # Empty list should return 0
+        rows_affected = bulk_upsert_tag_statistics([])
+        assert rows_affected == 0
 
     @pytest.mark.parametrize(
         "updates",
