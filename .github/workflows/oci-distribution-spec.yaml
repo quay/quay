@@ -87,6 +87,8 @@ jobs:
         SERVER_HOSTNAME: localhost
         SETUP_COMPLETE: true
         USER_EVENTS_REDIS: {"host": "$IP", "port": 6379}
+        PULL_METRICS_REDIS: {"host": "$IP", "port": 6379}
+
 
         DATA_MODEL_CACHE_CONFIG:
           engine: memcached
