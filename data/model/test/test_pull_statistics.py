@@ -259,8 +259,8 @@ class TestPullStatistics:
         assert final_stats.current_manifest_digest == "sha256:update2"  # Latest update
         assert final_stats.last_tag_pull_date == datetime(2024, 1, 3, 12, 0, 0)  # Latest timestamp
 
-    def test_unique_constraints(self, initialized_db):
-        """Test that unique constraints are enforced."""
+    def test_unique_constraints_tag_statistics(self, initialized_db):
+        """Test that unique constraints are enforced for tag statistics."""
         # Create initial tag statistics
         TagPullStatistics.create(
             repository=self.repo,
@@ -280,6 +280,8 @@ class TestPullStatistics:
                 current_manifest_digest="sha256:test2",
             )
 
+    def test_unique_constraints_manifest_statistics(self, initialized_db):
+        """Test that unique constraints are enforced for manifest statistics."""
         # Create initial manifest statistics
         ManifestPullStatistics.create(
             repository=self.repo,
