@@ -81,8 +81,14 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                     existing.tag_pull_count += update["pull_count"]
                     existing.last_tag_pull_date = max(existing.last_tag_pull_date, last_pull)
                     existing.current_manifest_digest = update["manifest_digest"]
-                    existing.save()
-                    rows_affected += 1
+                    try:
+                        existing.save()
+                        rows_affected += 1
+                    except Exception as save_error:
+                        logger.error(
+                            f"Failed to save existing record: {type(save_error).__name__}: {save_error}"
+                        )
+                        raise
 
                 except TagPullStatistics.DoesNotExist:
                     # Create new record

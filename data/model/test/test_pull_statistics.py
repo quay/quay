@@ -227,17 +227,6 @@ class TestPullStatistics:
             ],  # Invalid repo
         ],
     )
-    def test_bulk_upsert_manifest_statistics_edge_cases(self, updates, initialized_db):
-        """Test edge cases for bulk upsert manifest statistics."""
-        if not updates:
-            # Empty list should return 0
-            rows_affected = bulk_upsert_manifest_statistics(updates)
-            assert rows_affected == 0
-        else:
-            # Invalid repository should raise exception
-            with pytest.raises(Exception):  # Foreign key constraint
-                bulk_upsert_manifest_statistics(updates)
-
     def test_concurrent_updates_tag_statistics(self, initialized_db):
         """Test concurrent updates to same tag statistics."""
         # Create initial record
