@@ -21,6 +21,7 @@ class TestPullStatistics:
     def setup(self, initialized_db):
         self.user = get_user("devtable")
         self.repo = create_repository("devtable", "testpullstats", self.user, repo_kind="image")
+        assert self.repo is not None, "Failed to create test repository"
         self.repo_id = self.repo.id
 
     def test_bulk_upsert_tag_statistics_new_records(self, initialized_db):
@@ -213,20 +214,6 @@ class TestPullStatistics:
         rows_affected = bulk_upsert_tag_statistics([])
         assert rows_affected == 0
 
-    @pytest.mark.parametrize(
-        "updates",
-        [
-            [],  # Empty list
-            [
-                {
-                    "repository_id": 999999,
-                    "manifest_digest": "sha256:abc",
-                    "pull_count": 1,
-                    "last_pull_timestamp": datetime.now(),
-                }
-            ],  # Invalid repo
-        ],
-    )
     def test_concurrent_updates_tag_statistics(self, initialized_db):
         """Test concurrent updates to same tag statistics."""
         # Create initial record
