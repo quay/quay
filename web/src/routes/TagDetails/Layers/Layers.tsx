@@ -17,7 +17,7 @@ export function Layers(props: LayersProps) {
   useEffect(() => {
     // Use the manifest data passed from parent instead of making API call
     if (props.manifestData?.layers) {
-      // Reverse the layers array to match Angular behavior
+      // Reverse the layers array
       const reversedLayers = props.manifestData.layers.slice().reverse();
       setLayers(reversedLayers);
     }

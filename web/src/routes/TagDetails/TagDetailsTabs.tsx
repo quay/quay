@@ -89,6 +89,6 @@ type TagTabsProps = {
   org: string;
   repo: string;
   digest: string;
-  manifestData: ManifestByDigestResponse;
+  manifestData: ManifestByDigestResponse | null;
   err: string;
 };

@@ -12,7 +12,7 @@ interface LayerItemProps {
 export function LayerItem(props: LayerItemProps) {
   const {layer} = props;
 
-  // Determine CSS class for styling (matches Angular logic)
+  // Determine CSS class for styling
   const getClass = (): string => {
     if (layer.index === 0) {
       return 'last';
@@ -24,7 +24,7 @@ export function LayerItem(props: LayerItemProps) {
   };
 
   const renderLayerContent = () => {
-    // Priority: command > comment > blob_digest (matches Angular template)
+    // Priority: command > comment > blob_digest
     if (layer.command && layer.command.length > 0) {
       return <LayerCommand command={layer.command} />;
     }

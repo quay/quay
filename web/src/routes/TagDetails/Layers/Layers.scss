@@ -93,6 +93,18 @@
     font-family: var(--pf-v5-global--FontFamily--monospace);
     color: var(--pf-v5-global--Color--100);
     word-break: break-all;
+
+    // FROM command link styling
+    .from-image-link {
+      color: var(--pf-v5-global--link--Color);
+      text-decoration: none;
+      font-size: var(--pf-v5-global--FontSize--md);
+
+      &:hover {
+        color: var(--pf-v5-global--link--Color--hover);
+        text-decoration: underline;
+      }
+    }
   }
 }
 

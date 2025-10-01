@@ -8,7 +8,7 @@ interface LayerCommandProps {
 export function LayerCommand(props: LayerCommandProps) {
   const {command} = props;
 
-  // Extract Dockerfile command from layer command (matches Angular logic)
+  // Extract Dockerfile command from layer command
   const getDockerfileCommand = (command: string[]): string => {
     if (!command || !command.length) {
       return '';

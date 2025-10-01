@@ -88,9 +88,9 @@ export interface SecurityDetailsResponse {
   data: Data;
 }
 export interface Data {
-  Layer: Layer;
+  Layer: SecurityLayer;
 }
-export interface Layer {
+export interface SecurityLayer {
   Name: string;
   ParentName: string;
   NamespaceName: string;

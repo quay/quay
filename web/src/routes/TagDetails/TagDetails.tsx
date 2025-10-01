@@ -17,6 +17,7 @@ import {
   getManifestByDigest,
   getTags,
 } from 'src/resources/TagResource';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {
   parseOrgNameFromUrl,
   parseRepoNameFromUrl,
@@ -31,6 +32,7 @@ export default function TagDetails() {
   const [manifestData, setManifestData] =
     useState<ManifestByDigestResponse>(null);
   const [err, setErr] = useState<string>();
+  const quayConfig = useQuayConfig();
   const resetSecurityDetails = useResetRecoilState(SecurityDetailsState);
   const resetSecurityError = useResetRecoilState(SecurityDetailsErrorState);
   const [tagDetails, setTagDetails] = useState<Tag>({
@@ -74,9 +76,16 @@ export default function TagDetails() {
 
         const tagResp: Tag = resp.tags[0];
 
-        // Always fetch manifest data for layers and other features
+        // Always fetch manifest data for layers and other features, but
+        // only include modelcard if UI_MODELCARD feature is enabled
+        const includeModelcard = quayConfig?.features.UI_MODELCARD || false;
         const manifestResp: ManifestByDigestResponse =
-          await getManifestByDigest(org, repo, tagResp.manifest_digest, true);
+          await getManifestByDigest(
+            org,
+            repo,
+            tagResp.manifest_digest,
+            includeModelcard,
+          );
 
         if (tagResp.is_manifest_list) {
           tagResp.manifest_list = JSON.parse(manifestResp.manifest_data);
@@ -116,7 +125,7 @@ export default function TagDetails() {
         setErr(addDisplayError('Unable to get details for tag', errorObj));
       }
     })();
-  }, []);
+  }, [org, repo, tag, searchParams]);
 
   return (
     <>
