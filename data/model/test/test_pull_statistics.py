@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 
 import pytest
+from peewee import IntegrityError
 
 from data import model
-from data.database import ManifestPullStatistics, TagPullStatistics
+from data.database import ManifestPullStatistics, Repository, TagPullStatistics
 from data.model.pull_statistics import (
     PullStatisticsException,
     bulk_upsert_manifest_statistics,
@@ -260,10 +261,13 @@ class TestPullStatistics:
 
     def test_foreign_key_constraints(self, initialized_db):
         """Test that foreign key constraints are enforced."""
+        # Create a fake repository object that doesn't exist in database
+        fake_repo = Repository(id=999999)  # Non-existent repository
+
         # Test tag statistics with non-existent repository
-        with pytest.raises(Exception):  # Foreign key constraint violation
+        with pytest.raises(IntegrityError):  # Foreign key constraint violation
             TagPullStatistics.create(
-                repository_id=999999,  # Non-existent repository
+                repository=fake_repo,
                 tag_name="test",
                 tag_pull_count=1,
                 last_tag_pull_date=datetime.now(),
@@ -271,9 +275,9 @@ class TestPullStatistics:
             )
 
         # Test manifest statistics with non-existent repository
-        with pytest.raises(Exception):  # Foreign key constraint violation
+        with pytest.raises(IntegrityError):  # Foreign key constraint violation
             ManifestPullStatistics.create(
-                repository_id=999999,  # Non-existent repository
+                repository=fake_repo,
                 manifest_digest="sha256:test",
                 manifest_pull_count=1,
                 last_manifest_pull_date=datetime.now(),
@@ -291,7 +295,7 @@ class TestPullStatistics:
         )
 
         # Try to create duplicate (should fail)
-        with pytest.raises(Exception):  # Unique constraint violation
+        with pytest.raises(IntegrityError):  # Unique constraint violation
             TagPullStatistics.create(
                 repository=self.repo,
                 tag_name="unique_test",  # Same tag name for same repo
@@ -309,7 +313,7 @@ class TestPullStatistics:
         )
 
         # Try to create duplicate (should fail)
-        with pytest.raises(Exception):  # Unique constraint violation
+        with pytest.raises(IntegrityError):  # Unique constraint violation
             ManifestPullStatistics.create(
                 repository=self.repo,
                 manifest_digest="sha256:unique_test",  # Same digest for same repo
