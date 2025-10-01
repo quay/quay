@@ -261,11 +261,16 @@ class TestPullStatistics:
 
     def test_foreign_key_constraints(self, initialized_db):
         """Test that foreign key constraints are enforced."""
+        from data.database import db
+
+        # Ensure foreign keys are enabled (this is critical for the test)
+        db.obj.execute_sql("PRAGMA foreign_keys = ON;")
+
         # Create a fake repository object that doesn't exist in database
         fake_repo = Repository(id=999999)  # Non-existent repository
 
         # Test tag statistics with non-existent repository
-        with pytest.raises(IntegrityError):  # Foreign key constraint violation
+        with pytest.raises(IntegrityError):  # Should raise foreign key constraint violation
             TagPullStatistics.create(
                 repository=fake_repo,
                 tag_name="test",
@@ -275,7 +280,7 @@ class TestPullStatistics:
             )
 
         # Test manifest statistics with non-existent repository
-        with pytest.raises(IntegrityError):  # Foreign key constraint violation
+        with pytest.raises(IntegrityError):  # Should raise foreign key constraint violation
             ManifestPullStatistics.create(
                 repository=fake_repo,
                 manifest_digest="sha256:test",
