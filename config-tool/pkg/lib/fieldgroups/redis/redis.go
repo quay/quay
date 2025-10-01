@@ -8,8 +8,9 @@ import (
 
 // RedisFieldGroup represents the RedisFieldGroup config fields
 type RedisFieldGroup struct {
-	BuildlogsRedis  *BuildlogsRedisStruct  `default:"" validate:"" json:"BUILDLOGS_REDIS,omitempty" yaml:"BUILDLOGS_REDIS,omitempty"`
-	UserEventsRedis *UserEventsRedisStruct `default:"" validate:"" json:"USER_EVENTS_REDIS,omitempty" yaml:"USER_EVENTS_REDIS,omitempty"`
+	BuildlogsRedis   *BuildlogsRedisStruct   `default:"" validate:"" json:"BUILDLOGS_REDIS,omitempty" yaml:"BUILDLOGS_REDIS,omitempty"`
+	UserEventsRedis  *UserEventsRedisStruct  `default:"" validate:"" json:"USER_EVENTS_REDIS,omitempty" yaml:"USER_EVENTS_REDIS,omitempty"`
+	PullMetricsRedis *PullMetricsRedisStruct `default:"" validate:"" json:"PULL_METRICS_REDIS,omitempty" yaml:"PULL_METRICS_REDIS,omitempty"`
 }
 
 // UserEventsRedisStruct represents the UserEventsRedisStruct config fields
@@ -26,6 +27,15 @@ type BuildlogsRedisStruct struct {
 	Port     int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
 	Host     string `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
 	Ssl      bool   `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
+}
+
+// PullMetricsRedisStruct represents the PullMetricsRedisStruct config fields
+type PullMetricsRedisStruct struct {
+	Password string `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
+	Port     int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
+	Host     string `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
+	Ssl      bool   `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	Db       int    `default:"1" validate:"" json:"db,omitempty" yaml:"db,omitempty"`
 }
 
 // NewRedisFieldGroup creates a new RedisFieldGroup
