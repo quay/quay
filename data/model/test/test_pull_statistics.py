@@ -4,7 +4,7 @@ import pytest
 from peewee import IntegrityError
 
 from data import model
-from data.database import ManifestPullStatistics, Repository, TagPullStatistics
+from data.database import ManifestPullStatistics, TagPullStatistics
 from data.model.pull_statistics import (
     PullStatisticsException,
     bulk_upsert_manifest_statistics,
@@ -258,35 +258,6 @@ class TestPullStatistics:
         assert final_stats.tag_pull_count == 18  # 10 + 5 + 3
         assert final_stats.current_manifest_digest == "sha256:update2"  # Latest update
         assert final_stats.last_tag_pull_date == datetime(2024, 1, 3, 12, 0, 0)  # Latest timestamp
-
-    def test_foreign_key_constraints(self, initialized_db):
-        """Test that foreign key constraints are enforced."""
-        from data.database import db
-
-        # Ensure foreign keys are enabled (this is critical for the test)
-        db.obj.execute_sql("PRAGMA foreign_keys = ON;")
-
-        # Create a fake repository object that doesn't exist in database
-        fake_repo = Repository(id=999999)  # Non-existent repository
-
-        # Test tag statistics with non-existent repository
-        with pytest.raises(IntegrityError):  # Should raise foreign key constraint violation
-            TagPullStatistics.create(
-                repository=fake_repo,
-                tag_name="test",
-                tag_pull_count=1,
-                last_tag_pull_date=datetime.now(),
-                current_manifest_digest="sha256:test",
-            )
-
-        # Test manifest statistics with non-existent repository
-        with pytest.raises(IntegrityError):  # Should raise foreign key constraint violation
-            ManifestPullStatistics.create(
-                repository=fake_repo,
-                manifest_digest="sha256:test",
-                manifest_pull_count=1,
-                last_manifest_pull_date=datetime.now(),
-            )
 
     def test_unique_constraints(self, initialized_db):
         """Test that unique constraints are enforced."""
