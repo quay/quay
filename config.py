@@ -55,6 +55,7 @@ CLIENT_WHITELIST = [
     "FEATURE_IMAGE_EXPIRY_TRIGGER",
     "FEATURE_AUTO_PRUNE",
     "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY",
+    "DEFAULT_UI",
 ]
 
 
@@ -859,6 +860,9 @@ class DefaultConfig(ImmutableConfig):
 
     # User feedback form for UI-V2
     UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
+
+    # Default to new UI
+    DEFAULT_UI = "react"
 
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""

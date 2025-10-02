@@ -4,7 +4,7 @@ import time
 from collections import namedtuple
 
 import recaptcha2
-from flask import Blueprint, abort, redirect, request, session, url_for, jsonify
+from flask import Blueprint, abort, jsonify, redirect, request, session, url_for
 
 import features
 from app import (
