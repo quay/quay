@@ -66,8 +66,10 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		DB:        0,
 		TLSConfig: tlsConfig,
 	}
-	if ok, err := shared.ValidateRedisConnection(options, "BUILDLOGS_REDIS", "Redis"); !ok {
-		errors = append(errors, err)
+	if opts.Mode != "testing" {
+		if ok, err := shared.ValidateRedisConnection(options, "BUILDLOGS_REDIS", "Redis"); !ok {
+			errors = append(errors, err)
+		}
 	}
 
 	// Build options for user events and connect
@@ -89,8 +91,10 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		DB:        0,
 		TLSConfig: tlsConfig,
 	}
-	if ok, err := shared.ValidateRedisConnection(options, "USER_EVENTS_REDIS", "Redis"); !ok {
-		errors = append(errors, err)
+	if opts.Mode != "testing" {
+		if ok, err := shared.ValidateRedisConnection(options, "USER_EVENTS_REDIS", "Redis"); !ok {
+			errors = append(errors, err)
+		}
 	}
 
 	// Build options for pull metrics and connect
@@ -112,8 +116,10 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		DB:        fg.PullMetricsRedis.Db,
 		TLSConfig: tlsConfig,
 	}
-	if ok, err := shared.ValidateRedisConnection(options, "PULL_METRICS_REDIS", "Redis"); !ok {
-		errors = append(errors, err)
+	if opts.Mode != "testing" {
+		if ok, err := shared.ValidateRedisConnection(options, "PULL_METRICS_REDIS", "Redis"); !ok {
+			errors = append(errors, err)
+		}
 	}
 
 	return errors
