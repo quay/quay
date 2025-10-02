@@ -134,10 +134,10 @@ class RedisFlushWorker(Worker):
             List of matching Redis keys
         """
         try:
-            keys: List[str] = []
+            keys_set: Set[str] = set()
             cursor = 0
 
-            while len(keys) < limit:
+            while len(keys_set) < limit:
                 if self.redis_client is None:
                     break
                 cursor, batch_keys = self.redis_client.scan(
@@ -145,13 +145,16 @@ class RedisFlushWorker(Worker):
                 )
 
                 if batch_keys:
-                    keys.extend(batch_keys)
+                    # Add keys to set to automatically deduplicate
+                    keys_set.update(batch_keys)
 
                 # Break if we've scanned through all keys
                 if cursor == 0:
                     break
 
-            return keys[:limit]  # Ensure we don't exceed the limit
+            # Convert set back to list and limit results
+            keys_list = list(keys_set)
+            return keys_list[:limit]  # Ensure we don't exceed the limit
 
         except Exception as e:
             logger.error(f"RedisFlushWorker: Error scanning Redis keys: {e}")
