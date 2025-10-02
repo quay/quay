@@ -59,6 +59,14 @@ func NewRedisFieldGroup(fullConfig map[string]interface{}) (*RedisFieldGroup, er
 			return newRedisFieldGroup, err
 		}
 	}
+	if value, ok := fullConfig["PULL_METRICS_REDIS"]; ok {
+		var err error
+		value := value.(map[string]interface{})
+		newRedisFieldGroup.PullMetricsRedis, err = NewPullMetricsRedisStruct(value)
+		if err != nil {
+			return newRedisFieldGroup, err
+		}
+	}
 
 	return newRedisFieldGroup, nil
 }
@@ -129,4 +137,43 @@ func NewBuildlogsRedisStruct(fullConfig map[string]interface{}) (*BuildlogsRedis
 	}
 
 	return newBuildlogsRedisStruct, nil
+}
+
+// NewPullMetricsRedisStruct creates a new PullMetricsRedisStruct
+func NewPullMetricsRedisStruct(fullConfig map[string]interface{}) (*PullMetricsRedisStruct, error) {
+	newPullMetricsRedisStruct := &PullMetricsRedisStruct{}
+	defaults.Set(newPullMetricsRedisStruct)
+
+	if value, ok := fullConfig["password"]; ok {
+		newPullMetricsRedisStruct.Password, ok = value.(string)
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("password must be of type string")
+		}
+	}
+	if value, ok := fullConfig["port"]; ok {
+		newPullMetricsRedisStruct.Port, ok = value.(int)
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("port must be of type int")
+		}
+	}
+	if value, ok := fullConfig["host"]; ok {
+		newPullMetricsRedisStruct.Host, ok = value.(string)
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("host must be of type string")
+		}
+	}
+	if value, ok := fullConfig["ssl"]; ok {
+		newPullMetricsRedisStruct.Ssl, ok = value.(bool)
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("ssl must be of type bool")
+		}
+	}
+	if value, ok := fullConfig["db"]; ok {
+		newPullMetricsRedisStruct.Db, ok = value.(int)
+		if !ok {
+			return newPullMetricsRedisStruct, errors.New("db must be of type int")
+		}
+	}
+
+	return newPullMetricsRedisStruct, nil
 }
