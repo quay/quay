@@ -39,6 +39,7 @@ interface FormTextInputProps<T extends FieldValues> {
     | 'search';
   'aria-label'?: string;
   showNoneWhenEmpty?: boolean;
+  disabled?: boolean;
 }
 
 export function FormTextInput<T extends FieldValues>({
@@ -58,6 +59,7 @@ export function FormTextInput<T extends FieldValues>({
   inputMode,
   'aria-label': ariaLabel,
   showNoneWhenEmpty = false,
+  disabled = false,
 }: FormTextInputProps<T>) {
   const rules = {
     ...(required && {
@@ -115,6 +117,7 @@ export function FormTextInput<T extends FieldValues>({
                 pattern={pattern}
                 inputMode={inputMode}
                 aria-label={ariaLabel}
+                isDisabled={disabled}
               />
               {fieldError && (
                 <FormHelperText>

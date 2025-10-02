@@ -7,6 +7,7 @@ import {BillingInformation} from './BillingInformation';
 import {CliConfiguration} from './CLIConfiguration';
 import {GeneralSettings} from './GeneralSettings';
 import {ProxyCacheConfig} from './ProxyCacheConfig';
+import {QuotaManagement} from './QuotaManagement';
 
 export default function Settings(props: SettingsProps) {
   const organizationName = location.pathname.split('/')[2];
@@ -59,6 +60,19 @@ export default function Settings(props: SettingsProps) {
         />
       ),
       visible: quayConfig?.features?.PROXY_CACHE && !props.isUserOrganization,
+    },
+    {
+      name: 'Quota',
+      id: 'quotamanagement',
+      content: (
+        <QuotaManagement
+          organizationName={props.organizationName}
+          isUser={props.isUserOrganization}
+        />
+      ),
+      visible:
+        quayConfig?.features?.QUOTA_MANAGEMENT &&
+        quayConfig?.features?.EDIT_QUOTA,
     },
   ];
 

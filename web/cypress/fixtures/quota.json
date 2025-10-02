@@ -1,0 +1,19 @@
+{
+  "id": 1,
+  "limit_bytes": 10737418240,
+  "limit": "10.0 GiB",
+  "default_config": false,
+  "limits": [
+    {
+      "id": 1,
+      "type": "Warning",
+      "limit_percent": 80
+    },
+    {
+      "id": 2,
+      "type": "Reject",
+      "limit_percent": 90
+    }
+  ],
+  "default_config_exists": false
+}
