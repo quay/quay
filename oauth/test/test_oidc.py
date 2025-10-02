@@ -102,6 +102,40 @@ def app_config(http_client, mailing_feature):
                 },
             },
         },
+        # PKCE-enabled OIDC provider
+        "PKCEOIDC_LOGIN_CONFIG": {
+            "CLIENT_ID": "foo",
+            "CLIENT_SECRET": "bar",
+            "SERVICE_NAME": "PKCE Service",
+            "SERVICE_ICON": "http://some/icon",
+            "OIDC_SERVER": "http://fakeoidc",
+            "DEBUGGING": True,
+            "USE_PKCE": True,
+            "PKCE_METHOD": "S256",
+        },
+        # PKCE with public client (no client_secret during token exchange)
+        "PUBLICPKCEOIDC_LOGIN_CONFIG": {
+            "CLIENT_ID": "foo",
+            "CLIENT_SECRET": "bar",
+            "SERVICE_NAME": "PKCE Public Service",
+            "SERVICE_ICON": "http://some/icon",
+            "OIDC_SERVER": "http://fakeoidc",
+            "DEBUGGING": True,
+            "USE_PKCE": True,
+            "PKCE_METHOD": "S256",
+            "PUBLIC_CLIENT": True,
+        },
+        # PKCE with plain method
+        "PLAINPKCEOIDC_LOGIN_CONFIG": {
+            "CLIENT_ID": "foo",
+            "CLIENT_SECRET": "bar",
+            "SERVICE_NAME": "PKCE Plain Service",
+            "SERVICE_ICON": "http://some/icon",
+            "OIDC_SERVER": "http://fakeoidc",
+            "DEBUGGING": True,
+            "USE_PKCE": True,
+            "PKCE_METHOD": "plain",
+        },
         "HTTPCLIENT": http_client,
         "TESTING": True,
     }
@@ -120,6 +154,21 @@ def another_oidc_service(app_config):
 @pytest.fixture()
 def oidc_withparams_service(app_config):
     return OIDCLoginService(app_config, "OIDCWITHPARAMS_LOGIN_CONFIG")
+
+
+@pytest.fixture()
+def pkce_oidc_service(app_config):
+    return OIDCLoginService(app_config, "PKCEOIDC_LOGIN_CONFIG")
+
+
+@pytest.fixture()
+def public_pkce_oidc_service(app_config):
+    return OIDCLoginService(app_config, "PUBLICPKCEOIDC_LOGIN_CONFIG")
+
+
+@pytest.fixture()
+def plain_pkce_oidc_service(app_config):
+    return OIDCLoginService(app_config, "PLAINPKCEOIDC_LOGIN_CONFIG")
 
 
 @pytest.fixture()
@@ -247,6 +296,58 @@ def token_handler(oidc_service, id_token, valid_code):
 
 
 @pytest.fixture()
+def token_handler_pkce(id_token, valid_code):
+    @urlmatch(netloc=r"fakeoidc", path=r"/token")
+    def handler(_, request):
+        # Validate PKCE code_verifier is present
+        params = urllib.parse.parse_qs(request.body)
+        if params.get("code")[0] != valid_code:
+            return {"status_code": 401, "content": "Invalid code"}
+
+        if params.get("grant_type")[0] != "authorization_code":
+            return {"status_code": 400, "content": "Invalid authorization type"}
+
+        # Must include code_verifier
+        if not params.get("code_verifier"):
+            return {"status_code": 400, "content": "Missing code_verifier"}
+
+        content = {
+            "access_token": "sometoken",
+            "id_token": id_token,
+        }
+        return {"status_code": 200, "content": json.dumps(content)}
+
+    return handler
+
+
+@pytest.fixture()
+def token_handler_public_pkce(id_token, valid_code):
+    @urlmatch(netloc=r"fakeoidc", path=r"/token")
+    def handler(_, request):
+        params = urllib.parse.parse_qs(request.body)
+        # client_secret must be omitted for public client
+        if "client_secret" in params:
+            return {"status_code": 400, "content": "client_secret should not be sent"}
+
+        if params.get("code")[0] != valid_code:
+            return {"status_code": 401, "content": "Invalid code"}
+
+        if params.get("grant_type")[0] != "authorization_code":
+            return {"status_code": 400, "content": "Invalid authorization type"}
+
+        if not params.get("code_verifier"):
+            return {"status_code": 400, "content": "Missing code_verifier"}
+
+        content = {
+            "access_token": "sometoken",
+            "id_token": id_token,
+        }
+        return {"status_code": 200, "content": json.dumps(content)}
+
+    return handler
+
+
+@pytest.fixture()
 def jwks_handler(signing_key):
     def jwk_with_kid(kid, jwk):
         jwk = jwk.copy()
@@ -354,6 +455,44 @@ def test_auth_url(oidc_service, discovery_handler, http_client, authorize_handle
         assert result["scope"] == "one two"
 
 
+def test_pkce_token_exchange_includes_verifier(
+    pkce_oidc_service,
+    discovery_handler,
+    app_config,
+    http_client,
+    token_handler_pkce,
+    userinfo_handler,
+    jwks_handler,
+    valid_code,
+):
+    # Ensure that when PKCE is enabled and code_verifier is provided, token exchange succeeds
+    with HTTMock(jwks_handler, token_handler_pkce, userinfo_handler, discovery_handler):
+        id_token, access_token = pkce_oidc_service.exchange_code_for_tokens(
+            app_config, http_client, valid_code, "", code_verifier="test-verifier"
+        )
+        assert access_token == "sometoken"
+        assert id_token is not None
+
+
+def test_public_client_omits_client_secret(
+    public_pkce_oidc_service,
+    discovery_handler,
+    app_config,
+    http_client,
+    token_handler_public_pkce,
+    userinfo_handler,
+    jwks_handler,
+    valid_code,
+):
+    # PUBLIC_CLIENT True should omit client_secret in token request
+    with HTTMock(jwks_handler, token_handler_public_pkce, userinfo_handler, discovery_handler):
+        id_token, access_token = public_pkce_oidc_service.exchange_code_for_tokens(
+            app_config, http_client, valid_code, "", code_verifier="test-verifier"
+        )
+        assert access_token == "sometoken"
+        assert id_token is not None
+
+
 def test_exchange_code_invalidcode(
     oidc_service, discovery_handler, app_config, http_client, token_handler
 ):
@@ -397,6 +536,117 @@ def test_exchange_code_missingkey(
         # Should fail because the key is missing.
         with pytest.raises(OAuthLoginException):
             oidc_service.exchange_code_for_login(app_config, http_client, valid_code, "")
+
+
+def test_pkce_enabled_true(pkce_oidc_service):
+    # Verify pkce_enabled() returns True when USE_PKCE: true
+    assert pkce_oidc_service.pkce_enabled() is True
+
+
+def test_pkce_enabled_false_default(oidc_service):
+    # Verify False default when USE_PKCE not set
+    assert oidc_service.pkce_enabled() is False
+
+
+def test_pkce_method_s256_default(pkce_oidc_service):
+    # Verify S256 default method
+    assert pkce_oidc_service.pkce_method() == "S256"
+
+
+def test_pkce_method_plain(plain_pkce_oidc_service):
+    # Test plain method configuration
+    assert plain_pkce_oidc_service.pkce_method() == "plain"
+
+
+def test_public_client_true(public_pkce_oidc_service):
+    # Verify public client flag
+    assert public_pkce_oidc_service.public_client() is True
+
+
+def test_public_client_false_default(pkce_oidc_service):
+    # Verify False default
+    assert pkce_oidc_service.public_client() is False
+
+
+def test_exchange_code_for_tokens_with_pkce(
+    pkce_oidc_service,
+    discovery_handler,
+    app_config,
+    http_client,
+    token_handler_pkce,
+    userinfo_handler,
+    jwks_handler,
+    valid_code,
+):
+    # Token exchange with code_verifier
+    with HTTMock(jwks_handler, token_handler_pkce, userinfo_handler, discovery_handler):
+        id_token, access_token = pkce_oidc_service.exchange_code_for_tokens(
+            app_config, http_client, valid_code, "", code_verifier="test-verifier"
+        )
+        assert access_token == "sometoken"
+        assert id_token is not None
+
+
+def test_exchange_code_for_tokens_without_pkce(
+    oidc_service,
+    discovery_handler,
+    app_config,
+    http_client,
+    token_handler,
+    userinfo_handler,
+    jwks_handler,
+    valid_code,
+):
+    # Standard flow remains unaffected
+    with HTTMock(jwks_handler, token_handler, userinfo_handler, discovery_handler):
+        id_token, access_token = oidc_service.exchange_code_for_tokens(
+            app_config, http_client, valid_code, ""
+        )
+        assert access_token == "sometoken"
+        assert id_token is not None
+
+
+def test_exchange_code_for_login_with_pkce(
+    pkce_oidc_service,
+    discovery_handler,
+    app_config,
+    http_client,
+    token_handler_pkce,
+    userinfo_handler,
+    jwks_handler,
+    valid_code,
+    preferred_username,
+    mailing_feature,
+    email_verified,
+):
+    # Login flow with code_verifier
+    with HTTMock(jwks_handler, token_handler_pkce, userinfo_handler, discovery_handler):
+        if mailing_feature and not email_verified:
+            # Should fail because there isn't a verified email address.
+            with pytest.raises(OAuthLoginException):
+                pkce_oidc_service.exchange_code_for_login(
+                    app_config, http_client, valid_code, "", code_verifier="test-verifier"
+                )
+        else:
+            # Should succeed.
+            lid, lusername, lemail, additional_info = pkce_oidc_service.exchange_code_for_login(
+                app_config, http_client, valid_code, "", code_verifier="test-verifier"
+            )
+
+            assert lid == "cooluser"
+
+            if email_verified:
+                assert lemail == "foo@example.com"
+            else:
+                assert lemail is None
+
+            if preferred_username is not None:
+                if preferred_username.find("@") >= 0:
+                    preferred_username = preferred_username[0 : preferred_username.find("@")]
+
+                assert lusername == preferred_username
+            else:
+                assert lusername == lid
 
 
 def test_exchange_code_validcode(
