@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 def test_redis_flush_worker_init():
     """Test RedisFlushWorker initialization."""
     # Mock the app imports to avoid dependency issues
-    with patch("workers.redisflushworker.app") as mock_app:
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
         mock_app.config.get.side_effect = lambda key, default=None: {
             "REDIS_FLUSH_INTERVAL_SECONDS": 300,
             "REDIS_FLUSH_WORKER_BATCH_SIZE": 1000,
@@ -33,7 +33,7 @@ def test_redis_flush_worker_init():
 
 def test_initialize_redis_client_success():
     """Test successful Redis client initialization."""
-    with patch("workers.redisflushworker.app") as mock_app:
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
         mock_app.config.get.side_effect = lambda key, default=None: {
             "PULL_METRICS_REDIS_HOST": "localhost",
             "PULL_METRICS_REDIS_PORT": 6379,
@@ -44,7 +44,7 @@ def test_initialize_redis_client_success():
 
         from workers.pullstatsredisflushworker import RedisFlushWorker
 
-        with patch("workers.redisflushworker.redis") as mock_redis_module:
+        with patch("workers.pullstatsredisflushworker.redis") as mock_redis_module:
             # Mock Redis client
             mock_client = MagicMock()
             mock_client.ping.return_value = True
@@ -61,7 +61,7 @@ def test_initialize_redis_client_success():
 
 def test_initialize_redis_client_connection_failure():
     """Test Redis client initialization when connection fails."""
-    with patch("workers.redisflushworker.app") as mock_app:
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
         mock_app.config.get.side_effect = lambda key, default=None: {
             "PULL_METRICS_REDIS_HOST": "localhost",
             "PULL_METRICS_REDIS_PORT": 6379,
@@ -72,7 +72,7 @@ def test_initialize_redis_client_connection_failure():
 
         from workers.pullstatsredisflushworker import RedisFlushWorker
 
-        with patch("workers.redisflushworker.redis") as mock_redis_module:
+        with patch("workers.pullstatsredisflushworker.redis") as mock_redis_module:
             # Mock Redis client that fails on ping
             mock_client = MagicMock()
             mock_client.ping.side_effect = Exception("Connection failed")
@@ -87,7 +87,7 @@ def test_initialize_redis_client_connection_failure():
 
 def test_process_redis_events():
     """Test processing of Redis events."""
-    with patch("workers.redisflushworker.app") as mock_app:
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
         mock_app.config.get.return_value = 300
 
         from workers.pullstatsredisflushworker import RedisFlushWorker
