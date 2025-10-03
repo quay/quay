@@ -404,6 +404,21 @@ autostart = {{ config['proxycacheblobworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+{% if 'redisflushworker' in config -%}
+[program:redisflushworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/redisflushworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.redisflushworker.redisflushworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.redisflushworker.redisflushworker
+{% endif -%}
+autostart = {{ config['redisflushworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
+{% endif -%}
+
 [program:config-editor]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s,

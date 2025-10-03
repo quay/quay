@@ -262,6 +262,9 @@ class DefaultConfig(ImmutableConfig):
     # Real-time user events
     USER_EVENTS_REDIS = {"host": "localhost"}
 
+    # Pull metrics analytics storage
+    PULL_METRICS_REDIS = {"host": "localhost", "db": 1}
+
     # Stripe config
     BILLING_TYPE = "FakeStripe"
 
@@ -722,6 +725,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether pull logs are disabled for free namespace.
     FEATURE_DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES = False
+
+    # Pull metrics analytics
+    FEATURE_PULL_METRICS_ANALYTICS = True
 
     # Feature Flag: If set to true, no account using blacklisted email addresses will be allowed
     # to be created.
