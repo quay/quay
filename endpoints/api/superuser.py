@@ -19,6 +19,7 @@ from app import app, authentication, avatar, config_provider, usermanager
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
+from data import model
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
 from data.model import DataModelException, InvalidNamespaceQuota, namespacequota, user
@@ -1221,6 +1222,75 @@ class SuperUserServiceKeyApproval(ApiResource):
                 pass
 
             return make_response("", 201)
+
+        raise Unauthorized()
+
+
+def _token_view(token, include_code=False):
+    """
+    Helper function to format app token data for API responses.
+    """
+    data = {
+        "uuid": token.uuid,
+        "title": token.title,
+        "last_accessed": format_date(token.last_accessed),
+        "created": format_date(token.created),
+        "expiration": format_date(token.expiration),
+    }
+
+    if include_code:
+        data.update(
+            {
+                "token_code": model.appspecifictoken.get_full_token_string(token),
+            }
+        )
+
+    return data
+
+
+@resource("/v1/superuser/apptokens")
+@show_if(features.APP_SPECIFIC_TOKENS)
+@show_if(features.SUPER_USERS)
+class SuperUserAppTokens(ApiResource):
+    """
+    Resource for listing all app specific tokens across all users in the system.
+    """
+
+    @require_fresh_login
+    @nickname("listAllAppTokens")
+    @parse_args()
+    @query_param("expiring", "If true, only returns those tokens expiring soon", type=truthy_bool)
+    @require_scope(scopes.SUPERUSER)
+    def get(self, parsed_args):
+        """
+        Returns a list of all app specific tokens in the system.
+
+        This endpoint is for system-wide auditing by superusers and global read-only superusers.
+        """
+        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+            expiring = parsed_args["expiring"]
+
+            if expiring:
+                expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
+                import math
+                from datetime import timedelta
+
+                from util.timedeltastring import convert_to_timedelta
+
+                _DEFAULT_TOKEN_EXPIRATION_WINDOW = "4w"
+                token_expiration = convert_to_timedelta(
+                    expiration or _DEFAULT_TOKEN_EXPIRATION_WINDOW
+                )
+                seconds = math.ceil(token_expiration.total_seconds() * 0.1) or 1
+                soon = timedelta(seconds=seconds)
+                tokens = model.appspecifictoken.get_all_expiring_tokens(soon)
+            else:
+                tokens = model.appspecifictoken.list_all_tokens()
+
+            return {
+                "tokens": [_token_view(token, include_code=False) for token in tokens],
+                "only_expiring": expiring,
+            }
 
         raise Unauthorized()
 
