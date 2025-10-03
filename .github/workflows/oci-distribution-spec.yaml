@@ -76,6 +76,7 @@ jobs:
     - name: Start Quay
       run: |
         IP=$(ip addr show dev eth0 | sed -n 's: *inet \([0-9.]*\)/.*:\1:p')
+
         mkdir -p /tmp/config
         cat >/tmp/config/config.yaml <<EOF
         BUILDLOGS_REDIS: {"host": "$IP", "port": 6379}
@@ -86,12 +87,20 @@ jobs:
         SERVER_HOSTNAME: localhost
         SETUP_COMPLETE: true
         USER_EVENTS_REDIS: {"host": "$IP", "port": 6379}
+        PULL_METRICS_REDIS: {"host": "$IP", "port": 6379}
+
+
         DATA_MODEL_CACHE_CONFIG:
-          engine: inmemory
-          # OCI Conformance tests don't expect results to be cached.
+          engine: memcached
+          endpoint: [127.0.0.1, 18080]
+          repository_blob_cache_ttl: 60s
+          catalog_page_cache_ttl: 60s
+          namespace_geo_restrictions_cache_ttl: 240s
+          # OCI Conformance tests don't expect tags to be cached.
           # If we implement cache invalidation, we can enable it back.
           active_repo_tags_cache_ttl: 0s
         EOF
+
         # Run the Quay container. See also:
         # https://access.redhat.com/documentation/en-us/red_hat_quay/3.8/html/deploy_red_hat_quay_-_high_availability/deploying_red_hat_quay
         docker run \
@@ -105,6 +114,7 @@ jobs:
           --publish=127.0.0.1:80:8080/tcp \
           --volume=/tmp/config:/conf/stack:Z \
           localhost/quay
+
         for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
           status=$(docker inspect -f '{{.State.Health.Status}}' quay)
           printf "[%s] status: %s\n" "$(date -u +'%F %T')" "$status"
