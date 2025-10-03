@@ -30,6 +30,7 @@ from endpoints.api import (
     InvalidResponse,
     NotFound,
     Unauthorized,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     format_date,
     internal_only,
@@ -92,13 +93,7 @@ class SuperUserAggregateLogs(ApiResource):
         """
         Returns the aggregated logs for the current system.
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-        is_global_readonly = allow_if_global_readonly_superuser()
-        logger.error("CLAUDE DEBUG: aggregatelogs - is_global_readonly=%s", is_global_readonly)
-
-        if is_global_readonly or SuperUserPermission().can():
+        if allow_if_any_superuser():
             (start_time, end_time) = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
             )
@@ -131,7 +126,7 @@ class SuperUserLogs(ApiResource):
         """
         List the usage logs for the current system.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
@@ -195,7 +190,7 @@ class ChangeLog(ApiResource):
         """
         Returns the change log for this installation.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             with open(os.path.join(ROOT_DIR, "CHANGELOG.md"), "r") as f:
                 return {"log": f.read()}
 
@@ -226,7 +221,7 @@ class SuperUserOrganizationList(ApiResource):
         """
         Returns a list of all organizations in the system.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
 
@@ -260,7 +255,7 @@ class SuperUserRegistrySize(ApiResource):
         """
         Returns size of the registry
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             registry_size = get_registry_size()
             if registry_size is not None:
                 return {
@@ -335,7 +330,7 @@ class SuperUserUserQuotaList(ApiResource):
     @nickname(["listUserQuotaSuperUser", "listOrganizationQuotaSuperUser"])
     @require_scope(scopes.SUPERUSER)
     def get(self, namespace):
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
 
             try:
                 namespace_user = user.get_user_or_org(namespace)
@@ -518,7 +513,7 @@ class SuperUserList(ApiResource):
         """
         Returns a list of all users in the system.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
 
@@ -660,7 +655,7 @@ class SuperUserManagement(ApiResource):
         """
         Returns information about the specified user.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             user = pre_oci_model.get_nonrobot_user(username)
             if user is None:
                 raise NotFound()
@@ -958,7 +953,7 @@ class SuperUserServiceKeyManagement(ApiResource):
     @nickname("listServiceKeys")
     @require_scope(scopes.SUPERUSER)
     def get(self):
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             keys = pre_oci_model.list_all_service_keys()
 
             return jsonify(
@@ -1083,7 +1078,7 @@ class SuperUserServiceKey(ApiResource):
     @nickname("getServiceKey")
     @require_scope(scopes.SUPERUSER)
     def get(self, kid):
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             try:
                 key = pre_oci_model.get_service_key(kid, approved_only=False, alive_only=False)
                 return jsonify(key.to_dict())
@@ -1267,7 +1262,7 @@ class SuperUserAppTokens(ApiResource):
 
         This endpoint is for system-wide auditing by superusers and global read-only superusers.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             expiring = parsed_args["expiring"]
 
             if expiring:
@@ -1311,7 +1306,7 @@ class SuperUserRepositoryBuildLogs(ApiResource):
         """
         Return the build logs for the build specified by the build uuid.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             try:
                 repo_build = pre_oci_model.get_repository_build(build_uuid)
                 return get_logs_or_log_url(repo_build)
@@ -1338,7 +1333,7 @@ class SuperUserRepositoryBuildStatus(ApiResource):
         """
         Return the status for the builds specified by the build uuids.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             try:
                 build = pre_oci_model.get_repository_build(build_uuid)
             except InvalidRepositoryBuildException as e:
@@ -1365,7 +1360,7 @@ class SuperUserRepositoryBuildResource(ApiResource):
         """
         Returns information about a build.
         """
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             try:
                 build = pre_oci_model.get_repository_build(build_uuid)
             except InvalidRepositoryBuildException:
@@ -1450,7 +1445,7 @@ class SuperUserDumpConfig(ApiResource):
                 )
 
         # requesting Scope only doesn't restrict so we need superuserpermissions.can
-        if SuperUserPermission().can() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             if features.SUPERUSER_CONFIGDUMP:
                 return process_config()
         raise Unauthorized()

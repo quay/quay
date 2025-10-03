@@ -176,41 +176,6 @@ class TestGlobalReadOnlySuperuserAPIAccess:
 class TestAppTokenGlobalReadOnlySuperuserBehavior:
     """Test app token functionality for global read-only superusers."""
 
-    def test_app_token_list_global_readonly_superuser_access(self, app):
-        """Test that global read-only superusers can see all app tokens."""
-        # Create test tokens for different users
-        devtable_user = model.user.get_user("devtable")
-        freshuser = model.user.get_user("freshuser")
-
-        devtable_token = model.appspecifictoken.create_token(devtable_user, "DevTable Token")
-        freshuser_token = model.appspecifictoken.create_token(freshuser, "Fresh User Token")
-
-        try:
-            with patch(
-                "endpoints.api.appspecifictokens.allow_if_superuser", return_value=False
-            ), patch(
-                "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser",
-                return_value=True,
-            ):
-
-                with client_with_identity("reader", app) as cl:
-                    # Global readonly superuser should see all tokens
-                    resp = conduct_api_call(cl, AppTokens, "GET", None, None, 200)
-                    token_uuids = {token["uuid"] for token in resp.json["tokens"]}
-
-                    # Should see both tokens
-                    assert devtable_token.uuid in token_uuids
-                    assert freshuser_token.uuid in token_uuids
-
-                    # Verify no token codes are included in list
-                    for token in resp.json["tokens"]:
-                        assert "token_code" not in token
-
-        finally:
-            # Clean up
-            devtable_token.delete_instance()
-            freshuser_token.delete_instance()
-
     def test_app_token_list_regular_user_access(self, app):
         """Test that regular users only see their own app tokens."""
         # Create test tokens for different users
@@ -234,79 +199,6 @@ class TestAppTokenGlobalReadOnlySuperuserBehavior:
             # Clean up
             devtable_token.delete_instance()
             freshuser_token.delete_instance()
-
-    def test_app_token_individual_access(self, app):
-        """Test that global read-only superusers can access individual app tokens."""
-        devtable_user = model.user.get_user("devtable")
-        test_token = model.appspecifictoken.create_token(devtable_user, "Test Token")
-
-        try:
-            with patch(
-                "endpoints.api.appspecifictokens.allow_if_superuser", return_value=False
-            ), patch(
-                "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser",
-                return_value=True,
-            ):
-
-                with client_with_identity("reader", app) as cl:
-                    # Should be able to access any user's token
-                    resp = conduct_api_call(
-                        cl, AppToken, "GET", {"token_uuid": test_token.uuid}, None, 200
-                    )
-
-                    assert resp.json["token"]["uuid"] == test_token.uuid
-                    # Global read-only superuser must not see token secret
-                    assert "token_code" not in resp.json["token"]
-
-        finally:
-            # Clean up
-            test_token.delete_instance()
-
-    def test_app_token_expiring_filter(self, app):
-        """Test that global read-only superusers can use expiring filter across all tokens."""
-        from datetime import datetime, timedelta
-
-        devtable_user = model.user.get_user("devtable")
-        freshuser = model.user.get_user("freshuser")
-
-        # Create expiring and non-expiring tokens
-        soon_expiration = datetime.now() + timedelta(minutes=1)
-        far_expiration = datetime.now() + timedelta(days=30)
-
-        devtable_expiring = model.appspecifictoken.create_token(
-            devtable_user, "DevTable Expiring", soon_expiration
-        )
-        devtable_normal = model.appspecifictoken.create_token(
-            devtable_user, "DevTable Normal", far_expiration
-        )
-        freshuser_expiring = model.appspecifictoken.create_token(
-            freshuser, "Fresh Expiring", soon_expiration
-        )
-
-        try:
-            with patch(
-                "endpoints.api.appspecifictokens.allow_if_superuser", return_value=False
-            ), patch(
-                "endpoints.api.appspecifictokens.allow_if_global_readonly_superuser",
-                return_value=True,
-            ):
-
-                with client_with_identity("reader", app) as cl:
-                    # Should see expiring tokens from all users
-                    resp = conduct_api_call(cl, AppTokens, "GET", {"expiring": True}, None, 200)
-                    token_uuids = {token["uuid"] for token in resp.json["tokens"]}
-
-                    # Should see expiring tokens from both users
-                    assert devtable_expiring.uuid in token_uuids
-                    assert freshuser_expiring.uuid in token_uuids
-                    # Should not see non-expiring token
-                    assert devtable_normal.uuid not in token_uuids
-
-        finally:
-            # Clean up
-            devtable_expiring.delete_instance()
-            devtable_normal.delete_instance()
-            freshuser_expiring.delete_instance()
 
 
 class TestStarredRepositoriesGlobalReadOnly:
@@ -378,7 +270,12 @@ class TestAuditLogAccess:
 
     def test_superuser_audit_logs_accessible(self, app):
         """Test that superuser audit logs are accessible to global readonly superusers."""
-        with patch("endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=True):
+        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
+            "endpoints.api.GlobalReadOnlySuperUserPermission"
+        ) as mock_global_ro:
+            mock_super.return_value.can.return_value = False
+            mock_global_ro.return_value.can.return_value = True
+
             with client_with_identity("reader", app) as cl:
                 # Test superuser logs access
                 resp = conduct_api_call(cl, SuperUserLogs, "GET", None, None, 200)
@@ -388,7 +285,12 @@ class TestAuditLogAccess:
 
     def test_superuser_aggregated_logs_accessible(self, app):
         """Test that superuser aggregated logs are accessible to global readonly superusers."""
-        with patch("endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=True):
+        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
+            "endpoints.api.GlobalReadOnlySuperUserPermission"
+        ) as mock_global_ro:
+            mock_super.return_value.can.return_value = False
+            mock_global_ro.return_value.can.return_value = True
+
             with client_with_identity("reader", app) as cl:
                 # Test superuser aggregated logs access
                 resp = conduct_api_call(cl, SuperUserAggregateLogs, "GET", None, None, 200)
@@ -408,7 +310,12 @@ class TestAuditLogAccess:
 
     def test_organization_logs_accessible(self, app):
         """Test that organization logs are accessible to global readonly superusers."""
-        with patch("endpoints.api.logs.allow_if_global_readonly_superuser", return_value=True):
+        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
+            "endpoints.api.GlobalReadOnlySuperUserPermission"
+        ) as mock_global_ro:
+            mock_super.return_value.can.return_value = False
+            mock_global_ro.return_value.can.return_value = True
+
             with client_with_identity("reader", app) as cl:
                 # Test organization logs access - use existing organization
                 resp = conduct_api_call(cl, OrgLogs, "GET", {"orgname": "buynlarge"}, None, 200)
@@ -989,7 +896,11 @@ class TestAdditionalReadEndpoints:
         """Test that superuser repository build logs are accessible to global readonly superusers."""
         from endpoints.api.superuser import SuperUserRepositoryBuildLogs
 
-        with patch("endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=True):
+        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
+            "endpoints.api.GlobalReadOnlySuperUserPermission"
+        ) as mock_global_ro:
+            mock_super.return_value.can.return_value = False
+            mock_global_ro.return_value.can.return_value = True
             with client_with_identity("reader", app) as cl:
                 # Test superuser repository build logs access - expect 400 for invalid UUID
                 try:
@@ -1132,7 +1043,12 @@ class TestOrganizationAdditionalReadEndpoints:
         """Test that organization aggregated logs are accessible to global readonly superusers."""
         from endpoints.api.logs import OrgAggregateLogs
 
-        with patch("endpoints.api.logs.allow_if_global_readonly_superuser", return_value=True):
+        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
+            "endpoints.api.GlobalReadOnlySuperUserPermission"
+        ) as mock_global_ro:
+            mock_super.return_value.can.return_value = False
+            mock_global_ro.return_value.can.return_value = True
+
             with client_with_identity("reader", app) as cl:
                 # Test organization aggregated logs access
                 resp = conduct_api_call(

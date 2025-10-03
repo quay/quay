@@ -17,6 +17,7 @@ from endpoints.api import (
     ApiResource,
     InvalidRequest,
     RepositoryParamResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     format_date,
@@ -203,7 +204,7 @@ class OrgLogs(ApiResource):
         List the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if permission.can() or allow_if_any_superuser():
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -295,7 +296,7 @@ class OrgAggregateLogs(ApiResource):
         Gets the aggregated logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if permission.can() or allow_if_any_superuser():
             performer_name = parsed_args["performer"]
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -495,7 +496,7 @@ class ExportOrgLogs(ApiResource):
         Exports the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or (allow_if_superuser() and not allow_if_global_readonly_superuser()):
+        if permission.can() or allow_if_superuser():
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 

@@ -44,6 +44,7 @@ from data.users.shared import can_create_user
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     define_json_response,
@@ -1342,7 +1343,7 @@ class StarredRepositoryList(ApiResource):
         user = get_authenticated_user()
 
         # Superusers (both regular and global readonly) can see all starred repositories by all users
-        if allow_if_superuser() or allow_if_global_readonly_superuser():
+        if allow_if_any_superuser():
             # For now, return all starred repositories by getting them differently
             # This ensures the endpoint works for global readonly superusers
             try:

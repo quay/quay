@@ -493,12 +493,21 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
-    # Global readonly superusers should not have write access
-    from auth.permissions import GlobalReadOnlySuperUserPermission
-
-    if GlobalReadOnlySuperUserPermission().can():
-        return False
     return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
+
+
+def allow_if_any_superuser():
+    """
+    Returns True if the user is either a regular superuser (with SUPERUSERS_FULL_ACCESS enabled)
+    or a global readonly superuser.
+
+    Since these two types are mutually exclusive, this is a convenience helper for read-only
+    endpoints that should be accessible to both types of superusers.
+
+    Note: Regular superusers require SUPERUSERS_FULL_ACCESS to be enabled, but global readonly
+    superusers are always allowed (when the feature is enabled) since they're read-only by design.
+    """
+    return allow_if_superuser() or GlobalReadOnlySuperUserPermission().can()
 
 
 def allow_if_global_readonly_superuser():
