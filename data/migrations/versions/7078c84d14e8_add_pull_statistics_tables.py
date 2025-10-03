@@ -33,38 +33,10 @@ def upgrade(op, tables, tester):
 
     # Create indexes for TagPullStatistics
     op.create_index(
-        "tagpullstatistics_repository_id",
-        "tagpullstatistics",
-        ["repository_id"],
-        unique=False,
-    )
-
-    op.create_index(
-        "tagpullstatistics_tag_name",
-        "tagpullstatistics",
-        ["tag_name"],
-        unique=False,
-    )
-
-    op.create_index(
         "tagpullstatistics_repository_id_tag_name",
         "tagpullstatistics",
         ["repository_id", "tag_name"],
         unique=True,
-    )
-
-    op.create_index(
-        "tagpullstatistics_last_tag_pull_date",
-        "tagpullstatistics",
-        ["last_tag_pull_date"],
-        unique=False,
-    )
-
-    op.create_index(
-        "tagpullstatistics_tag_pull_count",
-        "tagpullstatistics",
-        ["tag_pull_count"],
-        unique=False,
     )
 
     # Create ManifestPullStatistics table
@@ -85,83 +57,23 @@ def upgrade(op, tables, tester):
 
     # Create indexes for ManifestPullStatistics
     op.create_index(
-        "manifestpullstatistics_repository_id",
-        "manifestpullstatistics",
-        ["repository_id"],
-        unique=False,
-    )
-
-    op.create_index(
-        "manifestpullstatistics_manifest_digest",
-        "manifestpullstatistics",
-        ["manifest_digest"],
-        unique=False,
-    )
-
-    op.create_index(
         "manifestpullstatistics_repository_id_manifest_digest",
         "manifestpullstatistics",
         ["repository_id", "manifest_digest"],
         unique=True,
     )
 
-    op.create_index(
-        "manifestpullstatistics_last_manifest_pull_date",
-        "manifestpullstatistics",
-        ["last_manifest_pull_date"],
-        unique=False,
-    )
-
-    op.create_index(
-        "manifestpullstatistics_manifest_pull_count",
-        "manifestpullstatistics",
-        ["manifest_pull_count"],
-        unique=False,
-    )
-
 
 def downgrade(op, tables, tester):
     # Drop ManifestPullStatistics indexes
     op.drop_index(
-        "manifestpullstatistics_manifest_pull_count",
-        table_name="manifestpullstatistics",
-    )
-    op.drop_index(
-        "manifestpullstatistics_last_manifest_pull_date",
-        table_name="manifestpullstatistics",
-    )
-    op.drop_index(
         "manifestpullstatistics_repository_id_manifest_digest",
-        table_name="manifestpullstatistics",
-    )
-    op.drop_index(
-        "manifestpullstatistics_manifest_digest",
-        table_name="manifestpullstatistics",
-    )
-    op.drop_index(
-        "manifestpullstatistics_repository_id",
         table_name="manifestpullstatistics",
     )
 
     # Drop TagPullStatistics indexes
     op.drop_index(
-        "tagpullstatistics_tag_pull_count",
-        table_name="tagpullstatistics",
-    )
-    op.drop_index(
-        "tagpullstatistics_last_tag_pull_date",
-        table_name="tagpullstatistics",
-    )
-    op.drop_index(
         "tagpullstatistics_repository_id_tag_name",
-        table_name="tagpullstatistics",
-    )
-    op.drop_index(
-        "tagpullstatistics_tag_name",
-        table_name="tagpullstatistics",
-    )
-    op.drop_index(
-        "tagpullstatistics_repository_id",
         table_name="tagpullstatistics",
     )
 

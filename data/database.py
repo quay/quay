@@ -1496,10 +1496,6 @@ class TagPullStatistics(BaseModel):
         indexes = (
             # Composite unique constraint for (repository, tag_name)
             (("repository", "tag_name"), True),
-            # Indexes for query performance
-            (("last_tag_pull_date",), False),
-            (("tag_pull_count",), False),
-            (("repository",), False),
         )
 
 
@@ -1515,10 +1511,6 @@ class ManifestPullStatistics(BaseModel):
         indexes = (
             # Composite unique constraint for (repository, manifest_digest)
             (("repository", "manifest_digest"), True),
-            # Indexes for query performance
-            (("last_manifest_pull_date",), False),
-            (("manifest_pull_count",), False),
-            (("repository",), False),
         )
 
 
