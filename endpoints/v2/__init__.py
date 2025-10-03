@@ -11,8 +11,10 @@ from app import app, get_app_url, usermanager
 from auth.auth_context import get_authenticated_context
 from auth.permissions import (
     AdministerRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     ModifyRepositoryPermission,
     ReadRepositoryPermission,
+    SuperUserPermission,
 )
 from auth.registry_jwt_auth import get_auth_headers, process_registry_jwt_auth
 from data.model import PushesDisabledException, QuotaExceededException
@@ -210,10 +212,13 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                         and context.authed_user is not None
                         and context.authed_user.username == namespace_name
                     ):
-                        if usermanager.is_restricted_user(
-                            context.authed_user.username,
-                            # include_robots=app.config["RESTRICTED_USER_INCLUDE_ROBOTS"],
-                        ) and not usermanager.is_superuser(context.authed_user.username):
+                        if (
+                            usermanager.is_restricted_user(
+                                context.authed_user.username,
+                                # include_robots=app.config["RESTRICTED_USER_INCLUDE_ROBOTS"],
+                            )
+                            and not SuperUserPermission().can()
+                        ):
                             raise Unauthorized(detail="Disallowed for restricted users.")
 
                 permission = permission_class(namespace_name, repo_name)
@@ -223,11 +228,8 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
 
                 # Superusers' extra permissions
                 if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
-                    context = get_authenticated_context()
-
-                    if context is not None and context.authed_user is not None:
-                        if usermanager.is_superuser(context.authed_user.username):
-                            return func(namespace_name, repo_name, *args, **kwargs)
+                    if SuperUserPermission().can():
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
                 repository = namespace_name + "/" + repo_name
                 if allow_public:
@@ -249,14 +251,8 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                         return func(namespace_name, repo_name, *args, **kwargs)
 
                     # Allow public imply a RepositoryRead scope, so we can grant superusers read-only access
-                    if features.SUPER_USERS and app.config.get("GLOBAL_READONLY_SUPER_USERS"):
-                        context = get_authenticated_context()
-                        if (
-                            context is not None
-                            and context.authed_user is not None
-                            and usermanager.is_global_readonly_superuser(context.authed_user)
-                        ):
-                            return func(namespace_name, repo_name, *args, **kwargs)
+                    if GlobalReadOnlySuperUserPermission().can():
+                        return func(namespace_name, repo_name, *args, **kwargs)
 
                 raise Unauthorized(repository=repository, scopes=scopes)
 

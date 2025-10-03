@@ -12,6 +12,7 @@ from auth.decorators import process_basic_auth
 from auth.permissions import (
     AdministerRepositoryPermission,
     CreateRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     ModifyRepositoryPermission,
     OrganizationMemberPermission,
     ReadRepositoryPermission,
@@ -364,15 +365,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
             can_pullthru = OrganizationMemberPermission(namespace).can() and user is not None
 
-        global_readonly_superuser = False
-        if features.SUPER_USERS and user is not None:
-            global_readonly_superuser = usermanager.is_global_readonly_superuser(user.username)
-
         if (
             ReadRepositoryPermission(namespace, reponame).can()
             or can_pullthru
             or repo_is_public
-            or global_readonly_superuser
+            or GlobalReadOnlySuperUserPermission().can()
         ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
