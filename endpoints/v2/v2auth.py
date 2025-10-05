@@ -16,6 +16,7 @@ from auth.permissions import (
     ModifyRepositoryPermission,
     OrganizationMemberPermission,
     ReadRepositoryPermission,
+    SuperUserPermission,
 )
 from data import model
 from data.database import RepositoryState
@@ -261,7 +262,9 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             # Lookup the repository. If it exists, make sure the entity has modify
             # permission. Otherwise, make sure the entity has create permission.
             if repository_ref:
-                if ModifyRepositoryPermission(namespace, reponame).can():
+                if ModifyRepositoryPermission(namespace, reponame).can() or (
+                    features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
+                ):
                     if repository_ref is not None and repository_ref.kind != "image":
                         raise Unsupported(message=invalid_repo_message)
 
@@ -380,7 +383,9 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     if "*" in requested_actions:
         # Grant * user is admin
-        if AdministerRepositoryPermission(namespace, reponame).can():
+        if AdministerRepositoryPermission(namespace, reponame).can() or (
+            features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
+        ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 

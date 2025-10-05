@@ -7,8 +7,6 @@ from mock import patch
 from data import database, model
 from data.users.federated import FederatedUsers, UserInformation
 from data.users.teamsync import sync_team, sync_teams_to_groups
-
-# Import test fixtures first to ensure app is loaded before data.users
 from test.fixtures import *
 from test.test_keystone_auth import fake_keystone
 from test.test_ldap import mock_ldap
