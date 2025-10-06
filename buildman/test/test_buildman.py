@@ -766,15 +766,17 @@ class TestBuilderSentry(unittest.TestCase):
 
             initialize_sentry()
 
-            # Verify Sentry was initialized with correct parameters
-            mock_sentry_sdk.init.assert_called_once_with(
-                dsn="https://test@sentry.io/123",
-                environment="test",
-                traces_sample_rate=0.5,
-                profiles_sample_rate=0.3,
-            )
+            call_args = mock_sentry_sdk.init.call_args
+            assert call_args is not None
 
-            # Verify tags were set
+            kwargs = call_args.kwargs
+            assert kwargs["dsn"] == "https://test@sentry.io/123"
+            assert kwargs["environment"] == "test"
+            assert kwargs["traces_sample_rate"] == 0.5
+            assert kwargs["profiles_sample_rate"] == 0.3
+
+            assert mock_sentry_sdk.init.call_count == 1
+
             expected_calls = [
                 (("service", "buildman"),),
                 (("buildman", "test-host:buildman"),),
@@ -842,12 +844,17 @@ class TestBuilderSentry(unittest.TestCase):
 
             initialize_sentry()
 
-            mock_sentry_sdk.init.assert_called_once_with(
-                dsn="https://test@sentry.io/123",
-                environment="production",  # default
-                traces_sample_rate=0.1,  # default
-                profiles_sample_rate=0.1,  # default
-            )
+            call_args = mock_sentry_sdk.init.call_args
+            assert call_args is not None
+
+            kwargs = call_args.kwargs
+            assert kwargs["dsn"] == "https://test@sentry.io/123"
+            assert kwargs["environment"] == "production"  # default
+            assert kwargs["traces_sample_rate"] == 0.1  # default
+            assert kwargs["profiles_sample_rate"] == 0.1  # default
+
+            # Verify the SDK was called exactly once
+            assert mock_sentry_sdk.init.call_count == 1
 
     def test_sentry_tags_set_correctly(self):
         """Test that Sentry tags are set with correct values."""

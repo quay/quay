@@ -4,9 +4,10 @@ Manage the current user.
 
 import json
 import logging
+import time
 
 import recaptcha2
-from flask import abort, request
+from flask import abort, request, session
 from flask_login import logout_user
 from flask_principal import AnonymousIdentity, identity_changed
 from peewee import IntegrityError
@@ -80,6 +81,7 @@ from endpoints.exception import (
     NotFound,
 )
 from oauth.oidc import DiscoveryFailureException
+from oauth.pkce import code_challenge, generate_code_verifier
 from util.names import parse_single_urn
 from util.request import get_request_ip
 from util.useremails import (
@@ -1009,8 +1011,21 @@ class ExternalLoginInformation(ApiResource):
 
         try:
             login_scopes = login_service.get_login_scopes()
+            extra_auth_params = None
+            if hasattr(login_service, "pkce_enabled") and login_service.pkce_enabled():
+                verifier = generate_code_verifier()
+                method = login_service.pkce_method()
+                challenge = code_challenge(verifier, method)
+                session_key = f"_oauth_pkce_{service_id}"
+                session[session_key] = {"verifier": verifier, "ts": int(time.time())}
+                extra_auth_params = {"code_challenge": challenge, "code_challenge_method": method}
+
             auth_url = login_service.get_auth_url(
-                url_scheme_and_hostname, redirect_suffix, csrf_token, login_scopes
+                url_scheme_and_hostname,
+                redirect_suffix,
+                csrf_token,
+                login_scopes,
+                extra_auth_params,
             )
             return {"auth_url": auth_url}
         except DiscoveryFailureException as dfe:

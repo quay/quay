@@ -23,6 +23,7 @@ import Settings from './Tabs/Settings/Settings';
 import TeamsAndMembershipList from './Tabs/TeamsAndMembership/TeamsAndMembershipList';
 import AddNewTeamMemberDrawer from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/AddNewTeamMemberDrawer';
 import ManageMembersList from './Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
+import OAuthApplicationsList from './Tabs/OAuthApplications/OAuthApplicationsList';
 
 export enum OrganizationDrawerContentType {
   None,
@@ -132,6 +133,11 @@ export default function Organization() {
           setDrawerContent={setDrawerContent}
         />
       ),
+      visible: !isUserOrganization && organization?.is_admin,
+    },
+    {
+      name: 'OAuth Applications',
+      component: <OAuthApplicationsList orgName={organizationName} />,
       visible: !isUserOrganization && organization?.is_admin,
     },
     {
