@@ -124,13 +124,18 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                 if key in existing_records:
                     # Record exists - prepare for bulk update
                     existing_record = existing_records[key]
+
+                    # Use simple comparison instead of max() (consistent with codebase pattern)
+                    if existing_record.last_tag_pull_date < update["last_pull_date"]:
+                        new_date = update["last_pull_date"]
+                    else:
+                        new_date = existing_record.last_tag_pull_date
+
                     updates_for_existing.append(
                         {
                             "record": existing_record,
                             "new_count": existing_record.tag_pull_count + update["pull_count"],
-                            "new_date": max(
-                                existing_record.last_tag_pull_date, update["last_pull_date"]
-                            ),
+                            "new_date": new_date,
                             "new_digest": update["manifest_digest"],
                         }
                     )
@@ -259,13 +264,18 @@ def bulk_upsert_manifest_statistics(manifest_updates: List[Dict]) -> int:
                 if key in existing_records:
                     # Record exists - prepare for bulk update
                     existing_record = existing_records[key]
+
+                    # Use simple comparison instead of max() (consistent with codebase pattern)
+                    if existing_record.last_manifest_pull_date < update["last_pull_date"]:
+                        new_date = update["last_pull_date"]
+                    else:
+                        new_date = existing_record.last_manifest_pull_date
+
                     updates_for_existing.append(
                         {
                             "record": existing_record,
                             "new_count": existing_record.manifest_pull_count + update["pull_count"],
-                            "new_date": max(
-                                existing_record.last_manifest_pull_date, update["last_pull_date"]
-                            ),
+                            "new_date": new_date,
                         }
                     )
                 else:
