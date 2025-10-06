@@ -174,6 +174,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			webIdentityTokenFile = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 		}
 
+		// Get the session name, defaulting to "quay" if not provided
+		sessionName := args.STSRoleSessionName
+		if sessionName == "" {
+			sessionName = os.Getenv("AWS_ROLE_SESSION_NAME")
+		}
+		if sessionName == "" {
+			sessionName = "quay"
+		}
+
 		var credentials *sts.Credentials
 		// Prefer using web tokens to authenticate and fallback to access and secret keys
 		if webIdentityTokenFile != "" {
@@ -190,7 +199,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			}
 			assumeRoleInput := &sts.AssumeRoleWithWebIdentityInput{
 				RoleArn:          aws.String(roleToAssumeArn),
-				RoleSessionName:  aws.String("quay"),
+				RoleSessionName:  aws.String(sessionName),
 				DurationSeconds:  aws.Int64(durationSeconds),
 				WebIdentityToken: aws.String(string(webIdentityToken)),
 			}
@@ -211,7 +220,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			svc := sts.New(sess)
 			assumeRoleInput := &sts.AssumeRoleInput{
 				RoleArn:         aws.String(roleToAssumeArn),
-				RoleSessionName: aws.String("quay"),
+				RoleSessionName: aws.String(sessionName),
 				DurationSeconds: aws.Int64(durationSeconds),
 			}
 			assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)

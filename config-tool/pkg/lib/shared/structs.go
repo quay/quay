@@ -63,4 +63,5 @@ type DistributedStorageArgs struct {
 	STSUserSecretKey        string `default:"" validate:"" json:"sts_user_secret_key,omitempty" yaml:"sts_user_secret_key,omitempty"`
 	STSRoleArn              string `default:"" validate:"" json:"sts_role_arn,omitempty" yaml:"sts_role_arn,omitempty"`
 	STSWebIdentityTokenFile string `default:"" validate:"" json:"sts_web_identity_token_file,omitempty" yaml:"sts_web_identity_token_file,omitempty"`
+	STSRoleSessionName      string `default:"" validate:"" json:"sts_role_session_name,omitempty" yaml:"sts_role_session_name,omitempty"`
 }
