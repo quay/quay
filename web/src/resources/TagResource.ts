@@ -331,7 +331,7 @@ export async function getManifestByDigest(
   org: string,
   repo: string,
   digest: string,
-  include_modelcard: boolean,
+  include_modelcard = false,
 ) {
   const url = `/api/v1/repository/${org}/${repo}/manifest/${digest}${
     include_modelcard ? '?include_modelcard=true' : ''

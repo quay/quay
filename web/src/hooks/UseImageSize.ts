@@ -13,7 +13,7 @@ export function useImageSize(org: string, repo: string, digest: string) {
     (async () => {
       try {
         const manifestResp: ManifestByDigestResponse =
-          await getManifestByDigest(org, repo, digest);
+          await getManifestByDigest(org, repo, digest, false);
         const calculatedSizeMesnifestResp = manifestResp.layers
           ? manifestResp.layers.reduce(
               (prev, curr) => prev + curr.compressed_size,
