@@ -39,8 +39,6 @@ ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXIS
 ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_method_id;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_linked_tag_id_tag;
-ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.star DROP CONSTRAINT IF EXISTS fk_star_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.servicekey DROP CONSTRAINT IF EXISTS fk_servicekey_approval_id_servicekeyapproval;
@@ -758,8 +756,6 @@ DROP SEQUENCE IF EXISTS public.tagkind_id_seq;
 DROP TABLE IF EXISTS public.tagkind;
 DROP SEQUENCE IF EXISTS public.tag_id_seq;
 DROP TABLE IF EXISTS public.tag;
-DROP SEQUENCE IF EXISTS public.tagpullstatistics_id_seq;
-DROP TABLE IF EXISTS public.tagpullstatistics;
 DROP SEQUENCE IF EXISTS public.star_id_seq;
 DROP TABLE IF EXISTS public.star;
 DROP SEQUENCE IF EXISTS public.servicekeyapproval_id_seq;
@@ -858,8 +854,6 @@ DROP SEQUENCE IF EXISTS public.manifestblob_id_seq;
 DROP TABLE IF EXISTS public.manifestblob;
 DROP SEQUENCE IF EXISTS public.manifest_id_seq;
 DROP TABLE IF EXISTS public.manifest;
-DROP SEQUENCE IF EXISTS public.manifestpullstatistics_id_seq;
-DROP TABLE IF EXISTS public.manifestpullstatistics;
 DROP SEQUENCE IF EXISTS public.loginservice_id_seq;
 DROP TABLE IF EXISTS public.loginservice;
 DROP SEQUENCE IF EXISTS public.logentrykind_id_seq;
@@ -13191,4 +13185,3 @@ ALTER TABLE ONLY public.userregion
 --
 -- PostgreSQL database dump complete
 --
-
