@@ -507,14 +507,10 @@ def allow_if_any_superuser():
     Note: Regular superusers require SUPERUSERS_FULL_ACCESS to be enabled, but global readonly
     superusers are always allowed (when the feature is enabled) since they're read-only by design.
     """
-    return allow_if_superuser() or GlobalReadOnlySuperUserPermission().can()
+    return allow_if_superuser() or allow_if_global_readonly_superuser()
 
 
 def allow_if_global_readonly_superuser():
-    import logging
-
-    logger = logging.getLogger(__name__)
-
     ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
     config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
 

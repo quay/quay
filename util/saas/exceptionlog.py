@@ -2,6 +2,8 @@ import logging
 
 import sentry_sdk
 
+logger = logging.getLogger(__name__)
+
 
 class FakeSentryClient(object):
     def captureException(self, *args, **kwargs):
@@ -40,7 +42,6 @@ class Sentry(object):
                     # Return the initialized Sentry SDK object directly
                     sentry = initialized_sentry
                 except Exception as e:
-                    logger = logging.getLogger(__name__)
                     logger.warning("Failed to initialize Sentry: %s", str(e))
                     sentry = FakeSentry()
             else:
