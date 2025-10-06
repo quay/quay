@@ -1218,10 +1218,20 @@ class STSS3Storage(S3Storage):
         endpoint_url=None,
         maximum_chunk_size_gb=None,
         signature_version="s3v4",
+        sts_web_identity_token_file=None,
+        sts_role_session_name=None,
     ):
-        if sts_user_access_key == "" or sts_user_secret_key == "":
+        # Determine which authentication method to use
+        use_web_identity = sts_web_identity_token_file is not None
+
+        if use_web_identity:
+            # Use web identity token authentication
+            sts_client = boto3.client("sts")
+        elif sts_user_access_key == "" or sts_user_secret_key == "":
+            # Fall back to default credential chain
             sts_client = boto3.client("sts")
         else:
+            # Use explicit access keys
             sts_client = boto3.client(
                 "sts",
                 aws_access_key_id=sts_user_access_key,
@@ -1235,15 +1245,57 @@ class STSS3Storage(S3Storage):
             "maximum_chunk_size_gb": maximum_chunk_size_gb,
             "signature_version": signature_version,
         }
+
         if sts_role_arn is not None:
-            assumed_role = sts_client.assume_role(RoleArn=sts_role_arn, RoleSessionName="quay")
-            credentials = assumed_role["Credentials"]
-            deferred_refreshable_credentials = DeferredRefreshableCredentials(
-                refresh_using=create_assume_role_refresher(
-                    sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": "quay"}
-                ),
-                method="sts-assume-role",
-            )
+            session_name = sts_role_session_name or "quay"
+
+            if use_web_identity:
+                # Read the web identity token from file
+                with open(sts_web_identity_token_file, "r") as token_file:
+                    web_identity_token = token_file.read().strip()
+
+                # Create a refresher function for web identity credentials
+                def web_identity_refresher():
+                    with open(sts_web_identity_token_file, "r") as token_file:
+                        token = token_file.read().strip()
+
+                    response = sts_client.assume_role_with_web_identity(
+                        RoleArn=sts_role_arn,
+                        RoleSessionName=session_name,
+                        WebIdentityToken=token,
+                    )
+                    credentials = response["Credentials"]
+                    return {
+                        "access_key": credentials["AccessKeyId"],
+                        "secret_key": credentials["SecretAccessKey"],
+                        "token": credentials["SessionToken"],
+                        "expiry_time": credentials["Expiration"].isoformat(),
+                    }
+
+                # Get initial credentials
+                assumed_role = sts_client.assume_role_with_web_identity(
+                    RoleArn=sts_role_arn,
+                    RoleSessionName=session_name,
+                    WebIdentityToken=web_identity_token,
+                )
+                credentials = assumed_role["Credentials"]
+
+                deferred_refreshable_credentials = DeferredRefreshableCredentials(
+                    refresh_using=web_identity_refresher,
+                    method="sts-assume-role-with-web-identity",
+                )
+            else:
+                # Use the original assume_role method
+                assumed_role = sts_client.assume_role(
+                    RoleArn=sts_role_arn, RoleSessionName=session_name
+                )
+                credentials = assumed_role["Credentials"]
+                deferred_refreshable_credentials = DeferredRefreshableCredentials(
+                    refresh_using=create_assume_role_refresher(
+                        sts_client, {"RoleArn": sts_role_arn, "RoleSessionName": session_name}
+                    ),
+                    method="sts-assume-role",
+                )
 
             connect_kwargs.update(
                 {
