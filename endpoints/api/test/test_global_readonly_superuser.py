@@ -272,7 +272,9 @@ class TestAuditLogAccess:
         """Test that superuser audit logs are accessible to global readonly superusers."""
         with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
             "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro:
+        ) as mock_global_ro, patch(
+            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
+        ):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
 
@@ -287,7 +289,9 @@ class TestAuditLogAccess:
         """Test that superuser aggregated logs are accessible to global readonly superusers."""
         with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
             "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro:
+        ) as mock_global_ro, patch(
+            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
+        ):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
 
@@ -312,7 +316,7 @@ class TestAuditLogAccess:
         """Test that organization logs are accessible to global readonly superusers."""
         with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
             "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro:
+        ) as mock_global_ro, patch("endpoints.api.logs.allow_if_any_superuser", return_value=True):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
 
@@ -907,7 +911,9 @@ class TestAdditionalReadEndpoints:
 
         with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
             "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro:
+        ) as mock_global_ro, patch(
+            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
+        ):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
             with client_with_identity("reader", app) as cl:
@@ -1054,7 +1060,7 @@ class TestOrganizationAdditionalReadEndpoints:
 
         with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
             "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro:
+        ) as mock_global_ro, patch("endpoints.api.logs.allow_if_any_superuser", return_value=True):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
 

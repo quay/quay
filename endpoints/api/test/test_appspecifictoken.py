@@ -399,11 +399,12 @@ def test_global_readonly_superuser_endpoint_sees_all_tokens(app):
     reader_token = model.appspecifictoken.create_token(reader_user, "Reader Token")
 
     try:
-        # Mock global readonly superuser by mocking the permission classes in endpoints.api
-        # where allow_if_any_superuser() uses them
+        # Mock global readonly superuser by mocking the permission classes
         with patch("endpoints.api.SuperUserPermission") as mock_super_perm, patch(
             "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro_perm:
+        ) as mock_global_ro_perm, patch(
+            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
+        ):
             # Not a regular superuser, but is a global readonly superuser
             mock_super_perm.return_value.can.return_value = False
             mock_global_ro_perm.return_value.can.return_value = True
