@@ -402,7 +402,7 @@ class ExportRepositoryLogs(RepositoryParamResource):
 
     schemas = {"ExportLogs": EXPORT_LOGS_SCHEMA}
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_global_readonly_superuser=True, allow_for_superuser=True)
     @nickname("exportRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -452,10 +452,6 @@ class ExportUserLogs(ApiResource):
         """
         Returns the aggregated logs for the current user.
         """
-        # Global readonly superusers should not be able to export logs since it creates background jobs
-        if allow_if_global_readonly_superuser():
-            abort(403, "Global readonly users cannot export logs")
-
         user = get_authenticated_user()
 
         start_time = parsed_args["starttime"]
@@ -496,7 +492,7 @@ class ExportOrgLogs(ApiResource):
         Exports the logs for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_any_superuser():
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
 
