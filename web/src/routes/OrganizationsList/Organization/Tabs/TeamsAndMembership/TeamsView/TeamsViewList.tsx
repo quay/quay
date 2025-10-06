@@ -298,7 +298,22 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                     isSelected: selectedTeams.some((t) => t.name === team.name),
                   }}
                 />
-                <Td dataLabel={teamViewColumnNames.teamName}>{team.name}</Td>
+                <Td dataLabel={teamViewColumnNames.teamName}>
+                  {team.can_view ? (
+                    <Link
+                      to={getTeamMemberPath(
+                        location.pathname,
+                        props.organizationName,
+                        team.name,
+                        searchParams.get('tab'),
+                      )}
+                    >
+                      {team.name}
+                    </Link>
+                  ) : (
+                    team.name
+                  )}
+                </Td>
                 <Td
                   dataLabel={teamViewColumnNames.members}
                   data-testid={`member-count-for-${team.name}`}
