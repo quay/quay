@@ -82,7 +82,7 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                             "manifest_digest": update["manifest_digest"],
                         }
                     )
-                except (ValueError, KeyError) as e:
+                except (ValueError, KeyError, Exception) as e:
                     logger.error(f"Failed to parse tag update: {e}")
                     raise PullStatisticsException(f"Invalid tag update data: {e}")
 
@@ -217,7 +217,7 @@ def bulk_upsert_manifest_statistics(manifest_updates: List[Dict]) -> int:
                             "last_pull_date": last_pull,
                         }
                     )
-                except (ValueError, KeyError) as e:
+                except (ValueError, KeyError, Exception) as e:
                     logger.error(f"Failed to parse manifest update: {e}")
                     raise PullStatisticsException(f"Invalid manifest update data: {e}")
 
