@@ -27,7 +27,6 @@ import RequestError from 'src/components/errors/RequestError';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {useDeleteOrganizations} from 'src/hooks/UseDeleteOrganizations';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -136,6 +135,7 @@ export default function OrganizationsList() {
     totalResults,
     search,
     setSearch,
+    deleteOrganizations,
   } = useOrganizations();
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
@@ -241,12 +241,13 @@ export default function OrganizationsList() {
     setRecentSelectedRowIndex(rowIndex);
   };
 
-  const {deleteOrganizations} = useDeleteOrganizations({
-    onSuccess: () => {
+  const handleOrgDeletion = async () => {
+    const orgs = selectedOrganization.map((org) => org.name);
+    try {
+      await deleteOrganizations(orgs);
       setDeleteModalIsOpen(!deleteModalIsOpen);
       setSelectedOrganization([]);
-    },
-    onError: (err) => {
+    } catch (err) {
       console.error(err);
       if (err instanceof BulkOperationError) {
         const errMessages = [];
@@ -263,12 +264,7 @@ export default function OrganizationsList() {
       }
       setDeleteModalIsOpen(!deleteModalIsOpen);
       setSelectedOrganization([]);
-    },
-  });
-
-  const handleOrgDeletion = async () => {
-    const orgs = selectedOrganization.map((org) => org.name);
-    await deleteOrganizations(orgs);
+    }
   };
 
   const handleDeleteModalToggle = () => {

@@ -15,7 +15,7 @@ import {isValidEmail} from 'src/libs/utils';
 import {useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
-import {useCreateOrganization} from 'src/hooks/UseCreateOrganization';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 
 interface Validation {
   message: string;
@@ -39,12 +39,7 @@ export const CreateOrganizationModal = (
   const [validation, setValidation] = useState<Validation>(defaultMessage);
   const [err, setErr] = useState<string>();
 
-  const {createOrganization} = useCreateOrganization({
-    onSuccess: () => props.handleModalToggle(),
-    onError: (err) => {
-      setErr(addDisplayError('Unable to create organization', err));
-    },
-  });
+  const {createOrganization} = useOrganizations();
 
   const handleNameInputChange = (value: string) => {
     const regex = /^([a-z0-9]+(?:[._-][a-z0-9]+)*)$/;
@@ -80,7 +75,12 @@ export const CreateOrganizationModal = (
   };
 
   const createOrganizationHandler = async () => {
-    await createOrganization(organizationName, organizationEmail);
+    try {
+      await createOrganization(organizationName, organizationEmail);
+      props.handleModalToggle();
+    } catch (err) {
+      setErr(addDisplayError('Unable to create organization', err));
+    }
   };
 
   const onInputBlur = () => {
