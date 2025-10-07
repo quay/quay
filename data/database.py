@@ -871,6 +871,8 @@ class User(BaseModel):
                     RepositoryAutoPrunePolicy,
                     OauthAssignedToken,
                     TagNotificationSuccess,
+                    TagPullStatistics,
+                    ManifestPullStatistics,
                 }
                 | appr_classes
                 | v22_classes
@@ -1093,6 +1095,8 @@ class Repository(BaseModel):
                 QuotaRepositorySize,
                 RepositoryAutoPrunePolicy,
                 TagNotificationSuccess,
+                TagPullStatistics,
+                ManifestPullStatistics,
             }
             | appr_classes
             | v22_classes
@@ -1476,6 +1480,37 @@ class RepositoryActionCount(BaseModel):
         indexes = (
             # create a unique index on repository and date
             (("repository", "date"), True),
+        )
+
+
+class TagPullStatistics(BaseModel):
+    repository = ForeignKeyField(Repository)
+    tag_name = CharField(max_length=255)
+    tag_pull_count = BigIntegerField(default=0)
+    last_tag_pull_date = DateTimeField(default=datetime.utcnow)
+    current_manifest_digest = CharField(max_length=255, null=True)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Composite unique constraint for (repository, tag_name)
+            (("repository", "tag_name"), True),
+        )
+
+
+class ManifestPullStatistics(BaseModel):
+    repository = ForeignKeyField(Repository)
+    manifest_digest = CharField(max_length=255)
+    manifest_pull_count = BigIntegerField(default=0)
+    last_manifest_pull_date = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
+        indexes = (
+            # Composite unique constraint for (repository, manifest_digest)
+            (("repository", "manifest_digest"), True),
         )
 
 
