@@ -31,6 +31,7 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
+import {LoadingPage} from 'src/components/LoadingPage';
 
 interface RepoListHeaderProps {
   shouldRender: boolean;
