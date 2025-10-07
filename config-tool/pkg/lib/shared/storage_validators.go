@@ -99,10 +99,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
-		isSecure = true
+		isSecure = args.IsSecure
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
+			isSecure = true
 		} else {
 			endpoint = args.Host
 		}
@@ -183,10 +184,19 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			sessionName = "quay"
 		}
 
+		awsConfig := &aws.Config{}
+		if len(args.Host) != 0 {
+			stsEndpoint := args.Host
+			awsConfig.Endpoint = aws.String(stsEndpoint)
+		}
+		if !args.IsSecure {
+			awsConfig.DisableSSL = aws.Bool(true)
+		}
+
 		var credentials *sts.Credentials
 		// Prefer using web tokens to authenticate and fallback to access and secret keys
 		if webIdentityTokenFile != "" {
-			sess := session.Must(session.NewSession())
+			sess := session.Must(session.NewSession(awsConfig))
 			svc := sts.New(sess)
 			webIdentityToken, err := os.ReadFile(webIdentityTokenFile)
 			if err != nil {
@@ -214,9 +224,8 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			}
 			credentials = assumeRoleOutput.Credentials
 		} else {
-			sess := session.Must(session.NewSession(&aws.Config{
-				Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
-			}))
+			awsConfig.Credentials = awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, "")
+			sess := session.Must(session.NewSession(awsConfig))
 			svc := sts.New(sess)
 			assumeRoleInput := &sts.AssumeRoleInput{
 				RoleArn:         aws.String(roleToAssumeArn),
@@ -239,10 +248,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey := *credentials.SecretAccessKey
 		token = *credentials.SessionToken
 		bucketName = args.S3Bucket
-		isSecure = true
+		isSecure = args.IsSecure
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
+			isSecure = true
 		} else {
 			endpoint = args.Host
 		}
@@ -352,10 +362,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
-		isSecure = true
+		isSecure = args.IsSecure
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
+			isSecure = true
 		} else {
 			endpoint = args.Host
 		}
