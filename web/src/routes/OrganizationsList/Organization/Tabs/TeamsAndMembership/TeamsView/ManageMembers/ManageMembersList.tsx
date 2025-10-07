@@ -528,6 +528,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     return (
       <>
         <Conditional if={pageInReadOnlyMode}>{teamSyncedConfig}</Conditional>
+        <PageSection variant={PageSectionVariants.light}>
+          {teamDescriptionComponent}
+        </PageSection>
         <Empty
           title="There are no viewable members for this team"
           icon={CubesIcon}
