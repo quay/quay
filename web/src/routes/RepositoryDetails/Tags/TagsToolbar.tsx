@@ -1,12 +1,17 @@
 import {ReactElement, useState} from 'react';
 import {
+  Button,
   DropdownItem,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
 import {useRecoilState} from 'recoil';
-import {searchTagsState, selectedTagsState} from 'src/atoms/TagListState';
+import {
+  searchTagsState,
+  selectedTagsState,
+  showSignaturesState,
+} from 'src/atoms/TagListState';
 import {Tag} from 'src/resources/TagResource';
 import {DeleteModal, ModalOptions} from './DeleteModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
@@ -28,6 +33,8 @@ export function TagsToolbar(props: ToolBarProps) {
   });
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
+  const [showSignatures, setShowSignatures] =
+    useRecoilState(showSignaturesState);
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
     useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
@@ -100,6 +107,14 @@ export function TagsToolbar(props: ToolBarProps) {
           searchState={search}
           onChange={setSearch}
         />
+        <ToolbarItem>
+          <Button
+            variant="secondary"
+            onClick={() => setShowSignatures(!showSignatures)}
+          >
+            {showSignatures ? 'Hide Signatures' : 'Show Signatures'}
+          </Button>
+        </ToolbarItem>
         <ToolbarItem>
           {selectedTags?.length !== 0 ? (
             <Kebab
