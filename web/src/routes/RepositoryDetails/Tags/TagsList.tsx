@@ -10,6 +10,7 @@ import {
   searchTagsFilterState,
   searchTagsState,
   selectedTagsState,
+  showSignaturesState,
 } from 'src/atoms/TagListState';
 import Empty from 'src/components/empty/Empty';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
@@ -28,6 +29,22 @@ import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
+// Utility function to detect cosign signature tags and SBOM/attestation artifacts
+function isCosignSignatureTag(tagName: string): boolean {
+  // Cosign signature pattern: sha256-<64 hex chars>.sig
+  const cosignPattern = /^sha256-[a-f0-9]{64}\.sig$/;
+  // SBOM pattern: sha256-<64 hex chars>.sbom
+  const sbomPattern = /^sha256-[a-f0-9]{64}\.sbom$/;
+  // Attestation pattern: sha256-<64 hex chars>.att
+  const attestationPattern = /^sha256-[a-f0-9]{64}\.att$/;
+
+  return (
+    cosignPattern.test(tagName) ||
+    sbomPattern.test(tagName) ||
+    attestationPattern.test(tagName)
+  );
+}
+
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -35,6 +52,12 @@ export default function TagsList(props: TagsProps) {
   const resetSelectedTags = useResetRecoilState(selectedTagsState);
   const searchFilter = useRecoilValue(searchTagsFilterState);
   const resetSearch = useResetRecoilState(searchTagsState);
+  const showSignatures = useRecoilValue(showSignaturesState);
+
+  // Filter out signature tags if showSignatures is false
+  const filteredTags = showSignatures
+    ? tags
+    : tags.filter((tag) => !isCosignSignatureTag(tag.name));
 
   // Use unified table hook for sorting, filtering, and pagination
   const {
@@ -42,7 +65,7 @@ export default function TagsList(props: TagsProps) {
     sortedData: sortedTags,
     getSortableSort,
     paginationProps,
-  } = usePaginatedSortableTable(tags, {
+  } = usePaginatedSortableTable(filteredTags, {
     columns: {
       2: (item: Tag) => item.name, // Tag Name
       4: (item: Tag) => item.size || 0, // Size
