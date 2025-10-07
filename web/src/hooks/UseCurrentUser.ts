@@ -27,8 +27,8 @@ export function useUpdateUser({onSuccess, onError}) {
       return updateUser(updateUserRequest);
     },
     {
-      onSuccess: () => {
-        onSuccess();
+      onSuccess: (updatedUser) => {
+        onSuccess(updatedUser);
         queryClient.invalidateQueries(['user']);
         queryClient.invalidateQueries(['organization']);
       },
