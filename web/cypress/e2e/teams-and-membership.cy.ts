@@ -248,4 +248,38 @@ describe('Teams and membership page', () => {
     cy.get(`[data-testid="edit-team-description-btn"]`).should('not.exist');
     cy.get(`[data-testid="${user}-delete-icon"]`).should('not.exist');
   });
+
+  it('Can click team name to navigate to team management page and edit description', () => {
+    const team = 'arsenal';
+    const newDescription = 'updated team description';
+    cy.visit('/organization/testorg?tab=Teamsandmembership');
+    cy.get('#Teams').click();
+
+    // Search for a single team
+    cy.get('#teams-view-search').type(`${team}`);
+    cy.contains('1 - 1 of 1');
+
+    // Click on team name to navigate to team management page
+    cy.contains('td', team).contains('a', team).click();
+    cy.url().should('include', `teams/${team}`);
+
+    // Verify team name is displayed
+    cy.get('[data-testid="teamname-title"]').contains(team).should('exist');
+
+    // Edit team description
+    cy.get('[data-testid="edit-team-description-btn"]').click();
+    cy.get('[data-testid="team-description-text-area"]').clear();
+    cy.get('[data-testid="team-description-text-area"]').type(newDescription);
+    cy.get('[data-testid="save-team-description-btn"]').click();
+
+    // verify success alert
+    cy.get('.pf-v5-c-alert.pf-m-success')
+      .contains(`Successfully updated team:${team} description`)
+      .should('exist');
+
+    // verify description is updated
+    cy.get('[data-testid="team-description-text"]')
+      .contains(newDescription)
+      .should('exist');
+  });
 });
