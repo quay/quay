@@ -32,6 +32,7 @@ ALTER TABLE IF EXISTS ONLY public.teammember DROP CONSTRAINT IF EXISTS fk_teamme
 ALTER TABLE IF EXISTS ONLY public.teammember DROP CONSTRAINT IF EXISTS fk_teammember_team_id_team;
 ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_role_id_teamrole;
 ALTER TABLE IF EXISTS ONLY public.team DROP CONSTRAINT IF EXISTS fk_team_organization_id_user;
+ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_tag_kind_id_tagkind;
 ALTER TABLE IF EXISTS ONLY public.tag DROP CONSTRAINT IF EXISTS fk_tag_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.tagnotificationsuccess DROP CONSTRAINT IF EXISTS fk_tag_notification_success_tag_id;
@@ -67,8 +68,6 @@ ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF E
 ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS fk_repositoryautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS fk_repositoryauthorizedemail_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS fk_repositoryactioncount_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_visibility_id_visibility;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_namespace_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_kind_id_repositorykind;
@@ -106,6 +105,7 @@ ALTER TABLE IF EXISTS ONLY public.namespaceautoprunepolicy DROP CONSTRAINT IF EX
 ALTER TABLE IF EXISTS ONLY public.messages DROP CONSTRAINT IF EXISTS fk_messages_media_type_id_mediatype;
 ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS fk_manifestsecuritystatus_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestsecuritystatus DROP CONSTRAINT IF EXISTS fk_manifestsecuritystatus_manifest_id_manifest;
+ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_manifest_id_manifest;
 ALTER TABLE IF EXISTS ONLY public.manifestlabel DROP CONSTRAINT IF EXISTS fk_manifestlabel_label_id_label;
@@ -12622,6 +12622,14 @@ ALTER TABLE ONLY public.manifestlabel
 
 
 --
+-- Name: manifestpullstatistics fk_manifestpullstatistics_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.manifestpullstatistics
+    ADD CONSTRAINT fk_manifestpullstatistics_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
 -- Name: manifestsecuritystatus fk_manifestsecuritystatus_manifest_id_manifest; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -12635,14 +12643,6 @@ ALTER TABLE ONLY public.manifestsecuritystatus
 
 ALTER TABLE ONLY public.manifestsecuritystatus
     ADD CONSTRAINT fk_manifestsecuritystatus_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
-
-
---
--- Name: manifestpullstatistics fk_manifestpullstatistics_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
---
-
-ALTER TABLE ONLY public.manifestpullstatistics
-    ADD CONSTRAINT fk_manifestpullstatistics_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
 
 
 --
@@ -13182,13 +13182,6 @@ ALTER TABLE ONLY public.tagnotificationsuccess
 
 
 --
--- Name: tagpullstatistics fk_tagpullstatistics_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
---
-
-ALTER TABLE ONLY public.tagpullstatistics
-    ADD CONSTRAINT fk_tagpullstatistics_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
-
---
 -- Name: tagnotificationsuccess fk_tag_notification_success_tag_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -13210,6 +13203,14 @@ ALTER TABLE ONLY public.tag
 
 ALTER TABLE ONLY public.tag
     ADD CONSTRAINT fk_tag_tag_kind_id_tagkind FOREIGN KEY (tag_kind_id) REFERENCES public.tagkind(id);
+
+
+--
+-- Name: tagpullstatistics fk_tagpullstatistics_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagpullstatistics
+    ADD CONSTRAINT fk_tagpullstatistics_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
 
 
 --
