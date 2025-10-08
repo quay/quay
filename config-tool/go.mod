@@ -2,7 +2,7 @@ module github.com/quay/quay/config-tool
 
 go 1.23.7
 
-toolchain go1.23.10
+toolchain go1.25.2
 
 require (
 	cuelang.org/go v0.6.0
