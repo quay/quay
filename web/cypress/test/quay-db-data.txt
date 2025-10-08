@@ -67,6 +67,8 @@ ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF E
 ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS fk_repositoryautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS fk_repositoryauthorizedemail_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS fk_repositoryactioncount_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
+ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_visibility_id_visibility;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_namespace_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_kind_id_repositorykind;
@@ -12636,6 +12638,14 @@ ALTER TABLE ONLY public.manifestsecuritystatus
 
 
 --
+-- Name: manifestpullstatistics fk_manifestpullstatistics_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.manifestpullstatistics
+    ADD CONSTRAINT fk_manifestpullstatistics_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
 -- Name: messages fk_messages_media_type_id_mediatype; Type: FK CONSTRAINT; Schema: public; Owner: quay
 --
 
@@ -13170,6 +13180,13 @@ ALTER TABLE ONLY public.tagnotificationsuccess
 ALTER TABLE ONLY public.tagnotificationsuccess
     ADD CONSTRAINT fk_tag_notification_success_notification_id FOREIGN KEY (notification_id) REFERENCES public.repositorynotification(id);
 
+
+--
+-- Name: tagpullstatistics fk_tagpullstatistics_repository_id_repository; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagpullstatistics
+    ADD CONSTRAINT fk_tagpullstatistics_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
 
 --
 -- Name: tagnotificationsuccess fk_tag_notification_success_tag_id; Type: FK CONSTRAINT; Schema: public; Owner: quay
