@@ -67,8 +67,6 @@ ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF E
 ALTER TABLE IF EXISTS ONLY public.repositoryautoprunepolicy DROP CONSTRAINT IF EXISTS fk_repositoryautoprunepolicy_namespace_id_user;
 ALTER TABLE IF EXISTS ONLY public.repositoryauthorizedemail DROP CONSTRAINT IF EXISTS fk_repositoryauthorizedemail_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXISTS fk_repositoryactioncount_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.tagpullstatistics DROP CONSTRAINT IF EXISTS fk_tagpullstatistics_repository_id_repository;
-ALTER TABLE IF EXISTS ONLY public.manifestpullstatistics DROP CONSTRAINT IF EXISTS fk_manifestpullstatistics_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_visibility_id_visibility;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_namespace_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS fk_repository_kind_id_repositorykind;
@@ -190,6 +188,7 @@ DROP INDEX IF EXISTS public.team_name;
 DROP INDEX IF EXISTS public.tagtorepositorytag_tag_id;
 DROP INDEX IF EXISTS public.tagtorepositorytag_repository_tag_id;
 DROP INDEX IF EXISTS public.tagtorepositorytag_repository_id;
+DROP INDEX IF EXISTS public.tagpullstatistics_repository_id_tag_name;
 DROP INDEX IF EXISTS public.tagmanifesttomanifest_tag_manifest_id;
 DROP INDEX IF EXISTS public.tagmanifesttomanifest_manifest_id;
 DROP INDEX IF EXISTS public.tagmanifesttomanifest_broken;
@@ -359,6 +358,7 @@ DROP INDEX IF EXISTS public.manifestsecuritystatus_last_indexed;
 DROP INDEX IF EXISTS public.manifestsecuritystatus_indexer_version;
 DROP INDEX IF EXISTS public.manifestsecuritystatus_indexer_hash;
 DROP INDEX IF EXISTS public.manifestsecuritystatus_index_status;
+DROP INDEX IF EXISTS public.manifestpullstatistics_repository_id_manifest_digest;
 DROP INDEX IF EXISTS public.manifestlegacyimage_repository_id;
 DROP INDEX IF EXISTS public.manifestlegacyimage_manifest_id;
 DROP INDEX IF EXISTS public.manifestlegacyimage_image_id;
@@ -623,6 +623,7 @@ ALTER TABLE IF EXISTS public.teammemberinvite ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.teammember ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.team ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagtorepositorytag ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.tagpullstatistics ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagnotificationsuccess ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifesttomanifest ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.tagmanifestlabelmap ALTER COLUMN id DROP DEFAULT;
@@ -674,6 +675,7 @@ ALTER TABLE IF EXISTS public.namespaceautoprunepolicy ALTER COLUMN id DROP DEFAU
 ALTER TABLE IF EXISTS public.messages ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.mediatype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestsecuritystatus ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.manifestpullstatistics ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestlegacyimage ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestlabel ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.manifestchild ALTER COLUMN id DROP DEFAULT;
@@ -744,6 +746,8 @@ DROP SEQUENCE IF EXISTS public.team_id_seq;
 DROP TABLE IF EXISTS public.team;
 DROP SEQUENCE IF EXISTS public.tagtorepositorytag_id_seq;
 DROP TABLE IF EXISTS public.tagtorepositorytag;
+DROP SEQUENCE IF EXISTS public.tagpullstatistics_id_seq;
+DROP TABLE IF EXISTS public.tagpullstatistics;
 DROP SEQUENCE IF EXISTS public.tagnotificationsuccess_id_seq;
 DROP TABLE IF EXISTS public.tagnotificationsuccess;
 DROP SEQUENCE IF EXISTS public.tagmanifesttomanifest_id_seq;
@@ -846,6 +850,8 @@ DROP SEQUENCE IF EXISTS public.mediatype_id_seq;
 DROP TABLE IF EXISTS public.mediatype;
 DROP SEQUENCE IF EXISTS public.manifestsecuritystatus_id_seq;
 DROP TABLE IF EXISTS public.manifestsecuritystatus;
+DROP SEQUENCE IF EXISTS public.manifestpullstatistics_id_seq;
+DROP TABLE IF EXISTS public.manifestpullstatistics;
 DROP SEQUENCE IF EXISTS public.manifestlegacyimage_id_seq;
 DROP TABLE IF EXISTS public.manifestlegacyimage;
 DROP SEQUENCE IF EXISTS public.manifestlabel_id_seq;
@@ -2515,6 +2521,43 @@ ALTER TABLE public.manifestlegacyimage_id_seq OWNER TO quay;
 --
 
 ALTER SEQUENCE public.manifestlegacyimage_id_seq OWNED BY public.manifestlegacyimage.id;
+
+
+--
+-- Name: manifestpullstatistics; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.manifestpullstatistics (
+    id integer NOT NULL,
+    repository_id integer NOT NULL,
+    manifest_digest character varying(255) NOT NULL,
+    manifest_pull_count bigint NOT NULL,
+    last_manifest_pull_date timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.manifestpullstatistics OWNER TO quay;
+
+--
+-- Name: manifestpullstatistics_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.manifestpullstatistics_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.manifestpullstatistics_id_seq OWNER TO quay;
+
+--
+-- Name: manifestpullstatistics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.manifestpullstatistics_id_seq OWNED BY public.manifestpullstatistics.id;
 
 
 --
@@ -4456,6 +4499,44 @@ ALTER SEQUENCE public.tagnotificationsuccess_id_seq OWNED BY public.tagnotificat
 
 
 --
+-- Name: tagpullstatistics; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.tagpullstatistics (
+    id integer NOT NULL,
+    repository_id integer NOT NULL,
+    tag_name character varying(255) NOT NULL,
+    tag_pull_count bigint NOT NULL,
+    last_tag_pull_date timestamp without time zone NOT NULL,
+    current_manifest_digest character varying(255)
+);
+
+
+ALTER TABLE public.tagpullstatistics OWNER TO quay;
+
+--
+-- Name: tagpullstatistics_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.tagpullstatistics_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.tagpullstatistics_id_seq OWNER TO quay;
+
+--
+-- Name: tagpullstatistics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.tagpullstatistics_id_seq OWNED BY public.tagpullstatistics.id;
+
+
+--
 -- Name: tagtorepositorytag; Type: TABLE; Schema: public; Owner: quay
 --
 
@@ -5267,6 +5348,13 @@ ALTER TABLE ONLY public.manifestlegacyimage ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: manifestpullstatistics id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.manifestpullstatistics ALTER COLUMN id SET DEFAULT nextval('public.manifestpullstatistics_id_seq'::regclass);
+
+
+--
 -- Name: manifestsecuritystatus id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5621,6 +5709,13 @@ ALTER TABLE ONLY public.tagmanifesttomanifest ALTER COLUMN id SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.tagnotificationsuccess ALTER COLUMN id SET DEFAULT nextval('public.tagnotificationsuccess_id_seq'::regclass);
+
+
+--
+-- Name: tagpullstatistics id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.tagpullstatistics ALTER COLUMN id SET DEFAULT nextval('public.tagpullstatistics_id_seq'::regclass);
 
 
 --
@@ -6534,6 +6629,14 @@ COPY public.manifestlabel (id, repository_id, manifest_id, label_id) FROM stdin;
 --
 
 COPY public.manifestlegacyimage (id, repository_id, manifest_id, image_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: manifestpullstatistics; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.manifestpullstatistics (id, repository_id, manifest_digest, manifest_pull_count, last_manifest_pull_date) FROM stdin;
 \.
 
 
@@ -7816,6 +7919,14 @@ COPY public.tagnotificationsuccess (id, notification_id, tag_id, method_id) FROM
 
 
 --
+-- Data for Name: tagpullstatistics; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.tagpullstatistics (id, repository_id, tag_name, tag_pull_count, last_tag_pull_date, current_manifest_digest) FROM stdin;
+\.
+
+
+--
 -- Data for Name: tagtorepositorytag; Type: TABLE DATA; Schema: public; Owner: quay
 --
 
@@ -8352,6 +8463,13 @@ SELECT pg_catalog.setval('public.manifestlegacyimage_id_seq', 1, false);
 
 
 --
+-- Name: manifestpullstatistics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.manifestpullstatistics_id_seq', 1, false);
+
+
+--
 -- Name: manifestsecuritystatus_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
@@ -8706,6 +8824,13 @@ SELECT pg_catalog.setval('public.tagmanifesttomanifest_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.tagnotificationsuccess_id_seq', 1, false);
+
+
+--
+-- Name: tagpullstatistics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.tagpullstatistics_id_seq', 1, false);
 
 
 --
@@ -10665,6 +10790,13 @@ CREATE INDEX manifestlegacyimage_repository_id ON public.manifestlegacyimage USI
 
 
 --
+-- Name: manifestpullstatistics_repository_id_manifest_digest; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX manifestpullstatistics_repository_id_manifest_digest ON public.manifestpullstatistics USING btree (repository_id, manifest_digest);
+
+
+--
 -- Name: manifestsecuritystatus_index_status; Type: INDEX; Schema: public; Owner: quay
 --
 
@@ -11845,6 +11977,13 @@ CREATE INDEX tagmanifesttomanifest_manifest_id ON public.tagmanifesttomanifest U
 --
 
 CREATE UNIQUE INDEX tagmanifesttomanifest_tag_manifest_id ON public.tagmanifesttomanifest USING btree (tag_manifest_id);
+
+
+--
+-- Name: tagpullstatistics_repository_id_tag_name; Type: INDEX; Schema: public; Owner: quay
+--
+
+CREATE UNIQUE INDEX tagpullstatistics_repository_id_tag_name ON public.tagpullstatistics USING btree (repository_id, tag_name);
 
 
 --
