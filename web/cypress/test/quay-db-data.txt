@@ -6823,8 +6823,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2025-06-12 15:21:52.763851	t	2025-06-12 18:16:52.746494	5	a215428c-3447-421d-8e7a-ebda81380dfb
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2025-06-12 15:21:57.782723	t	2025-06-12 18:16:57.767285	5	1e4cfcd4-e84b-4e71-88f3-514fa201ef9c
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2025-10-08 17:46:10.264947	t	2025-10-08 20:41:10.245386	5	a9e6a4f6-9a5c-4d89-b3cf-a740fad31398
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2025-10-08 17:46:15.282786	t	2025-10-08 20:41:15.275493	5	3c19dfc7-a85a-414e-a7aa-0974b206b652
 \.
 
 
