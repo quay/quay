@@ -37,6 +37,7 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export function HeaderToolbar() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -47,6 +48,7 @@ export function HeaderToolbar() {
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
   const [err, setErr] = useState<string>();
+  const quayConfig = useQuayConfig();
 
   const onDropdownToggle = () => {
     setIsDropdownOpen((prev) => !prev);
@@ -215,7 +217,11 @@ export function HeaderToolbar() {
     />
   );
 
-  const signInButton = <Button> Sign In </Button>;
+  const signInButtonText = quayConfig?.config?.REGISTRY_TITLE_SHORT
+    ? `Sign in to ${quayConfig.config.REGISTRY_TITLE_SHORT}`
+    : 'Sign In';
+
+  const signInButton = <Button>{signInButtonText}</Button>;
 
   // Toggle between old UI and new UI
   const [isChecked, setIsChecked] = React.useState<boolean>(true);
