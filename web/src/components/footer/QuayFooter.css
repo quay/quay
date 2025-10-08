@@ -1,0 +1,20 @@
+.quay-footer {
+  border-top: 1px solid var(--pf-v5-global--BorderColor--100);
+  padding: var(--pf-v5-global--spacer--md) var(--pf-v5-global--spacer--lg);
+  font-size: var(--pf-v5-global--FontSize--sm);
+  margin-top: auto;
+}
+
+.quay-footer-version {
+  color: var(--pf-v5-global--Color--200);
+}
+
+.quay-footer-link {
+  color: var(--pf-v5-global--link--Color);
+  text-decoration: none;
+}
+
+.quay-footer-link:hover {
+  color: var(--pf-v5-global--link--Color--hover);
+  text-decoration: underline;
+}

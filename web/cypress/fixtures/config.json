@@ -150,5 +150,6 @@
       "GITLAB_ENDPOINT": "https://gitlab.com/"
     }
   },
-  "registry_state": "normal"
+  "registry_state": "normal",
+  "version": "Quay 3.15.3"
 }
