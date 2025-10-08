@@ -206,7 +206,11 @@ class Proxy:
 
         # ignore fetching a token when validating proxy cache config to allow anonymous pulls from registries,
         # since the repo name is not known during the initial proxy configuration
-        if (resp.status_code == 401 or resp.status_code == 403) and auth is None and self._repo is None:
+        if (
+            (resp.status_code == 401 or resp.status_code == 403)
+            and auth is None
+            and self._repo is None
+        ):
             return
 
         if not resp.ok:
