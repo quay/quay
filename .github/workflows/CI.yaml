@@ -264,15 +264,18 @@ jobs:
 
     - name: Create report
       run: |
-        mkdir -p .logs/
-        docker logs quay-quay >.logs/quay.log 2>&1 || true
+        mkdir -p logs/
+        docker ps -a >logs/container-status.txt 2>&1 || true
+        docker logs quay-quay >logs/quay.log 2>&1 || true
+        docker logs quay-db >logs/quay-db.log 2>&1 || true
+        docker logs quay-redis >logs/redis.log 2>&1 || true
       if: always()
 
     - name: Upload Quay logs
       uses: actions/upload-artifact@v4
       with:
         name: logs
-        path: .logs/
+        path: logs/
       if: always()
 
   frontend-plugin:
