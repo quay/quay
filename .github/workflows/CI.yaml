@@ -229,14 +229,22 @@ jobs:
     - name: Integration Test
       run:  |
         docker restart quay-quay
-        sleep 60
+        sleep 30
+        echo "Waiting for Quay to respond to HTTP requests..."
+        timeout 300 bash -c 'until curl -f -s http://localhost:8080/health/endtoend >/dev/null 2>&1; do echo "Waiting for Quay health check..."; sleep 5; done' || echo "Health check endpoint not available, trying basic connectivity..."
+        timeout 300 bash -c 'until curl -f -s -I http://localhost:8080/ >/dev/null 2>&1; do echo "Waiting for Quay basic connectivity..."; sleep 5; done'
+        echo "Quay is responding, running integration tests..."
         make integration-test
 
     - name: Apply extra config options
       run:  |
         cat web/cypress/test/extra-config.yaml >> local-dev/stack/config.yaml
         docker restart quay-quay
-        sleep 60
+        sleep 30
+        echo "Waiting for Quay to respond after config changes..."
+        timeout 300 bash -c 'until curl -f -s http://localhost:8080/health/endtoend >/dev/null 2>&1; do echo "Waiting for Quay health check..."; sleep 5; done' || echo "Health check endpoint not available, trying basic connectivity..."
+        timeout 300 bash -c 'until curl -f -s -I http://localhost:8080/ >/dev/null 2>&1; do echo "Waiting for Quay basic connectivity..."; sleep 5; done'
+        echo "Quay is responding after config changes..."
 
     - name: Cypress run
       uses: cypress-io/github-action@v5
