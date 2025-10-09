@@ -229,14 +229,14 @@ jobs:
     - name: Integration Test
       run:  |
         docker restart quay-quay
-        sleep 30
+        sleep 60
         make integration-test
 
     - name: Apply extra config options
       run:  |
         cat web/cypress/test/extra-config.yaml >> local-dev/stack/config.yaml
         docker restart quay-quay
-        sleep 30
+        sleep 60
 
     - name: Cypress run
       uses: cypress-io/github-action@v5
