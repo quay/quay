@@ -185,12 +185,13 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 		awsConfig := &aws.Config{}
-		if len(args.Host) != 0 {
-			stsEndpoint := args.Host
-			awsConfig.Endpoint = aws.String(stsEndpoint)
-		}
-		if !args.IsSecure {
-			awsConfig.DisableSSL = aws.Bool(true)
+		var stsEndpointIsSecure bool = true
+		if len(args.EndpointURL) != 0 {
+			awsConfig.Endpoint = aws.String(args.EndpointURL)
+			if len(args.EndpointURL) >= 7 && args.EndpointURL[:7] == "http://" {
+				stsEndpointIsSecure = false
+				awsConfig.DisableSSL = aws.Bool(true)
+			}
 		}
 
 		var credentials *sts.Credentials
@@ -248,16 +249,18 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey := *credentials.SecretAccessKey
 		token = *credentials.SessionToken
 		bucketName = args.S3Bucket
-		isSecure = args.IsSecure
 
-		if len(args.Host) == 0 {
+		if len(args.EndpointURL) == 0 {
 			endpoint = "s3.amazonaws.com"
 			isSecure = true
 		} else {
-			endpoint = args.Host
-		}
-		if args.Port != 0 {
-			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
+			endpoint = args.EndpointURL
+			isSecure = stsEndpointIsSecure
+			if len(endpoint) >= 8 && endpoint[:8] == "https://" {
+				endpoint = endpoint[8:]
+			} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
+				endpoint = endpoint[7:]
+			}
 		}
 
 		if len(errors) > 0 {
