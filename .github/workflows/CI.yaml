@@ -265,7 +265,8 @@ jobs:
     - name: Create report
       run: |
         mkdir -p .logs/
-        docker logs quay-quay >.logs/quay.log 2>&1 || true
+        docker compose logs --no-color >.logs/compose.log 2>&1 || true
+        docker compose ps -a >.logs/container-status.txt 2>&1 || true
       if: always()
 
     - name: Upload Quay logs
