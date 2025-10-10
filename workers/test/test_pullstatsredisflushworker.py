@@ -76,13 +76,16 @@ def test_initialize_redis_client_connection_failure():
             "REDIS_CONNECTION_TIMEOUT": 5,
         }.get(key, default)
 
+        import redis
+
         from workers.pullstatsredisflushworker import RedisFlushWorker
 
         with patch("workers.pullstatsredisflushworker.redis") as mock_redis_module:
             # Mock Redis client that fails on ping with ConnectionError
             mock_client = MagicMock()
-            mock_client.ping.side_effect = Exception("Connection failed")
+            mock_client.ping.side_effect = redis.ConnectionError("Connection failed")
             mock_redis_module.StrictRedis.return_value = mock_client
+            mock_redis_module.ConnectionError = redis.ConnectionError
 
             # Test
             worker = RedisFlushWorker()
