@@ -71,7 +71,6 @@ from endpoints.decorators import (
 )
 from endpoints.exception import (
     DownstreamIssue,
-    Forbidden,
     InvalidRequest,
     InvalidToken,
     NotFound,

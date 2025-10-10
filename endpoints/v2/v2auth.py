@@ -12,18 +12,20 @@ from auth.decorators import process_basic_auth
 from auth.permissions import (
     AdministerRepositoryPermission,
     CreateRepositoryPermission,
-    GlobalReadOnlySuperUserPermission,
     ModifyRepositoryPermission,
     OrganizationMemberPermission,
     ReadRepositoryPermission,
-    SuperUserPermission,
 )
 from data import model
 from data.database import RepositoryState
 from data.model.repo_mirror import get_mirroring_robot
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from endpoints.api import log_action
+from endpoints.api import (
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
+    log_action,
+)
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (
@@ -262,9 +264,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             # Lookup the repository. If it exists, make sure the entity has modify
             # permission. Otherwise, make sure the entity has create permission.
             if repository_ref:
-                if ModifyRepositoryPermission(namespace, reponame).can() or (
-                    features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
-                ):
+                if ModifyRepositoryPermission(namespace, reponame).can() or allow_if_superuser():
                     if repository_ref is not None and repository_ref.kind != "image":
                         raise Unsupported(message=invalid_repo_message)
 
@@ -372,7 +372,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             ReadRepositoryPermission(namespace, reponame).can()
             or can_pullthru
             or repo_is_public
-            or GlobalReadOnlySuperUserPermission().can()
+            or allow_if_global_readonly_superuser()
         ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
@@ -383,9 +383,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     if "*" in requested_actions:
         # Grant * user is admin
-        if AdministerRepositoryPermission(namespace, reponame).can() or (
-            features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can()
-        ):
+        if AdministerRepositoryPermission(namespace, reponame).can() or allow_if_superuser():
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 

@@ -143,14 +143,3 @@ class NotFound(ApiException):
 class DownstreamIssue(ApiException):
     def __init__(self, error_description, payload=None):
         ApiException.__init__(self, ApiErrorType.downstream_issue, 520, error_description, payload)
-
-
-class Forbidden(ApiException):
-    """
-    Explicit 403 error with a caller-specified message, using insufficient_scope error type.
-    """
-
-    def __init__(self, error_description, payload=None):
-        ApiException.__init__(
-            self, ApiErrorType.insufficient_scope, 403, error_description, payload
-        )
