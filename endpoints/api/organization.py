@@ -88,11 +88,11 @@ def team_view(orgname, team):
 def org_view(o, teams):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
-    is_global_readonly = GlobalReadOnlySuperUserPermission().can()
+    is_any_superuser = allow_if_any_superuser()
 
     view = {
         "name": o.username,
-        "email": o.email if is_admin or is_global_readonly else "",
+        "email": o.email if is_admin or is_any_superuser else "",
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
@@ -154,11 +154,13 @@ class OrganizationList(ApiResource):
         """
         Create a new organization.
         """
-        # Block global readonly superusers from creating organizations
-        if allow_if_global_readonly_superuser():
-            raise request_error(message="Global readonly users cannot create organizations")
-
-        if features.SUPERUSERS_ORG_CREATION_ONLY and not SuperUserPermission().can():
+        # Global readonly superusers cannot perform write operations
+        # When SUPERUSERS_ORG_CREATION_ONLY is enabled, only regular superusers can create orgs
+        # When disabled, regular users can create orgs, but global readonly superusers cannot
+        if features.SUPERUSERS_ORG_CREATION_ONLY:
+            if not allow_if_superuser():
+                raise Unauthorized()
+        elif allow_if_global_readonly_superuser():
             raise Unauthorized()
 
         user = get_authenticated_user()
@@ -260,7 +262,7 @@ class Organization(ApiResource):
             raise NotFound()
 
         teams = None
-        if OrganizationMemberPermission(orgname).can() or GlobalReadOnlySuperUserPermission().can():
+        if OrganizationMemberPermission(orgname).can() or allow_if_any_superuser():
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 

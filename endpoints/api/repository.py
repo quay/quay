@@ -133,9 +133,9 @@ class RepositoryList(ApiResource):
         """
         Create a new repository.
         """
-        # Block global readonly superusers from creating repositories
+        # Global readonly superusers cannot perform write operations
         if allow_if_global_readonly_superuser():
-            raise request_error(message="Global readonly users cannot create repositories")
+            raise Unauthorized()
 
         owner = get_authenticated_user()
         req = request.get_json()

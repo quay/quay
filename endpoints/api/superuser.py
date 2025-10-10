@@ -77,6 +77,7 @@ def get_services():
 
 
 @resource("/v1/superuser/aggregatelogs")
+@internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserAggregateLogs(ApiResource):
     """

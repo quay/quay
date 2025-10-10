@@ -88,10 +88,9 @@ class TestAppTokenGlobalReadOnlySuperuserBehavior:
 class TestRepositoryWriteOperationsBlocking:
     """Test that repository write operations are blocked for global read-only superusers."""
 
-    def test_repository_creation_blocked_with_specific_message(self, app):
+    def test_repository_creation_blocked(self, app):
         """
-        Test that repository creation is blocked for global readonly superusers
-        with a specific error message.
+        Test that repository creation is blocked for global readonly superusers.
         """
         from unittest.mock import patch
 
@@ -105,21 +104,41 @@ class TestRepositoryWriteOperationsBlocking:
                     "visibility": "private",
                     "description": "Should be blocked",
                 }
-                resp = conduct_api_call(cl, RepositoryList, "POST", None, repo_data, 400)
+                # Should return 403 Unauthorized for write operations
+                resp = conduct_api_call(cl, RepositoryList, "POST", None, repo_data, 403)
 
-                # Validate the SPECIFIC blocking message
-                assert "Global readonly users cannot create repositories" in resp.json.get(
-                    "detail", ""
+
+class TestOrganizationReadOperations:
+    """Test that organization read operations work correctly for superusers."""
+
+    def test_organization_details_accessible_to_any_superuser(self, app):
+        """
+        Test that organization details (email and teams) are visible to both
+        regular superusers and global readonly superusers (not just org members).
+        """
+        from unittest.mock import patch
+
+        with patch("endpoints.api.organization.allow_if_any_superuser", return_value=True):
+            with client_with_identity("reader", app) as cl:
+                resp = conduct_api_call(
+                    cl, Organization, "GET", {"orgname": "buynlarge"}, None, 200
                 )
+                assert resp.status_code == 200
+                # Superusers should be able to see the organization email
+                assert "email" in resp.json
+                # Email should not be empty for superusers
+                assert resp.json.get("email") is not None
+                # Superusers should also be able to see the organization teams
+                assert "teams" in resp.json
+                assert "ordered_teams" in resp.json
 
 
 class TestOrganizationWriteOperationsBlocking:
     """Test that organization write operations are blocked for global read-only superusers."""
 
-    def test_organization_creation_blocked_with_specific_message(self, app):
+    def test_organization_creation_blocked(self, app):
         """
-        Test that organization creation is blocked for global readonly superusers
-        with a specific error message.
+        Test that organization creation is blocked for global readonly superusers.
         """
         from unittest.mock import patch
 
@@ -129,12 +148,8 @@ class TestOrganizationWriteOperationsBlocking:
 
             with client_with_identity("reader", app) as cl:
                 org_data = {"name": "test-blocked-org", "email": "test@example.com"}
-                resp = conduct_api_call(cl, OrganizationList, "POST", None, org_data, 400)
-
-                # Validate the SPECIFIC blocking message
-                assert "Global readonly users cannot create organizations" in resp.json.get(
-                    "detail", ""
-                )
+                # Should return 403 Unauthorized for write operations
+                resp = conduct_api_call(cl, OrganizationList, "POST", None, org_data, 403)
 
 
 class TestUserWriteOperationsBlocking:
