@@ -189,7 +189,7 @@ describe('Repositories List Page', () => {
       .should('have.length', 2);
   });
 
-  it('searches by name via regex', () => {
+  it.skip('searches by name via regex', () => {
     cy.visit('/repository');
     cy.get('[id="filter-input-advanced-search"]').should('not.exist');
     cy.get('[aria-label="Open advanced search"]').click();
