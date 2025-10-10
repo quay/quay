@@ -194,6 +194,8 @@ EXTENDED_REPOSITORY_NAMES: FeatureNameValue
 QUOTA_MANAGEMENT: FeatureNameValue
 EDIT_QUOTA: FeatureNameValue
 
+IMAGE_PULL_STATS: FeatureNameValue
+
 QUOTA_SUPPRESS_FAILURES: FeatureNameValue
 
 HELM_OCI_SUPPORT: FeatureNameValue
