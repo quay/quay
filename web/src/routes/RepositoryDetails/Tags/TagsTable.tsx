@@ -5,6 +5,7 @@ import {
   Thead,
   Tr,
   Th,
+  ThProps,
   Tbody,
   Td,
 } from '@patternfly/react-table';
@@ -251,13 +252,23 @@ export default function TagsTable(props: TableProps) {
           <Tr>
             <Th />
             <Th />
-            <Th>Tag</Th>
-            <Th>Security</Th>
-            <Th>Size</Th>
-            <Th>Last Modified</Th>
-            <Th>Expires</Th>
-            <Th>Manifest</Th>
-            <Th>Pull</Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(2)}>
+              Tag
+            </Th>
+            <Th modifier="wrap">Security</Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(4)}>
+              Size
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(5)}>
+              Last Modified
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
+              Expires
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
+              Manifest
+            </Th>
+            <Th modifier="wrap">Pull</Th>
             <Th />
           </Tr>
         </Thead>
@@ -296,6 +307,7 @@ interface TableProps {
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
+  getSortableSort?: (columnIndex: number) => ThProps['sort'];
 }
 
 interface RowProps {
