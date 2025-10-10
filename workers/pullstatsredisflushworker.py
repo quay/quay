@@ -84,7 +84,7 @@ class RedisFlushWorker(Worker):
             logger.error(f"RedisFlushWorker: Redis initialization error: {e}")
             self.redis_client = None
         except Exception as e:
-            logger.error(f"RedisFlushWorker: Unexpected error during Redis initialization: {e}")
+            logger.error(f"RedisFlushWorker: Failed to initialize Redis client: {e}")
             self.redis_client = None
 
     def _flush_pull_metrics(self):
@@ -140,14 +140,10 @@ class RedisFlushWorker(Worker):
                     f"RedisFlushWorker: Database flush failed, keeping {len(database_dependent_keys)} keys for retry"
                 )
 
-        except redis.ConnectionError as e:
-            logger.warning(
-                f"RedisFlushWorker: Redis connection lost during pull metrics flush (will retry): {e}"
-            )
         except redis.RedisError as e:
             logger.error(f"RedisFlushWorker: Redis error during pull metrics flush: {e}")
         except Exception as e:
-            logger.error(f"RedisFlushWorker: Unexpected error during pull metrics flush: {e}")
+            logger.error(f"RedisFlushWorker: Error during pull metrics flush: {e}")
 
     def _scan_redis_keys(self, pattern: str, limit: int) -> List[str]:
         """
@@ -183,16 +179,11 @@ class RedisFlushWorker(Worker):
             keys_list = list(keys_set)
             return keys_list[:limit]  # Ensure we don't exceed the limit
 
-        except redis.ConnectionError as e:
-            logger.warning(
-                f"RedisFlushWorker: Redis connection lost during key scan (will retry): {e}"
-            )
-            return []
         except redis.RedisError as e:
             logger.error(f"RedisFlushWorker: Redis error during key scan: {e}")
             return []
         except Exception as e:
-            logger.error(f"RedisFlushWorker: Unexpected error scanning Redis keys: {e}")
+            logger.error(f"RedisFlushWorker: Error scanning Redis keys: {e}")
             return []
 
     def _process_redis_events(
@@ -276,16 +267,11 @@ class RedisFlushWorker(Worker):
                 # ToDo: add exception handling after database write implementation
                 database_dependent_keys.add(key)
 
-            except redis.ConnectionError as e:
-                logger.warning(
-                    f"RedisFlushWorker: Redis connection lost processing key {key} (will retry): {e}"
-                )
-                continue
             except redis.RedisError as e:
                 logger.error(f"RedisFlushWorker: Redis error processing key {key}: {e}")
                 continue
             except Exception as e:
-                logger.error(f"RedisFlushWorker: Unexpected error processing key {key}: {e}")
+                logger.error(f"RedisFlushWorker: Error processing key {key}: {e}")
                 continue
 
         return tag_updates, manifest_updates, cleanable_keys, database_dependent_keys
@@ -373,14 +359,10 @@ class RedisFlushWorker(Worker):
                     f"RedisFlushWorker: Failed to delete {len(failed_deletions)} Redis keys - they may be retried later"
                 )
 
-        except redis.ConnectionError as e:
-            logger.warning(
-                f"RedisFlushWorker: Redis connection lost during key cleanup (will retry later): {e}"
-            )
         except redis.RedisError as e:
             logger.error(f"RedisFlushWorker: Redis error during key cleanup: {e}")
         except Exception as e:
-            logger.error(f"RedisFlushWorker: Unexpected error cleaning up Redis keys: {e}")
+            logger.error(f"RedisFlushWorker: Error cleaning up Redis keys: {e}")
 
     def _validate_redis_key_data(self, key: str, metrics_data: Dict) -> bool:
         """
