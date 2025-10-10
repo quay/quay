@@ -34,11 +34,7 @@ from auth.permissions import (
 )
 from data import model
 from data.billing import get_plan
-from data.database import Repository
-from data.database import Repository as RepositoryTable
-from data.database import RepositoryKind, RepositoryState, Star
-from data.database import User as DBUser
-from data.database import Visibility
+from data.database import Repository, RepositoryKind, RepositoryState, Star, Visibility
 from data.model.notification import delete_notifications_by_kind
 from data.model.oauth import get_assigned_authorization_for_user
 from data.users.shared import can_create_user
@@ -1363,16 +1359,16 @@ class StarredRepositoryList(ApiResource):
             # For now, return all starred repositories by getting them differently
             # This ensures the endpoint works for global readonly superusers
             try:
-                repo_kind = RepositoryTable.kind.get_id("image")
+                repo_kind = Repository.kind.get_id("image")
             except RepositoryKind.DoesNotExist:
                 raise request_error(message="Unknown kind of repository")
 
             # Get all starred repositories across all users
             starred_repos_query = (
-                RepositoryTable.select()
+                Repository.select()
                 .join(Star)
-                .where(RepositoryTable.kind == repo_kind)
-                .where(RepositoryTable.state != RepositoryState.MARKED_FOR_DELETION)
+                .where(Repository.kind == repo_kind)
+                .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
                 .distinct()
             )
 
@@ -1383,7 +1379,7 @@ class StarredRepositoryList(ApiResource):
             repo_query = model.repository.get_user_starred_repositories(user)
 
         repos, next_page_token = model.modelutil.paginate(
-            repo_query, RepositoryTable, page_token=page_token, limit=REPOS_PER_PAGE
+            repo_query, Repository, page_token=page_token, limit=REPOS_PER_PAGE
         )
 
         def repo_view(repo_obj):
