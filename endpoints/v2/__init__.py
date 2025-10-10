@@ -180,7 +180,11 @@ def oci_tag_paginate(
 
 
 def _require_repo_permission(permission_class, scopes=None, allow_public=False):
-    def _require_permission(allow_for_superuser=False, disallow_for_restricted_users=False):
+    def _require_permission(
+        allow_for_superuser=False,
+        allow_for_global_readonly_superuser=False,
+        disallow_for_restricted_users=False,
+    ):
         def wrapper(func):
             @wraps(func)
             def wrapped(namespace_name, repo_name, *args, **kwargs):
@@ -229,6 +233,11 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
                 # Superusers' extra permissions
                 if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
                     if SuperUserPermission().can():
+                        return func(namespace_name, repo_name, *args, **kwargs)
+
+                # Global readonly superusers' read-only permissions
+                if allow_for_global_readonly_superuser:
+                    if GlobalReadOnlySuperUserPermission().can():
                         return func(namespace_name, repo_name, *args, **kwargs)
 
                 repository = namespace_name + "/" + repo_name

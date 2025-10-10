@@ -79,6 +79,7 @@ from endpoints.exception import (
     InvalidRequest,
     InvalidToken,
     NotFound,
+    Unauthorized,
 )
 from oauth.oidc import DiscoveryFailureException
 from oauth.pkce import code_challenge, generate_code_verifier
@@ -410,9 +411,9 @@ class User(ApiResource):
         """
         Update a users details such as password or email.
         """
-        # Global readonly superusers should not be able to modify user details
+        # Global readonly superusers cannot perform write operations
         if allow_if_global_readonly_superuser():
-            raise Forbidden("Global readonly users cannot modify user details")
+            raise Unauthorized()
 
         user = get_authenticated_user()
         user_data = request.get_json()
@@ -1047,9 +1048,9 @@ class DetachExternal(ApiResource):
         """
         Request that the current user be detached from the external login service.
         """
-        # Global readonly superusers should not be able to detach external logins
+        # Global readonly superusers cannot perform write operations
         if allow_if_global_readonly_superuser():
-            raise Forbidden("Global readonly users cannot detach external logins")
+            raise Unauthorized()
 
         model.user.detach_external_login(get_authenticated_user(), service_id)
         return {"success": True}
