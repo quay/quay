@@ -6,9 +6,13 @@ on:
     branches:
     - "!dependabot/*"
     - "*"
+    paths-ignore:
+    - "web/**"
   pull_request:
     branches:
     - "*"
+    paths-ignore:
+    - "web/**"
 jobs:
   build:
     name: Format
@@ -187,110 +191,6 @@ jobs:
     - name: tox
       run: |
         tox -e py312-registry
-
-  cypress:
-    name: Cypress Tests
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Docker Build
-      env:
-       DOCKER_BUILDKIT: 1
-      run: docker build -t localhost/quay-local:latest .
-
-    - name: Start Quay
-      run: |
-        docker compose up -d redis quay-db
-        docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-        DOCKER_USER="1001:0" docker compose up -d --no-build quay
-
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Seed Database
-      run: cd web && npm run quay:seed
-
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest requests
-
-    - name: Integration Test
-      run:  |
-        docker restart quay-quay
-        sleep 30
-        make integration-test
-
-    - name: Apply extra config options
-      run:  |
-        cat web/cypress/test/extra-config.yaml >> local-dev/stack/config.yaml
-        docker restart quay-quay
-        sleep 30
-
-    - name: Cypress run
-      uses: cypress-io/github-action@v5
-      with:
-        browser: chrome
-        build: npm run build
-        start: npm run start:integration
-        wait-on: 'http://localhost:9000'
-        wait-on-timeout: 120
-        working-directory: web
-      env:
-        REACT_QUAY_APP_API_URL: http://localhost:8080
-
-    - uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: cypress-screenshots
-        path: web/cypress/screenshots
-
-    - uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: cypress-videos
-        path: web/cypress/videos
-
-    - name: Create report
-      run: |
-        mkdir -p logs/
-        docker ps -a >logs/container-status.txt 2>&1 || true
-        docker logs quay-quay >logs/quay.log 2>&1 || true
-        docker logs quay-db >logs/quay-db.log 2>&1 || true
-        docker logs quay-redis >logs/redis.log 2>&1 || true
-      if: always()
-
-    - name: Upload Quay logs
-      uses: actions/upload-artifact@v4
-      with:
-        name: logs
-        path: logs/
-      if: always()
-
-  frontend-plugin:
-    name:  Build Frontend Plugin
-    runs-on: ubuntu-22.04
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Install dependencies
-      run: cd web && npm install
-
-    - name: Build plugin
-      run: cd web && npm run build-plugin
-
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-22.04
