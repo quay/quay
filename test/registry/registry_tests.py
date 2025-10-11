@@ -2033,14 +2033,14 @@ def test_login(
             ],
             True,
         ),
-        # Multiple scopes.
+        # Multiple scopes - devtable is a superuser so gets push access to public/publicrepo
         (
             "devtable",
             "password",
             ["repository:devtable/simple:push,pull,*", "repository:public/publicrepo:push,pull"],
             [
                 {"type": "repository", "name": "devtable/simple", "actions": ["push", "pull", "*"]},
-                {"type": "repository", "name": "public/publicrepo", "actions": ["pull"]},
+                {"type": "repository", "name": "public/publicrepo", "actions": ["push", "pull"]},
             ],
             True,
         ),

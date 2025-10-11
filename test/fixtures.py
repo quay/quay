@@ -14,6 +14,9 @@ from mock import patch
 from peewee import InternalError, SqliteDatabase
 
 import features
+
+# Ensure application loads test configuration at import time
+os.environ.setdefault("TEST", "1")
 from app import app as application
 from auth.permissions import on_identity_loaded
 from data import model

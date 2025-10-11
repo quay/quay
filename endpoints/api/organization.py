@@ -17,6 +17,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     OrganizationMemberPermission,
     SuperUserPermission,
     ViewTeamPermission,
@@ -27,6 +28,7 @@ from data.database import ProxyCacheConfig
 from data.model import organization_skus
 from endpoints.api import (
     ApiResource,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     internal_only,
@@ -86,10 +88,11 @@ def team_view(orgname, team):
 def org_view(o, teams):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
+    is_any_superuser = allow_if_any_superuser()
 
     view = {
         "name": o.username,
-        "email": o.email if is_admin else "",
+        "email": o.email if is_admin or is_any_superuser else "",
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
@@ -151,7 +154,13 @@ class OrganizationList(ApiResource):
         """
         Create a new organization.
         """
-        if features.SUPERUSERS_ORG_CREATION_ONLY and not SuperUserPermission().can():
+        # Global readonly superusers cannot perform write operations
+        # When SUPERUSERS_ORG_CREATION_ONLY is enabled, only regular superusers can create orgs
+        # When disabled, regular users can create orgs, but global readonly superusers cannot
+        if features.SUPERUSERS_ORG_CREATION_ONLY:
+            if not allow_if_superuser():
+                raise Unauthorized()
+        elif allow_if_global_readonly_superuser():
             raise Unauthorized()
 
         user = get_authenticated_user()
@@ -253,7 +262,7 @@ class Organization(ApiResource):
             raise NotFound()
 
         teams = None
-        if OrganizationMemberPermission(orgname).can():
+        if OrganizationMemberPermission(orgname).can() or allow_if_any_superuser():
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 
@@ -431,11 +440,7 @@ class OrganizationCollaboratorList(ApiResource):
         List outside collaborators of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if (
-            not permission.can()
-            and not allow_if_superuser()
-            and not allow_if_global_readonly_superuser()
-        ):
+        if not permission.can() and not allow_if_any_superuser():
             raise Unauthorized()
 
         try:
@@ -483,7 +488,7 @@ class OrganizationMemberList(ApiResource):
         List the human members of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if permission.can() or allow_if_any_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -544,7 +549,7 @@ class OrganizationMember(ApiResource):
         Retrieves the details of a member of the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if permission.can() or allow_if_any_superuser():
             # Lookup the user.
             member = model.user.get_user(membername)
             if not member:
@@ -705,7 +710,7 @@ class OrganizationApplications(ApiResource):
         List the applications for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if permission.can() or allow_if_any_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -795,7 +800,7 @@ class OrganizationApplicationResource(ApiResource):
         Retrieves the application with the specified client_id under the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser() or allow_if_global_readonly_superuser():
+        if permission.can() or allow_if_any_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -943,11 +948,7 @@ class OrganizationProxyCacheConfig(ApiResource):
         Retrieves the proxy cache configuration of the organization.
         """
         permission = OrganizationMemberPermission(orgname)
-        if (
-            not permission.can()
-            and not allow_if_superuser()
-            and not allow_if_global_readonly_superuser()
-        ):
+        if not permission.can() and not allow_if_any_superuser():
             raise Unauthorized()
 
         try:

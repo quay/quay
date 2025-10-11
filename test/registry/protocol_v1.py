@@ -1,6 +1,9 @@
 import json
 from enum import Enum, unique
 from io import BytesIO
+from typing import Dict
+
+from digest.checksums import compute_simple, compute_tarsum
 from test.registry.protocols import (
     Failures,
     ProtocolOptions,
@@ -8,9 +11,6 @@ from test.registry.protocols import (
     PushResult,
     RegistryProtocol,
 )
-from typing import Dict
-
-from digest.checksums import compute_simple, compute_tarsum
 
 
 @unique
@@ -41,7 +41,7 @@ class V1Protocol(RegistryProtocol):
             Failures.NAMESPACE_DISABLED: 400,
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
-            Failures.MIRROR_MISCONFIGURED: 500,
+            Failures.MIRROR_MISCONFIGURED: 401,
             Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
@@ -58,7 +58,7 @@ class V1Protocol(RegistryProtocol):
             Failures.INVALID_IMAGES: 400,
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
-            Failures.MIRROR_MISCONFIGURED: 500,
+            Failures.MIRROR_MISCONFIGURED: 401,
             Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
@@ -69,7 +69,7 @@ class V1Protocol(RegistryProtocol):
             Failures.NAMESPACE_DISABLED: 400,
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
-            Failures.MIRROR_MISCONFIGURED: 500,
+            Failures.MIRROR_MISCONFIGURED: 401,
             Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
