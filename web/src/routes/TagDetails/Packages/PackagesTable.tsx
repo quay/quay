@@ -5,7 +5,15 @@ import {
   VulnerabilitySeverity,
   VulnerabilityOrder,
 } from 'src/resources/TagResource';
-import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
+import {
+  Table,
+  Tbody,
+  Td,
+  Th,
+  ThProps,
+  Thead,
+  Tr,
+} from '@patternfly/react-table';
 import {
   PageSection,
   PageSectionVariants,
@@ -23,6 +31,7 @@ import {getSeverityColor} from 'src/libs/utils';
 import {VulnerabilityStats} from '../SecurityReport/SecurityReportChart';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {PackagesListItem} from './Types';
+import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
 
 const columnNames = {
   PackageName: 'Package Name',
@@ -58,6 +67,7 @@ function getVulnerabilitiesCount(
     [VulnerabilitySeverity.Negligible]: 0,
     [VulnerabilitySeverity.Unknown]: 0,
     [VulnerabilitySeverity.None]: 0,
+    Pending: 0,
   };
 
   for (let i = 0; i < vulnerabilities.length; i++) {
@@ -93,14 +103,18 @@ function TableTitle() {
   return <Title headingLevel={'h1'}> Packages </Title>;
 }
 
-function TableHead() {
+function TableHead({
+  getSortableSort,
+}: {
+  getSortableSort: (columnIndex: number) => ThProps['sort'];
+}) {
   return (
     <Thead>
       <Tr>
-        <Th>{columnNames.PackageName}</Th>
-        <Th>{columnNames.PackageVersion}</Th>
-        <Th>{columnNames.Vulnerabilities}</Th>
-        <Th>{columnNames.RemainingAfterUpgrade}</Th>
+        <Th sort={getSortableSort(0)}>{columnNames.PackageName}</Th>
+        <Th sort={getSortableSort(1)}>{columnNames.PackageVersion}</Th>
+        <Th sort={getSortableSort(2)}>{columnNames.Vulnerabilities}</Th>
+        <Th sort={getSortableSort(3)}>{columnNames.RemainingAfterUpgrade}</Th>
       </Tr>
     </Thead>
   );
@@ -139,13 +153,23 @@ export default function PackagesTable({features}: PackagesProps) {
     PackagesListItem[]
   >([]);
 
-  // Pagination state
-  const [page, setPage] = useState<number>(1);
-  const [perPage, setPerPage] = useState<number>(20);
-  const paginatedPackagList: PackagesListItem[] = filteredPackagesList.slice(
-    (page - 1) * perPage,
-    page * perPage,
-  );
+  // Use our sortable table hook for sorting and pagination
+  const {
+    paginatedData: paginatedPackageList,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(filteredPackagesList || [], {
+    columns: {
+      0: (item: PackagesListItem) => item.PackageName, // Package Name
+      1: (item: PackagesListItem) => item.CurrentVersion, // Package Version
+      2: (item: PackagesListItem) =>
+        VulnerabilityOrder[item.HighestVulnerabilitySeverity], // Vulnerabilities (by severity order)
+      3: (item: PackagesListItem) =>
+        VulnerabilityOrder[item.HighestVulnerabilitySeverityAfterFix], // Remaining After Upgrade (by severity order)
+    },
+    initialPerPage: 20,
+    initialSort: {columnIndex: 2, direction: 'asc'}, // Default sort: Vulnerabilities by severity (most severe first)
+  });
 
   useEffect(() => {
     if (features) {
@@ -187,16 +211,16 @@ export default function PackagesTable({features}: PackagesProps) {
       <Toolbar>
         <ToolbarContent>
           <PackagesFilter
-            setPage={setPage}
+            setPage={paginationProps.setPage}
             packagesList={packagesList}
             setFilteredPackageList={setFilteredPackagesList}
           />
           <ToolbarPagination
             itemsList={filteredPackagesList}
-            perPage={perPage}
-            page={page}
-            setPage={setPage}
-            setPerPage={setPerPage}
+            perPage={paginationProps.perPage}
+            page={paginationProps.page}
+            setPage={paginationProps.setPage}
+            setPerPage={paginationProps.setPerPage}
             id="packages-table-pagination"
           />
         </ToolbarContent>
@@ -206,9 +230,9 @@ export default function PackagesTable({features}: PackagesProps) {
         data-testid="packages-table"
         variant="compact"
       >
-        <TableHead />
-        {paginatedPackagList.length !== 0 ? (
-          paginatedPackagList.map((pkg: PackagesListItem) => {
+        <TableHead getSortableSort={getSortableSort} />
+        {paginatedPackageList.length !== 0 ? (
+          paginatedPackageList.map((pkg: PackagesListItem) => {
             return (
               <Tbody key={pkg.PackageName + pkg.CurrentVersion}>
                 <Tr>
@@ -251,10 +275,10 @@ export default function PackagesTable({features}: PackagesProps) {
       <Toolbar>
         <ToolbarPagination
           itemsList={filteredPackagesList}
-          perPage={perPage}
-          page={page}
-          setPage={setPage}
-          setPerPage={setPerPage}
+          perPage={paginationProps.perPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          setPerPage={paginationProps.setPerPage}
         />
       </Toolbar>
     </PageSection>
