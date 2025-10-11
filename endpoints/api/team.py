@@ -13,6 +13,7 @@ from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
+    GlobalReadOnlySuperUserPermission,
     SuperUserPermission,
     ViewTeamPermission,
 )
