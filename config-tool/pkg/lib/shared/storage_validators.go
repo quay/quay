@@ -99,10 +99,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
-		isSecure = true
+		isSecure = args.IsSecure
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
+			isSecure = true
 		} else {
 			endpoint = args.Host
 		}
@@ -174,10 +175,29 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			webIdentityTokenFile = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 		}
 
+		// Get the session name, defaulting to "quay" if not provided
+		sessionName := args.STSRoleSessionName
+		if sessionName == "" {
+			sessionName = os.Getenv("AWS_ROLE_SESSION_NAME")
+		}
+		if sessionName == "" {
+			sessionName = "quay"
+		}
+
+		awsConfig := &aws.Config{}
+		var stsEndpointIsSecure bool = true
+		if len(args.EndpointURL) != 0 {
+			awsConfig.Endpoint = aws.String(args.EndpointURL)
+			if len(args.EndpointURL) >= 7 && args.EndpointURL[:7] == "http://" {
+				stsEndpointIsSecure = false
+				awsConfig.DisableSSL = aws.Bool(true)
+			}
+		}
+
 		var credentials *sts.Credentials
 		// Prefer using web tokens to authenticate and fallback to access and secret keys
 		if webIdentityTokenFile != "" {
-			sess := session.Must(session.NewSession())
+			sess := session.Must(session.NewSession(awsConfig))
 			svc := sts.New(sess)
 			webIdentityToken, err := os.ReadFile(webIdentityTokenFile)
 			if err != nil {
@@ -190,7 +210,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			}
 			assumeRoleInput := &sts.AssumeRoleWithWebIdentityInput{
 				RoleArn:          aws.String(roleToAssumeArn),
-				RoleSessionName:  aws.String("quay"),
+				RoleSessionName:  aws.String(sessionName),
 				DurationSeconds:  aws.Int64(durationSeconds),
 				WebIdentityToken: aws.String(string(webIdentityToken)),
 			}
@@ -205,13 +225,12 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			}
 			credentials = assumeRoleOutput.Credentials
 		} else {
-			sess := session.Must(session.NewSession(&aws.Config{
-				Credentials: awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, ""),
-			}))
+			awsConfig.Credentials = awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, "")
+			sess := session.Must(session.NewSession(awsConfig))
 			svc := sts.New(sess)
 			assumeRoleInput := &sts.AssumeRoleInput{
 				RoleArn:         aws.String(roleToAssumeArn),
-				RoleSessionName: aws.String("quay"),
+				RoleSessionName: aws.String(sessionName),
 				DurationSeconds: aws.Int64(durationSeconds),
 			}
 			assumeRoleOutput, err := svc.AssumeRole(assumeRoleInput)
@@ -230,15 +249,18 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey := *credentials.SecretAccessKey
 		token = *credentials.SessionToken
 		bucketName = args.S3Bucket
-		isSecure = true
 
-		if len(args.Host) == 0 {
+		if len(args.EndpointURL) == 0 {
 			endpoint = "s3.amazonaws.com"
+			isSecure = true
 		} else {
-			endpoint = args.Host
-		}
-		if args.Port != 0 {
-			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
+			endpoint = args.EndpointURL
+			isSecure = stsEndpointIsSecure
+			if len(endpoint) >= 8 && endpoint[:8] == "https://" {
+				endpoint = endpoint[8:]
+			} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
+				endpoint = endpoint[7:]
+			}
 		}
 
 		if len(errors) > 0 {
@@ -343,10 +365,11 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
-		isSecure = true
+		isSecure = args.IsSecure
 
 		if len(args.Host) == 0 {
 			endpoint = "s3.amazonaws.com"
+			isSecure = true
 		} else {
 			endpoint = args.Host
 		}

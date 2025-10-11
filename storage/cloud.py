@@ -1219,13 +1219,20 @@ class STSS3Storage(S3Storage):
         maximum_chunk_size_gb=None,
         signature_version="s3v4",
     ):
+        sts_kwargs = {}
+        if endpoint_url:
+            sts_kwargs["endpoint_url"] = endpoint_url
+        if s3_region:
+            sts_kwargs["region_name"] = s3_region
+
         if sts_user_access_key == "" or sts_user_secret_key == "":
-            sts_client = boto3.client("sts")
+            sts_client = boto3.client("sts", **sts_kwargs)
         else:
             sts_client = boto3.client(
                 "sts",
                 aws_access_key_id=sts_user_access_key,
                 aws_secret_access_key=sts_user_secret_key,
+                **sts_kwargs,
             )
 
         # !! NOTE !! connect_kwargs here initializes the S3Storage Class not the s3 connection (mis leading re-use of the name)
