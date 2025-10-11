@@ -1,8 +1,11 @@
 /// <reference types="cypress" />
 
 describe('Signin page', () => {
-  // FIXME: the test fails on CI, see https://issues.redhat.com/browse/PROJQUAY-5448
-  it.skip('Succesful signin', () => {
+  before(() => {
+    cy.exec('npm run quay:seed');
+  });
+
+  it('Succesful signin', () => {
     cy.visit(`/signin`);
     cy.get('#pf-login-username-id').type('user1');
     cy.get('#pf-login-password-id').type('password');
