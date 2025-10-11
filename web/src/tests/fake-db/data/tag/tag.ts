@@ -95,6 +95,39 @@ let tags: Tag[] = [
     start_ts: 1654197152,
     manifest_list: undefined,
   },
+  {
+    name: 'sha256-1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be.sig',
+    is_manifest_list: false,
+    last_modified: 'Thu, 02 Jun 2022 19:15:32 -0000',
+    size: 50,
+    manifest_digest:
+      'sha256:signature1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253',
+    reversion: false,
+    start_ts: 1654197332,
+    manifest_list: undefined,
+  },
+  {
+    name: 'sha256-abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789.sbom',
+    is_manifest_list: false,
+    last_modified: 'Thu, 02 Jun 2022 19:16:32 -0000',
+    size: 75,
+    manifest_digest:
+      'sha256:sbom1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990',
+    reversion: false,
+    start_ts: 1654197392,
+    manifest_list: undefined,
+  },
+  {
+    name: 'sha256-1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be.att',
+    is_manifest_list: false,
+    last_modified: 'Thu, 02 Jun 2022 19:17:32 -0000',
+    size: 60,
+    manifest_digest:
+      'sha256:attestation1234567890101112150f0d3de5f80a38f65a85e709b77fd244',
+    reversion: false,
+    start_ts: 1654197452,
+    manifest_list: undefined,
+  },
 ];
 
 const specificTagPathRegex = new RegExp(
