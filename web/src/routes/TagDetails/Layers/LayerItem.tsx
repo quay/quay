@@ -7,6 +7,7 @@ interface LayerItemProps {
   isFirst: boolean;
   isLast: boolean;
   totalLayers: number;
+  layerNumber: number;
 }
 
 export function LayerItem(props: LayerItemProps) {
@@ -37,10 +38,14 @@ export function LayerItem(props: LayerItemProps) {
   };
 
   return (
-    <div className={`manifest-view-layer-element ${getClass()}`}>
+    <div
+      className={`manifest-view-layer-element ${getClass()}`}
+      role="listitem"
+      aria-label={`Layer ${props.layerNumber} of ${props.totalLayers}`}
+    >
       <div className="image-command">{renderLayerContent()}</div>
-      <div className="image-layer-dot"></div>
-      <div className="image-layer-line"></div>
+      <div className="image-layer-dot" aria-hidden="true"></div>
+      <div className="image-layer-line" aria-hidden="true"></div>
     </div>
   );
 }

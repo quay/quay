@@ -93,6 +93,7 @@ export function DockerfileCommand(props: DockerfileCommandProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="from-image-link"
+            aria-label={`View ${imageRef} base image in registry`}
           >
             {imageRef}
           </a>
