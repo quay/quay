@@ -125,7 +125,7 @@ export default function TagDetails() {
         setErr(addDisplayError('Unable to get details for tag', errorObj));
       }
     })();
-  }, [org, repo, tag, searchParams]);
+  }, [org, repo, tag, searchParams, quayConfig?.features?.UI_MODELCARD]);
 
   return (
     <>
