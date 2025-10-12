@@ -79,6 +79,7 @@ jobs:
         wait-on: 'http://localhost:9000'
         wait-on-timeout: 120
         working-directory: web
+        spec: cypress/e2e/signin.cy.ts
       env:
         REACT_QUAY_APP_API_URL: http://localhost:8080
 
