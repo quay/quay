@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
 describe('Signin page', () => {
-  before(() => {
+  beforeEach(() => {
     cy.exec('npm run quay:seed');
   });
 
@@ -11,5 +11,6 @@ describe('Signin page', () => {
     cy.get('#pf-login-password-id').type('password');
     cy.get('button[type=submit]').click();
     cy.url().should('include', '/organization');
+    cy.get('#create-organization-button').should('be.visible');
   });
 });
