@@ -23,7 +23,7 @@ export default function ReadOnlyLabels(props: ReadOnlyLabelsProps) {
     <>
       {labels.map((label: ImageLabel) => (
         <React.Fragment key={label.key}>
-          <Label key={label.key} className="label">
+          <Label className="label">
             <span className="label-content">
               {label.key} = {label.value}
             </span>
