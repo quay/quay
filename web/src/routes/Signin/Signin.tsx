@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   Alert,
   AlertActionCloseButton,
@@ -30,6 +30,12 @@ export function Signin() {
   if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
     logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
   }
+
+  useEffect(() => {
+    if (quayConfig?.config?.REGISTRY_TITLE) {
+      document.title = `${quayConfig.config.REGISTRY_TITLE} • Quay`;
+    }
+  }, [quayConfig]);
 
   const onLoginButtonClick = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
