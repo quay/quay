@@ -13,9 +13,8 @@ import {
   TabTitleIcon,
   TabTitleText,
   Tabs,
-  Text,
-  TextContent,
-  TextVariants,
+  Content,
+  ContentVariants,
 } from '@patternfly/react-core';
 import {AngleRightIcon, DockerIcon, KeyIcon} from '@patternfly/react-icons';
 import {Buffer} from 'buffer';
@@ -215,16 +214,20 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
         >
           <br />
           <>
-            <TextContent>
-              <Text component={TextVariants.h6}>Username & Robot account</Text>
+            <Content>
+              <Content component={ContentVariants.h6}>
+                Username & Robot account
+              </Content>
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {props.name}
               </ClipboardCopy>
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
                 {tokenData.token}
               </ClipboardCopy>
-              <Text component={TextVariants.h2}>Username & Robot account</Text>
-            </TextContent>
+              <Content component={ContentVariants.h2}>
+                Username & Robot account
+              </Content>
+            </Content>
             <br />
             <Alert
               title="Note that once you regenerate token, all existing logins of this robot account will become invalid."
@@ -259,14 +262,14 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           }
         >
           <br />
-          <TextContent>
-            <Text component={TextVariants.h6}>
+          <Content>
+            <Content component={ContentVariants.h6}>
               Step 1: Select the scope of the secret
-            </Text>
-            <Text component={TextVariants.p}>
+            </Content>
+            <Content component={ContentVariants.p}>
               The Kubernetes runtime can be instructed to use this secret only
               for a specific Quay organization or registry-wide.
-            </Text>
+            </Content>
             <Flex columnGap={{default: 'columnGapMd'}}>
               <FlexItem>
                 <Select
@@ -289,15 +292,17 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
                 <AngleRightIcon />
               </FlexItem>
               <FlexItem>
-                <Text id="secret-scope" component={TextVariants.p}>
+                <Content id="secret-scope" component={ContentVariants.p}>
                   {secretScopeSelected}
-                </Text>
+                </Content>
               </FlexItem>
             </Flex>
-            <Text component={TextVariants.h6}>Step 2: Download secret</Text>
-            <Text component={TextVariants.p}>
+            <Content component={ContentVariants.h6}>
+              Step 2: Download secret
+            </Content>
+            <Content component={ContentVariants.p}>
               Next, download the Kubernetes pull secret for the robot account:
-            </Text>
+            </Content>
             <ClipboardCopy
               isReadOnly
               isCode
@@ -309,7 +314,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             >
               {getKubernetesContent().join('')}
             </ClipboardCopy>
-            <Text component={TextVariants.p}>
+            <Content component={ContentVariants.p}>
               <a
                 onClick={() =>
                   downloadKubernetesFile(getSuffixedFilename('secret.yml'))
@@ -317,11 +322,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               >
                 {'Download ' + getSuffixedFilename('secret.yml')}
               </a>
-            </Text>
-            <Text component={TextVariants.h6}>Step 3: Submit</Text>
-            <Text component={TextVariants.p}>
+            </Content>
+            <Content component={ContentVariants.h6}>Step 3: Submit</Content>
+            <Content component={ContentVariants.p}>
               Then, submit the secret to the cluster using this command:
-            </Text>
+            </Content>
             <ClipboardCopy
               hoverTip="Copy"
               clickTip="Copied"
@@ -330,13 +335,13 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             >
               {kubesClusterCmd}
             </ClipboardCopy>
-            <Text component={TextVariants.h6}>
+            <Content component={ContentVariants.h6}>
               Step 4: Update Kubernetes Configuration
-            </Text>
-            <Text component={TextVariants.p}>
+            </Content>
+            <Content component={ContentVariants.p}>
               Finally, add a reference to the secret to your Kuberenetes pod
               config via an imagePullSecrets field. For example:
-            </Text>
+            </Content>
             <ClipboardCopy
               isReadOnly
               isCode
@@ -347,7 +352,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
             >
               {getKubernetesConfiguration()}
             </ClipboardCopy>
-          </TextContent>
+          </Content>
         </Tab>
         <Tab
           eventKey={2}
@@ -367,11 +372,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           }
         >
           <br />
-          <TextContent>
-            <Text component={TextVariants.h6}>Podman Login</Text>
-            <Text component={TextVariants.p}>
+          <Content>
+            <Content component={ContentVariants.h6}>Podman Login</Content>
+            <Content component={ContentVariants.p}>
               Enter the following command on the command line:
-            </Text>
+            </Content>
             <ClipboardCopy
               hoverTip="Copy"
               clickTip="Copied"
@@ -385,7 +390,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
                 '" ' +
                 domain}
             </ClipboardCopy>
-          </TextContent>
+          </Content>
         </Tab>
         <Tab
           eventKey={3}
@@ -399,11 +404,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
           }
         >
           <br />
-          <TextContent>
-            <Text component={TextVariants.h6}>Docker Login</Text>
-            <Text component={TextVariants.p}>
+          <Content>
+            <Content component={ContentVariants.h6}>Docker Login</Content>
+            <Content component={ContentVariants.p}>
               Enter the following command on the command line:
-            </Text>
+            </Content>
             <ClipboardCopy
               hoverTip="Copy"
               clickTip="Copied"
@@ -417,7 +422,7 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
                 '" ' +
                 domain}
             </ClipboardCopy>
-          </TextContent>
+          </Content>
         </Tab>
       </Tabs>
     </>

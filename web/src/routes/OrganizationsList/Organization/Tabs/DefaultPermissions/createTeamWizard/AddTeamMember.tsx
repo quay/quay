@@ -1,9 +1,8 @@
 import {
   Button,
   PageSection,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
 } from '@patternfly/react-core';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {ITeamMember} from 'src/hooks/UseMembers';
@@ -103,9 +102,11 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
 
   const drawerPanelContent = (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Provide a name and description</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>
+          Provide a name and description
+        </Content>
+      </Content>
       <NameAndDescription
         name={newRobotAccntName}
         setName={setNewRobotAccntName}
@@ -169,7 +170,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   }
 
   return (
-    <PageSection padding={{default: 'noPadding'}}>
+    <PageSection hasBodyWrapper={false} padding={{default: 'noPadding'}}>
       <AddTeamToolbar
         orgName={props.orgName}
         allItems={props.tableItems}

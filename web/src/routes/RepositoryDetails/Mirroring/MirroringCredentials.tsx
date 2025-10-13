@@ -1,6 +1,6 @@
 import React from 'react';
 import {Control, FieldErrors} from 'react-hook-form';
-import {Divider, Text, Title} from '@patternfly/react-core';
+import {Divider, Content, Title} from '@patternfly/react-core';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {MirroringConfigResponse} from 'src/resources/MirroringResource';
 import {MirroringFormData} from './types';
@@ -20,12 +20,12 @@ export const MirroringCredentials: React.FC<MirroringCredentialsProps> = ({
     <>
       <Divider />
       <Title headingLevel="h3">Credentials</Title>
-      <Text
+      <Content
         component="small"
         className="pf-v5-c-form__helper-text pf-v5-u-text-align-center pf-v5-u-display-block"
       >
         Required if the external repository is private.
-      </Text>
+      </Content>
 
       <FormTextInput
         name="username"

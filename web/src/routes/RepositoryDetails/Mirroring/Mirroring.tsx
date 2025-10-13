@@ -13,8 +13,7 @@ import {
   ButtonVariant,
   ActionGroup,
   Divider,
-  Text,
-  TextContent,
+  Content,
   SelectOption,
   SelectGroup,
   Spinner,
@@ -128,19 +127,19 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   }
 
   if (!repoDetails) {
-    return <Text>Repository not found</Text>;
+    return <Content component="p">Repository not found</Content>;
   }
 
   if (repoDetails.state !== 'MIRROR') {
     return (
       <div className="pf-v5-u-max-width-lg pf-v5-u-p-md">
-        <TextContent>
-          <Text>
+        <Content>
+          <Content component="p">
             This repository&apos;s state is <strong>{repoDetails.state}</strong>
             . Use the settings tab and change it to <strong>Mirror</strong> to
             manage its mirroring configuration.
-          </Text>
-        </TextContent>
+          </Content>
+        </Content>
       </div>
     );
   }

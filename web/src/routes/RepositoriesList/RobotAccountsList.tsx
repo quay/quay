@@ -1,11 +1,9 @@
 import {
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
-  TextContent,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   DropdownItem,
 } from '@patternfly/react-core';
 import {
@@ -514,9 +512,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           </Tr>
           <Tr>
             <Td colSpan={8} style={{textAlign: 'center'}}>
-              <TextContent>
-                <Text component={TextVariants.h3}>Loading</Text>
-              </TextContent>
+              <Content>
+                <Content component={ContentVariants.h3}>Loading</Content>
+              </Content>
             </Td>
           </Tr>
         </Tbody>
@@ -525,7 +523,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   }
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal title={errTitle} error={err} setError={setErr} />
         <RobotAccountsToolBar
           search={search}

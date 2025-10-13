@@ -14,12 +14,7 @@ import {
   FormGroup,
   AlertActionLink,
   HelperText,
-  AlertGroup,
   FormHelperText,
-  NumberInput,
-  Select,
-  MenuToggleElement,
-  MenuToggle,
 } from '@patternfly/react-core';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';

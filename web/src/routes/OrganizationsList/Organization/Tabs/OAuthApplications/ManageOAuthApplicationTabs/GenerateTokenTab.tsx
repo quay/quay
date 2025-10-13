@@ -6,10 +6,9 @@ import {
   HelperText,
   HelperTextItem,
   PageSection,
-  PageSectionVariants,
   Stack,
   StackItem,
-  Text,
+  Content,
 } from '@patternfly/react-core';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {useForm} from 'react-hook-form';
@@ -52,7 +51,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const watchedValues = watch();
 
   if (!props.application) {
-    return <Text>No application selected</Text>;
+    return <Content component="p">No application selected</Content>;
   }
 
   const application = props.application;
@@ -167,11 +166,11 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   };
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Stack hasGutter>
         <HelperText>
           <HelperTextItem>
-            <Text>
+            <Content component="p">
               Click the button below to generate a new{' '}
               <Button
                 variant="link"
@@ -191,16 +190,16 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
                 }}
                 title="The token is used for authentication only and not authorization. While the token scope permits authentication to the API, additional permissions may be required for authorization. e.g. A token with the create repository scope will not permit creation of a repository without the user being granted the Create Repository team permission."
               />
-            </Text>
+            </Content>
             <Flex
               spaceItems={{default: 'spaceItemsSm'}}
               alignItems={{default: 'alignItemsCenter'}}
             >
               <FlexItem>
-                <Text>
+                <Content component="p">
                   The generated token will act on behalf of user{' '}
                   {!customUser && <strong>{user?.username || 'user'}</strong>}
-                </Text>
+                </Content>
               </FlexItem>
               {customUser && (
                 <FlexItem>

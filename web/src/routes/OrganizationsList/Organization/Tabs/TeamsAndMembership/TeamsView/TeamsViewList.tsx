@@ -8,7 +8,6 @@ import {
   MenuToggle,
   MenuToggleElement,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
 } from '@patternfly/react-core';
@@ -242,7 +241,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal
           title="Team deletion failed"
           error={err}

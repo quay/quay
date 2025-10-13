@@ -1,9 +1,8 @@
 import {useState} from 'react';
 import {
   Button,
-  Text,
-  TextVariants,
-  TextContent,
+  Content,
+  ContentVariants,
   DropdownItem,
 } from '@patternfly/react-core';
 import {DesktopIcon} from '@patternfly/react-icons';
@@ -110,9 +109,9 @@ export default function AddToTeam(props: AddToTeamProps) {
 
   return (
     <>
-      <TextContent>
-        <Text component={TextVariants.h1}>Add to team (optional)</Text>
-      </TextContent>
+      <Content>
+        <Content component={ContentVariants.h1}>Add to team (optional)</Content>
+      </Content>
       <TeamView
         items={props.items}
         selectedTeams={props.selectedTeams}

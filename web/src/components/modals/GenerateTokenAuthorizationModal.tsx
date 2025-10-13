@@ -2,13 +2,12 @@ import React, {useState} from 'react';
 import {
   Button,
   Alert,
-  Modal,
-  ModalVariant,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   Stack,
   StackItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {
   ExclamationTriangleIcon,
   ChevronDownIcon,
@@ -84,11 +83,11 @@ export default function GenerateTokenAuthorizationModal(
           </StackItem>
         )}
         <StackItem>
-          <Text component={TextVariants.p}>
+          <Content component={ContentVariants.p}>
             {isAssignment
               ? `This will prompt user ${props.targetUsername} to generate a token with the following permissions:`
               : 'This application would like permission to:'}
-          </Text>
+          </Content>
         </StackItem>
         <StackItem>
           <Stack hasGutter>
@@ -134,9 +133,9 @@ export default function GenerateTokenAuthorizationModal(
                           paddingLeft: 'var(--pf-global--spacer--sm)',
                         }}
                       >
-                        <Text component={TextVariants.small}>
+                        <Content component={ContentVariants.small}>
                           {scopeInfo?.description}
-                        </Text>
+                        </Content>
                       </div>
                     )}
                   </div>

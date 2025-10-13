@@ -1,7 +1,6 @@
-import {ChartDonut} from '@patternfly/react-charts';
+import {ChartDonut} from '@patternfly/react-charts/victory';
 import {
   PageSection,
-  PageSectionVariants,
   Skeleton,
   Split,
   SplitItem,
@@ -168,7 +167,7 @@ export function PackagesChart(props: PackageChartProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Split>
         <SplitItem data-testid="packages-chart">
           <PackagesDonutChart

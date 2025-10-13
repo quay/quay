@@ -3,7 +3,6 @@ import {Link, useSearchParams} from 'react-router-dom';
 import {
   Label,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Popover,
   Spinner,
@@ -156,7 +155,7 @@ export default function MembersViewList(props: MembersViewListProps) {
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <MembersViewToolbar
           selectedMembers={selectedMembers}
           deSelectAll={() => setSelectedMembers([])}

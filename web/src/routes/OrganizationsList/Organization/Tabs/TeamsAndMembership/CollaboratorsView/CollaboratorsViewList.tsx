@@ -1,7 +1,6 @@
 import {
   Button,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Spinner,
 } from '@patternfly/react-core';
@@ -98,7 +97,7 @@ export default function CollaboratorsViewList(
 
   return (
     <>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <CollaboratorsViewToolbar
           selectedMembers={selectedCollaborators}
           deSelectAll={() => setSelectedCollaborators([])}

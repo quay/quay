@@ -4,8 +4,7 @@ import {
   NotificationDrawerListItem,
   NotificationDrawerListItemHeader,
   NotificationDrawerListItemBody,
-  Text,
-  TextContent,
+  Content,
 } from '@patternfly/react-core';
 import {TimesIcon} from '@patternfly/react-icons';
 import {useState} from 'react';
@@ -81,11 +80,11 @@ export function NotificationDrawerListComponent() {
               data-testid="notification-header"
             />
             <NotificationDrawerListItemBody>
-              <TextContent>
-                <Text component="small" className="pf-v5-u-text-align-right">
+              <Content>
+                <Content component="small" className="pf-v5-u-text-align-right">
                   {formatDate(notification.created, 'medium')}
-                </Text>
-              </TextContent>
+                </Content>
+              </Content>
             </NotificationDrawerListItemBody>
             {notification.actions?.map((action, idx) => (
               <Button
@@ -97,13 +96,12 @@ export function NotificationDrawerListComponent() {
               </Button>
             ))}
             <Button
+              icon={<TimesIcon />}
               variant="plain"
               onClick={() => dismissNotification(notification.id)}
               aria-label="Dismiss notification"
               data-testid="delete-notification"
-            >
-              <TimesIcon />
-            </Button>
+            />
           </NotificationDrawerListItem>
         );
       })}

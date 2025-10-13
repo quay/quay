@@ -101,7 +101,7 @@ export function StandaloneMain() {
   return (
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
       <Page
-        header={<QuayHeader toggleDrawer={toggleDrawer} />}
+        masthead={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
         style={{height: '100vh'}}
         isManagedSidebar
@@ -109,7 +109,7 @@ export function StandaloneMain() {
         notificationDrawer={notificationDrawer}
         isNotificationDrawerExpanded={isDrawerOpen}
       >
-        <Banner variant="blue">
+        <Banner color="blue">
           <Flex
             spaceItems={{default: 'spaceItemsSm'}}
             justifyContent={{default: 'justifyContentCenter'}}

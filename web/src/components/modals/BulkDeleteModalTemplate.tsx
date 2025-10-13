@@ -1,15 +1,13 @@
 import {
   Button,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   TextInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
   SearchInput,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
@@ -45,11 +43,10 @@ export const BulkDeleteModalTemplate = <T,>(
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.selectedItems.filter(
-        (item) =>
-          item[props.mapOfColNamesToTableData[colNames[0]].label]
-            ?.toLowerCase()
-            .includes(value.toLowerCase()),
+      const filteredTableRow = props.selectedItems.filter((item) =>
+        item[props.mapOfColNamesToTableData[colNames[0]].label]
+          ?.toLowerCase()
+          .includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }
@@ -105,7 +102,7 @@ export const BulkDeleteModalTemplate = <T,>(
       <span>
         This action deletes all {props.resourceName} and cannot be recovered.
       </span>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Toolbar>
           <ToolbarContent className="pf-v5-u-pl-0">
             <ToolbarItem>

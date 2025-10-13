@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, TextContent, TextVariants} from '@patternfly/react-core';
+import {Content, ContentVariants} from '@patternfly/react-core';
 import {Table, Tbody, Th, Thead, Tr} from '@patternfly/react-table';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {MinusCircleIcon} from '@patternfly/react-icons';
@@ -46,13 +46,13 @@ export function SecurityReportMetadataTable(
   props: SecurityDetailsMetadataProps,
 ) {
   return (
-    <TextContent style={{paddingRight: '30px'}}>
-      <Text component={TextVariants.p}>Severity Note</Text>
-      <Text component={TextVariants.small}>
+    <Content style={{paddingRight: '30px'}}>
+      <Content component={ContentVariants.p}>Severity Note</Content>
+      <Content component={ContentVariants.small}>
         {getSeverityTooltip(props.vulnerability)}
-      </Text>
+      </Content>
 
-      <Text component={TextVariants.p}>Vectors</Text>
+      <Content component={ContentVariants.p}>Vectors</Content>
       <Table aria-label="Vulnerabilities" variant="compact">
         <Thead cellPadding={'5px'}>
           <Tr marginWidth={0} className="pf-v5-u-text-align-left">
@@ -91,13 +91,13 @@ export function SecurityReportMetadataTable(
       </Table>
       {props.vulnerability.Description && (
         <>
-          <Text component={TextVariants.p}>Description</Text>
-          <Text component={TextVariants.small}>
+          <Content component={ContentVariants.p}>Description</Content>
+          <Content component={ContentVariants.small}>
             {props.vulnerability.Description}
-          </Text>
+          </Content>
         </>
       )}
-    </TextContent>
+    </Content>
   );
 }
 

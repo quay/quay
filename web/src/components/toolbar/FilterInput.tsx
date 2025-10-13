@@ -81,7 +81,7 @@ export function FilterInput(props: FilterInputProps) {
   };
 
   return (
-    <ToolbarItem variant="search-filter" widths={widths}>
+    <ToolbarItem>
       <SearchInput
         ref={searchInputRef}
         placeholder={`Search by ${props.searchState.field.toLowerCase()}${

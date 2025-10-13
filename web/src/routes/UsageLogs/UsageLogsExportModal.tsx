@@ -1,13 +1,12 @@
 import React from 'react';
 import {
   Button,
-  Text,
-  Modal,
-  ModalVariant,
+  Content,
   TextInput,
   HelperText,
   HelperTextItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 
 import {exportLogs} from 'src/hooks/UseUsageLogs';
 import {useAlerts} from 'src/hooks/UseAlerts';
@@ -88,11 +87,11 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
           </Button>,
         ]}
       >
-        <Text>
+        <Content component="p">
           Enter an e-mail address or callback URL (must start with http:// or
           https://) at which to receive the exported logs once they have been
           fully processed:
-        </Text>
+        </Content>
         <TextInput
           id="export-logs-callback"
           value={callbackEmailOrUrl}
@@ -110,7 +109,8 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
             {' '}
             Note: The export process can take up to an hour to process if there
             are many logs. As well, only a single export process can run at a
-            time for each namespace. Additional export requests will be queued.{' '}
+            time for each namespace. Additional export requests will be
+            queued.{' '}
           </HelperTextItem>
         </HelperText>
       </Modal>

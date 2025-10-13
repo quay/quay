@@ -4,7 +4,6 @@ import {
   DataListItem,
   DataListItemCells,
   DataListItemRow,
-  Gallery,
   Title,
 } from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';

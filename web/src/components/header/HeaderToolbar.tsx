@@ -254,16 +254,16 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
       <Toolbar id="toolbar" isFullHeight isStatic>
         <ToolbarContent>
           <ToolbarGroup
-            variant="icon-button-group"
-            align={{default: 'alignRight'}}
-            spacer={{default: 'spacerNone', md: 'spacerMd'}}
+            variant="action-group-plain"
+            align={{default: 'alignEnd'}}
+            gap={{default: 'gapNone', md: 'gapMd'}}
           >
             <ToolbarItem
-              spacer={{
-                default: 'spacerNone',
-                md: 'spacerSm',
-                lg: 'spacerMd',
-                xl: 'spacerLg',
+              gap={{
+                default: 'gapNone',
+                md: 'gapSm',
+                lg: 'gapMd',
+                xl: 'gapLg',
               }}
             >
               <Flex
@@ -277,18 +277,17 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 <Switch
                   id="header-toolbar-ui-switch"
                   label="New UI"
-                  labelOff="New UI"
                   isChecked={isChecked}
                   onChange={toggleSwitch}
                 />
               </Flex>
             </ToolbarItem>
             <ToolbarItem
-              spacer={{
-                default: 'spacerNone',
-                md: 'spacerSm',
-                lg: 'spacerMd',
-                xl: 'spacerLg',
+              gap={{
+                default: 'gapNone',
+                md: 'gapSm',
+                lg: 'gapMd',
+                xl: 'gapLg',
               }}
             >
               <NotificationBadge

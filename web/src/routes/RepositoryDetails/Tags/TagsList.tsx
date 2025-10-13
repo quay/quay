@@ -1,8 +1,4 @@
-import {
-  PageSection,
-  PageSectionVariants,
-  PanelFooter,
-} from '@patternfly/react-core';
+import {PageSection, PanelFooter} from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
@@ -126,7 +122,7 @@ export default function TagsList(props: TagsProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <ErrorBoundary
         hasError={isErrorString(err)}
         fallback={<RequestError message={err} />}

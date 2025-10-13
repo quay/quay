@@ -1,4 +1,5 @@
-import {Alert, Button, Modal, ModalVariant} from '@patternfly/react-core';
+import {Alert, Button} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useEffect} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';

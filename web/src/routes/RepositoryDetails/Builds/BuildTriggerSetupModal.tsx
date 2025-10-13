@@ -1,10 +1,5 @@
-import {
-  Alert,
-  Button,
-  Modal,
-  ModalVariant,
-  Title,
-} from '@patternfly/react-core';
+import {Alert, Button, Title} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {LoadingPage} from 'src/components/LoadingPage';
 import RequestError from 'src/components/errors/RequestError';
 import {useFetchBuildTrigger} from 'src/hooks/UseBuildTriggers';

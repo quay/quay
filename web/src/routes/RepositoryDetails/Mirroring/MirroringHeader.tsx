@@ -1,5 +1,5 @@
 import React from 'react';
-import {TextContent, Text, Title} from '@patternfly/react-core';
+import {Content, Title} from '@patternfly/react-core';
 
 interface MirroringHeaderProps {
   namespace: string;
@@ -14,19 +14,19 @@ export const MirroringHeader: React.FC<MirroringHeaderProps> = ({
 }) => {
   return (
     <>
-      <TextContent>
+      <Content>
         <Title headingLevel="h2">Repository Mirroring</Title>
-      </TextContent>
+      </Content>
 
-      <TextContent>
+      <Content>
         {isConfigured ? (
-          <Text>
+          <Content component="p">
             This repository is configured as a mirror. While enabled, Quay will
             periodically replicate any matching images on the external registry.
             Users cannot manually push to this repository.
-          </Text>
+          </Content>
         ) : (
-          <Text>
+          <Content component="p">
             This feature will convert{' '}
             <strong>
               {namespace}/{repoName}
@@ -34,9 +34,9 @@ export const MirroringHeader: React.FC<MirroringHeaderProps> = ({
             into a mirror. Changes to the external repository will be duplicated
             here. While enabled, users will be unable to push images to this
             repository.
-          </Text>
+          </Content>
         )}
-      </TextContent>
+      </Content>
     </>
   );
 };
