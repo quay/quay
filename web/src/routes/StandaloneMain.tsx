@@ -91,7 +91,7 @@ export function StandaloneMain() {
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
-      document.title = quayConfig.config.REGISTRY_TITLE;
+      document.title = `${quayConfig.config.REGISTRY_TITLE} • Quay`;
     }
   }, [quayConfig]);
 
