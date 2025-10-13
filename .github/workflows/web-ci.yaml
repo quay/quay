@@ -4,21 +4,9 @@ on:
     branches:
     - "!dependabot/*"
     - "*"
-    paths:
-    - "web/**"
-    - "docker-compose.yaml"
-    - "Dockerfile"
-    - "local-dev/**"
-    - ".github/workflows/web-ci.yaml"
   pull_request:
     branches:
     - "*"
-    paths:
-    - "web/**"
-    - "docker-compose.yaml"
-    - "Dockerfile"
-    - "local-dev/**"
-    - ".github/workflows/web-ci.yaml"
 jobs:
   cypress:
     name: Cypress Tests

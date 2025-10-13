@@ -6,13 +6,9 @@ on:
     branches:
     - "!dependabot/*"
     - "*"
-    paths-ignore:
-    - "web/**"
   pull_request:
     branches:
     - "*"
-    paths-ignore:
-    - "web/**"
 jobs:
   build:
     name: Format
