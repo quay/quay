@@ -15,17 +15,25 @@ MARKETPLACE_FILE = "/conf/stack/quay-marketplace-api.crt"
 MARKETPLACE_SECRET = "/conf/stack/quay-marketplace-api.key"
 
 
+class MarketplaceApiException(Exception):
+    endpoint = None
+
+    def __init__(self, endpoint=None):
+        self.endpoint = endpoint
+        super().__init__(f"Error communicating with marketplace endpoint {self.endpoint}.")
+
+
 class RedHatUserApi(object):
     def __init__(self, app_config):
         self.cert = (MARKETPLACE_FILE, MARKETPLACE_SECRET)
         self.user_endpoint = app_config.get("ENTITLEMENT_RECONCILIATION_USER_ENDPOINT")
 
-    def get_account_number(self, user):
+    def get_account_number(self, user, raise_exception=False):
         email = user.email
-        account_numbers = self.lookup_customer_id(email)
+        account_numbers = self.lookup_customer_id(email, raise_exception)
         return account_numbers
 
-    def lookup_customer_id(self, email):
+    def lookup_customer_id(self, email, raise_exception=False):
         """
         Send request to internal api for customer id (web customer id)
         """
@@ -46,6 +54,8 @@ class RedHatUserApi(object):
         }
 
         request_url = f"{self.user_endpoint}/v2/findUsers"
+        r = None
+        info = None
         try:
             r = requests.request(
                 method="post",
@@ -55,14 +65,20 @@ class RedHatUserApi(object):
                 verify=True,
                 timeout=REQUEST_TIMEOUT,
             )
-        except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.user_endpoint)
+            info = json.loads(r.content)
+        except (requests.exceptions.RequestException, json.decoder.JSONDecodeError) as e:
+            if raise_exception:
+                raise MarketplaceApiException(endpoint=self.user_endpoint) from e
+
+            # Log specific error types
+            if isinstance(e, requests.exceptions.ReadTimeout):
+                logger.info("request to %s timed out", self.user_endpoint)
+
             return None
 
-        info = json.loads(r.content)
         if not info:
             logger.debug("request to %s did not return any data", self.user_endpoint)
-            return None
+            return []
 
         customer_ids = []
         for account in info:
@@ -81,18 +97,20 @@ class RedHatSubscriptionApi(object):
             "ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT"
         )
 
-    def lookup_subscription(self, webCustomerId, skuId):
+    def lookup_subscription(self, web_customer_id, sku_id, raise_exception=False):
         """
         Use internal marketplace API to find subscription for customerId and sku
         """
         logger.debug(
-            "looking up subscription sku %s for account %s", str(skuId), str(webCustomerId)
+            "looking up subscription sku %s for account %s", str(sku_id), str(web_customer_id)
         )
 
-        subscriptions_url = f"{self.marketplace_endpoint}/subscription/v5/search/criteria;sku={skuId};web_customer_id={webCustomerId}"
+        subscriptions_url = f"{self.marketplace_endpoint}/subscription/v5/search/criteria;sku={sku_id};web_customer_id={web_customer_id}"
         request_headers = {"Content-Type": "application/json"}
 
         # Using CustomerID to get active subscription for user
+        subscriptions = None
+        r = None
         try:
             r = requests.request(
                 method="get",
@@ -102,13 +120,15 @@ class RedHatSubscriptionApi(object):
                 verify=True,
                 timeout=REQUEST_TIMEOUT,
             )
-        except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.marketplace_endpoint)
-            return None
-
-        try:
             subscriptions = json.loads(r.content)
-        except json.decoder.JSONDecodeError:
+        except (requests.exceptions.RequestException, json.decoder.JSONDecodeError) as e:
+            if raise_exception:
+                raise MarketplaceApiException(endpoint=self.marketplace_endpoint) from e
+
+            # Log specific error types
+            if isinstance(e, requests.exceptions.ReadTimeout):
+                logger.info("request to %s timed out", self.marketplace_endpoint)
+
             return None
 
         valid_subscriptions = []
@@ -118,17 +138,18 @@ class RedHatSubscriptionApi(object):
                 now_ms = time.time() * 1000
                 # Is subscription still valid?
                 if now_ms < end_date:
-                    logger.debug("subscription found for %s", str(skuId))
+                    logger.debug("subscription found for %s", str(sku_id))
                     valid_subscriptions.append(subscription)
             return valid_subscriptions if len(valid_subscriptions) > 0 else None
         return None
 
-    def extend_subscription(self, subscription_id, endDate):
+    def extend_subscription(self, subscription_id, end_date, raise_exception=False):
         """
         Use internal marketplace API to extend a subscription to endDate
         """
-        extend_url = f"{self.marketplace_endpoint}/subscription/v5/extendActiveSubscription/{subscription_id}/{endDate}"
+        extend_url = f"{self.marketplace_endpoint}/subscription/v5/extendActiveSubscription/{subscription_id}/{end_date}"
         request_headers = {"Content-Type:": "application/json"}
+        r = None
         try:
             r = requests.request(
                 method="get",
@@ -138,21 +159,26 @@ class RedHatSubscriptionApi(object):
                 verify=True,
                 timeout=REQUEST_TIMEOUT,
             )
-        except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.marketplace_endpoint)
+            logger.debug("Extended subscription %i to %s", subscription_id, str(end_date))
+            return r
+        except requests.exceptions.RequestException as e:
+            if raise_exception:
+                raise MarketplaceApiException(endpoint=self.marketplace_endpoint) from e
+
+            # Log specific error types
+            if isinstance(e, requests.exceptions.ReadTimeout):
+                logger.info("request to %s timed out", self.marketplace_endpoint)
+
             return None
 
-        logger.debug("Extended subscription %i to %s", subscription_id, str(endDate))
-        return r
-
-    def create_entitlement(self, customerId, sku):
+    def create_entitlement(self, web_customer_id, sku, raise_exception=False):
         """
         create subscription for user in internal marketplace
         """
         request_url = f"{self.marketplace_endpoint}/subscription/v5/createPerm"
         request_headers = {"Content-Type": "application/json"}
 
-        logger.debug("Creating subscription for %s with sku %s", customerId, sku)
+        logger.debug("Creating subscription for %s with sku %s", web_customer_id, sku)
 
         request_body_dict = {
             "sku": sku,
@@ -168,11 +194,12 @@ class RedHatSubscriptionApi(object):
                 "zero": True,
                 "millisecond": 0,
             },
-            "webCustomerId": customerId,
+            "webCustomerId": web_customer_id,
             "systemName": "QUAY",
         }
         logger.debug("Created entitlement")
 
+        r = None
         try:
             r = requests.request(
                 method="post",
@@ -183,43 +210,31 @@ class RedHatSubscriptionApi(object):
                 verify=True,
                 timeout=REQUEST_TIMEOUT,
             )
-        except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.marketplace_endpoint)
-            return 408
+            return r.status_code
+        except requests.exceptions.RequestException as e:
+            if raise_exception:
+                raise MarketplaceApiException(endpoint=self.marketplace_endpoint) from e
 
-        return r.status_code
+            # Not raising - log and return None
+            if isinstance(e, requests.exceptions.ReadTimeout):
+                logger.info("request to %s timed out", self.marketplace_endpoint)
+                return 408
+            return None
 
-    def remove_entitlement(self, subscription_id):
+    def remove_entitlement(self, subscription_id, raise_exception=False):
         """
         Removes subscription from user given subscription_id
         """
-        request_url = (
-            f"{self.marketplace_endpoint}/subscription/v5/terminateSubscription/{subscription_id}"
-        )
-        request_headers = {"Content-Type": "application/json"}
+        raise NotImplementedError("Method not implemented.")
 
-        logger.debug("Terminating subscription with id %s", subscription_id)
-        try:
-            r = requests.request(
-                method="post",
-                url=request_url,
-                cert=self.cert,
-                headers=request_headers,
-                verify=True,
-                timeout=REQUEST_TIMEOUT,
-            )
-        except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.marketplace_endpoint)
-            return 408
-        return r.status_code
-
-    def get_subscription_details(self, subscription_id):
+    def get_subscription_details(self, subscription_id, raise_exception=False):
         """
         Return the sku and expiration date for a specific subscription
         """
         request_url = f"{self.marketplace_endpoint}/subscription/v5/products/subscription_id={subscription_id}"
         request_headers = {"Content-Type": "application/json"}
 
+        r = None
         try:
             r = requests.request(
                 method="get",
@@ -229,9 +244,7 @@ class RedHatSubscriptionApi(object):
                 timeout=REQUEST_TIMEOUT,
                 headers=request_headers,
             )
-
             info = json.loads(r.content)
-
             subscription_sku = info[0]["sku"]
             expiration_date = info[1]["activeEndDate"]
             terminated_date = info[0]["terminatedDate"]
@@ -240,10 +253,14 @@ class RedHatSubscriptionApi(object):
                 "expiration_date": expiration_date,
                 "terminated_date": terminated_date,
             }
-        except requests.exceptions.SSLError:
-            raise requests.exceptions.SSLError
-        except requests.exceptions.ReadTimeout:
-            logger.info("request to %s timed out", self.marketplace_endpoint)
+        except (requests.exceptions.RequestException, json.decoder.JSONDecodeError) as e:
+            if raise_exception:
+                raise MarketplaceApiException(endpoint=self.marketplace_endpoint) from e
+
+            # Log specific error types
+            if isinstance(e, requests.exceptions.ReadTimeout):
+                logger.info("request to %s timed out", self.marketplace_endpoint)
+
             return None
 
     def get_list_of_subscriptions(
@@ -429,7 +446,7 @@ class FakeUserApi(RedHatUserApi):
     Fake class used for tests
     """
 
-    def lookup_customer_id(self, email):
+    def lookup_customer_id(self, email, raise_exception=False):
         if email == TEST_USER["email"]:
             return [TEST_USER["account_number"]]
         if email == PAID_USER["email"]:
@@ -450,31 +467,38 @@ class FakeSubscriptionApi(RedHatSubscriptionApi):
         self.subscription_extended = False
         self.subscription_created = False
 
-    def lookup_subscription(self, customer_id, sku_id):
-        if customer_id == TEST_USER["account_number"] and sku_id == "MW02701":
+    def lookup_subscription(self, web_customer_id, sku_id, raise_exception=False):
+        if web_customer_id == TEST_USER["account_number"] and sku_id == "MW02701":
             return TEST_USER["subscriptions"]
-        elif customer_id == TEST_USER["account_number"] and sku_id == "MW02702":
+        elif web_customer_id == TEST_USER["account_number"] and sku_id == "MW02702":
             return [TEST_USER["private_subscription"]]
-        elif customer_id == TEST_USER["account_number"] and sku_id == "MW00584MO":
+        elif web_customer_id == TEST_USER["account_number"] and sku_id == "MW00584MO":
             return [TEST_USER["reconciled_subscription"]]
-        elif customer_id == PAID_USER["account_number"] and sku_id == "MW02701":
+        elif web_customer_id == PAID_USER["account_number"] and sku_id == "MW02701":
             return PAID_USER["subscriptions"]
-        elif customer_id == PAID_USER["account_number"] and sku_id == "MW04192":
+        elif web_customer_id == PAID_USER["account_number"] and sku_id == "MW04192":
             return PAID_USER["free_sku"]
-        elif customer_id == FREE_USER["account_number"]:
+        elif web_customer_id == FREE_USER["account_number"]:
             return []
         return None
 
-    def create_entitlement(self, customer_id, sku_id):
+    def create_entitlement(self, web_customer_id, sku, raise_exception=False):
         self.subscription_created = True
 
-    def remove_entitlement(self, subscription_id):
+        # Mock a successful response object
+        class MockResponse:
+            ok = True
+            status_code = 200
+
+        return MockResponse()
+
+    def remove_entitlement(self, subscription_id, raise_exception=False):
         pass
 
-    def extend_subscription(self, subscription_id, end_date):
+    def extend_subscription(self, subscription_id, end_date, raise_exception=False):
         self.subscription_extended = True
 
-    def get_subscription_details(self, subscription_id):
+    def get_subscription_details(self, subscription_id, raise_exception=False):
         valid_ids = [subscription["id"] for subscription in TEST_USER["subscriptions"]]
         if subscription_id in valid_ids:
             return {"sku": "MW02701", "expiration_date": 3813177600000, "terminated_date": None}
