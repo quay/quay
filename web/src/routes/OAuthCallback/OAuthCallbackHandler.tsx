@@ -17,7 +17,6 @@ export function OAuthCallbackHandler() {
   }
 
   // For success (code param) - redirect to backend immediately
-  // This preserves working OAuth success behavior from PR #4252
   const baseURL =
     process.env.REACT_QUAY_APP_API_URL ||
     `${window.location.protocol}//${window.location.host}`;
