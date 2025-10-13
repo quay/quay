@@ -1,14 +1,14 @@
-.pf-v5-c-title.pf-m-2xl {
+.pf-v6-c-title.pf-m-2xl {
   text-align: left;
-  margin-top: var(--pf-v5-global--spacer--md);
+  margin-top: var(--pf-v6-global--spacer--md);
 }
 
-.pf-v5-c-title.pf-m-xl {
+.pf-v6-c-title.pf-m-xl {
   text-align: left;
-  margin-top: var(--pf-v5-global--spacer--sm);
-  margin-bottom: var(--pf-v5-global--spacer--xl);
+  margin-top: var(--pf-v6-global--spacer--sm);
+  margin-bottom: var(--pf-v6-global--spacer--xl);
 }
 
-.pf-v5-c-title.pf-m-lg {
+.pf-v6-c-title.pf-m-lg {
   text-align: center;
 }

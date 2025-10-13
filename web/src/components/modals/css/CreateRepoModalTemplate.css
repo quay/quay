@@ -1,8 +1,8 @@
-.pf-v5-c-alert {
-    --pf-v5-c-alert--PaddingTop: 25rem;
+.pf-v6-c-alert {
+    --pf-v6-c-alert--PaddingTop: 25rem;
 }
 
 .fas{
-    font-size: var(--pf-v5-global--icon--FontSize--md);
+    font-size: var(--pf-v6-global--icon--FontSize--md);
 
   }

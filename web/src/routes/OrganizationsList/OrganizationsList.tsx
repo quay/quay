@@ -58,12 +58,12 @@ function OrgListHeader({
     <>
       <QuayBreadcrumb />
       <PageSection hasBodyWrapper={false} hasShadowBottom>
-        <div className="co-m-nav-title--row pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-flex-end">
+        <div className="co-m-nav-title--row pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-flex-end">
           <Title headingLevel="h1">Organizations</Title>
 
           {/* Registry Size Display - Inline with header for superusers */}
           {showRegistrySize && (
-            <div className="pf-v5-u-font-size-sm pf-v5-u-mb-xs">
+            <div className="pf-v6-u-font-size-sm pf-v6-u-mb-xs">
               <span>
                 Total Registry Size:{' '}
                 {registrySize
@@ -77,7 +77,7 @@ function OrgListHeader({
                 size="sm"
                 onClick={handleCalculateClick}
                 isDisabled={isQueuing}
-                className="pf-v5-u-ml-md"
+                className="pf-v6-u-ml-md"
               >
                 {isQueuing ? 'Calculating...' : 'Calculate'}
               </Button>

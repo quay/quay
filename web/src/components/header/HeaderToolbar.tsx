@@ -269,7 +269,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
               <Flex
                 spaceItems={{default: 'spaceItemsMd'}}
                 flexWrap={{default: 'nowrap'}}
-                className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+                className="pf-v6-u-text-nowrap pf-v6-u-pr-md"
               >
                 <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
                   Current UI
