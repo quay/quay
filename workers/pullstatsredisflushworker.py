@@ -23,6 +23,7 @@ from data.model.pull_statistics import (
     bulk_upsert_manifest_statistics,
     bulk_upsert_tag_statistics,
 )
+from digest.digest_tools import Digest, InvalidDigestException
 from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
@@ -411,7 +412,13 @@ class RedisFlushWorker(Worker):
                 return False
 
             manifest_digest = metrics_data.get("manifest_digest", "")
-            if not manifest_digest or not manifest_digest.startswith("sha256:"):
+            if not manifest_digest:
+                logger.debug(f"RedisFlushWorker: Key {key} missing manifest_digest")
+                return False
+
+            try:
+                Digest.parse_digest(manifest_digest)
+            except InvalidDigestException:
                 logger.debug(
                     f"RedisFlushWorker: Key {key} has invalid manifest_digest: {manifest_digest}"
                 )

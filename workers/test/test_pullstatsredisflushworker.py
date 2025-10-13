@@ -290,3 +290,12 @@ def test_validate_redis_key_data():
             "last_pull_timestamp": "1694168400",
         }
         assert worker._validate_redis_key_data("test_key", invalid_data) is False
+
+        # Invalid digest format (missing colon)
+        invalid_data = {
+            "repository_id": "123",
+            "manifest_digest": "sha256123123",
+            "pull_count": "5",
+            "last_pull_timestamp": "1694168400",
+        }
+        assert worker._validate_redis_key_data("test_key", invalid_data) is False
