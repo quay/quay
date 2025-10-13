@@ -1,14 +1,17 @@
-import datetime
 import logging
 import time
+from contextlib import contextmanager
+
+from prometheus_client import Counter, Gauge, Histogram
 
 import features
 from app import app
 from app import billing as stripe
 from app import marketplace_subscriptions, marketplace_users
 from data import model
-from data.billing import RECONCILER_SKUS, RH_SKUS, get_plan
+from data.billing import RH_SKUS, get_plan
 from util.locking import GlobalLock, LockNotAcquiredException
+from util.marketplace import MarketplaceApiException
 from workers.gunicorn_worker import GunicornWorker
 from workers.namespacegcworker import LOCK_TIMEOUT_PADDING
 from workers.worker import Worker
@@ -16,14 +19,105 @@ from workers.worker import Worker
 logger = logging.getLogger(__name__)
 
 RECONCILIATION_TIMEOUT = 5 * 60  # 5min
-LOCK_TIMEOUT_PADDING = 60  # 60
 RECONCILIATION_FREQUENCY = 5 * 60  # run reconciliation every 5 min
-
 MILLISECONDS_IN_SECONDS = 1000
 SECONDS_IN_DAYS = 86400
 ONE_MONTH = 30 * SECONDS_IN_DAYS * MILLISECONDS_IN_SECONDS
-
 FREE_TIER_SKU = "MW04192"
+
+# Prometheus metrics
+
+# Job execution metrics
+reconciliation_runs_total = Counter(
+    "quay_reconciliation_runs_total",
+    "total number of reconciliation runs completed",
+    labelnames=["status"],  # success, failed
+)
+reconciliation_duration_seconds = Histogram(
+    "quay_reconciliation_duration_seconds", "duration of reconciliation runs in seconds"
+)
+reconciliation_last_success_timestamp = Gauge(
+    "quay_reconciliation_last_success_timestamp", "timestamp of last successful reconciliation"
+)
+
+# User state metrics
+reconciliation_users_total = Gauge(
+    "quay_reconciliation_users_total", "total number of active users in the database"
+)
+reconciliation_users_processed = Counter(
+    "quay_reconciliation_users_processed_total",
+    "total number of users successfully processed across all reconciliation runs",
+)
+reconciliation_users_not_processed = Counter(
+    "quay_reconciliation_users_not_processed_total",
+    "total number of users not processed across all reconciliation runs",
+    labelnames=["reason"],
+)
+
+# API call metrics
+reconciliation_api_calls = Counter(
+    "quay_reconciliation_api_calls_total",
+    "number of API calls made during reconciliation",
+    labelnames=["api", "operation"],
+)
+reconciliation_api_call_duration = Histogram(
+    "quay_reconciliation_api_call_duration_seconds",
+    "time taken for API calls during reconciliation",
+    labelnames=["api", "operation"],
+)
+reconciliation_api_call_errors = Counter(
+    "quay_reconciliation_api_call_errors_total",
+    "number of API call errors during reconciliation",
+    labelnames=["api", "operation"],
+)
+
+
+@contextmanager
+def track_api_call(api, operation):
+    """
+    Context manager to track API call count, duration, and errors.
+
+    Usage:
+        with track_api_call("marketplace_user", "lookup_customer_id"):
+            result = user_api.lookup_customer_id(email)
+    """
+    reconciliation_api_calls.labels(api=api, operation=operation).inc()
+    start_time = time.time()
+    try:
+        yield
+    except Exception:
+        reconciliation_api_call_errors.labels(api=api, operation=operation).inc()
+        raise
+    finally:
+        duration = time.time() - start_time
+        reconciliation_api_call_duration.labels(api=api, operation=operation).observe(duration)
+
+
+def fetch_stripe_customer_plan(customer_id):
+    """
+    Fetch plan details for a Stripe customer.
+
+    Args:
+        customer_id: Stripe customer ID
+
+    Returns:
+        dict: Plan details (including 'rh_sku') or None if customer has no subscription
+
+    Raises:
+        stripe.error.APIConnectionError: Cannot connect to Stripe
+        stripe.error.InvalidRequestError: Invalid customer ID
+    """
+    customer = stripe.Customer.retrieve(customer_id)
+
+    # Check if customer has a subscription
+    if not hasattr(customer, "subscription") or customer.subscription is None:
+        return None
+
+    # Check if subscription has a plan
+    if not hasattr(customer.subscription, "plan") or customer.subscription.plan is None:
+        return None
+
+    return get_plan(customer.subscription.plan.id)
 
 
 class ReconciliationWorker(Worker):
@@ -33,106 +127,6 @@ class ReconciliationWorker(Worker):
             self._reconcile_entitlements,
             app.config.get("RECONCILIATION_FREQUENCY", RECONCILIATION_FREQUENCY),
         )
-
-    def _perform_reconciliation(self, user_api, marketplace_api):
-        """
-        Gather all entitlements from internal marketplace api and store in quay db
-        Create new entitlements for stripe customers if needed
-        """
-        logger.info("Reconciliation worker looking to create new subscriptions...")
-
-        users = model.user.get_active_users(include_orgs=True)
-
-        # stripe_users = [user for user in users if user.stripe_id is not None]
-
-        for user in users:
-
-            email = user.email
-
-            # check against user api
-            customer_ids = (
-                user_api.lookup_customer_id(email) if email is not None and email != "" else None
-            )
-            if customer_ids is None:
-                if email is None or email == "":
-                    logger.info("Email missing or empty for user %s", user.username)
-                logger.info("No web customer ids found for %s", email)
-                continue
-
-            logger.debug("Found %s number for %s", str(customer_ids), email)
-
-            # check for any subscription reconciliations
-            stripe_customer = None
-            if user.stripe_id is not None:
-                try:
-                    stripe_customer = stripe.Customer.retrieve(user.stripe_id)
-                except stripe.error.APIConnectionError:
-                    logger.error("Cannot connect to Stripe")
-                    continue
-                except stripe.error.InvalidRequestError:
-                    logger.warning("Invalid request for stripe_id %s", user.stripe_id)
-                    continue
-
-            self._iterate_over_ids(stripe_customer, customer_ids, marketplace_api, user.username)
-
-            logger.debug("Finished work for user %s", user.username)
-
-        logger.info("Reconciliation worker is done")
-
-    def _iterate_over_ids(self, stripe_customer, customer_ids, marketplace_api, user=None):
-        """
-        Iterate over each customer's web id(s) and perform appropriate reconciliation actions
-        """
-        try:
-            subscription = stripe_customer.subscription
-        except AttributeError:
-            subscription = None
-
-        for customer_id in customer_ids:
-            paying = False
-            customer_skus = self._prefetch_user_entitlements(customer_id, marketplace_api)
-
-            if stripe_customer is not None and subscription is not None:
-                plan = get_plan(stripe_customer.subscription.plan.id)
-                if plan is not None:
-                    # check for missing sku
-                    paying = True
-                    plan_sku = plan.get("rh_sku")
-                    if plan_sku not in customer_skus:
-                        marketplace_api.create_entitlement(customer_id, plan_sku)
-                        logger.info("Created SKU %s for %s", plan_sku, user)
-                    # check for free tier sku
-            else:
-                # not a stripe customer but we want to check for paying subscriptions for the
-                # next step
-                if len(customer_skus) == 1 and customer_skus[0] == FREE_TIER_SKU:
-                    # edge case where there is only one free sku present
-                    paying = False
-                else:
-                    paying = len(customer_skus) > 0
-
-            # check for free-tier reconciliations
-            if not paying and FREE_TIER_SKU not in customer_skus:
-                marketplace_api.create_entitlement(customer_id, FREE_TIER_SKU)
-                logger.info("Created Free SKU %s for %s", FREE_TIER_SKU, user)
-            elif paying and FREE_TIER_SKU in customer_skus:
-                free_tier_subscriptions = marketplace_api.lookup_subscription(
-                    customer_id, FREE_TIER_SKU
-                )
-                # api returns a list of subscriptions so we want to make sure we remove
-                # all if there's more than one
-                for sub in free_tier_subscriptions:
-                    id = sub.get("id")
-                    marketplace_api.remove_entitlement(id)
-                    logger.info("Removed Free SKU id: %s from %s", id, user)
-
-    def _prefetch_user_entitlements(self, customer_id, marketplace_api):
-        found_skus = []
-        for sku in RH_SKUS:
-            subscription = marketplace_api.lookup_subscription(customer_id, sku)
-            if subscription is not None and len(subscription) > 0:
-                found_skus.append(sku)
-        return found_skus
 
     def _reconcile_entitlements(self, skip_lock_for_testing=False):
         """
@@ -156,6 +150,157 @@ class ReconciliationWorker(Worker):
             except LockNotAcquiredException:
                 logger.debug("Could not acquire global lock for entitlement reconciliation")
                 print(str(LockNotAcquiredException))
+
+    def _perform_reconciliation(self, user_api, marketplace_api):
+        """
+        Core reconciliation logic.
+        """
+        start_time = time.time()
+
+        try:
+            logger.info("Reconciliation worker looking to create new subscriptions...")
+
+            users = model.user.get_active_users(include_orgs=True)
+
+            # Set gauge to current user count
+            reconciliation_users_total.set(len(users))
+
+            for user in users:
+                if user.email is None or user.email == "":
+                    reconciliation_users_not_processed.labels(reason="missing_email").inc()
+                    logger.info("Email missing or empty for user %s", user.username)
+                    continue
+
+                customer_ids = []
+                try:
+                    with track_api_call("marketplace_user", "lookup_customer_id"):
+                        customer_ids = user_api.lookup_customer_id(user.email, raise_exception=True)
+                except MarketplaceApiException as e:
+                    logger.error("Failed to lookup customer ID for %s: %s", user.email, str(e))
+                if not customer_ids:
+                    reconciliation_users_not_processed.labels(reason="no_customer_ids").inc()
+                    logger.info("No web customer ids found for %s", user.email)
+                    continue
+
+                # Check if user has a Stripe subscription with a valid plan
+                plan = None
+                if user.stripe_id:
+                    try:
+                        plan = fetch_stripe_customer_plan(user.stripe_id)
+                    except stripe.error.StripeError as e:
+                        logger.error("Stripe error for user %s: %s", user.username, str(e))
+                        reconciliation_users_not_processed.labels(reason="stripe_error").inc()
+                        reconciliation_api_calls.labels(
+                            api="stripe", operation="fetch_customer_plan"
+                        ).inc()
+                        continue
+                if plan:
+                    self._reconcile_paying_user(user, customer_ids, plan, marketplace_api)
+                else:
+                    self._reconcile_free_user(user, customer_ids, marketplace_api)
+
+                reconciliation_users_processed.inc()
+                logger.debug("Finished work for user %s", user.username)
+
+            logger.info("Reconciliation worker is done")
+
+            # Mark success
+            reconciliation_runs_total.labels(status="success").inc()
+            reconciliation_last_success_timestamp.set(time.time())
+
+        except Exception:
+            logger.exception("Reconciliation run failed")
+            reconciliation_runs_total.labels(status="failed").inc()
+            raise
+        finally:
+            duration = time.time() - start_time
+            reconciliation_duration_seconds.observe(duration)
+
+    def _reconcile_paying_user(self, user, customer_ids, plan, marketplace_api):
+        """
+        Given a user with a paid Stripe plan, create any missing entitlements.
+
+        Args:
+            user: User object
+            customer_ids: List of marketplace customer IDs
+            plan: Plan dict containing 'rh_sku' key
+            marketplace_api: Marketplace API client
+        """
+        for customer_id in customer_ids:
+            customer_skus = self._get_customer_id_entitlement_skus(customer_id, marketplace_api)
+            rh_sku = plan.get("rh_sku")
+            if rh_sku not in customer_skus:
+                try:
+                    with track_api_call("marketplace_subscription", "create_entitlement"):
+                        result = marketplace_api.create_entitlement(
+                            customer_id, rh_sku, raise_exception=True
+                        )
+                        if result and result.ok:
+                            logger.info("Created SKU %s for %s", rh_sku, user)
+                        else:
+                            logger.error(
+                                "Failed to create SKU %s for user %s, retcode %s",
+                                rh_sku,
+                                user.username,
+                                str(result),
+                            )
+                except MarketplaceApiException as e:
+                    logger.error(
+                        "Failed to create SKU %s for user %s: %s", rh_sku, user.username, str(e)
+                    )
+            # Not-implemented: Remove free tier sku entitlement for paying customers
+
+    def _reconcile_free_user(self, user, customer_ids, marketplace_api):
+        """
+        Given a non-paying user, ensure they have the free-tier entitlement
+        """
+        for customer_id in customer_ids:
+            customer_skus = self._get_customer_id_entitlement_skus(customer_id, marketplace_api)
+            if FREE_TIER_SKU not in customer_skus:
+                try:
+                    with track_api_call("marketplace_subscription", "create_entitlement"):
+                        result = marketplace_api.create_entitlement(customer_id, FREE_TIER_SKU)
+                        if result and result.ok:
+                            logger.info("Created Free SKU %s for %s", FREE_TIER_SKU, user)
+                        else:
+                            logger.error(
+                                "Failed to create Free SKU %s for user %s",
+                                FREE_TIER_SKU,
+                                user.username,
+                            )
+                except MarketplaceApiException as e:
+                    logger.error(
+                        "Failed to create Free SKU %s for user %s: %s",
+                        FREE_TIER_SKU,
+                        user.username,
+                        str(e),
+                    )
+            # Not-implemented: Remove duplicated free tier sku entitlements.
+
+    def _get_customer_id_entitlement_skus(self, customer_id, marketplace_api):
+        """
+        Get the list of entitlement SKUs for a given customer ID.
+
+        :param customer_id: The ID of the customer to look up
+        :param marketplace_api: The marketplace API client to use for the lookup
+        :return: A list of entitlement SKUs for the customer
+        """
+        skus = []
+        for sku in RH_SKUS:
+            try:
+                with track_api_call("marketplace_subscription", "lookup_subscription"):
+                    subs = marketplace_api.lookup_subscription(customer_id, sku)
+                if subs is not None and len(subs) > 0:
+                    skus.append(sku)
+            except MarketplaceApiException as e:
+                logger.error(
+                    "Failed to lookup subscription for customer %s, sku %s: %s",
+                    customer_id,
+                    sku,
+                    str(e),
+                )
+                # Continue checking other SKUs
+        return skus
 
 
 def create_gunicorn_worker():
