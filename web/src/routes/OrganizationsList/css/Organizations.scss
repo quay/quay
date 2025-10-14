@@ -1,14 +1,14 @@
 $screen-sm: 768px;
-$pf-v5-global-gutter: 1rem;
-$pf-v5-global-gutter--md: 1.5rem;
+$pf-global-gutter: 1rem;
+$pf-global-gutter--md: 1.5rem;
 
 // Page layout
 .co-m-nav-title {
-  margin-top: $pf-v5-global-gutter--md;
-  padding: 0 $pf-v5-global-gutter 0;
+  margin-top: $pf-global-gutter--md;
+  padding: 0 $pf-global-gutter 0;
   @media (min-width: 500px) {
-    padding-left: $pf-v5-global-gutter--md;
-    padding-right: $pf-v5-global-gutter--md;
+    padding-left: $pf-global-gutter--md;
+    padding-right: $pf-global-gutter--md;
   }
   &--row {
     @media (min-width: $screen-sm) {
@@ -21,12 +21,12 @@ $pf-v5-global-gutter--md: 1.5rem;
 
 // Trash icon
 .fas.fa-trash {
-  font-size: var(--pf-v5-global--icon--FontSize--lg);
+  font-size: var(--pf-t--global--icon--size--lg);
   color: grey;
 }
 
-.pf-v5-c-button.pf-m-plain {
-  --pf-v5-c-button--disabled--BackgroundColor: transparent
+.pf-v6-c-button.pf-m-plain {
+  --pf-v6-c-button--disabled--BackgroundColor: transparent
 }
 
 .create-org-modal-slider {

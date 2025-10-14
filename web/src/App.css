@@ -28,7 +28,7 @@ html, body, #root,  .App {
 
 .disabled-link {
     pointer-events: none;
-    color: var(--pf-v6-global--palette--black);
+    color: var(--pf-t--global--color--palette--black--900);
 }
 
 .no-padding {
@@ -70,4 +70,26 @@ html, body, #root,  .App {
 
 .red-color {
     color: red !important;
+}
+
+/* Make page content fill viewport height */
+.pf-v6-c-page__main {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Content sections grow to fill space */
+.pf-v6-c-page__main-section {
+    flex: 1 1 auto;
+}
+
+/* Main drawer/content area should grow to fill available space */
+.pf-v6-c-page__main > .pf-v6-c-drawer {
+    flex: 1 1 auto;
+}
+
+/* Footer should not grow, only use natural height and stick to bottom */
+.pf-v6-c-page__main > .quay-footer {
+    flex: 0 0 auto;
 }

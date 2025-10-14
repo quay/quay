@@ -297,8 +297,7 @@ export default function Pricing() {
             <Title
               headingLevel="h3"
               style={{
-                color:
-                  'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v6-global--Color--100 */,
+                color: 'var(--pf-t--global--text--color--regular)',
               }}
             >
               How do I use Quay with my servers and code?
@@ -331,8 +330,7 @@ export default function Pricing() {
             <Title
               headingLevel="h3"
               style={{
-                color:
-                  'var(--pf-t--temp--dev--tbd)' /* CODEMODS: original v5 color was --pf-v6-global--Color--100 */,
+                color: 'var(--pf-t--global--text--color--regular)',
               }}
             >
               How is Quay optimized for a team environment?

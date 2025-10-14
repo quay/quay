@@ -193,7 +193,7 @@ describe('Usage Logs Export', () => {
     );
     cy.visit('/organization/projectquay');
     cy.contains('Logs').click();
-    cy.get('[class=pf-v5-c-chart]')
+    cy.get('[class=pf-v6-c-chart]')
       .should('be.visible')
       .and((chart) => {
         expect(chart.height()).to.be.greaterThan(1);
@@ -254,10 +254,10 @@ describe('Usage Logs Export', () => {
     cy.contains('Logs').click();
 
     cy.contains('Hide Chart').click();
-    cy.get('[class=pf-v5-c-chart]').should('not.exist');
+    cy.get('[class=pf-v6-c-chart]').should('not.exist');
 
     cy.contains('Show Chart').click();
-    cy.get('[class=pf-v5-c-chart]').should('be.visible');
+    cy.get('[class=pf-v6-c-chart]').should('be.visible');
   });
 
   it('empty chart', () => {
