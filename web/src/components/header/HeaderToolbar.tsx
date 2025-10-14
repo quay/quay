@@ -49,6 +49,9 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const {themePreference, setThemePreference} = useTheme();
+  const config = useQuayConfig();
+  const showUIToggle =
+    config?.features?.UI_V2 && config?.config?.DEFAULT_UI !== 'react';
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
@@ -258,31 +261,33 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
             align={{default: 'alignRight'}}
             spacer={{default: 'spacerNone', md: 'spacerMd'}}
           >
-            <ToolbarItem
-              spacer={{
-                default: 'spacerNone',
-                md: 'spacerSm',
-                lg: 'spacerMd',
-                xl: 'spacerLg',
-              }}
-            >
-              <Flex
-                spaceItems={{default: 'spaceItemsMd'}}
-                flexWrap={{default: 'nowrap'}}
-                className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+            {showUIToggle && (
+              <ToolbarItem
+                spacer={{
+                  default: 'spacerNone',
+                  md: 'spacerSm',
+                  lg: 'spacerMd',
+                  xl: 'spacerLg',
+                }}
               >
-                <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
-                  Current UI
-                </FlexItem>
-                <Switch
-                  id="header-toolbar-ui-switch"
-                  label="New UI"
-                  labelOff="New UI"
-                  isChecked={isChecked}
-                  onChange={toggleSwitch}
-                />
-              </Flex>
-            </ToolbarItem>
+                <Flex
+                  spaceItems={{default: 'spaceItemsMd'}}
+                  flexWrap={{default: 'nowrap'}}
+                  className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+                >
+                  <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
+                    Current UI
+                  </FlexItem>
+                  <Switch
+                    id="header-toolbar-ui-switch"
+                    label="New UI"
+                    labelOff="New UI"
+                    isChecked={isChecked}
+                    onChange={toggleSwitch}
+                  />
+                </Flex>
+              </ToolbarItem>
+            )}
             <ToolbarItem
               spacer={{
                 default: 'spacerNone',
