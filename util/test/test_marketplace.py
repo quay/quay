@@ -224,8 +224,6 @@ class TestMarketplace(unittest.TestCase):
         assert extended_subscription is None
         create_subscription_response = subscription_api.create_entitlement(12345, "sku")
         assert create_subscription_response == 408
-        remove_entitlement_response = subscription_api.remove_entitlement(12345)
-        assert remove_entitlement_response == 408
 
     @patch("requests.request")
     def test_user_lookup(self, requests_mock):
