@@ -1,0 +1,1 @@
+{"critical":{"identity":{"docker-reference":"localhost:8080/user1/hello-world"},"image":{"docker-manifest-digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"},"type":"cosign container image signature"},"optional":null}

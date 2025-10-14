@@ -807,6 +807,21 @@ describe('Tag history Tab', () => {
   const tagHistoryRows = [
     {
       change:
+        'sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.att was created pointing to sha2560c074e670b2038',
+      date: 'Thu, 10 Oct 2025 21:30:51 -0000',
+    },
+    {
+      change:
+        'sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.sbom was created pointing to sha256efcfc6d6802e49',
+      date: 'Thu, 10 Oct 2025 21:30:34 -0000',
+    },
+    {
+      change:
+        'sha256-f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4.sig was created pointing to sha256976063da6e0164',
+      date: 'Thu, 10 Oct 2025 21:30:12 -0000',
+    },
+    {
+      change:
         'latest was reverted to sha256f54a58bc1aac5e from sha256f54a58bc1aac5e',
       date: 'Thu, 14 Aug 2025, 17:34:11 -0000',
     },
@@ -898,8 +913,11 @@ describe('Tag history Tab', () => {
         // Add expiration to show up as future entry
         req.continue((res) => {
           const expiration = moment().add(2, 'weeks');
-          res.body.tags[0].end_ts = expiration.unix();
-          res.body.tags[0].expiration = expiration.toISOString();
+          const latestTag = res.body.tags.find((tag) => tag.name === 'latest');
+          if (latestTag) {
+            latestTag.end_ts = expiration.unix();
+            latestTag.expiration = expiration.toISOString();
+          }
         });
       },
     );
@@ -918,8 +936,11 @@ describe('Tag history Tab', () => {
         req.continue((res) => {
           // Add expiration to show up as future entry
           const expiration = moment().add(2, 'weeks');
-          res.body.tags[0].end_ts = expiration.unix();
-          res.body.tags[0].expiration = expiration.toISOString();
+          const latestTag = res.body.tags.find((tag) => tag.name === 'latest');
+          if (latestTag) {
+            latestTag.end_ts = expiration.unix();
+            latestTag.expiration = expiration.toISOString();
+          }
         });
       },
     );
