@@ -149,7 +149,6 @@ class RedHatSubscriptionApi(object):
         """
         extend_url = f"{self.marketplace_endpoint}/subscription/v5/extendActiveSubscription/{subscription_id}/{end_date}"
         request_headers = {"Content-Type:": "application/json"}
-        r = None
         try:
             r = requests.request(
                 method="get",
@@ -177,9 +176,6 @@ class RedHatSubscriptionApi(object):
         """
         request_url = f"{self.marketplace_endpoint}/subscription/v5/createPerm"
         request_headers = {"Content-Type": "application/json"}
-
-        logger.debug("Creating subscription for %s with sku %s", web_customer_id, sku)
-
         request_body_dict = {
             "sku": sku,
             "qty": 1,
@@ -197,9 +193,7 @@ class RedHatSubscriptionApi(object):
             "webCustomerId": web_customer_id,
             "systemName": "QUAY",
         }
-        logger.debug("Created entitlement")
 
-        r = None
         try:
             r = requests.request(
                 method="post",
@@ -210,7 +204,8 @@ class RedHatSubscriptionApi(object):
                 verify=True,
                 timeout=REQUEST_TIMEOUT,
             )
-            return r.status_code
+            logger.debug("Created subscription for %s with sku %s", web_customer_id, sku)
+            return r
         except requests.exceptions.RequestException as e:
             if raise_exception:
                 raise MarketplaceApiException(endpoint=self.marketplace_endpoint) from e
@@ -234,7 +229,6 @@ class RedHatSubscriptionApi(object):
         request_url = f"{self.marketplace_endpoint}/subscription/v5/products/subscription_id={subscription_id}"
         request_headers = {"Content-Type": "application/json"}
 
-        r = None
         try:
             r = requests.request(
                 method="get",
