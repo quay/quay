@@ -58,9 +58,12 @@ export default function TagDetails() {
   const tag = parseTagNameFromUrl(location.pathname);
 
   useEffect(() => {
+    resetSecurityDetails();
+    resetSecurityError();
+  }, [org, repo, tag]);
+
+  useEffect(() => {
     (async () => {
-      resetSecurityDetails();
-      resetSecurityError();
       try {
         const resp: TagsResponse = await getTags(org, repo, 1, 100, tag);
 
