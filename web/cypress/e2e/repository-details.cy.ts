@@ -417,7 +417,7 @@ describe('Repository Details Page', () => {
     cy.get('input[placeholder="New tag name"]').type('newtag');
     cy.contains('Create tag').click();
     cy.contains('Could not create tag newtag').should('exist');
-    const newtagRow = cy.get('tbody:contains("newtag")').should('not.exist');
+    cy.get('tbody:contains("newtag")').should('not.exist');
   });
 
   it('view labels', () => {
@@ -831,7 +831,7 @@ describe('Tag history Tab', () => {
   it('renders history list', () => {
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag history').click();
-    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+    cy.get('#tag-history-table tbody tr').each(($e, index, _$list) => {
       cy.wrap($e).within(() => {
         const expectedValues = tagHistoryRows[index];
         cy.get(`[data-label="tag-change"]`).should(
@@ -856,7 +856,7 @@ describe('Tag history Tab', () => {
     cy.visit('/repository/user1/hello-world');
     cy.contains('Tag history').click();
     cy.get('input[placeholder="Search by tag name..."').type('manifestlist');
-    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+    cy.get('#tag-history-table tbody tr').each(($e, _index, _$list) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="tag-change"]`).should(
           'contain.text',
@@ -905,7 +905,7 @@ describe('Tag history Tab', () => {
     cy.get('#start-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-26');
     });
-    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+    cy.get('#tag-history-table tbody tr').each(($e, _index, _$list) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="date-modified"]`).then(($el) => {
           const dateMoment = moment($el.text());
@@ -916,7 +916,7 @@ describe('Tag history Tab', () => {
     cy.get('#end-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-28');
     });
-    cy.get('#tag-history-table > tr').each(($e, index, $list) => {
+    cy.get('#tag-history-table tbody tr').each(($e, _index, _$list) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="date-modified"]`).then(($el) => {
           const dateMoment = moment($el.text());
