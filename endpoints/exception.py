@@ -72,6 +72,8 @@ class ApiException(HTTPException):
         if self.error_description is not None:
             rv["detail"] = self.error_description
             rv["error_message"] = self.error_description  # TODO: deprecate
+            # Back-compat for tests that assert `message` field on 4xx errors
+            rv["message"] = self.error_description
 
         rv["error_type"] = self.error_type.value  # TODO: deprecate
         rv["title"] = self.error_type.value
@@ -141,3 +143,14 @@ class NotFound(ApiException):
 class DownstreamIssue(ApiException):
     def __init__(self, error_description, payload=None):
         ApiException.__init__(self, ApiErrorType.downstream_issue, 520, error_description, payload)
+
+
+class Forbidden(ApiException):
+    """
+    Explicit 403 error with a caller-specified message, using insufficient_scope error type.
+    """
+
+    def __init__(self, error_description, payload=None):
+        ApiException.__init__(
+            self, ApiErrorType.insufficient_scope, 403, error_description, payload
+        )
