@@ -10,6 +10,8 @@ import {
   MenuContent,
   MenuToggle,
   Menu,
+  NotificationBadge,
+  NotificationBadgeVariant,
   Switch,
   ToggleGroup,
   ToggleGroupItem,
@@ -26,6 +28,7 @@ import {
   WindowMaximizeIcon,
 } from '@patternfly/react-icons';
 import React, {useState} from 'react';
+import {useAppNotifications} from 'src/hooks/useAppNotifications';
 import {GlobalAuthState, logoutUser} from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from '../errors/ErrorModal';
@@ -36,14 +39,19 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 
 import MoonIcon from '@patternfly/react-icons/dist/esm/icons/moon-icon';
 import SunIcon from '@patternfly/react-icons/dist/esm/icons/sun-icon';
+import BellIcon from '@patternfly/react-icons/dist/esm/icons/bell-icon';
+
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
-export function HeaderToolbar() {
+export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const {themePreference, setThemePreference} = useTheme();
+  const config = useQuayConfig();
+  const showUIToggle =
+    config?.features?.UI_V2 && config?.config?.DEFAULT_UI !== 'react';
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
@@ -241,6 +249,8 @@ export function HeaderToolbar() {
     window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
   };
 
+  const {unreadCount} = useAppNotifications();
+
   return (
     <>
       <ErrorModal error={err} setError={setErr} />
@@ -251,6 +261,33 @@ export function HeaderToolbar() {
             align={{default: 'alignRight'}}
             spacer={{default: 'spacerNone', md: 'spacerMd'}}
           >
+            {showUIToggle && (
+              <ToolbarItem
+                spacer={{
+                  default: 'spacerNone',
+                  md: 'spacerSm',
+                  lg: 'spacerMd',
+                  xl: 'spacerLg',
+                }}
+              >
+                <Flex
+                  spaceItems={{default: 'spaceItemsMd'}}
+                  flexWrap={{default: 'nowrap'}}
+                  className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+                >
+                  <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
+                    Current UI
+                  </FlexItem>
+                  <Switch
+                    id="header-toolbar-ui-switch"
+                    label="New UI"
+                    labelOff="New UI"
+                    isChecked={isChecked}
+                    onChange={toggleSwitch}
+                  />
+                </Flex>
+              </ToolbarItem>
+            )}
             <ToolbarItem
               spacer={{
                 default: 'spacerNone',
@@ -259,22 +296,19 @@ export function HeaderToolbar() {
                 xl: 'spacerLg',
               }}
             >
-              <Flex
-                spaceItems={{default: 'spaceItemsMd'}}
-                flexWrap={{default: 'nowrap'}}
-                className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+              <NotificationBadge
+                variant={
+                  unreadCount > 0
+                    ? NotificationBadgeVariant.unread
+                    : NotificationBadgeVariant.read
+                }
+                count={unreadCount}
+                onClick={toggleDrawer}
+                aria-label="Notifications"
+                data-testid="notification-bell"
               >
-                <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
-                  Current UI
-                </FlexItem>
-                <Switch
-                  id="header-toolbar-ui-switch"
-                  label="New UI"
-                  labelOff="New UI"
-                  isChecked={isChecked}
-                  onChange={toggleSwitch}
-                />
-              </Flex>
+                <BellIcon />
+              </NotificationBadge>
             </ToolbarItem>
             <ToolbarItem>
               {user.username ? menuContainer : signInButton}
