@@ -1,4 +1,4 @@
-import {Modal, ModalVariant} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 
 export default function ErrorModal(props: ErrorModalProps) {

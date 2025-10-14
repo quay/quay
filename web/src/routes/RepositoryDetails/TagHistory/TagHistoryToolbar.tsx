@@ -27,7 +27,7 @@ export default function TagHistoryToolBar(props: TagHistoryToolBarProps) {
   return (
     <Toolbar>
       <ToolbarContent alignItems="center">
-        <ToolbarItem variant="search-filter">
+        <ToolbarItem>
           <SearchInput
             placeholder="Search by tag name..."
             value={query}

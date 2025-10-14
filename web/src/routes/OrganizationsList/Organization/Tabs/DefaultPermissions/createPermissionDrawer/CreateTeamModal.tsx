@@ -2,13 +2,12 @@ import {
   Button,
   Form,
   FormGroup,
-  Modal,
-  ModalVariant,
   TextInput,
   FormHelperText,
   HelperText,
   HelperTextItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {AlertVariant} from 'src/atoms/AlertState';

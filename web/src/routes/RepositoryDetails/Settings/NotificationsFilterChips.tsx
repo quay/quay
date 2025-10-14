@@ -17,17 +17,19 @@ export default function NotificationsFilterChips(
   return (
     <>
       <ToolbarFilter
-        chips={props.filter.event}
-        deleteChip={(_category, chip) => deleteFilter('event', chip as string)}
-        deleteChipGroup={() => props.resetFilter('event')}
+        labels={props.filter.event}
+        deleteLabel={(_category, chip) => deleteFilter('event', chip as string)}
+        deleteLabelGroup={() => props.resetFilter('event')}
         categoryName="Event"
       >
         {}
       </ToolbarFilter>
       <ToolbarFilter
-        chips={props.filter.status}
-        deleteChip={(_category, chip) => deleteFilter('status', chip as string)}
-        deleteChipGroup={() => props.resetFilter('status')}
+        labels={props.filter.status}
+        deleteLabel={(_category, chip) =>
+          deleteFilter('status', chip as string)
+        }
+        deleteLabelGroup={() => props.resetFilter('status')}
         categoryName="Status"
       >
         {}

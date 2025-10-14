@@ -1,13 +1,13 @@
-.pf-v5-c-form__group {
-  --pf-v5-c-form--m-horizontal__group-label--md--GridColumnWidth: 4.25rem;
-  --pf-v5-c-form--m-horizontal__group-control--md--GridColumnWidth: 1;
+.pf-v6-c-form__group {
+  --pf-v6-c-form--m-horizontal__group-label--md--GridColumnWidth: 4.25rem;
+  --pf-v6-c-form--m-horizontal__group-control--md--GridColumnWidth: 1;
 }
 
-.pf-v5-c-switch {
-  --pf-v5-c-switch--Height: 1rem;
+.pf-v6-c-switch {
+  --pf-v6-c-switch--Height: 1rem;
 }
 
-.pf-v5-c-switch__label {
-  --pf-v5-c-switch__input--checked__label--Color: white;
-  --pf-v5-c-switch__input--not-checked__label--Color: white;
+.pf-v6-c-switch__label {
+  --pf-v6-c-switch__input--checked__label--Color: white;
+  --pf-v6-c-switch__input--not-checked__label--Color: white;
 }

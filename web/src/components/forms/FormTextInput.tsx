@@ -10,7 +10,7 @@ import {
   FormGroup,
   FormHelperText,
   TextInput,
-  Text,
+  Content,
   ValidatedOptions,
 } from '@patternfly/react-core';
 
@@ -121,14 +121,14 @@ export function FormTextInput<T extends FieldValues>({
               />
               {fieldError && (
                 <FormHelperText>
-                  <Text component="p" className="pf-m-error">
+                  <Content component="p" className="pf-m-error">
                     {fieldError.message as string}
-                  </Text>
+                  </Content>
                 </FormHelperText>
               )}
               {helperText && !fieldError && (
                 <FormHelperText>
-                  <Text component="p">{helperText}</Text>
+                  <Content component="p">{helperText}</Content>
                 </FormHelperText>
               )}
             </>

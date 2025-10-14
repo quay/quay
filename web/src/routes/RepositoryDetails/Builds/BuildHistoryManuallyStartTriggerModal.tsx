@@ -3,12 +3,11 @@ import {
   Button,
   HelperText,
   HelperTextItem,
-  Modal,
-  ModalVariant,
   Spinner,
   TextInput,
   Title,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {RepositoryBuildTrigger, SourceRef} from 'src/resources/BuildResource';
 import BuildTriggerDescription from './BuildTriggerDescription';
 import Conditional from 'src/components/empty/Conditional';

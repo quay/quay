@@ -6,29 +6,29 @@ html, body, #root,  .App {
   height: 100%;
 }
 
-.pf-v5-c-content {
-  --pf-v5-c-content--small--Color: red; /* changes all <small> color to red */
-  --pf-v5-c-content--blockquote--BorderLeftColor: purple; /* changes all <blockquote> left border color to purple */
-  --pf-v5-c-content--hr--BackgroundColor: lemonchiffon; /* changes a <hr> color to lemonchiffon */
+.pf-v6-c-content {
+  --pf-v6-c-content--small--Color: red; /* changes all <small> color to red */
+  --pf-v6-c-content--blockquote--BorderLeftColor: purple; /* changes all <blockquote> left border color to purple */
+  --pf-v6-c-content--hr--BackgroundColor: lemonchiffon; /* changes a <hr> color to lemonchiffon */
 }
 
 
-.page-sidebar .pf-v5-c-page__sidebar-body {
+.page-sidebar .pf-v6-c-page__sidebar-body {
   background-color: black;
   color: black;
 }
 
-.page-sidebar .pf-v5-c-nav__list {
+.page-sidebar .pf-v6-c-nav__list {
     padding-top: 0;
 }
 
-.pf-v5-c-page__sidebar-body {
+.pf-v6-c-page__sidebar-body {
     padding-top: 0;
 }
 
 .disabled-link {
     pointer-events: none;
-    color: var(--pf-v5-global--palette--black);
+    color: var(--pf-t--global--color--palette--black--900);
 }
 
 .no-padding {
@@ -44,11 +44,11 @@ html, body, #root,  .App {
     padding-right: 0;
 }
 
-.pf-v5-c-tabs {
+.pf-v6-c-tabs {
     padding-left: 24px;
 }
 
-.pf-v5-c-panel__footer {
+.pf-v6-c-panel__footer {
     padding: 24px 24px 0 0;
 }
 
@@ -70,4 +70,26 @@ html, body, #root,  .App {
 
 .red-color {
     color: red !important;
+}
+
+/* Make page content fill viewport height */
+.pf-v6-c-page__main {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Content sections grow to fill space */
+.pf-v6-c-page__main-section {
+    flex: 1 1 auto;
+}
+
+/* Main drawer/content area should grow to fill available space */
+.pf-v6-c-page__main > .pf-v6-c-drawer {
+    flex: 1 1 auto;
+}
+
+/* Footer should not grow, only use natural height and stick to bottom */
+.pf-v6-c-page__main > .quay-footer {
+    flex: 0 0 auto;
 }

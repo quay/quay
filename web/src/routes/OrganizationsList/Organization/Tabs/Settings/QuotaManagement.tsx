@@ -14,11 +14,10 @@ import {
   GridItem,
   Card,
   CardBody,
-  Text,
+  Content,
   FlexItem,
-  Modal,
-  ModalVariant,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {PlusIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useForm, Controller} from 'react-hook-form';
@@ -544,10 +543,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                   spaceItems={{default: 'spaceItemsSm'}}
                 >
                   <FlexItem style={{minWidth: '140px'}}>
-                    <Text component="h6">Action</Text>
+                    <Content component="h6">Action</Content>
                   </FlexItem>
                   <FlexItem style={{minWidth: '140px'}}>
-                    <Text component="h6">Quota Threshold</Text>
+                    <Content component="h6">Quota Threshold</Content>
                   </FlexItem>
                 </Flex>
               </FlexItem>
@@ -654,7 +653,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               />
                             </FlexItem>
                             <FlexItem>
-                              <Text component="small">%</Text>
+                              <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
                         </FlexItem>
@@ -787,7 +786,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
                               />
                             </FlexItem>
                             <FlexItem>
-                              <Text component="small">%</Text>
+                              <Content component="small">%</Content>
                             </FlexItem>
                           </Flex>
                         </FlexItem>

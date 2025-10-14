@@ -1,13 +1,11 @@
 import {
   Button,
   DropdownItem,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   PanelFooter,
   Title,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import PropTypes from 'prop-types';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
@@ -59,13 +57,13 @@ function OrgListHeader({
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
-        <div className="co-m-nav-title--row pf-v5-u-display-flex pf-v5-u-justify-content-space-between pf-v5-u-align-items-flex-end">
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
+        <div className="co-m-nav-title--row pf-v6-u-display-flex pf-v6-u-justify-content-space-between pf-v6-u-align-items-flex-end">
           <Title headingLevel="h1">Organizations</Title>
 
           {/* Registry Size Display - Inline with header for superusers */}
           {showRegistrySize && (
-            <div className="pf-v5-u-font-size-sm pf-v5-u-mb-xs">
+            <div className="pf-v6-u-font-size-sm pf-v6-u-mb-xs">
               <span>
                 Total Registry Size:{' '}
                 {registrySize
@@ -79,7 +77,7 @@ function OrgListHeader({
                 size="sm"
                 onClick={handleCalculateClick}
                 isDisabled={isQueuing}
-                className="pf-v5-u-ml-md"
+                className="pf-v6-u-ml-md"
               >
                 {isQueuing ? 'Calculating...' : 'Calculate'}
               </Button>
@@ -413,7 +411,7 @@ export default function OrganizationsList() {
       />
       <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
 
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <OrganizationToolBar
           search={search}
           setSearch={setSearch}

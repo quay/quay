@@ -15,7 +15,7 @@ describe('Account Settings Page', () => {
     cy.visit('/overview');
 
     // Check if the default theme is light
-    cy.get('html').should('not.have.class', 'pf-v5-theme-dark');
+    cy.get('html').should('not.have.class', 'pf-v6-theme-dark');
 
     // Ensure the theme switcher is present
     cy.get('[id=user-menu-toggle]').click();
@@ -31,7 +31,7 @@ describe('Account Settings Page', () => {
     cy.visit('/overview');
 
     // Check if the default theme is light
-    cy.get('html').should('not.have.class', 'pf-v5-theme-dark');
+    cy.get('html').should('not.have.class', 'pf-v6-theme-dark');
 
     // Switch to dark theme
     cy.get('[id=user-menu-toggle]').click();
@@ -39,7 +39,7 @@ describe('Account Settings Page', () => {
 
     // Ensure the theme is set to dark
     cy.get('#toggle-group-dark-theme').should('have.class', 'pf-m-selected');
-    cy.get('html').should('have.class', 'pf-v5-theme-dark');
+    cy.get('html').should('have.class', 'pf-v6-theme-dark');
 
     // Ensure local preference is saved
     cy.window().then((window) => {
@@ -48,7 +48,7 @@ describe('Account Settings Page', () => {
 
     // Ensure preference used on load
     cy.reload();
-    cy.get('html').should('have.class', 'pf-v5-theme-dark');
+    cy.get('html').should('have.class', 'pf-v6-theme-dark');
 
     // Ensure the theme switcher respects local preference
     cy.get('[id=user-menu-toggle]').click();
@@ -59,7 +59,7 @@ describe('Account Settings Page', () => {
 
     // Ensure the theme is set to light
     cy.get('#toggle-group-light-theme').should('have.class', 'pf-m-selected');
-    cy.get('html').should('not.have.class', 'pf-v5-theme-dark');
+    cy.get('html').should('not.have.class', 'pf-v6-theme-dark');
 
     // Ensure local preference is saved
     cy.window().then((window) => {
@@ -86,7 +86,7 @@ describe('Account Settings Page', () => {
     cy.visit('/overview');
 
     // Check if the default theme is dark
-    cy.get('html').should('have.class', 'pf-v5-theme-dark');
+    cy.get('html').should('have.class', 'pf-v6-theme-dark');
 
     // Ensure the theme switcher is present
     cy.get('[id=user-menu-toggle]').click();
@@ -109,7 +109,7 @@ describe('Account Settings Page', () => {
         });
       })
       .then(() => {
-        cy.get('html').should('not.have.class', 'pf-v5-theme-dark');
+        cy.get('html').should('not.have.class', 'pf-v6-theme-dark');
       });
   });
 });

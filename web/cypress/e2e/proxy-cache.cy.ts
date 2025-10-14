@@ -56,7 +56,7 @@ describe('Organization settings - Proxy-cache configuration', () => {
     });
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains('Successfully configured proxy cache')
       .should('exist');
   });
@@ -86,7 +86,7 @@ describe('Organization settings - Proxy-cache configuration', () => {
     });
 
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains('Successfully configured proxy cache')
       .should('exist');
   });
@@ -97,7 +97,7 @@ describe('Organization settings - Proxy-cache configuration', () => {
 
     cy.get('[data-testid="delete-proxy-cache-btn"]').click();
     // verify success alert
-    cy.get('.pf-v5-c-alert.pf-m-success')
+    cy.get('.pf-v6-c-alert.pf-m-success')
       .contains('Successfully deleted proxy cache configuration')
       .should('exist');
   });

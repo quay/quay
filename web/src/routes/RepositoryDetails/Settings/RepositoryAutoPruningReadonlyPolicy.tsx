@@ -4,7 +4,6 @@ import {
   DataListItem,
   DataListItemCells,
   DataListItemRow,
-  Gallery,
   Title,
 } from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
@@ -27,7 +26,7 @@ export default function ReadonlyAutoprunePolicy(
         {props.title}
       </Title>
       <DataList
-        className="pf-v5-u-mb-lg"
+        className="pf-v6-u-mb-lg"
         aria-label={`Auto prune policy for ${props.title}`}
         isCompact
       >

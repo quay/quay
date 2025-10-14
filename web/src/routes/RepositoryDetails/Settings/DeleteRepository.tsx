@@ -2,10 +2,9 @@ import {
   Alert,
   AlertActionCloseButton,
   Button,
-  Modal,
-  ModalVariant,
   TextInput,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import Conditional from 'src/components/empty/Conditional';

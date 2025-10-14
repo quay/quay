@@ -111,6 +111,7 @@ export default function EntitySearch(props: EntitySearchProps) {
         <TextInputGroupUtilities>
           {!!searchTerm && (
             <Button
+              icon={<TimesIcon aria-hidden />}
               variant="plain"
               onClick={() => {
                 setSelectedEntityName('');
@@ -119,9 +120,7 @@ export default function EntitySearch(props: EntitySearchProps) {
                 props?.onClear();
               }}
               aria-label="Clear input value"
-            >
-              <TimesIcon aria-hidden />
-            </Button>
+            />
           )}
         </TextInputGroupUtilities>
       </TextInputGroup>

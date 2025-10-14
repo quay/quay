@@ -1,14 +1,12 @@
 import {
   Button,
-  Modal,
-  ModalVariant,
   PageSection,
-  PageSectionVariants,
   TextInput,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {useState} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
@@ -38,8 +36,8 @@ export const UserConvertConflictsModal = (
     } else {
       /* Note: This search filter assumes that the search is always based on the 1st column,
          hence we do "colNames[0]" */
-      const filteredTableRow = props.items.filter(
-        (item) => item.name?.toLowerCase().includes(value.toLowerCase()),
+      const filteredTableRow = props.items.filter((item) =>
+        item.name?.toLowerCase().includes(value.toLowerCase()),
       );
       setItemsMarkedForDelete(filteredTableRow);
     }
@@ -70,7 +68,7 @@ export const UserConvertConflictsModal = (
         of another organization. Please leave the following organization(s)
         first:
       </span>
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <Toolbar>
           <ToolbarContent>
             <ToolbarItem>

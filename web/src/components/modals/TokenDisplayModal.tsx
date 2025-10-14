@@ -2,14 +2,13 @@ import React from 'react';
 import {
   Button,
   ClipboardCopy,
-  Modal,
-  ModalVariant,
-  Text,
-  TextVariants,
+  Content,
+  ContentVariants,
   Stack,
   StackItem,
   Alert,
 } from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {CheckCircleIcon} from '@patternfly/react-icons';
 
 interface TokenDisplayModalProps {
@@ -44,24 +43,24 @@ export default function TokenDisplayModal(props: TokenDisplayModalProps) {
         </StackItem>
 
         <StackItem>
-          <Text component={TextVariants.p}>
+          <Content component={ContentVariants.p}>
             The access token for <strong>{props.applicationName}</strong> has
             been created with the following permissions:
-          </Text>
+          </Content>
         </StackItem>
 
         <StackItem>
           <Stack hasGutter>
             {props.scopes.map((scope) => (
               <StackItem key={scope}>
-                <Text component={TextVariants.small}>• {scope}</Text>
+                <Content component={ContentVariants.small}>• {scope}</Content>
               </StackItem>
             ))}
           </Stack>
         </StackItem>
 
         <StackItem>
-          <Text component={TextVariants.h6}>Your Access Token:</Text>
+          <Content component={ContentVariants.h6}>Your Access Token:</Content>
         </StackItem>
 
         <StackItem>
@@ -77,12 +76,12 @@ export default function TokenDisplayModal(props: TokenDisplayModalProps) {
 
         <StackItem>
           <Alert variant="warning" title="Important Security Notice" isInline>
-            <Text component={TextVariants.p}>
+            <Content component={ContentVariants.p}>
               Keep this token secure and do not share it. This token provides
               access to your account with the selected permissions. You can
               revoke this token at any time from the OAuth Applications
               settings.
-            </Text>
+            </Content>
           </Alert>
         </StackItem>
       </Stack>

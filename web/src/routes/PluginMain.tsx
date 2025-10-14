@@ -101,7 +101,7 @@ function PluginMain() {
   return (
     <Page style={{height: '100vh'}}>
       {!user && (
-        <Banner variant="gold">
+        <Banner color="yellow">
           <Flex
             spaceItems={{default: 'spaceItemsSm'}}
             justifyContent={{default: 'justifyContentCenter'}}
@@ -117,7 +117,7 @@ function PluginMain() {
           </Flex>
         </Banner>
       )}
-      <Banner variant="blue">
+      <Banner color="blue">
         <Flex
           spaceItems={{default: 'spaceItemsSm'}}
           justifyContent={{default: 'justifyContentCenter'}}

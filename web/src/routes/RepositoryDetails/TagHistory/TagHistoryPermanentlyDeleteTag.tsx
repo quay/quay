@@ -1,4 +1,5 @@
-import {Alert, Button, Label, Modal, Tooltip} from '@patternfly/react-core';
+import {Alert, Button, Label, Tooltip} from '@patternfly/react-core';
+import {Modal} from '@patternfly/react-core/deprecated';
 import {TagAction, TagEntry} from './types';
 import ManifestDigest from 'src/components/ManifestDigest';
 import {useEffect, useState} from 'react';

@@ -14,7 +14,6 @@ import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTabl
 import {SecurityReportMetadataTable} from './SecurityReportMetadataTable';
 import {
   PageSection,
-  PageSectionVariants,
   Spinner,
   Title,
   Toolbar,
@@ -163,7 +162,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
   }, [features]);
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <TableTitle />
       <Toolbar>
         <ToolbarContent>

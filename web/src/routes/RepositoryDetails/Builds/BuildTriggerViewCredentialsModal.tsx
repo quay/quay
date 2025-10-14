@@ -1,4 +1,5 @@
-import {Button, Modal, ModalVariant} from '@patternfly/react-core';
+import {Button} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {RepositoryBuildTrigger} from 'src/resources/BuildResource';
 import ViewCredentials from './BuilTriggerViewCredentials';
 

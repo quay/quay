@@ -1,7 +1,6 @@
 import {ReactElement, useEffect, useState} from 'react';
 import {
   PageSection,
-  PageSectionVariants,
   Spinner,
   Title,
   PanelFooter,
@@ -44,7 +43,7 @@ function RepoListHeader(props: RepoListHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
-      <PageSection variant={PageSectionVariants.light} hasShadowBottom>
+      <PageSection hasBodyWrapper={false} hasShadowBottom>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Repositories</Title>
         </div>
@@ -311,7 +310,7 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   return (
     <>
       <RepoListHeader shouldRender={currentOrg === null} />
-      <PageSection variant={PageSectionVariants.light}>
+      <PageSection hasBodyWrapper={false}>
         <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
         {quayConfig?.features?.QUOTA_MANAGEMENT &&
           quayConfig?.features?.EDIT_QUOTA &&

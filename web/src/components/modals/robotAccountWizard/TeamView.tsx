@@ -81,7 +81,10 @@ export default function TeamView(props: TeamViewProps) {
   };
 
   return (
-    <PageSection {...(props.isWizardStep && {padding: {default: 'noPadding'}})}>
+    <PageSection
+      hasBodyWrapper={false}
+      {...(props.isWizardStep && {padding: {default: 'noPadding'}})}
+    >
       <Toolbar>
         <ToolbarContent>
           {props.showCheckbox ? (

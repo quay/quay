@@ -1,5 +1,6 @@
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
-import {Button, Modal, ModalVariant, Spinner} from '@patternfly/react-core';
+import {Button, Spinner} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {useEffect, useState} from 'react';
 import Empty from 'src/components/empty/Empty';
 import {CubesIcon} from '@patternfly/react-icons';

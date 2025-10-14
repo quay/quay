@@ -1,11 +1,5 @@
 import React, {useEffect} from 'react';
-import {
-  Button,
-  Form,
-  FormGroup,
-  PageSection,
-  PageSectionVariants,
-} from '@patternfly/react-core';
+import {Button, Form, FormGroup, PageSection} from '@patternfly/react-core';
 import {useForm} from 'react-hook-form';
 import {
   IOAuthApplication,
@@ -87,7 +81,7 @@ export default function SettingsTab(props: SettingsTabProps) {
   }
 
   return (
-    <PageSection variant={PageSectionVariants.light}>
+    <PageSection hasBodyWrapper={false}>
       <Form>
         <FormTextInput
           name="name"

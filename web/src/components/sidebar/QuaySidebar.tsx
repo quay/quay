@@ -66,7 +66,7 @@ export function QuaySidebar() {
 
   if (sidebarState.isOpen) {
     return (
-      <PageSidebar className="page-sidebar" theme="dark">
+      <PageSidebar className="page-sidebar">
         <PageSidebarBody>{Navigation}</PageSidebarBody>
       </PageSidebar>
     );

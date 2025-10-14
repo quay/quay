@@ -1,7 +1,8 @@
 import ManifestDigest from 'src/components/ManifestDigest';
 import {TagAction, TagEntry} from './types';
 import {ReactElement, useEffect, useState} from 'react';
-import {Alert, Button, Label, Modal} from '@patternfly/react-core';
+import {Alert, Button, Label} from '@patternfly/react-core';
+import {Modal} from '@patternfly/react-core/deprecated';
 import {useRestoreTag} from 'src/hooks/UseTags';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';

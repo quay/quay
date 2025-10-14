@@ -4,6 +4,7 @@ import {
   Masthead,
   MastheadToggle,
   MastheadMain,
+  MastheadLogo,
   MastheadBrand,
   Button,
   MastheadContent,
@@ -40,18 +41,22 @@ export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
 
   return (
     <Masthead>
-      <MastheadToggle>
-        <Button
-          variant="plain"
-          aria-label="Global navigation"
-          onClick={toggleSidebarVisibility}
-        >
-          <BarsIcon />
-        </Button>
-      </MastheadToggle>
       <MastheadMain>
-        <MastheadBrand component={(props) => <Link {...props} to="/" />}>
-          <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
+        <MastheadToggle>
+          <Button
+            icon={<BarsIcon />}
+            variant="plain"
+            aria-label="Global navigation"
+            onClick={toggleSidebarVisibility}
+          />
+        </MastheadToggle>
+        <MastheadBrand data-codemods>
+          <MastheadLogo
+            data-codemods
+            component={(props) => <Link {...props} to="/" />}
+          >
+            <Brand src={logoUrl} alt="Red Hat Quay" className={'header-logo'} />
+          </MastheadLogo>
         </MastheadBrand>
       </MastheadMain>
       <MastheadContent>

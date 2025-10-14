@@ -1,4 +1,5 @@
-import {Button, Modal, ModalVariant} from '@patternfly/react-core';
+import {Button} from '@patternfly/react-core';
+import {Modal, ModalVariant} from '@patternfly/react-core/deprecated';
 import {AlertVariant} from 'src/atoms/AlertState';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {useToggleBuildTrigger} from 'src/hooks/UseBuildTriggers';

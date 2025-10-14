@@ -6,8 +6,7 @@ import {
   CardTitle,
   Split,
   SplitItem,
-  Text,
-  TextContent,
+  Content,
 } from '@patternfly/react-core';
 
 import {useTheme} from 'src/contexts/ThemeContext';
@@ -17,21 +16,21 @@ export default function GettingStarted(props: GettingStartedProps) {
   const theme = useTheme();
 
   return (
-    <Card isFlat style={{margin: '24px'}}>
+    <Card style={{margin: '24px'}}>
       <Split>
         <SplitItem>
           <CardTitle>
-            <Text component="h1">Get started with Quay.io</Text>
+            <Content component="h1">Get started with Quay.io</Content>
           </CardTitle>
           <CardBody>
-            <TextContent>
-              <Text component="p">
+            <Content>
+              <Content component="p">
                 Welcome to Quay.io, the container registry platform for managing
                 your cloud native artifacts, where you can securely store,
                 distribute, and deploy them with confidence and ease - sign up
                 now to get started!
-              </Text>
-            </TextContent>
+              </Content>
+            </Content>
           </CardBody>
           <CardFooter>
             <Button
