@@ -32,7 +32,9 @@ from workers.worker import Worker
 logger = logging.getLogger(__name__)
 
 # Configuration constants
-POLL_PERIOD = app.config.get("REDIS_FLUSH_INTERVAL_SECONDS", 300)  # 5 minutes
+POLL_PERIOD = app.config.get(
+    "REDIS_FLUSH_INTERVAL_SECONDS", 30
+)  # 30 seconds for testing (default was 300)
 BATCH_SIZE = app.config.get("REDIS_FLUSH_WORKER_BATCH_SIZE", 1000)
 REDIS_SCAN_COUNT = app.config.get("REDIS_FLUSH_WORKER_SCAN_COUNT", 100)
 
