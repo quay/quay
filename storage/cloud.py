@@ -1262,3 +1262,47 @@ class STSS3Storage(S3Storage):
             )
 
         super().__init__(context, storage_path, s3_bucket, **connect_kwargs)
+
+
+class IRSAS3Storage(S3Storage):
+    """
+    S3Storage for IRSA (IAM Roles for Service Accounts).
+
+    This storage driver uses boto3's automatic credential discovery with
+    web identity tokens. It's designed for EKS/ROSA environments where
+    pods have IAM roles assigned via service accounts.
+
+    The pod's IAM role credentials are automatically refreshed by boto3
+    through the AWS_WEB_IDENTITY_TOKEN_FILE and AWS_ROLE_ARN environment
+    variables. No explicit access keys or assume_role calls are needed.
+
+    Configuration example:
+        DISTRIBUTED_STORAGE_CONFIG:
+            default:
+                - IRSAS3Storage
+                - s3_bucket: my-bucket
+                  s3_region: us-east-1
+                  storage_path: /datastorage/registry
+    """
+
+    def __init__(
+        self,
+        context,
+        storage_path,
+        s3_bucket,
+        s3_region=None,
+        endpoint_url=None,
+        maximum_chunk_size_gb=None,
+        signature_version="s3v4",
+    ):
+        super().__init__(
+            context,
+            storage_path,
+            s3_bucket,
+            s3_region=s3_region,
+            endpoint_url=endpoint_url,
+            maximum_chunk_size_gb=maximum_chunk_size_gb,
+            signature_version=signature_version,
+            s3_access_key=None,
+            s3_secret_key=None,
+        )

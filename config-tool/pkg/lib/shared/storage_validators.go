@@ -155,6 +155,37 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			errors = append(errors, err)
 		}
 
+	case "IRSAS3Storage":
+		log.Debugf("Using IRSA S3 Storage.")
+		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		bucketName = args.S3Bucket
+
+		if len(args.EndpointURL) == 0 {
+			endpoint = "s3.amazonaws.com"
+			isSecure = true
+		} else {
+			endpoint = args.EndpointURL
+			if len(endpoint) >= 8 && endpoint[:8] == "https://" {
+				endpoint = endpoint[8:]
+			} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
+				endpoint = endpoint[7:]
+				isSecure = false
+			} else {
+				isSecure = true
+			}
+		}
+
+		if len(errors) > 0 {
+			return false, errors
+		}
+
+		log.Debugf("IRSA S3 Storage parameters: ")
+		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
+		log.Debugf("Note: IRSA validation skipped - IAM role credentials are only available in pod context")
+
 	case "STSS3Storage":
 		log.Debugf("Using STS S3 Storage.")
 		// Check bucket name
