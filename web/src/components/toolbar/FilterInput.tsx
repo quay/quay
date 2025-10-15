@@ -16,6 +16,7 @@ export function FilterInput(props: FilterInputProps) {
 
   const searchInputRef = React.useRef(null);
   const advancedFilterMenuRef = React.useRef(null);
+  const containerRef = React.useRef(null);
 
   const advancedFilterMenu = (
     <Panel
@@ -71,43 +72,36 @@ export function FilterInput(props: FilterInputProps) {
 
   const searchInputId = props.id ? props.id : 'toolbar-text-input';
 
-  const widths = {
-    default: '150px',
-    sm: '130px',
-    md: '200px',
-    lg: '250px',
-    xl: '300px',
-    '2xl': '350px',
-  };
-
   return (
-    <ToolbarItem variant="search-filter" widths={widths}>
-      <SearchInput
-        ref={searchInputRef}
-        placeholder={`Search by ${props.searchState.field.toLowerCase()}${
-          props.searchState.isRegEx ? ' expression' : ''
-        }...`}
-        value={props.searchState.query}
-        onChange={(_, value) => {
-          setSearchState(value);
-          setAdvancedFilterMenuOpen(false);
-        }}
-        onClear={(_) => setSearchState('')}
-        id={searchInputId}
-        onToggleAdvancedSearch={() => {
-          setAdvancedFilterMenuOpen(!isAdvancedFilterMenuOpen);
-        }}
-        openMenuButtonAriaLabel="Open advanced search"
-        resetButtonLabel="Reset search"
-      />
-      <Popper
-        triggerRef={searchInputRef}
-        popper={advancedFilterMenu}
-        popperRef={advancedFilterMenuRef}
-        isVisible={isAdvancedFilterMenuOpen}
-        appendTo={() => document.querySelector(`#${searchInputId}`)}
-        enableFlip={false}
-      />
+    <ToolbarItem variant="search-filter">
+      <div ref={containerRef}>
+        <SearchInput
+          ref={searchInputRef}
+          placeholder={`Search by ${props.searchState.field.toLowerCase()}${
+            props.searchState.isRegEx ? ' expression' : ''
+          }...`}
+          value={props.searchState.query}
+          onChange={(_, value) => {
+            setSearchState(value);
+            setAdvancedFilterMenuOpen(false);
+          }}
+          onClear={(_) => setSearchState('')}
+          id={searchInputId}
+          onToggleAdvancedSearch={() => {
+            setAdvancedFilterMenuOpen(!isAdvancedFilterMenuOpen);
+          }}
+          openMenuButtonAriaLabel="Open advanced search"
+          resetButtonLabel="Reset search"
+        />
+        {isAdvancedFilterMenuOpen && (
+          <Popper
+            triggerRef={searchInputRef}
+            popper={advancedFilterMenu}
+            isVisible={isAdvancedFilterMenuOpen}
+            appendTo={containerRef.current || undefined}
+          />
+        )}
+      </div>
     </ToolbarItem>
   );
 }
