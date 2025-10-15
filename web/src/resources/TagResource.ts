@@ -25,6 +25,8 @@ export interface Tag {
   expiration?: string;
   end_ts?: number;
   modelcard?: string;
+  pull_count?: number;
+  last_pulled?: string;
 }
 
 export interface ManifestList {
@@ -415,4 +417,30 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
+}
+
+export interface TagPullStatistics {
+  tag_name: string;
+  tag_pull_count: number;
+  last_tag_pull_date: string | null;
+  current_manifest_digest: string;
+  manifest_pull_count: number;
+  last_manifest_pull_date: string | null;
+}
+
+export async function getTagPullStatistics(
+  org: string,
+  repo: string,
+  tag: string,
+) {
+  try {
+    const response: AxiosResponse<TagPullStatistics> = await axios.get(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}/pull_statistics`,
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (error) {
+    // Return null if feature is not enabled or stats not available
+    return null;
+  }
 }
