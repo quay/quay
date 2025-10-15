@@ -68,7 +68,7 @@ export default function Settings(props: SettingsProps) {
     {
       name: 'Quota',
       id: 'quotamanagement',
-      content: (
+      content: () => (
         <QuotaManagement
           organizationName={props.organizationName}
           isUser={props.isUserOrganization}
@@ -96,6 +96,7 @@ export default function Settings(props: SettingsProps) {
               <Tab
                 key={tab.id}
                 eventKey={tabIndex}
+                data-testid={tab.name}
                 title={
                   <TabTitleText
                     className="pf-v5-u-text-nowrap"
