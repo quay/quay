@@ -544,10 +544,6 @@ class SuperUserList(ApiResource):
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             raise InvalidRequest("Cannot create a user in a non-database auth system")
 
-        # Block global readonly superusers from creating users
-        if allow_if_global_readonly_superuser():
-            raise InvalidRequest("Global readonly users cannot create users")
-
         user_information = request.get_json()
         if SuperUserPermission().can():
             # Generate a temporary password for the user.
@@ -1222,7 +1218,7 @@ class SuperUserServiceKeyApproval(ApiResource):
         raise Unauthorized()
 
 
-def _token_view(token, include_code=False):
+def _token_view(token):
     """
     Helper function to format app token data for API responses.
     """
@@ -1233,13 +1229,6 @@ def _token_view(token, include_code=False):
         "created": format_date(token.created),
         "expiration": format_date(token.expiration),
     }
-
-    if include_code:
-        data.update(
-            {
-                "token_code": model.appspecifictoken.get_full_token_string(token),
-            }
-        )
 
     return data
 
@@ -1284,7 +1273,7 @@ class SuperUserAppTokens(ApiResource):
                 tokens = model.appspecifictoken.list_all_tokens()
 
             return {
-                "tokens": [_token_view(token, include_code=False) for token in tokens],
+                "tokens": [_token_view(token) for token in tokens],
                 "only_expiring": expiring,
             }
 

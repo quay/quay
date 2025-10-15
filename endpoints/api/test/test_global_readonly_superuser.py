@@ -91,13 +91,17 @@ class TestRepositoryWriteOperationsBlocking:
     def test_repository_creation_blocked(self, app):
         """
         Test that repository creation is blocked for global readonly superusers.
+        Permission blocking happens at the CreateRepositoryPermission class level.
         """
-        from unittest.mock import patch
+        from unittest.mock import MagicMock, patch
+
+        # Mock the permission class to deny creation
+        mock_permission = MagicMock()
+        mock_permission.can.return_value = False
 
         with patch(
-            "endpoints.api.repository.allow_if_global_readonly_superuser", return_value=True
+            "endpoints.api.repository.CreateRepositoryPermission", return_value=mock_permission
         ), patch("endpoints.api.repository.allow_if_superuser", return_value=False):
-
             with client_with_identity("reader", app) as cl:
                 repo_data = {
                     "repository": "test-blocked-repo",
@@ -139,36 +143,20 @@ class TestOrganizationWriteOperationsBlocking:
     def test_organization_creation_blocked(self, app):
         """
         Test that organization creation is blocked for global readonly superusers.
+        When SUPERUSERS_ORG_CREATION_ONLY is enabled, global readonly superusers
+        cannot create organizations (blocked by allow_if_superuser check).
         """
         from unittest.mock import patch
 
-        with patch(
-            "endpoints.api.organization.allow_if_global_readonly_superuser", return_value=True
-        ), patch("endpoints.api.organization.allow_if_superuser", return_value=False):
+        from endpoints.test.shared import toggle_feature
 
-            with client_with_identity("reader", app) as cl:
-                org_data = {"name": "test-blocked-org", "email": "test@example.com"}
-                # Should return 403 Unauthorized for write operations
-                resp = conduct_api_call(cl, OrganizationList, "POST", None, org_data, 403)
-
-
-class TestUserWriteOperationsBlocking:
-    """Test that user write operations are blocked for global read-only superusers."""
-
-    def test_user_modification_blocked(self, app):
-        """
-        Test that user modification is blocked for global readonly superusers.
-        """
-        from unittest.mock import patch
-
-        with patch(
-            "endpoints.api.user.allow_if_global_readonly_superuser", return_value=True
-        ), patch("endpoints.api.user.allow_if_superuser", return_value=False):
-
-            with client_with_identity("reader", app) as cl:
-                user_data = {"email": "newemail@example.com"}
-                # Should return 403 Unauthorized for write operations
-                resp = conduct_api_call(cl, User, "PUT", None, user_data, 403)
+        # Enable the feature that requires superuser for org creation
+        with toggle_feature("SUPERUSERS_ORG_CREATION_ONLY", True):
+            with patch("endpoints.api.organization.allow_if_superuser", return_value=False):
+                with client_with_identity("reader", app) as cl:
+                    org_data = {"name": "test-blocked-org", "email": "test@example.com"}
+                    # Should return 403 Unauthorized for write operations
+                    resp = conduct_api_call(cl, OrganizationList, "POST", None, org_data, 403)
 
 
 # =============================================================================

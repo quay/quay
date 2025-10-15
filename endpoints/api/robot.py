@@ -155,10 +155,6 @@ class UserRobot(ApiResource):
         """
         Create a new user robot with the specified name.
         """
-        # Global readonly superusers cannot perform write operations
-        if allow_if_global_readonly_superuser():
-            raise Unauthorized()
-
         parent = get_authenticated_user()
         create_data = request.get_json(silent=True) or {}
 

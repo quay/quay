@@ -154,14 +154,10 @@ class OrganizationList(ApiResource):
         """
         Create a new organization.
         """
-        # Global readonly superusers cannot perform write operations
         # When SUPERUSERS_ORG_CREATION_ONLY is enabled, only regular superusers can create orgs
-        # When disabled, regular users can create orgs, but global readonly superusers cannot
         if features.SUPERUSERS_ORG_CREATION_ONLY:
             if not allow_if_superuser():
                 raise Unauthorized()
-        elif allow_if_global_readonly_superuser():
-            raise Unauthorized()
 
         user = get_authenticated_user()
         org_data = request.get_json()

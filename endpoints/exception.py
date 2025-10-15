@@ -72,8 +72,6 @@ class ApiException(HTTPException):
         if self.error_description is not None:
             rv["detail"] = self.error_description
             rv["error_message"] = self.error_description  # TODO: deprecate
-            # Back-compat for tests that assert `message` field on 4xx errors
-            rv["message"] = self.error_description
 
         rv["error_type"] = self.error_type.value  # TODO: deprecate
         rv["title"] = self.error_type.value

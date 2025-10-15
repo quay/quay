@@ -406,10 +406,6 @@ class User(ApiResource):
         """
         Update a users details such as password or email.
         """
-        # Global readonly superusers cannot perform write operations
-        if allow_if_global_readonly_superuser():
-            raise Unauthorized()
-
         user = get_authenticated_user()
         user_data = request.get_json()
         previous_username = None
@@ -1043,10 +1039,6 @@ class DetachExternal(ApiResource):
         """
         Request that the current user be detached from the external login service.
         """
-        # Global readonly superusers cannot perform write operations
-        if allow_if_global_readonly_superuser():
-            raise Unauthorized()
-
         model.user.detach_external_login(get_authenticated_user(), service_id)
         return {"success": True}
 
@@ -1352,30 +1344,7 @@ class StarredRepositoryList(ApiResource):
         List all starred repositories.
         """
         user = get_authenticated_user()
-
-        # Superusers (both regular and global readonly) can see all starred repositories by all users
-        if allow_if_any_superuser():
-            # For now, return all starred repositories by getting them differently
-            # This ensures the endpoint works for global readonly superusers
-            try:
-                repo_kind = Repository.kind.get_id("image")
-            except RepositoryKind.DoesNotExist:
-                raise request_error(message="Unknown kind of repository")
-
-            # Get all starred repositories across all users
-            starred_repos_query = (
-                Repository.select()
-                .join(Star)
-                .where(Repository.kind == repo_kind)
-                .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
-                .distinct()
-            )
-
-            # Convert to the format expected by pagination
-            repo_query = starred_repos_query
-        else:
-            # Regular users only see their own starred repositories
-            repo_query = model.repository.get_user_starred_repositories(user)
+        repo_query = model.repository.get_user_starred_repositories(user)
 
         repos, next_page_token = model.modelutil.paginate(
             repo_query, Repository, page_token=page_token, limit=REPOS_PER_PAGE
