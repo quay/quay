@@ -30,6 +30,7 @@ from data.billing import Billing
 from data.buildlogs import BuildLogs
 from data.cache import get_model_cache
 from data.model.user import LoginWrappedDBUser
+from data.pullmetrics import PullMetricsBuilderModule
 from data.queue import WorkQueue
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
@@ -266,6 +267,7 @@ billing = Billing(app)
 sentry = Sentry(app)
 build_logs = BuildLogs(app)
 userevents = UserEventsBuilderModule(app)
+pullmetrics = PullMetricsBuilderModule(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 

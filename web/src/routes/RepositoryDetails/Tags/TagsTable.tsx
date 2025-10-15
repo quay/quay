@@ -66,7 +66,7 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      <Td dataLabel="size" noPadding={false} colSpan={3}>
+      <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
           <ChildManifestSize
             org={props.org}
@@ -75,15 +75,8 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      {props.manifest.digest ? (
-        <Td dataLabel="digest" noPadding={false} colSpan={1}>
-          <ExpandableRowContent>
-            {props.manifest.digest.substring(0, 19)}
-          </ExpandableRowContent>
-        </Td>
-      ) : (
-        <Td />
-      )}
+      <Td colSpan={2} />{' '}
+      {/* Skip Last Modified, Last Pulled, Pull Count for sub-rows */}
     </Tr>
   );
 }
@@ -162,17 +155,11 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
         </Td>
-        <Td dataLabel={ColumnNames.expires}>
-          <TagExpiration
-            org={props.org}
-            repo={props.repo}
-            tag={tag.name}
-            expiration={tag.expiration}
-            loadTags={props.loadTags}
-          />
+        <Td dataLabel={ColumnNames.lastPulled}>
+          {tag.last_pulled ? formatDate(tag.last_pulled) : 'Never'}
         </Td>
-        <Td dataLabel={ColumnNames.digest}>
-          {tag.manifest_digest.substring(0, 19)}
+        <Td dataLabel={ColumnNames.pullCount}>
+          {tag.pull_count !== undefined ? tag.pull_count : 0}
         </Td>
         <Td
           dataLabel={ColumnNames.pull}
@@ -263,10 +250,10 @@ export default function TagsTable(props: TableProps) {
               Last Modified
             </Th>
             <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
-              Expires
+              Last Pulled
             </Th>
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
-              Manifest
+              Pull Count
             </Th>
             <Th modifier="wrap">Pull</Th>
             <Th />

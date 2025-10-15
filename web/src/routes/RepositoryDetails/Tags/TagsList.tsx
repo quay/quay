@@ -24,6 +24,7 @@ import {
   TagsResponse,
   getManifestByDigest,
   getTags,
+  getTagPullStatistics,
 } from 'src/resources/TagResource';
 import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
@@ -70,8 +71,8 @@ export default function TagsList(props: TagsProps) {
       2: (item: Tag) => item.name, // Tag Name
       4: (item: Tag) => item.size || 0, // Size
       5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
-      7: (item: Tag) => item.manifest_digest, // Manifest
+      6: (item: Tag) => item.last_pulled || '', // Last Pulled
+      7: (item: Tag) => item.pull_count || 0, // Pull Count
     },
     filter: searchFilter,
     initialPerPage: 20,
@@ -102,6 +103,19 @@ export default function TagsList(props: TagsProps) {
       );
       tag.manifest_list = JSON.parse(manifestResp.manifest_data);
     };
+
+    const getPullStats = async (tag: Tag) => {
+      const pullStats = await getTagPullStatistics(
+        props.organization,
+        props.repository,
+        tag.name,
+      );
+      if (pullStats) {
+        tag.pull_count = pullStats.tag_pull_count;
+        tag.last_pulled = pullStats.last_tag_pull_date;
+      }
+    };
+
     let page = 1;
     let hasAdditional = false;
     try {
@@ -116,6 +130,8 @@ export default function TagsList(props: TagsProps) {
             tag.is_manifest_list ? getManifest(tag) : null,
           ),
         );
+        // Fetch pull statistics for all tags
+        await Promise.all(resp.tags.map((tag: Tag) => getPullStats(tag)));
         if (page == 1) {
           setTags(resp.tags);
         } else {
