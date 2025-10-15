@@ -18,6 +18,8 @@ import {
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useConvertAccount} from 'src/hooks/UseConvertAccount';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 import Avatar from 'src/components/Avatar';
 
 interface ChangeAccountTypeModalProps {
@@ -31,6 +33,7 @@ export default function ChangeAccountTypeModal({
 }: ChangeAccountTypeModalProps) {
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
+  const {addAlert} = useAlerts();
   const canConvert = user?.organizations?.length === 0;
   const [convertStep, setConvertStep] = useState(canConvert ? 1 : 0); // Start at step 1 if can convert
   const [accountType, setAccountType] = useState('organization'); // Default to organization
@@ -42,8 +45,13 @@ export default function ChangeAccountTypeModal({
 
   const convertAccountMutator = useConvertAccount({
     onSuccess: () => {
+      addAlert({
+        title: 'Account successfully converted to organization',
+        variant: AlertVariant.Success,
+      });
       handleClose();
-      // Could add success notification here
+      // Redirect to the organization page
+      window.location.href = `/organization/${user?.username}`;
     },
     onError: (error) => {
       setError(error?.response?.data?.detail || 'Failed to convert account');
@@ -87,22 +95,18 @@ export default function ChangeAccountTypeModal({
     }
   };
 
-  const performConversion = async () => {
+  const performConversion = () => {
     setConvertStep(3); // Show loading step
     setError('');
 
-    try {
-      const convertRequest = {
-        adminUser: adminUsername,
-        adminPassword: adminPassword,
-        ...(quayConfig?.features?.BILLING &&
-          selectedPlan && {plan: selectedPlan}),
-      };
+    const convertRequest = {
+      adminUser: adminUsername,
+      adminPassword: adminPassword,
+      ...(quayConfig?.features?.BILLING &&
+        selectedPlan && {plan: selectedPlan}),
+    };
 
-      await convertAccountMutator.convert(convertRequest);
-    } catch (error) {
-      // Error handling is done in the onError callback
-    }
+    convertAccountMutator.convert(convertRequest);
   };
 
   // Step 0 - Account type selection or blocking message
