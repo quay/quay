@@ -258,8 +258,9 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     );
   }
 
-  // Return component Empty state
-  if (!loading && !repositoryList?.length) {
+  // Return component Empty state - only if there are truly no repositories
+  // If filtered results are empty but repos exist, show the table with toolbar
+  if (!loading && !repos?.length) {
     return (
       <Empty
         icon={CubesIcon}
