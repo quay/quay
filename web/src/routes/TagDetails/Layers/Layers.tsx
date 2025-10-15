@@ -77,7 +77,7 @@ export function Layers(props: LayersProps) {
       >
         {layers.map((layer, index) => (
           <LayerItem
-            key={layer.blob_digest || `layer-${index}`}
+            key={`${layer.blob_digest || 'empty-layer'}-${index}`}
             layer={layer}
             isFirst={index === 0}
             isLast={index === layers.length - 1}
