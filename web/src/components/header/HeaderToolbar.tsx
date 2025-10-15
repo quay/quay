@@ -25,6 +25,7 @@ import {
 import {
   PowerOffIcon,
   UserIcon,
+  UserCogIcon,
   WindowMaximizeIcon,
 } from '@patternfly/react-icons';
 import React, {useState} from 'react';
@@ -68,6 +69,10 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     itemId: string | number | undefined,
   ) => {
     switch (itemId) {
+      case 'account-settings':
+        window.location.href = `/organization/${user?.username}?tab=Settings`;
+        setIsDropdownOpen(false);
+        break;
       case 'logout':
         try {
           await logoutUser();
@@ -157,6 +162,14 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
         <Divider />
         <MenuGroup label="Actions" key="user">
           <MenuList>
+            <MenuItem
+              icon={<UserCogIcon aria-hidden />}
+              itemId="account-settings"
+              key="account-settings"
+              component="button"
+            >
+              Account Settings
+            </MenuItem>
             <MenuItem
               icon={<PowerOffIcon aria-hidden />}
               isDanger={true}
