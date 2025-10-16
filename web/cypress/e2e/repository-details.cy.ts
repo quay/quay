@@ -568,7 +568,11 @@ describe('Repository Details Page', () => {
   });
 
   it('changes expiration through kebab', () => {
-    const formattedDate = new Date();
+    // Freeze time to avoid date boundary issues
+    const now = new Date('2025-10-15T12:00:00Z');
+    cy.clock(now);
+
+    const formattedDate = now;
     const currentDateGB = formattedDate.toLocaleDateString('en-GB', {
       year: 'numeric',
       month: 'long',
@@ -584,7 +588,7 @@ describe('Repository Details Page', () => {
         day: 'numeric',
       },
     );
-    const nextMonth = new Date();
+    const nextMonth = new Date(now);
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -624,16 +628,18 @@ describe('Repository Details Page', () => {
       });
 
     // Ensure current date can be chosen
-    cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get(`[aria-label="${currentDateGB}"]`).click();
+    cy.get('[aria-label="Toggle date picker"]').should('be.visible').click();
+    cy.get(`[aria-label="${currentDateGB}"]`).should('be.visible').click();
     cy.get('input[aria-label="Date picker"]').should(
       'have.value',
       currentDateLong,
     );
 
-    cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
+    cy.get('[aria-label="Toggle date picker"]').should('be.visible').click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
 
     cy.get('#expiration-time-picker').click();
     cy.contains(formattedTime.replace(/ AM| PM/, ''))
@@ -673,7 +679,11 @@ describe('Repository Details Page', () => {
   });
 
   it('changes expiration through tag row', () => {
-    const nextMonth = new Date();
+    // Freeze time to avoid date boundary issues
+    const now = new Date('2025-10-15T12:00:00Z');
+    cy.clock(now);
+
+    const nextMonth = new Date(now);
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -703,11 +713,13 @@ describe('Repository Details Page', () => {
       .within(() => {
         cy.contains('latest').should('exist');
       });
-    cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
-    cy.get('#expiration-time-picker').click();
-    cy.contains(formattedTime).click();
+    cy.get('[aria-label="Toggle date picker"]').should('be.visible').click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('#expiration-time-picker').should('be.visible').click();
+    cy.contains(formattedTime).should('be.visible').click();
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
@@ -719,7 +731,11 @@ describe('Repository Details Page', () => {
   });
 
   it('changes multiple tag expirations', () => {
-    const nextMonth = new Date();
+    // Freeze time to avoid date boundary issues
+    const now = new Date('2025-10-15T12:00:00Z');
+    cy.clock(now);
+
+    const nextMonth = new Date(now);
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -750,11 +766,13 @@ describe('Repository Details Page', () => {
         cy.contains('latest').should('exist');
         cy.contains('manifestlist').should('exist');
       });
-    cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
-    cy.get('#expiration-time-picker').click();
-    cy.contains(formattedTime).click();
+    cy.get('[aria-label="Toggle date picker"]').should('be.visible').click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('#expiration-time-picker').should('be.visible').click();
+    cy.contains(formattedTime).should('be.visible').click();
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
@@ -766,7 +784,11 @@ describe('Repository Details Page', () => {
   });
 
   it('alerts on failure to change expiration', () => {
-    const nextMonth = new Date();
+    // Freeze time to avoid date boundary issues
+    const now = new Date('2025-10-15T12:00:00Z');
+    cy.clock(now);
+
+    const nextMonth = new Date(now);
     nextMonth.setMonth(nextMonth.getMonth() + 1);
     const sameDateNextMonthGB = nextMonth.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -789,11 +811,13 @@ describe('Repository Details Page', () => {
     latestRow.first().within(() => {
       cy.contains('Never').click();
     });
-    cy.get('[aria-label="Toggle date picker"]').click();
-    cy.get('button[aria-label="Next month"]').click();
-    cy.get(`[aria-label="${sameDateNextMonthGB}"]`).click();
-    cy.get('#expiration-time-picker').click();
-    cy.contains(formattedTime).click();
+    cy.get('[aria-label="Toggle date picker"]').should('be.visible').click();
+    cy.get('button[aria-label="Next month"]').should('be.visible').click();
+    cy.get(`[aria-label="${sameDateNextMonthGB}"]`)
+      .should('be.visible')
+      .click();
+    cy.get('#expiration-time-picker').should('be.visible').click();
+    cy.contains(formattedTime).should('be.visible').click();
     cy.contains('Change Expiration').click();
     const latestRowUpdated = cy.get('tbody:contains("latest")');
     latestRowUpdated.first().within(() => {
