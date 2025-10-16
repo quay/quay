@@ -76,7 +76,6 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
     const scopesString = getSelectedScopesList().join(' ');
 
     if (selectedUser !== null) {
-      // For assignment, build URL manually to match Angular format
       const params = new URLSearchParams({
         username: selectedUser.name,
         response_type: 'token',
