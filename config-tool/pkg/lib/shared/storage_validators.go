@@ -19,6 +19,76 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// buildEndpoint normalizes endpoint configuration from both Boto2 and Boto3 formats.
+func buildEndpoint(endpointURL string, host string, port int, defaultIsSecure bool) (string, bool, error) {
+	var endpoint string
+	var isSecure bool
+
+	// Prefer endpoint_url if provided (Boto3 style)
+	if endpointURL != "" {
+		endpoint = endpointURL
+
+		// Determine security from scheme
+		if len(endpoint) >= 8 && endpoint[:8] == "https://" {
+			isSecure = true
+			endpoint = endpoint[8:] // Strip "https://"
+		} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
+			isSecure = false
+			endpoint = endpoint[7:] // Strip "http://"
+		} else {
+			// No scheme in endpoint_url, use default
+			isSecure = defaultIsSecure
+		}
+	} else if host != "" {
+		// Boto2 style: use host + port
+		endpoint = host
+		isSecure = defaultIsSecure
+
+		// Append port if provided and not already in host
+		if port != 0 {
+			endpoint = endpoint + ":" + strconv.Itoa(port)
+		}
+	} else {
+		return "", false, fmt.Errorf("either endpoint_url or host must be provided")
+	}
+
+	return endpoint, isSecure, nil
+}
+
+// buildSTSEndpointConfig builds endpoint configuration for STS-based storage types (IRSA and STS).
+func buildSTSEndpointConfig(args *DistributedStorageArgs) (string, bool, *aws.Config, error) {
+	var s3Endpoint string
+	var isSecure bool
+	awsConfig := &aws.Config{}
+
+	if args.EndpointURL != "" || args.Host != "" {
+		var err error
+		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, true)
+		if err != nil {
+			return "", false, nil, err
+		}
+
+		// Reconstruct the full URL with scheme for STS client
+		var stsEndpointURL string
+		if isSecure {
+			stsEndpointURL = "https://" + s3Endpoint
+		} else {
+			stsEndpointURL = "http://" + s3Endpoint
+		}
+
+		awsConfig.Endpoint = aws.String(stsEndpointURL)
+		if !isSecure {
+			awsConfig.DisableSSL = aws.Bool(true)
+		}
+	} else {
+		// Default to AWS S3
+		s3Endpoint = "s3.amazonaws.com"
+		isSecure = true
+	}
+
+	return s3Endpoint, isSecure, awsConfig, nil
+}
+
 // ValidateStorage will validate a S3 storage connection.
 func ValidateStorage(opts Options, storageName string, storageType string, args *DistributedStorageArgs, fgName string) (bool, []ValidationError) {
 
@@ -79,17 +149,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 
 	case "S3Storage":
-
-		// // Check access key
-		// if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
-		// 	errors = append(errors, err)
-		// }
-		// // Check secret key
-		// if ok, err := ValidateRequiredString(args.S3SecretKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_secret_key", fgName); !ok {
-		// 	errors = append(errors, err)
-		// }
-
-		// Check bucket name
 		log.Debugf("Using Amazon S3 Storage.")
 
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
@@ -99,16 +158,22 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
-		isSecure = args.IsSecure
 
-		if len(args.Host) == 0 {
+		// Build endpoint from either endpoint_url (boto3) or host+port (boto2)
+		if args.EndpointURL != "" || args.Host != "" {
+			var err error
+			endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, true)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Invalid endpoint configuration: " + err.Error(),
+				})
+			}
+		} else {
+			// Default to AWS S3
 			endpoint = "s3.amazonaws.com"
 			isSecure = true
-		} else {
-			endpoint = args.Host
-		}
-		if args.Port != 0 {
-			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
 		}
 
 		if len(errors) > 0 {
@@ -157,34 +222,60 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 	case "IRSAS3Storage":
 		log.Debugf("Using IRSA S3 Storage.")
+
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
 			errors = append(errors, err)
 		}
 
 		bucketName = args.S3Bucket
 
-		if len(args.EndpointURL) == 0 {
-			endpoint = "s3.amazonaws.com"
-			isSecure = true
-		} else {
-			endpoint = args.EndpointURL
-			if len(endpoint) >= 8 && endpoint[:8] == "https://" {
-				endpoint = endpoint[8:]
-			} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
-				endpoint = endpoint[7:]
-				isSecure = false
-			} else {
-				isSecure = true
-			}
-		}
-
-		if len(errors) > 0 {
+		// Build endpoint configuration for STS and S3
+		var awsConfig *aws.Config
+		var err error
+		endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args)
+		if err != nil {
+			errors = append(errors, ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Invalid endpoint configuration: " + err.Error(),
+			})
 			return false, errors
 		}
 
+		// IRSA uses automatic credential discovery via AWS_WEB_IDENTITY_TOKEN_FILE and AWS_ROLE_ARN
+		sess, err := session.NewSession(awsConfig)
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Could not create S3 session for IRSA. Error: " + err.Error(),
+			}
+			errors = append(errors, newError)
+			return false, errors
+		}
+
+		// Get temp credentials from the default credential chain (includes web identity token)
+		creds, err := sess.Config.Credentials.Get()
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Could not fetch IRSA credentials. Ensure AWS_WEB_IDENTITY_TOKEN_FILE and AWS_ROLE_ARN are set. Error: " + err.Error(),
+			}
+			errors = append(errors, newError)
+			return false, errors
+		}
+
+		accessKey = creds.AccessKeyID
+		secretKey = creds.SecretAccessKey
+		token = creds.SessionToken
+
 		log.Debugf("IRSA S3 Storage parameters: ")
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
-		log.Debugf("Note: IRSA validation skipped - IAM role credentials are only available in pod context")
+
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+			errors = append(errors, err)
+		}
 
 	case "STSS3Storage":
 		log.Debugf("Using STS S3 Storage.")
@@ -215,14 +306,16 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			sessionName = "quay"
 		}
 
-		awsConfig := &aws.Config{}
-		var stsEndpointIsSecure bool = true
-		if len(args.EndpointURL) != 0 {
-			awsConfig.Endpoint = aws.String(args.EndpointURL)
-			if len(args.EndpointURL) >= 7 && args.EndpointURL[:7] == "http://" {
-				stsEndpointIsSecure = false
-				awsConfig.DisableSSL = aws.Bool(true)
-			}
+		// Build endpoint configuration for STS and S3
+		var awsConfig *aws.Config
+		endpoint, isSecure, awsConfig, err := buildSTSEndpointConfig(args)
+		if err != nil {
+			errors = append(errors, ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Invalid endpoint configuration: " + err.Error(),
+			})
+			return false, errors
 		}
 
 		var credentials *sts.Credentials
@@ -280,23 +373,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey := *credentials.SecretAccessKey
 		token = *credentials.SessionToken
 		bucketName = args.S3Bucket
-
-		if len(args.EndpointURL) == 0 {
-			endpoint = "s3.amazonaws.com"
-			isSecure = true
-		} else {
-			endpoint = args.EndpointURL
-			isSecure = stsEndpointIsSecure
-			if len(endpoint) >= 8 && endpoint[:8] == "https://" {
-				endpoint = endpoint[8:]
-			} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
-				endpoint = endpoint[7:]
-			}
-		}
-
-		if len(errors) > 0 {
-			return false, errors
-		}
 
 		log.Debugf("STS S3 Storage parameters: ")
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
@@ -396,16 +472,22 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
 		bucketName = args.S3Bucket
-		isSecure = args.IsSecure
 
-		if len(args.Host) == 0 {
+		// Build endpoint from either endpoint_url (boto3) or host+port (boto2)
+		if args.EndpointURL != "" || args.Host != "" {
+			var err error
+			endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, true)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Invalid endpoint configuration: " + err.Error(),
+				})
+			}
+		} else {
+			// Default to AWS S3
 			endpoint = "s3.amazonaws.com"
 			isSecure = true
-		} else {
-			endpoint = args.Host
-		}
-		if args.Port != 0 {
-			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
 		}
 
 		if len(errors) > 0 {
