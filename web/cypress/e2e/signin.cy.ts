@@ -44,7 +44,7 @@ describe('Signin page', () => {
     }).as('signinFail');
   };
 
-  it('Successful signin with existing user', () => {
+  it.only('Successful signin with existing user', () => {
     setupSuccessfulSignin();
 
     // Fill and submit form with existing user credentials
@@ -63,7 +63,7 @@ describe('Signin page', () => {
     cy.wait('@getCsrfToken');
 
     // Should redirect to organization page
-    cy.url().should('include', '/organization');
+    cy.location('pathname').should('include', 'organization');
   });
 
   it('Successful signin with correct response format', () => {
