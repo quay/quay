@@ -62,7 +62,18 @@
     "SERVER_HOSTNAME": "localhost:8080",
     "SETUP_COMPLETE": true,
     "STATIC_SITE_BUCKET": null,
-    "TAG_EXPIRATION_OPTIONS": ["0s", "1d", "1w", "2w", "4w", "80d", "90d", "180d", "365d", "2y"],
+    "TAG_EXPIRATION_OPTIONS": [
+      "0s",
+      "1d",
+      "1w",
+      "2w",
+      "4w",
+      "80d",
+      "90d",
+      "180d",
+      "365d",
+      "2y"
+    ],
     "PERMANENTLY_DELETE_TAGS": true,
     "FEATURE_AUTO_PRUNE": true,
     "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY": {
@@ -134,6 +145,7 @@
     "USER_LOG_ACCESS": false,
     "USER_METADATA": true,
     "USER_RENAME": false,
+    "UI_MODELCARD": true,
     "AUTO_PRUNE": true,
     "IMAGE_EXPIRY_TRIGGER": true
   },
