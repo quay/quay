@@ -38,6 +38,20 @@ describe('Repository Details Page', () => {
     });
   });
 
+  it('renders cosign shield icon for signed tags', () => {
+    cy.visit('/repository/user1/hello-world');
+    const latestRow = cy.get('tbody:contains("latest")');
+    latestRow.first().within(() => {
+      // Verify the tag name is present
+      cy.get(`[data-label="Tag"]`).should('contain.text', 'latest');
+
+      // Verify the Cosign shield icon (SVG) is present with aria-label
+      cy.get(`[data-label="Tag"] svg`)
+        .should('exist')
+        .should('have.attr', 'aria-label', 'Cosign signed');
+    });
+  });
+
   it('renders manifest list tag', () => {
     cy.intercept(
       'GET',

@@ -28,22 +28,7 @@ import {
 import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
 import {usePaginatedSortableTable} from '../../../hooks/usePaginatedSortableTable';
-
-// Utility function to detect cosign signature tags and SBOM/attestation artifacts
-function isCosignSignatureTag(tagName: string): boolean {
-  // Cosign signature pattern: sha256-<64 hex chars>.sig
-  const cosignPattern = /^sha256-[a-f0-9]{64}\.sig$/;
-  // SBOM pattern: sha256-<64 hex chars>.sbom
-  const sbomPattern = /^sha256-[a-f0-9]{64}\.sbom$/;
-  // Attestation pattern: sha256-<64 hex chars>.att
-  const attestationPattern = /^sha256-[a-f0-9]{64}\.att$/;
-
-  return (
-    cosignPattern.test(tagName) ||
-    sbomPattern.test(tagName) ||
-    attestationPattern.test(tagName)
-  );
-}
+import {enrichTagsWithCosignData, isCosignSignatureTag} from 'src/libs/cosign';
 
 export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -104,6 +89,7 @@ export default function TagsList(props: TagsProps) {
     };
     let page = 1;
     let hasAdditional = false;
+    let allTags: Tag[] = [];
     try {
       do {
         const resp: TagsResponse = await getTags(
@@ -116,15 +102,19 @@ export default function TagsList(props: TagsProps) {
             tag.is_manifest_list ? getManifest(tag) : null,
           ),
         );
-        if (page == 1) {
-          setTags(resp.tags);
-        } else {
-          setTags((currentTags) => [...currentTags, ...resp.tags]);
-        }
+        allTags = page == 1 ? resp.tags : [...allTags, ...resp.tags];
+
+        // Progressive rendering: update UI with tags as they load
+        setTags(allTags);
+        setLoading(false);
+
         hasAdditional = resp.has_additional;
         page++;
-        setLoading(false);
       } while (hasAdditional);
+      // After all tags are loaded, enrich with Cosign signature data
+      // This requires all tags to be present to build the signature map correctly
+      const enrichedTags = enrichTagsWithCosignData(allTags);
+      setTags(enrichedTags);
     } catch (error: unknown) {
       console.error(error);
       setLoading(false);

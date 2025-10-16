@@ -25,6 +25,8 @@ export interface Tag {
   expiration?: string;
   end_ts?: number;
   modelcard?: string;
+  cosign_signature_tag?: string;
+  cosign_signature_manifest_digest?: string;
 }
 
 export interface ManifestList {
