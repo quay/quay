@@ -29,7 +29,7 @@ import {
   TextListItem,
   TextListItemVariants,
 } from '@patternfly/react-core';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import ManageMembersToolbar from './ManageMembersToolbar';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import './css/ManageMembers.css';
@@ -59,6 +59,7 @@ import {useOrganization} from 'src/hooks/UseOrganization';
 import {useTeamSync, useRemoveTeamSync} from 'src/hooks/UseTeamSync';
 import OIDCTeamSyncModal from 'src/components/modals/OIDCTeamSyncModal';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
+import {usePaginatedSortableTable} from '../../../../../../../hooks/usePaginatedSortableTable';
 
 export enum TableModeType {
   AllMembers = 'All Members',
@@ -87,30 +88,53 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     teamMembers,
     robotAccounts,
     invited,
-    paginatedAllMembers,
-    paginatedTeamMembers,
-    paginatedRobotAccounts,
-    paginatedInvited,
     teamCanSync,
     teamSyncInfo,
     loading,
-    page,
-    setPage,
-    perPage,
-    setPerPage,
     search,
     setSearch,
   } = useFetchTeamMembersForOrg(organizationName, teamName);
 
-  const {teams} = useFetchTeams(organizationName);
-
-  const [tableMembersList, setTableMembersList] = useState<ITeamMember[]>([]);
-  const [allMembersList, setAllMembersList] = useState<ITeamMember[]>([]);
-  const [selectedTeamMembers, setSelectedTeamMembers] = useState<ITeamMember[]>(
-    [],
-  );
   const [tableMode, setTableMode] = useState<TableModeType>(
     TableModeType.AllMembers,
+  );
+
+  // Get the appropriate data source based on table mode (memoized for reactivity)
+  const currentDataSource = useMemo(() => {
+    switch (tableMode) {
+      case TableModeType.AllMembers:
+        return allMembers || [];
+      case TableModeType.TeamMember:
+        return teamMembers || [];
+      case TableModeType.RobotAccounts:
+        return robotAccounts || [];
+      case TableModeType.Invited:
+        return invited || [];
+      default:
+        return allMembers || [];
+    }
+  }, [tableMode, allMembers, teamMembers, robotAccounts, invited]);
+
+  const {
+    paginatedData: paginatedCurrentMembers,
+    getSortableSort,
+    paginationProps,
+  } = usePaginatedSortableTable(currentDataSource, {
+    columns: {
+      1: (item: ITeamMember) => item.name, // Team member
+      2: (item: ITeamMember) => getAccountTypeForMember(item), // Account
+    },
+    initialPerPage: 20,
+    initialSort: {columnIndex: 1, direction: 'asc'}, // Default sort: Team member ascending
+  });
+
+  const {teams} = useFetchTeams(organizationName);
+
+  // Use the paginated data from our sortable table hook
+  const tableMembersList = paginatedCurrentMembers;
+  const allMembersList = currentDataSource;
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState<ITeamMember[]>(
+    [],
   );
   const {addAlert} = useAlerts();
 
@@ -129,32 +153,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     useState<boolean>(false);
   const [teamSyncConfigExpanded, setTeamSyncConfigExpanded] = useState(true);
 
-  useEffect(() => {
-    switch (tableMode) {
-      case TableModeType.AllMembers:
-        setTableMembersList(paginatedAllMembers);
-        setAllMembersList(allMembers);
-        break;
-
-      case TableModeType.TeamMember:
-        setTableMembersList(paginatedTeamMembers);
-        setAllMembersList(teamMembers);
-        break;
-
-      case TableModeType.RobotAccounts:
-        setTableMembersList(paginatedRobotAccounts);
-        setAllMembersList(robotAccounts);
-        break;
-
-      case TableModeType.Invited:
-        setTableMembersList(paginatedInvited);
-        setAllMembersList(invited);
-        break;
-
-      default:
-        break;
-    }
-  }, [tableMode, allMembers, search]);
+  // No longer needed - data is managed by usePaginatedSortableTable hook
 
   const onTableModeChange: ToggleGroupItemProps['onChange'] = (event) => {
     const id = event.currentTarget.id;
@@ -317,7 +316,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   useEffect(() => {
     if (teamSyncInfo != null) {
       if (teamSyncInfo.service == 'oidc') {
-        setOIDCGroupName(teamSyncInfo.config?.group_name);
+        setOIDCGroupName(
+          (teamSyncInfo.config as {group_name?: string})?.group_name,
+        );
       }
       if (teamSyncInfo.last_updated != null) {
         setTeamSyncLastUpdated(teamSyncInfo.last_updated);
@@ -578,10 +579,10 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           allItems={allMembersList}
           paginatedItems={tableMembersList}
           onItemSelect={onSelectTeamMember}
-          page={page}
-          setPage={setPage}
-          perPage={perPage}
-          setPerPage={setPerPage}
+          page={paginationProps.page}
+          setPage={paginationProps.setPage}
+          perPage={paginationProps.perPage}
+          setPerPage={paginationProps.setPerPage}
           search={search}
           setSearch={setSearch}
           searchOptions={[manageMemberColumnNames.teamMember]}
@@ -617,8 +618,12 @@ export default function ManageMembersList(props: ManageMembersListProps) {
             <Thead>
               <Tr>
                 <Th />
-                <Th>{manageMemberColumnNames.teamMember}</Th>
-                <Th>{manageMemberColumnNames.account}</Th>
+                <Th sort={getSortableSort(1)}>
+                  {manageMemberColumnNames.teamMember}
+                </Th>
+                <Th sort={getSortableSort(2)}>
+                  {manageMemberColumnNames.account}
+                </Th>
                 <Th />
               </Tr>
             </Thead>
