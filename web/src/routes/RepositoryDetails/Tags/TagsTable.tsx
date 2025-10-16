@@ -1,4 +1,4 @@
-import {Spinner} from '@patternfly/react-core';
+import {Spinner, Tooltip} from '@patternfly/react-core';
 import {
   ExpandableRowContent,
   Table,
@@ -20,7 +20,7 @@ import SecurityDetails from './SecurityDetails';
 import {formatDate} from 'src/libs/utils';
 import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
 import ColumnNames from './ColumnNames';
-import {DownloadIcon} from '@patternfly/react-icons';
+import {DownloadIcon, ShieldAltIcon} from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
@@ -138,6 +138,14 @@ function TagsTableRow(props: RowProps) {
           >
             {tag.name}
           </Link>
+          {tag.cosign_signature_tag && (
+            <Tooltip content="This tag has been signed via cosign.">
+              <ShieldAltIcon
+                style={{marginLeft: '8px'}}
+                aria-label="Cosign signed"
+              />
+            </Tooltip>
+          )}
         </Td>
         <Td dataLabel={ColumnNames.security}>
           {tag.is_manifest_list ? (
