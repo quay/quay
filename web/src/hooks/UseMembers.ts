@@ -225,7 +225,7 @@ export function useFetchCollaborators(orgName: string) {
     isPlaceholderData,
     isError: errorLoadingCollaborators,
   } = useQuery<IMembers[]>(
-    ['collaborators'],
+    ['collaborators', orgName],
     ({signal}) => fetchCollaboratorsForOrg(orgName, signal),
     {
       placeholderData: [],
