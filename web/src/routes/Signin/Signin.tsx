@@ -5,6 +5,7 @@ import {
   Button,
   Form,
   FormGroup,
+  ListVariant,
   LoginForm,
   LoginPage,
   Spinner,
@@ -27,6 +28,7 @@ import {ReCaptcha} from 'src/components/ReCaptcha';
 import {useExternalLogins} from 'src/hooks/UseExternalLogins';
 import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
 import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
+import {useLoginFooterItems} from 'src/components/LoginFooter';
 
 type ViewType = 'signin' | 'forgotPassword';
 
@@ -48,6 +50,7 @@ export function Signin() {
 
   const navigate = useNavigate();
   const quayConfig = useQuayConfig();
+  const footerListItems = useLoginFooterItems();
   const [searchParams] = useSearchParams();
   const {
     requestRecovery,
@@ -459,6 +462,8 @@ export function Signin() {
       loginTitle={
         currentView === 'signin' ? 'Log in to your account' : 'Reset Password'
       }
+      footerListItems={footerListItems}
+      footerListVariants={ListVariant.inline}
     >
       {currentView === 'signin' ? loginForm : recoveryForm}
     </LoginPage>

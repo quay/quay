@@ -8,6 +8,7 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
+  ListVariant,
   LoginPage,
   TextInput,
   ValidatedOptions,
@@ -19,6 +20,7 @@ import axios from 'src/libs/axios';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import './CreateAccount.css';
 import {useCreateAccount} from 'src/hooks/UseCreateAccount';
+import {useLoginFooterItems} from 'src/components/LoginFooter';
 
 export function CreateAccount() {
   const [username, setUsername] = useState('');
@@ -29,6 +31,7 @@ export function CreateAccount() {
   const {createAccountWithAutoLogin, isLoading, error, setError} =
     useCreateAccount();
   const quayConfig = useQuayConfig();
+  const footerListItems = useLoginFooterItems();
 
   let logoUrl = logo;
   if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
@@ -279,6 +282,8 @@ export function CreateAccount() {
       backgroundImgSrc="assets/images/rh_login.jpeg"
       textContent="Create your Red Hat Quay account to start building, analyzing and distributing your container images with added security."
       loginTitle="Create Account"
+      footerListItems={footerListItems}
+      footerListVariants={ListVariant.inline}
     >
       {createAccountForm}
     </LoginPage>
