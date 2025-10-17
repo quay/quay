@@ -612,7 +612,7 @@ class BuildTriggerSourceNamespaces(RepositoryParamResource):
     Custom verb to fetch the list of namespaces (orgs, projects, etc) for the trigger config.
     """
 
-    @require_repo_admin(allow_for_superuser=True)
+    @require_repo_admin(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @disallow_for_app_repositories
     @nickname("listTriggerBuildSourceNamespaces")
     def get(self, namespace_name, repo_name, trigger_uuid):

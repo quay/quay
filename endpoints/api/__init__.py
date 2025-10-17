@@ -353,7 +353,7 @@ def require_repo_permission(permission_class, scope, allow_public=False):
                 if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
                     user = get_authenticated_user()
 
-                    if user is not None and SuperUserPermission().can():
+                    if user is not None and allow_if_superuser():
                         return func(self, namespace, repository, *args, **kwargs)
 
                 if allow_for_global_readonly_superuser and allow_if_global_readonly_superuser():
@@ -395,11 +395,7 @@ def require_user_permission(permission_class, scope=None):
                 if permission.can():
                     return func(self, *args, **kwargs)
 
-                if (
-                    features.SUPERUSERS_FULL_ACCESS
-                    and allow_for_superuser
-                    and SuperUserPermission().can()
-                ):
+                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser and allow_if_superuser():
                     return func(self, *args, **kwargs)
 
                 raise Unauthorized()
@@ -500,19 +496,50 @@ def allow_if_superuser():
     return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
+def allow_if_any_superuser():
+    """
+    Returns True if the user is either a regular superuser (with SUPERUSERS_FULL_ACCESS enabled)
+    or a global readonly superuser.
+
+    Since these two types are mutually exclusive, this is a convenience helper for read-only
+    endpoints that should be accessible to both types of superusers.
+
+    Note: Regular superusers require SUPERUSERS_FULL_ACCESS to be enabled, but global readonly
+    superusers are always allowed (when the feature is enabled) since they're read-only by design.
+    """
+    return allow_if_superuser() or allow_if_global_readonly_superuser()
+
+
 def allow_if_global_readonly_superuser():
-    if (
-        app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None) is None
-        and app.config.get("GLOBAL_READONLY_SUPER_USERS", None) is None
-    ):
+    ldap_filter = app.config.get("LDAP_GLOBAL_READONLY_SUPERUSER_FILTER", None)
+    config_users = app.config.get("GLOBAL_READONLY_SUPER_USERS", None)
+
+    logger.debug(
+        "allow_if_global_readonly_superuser: ldap_filter=%s, config_users=%s",
+        ldap_filter,
+        config_users,
+    )
+
+    if ldap_filter is None and config_users is None:
+        logger.debug("allow_if_global_readonly_superuser: returning False - no config")
         return False
 
     context = get_authenticated_context()
-    return (
-        context is not None
-        and context.authed_user is not None
-        and usermanager.is_global_readonly_superuser(context.authed_user.username)
+    logger.debug("allow_if_global_readonly_superuser: context=%s", context)
+
+    if context is None or context.authed_user is None:
+        logger.debug("allow_if_global_readonly_superuser: returning False - no context/user")
+        return False
+
+    username = context.authed_user.username
+    is_global_readonly = usermanager.is_global_readonly_superuser(username)
+    logger.debug(
+        "allow_if_global_readonly_superuser: user=%s, is_global_readonly=%s",
+        username,
+        is_global_readonly,
     )
+
+    return is_global_readonly
 
 
 def verify_not_prod(func):

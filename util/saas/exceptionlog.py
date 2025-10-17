@@ -38,6 +38,8 @@ def _sentry_before_send_ignore_known(ex_event, hint):
 
 import features
 
+logger = logging.getLogger(__name__)
+
 
 class FakeSentryClient(object):
     def captureException(self, *args, **kwargs):
@@ -110,7 +112,6 @@ class Sentry(object):
                     logger.info("Sentry initialization completed successfully")
 
                 except Exception as e:
-                    logger = logging.getLogger(__name__)
                     logger.error("Failed to initialize Sentry: %s", str(e), exc_info=True)
                     sentry = FakeSentry()
             else:
