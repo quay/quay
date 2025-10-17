@@ -1,10 +1,11 @@
 import {Td} from '@patternfly/react-table';
-
-import {Skeleton} from '@patternfly/react-core';
+import {Skeleton, Flex, FlexItem} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
+import Avatar from 'src/components/Avatar';
 import {IRepository} from 'src/resources/RepositoryResource';
+import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {fetchMembersForOrg} from 'src/resources/MembersResource';
 import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
@@ -40,6 +41,8 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
 // Get and assemble data from multiple endpoints to show in Org table
 // Only necessary because current API structure does not return all required data
 export default function OrgTableData(props: OrganizationsTableItem) {
+  // Get current user data for user avatars
+  const {user: currentUser} = useCurrentUser();
   // const queryClient = useQueryClient();
   // useEffect(() => {
   //   return () => {
@@ -111,7 +114,25 @@ export default function OrgTableData(props: OrganizationsTableItem) {
   return (
     <>
       <Td dataLabel={ColumnNames.name}>
-        <Link to={props.name}>{props.name}</Link>
+        <Flex alignItems={{default: 'alignItemsCenter'}}>
+          {/* Show avatar for organizations OR current user */}
+          {((props.isUser &&
+            currentUser?.username === props.name &&
+            currentUser?.avatar) ||
+            (!props.isUser && organization?.avatar)) && (
+            <FlexItem spacer={{default: 'spacerSm'}}>
+              <Avatar
+                avatar={
+                  props.isUser ? currentUser?.avatar : organization?.avatar
+                }
+                size="sm"
+              />
+            </FlexItem>
+          )}
+          <FlexItem>
+            <Link to={props.name}>{props.name}</Link>
+          </FlexItem>
+        </Flex>
       </Td>
       <Td dataLabel={ColumnNames.repoCount}>
         <Count count={repoCount}></Count>

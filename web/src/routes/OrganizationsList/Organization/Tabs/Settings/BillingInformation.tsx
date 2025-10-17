@@ -1,4 +1,4 @@
-import {useEffect, useState, ReactNode} from 'react';
+import {useEffect, useState} from 'react';
 import {
   Flex,
   FlexItem,
@@ -10,24 +10,14 @@ import {
   Checkbox,
   FormAlert,
   Alert,
-  Radio,
   FormGroup,
-  AlertActionLink,
-  HelperText,
-  AlertGroup,
   FormHelperText,
-  NumberInput,
-  Select,
-  MenuToggleElement,
-  MenuToggle,
 } from '@patternfly/react-core';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useUpgradePlan} from 'src/hooks/UseUpgradePlan';
 import {AxiosError} from 'axios';
-import {UserConvertConflictsModal} from 'src/components/modals/UserConvertConflictsModal';
-import {useConvertAccount} from 'src/hooks/UseConvertAccount';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
@@ -47,7 +37,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
     loading: userUpdateLoading,
     error: userUpdateError,
   } = useUpdateUser({
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully updated settings',
         variant: AlertVariant.Success,
@@ -68,11 +58,6 @@ export const BillingInformation = (props: BillingInformationProps) => {
   const [touched, setTouched] = useState(false);
   const [invoiceEmail, setInvoiceEmail] = useState(false);
   const [invoiceEmailAddress, setInvoiceEmailAddress] = useState('');
-  const [convertConflictModalOpen, setConvertConflictModalOpen] =
-    useState(false);
-
-  const [adminUser, setAdminUser] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
 
   type validate = 'success' | 'warning' | 'error' | 'default';
   const [validated, setValidated] = useState<validate>('success');
@@ -82,7 +67,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
 
   const {updateOrgSettings} = useOrganizationSettings({
     name: organizationName,
-    onSuccess: (result) => {
+    onSuccess: () => {
       addAlert({
         title: 'Successfully updated settings',
         variant: AlertVariant.Success,
@@ -98,49 +83,22 @@ export const BillingInformation = (props: BillingInformationProps) => {
     },
   });
 
-  const [accountType, setAccountType] = useState(
-    isUserOrganization ? 'individual' : 'organization',
-  );
-  useEffect(() => {
-    setAccountType(isUserOrganization ? 'individual' : 'organization');
-  }, [loading]);
   const {currentPlan, privateAllowed, privateCount, upgrade} = useUpgradePlan(
     organizationName,
-    accountType == 'organization',
+    !isUserOrganization,
   );
 
   // total number of private repos allowed (stripe subscription + RH subscription watch)
   const [totalPrivate, setTotalPrivate] = useState(
-    currentPlan?.privateRepos || 0,
+    currentPlan?.usedPrivateRepos || 0,
   );
 
   const addMarketplacePrivate = (marketplacePrivate: number) => {
-    const sum = marketplacePrivate + (currentPlan?.privateRepos || 0);
+    const sum = marketplacePrivate + (currentPlan?.usedPrivateRepos || 0);
     setTotalPrivate(sum);
   };
 
-  const {
-    convert,
-    loading: convertAccountLoading,
-    error: convertAccountError,
-  } = useConvertAccount({
-    onSuccess: (result) => {
-      addAlert({
-        title: 'Successfully converted account',
-        variant: AlertVariant.Success,
-        key: 'alert',
-      });
-    },
-    onError: (err) => {
-      addAlert({
-        title: err.response.data.error_message,
-        variant: AlertVariant.Failure,
-        key: 'alert',
-      });
-    },
-  });
-
-  const error = userUpdateError || convertAccountError;
+  const error = userUpdateError;
 
   const updateLoading = userUpdateLoading;
   useEffect(() => {
@@ -156,7 +114,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
       } else {
         setValidated('default');
       }
-    } else if (isUserOrganization) {
+    } else if (isUserOrganization && user) {
       setInvoiceEmail(user.invoice_email || false);
       setInvoiceEmailAddress(user.invoice_email_address || '');
       if (user.invoice_email_address) {
@@ -176,7 +134,13 @@ export const BillingInformation = (props: BillingInformationProps) => {
         <FormAlert>
           <Alert
             variant="danger"
-            title={((error as AxiosError).response.data as any).error_message}
+            title={
+              (
+                error as AxiosError & {
+                  response?: {data?: {error_message?: string}};
+                }
+              )?.response?.data?.error_message || 'An error occurred'
+            }
             aria-live="polite"
             isInline
           />
@@ -214,7 +178,7 @@ export const BillingInformation = (props: BillingInformationProps) => {
       <FormGroup fieldId="checkbox">
         <Checkbox
           id="checkbox"
-          label="Send receipts via email."
+          label="Send receipts via email"
           aria-label="Send receipts via email"
           isChecked={invoiceEmail}
           onChange={() => {
@@ -258,134 +222,10 @@ export const BillingInformation = (props: BillingInformationProps) => {
         updateTotalPrivate={addMarketplacePrivate}
       />
 
-      {isUserOrganization && (
-        <>
-          <Title headingLevel="h3">Account Type</Title>
-          <Radio
-            id="radio-individual"
-            label="Individual Account"
-            name="radio-individual"
-            isChecked={accountType == 'individual'}
-            onClick={() => setAccountType('individual')}
-            description="Single account with multiple repositories"
-          />
-          <Radio
-            id="radio-organization"
-            label="Organization Account"
-            name="radio-organization"
-            onClick={() => setAccountType('organization')}
-            isChecked={accountType == 'organization'}
-            description="Multiple users and teams that share access and billing under a single namespace"
-          />
-          {user.organizations.length > 0 && accountType == 'organization' && (
-            <Alert
-              isInline
-              variant="warning"
-              title="Unable to convert to organization account"
-              actionLinks={
-                <>
-                  <AlertActionLink
-                    onClick={() => setConvertConflictModalOpen(true)}
-                  >
-                    View details
-                  </AlertActionLink>
-                </>
-              }
-            >
-              <p>
-                This account cannot be converted into an organization, as it is
-                already a member of one or many organizations.
-              </p>
-            </Alert>
-          )}
-          {!user.organizations.length && accountType == 'organization' && (
-            <>
-              <Alert
-                isInline
-                variant="info"
-                title="Converting to organization account"
-                actionLinks={
-                  <>
-                    <AlertActionLink
-                      onClick={() => setConvertConflictModalOpen(true)}
-                    >
-                      View details
-                    </AlertActionLink>
-                  </>
-                }
-              >
-                <p>
-                  Fill out the form below to convert your current user account
-                  into an organization. Your existing repositories will be
-                  maintained under the namespace. All direct permissions
-                  delegated to quayusername will be deleted.
-                </p>
-              </Alert>
-              <Form maxWidth="50%" style={{paddingLeft: '30px'}}>
-                <Title headingLevel="h3">Admin User</Title>
-                <HelperText>
-                  The username and password for the account that will become an
-                  administrator of the organization. Note that this account must
-                  be a seperate registered account from the account that you are
-                  trying to convert, and must already exist
-                </HelperText>
-                <FormGroup
-                  isInline
-                  label="Admin Username"
-                  fieldId="form-organization"
-                >
-                  <TextInput
-                    type="text"
-                    id="form-name"
-                    onChange={(_, val) => {
-                      setAdminUser(val);
-                    }}
-                    value={adminUser}
-                  />
-                </FormGroup>
-                <FormGroup
-                  isInline
-                  label="Admin Password"
-                  fieldId="form-organization"
-                >
-                  <TextInput
-                    type="password"
-                    id="form-name"
-                    value={adminPassword}
-                    onChange={(_, val) => {
-                      setAdminPassword(val);
-                    }}
-                  />
-                </FormGroup>
-                <Button
-                  variant="primary"
-                  id=""
-                  isLoading={convertAccountLoading}
-                  onClick={() => {
-                    convert({
-                      adminPassword,
-                      adminUser,
-                    });
-                  }}
-                >
-                  Save
-                </Button>
-              </Form>
-            </>
-          )}
-        </>
-      )}
-
       <ActionGroup>
         <Flex
           justifyContent={{default: 'justifyContentFlexEnd'}}
           width={'100%'}
-          style={{
-            display:
-              !user.organizations.length && accountType == 'organization'
-                ? 'none'
-                : 'undefined',
-          }}
         >
           <Button
             variant="primary"
@@ -419,13 +259,6 @@ export const BillingInformation = (props: BillingInformationProps) => {
         </Flex>
       </ActionGroup>
       <Alerts />
-
-      <UserConvertConflictsModal
-        isModalOpen={convertConflictModalOpen}
-        items={user.organizations}
-        handleModalToggle={() => setConvertConflictModalOpen(false)}
-        mapOfColNamesToTableData={{}}
-      />
     </Form>
   );
 };
