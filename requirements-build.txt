@@ -253,7 +253,7 @@ packaging==25.0 \
     #   -r requirements-build.in
     #   hatchling
     #   setuptools-scm
-pathspec==0.11.2 \
+pathspec==0.12.1 \
     --hash=sha256:1d6ed233af05e679efb96b1851550ea95bbb64b7c490b0f5aa52996c11e92a20 \
     --hash=sha256:e0d8d0ac2f12da61956eb2306b69f9469b42f4deb0f3cb6ed47b9cce9996ced3
     # via
