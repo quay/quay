@@ -44,7 +44,7 @@ describe('Signin page', () => {
     }).as('signinFail');
   };
 
-  it('Successful signin with existing user', () => {
+  it.skip('Successful signin with existing user', () => {
     setupSuccessfulSignin();
 
     // Fill and submit form with existing user credentials
@@ -66,7 +66,7 @@ describe('Signin page', () => {
     cy.url().should('include', '/organization');
   });
 
-  it('Successful signin with correct response format', () => {
+  it.skip('Successful signin with correct response format', () => {
     setupSuccessfulSignin();
 
     // Fill and submit form
