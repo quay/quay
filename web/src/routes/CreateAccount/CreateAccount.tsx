@@ -8,17 +8,14 @@ import {
   FormHelperText,
   HelperText,
   HelperTextItem,
-  LoginPage,
   TextInput,
   ValidatedOptions,
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
-import logo from 'src/assets/quay.svg';
 import {Link} from 'react-router-dom';
-import axios from 'src/libs/axios';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import './CreateAccount.css';
 import {useCreateAccount} from 'src/hooks/UseCreateAccount';
+import {LoginPageLayout} from 'src/components/LoginPageLayout';
 
 export function CreateAccount() {
   const [username, setUsername] = useState('');
@@ -28,12 +25,6 @@ export function CreateAccount() {
 
   const {createAccountWithAutoLogin, isLoading, error, setError} =
     useCreateAccount();
-  const quayConfig = useQuayConfig();
-
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
-  }
 
   const validateUsername = (username: string): ValidatedOptions => {
     if (!username) return ValidatedOptions.default;
@@ -272,15 +263,11 @@ export function CreateAccount() {
   );
 
   return (
-    <LoginPage
-      className={'pdf-u-background-color-100 pf-v5-u-text-align-left'}
-      brandImgSrc={logoUrl}
-      brandImgAlt="Red Hat Quay"
-      backgroundImgSrc="assets/images/rh_login.jpeg"
-      textContent="Create your Red Hat Quay account to start building, analyzing and distributing your container images with added security."
-      loginTitle="Create Account"
+    <LoginPageLayout
+      title="Create Account"
+      description="Create your Red Hat Quay account to start building, analyzing and distributing your container images with added security."
     >
       {createAccountForm}
-    </LoginPage>
+    </LoginPageLayout>
   );
 }
