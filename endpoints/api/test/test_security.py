@@ -201,7 +201,7 @@ SECURITY_TESTS: List[
         {"username": "A2O9", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         RepositoryUserTransitivePermission,
@@ -724,7 +724,7 @@ SECURITY_TESTS: List[
         {"username": "A2O9", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryUserPermission,
@@ -756,7 +756,7 @@ SECURITY_TESTS: List[
         {"username": "A2O9", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryUserPermission,
@@ -796,7 +796,7 @@ SECURITY_TESTS: List[
         {"username": "A2O9", "repository": "public/publicrepo"},
         {"role": "read"},
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryUserPermission,
@@ -1020,7 +1020,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "teamname": "readers"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryTeamPermission,
@@ -1052,7 +1052,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "teamname": "readers"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryTeamPermission,
@@ -1084,7 +1084,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "teamname": "readers"},
         {"role": "read"},
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryTeamPermission,
@@ -1291,6 +1291,14 @@ SECURITY_TESTS: List[
         "PUT",
         {"repository": "buynlarge/orgrepo", "teamname": "readers"},
         {"role": "read"},
+        "globalreadonlysuperuser",
+        403,
+    ),
+    (
+        RepositoryTeamPermission,
+        "PUT",
+        {"repository": "buynlarge/orgrepo", "teamname": "readers"},
+        {"role": "read"},
         "freshuser",
         403,
     ),
@@ -1316,7 +1324,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "teamname": "owners"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryTeamPermission,
@@ -1348,7 +1356,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "teamname": "owners"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryTeamPermission,
@@ -1380,7 +1388,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "teamname": "owners"},
         {"role": "read"},
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryTeamPermission,
@@ -1579,6 +1587,14 @@ SECURITY_TESTS: List[
         "PUT",
         {"repository": "buynlarge/orgrepo", "teamname": "owners"},
         {"role": "read"},
+        "globalreadonlysuperuser",
+        403,
+    ),
+    (
+        RepositoryTeamPermission,
+        "PUT",
+        {"repository": "buynlarge/orgrepo", "teamname": "owners"},
+        {"role": "read"},
         "freshuser",
         403,
     ),
@@ -1604,7 +1620,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "SWO1"},
         {},
         "devtable",
-        403,
+        400,
     ),
     (
         BuildTriggerActivate,
@@ -1700,7 +1716,7 @@ SECURITY_TESTS: List[
         {"field_name": "test_field", "repository": "public/publicrepo", "trigger_uuid": "SWO1"},
         {},
         "devtable",
-        403,
+        404,
     ),
     (
         BuildTriggerFieldValues,
@@ -1796,7 +1812,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "831C"},
         {"namespace": "foo"},
         "devtable",
-        403,
+        404,
     ),
     (
         BuildTriggerSources,
@@ -1892,7 +1908,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "4I2Y"},
         {},
         "devtable",
-        403,
+        404,
     ),
     (
         BuildTriggerSubdirs,
@@ -1988,7 +2004,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "ZM1W"},
         None,
         "devtable",
-        403,
+        200,
     ),
     (
         TriggerBuildList,
@@ -2092,7 +2108,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "0BYE"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         ActivateBuildTrigger,
@@ -2188,7 +2204,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "0BYE"},
         {"config": {}},
         "devtable",
-        403,
+        404,
     ),
     (
         BuildTriggerAnalyze,
@@ -2476,7 +2492,7 @@ SECURITY_TESTS: List[
         {"build_uuid": "FG86", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         RepositoryBuildResource,
@@ -2572,7 +2588,7 @@ SECURITY_TESTS: List[
         {"build_uuid": "S5J8", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryBuildLogs,
@@ -3042,7 +3058,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        200,
     ),
     (
         RepositoryTeamPermissionList,
@@ -3097,7 +3113,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        200,
     ),
     (
         RepositoryUserPermissionList,
@@ -3159,7 +3175,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "D6TI"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         BuildTrigger,
@@ -3191,7 +3207,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo", "trigger_uuid": "D6TI"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         BuildTrigger,
@@ -3359,7 +3375,7 @@ SECURITY_TESTS: List[
         {"uuid": "QFAT", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        400,
     ),
     (
         RepositoryNotification,
@@ -3391,7 +3407,7 @@ SECURITY_TESTS: List[
         {"uuid": "QFAT", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         RepositoryNotification,
@@ -3559,7 +3575,7 @@ SECURITY_TESTS: List[
         {"code": "UJQB", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        410,
     ),
     (
         RepositoryToken,
@@ -3584,7 +3600,7 @@ SECURITY_TESTS: List[
         {"code": "UJQB", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        410,
     ),
     (
         RepositoryToken,
@@ -3616,7 +3632,7 @@ SECURITY_TESTS: List[
         {"code": "UJQB", "repository": "public/publicrepo"},
         {"role": "read"},
         "devtable",
-        403,
+        410,
     ),
     (
         RepositoryToken,
@@ -3819,7 +3835,7 @@ SECURITY_TESTS: List[
         {"tag": "HP8R", "repository": "public/publicrepo"},
         {"manifest_digest": "WXNG"},
         "devtable",
-        403,
+        404,
     ),
     (
         RestoreTag,
@@ -3915,7 +3931,7 @@ SECURITY_TESTS: List[
         {"tag": "HP8R", "repository": "public/publicrepo"},
         {"manifest_digest": "WXNG"},
         "devtable",
-        403,
+        404,
     ),
     (
         TagTimeMachineDelete,
@@ -4004,7 +4020,7 @@ SECURITY_TESTS: List[
         {"tag": "HP8R", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         RepositoryTag,
@@ -4036,7 +4052,7 @@ SECURITY_TESTS: List[
         {"tag": "HP8R", "repository": "public/publicrepo"},
         {"manifest_digest": "WXNG"},
         "devtable",
-        403,
+        404,
     ),
     (
         RepositoryTag,
@@ -4292,6 +4308,14 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo"},
         {"visibility": "public"},
         "devtable",
+        200,
+    ),
+    (
+        RepositoryVisibility,
+        "POST",
+        {"repository": "public/publicrepo"},
+        {"visibility": "public"},
+        "globalreadonlysuperuser",
         403,
     ),
     (
@@ -4331,6 +4355,14 @@ SECURITY_TESTS: List[
         "POST",
         {"repository": "devtable/shared"},
         {"visibility": "public"},
+        "globalreadonlysuperuser",
+        403,
+    ),
+    (
+        RepositoryVisibility,
+        "POST",
+        {"repository": "devtable/shared"},
+        {"visibility": "public"},
         "freshuser",
         403,
     ),
@@ -4357,6 +4389,14 @@ SECURITY_TESTS: List[
         {"visibility": "public"},
         "devtable",
         200,
+    ),
+    (
+        RepositoryVisibility,
+        "POST",
+        {"repository": "buynlarge/orgrepo"},
+        {"visibility": "public"},
+        "globalreadonlysuperuser",
+        403,
     ),
     (
         RepositoryVisibility,
@@ -4375,7 +4415,7 @@ SECURITY_TESTS: List[
         403,
     ),
     (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, None, 401),
-    (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (BuildTriggerList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 200),
     (
         BuildTriggerList,
         "GET",
@@ -4395,7 +4435,7 @@ SECURITY_TESTS: List[
     (BuildTriggerList, "GET", {"repository": "buynlarge/orgrepo"}, None, "freshuser", 403),
     (BuildTriggerList, "GET", {"repository": "buynlarge/orgrepo"}, None, "reader", 403),
     (RepositoryNotificationList, "GET", {"repository": "public/publicrepo"}, None, None, 401),
-    (RepositoryNotificationList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (RepositoryNotificationList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 200),
     (
         RepositoryNotificationList,
         "GET",
@@ -4414,7 +4454,15 @@ SECURITY_TESTS: List[
     ),
     (RepositoryNotificationList, "GET", {"repository": "public/publicrepo"}, None, "reader", 403),
     (RepositoryNotificationList, "POST", {"repository": "public/publicrepo"}, {}, None, 401),
-    (RepositoryNotificationList, "POST", {"repository": "public/publicrepo"}, {}, "devtable", 403),
+    (RepositoryNotificationList, "POST", {"repository": "public/publicrepo"}, {}, "devtable", 400),
+    (
+        RepositoryNotificationList,
+        "POST",
+        {"repository": "public/publicrepo"},
+        {},
+        "globalreadonlysuperuser",
+        403,
+    ),
     (RepositoryNotificationList, "POST", {"repository": "public/publicrepo"}, {}, "freshuser", 403),
     (RepositoryNotificationList, "POST", {"repository": "public/publicrepo"}, {}, "reader", 403),
     (RepositoryNotificationList, "GET", {"repository": "devtable/shared"}, None, None, 401),
@@ -4429,6 +4477,14 @@ SECURITY_TESTS: List[
         {"config": {"email": "a@b.com"}, "event": "repo_push", "method": "email"},
         "devtable",
         400,
+    ),
+    (
+        RepositoryNotificationList,
+        "POST",
+        {"repository": "devtable/shared"},
+        {},
+        "globalreadonlysuperuser",
+        403,
     ),
     (RepositoryNotificationList, "POST", {"repository": "devtable/shared"}, {}, "freshuser", 403),
     (RepositoryNotificationList, "POST", {"repository": "devtable/shared"}, {}, "reader", 403),
@@ -4452,6 +4508,14 @@ SECURITY_TESTS: List[
         "devtable",
         400,
     ),
+    (
+        RepositoryNotificationList,
+        "POST",
+        {"repository": "buynlarge/orgrepo"},
+        {},
+        "globalreadonlysuperuser",
+        403,
+    ),
     (RepositoryNotificationList, "POST", {"repository": "buynlarge/orgrepo"}, {}, "freshuser", 403),
     (RepositoryNotificationList, "POST", {"repository": "buynlarge/orgrepo"}, {}, "reader", 403),
     (
@@ -4468,7 +4532,7 @@ SECURITY_TESTS: List[
         {"email": "jschorr@devtable.com", "repository": "public/publicrepo"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         RepositoryAuthorizedEmail,
@@ -4500,7 +4564,7 @@ SECURITY_TESTS: List[
         {"email": "jschorr@devtable.com", "repository": "public/publicrepo"},
         {},
         "devtable",
-        403,
+        200,
     ),
     (
         RepositoryAuthorizedEmail,
@@ -4647,7 +4711,7 @@ SECURITY_TESTS: List[
         403,
     ),
     (RepositoryTokenList, "GET", {"repository": "public/publicrepo"}, None, None, 401),
-    (RepositoryTokenList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (RepositoryTokenList, "GET", {"repository": "public/publicrepo"}, None, "devtable", 410),
     (RepositoryTokenList, "GET", {"repository": "public/publicrepo"}, None, "freshuser", 403),
     (RepositoryTokenList, "GET", {"repository": "public/publicrepo"}, None, "reader", 403),
     (
@@ -4664,7 +4728,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo"},
         {"friendlyName": "R1CN"},
         "devtable",
-        403,
+        410,
     ),
     (
         RepositoryTokenList,
@@ -4772,7 +4836,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo"},
         {"file_id": "UX7K"},
         "devtable",
-        403,
+        201,
     ),
     (
         RepositoryBuildList,
@@ -4863,7 +4927,7 @@ SECURITY_TESTS: List[
         403,
     ),
     (RepositoryLogs, "GET", {"repository": "public/publicrepo"}, None, None, 401),
-    (RepositoryLogs, "GET", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (RepositoryLogs, "GET", {"repository": "public/publicrepo"}, None, "devtable", 200),
     (RepositoryLogs, "GET", {"repository": "public/publicrepo"}, None, "freshuser", 403),
     (RepositoryLogs, "GET", {"repository": "public/publicrepo"}, None, "reader", 403),
     (RepositoryLogs, "GET", {"repository": "devtable/shared"}, None, None, 401),
@@ -4987,7 +5051,7 @@ SECURITY_TESTS: List[
     (Organization, "PUT", {"orgname": "buynlarge"}, {}, "freshuser", 403),
     (Organization, "PUT", {"orgname": "buynlarge"}, {}, "reader", 403),
     (Repository, "DELETE", {"repository": "public/publicrepo"}, None, None, 401),
-    (Repository, "DELETE", {"repository": "public/publicrepo"}, None, "devtable", 403),
+    (Repository, "DELETE", {"repository": "public/publicrepo"}, None, "devtable", 204),
     (Repository, "DELETE", {"repository": "public/publicrepo"}, None, "freshuser", 403),
     (Repository, "DELETE", {"repository": "public/publicrepo"}, None, "reader", 403),
     (Repository, "GET", {"repository": "public/publicrepo"}, None, None, 200),
@@ -5001,7 +5065,7 @@ SECURITY_TESTS: List[
         {"repository": "public/publicrepo"},
         {"description": "WXNG"},
         "devtable",
-        403,
+        200,
     ),
     (
         Repository,
@@ -6427,7 +6491,7 @@ SECURITY_TESTS: List[
     ),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, None, 401),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
-    (OrgAutoPrunePolicies, "GET", {"orgname": "unknown"}, None, "devtable", 403),
+    (OrgAutoPrunePolicies, "GET", {"orgname": "unknown"}, None, "devtable", 200),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "globalreadonlysuperuser", 200),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "freshuser", 403),
     (OrgAutoPrunePolicies, "GET", {"orgname": "buynlarge"}, None, "reader", 403),
@@ -6453,7 +6517,7 @@ SECURITY_TESTS: List[
         {"orgname": "unknown"},
         {"method": "number_of_tags", "value": 10},
         "devtable",
-        403,
+        404,
     ),
     (
         OrgAutoPrunePolicies,
@@ -6485,7 +6549,7 @@ SECURITY_TESTS: List[
         {"orgname": "unknown", "policy_uuid": "some_uuid"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         OrgAutoPrunePolicy,
@@ -6525,7 +6589,7 @@ SECURITY_TESTS: List[
         {"orgname": "unknown", "policy_uuid": "some_uuid"},
         {"method": "number_of_tags", "value": 10},
         "devtable",
-        403,
+        404,
     ),
     (
         OrgAutoPrunePolicy,
@@ -6557,7 +6621,7 @@ SECURITY_TESTS: List[
         {"orgname": "unknown", "policy_uuid": "some_uuid"},
         None,
         "devtable",
-        403,
+        404,
     ),
     (
         OrgAutoPrunePolicy,
@@ -6861,7 +6925,12 @@ def empty_context():
     yield None
 
 
-@pytest.mark.parametrize("resource,method,params,body,identity,expected", SECURITY_TESTS)
+def _filter_security_tests():
+    """Filter out tests for resources that are None due to disabled features."""
+    return [test for test in SECURITY_TESTS if test[0] is not None]
+
+
+@pytest.mark.parametrize("resource,method,params,body,identity,expected", _filter_security_tests())
 def test_api_security(resource, method, params, body, identity, expected, app):
     with client_with_identity(identity, app) as cl:
         conduct_api_call(cl, resource, method, params, body, expected)
