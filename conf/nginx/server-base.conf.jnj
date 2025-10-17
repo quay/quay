@@ -47,7 +47,7 @@ location / {
     # Show new UI if cookie or default is set to "true"/"react"
     if ($use_new_ui ~* "^(true|react)$") {
         # catch new static paths and direct to /index.html
-        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth2/[^/]+/callback|/updateuser|/user/(.*)) /index.html break;
+        rewrite ^(/overview|/organization|/repository|/signin|/createaccount|/oauth-error|/oauth2/[^/]+/callback(/attach|/cli)?|/updateuser|/user/(.*)) /index.html break;
     }
 
     # Show old UI if not using React

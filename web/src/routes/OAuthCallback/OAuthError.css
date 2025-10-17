@@ -1,0 +1,26 @@
+/* OAuth Error page container */
+.oauth-error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+/* OAuth Error card */
+.oauth-error-card {
+  max-width: 600px;
+  width: 100%;
+}
+
+/* OAuth Error alerts */
+.oauth-error-alert {
+  margin-bottom: 1rem;
+}
+
+/* OAuth Error action buttons */
+.oauth-error-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}

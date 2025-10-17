@@ -4,7 +4,7 @@ import time
 from collections import namedtuple
 
 import recaptcha2
-from flask import Blueprint, abort, jsonify, redirect, request, session, url_for
+from flask import Blueprint, abort, redirect, request, session, url_for
 
 import features
 from app import (
@@ -84,7 +84,33 @@ def _render_ologin_error(service_name, error_message=None, register_redirect=Fal
         "user_creation": user_creation,
         "register_redirect": register_redirect,
     }
+    # Determine UI type: check user preference (cookie) first, then system default (config)
+    should_use_react = False
+    patternfly_cookie = request.cookies.get("patternfly", "")
 
+    if patternfly_cookie in ["true", "react"]:
+        should_use_react = True
+    elif patternfly_cookie:
+        should_use_react = False
+    else:  # No cookie: use DEFAULT_UI
+        should_use_react = app.config.get("DEFAULT_UI", "react").lower() == "react"
+
+    if should_use_react:
+        # React UI: redirect to dedicated OAuth error page
+        return redirect(
+            url_for(
+                "web.oauth_error",
+                error="oauth_error",
+                error_description=f"{service_name}: {error_message or 'Authentication failed'}",
+                provider=service_name,
+                register_redirect=str(register_redirect).lower() if register_redirect else None,
+                user_creation=str(user_creation).lower() if user_creation else None,
+                _scheme=app.config["PREFERRED_URL_SCHEME"],
+                _external=True,
+            )
+        )
+
+    # Angular UI: render error in template
     resp = index("", error_info=error_info)
     resp.status_code = 400
     return resp
