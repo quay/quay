@@ -59,6 +59,7 @@ from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
 from util.metrics.otel import init_exporter
 from util.metrics.prometheus import PrometheusPlugin
 from util.names import urn_generator
+from util.pullmetrics import PullMetricsBuilderModule
 from util.repomirror.api import RepoMirrorAPI
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry
@@ -266,6 +267,7 @@ billing = Billing(app)
 sentry = Sentry(app)
 build_logs = BuildLogs(app)
 userevents = UserEventsBuilderModule(app)
+pullmetrics = PullMetricsBuilderModule(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 

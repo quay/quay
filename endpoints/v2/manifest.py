@@ -127,6 +127,17 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
     )
     image_pulls.labels("v2", "tag", 200).inc()
 
+    # Track pull metrics if feature is enabled
+    if features.IMAGE_PULL_STATS:
+        try:
+            from app import pullmetrics
+
+            if pullmetrics:
+                metrics = pullmetrics.get_event()
+                metrics.track_tag_pull(repository_ref, manifest_ref, manifest_digest)
+        except Exception as e:
+            logger.debug("Could not track tag pull metrics: %s", e)
+
     return Response(
         manifest_bytes.as_unicode(),
         status=200,
@@ -172,6 +183,17 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
 
     track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
     image_pulls.labels("v2", "manifest", 200).inc()
+
+    # Track pull metrics if feature is enabled
+    if features.IMAGE_PULL_STATS:
+        try:
+            from app import pullmetrics
+
+            if pullmetrics:
+                metrics = pullmetrics.get_event()
+                metrics.track_manifest_pull(repository_ref, manifest_ref)
+        except Exception as e:
+            logger.debug("Could not track manifest pull metrics: %s", e)
 
     return Response(
         manifest.internal_manifest_bytes.as_unicode(),

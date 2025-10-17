@@ -25,8 +25,8 @@ export interface Tag {
   expiration?: string;
   end_ts?: number;
   modelcard?: string;
-  cosign_signature_tag?: string;
-  cosign_signature_manifest_digest?: string;
+  pull_count?: number;
+  last_pulled?: string;
 }
 
 export interface ManifestList {
@@ -45,15 +45,7 @@ export interface Manifest {
 }
 
 export interface Layer {
-  index: number;
-  compressed_size: number;
-  is_remote: boolean;
-  urls: string[];
-  command: string[];
-  comment: string;
-  author: string;
-  blob_digest: string;
-  created_datetime: string;
+  size: number;
 }
 
 export interface Platform {
@@ -79,9 +71,8 @@ export interface ManifestByDigestResponse {
   digest: string;
   is_manifest_list: boolean;
   manifest_data: string;
-  config_media_type?: string;
-  layers?: Layer[];
-  layers_compressed_size?: number;
+  config_media_type?: any;
+  layers?: any;
   modelcard?: string;
 }
 
@@ -90,9 +81,9 @@ export interface SecurityDetailsResponse {
   data: Data;
 }
 export interface Data {
-  Layer: SecurityLayer;
+  Layer: Layer;
 }
-export interface SecurityLayer {
+export interface Layer {
   Name: string;
   ParentName: string;
   NamespaceName: string;
@@ -151,7 +142,7 @@ export const VulnerabilityOrder = {
   [VulnerabilitySeverity.Unknown]: 5,
 };
 
-// TODO: Support cancellation signal here
+// TODO: Support cancelation signal here
 export async function getTags(
   org: string,
   repo: string,
@@ -255,6 +246,12 @@ export async function deleteLabel(
   }
 }
 
+interface TagLocation {
+  org: string;
+  repo: string;
+  tag: string;
+}
+
 export async function bulkDeleteTags(
   org: string,
   repo: string,
@@ -333,13 +330,11 @@ export async function getManifestByDigest(
   org: string,
   repo: string,
   digest: string,
-  include_modelcard = false,
+  include_modelcard: boolean,
 ) {
-  const url = `/api/v1/repository/${org}/${repo}/manifest/${digest}${
-    include_modelcard ? '?include_modelcard=true' : ''
-  }`;
-  const response: AxiosResponse<ManifestByDigestResponse> =
-    await axios.get(url);
+  const response: AxiosResponse<ManifestByDigestResponse> = await axios.get(
+    `/api/v1/repository/${org}/${repo}/manifest/${digest}?include_modelcard=true`,
+  );
   assertHttpCode(response.status, 200);
   return response.data;
 }
@@ -406,7 +401,6 @@ export async function restoreTag(
       manifest_digest: digest,
     },
   );
-  assertHttpCode(response.status, 200);
 }
 
 export async function permanentlyDeleteTag(
@@ -423,5 +417,30 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
-  assertHttpCode(response.status, 200);
+}
+
+export interface TagPullStatistics {
+  tag_name: string;
+  tag_pull_count: number;
+  last_tag_pull_date: string | null;
+  current_manifest_digest: string;
+  manifest_pull_count: number;
+  last_manifest_pull_date: string | null;
+}
+
+export async function getTagPullStatistics(
+  org: string,
+  repo: string,
+  tag: string,
+) {
+  try {
+    const response: AxiosResponse<TagPullStatistics> = await axios.get(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}/pull_statistics`,
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (error) {
+    // Return null if feature is not enabled or stats not available
+    return null;
+  }
 }
