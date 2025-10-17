@@ -75,8 +75,7 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      <Td colSpan={2} />{' '}
-      {/* Skip Last Modified, Last Pulled, Pull Count for sub-rows */}
+      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 3 : 1} />{' '}
     </Tr>
   );
 }
@@ -155,12 +154,14 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
         </Td>
-        <Td dataLabel={ColumnNames.lastPulled}>
-          {tag.last_pulled ? formatDate(tag.last_pulled) : 'Never'}
-        </Td>
-        <Td dataLabel={ColumnNames.pullCount}>
-          {tag.pull_count !== undefined ? tag.pull_count : 0}
-        </Td>
+        <Conditional if={config?.features?.IMAGE_PULL_STATS}>
+          <Td dataLabel={ColumnNames.lastPulled}>
+            {tag.last_pulled ? formatDate(tag.last_pulled) : 'Never'}
+          </Td>
+          <Td dataLabel={ColumnNames.pullCount}>
+            {tag.pull_count !== undefined ? tag.pull_count : 0}
+          </Td>
+        </Conditional>
         <Td
           dataLabel={ColumnNames.pull}
           style={{
@@ -207,6 +208,7 @@ function TagsTableRow(props: RowProps) {
               rowIndex={rowIndex}
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
+              config={config}
             />
           ))
         : null}
@@ -249,12 +251,14 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(5)}>
               Last Modified
             </Th>
-            <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
-              Last Pulled
-            </Th>
-            <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
-              Pull Count
-            </Th>
+            <Conditional if={config?.features?.IMAGE_PULL_STATS}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
+                Last Pulled
+              </Th>
+              <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
+                Pull Count
+              </Th>
+            </Conditional>
             <Th modifier="wrap">Pull</Th>
             <Th />
           </Tr>
@@ -317,4 +321,5 @@ interface SubRowProps {
   rowIndex: number;
   manifest: Manifest;
   isTagExpanded: (tag: Tag) => boolean;
+  config: any;
 }
