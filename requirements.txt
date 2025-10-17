@@ -24,7 +24,7 @@ cryptography==44.0.1
 DateTime==4.3
 debtcollector==1.22.0
 decorator==5.1.1
-Deprecated==1.2.14
+Deprecated==1.2.18
 dumb-init==1.2.5.post1
 elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
