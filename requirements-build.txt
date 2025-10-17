@@ -220,7 +220,7 @@ hatch-fancy-pypi-readme==25.1.0 \
     --hash=sha256:9c58ed3dff90d51f43414ce37009ad1d5b0f08ffc9fc216998a06380f01c0045 \
     --hash=sha256:ce0134c40d63d874ac48f48ccc678b8f3b62b8e50e9318520d2bffc752eedaf3
     # via -r requirements-build.in
-hatch-vcs==0.3.0 \
+hatch-vcs==0.5.0 \
     --hash=sha256:60ce59a3fa4664057e4a858b6a96ab0b9dec21bf8f562f836139315bb361be8c \
     --hash=sha256:cec5107cfce482c67f8bc96f18bbc320c9aa0d068180e14ad317bbee5a153fee
     # via -r requirements-build.in
