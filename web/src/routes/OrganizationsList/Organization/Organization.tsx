@@ -57,7 +57,11 @@ export default function Organization() {
   );
 
   const fetchTabVisibility = (tabname) => {
-    if (quayConfig?.config?.REGISTRY_STATE == 'readonly') {
+    // Hide Settings tab when in read-only mode
+    if (
+      tabname === 'Settings' &&
+      quayConfig?.config?.REGISTRY_STATE == 'readonly'
+    ) {
       return false;
     }
 
