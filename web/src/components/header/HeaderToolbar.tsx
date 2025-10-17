@@ -43,6 +43,7 @@ import BellIcon from '@patternfly/react-icons/dist/esm/icons/bell-icon';
 
 import {ThemePreference, useTheme} from 'src/contexts/ThemeContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useNavigate} from 'react-router-dom';
 
 export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -50,6 +51,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const {themePreference, setThemePreference} = useTheme();
   const config = useQuayConfig();
+  const navigate = useNavigate();
   const showUIToggle =
     config?.features?.UI_V2 && config?.config?.DEFAULT_UI !== 'react';
 
@@ -72,12 +74,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
           await logoutUser();
           GlobalAuthState.csrfToken = undefined;
           queryClient.invalidateQueries(['user']);
-
-          // Ignore client side auth page and use old UI if present
-          // TODO: replace this with navigate('/signin') once new ui supports all auth methods
-          const protocol = window.location.protocol;
-          const host = window.location.host;
-          window.location.replace(`${protocol}//${host}/signin/`);
+          navigate('/signin');
         } catch (err) {
           console.error(err);
           setErr(addDisplayError('Unable to log out', err));
