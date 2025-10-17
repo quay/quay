@@ -555,13 +555,13 @@ describe('Account Settings Page', () => {
     cy.wait('@createToken');
 
     // Should show success step with token
-    cy.get('[data-testid="create-token-modal"]').within(() => {
+    cy.get('[data-testid="token-credentials-modal"]').within(() => {
       cy.contains('Token Created Successfully').should('exist');
       cy.get('[data-testid="copy-token-button"]').should('exist');
     });
 
-    cy.get('[data-testid="create-token-close"]').click();
-    cy.get('[data-testid="create-token-modal"]').should('not.exist');
+    cy.get('[data-testid="token-credentials-close"]').click();
+    cy.get('[data-testid="token-credentials-modal"]').should('not.exist');
     cy.wait('@getTokensAfterCreate');
 
     // Verify new token appears in table
@@ -683,5 +683,237 @@ describe('Account Settings Page', () => {
     cy.contains('Change password').should('not.exist');
     cy.contains('Individual account').should('not.exist');
     cy.contains('Delete account').should('not.exist');
+  });
+
+  it('Application Token Modal - Multiple Login Provider Tabs', () => {
+    // Mock empty token list
+    cy.intercept('GET', '/api/v1/user/apptoken', {
+      body: {
+        tokens: [],
+        only_expiring: false,
+      },
+    }).as('getTokens');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.contains('CLI configuration').click();
+    cy.wait('@getTokens');
+
+    // Click create token
+    cy.get('#create-app-token-button').click();
+    cy.get('[data-testid="create-token-modal"]').should('be.visible');
+
+    // Enter token title
+    cy.get('#token-title').type('Multi-Provider Token');
+
+    // Mock successful token creation
+    cy.intercept('POST', '/api/v1/user/apptoken', {
+      statusCode: 200,
+      body: {
+        token: {
+          uuid: 'test-token-uuid',
+          title: 'Multi-Provider Token',
+          token_code: 'fake-token-code-12345',
+          created: '2024-01-20T12:00:00Z',
+          expiration: null,
+          last_accessed: null,
+        },
+      },
+    }).as('createToken');
+
+    cy.get('[data-testid="create-token-submit"]').click();
+    cy.wait('@createToken');
+
+    // Should show success with tabs
+    cy.get('[data-testid="token-credentials-modal"]').within(() => {
+      cy.contains('Token Created Successfully').should('exist');
+
+      // Check all tabs exist
+      cy.contains('Application Token').should('exist');
+      cy.contains('Kubernetes Secret').should('exist');
+      cy.contains('rkt Configuration').should('exist');
+      cy.contains('Podman Login').should('exist');
+      cy.contains('Docker Login').should('exist');
+      cy.contains('Docker Configuration').should('exist');
+
+      // Verify default tab (Application Token) shows username and token
+      cy.get('[data-testid="copy-username"]').should('exist');
+      cy.get('[data-testid="copy-token-button"]').should('exist');
+      cy.get('[data-testid="copy-token-button"]')
+        .find('input')
+        .should('have.value', 'fake-token-code-12345');
+
+      // Test Kubernetes Secret tab
+      cy.contains('Kubernetes Secret').click();
+      cy.contains('Step 1: Create secret YAML file').should('exist');
+      cy.contains('apiVersion: v1').should('exist');
+      cy.contains('kind: Secret').should('exist');
+
+      // Test rkt Configuration tab
+      cy.contains('rkt Configuration').click();
+      cy.contains('Step 1: Create rkt configuration file').should('exist');
+      cy.contains('rktKind').should('exist');
+
+      // Test Podman Login tab
+      cy.contains('Podman Login').click();
+      cy.contains('Run podman login command').should('exist');
+      cy.contains('podman login').should('exist');
+
+      // Test Docker Login tab
+      cy.contains('Docker Login').click();
+      cy.contains('Run docker login command').should('exist');
+      cy.contains('docker login').should('exist');
+
+      // Test Docker Configuration tab
+      cy.contains('Docker Configuration').click();
+      cy.contains('Step 1: Create Docker config file').should('exist');
+      cy.contains('This will').should('exist');
+      cy.contains('overwrite').should('exist');
+    });
+
+    cy.get('[data-testid="token-credentials-close"]').click();
+    cy.get('[data-testid="token-credentials-modal"]').should('not.exist');
+  });
+
+  it('Clickable Token Titles - View Token Details', () => {
+    // Mock existing tokens
+    cy.intercept('GET', '/api/v1/user/apptoken', {
+      body: {
+        tokens: [
+          {
+            uuid: 'token1-uuid',
+            title: 'Clickable Token',
+            last_accessed: '2024-01-15T10:30:00Z',
+            created: '2024-01-01T09:00:00Z',
+            expiration: '2024-12-31T23:59:59Z',
+          },
+        ],
+        only_expiring: false,
+      },
+    }).as('getTokens');
+
+    // Mock fetching individual token details
+    cy.intercept('GET', '/api/v1/user/apptoken/token1-uuid', {
+      body: {
+        token: {
+          uuid: 'token1-uuid',
+          title: 'Clickable Token',
+          last_accessed: '2024-01-15T10:30:00Z',
+          created: '2024-01-01T09:00:00Z',
+          expiration: '2024-12-31T23:59:59Z',
+          token_code: 'fake-token-code-for-viewing',
+        },
+      },
+    }).as('getTokenDetails');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.contains('CLI configuration').click();
+    cy.wait('@getTokens');
+
+    // Token title should be a clickable link
+    cy.get('table')
+      .last()
+      .within(() => {
+        cy.contains('button', 'Clickable Token').should('exist');
+      });
+
+    // Click on token title
+    cy.contains('button', 'Clickable Token').click();
+    cy.wait('@getTokenDetails');
+
+    // View token modal should appear
+    cy.contains('Credentials for Clickable Token').should('be.visible');
+
+    // Verify modal shows token details with tabs
+    cy.contains('Application Token').should('exist');
+    cy.get('[data-testid="copy-username"]').should('exist');
+    cy.get('[data-testid="copy-token-button"]').should('exist');
+
+    // Close modal
+    cy.contains('button', 'Done').click();
+    cy.get('[data-testid="token-credentials-modal"]').should('not.exist');
+  });
+
+  it('View Token Modal - Token Never Accessed', () => {
+    // Mock token that was never accessed
+    cy.intercept('GET', '/api/v1/user/apptoken', {
+      body: {
+        tokens: [
+          {
+            uuid: 'never-used-token',
+            title: 'Unused Token',
+            last_accessed: null,
+            created: '2024-01-10T14:20:00Z',
+            expiration: null,
+          },
+        ],
+        only_expiring: false,
+      },
+    }).as('getTokens');
+
+    // Mock fetching individual token details
+    cy.intercept('GET', '/api/v1/user/apptoken/never-used-token', {
+      body: {
+        token: {
+          uuid: 'never-used-token',
+          title: 'Unused Token',
+          last_accessed: null,
+          created: '2024-01-10T14:20:00Z',
+          expiration: null,
+          token_code: 'fake-token-code-never-accessed',
+        },
+      },
+    }).as('getTokenDetails');
+
+    cy.visit('/organization/user1?tab=Settings');
+    cy.contains('CLI configuration').click();
+    cy.wait('@getTokens');
+
+    // Click on token title
+    cy.contains('button', 'Unused Token').click();
+    cy.wait('@getTokenDetails');
+
+    // Verify modal shows credentials for the token
+    cy.contains('Credentials for Unused Token').should('be.visible');
+
+    // Verify modal shows token credentials
+    cy.get('[data-testid="token-credentials-modal"]').should('be.visible');
+    cy.get('[data-testid="copy-username"]').should('exist');
+    cy.get('[data-testid="copy-token-button"]').should('exist');
+
+    // Close modal
+    cy.contains('button', 'Done').click();
+    cy.get('[data-testid="token-credentials-modal"]').should('not.exist');
+  });
+
+  it('Settings Tab Hidden in Read-Only Mode', () => {
+    cy.fixture('config.json').then((config) => {
+      config.config.REGISTRY_STATE = 'readonly';
+      cy.intercept('GET', '/config', config).as('getConfigReadOnly');
+    });
+
+    cy.visit('/organization/user1');
+    cy.wait('@getConfigReadOnly');
+
+    // Settings tab should not be visible
+    cy.contains('Settings').should('not.exist');
+
+    // Other tabs should still be visible
+    cy.contains('Repositories').should('exist');
+  });
+
+  it('Settings Tab Visible in Normal Mode', () => {
+    cy.fixture('config.json').then((config) => {
+      config.config.REGISTRY_STATE = 'normal';
+      cy.intercept('GET', '/config', config).as('getConfigNormal');
+    });
+
+    cy.visit('/organization/user1');
+    cy.wait('@getConfigNormal');
+
+    // Settings tab should be visible
+    cy.contains('Settings').should('exist').click();
+
+    // Should navigate to settings
+    cy.url().should('include', 'tab=Settings');
   });
 });
