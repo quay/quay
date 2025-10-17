@@ -121,18 +121,18 @@
         style="width: 90px;">
       <a ng-click="orderBy('size')" data-title="The compressed size of the tag's image" data-container="body" bs-tooltip>Size</a>
     </td>
-    <td class="hidden-sm hidden-xs hidden-md"
-        ng-class="tablePredicateClass('expiration_date', options.predicate, options.reverse)"
+    <td class="hidden-sm hidden-xs"
+        ng-class="tablePredicateClass('last_pulled', options.predicate, options.reverse)"
         style="width: 140px;">
-      <a ng-click="orderBy('expiration_date')" data-title="When the tag expires" data-container="body" bs-tooltip>Expires</a>
+      <a ng-click="orderBy('last_pulled')" data-title="When the tag was last pulled" data-container="body" bs-tooltip>Last Pulled</a>
+    </td>
+    <td class="hidden-xs"
+        ng-class="tablePredicateClass('pull_count', options.predicate, options.reverse)"
+        style="width: 90px;">
+      <a ng-click="orderBy('pull_count')" data-title="Number of times this tag has been pulled" data-container="body" bs-tooltip>Pull Count</a>
     </td>
     <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
         style="width: 20px; position: relative;">
-    </td>
-    <td class="hidden-xs hidden-sm"
-        ng-class="tablePredicateClass('manifest_digest', options.predicate, options.reverse)"
-        style="width: 140px;">
-      <a ng-click="orderBy('manifest_digest')">Manifest</a>
     </td>
     <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
         ng-if="manifestTracks.length <= maxTrackCount"></td>
@@ -194,13 +194,17 @@
         <span bo-if="tag.is_manifest_list">N/A</span>
       </td>
 
-      <!-- Expiration -->
-      <td class="hidden-xs hidden-sm hidden-md">
-        <a ng-click="askChangeTagsExpiration([tag])"
-           ng-if="!repository.tag_operations_disabled && repository.can_write">
-          <expiration-status-view expiration-date="tag.expiration_date"></expiration-status-view>
-        </a>
-        <expiration-status-view expiration-date="tag.expiration_date" ng-if="repository.tag_operations_disabled || !repository.can_write"></expiration-status-view>
+      <!-- Last Pulled -->
+      <td class="hidden-sm hidden-xs">
+        <span ng-if="tag.last_pulled">
+          <span class="datetime-momentjs-full" datetime="tag.last_pulled"></span>
+        </span>
+        <span ng-if="!tag.last_pulled">Never</span>
+      </td>
+
+      <!-- Pull Count -->
+      <td class="hidden-xs">
+        <span bo-text="tag.pull_count || 0"></span>
       </td>
 
       <!-- Manifest link -->
@@ -320,7 +324,7 @@
         <div class="image-id-row">
           <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
         </div>
-        
+
         <!-- Labels -->
         <div class="manifest-label-list" repository="repository"
              manifest-digest="tag.manifest_digest" cache="labelCache"></div>

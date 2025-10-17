@@ -365,3 +365,58 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 
         log_action("manifest_label_delete", namespace_name, metadata, repo_name=repository_name)
         return "", 204
+
+
+@resource(
+    '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>/pull_statistics'.format(
+        digest_tools.DIGEST_PATTERN
+    )
+)
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("manifestref", "The digest of the manifest")
+class RepositoryManifestPullStatistics(RepositoryParamResource):
+    """
+    Resource for retrieving pull statistics for a specific repository manifest.
+    """
+
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
+    @disallow_for_app_repositories
+    @nickname("getManifestPullStatistics")
+    def get(self, namespace_name, repository_name, manifestref):
+        """
+        Get pull statistics for a specific manifest.
+        """
+        if not features.IMAGE_PULL_STATS:
+            abort(404, "Image pull statistics feature is not enabled")
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
+        if repo_ref is None:
+            raise NotFound()
+
+        # Get the manifest reference
+        manifest = registry_model.lookup_manifest_by_digest(repo_ref, manifestref)
+        if manifest is None:
+            raise NotFound()
+
+        # Get pull metrics from Redis
+        pull_metrics = app.extensions.get("pullmetrics")
+        if not pull_metrics:
+            abort(500, "Pull metrics system not available")
+
+        repository_path = f"{namespace_name}/{repository_name}"
+        metrics = pull_metrics.get_event()
+        manifest_stats = metrics.get_manifest_pull_statistics(repository_path, manifestref)
+
+        if not manifest_stats:
+            # Return default values if no statistics are available
+            return {
+                "manifest_digest": manifestref,
+                "manifest_pull_count": 0,
+                "last_manifest_pull_date": None,
+            }
+
+        return {
+            "manifest_digest": manifestref,
+            "manifest_pull_count": manifest_stats.get("pull_count", 0),
+            "last_manifest_pull_date": manifest_stats.get("last_pull_date"),
+        }
