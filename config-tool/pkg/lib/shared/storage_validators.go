@@ -435,6 +435,29 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if ok, err := ValidateRequiredString(args.CloudflareDomain, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".cloudflare_domain", fgName); !ok {
 			errors = append(errors, err)
 		}
+
+    case "AkamaiS3Storage":
+        // Check access key
+		if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check secret key
+		if ok, err := ValidateRequiredString(args.S3SecretKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_secret_key", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check bucket name
+		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+    if ok, err := ValidateRequiredString(args.AkamaiDomain, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".akamai_domain", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+    if ok, err := ValidateRequiredString(args.AkamaiSharedSecret, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".akamai_shared_secret", fgName); !ok {
+			errors = append(errors, err)
+		}
+
 	case "MultiCDNStorage":
 		// Check provider map
 		if ok, err := ValidateRequiredObject(args.Providers, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".providers", fgName); !ok {
