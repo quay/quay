@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from collections import namedtuple
+from urllib.parse import urlencode
 
 import recaptcha2
 from flask import Blueprint, abort, redirect, request, session, url_for
@@ -97,18 +98,15 @@ def _render_ologin_error(service_name, error_message=None, register_redirect=Fal
 
     if should_use_react:
         # React UI: redirect to dedicated OAuth error page
-        return redirect(
-            url_for(
-                "web.oauth_error",
-                error="oauth_error",
-                error_description=f"{service_name}: {error_message or 'Authentication failed'}",
-                provider=service_name,
-                register_redirect=str(register_redirect).lower() if register_redirect else None,
-                user_creation=str(user_creation).lower() if user_creation else None,
-                _scheme=app.config["PREFERRED_URL_SCHEME"],
-                _external=True,
-            )
+        params = urlencode(
+            {
+                "error": "oauth_error",
+                "error_description": f"{service_name}: {error_message}",
+                "provider": service_name,
+                "user_creation": str(user_creation).lower() if user_creation else None,
+            }
         )
+        return redirect(f"/oauth-error?{params}")
 
     # Angular UI: render error in template
     resp = index("", error_info=error_info)
