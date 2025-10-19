@@ -28,7 +28,6 @@ from data.database import RepositoryState
 from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
-    allow_if_global_readonly_superuser,
     allow_if_superuser,
     format_date,
     log_action,

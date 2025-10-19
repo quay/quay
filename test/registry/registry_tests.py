@@ -2033,6 +2033,17 @@ def test_login(
             ],
             True,
         ),
+        # Multiple scopes - non-superuser only gets pull access to public/publicrepo
+        (
+            "reader",
+            "password",
+            ["repository:buynlarge/orgrepo:pull", "repository:public/publicrepo:push,pull"],
+            [
+                {"type": "repository", "name": "buynlarge/orgrepo", "actions": ["pull"]},
+                {"type": "repository", "name": "public/publicrepo", "actions": ["pull"]},
+            ],
+            True,
+        ),
         # Multiple scopes - devtable is a superuser so gets push access to public/publicrepo
         (
             "devtable",

@@ -166,6 +166,17 @@ def get_robot_password(username):
             "private",
             False,
         ),
+        # Multiple scopes - non-superuser without push access to one repo
+        (
+            ["repository:buynlarge/orgrepo:pull,push", "repository:devtable/simple:pull,push"],
+            "reader",
+            "password",
+            200,
+            ["buynlarge/orgrepo:pull", "devtable/simple:"],
+            True,
+            "private",
+            False,
+        ),
         # Multiple scopes - devtable is a superuser so gets full access to both repos
         (
             ["repository:devtable/simple:pull,push", "repository:public/publicrepo:pull,push"],
