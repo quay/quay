@@ -21,13 +21,13 @@ absolute_redirect off;
 
 location /angular {
     # Expire cookie and switch to old UI
-    add_header Set-Cookie "patternfly=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
+    add_header Set-Cookie "patternflydefault=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
     return 302 /?$args;
 }
 
 location /react {
     # Set cookie and switch to new UI
-    add_header Set-Cookie "patternfly=true; path=/; SameSite=Lax; HttpOnly;" always;
+    add_header Set-Cookie "patternflydefault=true; path=/; SameSite=Lax; HttpOnly;" always;
     return 302 /?$args;
 }
 
@@ -37,10 +37,10 @@ location / {
 
     # Set default UI based on environment
     set $default_ui "{{ default_ui }}";
-    set $use_new_ui $cookie_patternfly;
+    set $use_new_ui $cookie_patternflydefault;
 
     # If no cookie is set, use environment default
-    if ($cookie_patternfly = "") {
+    if ($cookie_patternflydefault = "") {
         set $use_new_ui $default_ui;
     }
 
