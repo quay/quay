@@ -43,10 +43,11 @@ import TagsList from './Tags/TagsList';
 import {DrawerContentType} from './Types';
 import UsageLogs from '../UsageLogs/UsageLogs';
 import {Mirroring} from './Mirroring/Mirroring';
+import Information from './Information/Information';
 
 enum TabIndex {
-  Tags = 'tags',
   Information = 'information',
+  Tags = 'tags',
   TagHistory = 'history',
   Builds = 'builds',
   Logs = 'logs',
@@ -63,7 +64,7 @@ function getTabIndex(tab: string) {
 
 export default function RepositoryDetails() {
   const config = useQuayConfig();
-  const [activeTabKey, setActiveTabKey] = useState(TabIndex.Tags);
+  const [activeTabKey, setActiveTabKey] = useState(TabIndex.Information);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -234,6 +235,18 @@ export default function RepositoryDetails() {
                   onSelect={tabsOnSelect}
                   usePageInsets={true}
                 >
+                  <Tab
+                    eventKey={TabIndex.Information}
+                    title={<TabTitleText>Information</TabTitleText>}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
+                  >
+                    <Information
+                      organization={organization}
+                      repository={repository}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
                   <Tab
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
