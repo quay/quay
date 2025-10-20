@@ -143,7 +143,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
             if={
               (props.repoDetails.can_write || props.repoDetails.can_admin) &&
               config?.features.BUILD_SUPPORT &&
-              config?.config?.REGISTRY_STATE !== 'readonly'
+              config?.registry_state !== 'readonly'
             }
           >
             <ToolbarItem align={{default: 'alignRight'}}>

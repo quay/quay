@@ -15,13 +15,18 @@ import {
   DropdownItem,
   DropdownList,
   MenuToggle,
+  Modal,
 } from '@patternfly/react-core';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
 import {GenerateEncryptedPassword} from 'src/components/modals/GenerateEncryptedPasswordModal';
 import CreateApplicationTokenModal from 'src/components/modals/CreateApplicationTokenModal';
 import RevokeTokenModal from 'src/components/modals/RevokeTokenModal';
-import {useApplicationTokens} from 'src/hooks/UseApplicationTokens';
+import ApplicationTokenCredentials from 'src/components/modals/ApplicationTokenCredentials';
+import {
+  useApplicationTokens,
+  useApplicationToken,
+} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
@@ -37,9 +42,16 @@ export const CliConfiguration = () => {
   const [tokenToRevoke, setTokenToRevoke] = useState<IApplicationToken | null>(
     null,
   );
+  const [viewTokenModalOpen, setViewTokenModalOpen] = useState(false);
+  const [tokenUuidToFetch, setTokenUuidToFetch] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState<Record<string, boolean>>({});
 
   const {data: tokensData, isLoading, error} = useApplicationTokens();
+  const {
+    data: fetchedToken,
+    isLoading: isFetchingToken,
+    error: fetchTokenError,
+  } = useApplicationToken(tokenUuidToFetch);
 
   const handleRevokeToken = (token: IApplicationToken) => {
     setTokenToRevoke(token);
@@ -49,6 +61,16 @@ export const CliConfiguration = () => {
   const handleCloseRevokeModal = () => {
     setRevokeTokenModalOpen(false);
     setTokenToRevoke(null);
+  };
+
+  const handleViewToken = (token: IApplicationToken) => {
+    setTokenUuidToFetch(token.uuid);
+    setViewTokenModalOpen(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setViewTokenModalOpen(false);
+    setTokenUuidToFetch(null);
   };
 
   const toggleDropdown = (tokenUuid: string) => {
@@ -199,7 +221,16 @@ export const CliConfiguration = () => {
                   <Tbody>
                     {tokensData.tokens.map((token) => (
                       <Tr key={token.uuid}>
-                        <Td dataLabel="Title">{token.title}</Td>
+                        <Td dataLabel="Title">
+                          <Button
+                            variant="link"
+                            isInline
+                            onClick={() => handleViewToken(token)}
+                            className="pf-v5-u-p-0"
+                          >
+                            {token.title}
+                          </Button>
+                        </Td>
                         <Td dataLabel="Last Accessed">
                           {formatDate(token.last_accessed)}
                         </Td>
@@ -278,6 +309,58 @@ export const CliConfiguration = () => {
         onClose={handleCloseRevokeModal}
         token={tokenToRevoke}
       />
+
+      {/* View Token Credentials Modal */}
+      {viewTokenModalOpen && (
+        <>
+          {isFetchingToken && (
+            <Modal
+              variant="small"
+              title="Loading Token"
+              isOpen={viewTokenModalOpen}
+              onClose={handleCloseViewModal}
+            >
+              <div className="pf-v5-u-text-align-center pf-v5-u-p-lg">
+                <Spinner size="md" />
+                <Text className="pf-v5-u-mt-sm">
+                  Loading token credentials...
+                </Text>
+              </div>
+            </Modal>
+          )}
+
+          {fetchTokenError && (
+            <Modal
+              variant="small"
+              title="Error"
+              isOpen={viewTokenModalOpen}
+              onClose={handleCloseViewModal}
+              actions={[
+                <Button
+                  key="close"
+                  variant="primary"
+                  onClick={handleCloseViewModal}
+                >
+                  Close
+                </Button>,
+              ]}
+            >
+              <Alert variant="danger" isInline title="Error loading token">
+                {(fetchTokenError as Error)?.message ||
+                  'Failed to load token credentials'}
+              </Alert>
+            </Modal>
+          )}
+
+          {fetchedToken && !isFetchingToken && (
+            <ApplicationTokenCredentials
+              isOpen={viewTokenModalOpen}
+              onClose={handleCloseViewModal}
+              token={fetchedToken}
+            />
+          )}
+        </>
+      )}
     </Form>
   );
 };

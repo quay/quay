@@ -1,6 +1,7 @@
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {
   fetchApplicationTokens,
+  fetchApplicationToken,
   createApplicationToken,
   revokeApplicationToken,
   ApplicationTokenError,
@@ -44,6 +45,18 @@ export function useCreateApplicationToken({
         );
         onError?.(error);
       },
+    },
+  );
+}
+
+// Hook for fetching a specific application token
+export function useApplicationToken(tokenUuid: string | null) {
+  return useQuery(
+    ['applicationToken', tokenUuid],
+    () => fetchApplicationToken(tokenUuid as string),
+    {
+      enabled: !!tokenUuid,
+      staleTime: 0, // Always fetch fresh data for security
     },
   );
 }

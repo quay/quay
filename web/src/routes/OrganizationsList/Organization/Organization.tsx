@@ -57,7 +57,7 @@ export default function Organization() {
   );
 
   const fetchTabVisibility = (tabname) => {
-    if (quayConfig?.config?.REGISTRY_STATE == 'readonly') {
+    if (quayConfig?.registry_state == 'readonly') {
       return false;
     }
 

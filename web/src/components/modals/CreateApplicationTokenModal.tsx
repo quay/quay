@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {
   Modal,
   ModalVariant,
@@ -8,10 +8,10 @@ import {
   TextInput,
   Alert,
   Text,
-  ClipboardCopy,
 } from '@patternfly/react-core';
 import {useCreateApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
+import ApplicationTokenCredentials from './ApplicationTokenCredentials';
 
 interface CreateApplicationTokenModalProps {
   isOpen: boolean;
@@ -61,55 +61,15 @@ export default function CreateApplicationTokenModal({
 
   const canCreate = title.trim().length > 0 && !createTokenMutator.isLoading;
 
-  // If token was created successfully, show the token
+  // If token was created successfully, show credentials
   if (createdToken) {
     return (
-      <Modal
-        variant={ModalVariant.medium}
-        title="Application Token Created"
+      <ApplicationTokenCredentials
         isOpen={isOpen}
         onClose={handleClose}
-        data-testid="create-token-modal"
-        actions={[
-          <Button
-            key="done"
-            variant="primary"
-            onClick={handleClose}
-            data-testid="create-token-close"
-          >
-            Done
-          </Button>,
-        ]}
-      >
-        <Alert
-          variant="success"
-          isInline
-          title="Token Created Successfully"
-          className="pf-v5-u-mb-md"
-        >
-          Your application token has been created and can be used in place of
-          your password for Docker and other CLI commands. Make sure to copy and
-          save it securely - you will not be able to see it again.
-        </Alert>
-
-        <Form>
-          <FormGroup label="Token Name" fieldId="token-name">
-            <Text>{createdToken.title}</Text>
-          </FormGroup>
-
-          <FormGroup label="Token" fieldId="token-code">
-            <ClipboardCopy
-              hoverTip="Copy"
-              clickTip="Copied"
-              variant="expansion"
-              isReadOnly
-              data-testid="copy-token-button"
-            >
-              {createdToken.token_code}
-            </ClipboardCopy>
-          </FormGroup>
-        </Form>
-      </Modal>
+        token={createdToken}
+        isNewlyCreated={true}
+      />
     );
   }
 
