@@ -22,16 +22,14 @@ from test.fixtures import *
     ],
 )
 def test_post_changetrust(trust_enabled, repo_found, expected_status, app):
-    with patch("endpoints.api.repository.tuf_metadata_api") as mock_tuf:
-        with patch(
-            "endpoints.api.repository_models_pre_oci.model.repository.get_repository"
-        ) as mock_model:
-            mock_model.return_value = MagicMock() if repo_found else None
-            mock_tuf.get_default_tags_with_expiration.return_value = ["tags", "expiration"]
-            with client_with_identity("devtable", app) as cl:
-                params = {"repository": "devtable/repo"}
-                request_body = {"trust_enabled": trust_enabled}
-                conduct_api_call(cl, RepositoryTrust, "POST", params, request_body, expected_status)
+    with patch(
+        "endpoints.api.repository_models_pre_oci.model.repository.get_repository"
+    ) as mock_model:
+        mock_model.return_value = MagicMock() if repo_found else None
+        with client_with_identity("devtable", app) as cl:
+            params = {"repository": "devtable/repo"}
+            request_body = {"trust_enabled": trust_enabled}
+            conduct_api_call(cl, RepositoryTrust, "POST", params, request_body, expected_status)
 
 
 def test_signing_disabled(app):

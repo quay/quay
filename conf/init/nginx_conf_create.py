@@ -97,9 +97,6 @@ def generate_server_config(config):
     Generates server config from the app config.
     """
     config = config or {}
-    tuf_server = config.get("TUF_SERVER", None)
-    tuf_host = config.get("TUF_HOST", None)
-    signing_enabled = config.get("FEATURE_SIGNING", False)
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
     manifests_endpoint_read_timeout = config.get("MANIFESTS_ENDPOINT_READ_TIMEOUT", None)
@@ -112,9 +109,6 @@ def generate_server_config(config):
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),
-        tuf_server=tuf_server,
-        tuf_host=tuf_host,
-        signing_enabled=signing_enabled,
         maximum_layer_size=maximum_layer_size,
         enable_rate_limits=enable_rate_limits,
         static_dir=STATIC_DIR,
