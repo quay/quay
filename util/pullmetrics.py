@@ -1,11 +1,14 @@
 import json
 import logging
 import threading
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 import redis
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PULL_METRICS_WORKER_COUNT = 5
 
 
 class CannotReadPullMetricsException(Exception):
@@ -19,11 +22,12 @@ class PullMetricsBuilder(object):
     Defines a helper class for constructing PullMetrics instances.
     """
 
-    def __init__(self, redis_config):
+    def __init__(self, redis_config, max_workers=None):
         self._redis_config = redis_config
+        self._max_workers = max_workers
 
     def get_event(self):
-        return PullMetrics(self._redis_config)
+        return PullMetrics(self._redis_config, self._max_workers)
 
 
 class PullMetricsBuilderModule(object):
@@ -42,11 +46,13 @@ class PullMetricsBuilderModule(object):
                 "host": app.config.get("PULL_METRICS_REDIS_HOSTNAME"),
             }
 
-        pull_metrics = PullMetricsBuilder(redis_config)
+        max_workers = app.config.get("PULL_METRICS_WORKER_COUNT", DEFAULT_PULL_METRICS_WORKER_COUNT)
+        pull_metrics = PullMetricsBuilder(redis_config, max_workers)
 
-        # register extension with app
         app.extensions = getattr(app, "extensions", {})
         app.extensions["pullmetrics"] = pull_metrics
+        app.extensions["pullmetrics_instance"] = pull_metrics
+
         return pull_metrics
 
     def __getattr__(self, name):
@@ -58,8 +64,12 @@ class PullMetrics(object):
     Defines a helper class for tracking pull metrics as backed by Redis.
     """
 
-    def __init__(self, redis_config):
+    def __init__(self, redis_config, max_workers=None):
         self._redis = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
+        worker_count = max_workers or DEFAULT_PULL_METRICS_WORKER_COUNT
+        self._executor = ThreadPoolExecutor(
+            max_workers=worker_count, thread_name_prefix="pullmetrics"
+        )
 
     @staticmethod
     def _tag_pull_key(repository, tag_name):
@@ -78,7 +88,6 @@ class PullMetrics(object):
             tag_name: Name of the tag
             manifest_digest: Manifest digest
         """
-        from data import model
 
         # Get repository_id if object is passed
         repository_id = repository_ref.id if hasattr(repository_ref, "id") else repository_ref
@@ -88,7 +97,7 @@ class PullMetrics(object):
             else str(repository_id)
         )
 
-        timestamp = int(datetime.utcnow().timestamp())
+        timestamp = int(datetime.now(timezone.utc).timestamp())
 
         # Create keys for tag and manifest
         tag_key = self._tag_pull_key(repository_path, tag_name)
@@ -127,8 +136,7 @@ class PullMetrics(object):
             except redis.RedisError:
                 logger.exception("Could not track tag pull metrics")
 
-        thread = threading.Thread(target=conduct)
-        thread.start()
+        self._executor.submit(conduct)
 
     def track_manifest_pull_sync(self, repository_ref, manifest_digest):
         """
@@ -138,7 +146,6 @@ class PullMetrics(object):
             repository_ref: Repository object or repository_id
             manifest_digest: Manifest digest
         """
-        from data import model
 
         # Get repository_id if object is passed
         repository_id = repository_ref.id if hasattr(repository_ref, "id") else repository_ref
@@ -148,7 +155,7 @@ class PullMetrics(object):
             else str(repository_id)
         )
 
-        timestamp = int(datetime.utcnow().timestamp())
+        timestamp = int(datetime.now(timezone.utc).timestamp())
 
         # Increment manifest counter
         manifest_key = self._manifest_pull_key(repository_path, manifest_digest)
@@ -176,63 +183,52 @@ class PullMetrics(object):
             except redis.RedisError:
                 logger.exception("Could not track manifest pull metrics")
 
-        thread = threading.Thread(target=conduct)
-        thread.start()
+        self._executor.submit(conduct)
+
+    def _get_pull_statistics(self, key):
+        """
+        Get pull statistics for a given Redis key.
+        """
+        try:
+            data = self._redis.hgetall(key)
+            if not data:
+                return None
+
+            # Convert bytes to strings and integers
+            result = {}
+            for key, value in data.items():
+                if isinstance(key, bytes):
+                    key = key.decode("utf-8")
+                if isinstance(value, bytes):
+                    value = value.decode("utf-8")
+
+                if key in ["pull_count"]:
+                    result[key] = int(value) if value else 0
+                else:
+                    result[key] = value
+
+            return result
+        except redis.RedisError as e:
+            logger.exception("Could not get pull statistics: %s", e)
+            return None
 
     def get_tag_pull_statistics(self, repository, tag_name):
         """
         Get pull statistics for a specific tag.
         """
         tag_key = self._tag_pull_key(repository, tag_name)
-
-        try:
-            data = self._redis.hgetall(tag_key)
-            if not data:
-                return None
-
-            # Convert bytes to strings and integers
-            result = {}
-            for key, value in data.items():
-                if isinstance(key, bytes):
-                    key = key.decode("utf-8")
-                if isinstance(value, bytes):
-                    value = value.decode("utf-8")
-
-                if key in ["pull_count"]:
-                    result[key] = int(value) if value else 0
-                else:
-                    result[key] = value
-
-            return result
-        except redis.RedisError as e:
-            logger.exception("Could not get tag pull statistics: %s", e)
-            return None
+        return self._get_pull_statistics(tag_key)
 
     def get_manifest_pull_statistics(self, repository, manifest_digest):
         """
         Get pull statistics for a specific manifest.
         """
         manifest_key = self._manifest_pull_key(repository, manifest_digest)
+        return self._get_pull_statistics(manifest_key)
 
-        try:
-            data = self._redis.hgetall(manifest_key)
-            if not data:
-                return None
-
-            # Convert bytes to strings and integers
-            result = {}
-            for key, value in data.items():
-                if isinstance(key, bytes):
-                    key = key.decode("utf-8")
-                if isinstance(value, bytes):
-                    value = value.decode("utf-8")
-
-                if key in ["pull_count"]:
-                    result[key] = int(value) if value else 0
-                else:
-                    result[key] = value
-
-            return result
-        except redis.RedisError as e:
-            logger.exception("Could not get manifest pull statistics: %s", e)
-            return None
+    def shutdown(self):
+        """
+        Shutdown the thread pool executor.
+        Following codebase patterns (similar to buildman/server.py server.stop(grace=5))
+        """
+        self._executor.shutdown(wait=True)

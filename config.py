@@ -377,6 +377,12 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to track and display image pull statistics
     FEATURE_IMAGE_PULL_STATS = False
 
+    # Pull metrics thread pool configuration
+    PULL_METRICS_WORKER_COUNT = 5
+
+    # Redis flush worker configuration
+    REDIS_FLUSH_INTERVAL_SECONDS = 300  # 5 minutes default
+
     # Semver spec for which Docker versions we will blacklist
     # Documentation: http://pythonhosted.org/semantic_version/reference.html#semantic_version.Spec
     BLACKLIST_V2_SPEC = "<1.6.0"

@@ -217,6 +217,8 @@ function TagsTableRow(props: RowProps) {
 }
 
 export default function TagsTable(props: TableProps) {
+  const config = useQuayConfig();
+
   // Control expanded tags
   const [expandedTags, setExpandedTags] = useState<string[]>([]);
   const setTagExpanded = (tag: Tag, isExpanding = true) =>
