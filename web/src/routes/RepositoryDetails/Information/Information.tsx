@@ -30,6 +30,7 @@ import {AlertVariant} from 'src/atoms/AlertState';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import React from 'react';
+import './Information.css';
 
 interface InformationProps {
   organization: string;
@@ -40,11 +41,11 @@ interface InformationProps {
 const MarkdownCodeBlock: React.FunctionComponent<{code: string}> = (props) => {
   const [copied, setCopied] = React.useState(false);
 
-  const clipboardCopyFunc = (event, text) => {
+  const clipboardCopyFunc = (_event: React.MouseEvent, text: string) => {
     navigator.clipboard.writeText(text.toString());
   };
 
-  const onClick = (event, text) => {
+  const onClick = (event: React.MouseEvent, text: string) => {
     clipboardCopyFunc(event, text);
     setCopied(true);
   };
@@ -218,16 +219,7 @@ export default function Information(props: InformationProps) {
                                 ? children
                                 : String(children);
                             return inline ? (
-                              <code
-                                style={{
-                                  backgroundColor: '#f5f5f5',
-                                  padding: '2px 6px',
-                                  borderRadius: '3px',
-                                  fontFamily: 'monospace',
-                                }}
-                              >
-                                {children}
-                              </code>
+                              <code className="inline-code">{children}</code>
                             ) : (
                               <MarkdownCodeBlock code={childText} />
                             );
@@ -238,24 +230,12 @@ export default function Information(props: InformationProps) {
                             </Table>
                           ),
                           th: ({children}) => (
-                            <Th
-                              style={{
-                                border: '1px solid #d2d2d2',
-                                padding: '8px',
-                              }}
-                            >
+                            <Th className="markdown-table-header">
                               {children}
                             </Th>
                           ),
                           td: ({children}) => (
-                            <Td
-                              style={{
-                                border: '1px solid #d2d2d2',
-                                padding: '8px',
-                              }}
-                            >
-                              {children}
-                            </Td>
+                            <Td className="markdown-table-cell">{children}</Td>
                           ),
                         }}
                       >
@@ -297,7 +277,7 @@ export default function Information(props: InformationProps) {
                     onChange={(_event, value) => handleDescriptionChange(value)}
                     rows={5}
                     aria-label="Repository description"
-                    placeholder="Enter repository description (Markdown supported)..."
+                    placeholder="Enter repository description..."
                   />
                   <div style={{marginTop: '1rem'}}>
                     <Button
