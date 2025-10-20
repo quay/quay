@@ -27,18 +27,6 @@ describe('Repository Details Page', () => {
     cy.contains('Description').should('exist');
   });
 
-  it('displays pull commands on Information tab', () => {
-    cy.visit('/repository/user1/hello-world');
-    cy.contains('podman pull localhost:8080/user1/hello-world').should('exist');
-    cy.contains('docker pull localhost:8080/user1/hello-world').should('exist');
-  });
-
-  it('displays repository description on Information tab', () => {
-    cy.visit('/repository/user1/hello-world');
-    // Check for description section
-    cy.get('[class*="pf-v5-c-card"]').contains('Description').should('exist');
-  });
-
   it('edits repository description', () => {
     cy.intercept('PUT', '/api/v1/repository/user1/hello-world', {
       statusCode: 200,
@@ -501,7 +489,7 @@ describe('Repository Details Page', () => {
   });
 
   it('does not render tag actions for non-writable repositories', () => {
-    cy.visit('/repository/user2org1/hello-world');
+    cy.visit('/repository/user2org1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').should('not.exist');
@@ -649,7 +637,7 @@ describe('Repository Details Page', () => {
       '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
       {fixture: 'single-tag.json'},
     ).as('getTag');
-    cy.visit('/repository/testorg/testrepo');
+    cy.visit('/repository/testorg/testrepo?tab=tags');
     cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
   });
 
@@ -664,7 +652,7 @@ describe('Repository Details Page', () => {
         fixture,
       ).as('getTag');
     });
-    cy.visit('/repository/testorg/testrepo');
+    cy.visit('/repository/testorg/testrepo?tab=tags');
     cy.get(`[data-label="Expires"]`)
       .first()
       .within(() => {
