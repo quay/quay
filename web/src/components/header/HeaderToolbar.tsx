@@ -52,8 +52,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const {themePreference, setThemePreference} = useTheme();
   const config = useQuayConfig();
-  const showUIToggle =
-    config?.features?.UI_V2 && config?.config?.DEFAULT_UI !== 'react';
+  const showUIToggle = config?.features?.UI_V2;
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
@@ -292,12 +291,12 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                   className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
                 >
                   <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
-                    Current UI
+                    Legacy UI
                   </FlexItem>
                   <Switch
                     id="header-toolbar-ui-switch"
-                    label="New UI"
-                    labelOff="New UI"
+                    label="Current UI"
+                    labelOff="Current UI"
                     isChecked={isChecked}
                     onChange={toggleSwitch}
                   />
