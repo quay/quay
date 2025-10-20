@@ -887,7 +887,7 @@ describe('Account Settings Page', () => {
 
   it('Settings Tab Hidden in Read-Only Mode', () => {
     cy.fixture('config.json').then((config) => {
-      config.config.REGISTRY_STATE = 'readonly';
+      config.registry_state = 'readonly';
       cy.intercept('GET', '/config', config).as('getConfigReadOnly');
     });
 
@@ -903,7 +903,7 @@ describe('Account Settings Page', () => {
 
   it('Settings Tab Visible in Normal Mode', () => {
     cy.fixture('config.json').then((config) => {
-      config.config.REGISTRY_STATE = 'normal';
+      config.registry_state = 'normal';
       cy.intercept('GET', '/config', config).as('getConfigNormal');
     });
 
