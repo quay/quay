@@ -398,14 +398,10 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
         if manifest is None:
             raise NotFound()
 
-        # Get pull metrics from Redis
-        pull_metrics = app.extensions.get("pullmetrics")
-        if not pull_metrics:
-            abort(500, "Pull metrics system not available")
+        # Get pull statistics from database
+        from data.model.pull_statistics import get_manifest_pull_statistics
 
-        repository_path = f"{namespace_name}/{repository_name}"
-        metrics = pull_metrics.get_event()
-        manifest_stats = metrics.get_manifest_pull_statistics(repository_path, manifestref)
+        manifest_stats = get_manifest_pull_statistics(repo_ref.id, manifestref)
 
         if not manifest_stats:
             # Return default values if no statistics are available
@@ -415,8 +411,12 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
                 "last_manifest_pull_date": None,
             }
 
+        from endpoints.api import format_date
+
+        last_pull = manifest_stats.get("last_pull_date")
+
         return {
             "manifest_digest": manifestref,
             "manifest_pull_count": manifest_stats.get("pull_count", 0),
-            "last_manifest_pull_date": manifest_stats.get("last_pull_date"),
+            "last_manifest_pull_date": format_date(last_pull) if last_pull else None,
         }

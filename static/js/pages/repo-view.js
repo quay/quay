@@ -67,11 +67,11 @@
 
         ApiService.getTagPullStatistics(null, statsParams).then(function(resp) {
           tag.pull_count = resp.tag_pull_count;
-          tag.last_pulled = resp.last_tag_pull_date;
+          tag.last_pull_date = resp.last_tag_pull_date;
         }, function(error) {
           // If feature is not enabled or stats not available, set defaults
           tag.pull_count = 0;
-          tag.last_pulled = null;
+          tag.last_pull_date = null;
         });
       });
     };

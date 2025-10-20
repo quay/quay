@@ -446,14 +446,14 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
         if tag_ref is None:
             raise NotFound()
 
-        # Get pull metrics from Redis
-        pull_metrics = app.extensions.get("pullmetrics")
-        if not pull_metrics:
-            abort(500, "Pull metrics system not available")
+        # Get pull statistics from database
+        from data.model.pull_statistics import (
+            get_manifest_pull_statistics,
+            get_tag_pull_statistics,
+        )
 
-        repository_path = f"{namespace}/{repository}"
-        metrics = pull_metrics.get_event()
-        tag_stats = metrics.get_tag_pull_statistics(repository_path, tag)
+        tag_stats = get_tag_pull_statistics(repo_ref.id, tag)
+        manifest_stats = get_manifest_pull_statistics(repo_ref.id, tag_ref.manifest_digest)
 
         if not tag_stats:
             # Return default values if no statistics are available
@@ -466,20 +466,20 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
                 "last_manifest_pull_date": None,
             }
 
-        # Get manifest statistics
-        manifest_stats = metrics.get_manifest_pull_statistics(
-            repository_path, tag_ref.manifest_digest
-        )
+        from endpoints.api import format_date
+
+        last_tag_pull = tag_stats.get("last_pull_date")
+        last_manifest_pull = manifest_stats.get("last_pull_date") if manifest_stats else None
 
         return {
             "tag_name": tag,
             "tag_pull_count": tag_stats.get("pull_count", 0),
-            "last_tag_pull_date": tag_stats.get("last_pull_date"),
+            "last_tag_pull_date": format_date(last_tag_pull) if last_tag_pull else None,
             "current_manifest_digest": tag_stats.get(
                 "current_manifest_digest", tag_ref.manifest_digest
             ),
             "manifest_pull_count": manifest_stats.get("pull_count", 0) if manifest_stats else 0,
-            "last_manifest_pull_date": manifest_stats.get("last_pull_date")
-            if manifest_stats
+            "last_manifest_pull_date": format_date(last_manifest_pull)
+            if last_manifest_pull
             else None,
         }
