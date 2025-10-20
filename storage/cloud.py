@@ -789,7 +789,7 @@ class S3Storage(_CloudStorage):
             "config": Config(signature_version=signature_version),
             "aws_session_token": aws_session_token,
         }
-        if s3_region is not None:
+        if all([s3_region is not None, endpoint_url is None, host is None]):
             connect_kwargs["region_name"] = s3_region
             connect_kwargs["endpoint_url"] = "https://s3.{region}.amazonaws.com".format(
                 region=s3_region
@@ -797,6 +797,11 @@ class S3Storage(_CloudStorage):
             # cn-north-1's endpoint has a .com.cn TLD
             if s3_region in S3Storage.REGIONS["cn"]:
                 connect_kwargs["endpoint_url"] = connect_kwargs["endpoint_url"] + ".cn"
+        elif all([s3_region is not None, any([endpoint_url is not None, host is not None])]):
+            connect_kwargs["region_name"] = s3_region
+            connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
+                host, port=port, is_secure=True
+            )
         elif host or endpoint_url:
             connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
                 host, port=port, is_secure=True
