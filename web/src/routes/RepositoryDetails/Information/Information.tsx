@@ -4,6 +4,10 @@ import {
   CardBody,
   CardTitle,
   ClipboardCopy,
+  CodeBlock,
+  CodeBlockAction,
+  CodeBlockCode,
+  ClipboardCopyButton,
   Grid,
   GridItem,
   PageSection,
@@ -14,6 +18,7 @@ import {
   TextContent,
   TextVariants,
 } from '@patternfly/react-core';
+import {Table, Th, Td} from '@patternfly/react-table';
 import {useEffect, useState} from 'react';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -22,12 +27,53 @@ import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import axios from 'src/libs/axios';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import React from 'react';
 
 interface InformationProps {
   organization: string;
   repository: string;
   repoDetails: RepositoryDetails;
 }
+
+const MarkdownCodeBlock: React.FunctionComponent<{code: string}> = (props) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const clipboardCopyFunc = (event, text) => {
+    navigator.clipboard.writeText(text.toString());
+  };
+
+  const onClick = (event, text) => {
+    clipboardCopyFunc(event, text);
+    setCopied(true);
+  };
+
+  const actions = (
+    <React.Fragment>
+      <CodeBlockAction>
+        <ClipboardCopyButton
+          id="basic-copy-button"
+          textId="code-content"
+          aria-label="Copy to clipboard"
+          onClick={(e) => onClick(e, props.code)}
+          exitDelay={copied ? 1500 : 600}
+          maxWidth="110px"
+          variant="plain"
+          onTooltipHidden={() => setCopied(false)}
+        >
+          {copied ? 'Successfully copied to clipboard!' : 'Copy to clipboard'}
+        </ClipboardCopyButton>
+      </CodeBlockAction>
+    </React.Fragment>
+  );
+
+  return (
+    <CodeBlock actions={actions}>
+      <CodeBlockCode id="code-content">{props.code}</CodeBlockCode>
+    </CodeBlock>
+  );
+};
 
 async function updateRepositoryDescription(
   org: string,
@@ -161,11 +207,68 @@ export default function Information(props: InformationProps) {
             <CardBody>
               {!isEditing && (
                 <>
-                  <TextContent>
-                    <Text component={TextVariants.p}>
-                      {description || 'No description provided'}
-                    </Text>
-                  </TextContent>
+                  {description ? (
+                    <TextContent>
+                      <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code({inline, children}) {
+                            const childText =
+                              typeof children === 'string'
+                                ? children
+                                : String(children);
+                            return inline ? (
+                              <code
+                                style={{
+                                  backgroundColor: '#f5f5f5',
+                                  padding: '2px 6px',
+                                  borderRadius: '3px',
+                                  fontFamily: 'monospace',
+                                }}
+                              >
+                                {children}
+                              </code>
+                            ) : (
+                              <MarkdownCodeBlock code={childText} />
+                            );
+                          },
+                          table: ({children}) => (
+                            <Table borders={true} variant={'compact'}>
+                              {children}
+                            </Table>
+                          ),
+                          th: ({children}) => (
+                            <Th
+                              style={{
+                                border: '1px solid #d2d2d2',
+                                padding: '8px',
+                              }}
+                            >
+                              {children}
+                            </Th>
+                          ),
+                          td: ({children}) => (
+                            <Td
+                              style={{
+                                border: '1px solid #d2d2d2',
+                                padding: '8px',
+                              }}
+                            >
+                              {children}
+                            </Td>
+                          ),
+                        }}
+                      >
+                        {description}
+                      </Markdown>
+                    </TextContent>
+                  ) : (
+                    <TextContent>
+                      <Text component={TextVariants.p}>
+                        No description provided
+                      </Text>
+                    </TextContent>
+                  )}
                   {repoDetails?.can_write && !inReadOnlyMode && (
                     <TextContent>
                       <Text
@@ -181,12 +284,20 @@ export default function Information(props: InformationProps) {
               )}
               {isEditing && (
                 <>
+                  <TextContent>
+                    <Text
+                      component={TextVariants.small}
+                      style={{marginBottom: '0.5rem'}}
+                    >
+                      Supports Markdown formatting
+                    </Text>
+                  </TextContent>
                   <TextArea
                     value={description}
                     onChange={(_event, value) => handleDescriptionChange(value)}
                     rows={5}
                     aria-label="Repository description"
-                    placeholder="Enter repository description..."
+                    placeholder="Enter repository description (Markdown supported)..."
                   />
                   <div style={{marginTop: '1rem'}}>
                     <Button
