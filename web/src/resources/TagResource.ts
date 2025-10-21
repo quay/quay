@@ -25,6 +25,8 @@ export interface Tag {
   expiration?: string;
   end_ts?: number;
   modelcard?: string;
+  cosign_signature_tag?: string;
+  cosign_signature_manifest_digest?: string;
   pull_count?: number;
   last_pulled?: string;
 }
@@ -54,7 +56,6 @@ export interface Layer {
   author: string;
   blob_digest: string;
   created_datetime: string;
-  size: number;
 }
 
 export interface Platform {
@@ -340,11 +341,13 @@ export async function getManifestByDigest(
   org: string,
   repo: string,
   digest: string,
-  include_modelcard: boolean,
+  include_modelcard = false,
 ) {
-  const response: AxiosResponse<ManifestByDigestResponse> = await axios.get(
-    `/api/v1/repository/${org}/${repo}/manifest/${digest}?include_modelcard=true`,
-  );
+  const url = `/api/v1/repository/${org}/${repo}/manifest/${digest}${
+    include_modelcard ? '?include_modelcard=true' : ''
+  }`;
+  const response: AxiosResponse<ManifestByDigestResponse> =
+    await axios.get(url);
   assertHttpCode(response.status, 200);
   return response.data;
 }
@@ -411,6 +414,7 @@ export async function restoreTag(
       manifest_digest: digest,
     },
   );
+  assertHttpCode(response.status, 200);
 }
 
 export async function permanentlyDeleteTag(
@@ -427,6 +431,7 @@ export async function permanentlyDeleteTag(
       is_alive: false,
     },
   );
+  assertHttpCode(response.status, 200);
 }
 
 export interface TagPullStatistics {
