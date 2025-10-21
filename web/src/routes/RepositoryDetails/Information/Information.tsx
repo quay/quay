@@ -12,7 +12,6 @@ import {
   GridItem,
   PageSection,
   PageSectionVariants,
-  Skeleton,
   Text,
   TextArea,
   TextContent,
@@ -30,6 +29,7 @@ import {AlertVariant} from 'src/atoms/AlertState';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import React from 'react';
+import ActivityHeatmap from 'src/components/ActivityHeatmap/ActivityHeatmap';
 import './Information.css';
 
 interface InformationProps {
@@ -155,17 +155,20 @@ export default function Information(props: InformationProps) {
   return (
     <PageSection variant={PageSectionVariants.light}>
       <Grid hasGutter>
-        {/* Repository Activity Placeholder */}
+        {/* Repository Activity Heatmap */}
         <GridItem span={12} md={5}>
           <Card>
             <CardTitle>Repository Activity</CardTitle>
             <CardBody>
-              <Skeleton height="200px" />
-              <TextContent style={{marginTop: '1rem', textAlign: 'center'}}>
-                <Text component={TextVariants.small}>
-                  Activity heatmap coming soon
-                </Text>
-              </TextContent>
+              {repoDetails?.stats && repoDetails.stats.length > 0 ? (
+                <ActivityHeatmap data={repoDetails.stats} itemName="action" />
+              ) : (
+                <TextContent style={{textAlign: 'center', padding: '2rem'}}>
+                  <Text component={TextVariants.small}>
+                    No activity data available
+                  </Text>
+                </TextContent>
+              )}
             </CardBody>
           </Card>
         </GridItem>
