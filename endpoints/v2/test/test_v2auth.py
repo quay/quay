@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from flask import url_for
 
@@ -8,6 +6,7 @@ from app import instance_keys
 from data import model
 from data.model.user import get_robot_and_metadata, get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
+from test.fixtures import *
 from util.security.registry_jwt import CLAIM_TUF_ROOTS, decode_bearer_token
 
 
@@ -167,13 +166,24 @@ def get_robot_password(username):
             "private",
             False,
         ),
-        # Multiple scopes with restricted behavior.
+        # Multiple scopes - non-superuser without push access to one repo
+        (
+            ["repository:buynlarge/orgrepo:pull,push", "repository:devtable/simple:pull,push"],
+            "reader",
+            "password",
+            200,
+            ["buynlarge/orgrepo:pull", "devtable/simple:"],
+            True,
+            "private",
+            False,
+        ),
+        # Multiple scopes - devtable is a superuser so gets full access to both repos
         (
             ["repository:devtable/simple:pull,push", "repository:public/publicrepo:pull,push"],
             "devtable",
             "password",
             200,
-            ["devtable/simple:push,pull", "public/publicrepo:pull"],
+            ["devtable/simple:push,pull", "public/publicrepo:push,pull"],
             True,
             "private",
             False,
@@ -183,7 +193,7 @@ def get_robot_password(username):
             "devtable",
             "password",
             200,
-            ["devtable/simple:push,pull,*", "public/publicrepo:pull"],
+            ["devtable/simple:push,pull,*", "public/publicrepo:push,pull,*"],
             True,
             "private",
             False,

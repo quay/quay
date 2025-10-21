@@ -141,6 +141,7 @@ class RepositoryList(ApiResource):
         namespace_name = req["namespace"] if "namespace" in req else owner.username
 
         permission = CreateRepositoryPermission(namespace_name)
+
         if (permission.can() or allow_if_superuser()) and not (
             features.RESTRICTED_USERS
             and usermanager.is_restricted_user(owner.username)

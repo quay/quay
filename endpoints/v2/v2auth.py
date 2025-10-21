@@ -21,7 +21,11 @@ from data.database import RepositoryState
 from data.model.repo_mirror import get_mirroring_robot
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from endpoints.api import log_action
+from endpoints.api import (
+    allow_if_global_readonly_superuser,
+    allow_if_superuser,
+    log_action,
+)
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (
@@ -260,7 +264,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             # Lookup the repository. If it exists, make sure the entity has modify
             # permission. Otherwise, make sure the entity has create permission.
             if repository_ref:
-                if ModifyRepositoryPermission(namespace, reponame).can():
+                if ModifyRepositoryPermission(namespace, reponame).can() or allow_if_superuser():
                     if repository_ref is not None and repository_ref.kind != "image":
                         raise Unsupported(message=invalid_repo_message)
 
@@ -364,15 +368,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
             can_pullthru = OrganizationMemberPermission(namespace).can() and user is not None
 
-        global_readonly_superuser = False
-        if features.SUPER_USERS and user is not None:
-            global_readonly_superuser = usermanager.is_global_readonly_superuser(user.username)
-
         if (
             ReadRepositoryPermission(namespace, reponame).can()
             or can_pullthru
             or repo_is_public
-            or global_readonly_superuser
+            or allow_if_global_readonly_superuser()
         ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
@@ -383,7 +383,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     if "*" in requested_actions:
         # Grant * user is admin
-        if AdministerRepositoryPermission(namespace, reponame).can():
+        if AdministerRepositoryPermission(namespace, reponame).can() or allow_if_superuser():
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 
