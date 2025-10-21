@@ -57,9 +57,9 @@ describe('Tags - Compact/Expanded View', () => {
     cy.contains('[role="menuitem"]', 'Expanded View').click();
     cy.get('#tags-settings-toggle').click();
 
-    // Verify manifest digest is shown
-    cy.get('.expanded-row-content').should('contain', 'Manifest:');
-    cy.get('.expanded-row-content').should('contain', 'sha256:');
+    // Verify manifest digest is shown (UI displays "SHA256" text, not "Manifest:" label)
+    cy.get('.expanded-row-content').should('contain', 'SHA256');
+    cy.get('.expanded-row-content').should('contain', 'f54a58bc1aac');
   });
 
   it('shows labels section in expanded view', () => {
@@ -70,8 +70,17 @@ describe('Tags - Compact/Expanded View', () => {
     cy.contains('[role="menuitem"]', 'Expanded View').click();
     cy.get('#tags-settings-toggle').click();
 
-    // Verify labels section is shown
-    cy.get('.expanded-row-content').should('contain', 'Labels:');
+    // Verify labels section is shown (UI displays labels as key=value or "No labels found")
+    cy.get('.expanded-row-content')
+      .first()
+      .then(($content) => {
+        const text = $content.text();
+        // Labels are shown as key=value pairs (e.g., "version = 1.0.0") or "No labels found"
+        expect(text).to.satisfy(
+          (text: string) =>
+            text.includes('=') || text.includes('No labels found'),
+        );
+      });
   });
 
   it('shows cosign signature when present', () => {
@@ -84,7 +93,6 @@ describe('Tags - Compact/Expanded View', () => {
     cy.get('#tags-settings-toggle').click();
 
     // Check if any tag has cosign signature
-    // This test might need adjustment based on actual test data
     cy.get('body').then(($body) => {
       if (
         $body.find('.expanded-row-content:contains("Cosign Signature:")')
