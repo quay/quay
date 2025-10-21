@@ -1,11 +1,13 @@
 """
 Manage user and organization robot accounts.
 """
+
 import json
 import logging
 
 from flask import abort, request
 
+from app import model_cache
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
@@ -188,7 +190,7 @@ class UserRobot(ApiResource):
         robot_username = format_robot_username(parent.username, robot_shortname)
 
         if not model.robot_has_mirror(robot_username):
-            model.delete_robot(robot_username)
+            model.delete_robot(robot_username, model_cache)
             log_action("delete_robot", parent.username, {"robot": robot_shortname})
             return "", 204
         else:
@@ -311,7 +313,7 @@ class OrgRobot(ApiResource):
         if permission.can() or allow_if_superuser():
             robot_username = format_robot_username(orgname, robot_shortname)
             if not model.robot_has_mirror(robot_username):
-                model.delete_robot(robot_username)
+                model.delete_robot(robot_username, model_cache)
                 log_action("delete_robot", orgname, {"robot": robot_shortname})
                 return "", 204
             else:
@@ -433,7 +435,7 @@ class OrgRobotFederation(ApiResource):
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_any_superuser():
             robot_username = format_robot_username(orgname, robot_shortname)
-            robot = lookup_robot(robot_username)
+            robot = lookup_robot(robot_username, model_cache)
             return get_robot_federation_config(robot)
 
         raise Unauthorized()
@@ -446,7 +448,7 @@ class OrgRobotFederation(ApiResource):
             fed_config = self._parse_federation_config(request)
 
             robot_username = format_robot_username(orgname, robot_shortname)
-            robot = lookup_robot(robot_username)
+            robot = lookup_robot(robot_username, model_cache)
             create_robot_federation_config(robot, fed_config)
             log_action(
                 "create_robot_federation",
@@ -462,7 +464,7 @@ class OrgRobotFederation(ApiResource):
         permission = AdministerOrganizationPermission(orgname)
         if permission.can() or allow_if_superuser():
             robot_username = format_robot_username(orgname, robot_shortname)
-            robot = lookup_robot(robot_username)
+            robot = lookup_robot(robot_username, model_cache)
             delete_robot_federation_config(robot)
             log_action(
                 "delete_robot_federation",
