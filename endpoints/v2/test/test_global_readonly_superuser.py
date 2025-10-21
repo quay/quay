@@ -169,7 +169,10 @@ class TestV2PermissionInheritance:
 
     def test_require_repo_permission_integration(self, app):
         """Test that the _require_repo_permission decorator works correctly."""
-        from auth.permissions import ReadRepositoryPermission
+        from auth.permissions import (
+            GlobalReadOnlySuperUserPermission,
+            ReadRepositoryPermission,
+        )
         from endpoints.v2 import _require_repo_permission
 
         # Create a mock function that uses the decorator
@@ -180,14 +183,8 @@ class TestV2PermissionInheritance:
             return "success"
 
         # Test with global readonly superuser context
-        with patch("app.usermanager.is_global_readonly_superuser", return_value=True), patch(
-            "endpoints.v2.get_authenticated_context"
-        ) as mock_context:
-
-            # Mock authenticated context
-            mock_user = type("MockUser", (), {"username": "test-global-readonly"})()
-            mock_context.return_value = type("MockContext", (), {"authed_user": mock_user})()
-
+        # Patch the Permission.can() method to return True
+        with patch.object(GlobalReadOnlySuperUserPermission, "can", return_value=True):
             # Should allow access
             from flask import g
             from flask_principal import Identity
