@@ -4,7 +4,7 @@ from functools import wraps
 from flask import Response, request, url_for
 
 import features
-from app import app, model_cache, storage
+from app import app, model_cache, pullmetrics, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
@@ -130,8 +130,6 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
     # Track pull metrics if feature is enabled
     if features.IMAGE_PULL_STATS:
         try:
-            from app import pullmetrics
-
             if pullmetrics:
                 metrics = pullmetrics.get_event()
                 metrics.track_tag_pull(repository_ref, manifest_ref, manifest_digest)
@@ -187,8 +185,6 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
     # Track pull metrics if feature is enabled
     if features.IMAGE_PULL_STATS:
         try:
-            from app import pullmetrics
-
             if pullmetrics:
                 metrics = pullmetrics.get_event()
                 metrics.track_manifest_pull(repository_ref, manifest_ref)

@@ -9,6 +9,10 @@ import features
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
 from data.model import repository as repository_model
+from data.model.pull_statistics import (
+    get_manifest_pull_statistics,
+    get_tag_pull_statistics,
+)
 from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
 from endpoints.api import abort as custom_abort
@@ -447,11 +451,6 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
             raise NotFound()
 
         # Get pull statistics from database
-        from data.model.pull_statistics import (
-            get_manifest_pull_statistics,
-            get_tag_pull_statistics,
-        )
-
         tag_stats = get_tag_pull_statistics(repo_ref.id, tag)
         manifest_stats = get_manifest_pull_statistics(repo_ref.id, tag_ref.manifest_digest)
 

@@ -12,6 +12,7 @@ import features
 from app import app, label_validator, storage
 from data.model import InvalidLabelKeyException, InvalidMediaTypeException
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.pull_statistics import get_manifest_pull_statistics
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -399,8 +400,6 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
             raise NotFound()
 
         # Get pull statistics from database
-        from data.model.pull_statistics import get_manifest_pull_statistics
-
         manifest_stats = get_manifest_pull_statistics(repo_ref.id, manifestref)
 
         if not manifest_stats:
