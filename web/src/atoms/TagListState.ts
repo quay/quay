@@ -85,3 +85,8 @@ export const showSignaturesState = atom({
   key: 'showSignaturesState',
   default: false,
 });
+
+export const expandedViewState = atom({
+  key: 'expandedViewState',
+  default: false,
+});

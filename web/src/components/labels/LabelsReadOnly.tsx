@@ -8,6 +8,8 @@ export default function ReadOnlyLabels(props: ReadOnlyLabelsProps) {
     props.org,
     props.repo,
     props.digest,
+    props.cache,
+    props.setCache,
   );
 
   if (error) {
@@ -38,4 +40,6 @@ interface ReadOnlyLabelsProps {
   org: string;
   repo: string;
   digest: string;
+  cache?: Record<string, ImageLabel[]>;
+  setCache?: (cache: Record<string, ImageLabel[]>) => void;
 }

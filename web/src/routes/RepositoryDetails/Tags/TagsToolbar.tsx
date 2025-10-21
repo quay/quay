@@ -5,12 +5,15 @@ import {
   Toolbar,
   ToolbarContent,
   ToolbarItem,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@patternfly/react-core';
 import {useRecoilState} from 'recoil';
 import {
   searchTagsState,
   selectedTagsState,
   showSignaturesState,
+  expandedViewState,
 } from 'src/atoms/TagListState';
 import {Tag} from 'src/resources/TagResource';
 import {DeleteModal, ModalOptions} from './DeleteModal';
@@ -35,6 +38,7 @@ export function TagsToolbar(props: ToolBarProps) {
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
   const [showSignatures, setShowSignatures] =
     useRecoilState(showSignaturesState);
+  const [expandedView, setExpandedView] = useRecoilState(expandedViewState);
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
     useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
@@ -107,6 +111,22 @@ export function TagsToolbar(props: ToolBarProps) {
           searchState={search}
           onChange={setSearch}
         />
+        <ToolbarItem>
+          <ToggleGroup aria-label="View mode toggle">
+            <ToggleGroupItem
+              text="Compact"
+              buttonId="compact-view"
+              isSelected={!expandedView}
+              onChange={() => setExpandedView(false)}
+            />
+            <ToggleGroupItem
+              text="Expanded"
+              buttonId="expanded-view"
+              isSelected={expandedView}
+              onChange={() => setExpandedView(true)}
+            />
+          </ToggleGroup>
+        </ToolbarItem>
         <ToolbarItem>
           <Button
             variant="secondary"
