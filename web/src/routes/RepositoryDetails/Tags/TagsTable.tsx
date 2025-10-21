@@ -75,7 +75,7 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 3 : 1} />{' '}
+      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 5 : 3} />{' '}
     </Tr>
   );
 }
@@ -153,6 +153,14 @@ function TagsTableRow(props: RowProps) {
         </Td>
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
+        </Td>
+        <Td dataLabel={ColumnNames.expiration}>
+          {tag.expiration ? formatDate(tag.expiration) : 'Never'}
+        </Td>
+        <Td dataLabel={ColumnNames.manifest}>
+          <span style={{fontFamily: 'monospace', fontSize: '12px'}}>
+            {tag.manifest_digest.substring(0, 19)}...
+          </span>
         </Td>
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
@@ -253,11 +261,17 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(5)}>
               Last Modified
             </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
+              Expires
+            </Th>
+            <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
+              Manifest
+            </Th>
             <Conditional if={config?.features?.IMAGE_PULL_STATS}>
-              <Th modifier="wrap" sort={props.getSortableSort?.(6)}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
                 Last Pulled
               </Th>
-              <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(9)}>
                 Pull Count
               </Th>
             </Conditional>
@@ -323,5 +337,9 @@ interface SubRowProps {
   rowIndex: number;
   manifest: Manifest;
   isTagExpanded: (tag: Tag) => boolean;
-  config: any;
+  config: {
+    features?: {
+      IMAGE_PULL_STATS?: boolean;
+    };
+  } | null;
 }

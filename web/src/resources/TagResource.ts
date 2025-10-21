@@ -45,6 +45,15 @@ export interface Manifest {
 }
 
 export interface Layer {
+  index: number;
+  compressed_size: number;
+  is_remote: boolean;
+  urls: string[];
+  command: string[];
+  comment: string;
+  author: string;
+  blob_digest: string;
+  created_datetime: string;
   size: number;
 }
 
@@ -71,8 +80,9 @@ export interface ManifestByDigestResponse {
   digest: string;
   is_manifest_list: boolean;
   manifest_data: string;
-  config_media_type?: any;
-  layers?: any;
+  config_media_type?: string;
+  layers?: Layer[];
+  layers_compressed_size?: number;
   modelcard?: string;
 }
 
