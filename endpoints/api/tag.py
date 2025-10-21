@@ -465,8 +465,6 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
                 "last_manifest_pull_date": None,
             }
 
-        from endpoints.api import format_date
-
         last_tag_pull = tag_stats.get("last_pull_date")
         last_manifest_pull = manifest_stats.get("last_pull_date") if manifest_stats else None
 

@@ -121,6 +121,16 @@
         style="width: 90px;">
       <a ng-click="orderBy('size')" data-title="The compressed size of the tag's image" data-container="body" bs-tooltip>Size</a>
     </td>
+    <td class="hidden-sm hidden-xs hidden-md"
+        ng-class="tablePredicateClass('expiration_date', options.predicate, options.reverse)"
+        style="width: 140px;">
+      <a ng-click="orderBy('expiration_date')" data-title="When the tag expires" data-container="body" bs-tooltip>Expires</a>
+    </td>
+    <td class="hidden-xs hidden-sm"
+        ng-class="tablePredicateClass('manifest_digest', options.predicate, options.reverse)"
+        style="width: 140px;">
+      <a ng-click="orderBy('manifest_digest')">Manifest</a>
+    </td>
     <td class="hidden-sm hidden-xs"
         ng-class="tablePredicateClass('last_pulled', options.predicate, options.reverse)"
         style="width: 140px;"
@@ -194,6 +204,20 @@
       <td class="hidden-xs">
         <span bo-text="tag.size | bytes" bo-if="!tag.is_manifest_list"></span>
         <span bo-if="tag.is_manifest_list">N/A</span>
+      </td>
+
+      <!-- Expiration -->
+      <td class="hidden-xs hidden-sm hidden-md">
+        <a ng-click="askChangeTagsExpiration([tag])"
+           ng-if="!repository.tag_operations_disabled && repository.can_write">
+          <expiration-status-view expiration-date="tag.expiration_date"></expiration-status-view>
+        </a>
+        <expiration-status-view expiration-date="tag.expiration_date" ng-if="repository.tag_operations_disabled || !repository.can_write"></expiration-status-view>
+      </td>
+
+      <!-- Manifest -->
+      <td class="hidden-xs hidden-sm">
+        <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
       </td>
 
       <!-- Last Pulled -->

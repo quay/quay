@@ -410,8 +410,6 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
                 "last_manifest_pull_date": None,
             }
 
-        from endpoints.api import format_date
-
         last_pull = manifest_stats.get("last_pull_date")
 
         return {
