@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --output-file=requirements-build.txt requirements-build.in
 #
-calver==2022.6.26 \
+calver==2025.10.20 \
     --hash=sha256:a1d7fcdd67797afc52ee36ffb8c8adf6643173864306547bfd1380cbce6310a0 \
     --hash=sha256:e05493a3b17517ef1748fbe610da11f10485faa7c416b9d33fd4a52d74894f8b
     # via -r requirements-build.in
