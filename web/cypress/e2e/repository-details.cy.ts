@@ -14,13 +14,92 @@ describe('Repository Details Page', () => {
       });
   });
 
+  it('defaults to Information tab', () => {
+    cy.visit('/repository/user1/hello-world');
+    // Check that Information tab is active by default
+    cy.get('[role="tab"][aria-selected="true"]').should(
+      'contain.text',
+      'Information',
+    );
+    // Verify Information tab content is visible
+    cy.contains('Repository Activity').should('exist');
+    cy.contains('Pull Commands').should('exist');
+    cy.contains('Description').should('exist');
+  });
+
+  it('edits repository description', () => {
+    cy.intercept('PUT', '/api/v1/repository/user1/hello-world', {
+      statusCode: 200,
+      body: {},
+    }).as('updateDescription');
+
+    cy.visit('/repository/user1/hello-world');
+
+    // Click Edit description link
+    cy.contains('Edit description').click();
+
+    // Verify textarea is visible
+    cy.get('textarea[aria-label="Repository description"]').should(
+      'be.visible',
+    );
+
+    // Clear and type new description
+    cy.get('textarea[aria-label="Repository description"]')
+      .clear()
+      .type('New test description');
+
+    // Click Save button
+    cy.contains('button', 'Save').click();
+
+    // Wait for API call
+    cy.wait('@updateDescription').its('request.body').should('deep.equal', {
+      description: 'New test description',
+    });
+
+    // Verify success alert
+    cy.contains('Repository description updated successfully').should('exist');
+
+    // Verify edit mode is closed and new description is shown
+    cy.get('textarea[aria-label="Repository description"]').should('not.exist');
+    cy.contains('New test description').should('exist');
+  });
+
+  it('cancels editing repository description', () => {
+    cy.visit('/repository/user1/hello-world');
+
+    // Click Edit description link
+    cy.contains('Edit description').click();
+
+    // Type in textarea
+    cy.get('textarea[aria-label="Repository description"]')
+      .clear()
+      .type('This should be discarded');
+
+    // Click Cancel button
+    cy.contains('button', 'Cancel').click();
+
+    // Verify edit mode is closed and original description remains
+    cy.get('textarea[aria-label="Repository description"]').should('not.exist');
+    cy.contains('This should be discarded').should('not.exist');
+  });
+
+  it('switches to Tags tab when clicked', () => {
+    cy.visit('/repository/user1/hello-world');
+    // Click on Tags tab
+    cy.contains('[role="tab"]', 'Tags').click();
+    // Verify Tags tab is now active
+    cy.get('[role="tab"][aria-selected="true"]').should('contain.text', 'Tags');
+    // Verify we can see tag content
+    cy.contains('latest').should('exist');
+  });
+
   it('renders tag', () => {
     cy.intercept(
       'GET',
       '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get(`[data-label="Tag"]`).should('have.text', 'latest');
@@ -39,7 +118,7 @@ describe('Repository Details Page', () => {
   });
 
   it('renders cosign shield icon for signed tags', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       // Verify the tag name is present
@@ -58,7 +137,7 @@ describe('Repository Details Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
 
     const manifestListRow = cy.get('tbody:contains("manifestlist")');
     manifestListRow.first().within(() => {
@@ -124,7 +203,7 @@ describe('Repository Details Page', () => {
       'DELETE',
       '/api/v1/repository/user1/hello-world/tag/latest',
     ).as('deleteTag');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('tbody:contains("latest")')
       .first()
       .within(() => cy.get('input').click());
@@ -146,7 +225,7 @@ describe('Repository Details Page', () => {
       'POST',
       '/api/v1/repository/user1/hello-world/tag/latest/expire',
     ).as('deleteTag');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('tbody:contains("latest")')
       .first()
       .within(() => cy.get('input').click());
@@ -170,7 +249,7 @@ describe('Repository Details Page', () => {
   });
 
   it('deletes tag through row', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -190,7 +269,7 @@ describe('Repository Details Page', () => {
       'POST',
       '/api/v1/repository/user1/hello-world/tag/latest/expire',
     ).as('deleteTag');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -214,7 +293,7 @@ describe('Repository Details Page', () => {
   });
 
   it('bulk deletes tags', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#toolbar-dropdown-checkbox').click();
     cy.get('button').contains('Select page (2)').click();
     cy.contains('Actions').click();
@@ -234,7 +313,7 @@ describe('Repository Details Page', () => {
   });
 
   it('renders pull popover', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
 
     // Find the first row that contains "latest" and trigger mouseover on the "Pull" column
     cy.contains('tbody tr', 'latest')
@@ -292,7 +371,7 @@ describe('Repository Details Page', () => {
   });
 
   it('clicking tag name goes to tag details page', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('latest').click();
     cy.url().should('include', '/repository/user1/hello-world/tag/latest');
     cy.get('[data-testid="tag-details"]')
@@ -306,7 +385,7 @@ describe('Repository Details Page', () => {
   });
 
   it('clicking platform name goes to tag details page', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const manifestListRow = cy.get('tbody:contains("manifestlist")').first();
     manifestListRow.first().within(() => {
       cy.get('button').first().click();
@@ -333,7 +412,7 @@ describe('Repository Details Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('tr:contains("latest")').contains('3 Critical').click();
     cy.url().should(
       'include',
@@ -351,7 +430,7 @@ describe('Repository Details Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const manifestListRow = cy.get('tbody:contains("manifestlist")');
     manifestListRow.first().within(() => {
       cy.get('button').first().click();
@@ -368,14 +447,14 @@ describe('Repository Details Page', () => {
   });
 
   it('search by name', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#tagslist-search-input').type('test');
     cy.contains('latest').should('exist');
     cy.contains('manifestlist').should('not.exist');
   });
 
   it('search by name via regex', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('[id="filter-input-advanced-search"]').should('not.exist');
     cy.get('[aria-label="Open advanced search"]').click();
     cy.get('[id="filter-input-advanced-search"]').should('be.visible');
@@ -390,7 +469,7 @@ describe('Repository Details Page', () => {
   });
 
   it('search by manifest', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#toolbar-dropdown-filter').click();
     cy.get('span').contains('Digest').click();
     cy.get('#tagslist-search-input').type('f54a58bc1aac');
@@ -410,7 +489,7 @@ describe('Repository Details Page', () => {
   });
 
   it('does not render tag actions for non-writable repositories', () => {
-    cy.visit('/repository/user2org1/hello-world');
+    cy.visit('/repository/user2org1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').should('not.exist');
@@ -418,7 +497,7 @@ describe('Repository Details Page', () => {
   });
 
   it('adds tag', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -439,7 +518,7 @@ describe('Repository Details Page', () => {
     cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/newtag', {
       statusCode: 500,
     }).as('getServerFailure');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -453,7 +532,7 @@ describe('Repository Details Page', () => {
   });
 
   it('view labels', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -473,7 +552,7 @@ describe('Repository Details Page', () => {
   });
 
   it('creates labels', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -494,7 +573,7 @@ describe('Repository Details Page', () => {
   });
 
   it('deletes labels', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -514,7 +593,7 @@ describe('Repository Details Page', () => {
 
   it('alert on failure to create label', () => {
     cy.intercept('POST', '**/labels', {statusCode: 500}).as('getServerFailure');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -534,7 +613,7 @@ describe('Repository Details Page', () => {
     cy.intercept('DELETE', '**/labels/**', {statusCode: 500}).as(
       'getServerFailure',
     );
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -558,7 +637,7 @@ describe('Repository Details Page', () => {
       '/api/v1/repository/testorg/testrepo/tag/?limit=100&page=1&onlyActiveTags=true',
       {fixture: 'single-tag.json'},
     ).as('getTag');
-    cy.visit('/repository/testorg/testrepo');
+    cy.visit('/repository/testorg/testrepo?tab=tags');
     cy.get(`[data-label="Expires"]`).should('have.text', 'Never');
   });
 
@@ -573,7 +652,7 @@ describe('Repository Details Page', () => {
         fixture,
       ).as('getTag');
     });
-    cy.visit('/repository/testorg/testrepo');
+    cy.visit('/repository/testorg/testrepo?tab=tags');
     cy.get(`[data-label="Expires"]`)
       .first()
       .within(() => {
@@ -625,7 +704,7 @@ describe('Repository Details Page', () => {
     });
 
     // Start
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.get('#tag-actions-kebab').click();
@@ -707,7 +786,7 @@ describe('Repository Details Page', () => {
     });
 
     // Start
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.contains('Never').click();
@@ -753,7 +832,7 @@ describe('Repository Details Page', () => {
     });
 
     // Start
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.get('#toolbar-dropdown-checkbox').click();
     cy.get('button').contains('Select page (2)').click();
     cy.contains('Actions').click();
@@ -798,7 +877,7 @@ describe('Repository Details Page', () => {
     cy.intercept('PUT', '/api/v1/repository/user1/hello-world/tag/latest', {
       statusCode: 500,
     }).as('getServerFailure');
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     const latestRow = cy.get('tbody:contains("latest")');
     latestRow.first().within(() => {
       cy.contains('Never').click();
@@ -882,9 +961,9 @@ describe('Tag history Tab', () => {
   });
 
   it('renders history list', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
-    cy.get('#tag-history-table tbody tr').each(($e, index, _$list) => {
+    cy.get('#tag-history-table tbody tr').each(($e, index) => {
       cy.wrap($e).within(() => {
         const expectedValues = tagHistoryRows[index];
         cy.get(`[data-label="tag-change"]`).should(
@@ -906,10 +985,10 @@ describe('Tag history Tab', () => {
   });
 
   it('search by name', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
     cy.get('input[placeholder="Search by tag name..."').type('manifestlist');
-    cy.get('#tag-history-table tbody tr').each(($e, _index, _$list) => {
+    cy.get('#tag-history-table tbody tr').each(($e) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="tag-change"]`).should(
           'contain.text',
@@ -935,7 +1014,7 @@ describe('Tag history Tab', () => {
         });
       },
     );
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
     cy.contains('latest will expire').should('not.exist');
     cy.get('#show-future-checkbox').click();
@@ -958,13 +1037,13 @@ describe('Tag history Tab', () => {
         });
       },
     );
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
     cy.get('#show-future-checkbox').click();
     cy.get('#start-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-26');
     });
-    cy.get('#tag-history-table tbody tr').each(($e, _index, _$list) => {
+    cy.get('#tag-history-table tbody tr').each(($e) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="date-modified"]`).then(($el) => {
           const dateMoment = moment($el.text());
@@ -975,7 +1054,7 @@ describe('Tag history Tab', () => {
     cy.get('#end-time-picker').within(() => {
       cy.get('input[aria-label="Date picker"]').type('2023-07-28');
     });
-    cy.get('#tag-history-table tbody tr').each(($e, _index, _$list) => {
+    cy.get('#tag-history-table tbody tr').each(($e) => {
       cy.wrap($e).within(() => {
         cy.get(`[data-label="date-modified"]`).then(($el) => {
           const dateMoment = moment($el.text());
@@ -986,7 +1065,7 @@ describe('Tag history Tab', () => {
   });
 
   it('revert tag', () => {
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
     cy.contains('Restore to sha2567e9b6e7ba2842c').click();
     cy.contains('Restore Tag').should('exist');
@@ -1029,7 +1108,7 @@ describe('Tag history Tab', () => {
         });
       },
     );
-    cy.visit('/repository/user1/hello-world');
+    cy.visit('/repository/user1/hello-world?tab=tags');
     cy.contains('Tag history').click();
     cy.contains('Delete testdelete sha25612345e7ba2842c ').click(10, 10);
     cy.contains('Permanently Delete Tag').should('exist');

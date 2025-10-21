@@ -6817,7 +6817,6 @@ COPY public.repomirrorrule (id, uuid, repository_id, creation_date, rule_type, r
 --
 
 COPY public.repository (id, namespace_user_id, name, visibility_id, description, badge_token, kind_id, trust_enabled, state) FROM stdin;
-1	1	hello-world	1	\N	b6c6a402-af02-4cc1-a4a9-48155b049f19	1	f	0
 2	1	nested/repo	2		637a151b-62db-4c26-a160-0ba01d1c96d4	1	f	0
 3	2	alpine	1		9d24b211-b0af-47e2-9a88-543483b68461	1	f	0
 4	4	clair-jwt	1		cc957b5d-c4f8-4359-9bc9-f6e667a216da	1	f	0
@@ -6974,6 +6973,7 @@ COPY public.repository (id, namespace_user_id, name, visibility_id, description,
 155	32	hello-world	1		730ebab8-f2ab-4e55-9c9d-f064d11f68d6	1	f	0
 156	28	premierleague	1		94590e48-ff0e-4eb0-a74d-84416dedf157	1	f	0
 157	6	prometheus	1		d32b90ed-a1dc-4084-8691-70e492f3d34a	1	f	0
+1	1	hello-world	1	Hello, World!	b6c6a402-af02-4cc1-a4a9-48155b049f19	1	f	0
 \.
 
 
