@@ -46,6 +46,11 @@ class PullMetricsBuilderModule(object):
                 "host": app.config.get("PULL_METRICS_REDIS_HOSTNAME"),
             }
 
+        # Add testing flag to redis config to disable thread pool during tests
+        if app.config.get("TESTING", False):
+            redis_config = redis_config.copy() if redis_config else {}
+            redis_config["_testing"] = True
+
         max_workers = app.config.get("PULL_METRICS_WORKER_COUNT", DEFAULT_PULL_METRICS_WORKER_COUNT)
         pull_metrics = PullMetricsBuilder(redis_config, max_workers)
 
@@ -67,9 +72,13 @@ class PullMetrics(object):
     def __init__(self, redis_config, max_workers=None):
         self._redis = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
         worker_count = max_workers or DEFAULT_PULL_METRICS_WORKER_COUNT
-        self._executor = ThreadPoolExecutor(
-            max_workers=worker_count, thread_name_prefix="pullmetrics"
-        )
+        # Skip thread pool creation during tests to avoid interference
+        if not redis_config.get("_testing", False):
+            self._executor = ThreadPoolExecutor(
+                max_workers=worker_count, thread_name_prefix="pullmetrics"
+            )
+        else:
+            self._executor = None
 
     @staticmethod
     def _tag_pull_key(repository, tag_name):
@@ -136,7 +145,11 @@ class PullMetrics(object):
             except redis.RedisError:
                 logger.exception("Could not track tag pull metrics")
 
-        self._executor.submit(conduct)
+        if self._executor:
+            self._executor.submit(conduct)
+        else:
+            # During tests, run synchronously to avoid thread interference
+            conduct()
 
     def track_manifest_pull_sync(self, repository_ref, manifest_digest):
         """
@@ -183,7 +196,11 @@ class PullMetrics(object):
             except redis.RedisError:
                 logger.exception("Could not track manifest pull metrics")
 
-        self._executor.submit(conduct)
+        if self._executor:
+            self._executor.submit(conduct)
+        else:
+            # During tests, run synchronously to avoid thread interference
+            conduct()
 
     def _get_pull_statistics(self, key):
         """
@@ -231,4 +248,5 @@ class PullMetrics(object):
         Shutdown the thread pool executor.
         Following codebase patterns (similar to buildman/server.py server.stop(grace=5))
         """
-        self._executor.shutdown(wait=True)
+        if self._executor:
+            self._executor.shutdown(wait=True)
