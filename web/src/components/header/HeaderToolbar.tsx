@@ -74,7 +74,7 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
           await logoutUser();
           GlobalAuthState.csrfToken = undefined;
           queryClient.invalidateQueries(['user']);
-          navigate('/signin');
+          window.location.href = '/signin';
         } catch (err) {
           console.error(err);
           setErr(addDisplayError('Unable to log out', err));

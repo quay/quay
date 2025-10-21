@@ -25,7 +25,7 @@ describe('OAuth Callback', () => {
   });
 
   describe('OAuth Error Flows', () => {
-    it.only('displays error page with minimal header for email already exists', () => {
+    it('displays error page with minimal header for email already exists', () => {
       // Visit error page with error description parameter
       cy.visit(
         '/oauth-error?error_description=GitHub:%20The%20email%20address%20test@example.com%20is%20already%20associated%20with%20an%20existing%20account&provider=GitHub',

@@ -1,8 +1,9 @@
 import logging
 import os
+import re
 import time
 from collections import namedtuple
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import recaptcha2
 from flask import Blueprint, abort, redirect, request, session, url_for
@@ -69,6 +70,54 @@ def _get_response(result):
     return _perform_login(result.user_obj, result.service_name)
 
 
+# OAuth error codes from RFC 6749 - safe to pass through
+ALLOWED_OAUTH_ERRORS = {
+    "invalid_request",
+    "unauthorized_client",
+    "access_denied",
+    "unsupported_response_type",
+    "invalid_scope",
+    "server_error",
+    "temporarily_unavailable",
+}
+
+
+def _sanitize_error_message(error_message):
+    """
+    Sanitize error message for safe use in URL redirects.
+
+    React receives error messages via URL parameters (unlike Angular's
+    server-side rendering). This function prevents injection attacks
+    while preserving useful error information.
+
+    Args:
+        error_message: Untrusted error message from OAuth callback
+
+    Returns:
+        Sanitized error message safe for URL parameters
+    """
+    if not error_message:
+        return "Could not load user data. The token may have expired"
+
+    # Allow known OAuth error codes to pass through unchanged
+    if error_message in ALLOWED_OAUTH_ERRORS:
+        return error_message
+
+    # For custom messages: allow only safe characters
+    # Permits: letters, numbers, spaces, and common punctuation
+    sanitized = re.sub(r"[^a-zA-Z0-9\s\.\-_@,\':()]", "", error_message)
+
+    # Limit length to prevent abuse
+    if len(sanitized) > 250:
+        sanitized = sanitized[:250]
+
+    # If sanitization removed everything, use default message
+    if not sanitized.strip():
+        return "Could not load user data. The token may have expired"
+
+    return sanitized.strip()
+
+
 def _render_ologin_error(service_name, error_message=None, register_redirect=False):
     """
     Returns a Flask response indicating an OAuth error.
@@ -98,15 +147,39 @@ def _render_ologin_error(service_name, error_message=None, register_redirect=Fal
 
     if should_use_react:
         # React UI: redirect to dedicated OAuth error page
-        params = urlencode(
-            {
-                "error": "oauth_error",
-                "error_description": f"{service_name}: {error_message}",
-                "provider": service_name,
-                "user_creation": str(user_creation).lower() if user_creation else None,
-            }
-        )
-        return redirect(f"/oauth-error?{params}")
+        params_dict = {
+            "error": "oauth_error",
+            "error_description": _sanitize_error_message(error_message),
+            "provider": service_name,
+        }
+
+        if user_creation:
+            params_dict["user_creation"] = "true"
+
+        if register_redirect:
+            params_dict["register_redirect"] = "true"
+
+        # Determine if user is authenticated based on the request context
+        # The attach/cli endpoints require authentication, callback does not
+        authenticated_user = get_authenticated_user()
+
+        if authenticated_user:
+            params_dict["authenticated"] = "true"
+            params_dict["username"] = authenticated_user.username
+
+        params = urlencode(params_dict)
+
+        # Use the Referer header to determine the correct origin to redirect to
+        referer = request.headers.get("Referer")
+
+        if referer:
+            # Parse the origin from the referer
+            parsed = urlparse(referer)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            return redirect(f"{origin}/oauth-error?{params}")
+        else:
+            # Fallback to relative redirect
+            return redirect(f"/oauth-error?{params}")
 
     # Angular UI: render error in template
     resp = index("", error_info=error_info)
