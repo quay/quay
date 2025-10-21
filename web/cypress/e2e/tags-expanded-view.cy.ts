@@ -16,23 +16,33 @@ describe('Tags - Compact/Expanded View', () => {
   it('shows tags in compact view by default', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Verify Compact button is selected by default
-    cy.get('#compact-view').should('have.attr', 'aria-pressed', 'true');
-    cy.get('#expanded-view').should('have.attr', 'aria-pressed', 'false');
+    // Open settings dropdown
+    cy.get('#tags-settings-toggle').click();
+
+    // Verify expanded view checkbox is off by default
+    cy.contains('[role="menuitem"]', 'Expanded View').should('exist');
+    cy.contains('[role="menuitem"]', 'Expanded View')
+      .find('input[type="checkbox"]')
+      .should('not.be.checked');
+
+    // Close dropdown
+    cy.get('#tags-settings-toggle').click();
 
     // Verify expanded row content is not visible
     cy.get('.expanded-row').should('not.exist');
   });
 
-  it('switches to expanded view when "Expanded" is clicked', () => {
+  it('switches to expanded view when switch is toggled', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Click the "Expanded" toggle button
-    cy.get('#expanded-view').click();
+    // Open settings dropdown
+    cy.get('#tags-settings-toggle').click();
 
-    // Verify Expanded button is now selected
-    cy.get('#expanded-view').should('have.attr', 'aria-pressed', 'true');
-    cy.get('#compact-view').should('have.attr', 'aria-pressed', 'false');
+    // Click the expanded view menu item
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+
+    // Close dropdown
+    cy.get('#tags-settings-toggle').click();
 
     // Verify expanded row content is visible
     cy.get('.expanded-row').should('exist');
@@ -42,8 +52,10 @@ describe('Tags - Compact/Expanded View', () => {
   it('shows manifest digest in expanded view', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Switch to expanded view
-    cy.get('#expanded-view').click();
+    // Open settings and enable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Verify manifest digest is shown
     cy.get('.expanded-row-content').should('contain', 'Manifest:');
@@ -53,8 +65,10 @@ describe('Tags - Compact/Expanded View', () => {
   it('shows labels section in expanded view', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Switch to expanded view
-    cy.get('#expanded-view').click();
+    // Open settings and enable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Verify labels section is shown
     cy.get('.expanded-row-content').should('contain', 'Labels:');
@@ -63,11 +77,11 @@ describe('Tags - Compact/Expanded View', () => {
   it('shows cosign signature when present', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // First show signatures to ensure we have a tag with cosign signature
-    cy.contains('button', 'Show Signatures').click();
-
-    // Switch to expanded view
-    cy.get('#expanded-view').click();
+    // Open settings and enable show signatures and expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Check if any tag has cosign signature
     // This test might need adjustment based on actual test data
@@ -81,19 +95,19 @@ describe('Tags - Compact/Expanded View', () => {
     });
   });
 
-  it('switches back to compact view when "Compact" is clicked', () => {
+  it('switches back to compact view when switch is toggled off', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Switch to expanded view first
-    cy.get('#expanded-view').click();
+    // Open settings and enable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
     cy.get('.expanded-row').should('exist');
 
-    // Switch back to compact view
-    cy.get('#compact-view').click();
-
-    // Verify Compact button is now selected
-    cy.get('#compact-view').should('have.attr', 'aria-pressed', 'true');
-    cy.get('#expanded-view').should('have.attr', 'aria-pressed', 'false');
+    // Open settings and disable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Verify expanded row content is no longer visible
     cy.get('.expanded-row').should('not.exist');
@@ -103,26 +117,31 @@ describe('Tags - Compact/Expanded View', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
     // Toggle to expanded
-    cy.get('#expanded-view').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
     cy.get('.expanded-row').should('exist');
-    cy.get('#expanded-view').should('have.attr', 'aria-pressed', 'true');
 
     // Toggle back to compact
-    cy.get('#compact-view').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
     cy.get('.expanded-row').should('not.exist');
-    cy.get('#compact-view').should('have.attr', 'aria-pressed', 'true');
 
     // Toggle to expanded again
-    cy.get('#expanded-view').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
     cy.get('.expanded-row').should('exist');
-    cy.get('#expanded-view').should('have.attr', 'aria-pressed', 'true');
   });
 
   it('preserves expanded view when switching between pages', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Switch to expanded view
-    cy.get('#expanded-view').click();
+    // Open settings and enable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
     cy.get('.expanded-row').should('exist');
 
     // Navigate to a different tab
@@ -131,16 +150,22 @@ describe('Tags - Compact/Expanded View', () => {
     // Navigate back to tags
     cy.contains('Tags').click();
 
-    // Verify expanded view is still selected
-    cy.get('#expanded-view').should('have.attr', 'aria-pressed', 'true');
+    // Verify expanded view is still enabled
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View')
+      .find('input[type="checkbox"]')
+      .should('be.checked');
+    cy.get('#tags-settings-toggle').click();
     cy.get('.expanded-row').should('exist');
   });
 
   it('shows expanded content for each visible tag', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Switch to expanded view
-    cy.get('#expanded-view').click();
+    // Open settings and enable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Count visible tag rows (excluding expanded rows)
     cy.get('[data-testid="table-entry"]').then(($entries) => {
@@ -154,8 +179,10 @@ describe('Tags - Compact/Expanded View', () => {
   it('works correctly with manifest list expansion', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Switch to expanded view
-    cy.get('#expanded-view').click();
+    // Open settings and enable expanded view
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Expanded View').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Find a manifest list tag and expand it
     cy.contains('manifestlist')
