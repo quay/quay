@@ -1,0 +1,16 @@
+.inline-code {
+  background-color: var(--pf-v5-global--BackgroundColor--200);
+  padding: var(--pf-v5-global--spacer--xs) var(--pf-v5-global--spacer--sm);
+  border-radius: var(--pf-v5-global--BorderRadius--sm);
+  font-family: var(--pf-v5-global--FontFamily--monospace);
+}
+
+.markdown-table-header {
+  border: 1px solid var(--pf-v5-global--BorderColor--100);
+  padding: var(--pf-v5-global--spacer--md);
+}
+
+.markdown-table-cell {
+  border: 1px solid var(--pf-v5-global--BorderColor--100);
+  padding: var(--pf-v5-global--spacer--md);
+}

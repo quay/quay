@@ -6,17 +6,15 @@ import {
   Form,
   FormGroup,
   LoginForm,
-  LoginPage,
   Spinner,
   TextInput,
   ValidatedOptions,
 } from '@patternfly/react-core';
-import logo from 'src/assets/quay.svg';
 import {GlobalAuthState, loginUser} from 'src/resources/AuthResource';
 import {useNavigate, Link, useSearchParams} from 'react-router-dom';
 import {useRecoilState} from 'recoil';
 import {AuthState} from 'src/atoms/AuthState';
-import axios, {getCsrfToken} from 'src/libs/axios';
+import {getCsrfToken} from 'src/libs/axios';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {AxiosError} from 'axios';
 import './Signin.css';
@@ -27,6 +25,7 @@ import {ReCaptcha} from 'src/components/ReCaptcha';
 import {useExternalLogins} from 'src/hooks/UseExternalLogins';
 import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
 import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
+import {LoginPageLayout} from 'src/components/LoginPageLayout';
 
 type ViewType = 'signin' | 'forgotPassword';
 
@@ -108,17 +107,6 @@ export function Signin() {
       setExternalLoginError(hookError);
     }
   }, [hookError]);
-
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
-  }
-
-  useEffect(() => {
-    if (quayConfig?.config?.REGISTRY_TITLE) {
-      document.title = `${quayConfig.config.REGISTRY_TITLE} • Quay`;
-    }
-  }, [quayConfig]);
 
   const showForgotPassword = () => {
     if (!quayConfig) return false;
@@ -450,17 +438,13 @@ export function Signin() {
   );
 
   return (
-    <LoginPage
-      className={'pf-u-background-color-100 pf-v5-u-text-align-left'}
-      brandImgSrc={logoUrl}
-      brandImgAlt="Red Hat Quay"
-      backgroundImgSrc="assets/images/rh_login.jpeg"
-      textContent="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
-      loginTitle={
+    <LoginPageLayout
+      title={
         currentView === 'signin' ? 'Log in to your account' : 'Reset Password'
       }
+      description="Quay builds, analyzes and distributes your container images. Store your containers with added security. Easily build and deploy new containers. Scan containers to provide security."
     >
       {currentView === 'signin' ? loginForm : recoveryForm}
-    </LoginPage>
+    </LoginPageLayout>
   );
 }

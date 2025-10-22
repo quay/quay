@@ -27,6 +27,7 @@ from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
     abort,
+    allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
     api,
@@ -515,12 +516,7 @@ class RepositoryBuildLogs(RepositoryParamResource):
         Return the build logs for the build specified by the build uuid.
         """
         can_write = ModifyRepositoryPermission(namespace, repository).can()
-        if (
-            not features.READER_BUILD_LOGS
-            and not can_write
-            and not allow_if_superuser()
-            and not allow_if_global_readonly_superuser()
-        ):
+        if not features.READER_BUILD_LOGS and not can_write and not allow_if_any_superuser():
             raise Unauthorized()
 
         build = model.build.get_repository_build(build_uuid)

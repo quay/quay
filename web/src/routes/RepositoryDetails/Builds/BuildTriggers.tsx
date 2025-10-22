@@ -166,9 +166,7 @@ export default function BuildTriggers(props: BuildTriggersProps) {
                       <ExclamationTriangleIcon /> This build trigger was
                       automatically disabled due to successive internal errors.
                     </Conditional>
-                    <Conditional
-                      if={config?.config?.REGISTRY_STATE !== 'readonly'}
-                    >
+                    <Conditional if={config?.registry_state !== 'readonly'}>
                       <a
                         onClick={() =>
                           setTriggerToggleOptions({

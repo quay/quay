@@ -196,15 +196,16 @@ class QuayDeferredPermissionUser(Identity):
             self.provides.add(repo_grant)
 
     def _populate_superuser_provides(self, user_object):
-        if (
+        # Global readonly superusers and regular superusers are mutually exclusive.
+        # If a user is in both lists (misconfiguration), readonly takes precedence.
+        if usermanager.is_global_readonly_superuser(user_object.username):
+            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
+            self.provides.add(_GlobalReadOnlySuperUserNeed())
+        elif (
             scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
         ) and usermanager.is_superuser(user_object.username):
             logger.debug("Adding superuser to user: %s", user_object.username)
             self.provides.add(_SuperUserNeed())
-
-        if usermanager.is_global_readonly_superuser(user_object.username):
-            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
-            self.provides.add(_GlobalReadOnlySuperUserNeed())
 
     def can(self, permission):
         logger.debug("Loading user permissions after deferring for: %s", self.id)

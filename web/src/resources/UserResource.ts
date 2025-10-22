@@ -271,6 +271,24 @@ export async function createApplicationToken(
   }
 }
 
+export async function fetchApplicationToken(
+  tokenUuid: string,
+): Promise<IApplicationToken> {
+  try {
+    const response: AxiosResponse<{token: IApplicationToken}> = await axios.get(
+      `/api/v1/user/apptoken/${tokenUuid}`,
+    );
+    assertHttpCode(response.status, 200);
+    return response.data.token;
+  } catch (err) {
+    throw new ApplicationTokenError(
+      'Failed to fetch application token',
+      tokenUuid,
+      err,
+    );
+  }
+}
+
 export async function revokeApplicationToken(tokenUuid: string): Promise<void> {
   try {
     const response: AxiosResponse = await axios.delete(
