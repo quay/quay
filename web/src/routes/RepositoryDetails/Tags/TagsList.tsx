@@ -4,7 +4,7 @@ import {
   PanelFooter,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
 import {
   searchTagsFilterState,
@@ -44,6 +44,18 @@ export default function TagsList(props: TagsProps) {
     ? tags
     : tags.filter((tag) => !isCosignSignatureTag(tag.name));
 
+  // Memoize columns configuration to prevent re-renders
+  const tableColumns = useMemo(
+    () => ({
+      2: (item: Tag) => item.name, // Tag Name
+      4: (item: Tag) => item.size || 0, // Size
+      5: (item: Tag) => item.last_modified, // Last Modified
+      6: (item: Tag) => item.expiration || '', // Expires
+      7: (item: Tag) => item.manifest_digest, // Manifest
+    }),
+    [],
+  );
+
   // Use unified table hook for sorting, filtering, and pagination
   const {
     paginatedData: paginatedTags,
@@ -51,13 +63,7 @@ export default function TagsList(props: TagsProps) {
     getSortableSort,
     paginationProps,
   } = usePaginatedSortableTable(filteredTags, {
-    columns: {
-      2: (item: Tag) => item.name, // Tag Name
-      4: (item: Tag) => item.size || 0, // Size
-      5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
-      7: (item: Tag) => item.manifest_digest, // Manifest
-    },
+    columns: tableColumns,
     filter: searchFilter,
     initialPerPage: 20,
   });
