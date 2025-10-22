@@ -3,6 +3,7 @@ import {
   enableTeamSyncForOrg,
   removeTeamSyncForOrg,
 } from 'src/resources/TeamSyncResource';
+import {addDisplayError} from 'src/resources/ErrorHandling';
 
 export function useTeamSync({orgName, teamName, onSuccess, onError}) {
   const queryClient = useQueryClient();
@@ -15,9 +16,10 @@ export function useTeamSync({orgName, teamName, onSuccess, onError}) {
       onSuccess: (response) => {
         onSuccess(`Successfully updated team sync config`);
         queryClient.invalidateQueries(['teamMembers']);
+        queryClient.invalidateQueries(['teams']);
       },
       onError: (err) => {
-        onError(`Error updating team sync config: ${err}`);
+        onError(addDisplayError('Error updating team sync config', err));
       },
     },
   );
@@ -39,9 +41,10 @@ export function useRemoveTeamSync({orgName, teamName, onSuccess, onError}) {
       onSuccess: () => {
         onSuccess(`Successfully removed team synchronization`);
         queryClient.invalidateQueries(['teamMembers']);
+        queryClient.invalidateQueries(['teams']);
       },
       onError: (err) => {
-        onError(`Error removing team synchronization: ${err}`);
+        onError(addDisplayError('Error removing team synchronization', err));
       },
     },
   );
