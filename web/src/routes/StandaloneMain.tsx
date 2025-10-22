@@ -33,6 +33,7 @@ import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedi
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
 import {NotificationDrawerListComponent} from 'src/components/notifications/NotificationDrawerList';
+import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
 
 const NavigationRoutes = [
   {
@@ -145,6 +146,7 @@ export function StandaloneMain() {
           {NavigationRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}
+          <Route path="oauth-error" element={<OAuthError />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Outlet />
