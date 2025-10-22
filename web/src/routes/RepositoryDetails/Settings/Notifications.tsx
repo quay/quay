@@ -301,16 +301,12 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
           </Conditional>
         </>
       );
-    // TODO: Quay notifications not supported in new UI until
-    // notification header has been implemented
-    // case NotificationMethodType.quaynotification:
-    //   return (
-    //     <Flex direction={{default: 'column'}}>
-    //       <FlexItem style={{marginBottom: 0}}>
-    //         {notificationMethod.title}
-    //       </FlexItem>
-    //     </Flex>
-    //   );
+    case NotificationMethodType.quaynotification:
+      return (
+        <Flex direction={{default: 'column'}}>
+          <FlexItem style={{marginBottom: 0}}>{notification.title}</FlexItem>
+        </Flex>
+      );
   }
 }
 
