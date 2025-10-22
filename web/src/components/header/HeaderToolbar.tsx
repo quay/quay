@@ -128,6 +128,9 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
         break;
       case 'theme-selector':
         break;
+      case 'ui-toggle':
+        // Keep menu open when interacting with the UI toggle switch
+        break;
       default:
         setIsDropdownOpen(false);
         break;
