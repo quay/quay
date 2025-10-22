@@ -22,6 +22,7 @@ import {
   ManifestByDigestResponse,
   Tag,
   TagsResponse,
+  Label,
   getManifestByDigest,
   getTags,
 } from 'src/resources/TagResource';
@@ -34,6 +35,7 @@ export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [err, setErr] = useState<string>();
+  const [labelCache, setLabelCache] = useState<Record<string, Label[]>>({});
   const resetSelectedTags = useResetRecoilState(selectedTagsState);
   const searchFilter = useRecoilValue(searchTagsFilterState);
   const resetSearch = useResetRecoilState(searchTagsState);
@@ -175,6 +177,8 @@ export default function TagsList(props: TagsProps) {
           loadTags={loadTags}
           repoDetails={props.repoDetails}
           getSortableSort={getSortableSort}
+          labelCache={labelCache}
+          setLabelCache={setLabelCache}
         />
       </ErrorBoundary>
       <PanelFooter>
