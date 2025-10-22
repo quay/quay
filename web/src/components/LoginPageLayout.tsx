@@ -1,7 +1,6 @@
 import React, {useEffect} from 'react';
 import {ListVariant, LoginPage} from '@patternfly/react-core';
 import logo from 'src/assets/quay.svg';
-import axios from 'src/libs/axios';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useLoginFooterItems} from 'src/components/LoginFooter';
 import './LoginPageLayout.css';
@@ -24,8 +23,8 @@ export function LoginPageLayout({
 
   // Determine logo URL from config
   let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
+  if (quayConfig && quayConfig.config?.BRANDING?.logo) {
+    logoUrl = quayConfig.config.BRANDING.logo;
   }
 
   // Set document title from registry title
