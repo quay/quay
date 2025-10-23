@@ -28,7 +28,10 @@ export class ResourceError extends Error {
   }
 }
 
-export function throwIfError(responses: PromiseSettledResult<void>[], message?: string) {
+export function throwIfError(
+  responses: PromiseSettledResult<void>[],
+  message?: string,
+) {
   // Aggregate failed responses
   const errResponses = responses.filter(
     (r) => r.status == 'rejected',
@@ -77,6 +80,11 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
   }
 
   if (error.response.status) {
+    // For server errors (5xx), provide user-friendly message
+    if (error.response.status >= 500 && error.response.status < 600) {
+      return 'unexpected issue occurred. Please try again or contact support';
+    }
+
     let message = `HTTP${error.response.status}`;
     if (error.response.data?.error_message) {
       message = message + ` - ${error.response.data?.error_message}`;
