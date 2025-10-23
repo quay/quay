@@ -46,7 +46,6 @@ from endpoints.v2.errors import (
     LayerTooLarge,
     NameUnknown,
     QuotaExceeded,
-    Unauthorized,
     Unsupported,
 )
 from util.cache import cache_control
@@ -342,7 +341,6 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    # Now check if the upload exists.
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
@@ -374,13 +372,6 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown("repository not found")
 
-    # Check existence next.
-    uploader = retrieve_blob_upload_manager(
-        repository_ref, upload_uuid, storage, _upload_settings()
-    )
-    if uploader is None:
-        raise BlobUploadUnknown()
-
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
     ):
@@ -390,6 +381,12 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
                 repository_ref, "quota_error", {"severity": "Reject"}
             )
             raise QuotaExceeded
+
+    uploader = retrieve_blob_upload_manager(
+        repository_ref, upload_uuid, storage, _upload_settings()
+    )
+    if uploader is None:
+        raise BlobUploadUnknown()
 
     # Upload the chunk for the blob.
     _upload_chunk(uploader)
@@ -415,7 +412,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @check_readonly
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 
-    # Ensure the digest is present before proceeding for authorized users.
+    # Ensure the digest is present before proceeding.
     digest = request.args.get("digest", None)
     if digest is None:
         raise BlobUploadInvalid(detail={"reason": "Missing digest arg on monolithic upload"})
@@ -424,12 +421,6 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
-
-    uploader = retrieve_blob_upload_manager(
-        repository_ref, upload_uuid, storage, _upload_settings()
-    )
-    if uploader is None:
-        raise BlobUploadUnknown()
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
@@ -440,6 +431,12 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
                 repository_ref, "quota_error", {"severity": "Reject"}
             )
             raise QuotaExceeded
+
+    uploader = retrieve_blob_upload_manager(
+        repository_ref, upload_uuid, storage, _upload_settings()
+    )
+    if uploader is None:
+        raise BlobUploadUnknown()
 
     # Upload the chunk for the blob and commit it once complete.
     with complete_when_uploaded(uploader):
@@ -476,8 +473,6 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
         repository_ref, upload_uuid, storage, _upload_settings()
     )
     if uploader is None:
-        # Per spec and existing tests, respond with 404 for unknown uploads even if
-        # the user lacks write permission, to avoid information leakage.
         raise BlobUploadUnknown()
 
     uploader.cancel_upload()

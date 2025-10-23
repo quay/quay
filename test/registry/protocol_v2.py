@@ -82,7 +82,7 @@ class V2Protocol(RegistryProtocol):
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
             Failures.MIRROR_MISCONFIGURED: 500,
-            Failures.MIRROR_ROBOT_MISSING: 401,
+            Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
         V2ProtocolSteps.PUT_MANIFEST: {
@@ -95,7 +95,7 @@ class V2Protocol(RegistryProtocol):
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
             Failures.MIRROR_MISCONFIGURED: 500,
-            Failures.MIRROR_ROBOT_MISSING: 401,
+            Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
             Failures.INVALID_MANIFEST: 400,
         },
@@ -104,7 +104,7 @@ class V2Protocol(RegistryProtocol):
             Failures.READ_ONLY: 405,
             Failures.MIRROR_ONLY: 405,
             Failures.MIRROR_MISCONFIGURED: 500,
-            Failures.MIRROR_ROBOT_MISSING: 401,
+            Failures.MIRROR_ROBOT_MISSING: 400,
             Failures.READONLY_REGISTRY: 405,
         },
     }

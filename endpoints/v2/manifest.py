@@ -4,9 +4,7 @@ from functools import wraps
 from flask import Response, request, url_for
 
 import features
-from app import app, model_cache, storage, usermanager
-from auth.auth_context import get_authenticated_context
-from auth.permissions import ModifyRepositoryPermission
+from app import app, model_cache, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.database import db_disallow_replica_use
 from data.model import (
@@ -43,7 +41,6 @@ from endpoints.v2.errors import (
     NameUnknown,
     QuotaExceeded,
     TagExpired,
-    Unauthorized,
 )
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -281,8 +278,6 @@ def _doesnt_accept_schema_v1():
 @check_readonly
 @check_pushes_disabled
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
-
-    # Now validate payload for authorized users.
     parsed = _parse_manifest(request.content_type, request.data)
 
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
@@ -310,8 +305,6 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @check_readonly
 @check_pushes_disabled
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
-
-    # Now validate payload for authorized users.
     parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:
         image_pushes.labels("v2", 400, "").inc()
@@ -403,18 +396,6 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         if repository_ref is None:
             raise NameUnknown("repository not found")
 
-        # Enforce write permission first for anonymous/no-access users.
-        context = get_authenticated_context()
-        repository = f"{namespace_name}/{repo_name}"
-        if context is None or context.authed_user is None:
-            raise Unauthorized(repository=repository, scopes=["pull", "push"])
-        is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
-            context.authed_user.username
-        )
-        if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
-            raise Unauthorized(repository=repository, scopes=["pull", "push"])
-
-        # Check existence next.
         manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
         if manifest is None:
             raise ManifestUnknown()
@@ -450,18 +431,6 @@ def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
         if repository_ref is None:
             raise NameUnknown("repository not found")
 
-        # Enforce write permission first for anonymous/no-access users.
-        context = get_authenticated_context()
-        repository = f"{namespace_name}/{repo_name}"
-        if context is None or context.authed_user is None:
-            raise Unauthorized(repository=repository, scopes=["pull", "push"])
-        is_superuser = features.SUPERUSERS_FULL_ACCESS and usermanager.is_superuser(
-            context.authed_user.username
-        )
-        if not is_superuser and not ModifyRepositoryPermission(namespace_name, repo_name).can():
-            raise Unauthorized(repository=repository, scopes=["pull", "push"])
-
-        # Check existence next.
         tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
         if tag is None:
             raise ManifestUnknown()
