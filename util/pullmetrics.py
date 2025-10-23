@@ -1,6 +1,4 @@
-import json
 import logging
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -81,11 +79,21 @@ class PullMetrics(object):
             self._executor = None
 
     @staticmethod
-    def _tag_pull_key(repository, tag_name):
-        return "pull_events:repo:%s:tag:%s" % (repository, tag_name)
+    def _tag_pull_key(repository, tag_name, manifest_digest):
+        """
+        Generate Redis key for tag pull events.
+        Pattern: pull_events:repo:{repo}:tag:{tag_name}:{manifest_digest}
+        Matches worker pattern: pull_events:repo:*:tag:*:*
+        """
+        return "pull_events:repo:%s:tag:%s:%s" % (repository, tag_name, manifest_digest)
 
     @staticmethod
     def _manifest_pull_key(repository, manifest_digest):
+        """
+        Generate Redis key for manifest/digest pull events.
+        Pattern: pull_events:repo:{repo}:digest:{manifest_digest}
+        Matches worker pattern: pull_events:repo:*:digest:*
+        """
         return "pull_events:repo:%s:digest:%s" % (repository, manifest_digest)
 
     def track_tag_pull_sync(self, repository_ref, tag_name, manifest_digest):
@@ -109,7 +117,7 @@ class PullMetrics(object):
         timestamp = int(datetime.now(timezone.utc).timestamp())
 
         # Create keys for tag and manifest
-        tag_key = self._tag_pull_key(repository_path, tag_name)
+        tag_key = self._tag_pull_key(repository_path, tag_name, manifest_digest)
         manifest_key = self._manifest_pull_key(repository_path, manifest_digest)
 
         # Use Redis pipeline for atomic operations
@@ -229,11 +237,19 @@ class PullMetrics(object):
             logger.exception("Could not get pull statistics: %s", e)
             return None
 
-    def get_tag_pull_statistics(self, repository, tag_name):
+    def get_tag_pull_statistics(self, repository, tag_name, manifest_digest):
         """
-        Get pull statistics for a specific tag.
+        Get pull statistics for a specific tag+manifest combination from Redis.
+
+        Note: This reads directly from Redis. The API endpoints read from the database
+        via data.model.pull_statistics.get_tag_pull_statistics instead.
+
+        Args:
+            repository: Repository path (e.g., 'namespace/repo_name')
+            tag_name: Tag name
+            manifest_digest: Manifest digest
         """
-        tag_key = self._tag_pull_key(repository, tag_name)
+        tag_key = self._tag_pull_key(repository, tag_name, manifest_digest)
         return self._get_pull_statistics(tag_key)
 
     def get_manifest_pull_statistics(self, repository, manifest_digest):
@@ -247,6 +263,13 @@ class PullMetrics(object):
         """
         Shutdown the thread pool executor.
         Following codebase patterns (similar to buildman/server.py server.stop(grace=5))
+
+        Note: This method is not currently called during application shutdown,
+        which means pending tasks may be lost during shutdown. This is a known
+        race condition that primarily affects high-traffic deployments.
+
+        TODO: Integrate with a centralized shutdown mechanism when available.
+        See PR review comments for context.
         """
         if self._executor:
             self._executor.shutdown(wait=True)

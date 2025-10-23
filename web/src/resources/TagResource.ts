@@ -92,9 +92,9 @@ export interface SecurityDetailsResponse {
   data: Data;
 }
 export interface Data {
-  Layer: Layer;
+  Layer: SecurityLayer;
 }
-export interface Layer {
+export interface SecurityLayer {
   Name: string;
   ParentName: string;
   NamespaceName: string;
@@ -255,12 +255,6 @@ export async function deleteLabel(
   } catch (error) {
     throw new ResourceError('Unable to delete label', label.id, error);
   }
-}
-
-interface TagLocation {
-  org: string;
-  repo: string;
-  tag: string;
 }
 
 export async function bulkDeleteTags(
@@ -455,7 +449,17 @@ export async function getTagPullStatistics(
     assertHttpCode(response.status, 200);
     return response.data;
   } catch (error) {
-    // Return null if feature is not enabled or stats not available
-    return null;
+    if (error.response?.status === 404) {
+      throw new ResourceError(
+        'Pull statistics not available (feature may be disabled or no data)',
+        `${org}/${repo}:${tag}`,
+        error,
+      );
+    }
+    throw new ResourceError(
+      'Unable to fetch pull statistics',
+      `${org}/${repo}:${tag}`,
+      error,
+    );
   }
 }

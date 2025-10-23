@@ -104,14 +104,21 @@ export default function TagsList(props: TagsProps) {
     };
 
     const getPullStats = async (tag: Tag) => {
-      const pullStats = await getTagPullStatistics(
-        props.organization,
-        props.repository,
-        tag.name,
-      );
-      if (pullStats) {
-        tag.pull_count = pullStats.tag_pull_count;
-        tag.last_pulled = pullStats.last_tag_pull_date;
+      try {
+        const pullStats = await getTagPullStatistics(
+          props.organization,
+          props.repository,
+          tag.name,
+        );
+        if (pullStats) {
+          tag.pull_count = pullStats.tag_pull_count;
+          tag.last_pulled = pullStats.last_tag_pull_date;
+        }
+      } catch (error) {
+        console.warn(
+          `Failed to fetch pull statistics for tag ${tag.name}:`,
+          error,
+        );
       }
     };
 
