@@ -82,7 +82,7 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
   if (error.response.status) {
     // For server errors (5xx), provide user-friendly message
     if (error.response.status >= 500 && error.response.status < 600) {
-      return 'unexpected issue occurred. Please try again or contact support';
+      return 'an unexpected issue occurred. Please try again or contact support';
     }
 
     let message = `HTTP${error.response.status}`;
@@ -118,4 +118,16 @@ export function assertHttpCode(got: number, expected: number) {
 
 export function isErrorString(err: string) {
   return typeof err === 'string' && err.length > 0;
+}
+
+// Utility function to get user-friendly error message from any error type
+// Use this instead of error.message when displaying errors to users
+export function getErrorMessageFromUnknown(error: unknown): string {
+  if (error instanceof AxiosError) {
+    return getErrorMessage(error);
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
 }

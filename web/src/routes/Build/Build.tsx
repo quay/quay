@@ -40,6 +40,7 @@ import {
 import Conditional from 'src/components/empty/Conditional';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {useEffect, useState} from 'react';
 import {
   AngleDownIcon,
@@ -132,9 +133,7 @@ export default function Build() {
   }
 
   if (isError) {
-    return (
-      <RequestError message={'Could not load build;' + error.toString()} />
-    );
+    return <RequestError err={error} />;
   }
 
   if (!repoDetails?.can_write && !repoDetails?.can_admin) {
