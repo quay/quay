@@ -439,6 +439,8 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
         """
         Get pull statistics for a specific tag.
         """
+        if not features.IMAGE_PULL_STATS:
+            abort(404, message="Image pull statistics feature is not enabled")
 
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:

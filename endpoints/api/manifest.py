@@ -389,6 +389,8 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
         """
         Get pull statistics for a specific manifest.
         """
+        if not features.IMAGE_PULL_STATS:
+            abort(404, message="Image pull statistics feature is not enabled")
 
         repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
         if repo_ref is None:
