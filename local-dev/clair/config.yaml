@@ -1,0 +1,24 @@
+---
+log_level: debug-color
+introspection_addr: ""
+http_listen_addr: ":6000"
+updaters: {}
+indexer:
+  connstring: host=clair-db port=5432 user=clair dbname=clair sslmode=disable
+  scanlock_retry: 10
+  layer_scan_concurrency: 5
+  migrations: true
+matcher:
+  connstring: host=clair-db port=5432 user=clair dbname=clair sslmode=disable
+  max_conn_pool: 100
+  migrations: true
+notifier:
+  connstring: host=clair-db port=5432 user=clair dbname=clair sslmode=disable
+  migrations: true
+  delivery_interval: 5s
+  poll_interval: 15s
+  webhook:
+    target: "http://localhost:8080/secscan/notification"
+    callback: "http://localhost:6000/notifier/api/v1/notification"
+metrics:
+  name: "prometheus"
