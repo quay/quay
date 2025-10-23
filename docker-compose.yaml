@@ -113,6 +113,7 @@ services:
       QUAYRUN: /tmp
       WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
       WORKER_COUNT: "1"
+      FEATURE_IMAGE_PULL_STATS: "false"
 
   # clair is configured to share it's network
   # namespace with quay. this allows quay to serve
