@@ -79,22 +79,26 @@ class PullMetrics(object):
             self._executor = None
 
     @staticmethod
-    def _tag_pull_key(repository, tag_name, manifest_digest):
+    def _tag_pull_key(repository_id, tag_name, manifest_digest):
         """
         Generate Redis key for tag pull events.
-        Pattern: pull_events:repo:{repo}:tag:{tag_name}:{manifest_digest}
+        Pattern: pull_events:repo:{repository_id}:tag:{tag_name}:{manifest_digest}
         Matches worker pattern: pull_events:repo:*:tag:*:*
+
+        Note: Uses repository_id for consistent key naming.
         """
-        return "pull_events:repo:%s:tag:%s:%s" % (repository, tag_name, manifest_digest)
+        return "pull_events:repo:%s:tag:%s:%s" % (repository_id, tag_name, manifest_digest)
 
     @staticmethod
-    def _manifest_pull_key(repository, manifest_digest):
+    def _manifest_pull_key(repository_id, manifest_digest):
         """
         Generate Redis key for manifest/digest pull events.
-        Pattern: pull_events:repo:{repo}:digest:{manifest_digest}
+        Pattern: pull_events:repo:{repository_id}:digest:{manifest_digest}
         Matches worker pattern: pull_events:repo:*:digest:*
+
+        Note: Uses repository_id for consistent key naming.
         """
-        return "pull_events:repo:%s:digest:%s" % (repository, manifest_digest)
+        return "pull_events:repo:%s:digest:%s" % (repository_id, manifest_digest)
 
     def track_tag_pull_sync(self, repository_ref, tag_name, manifest_digest):
         """
@@ -108,17 +112,11 @@ class PullMetrics(object):
 
         # Get repository_id if object is passed
         repository_id = repository_ref.id if hasattr(repository_ref, "id") else repository_ref
-        repository_path = (
-            f"{repository_ref.namespace_name}/{repository_ref.name}"
-            if hasattr(repository_ref, "namespace_name")
-            else str(repository_id)
-        )
 
         timestamp = int(datetime.now(timezone.utc).timestamp())
 
-        # Create keys for tag and manifest
-        tag_key = self._tag_pull_key(repository_path, tag_name, manifest_digest)
-        manifest_key = self._manifest_pull_key(repository_path, manifest_digest)
+        tag_key = self._tag_pull_key(repository_id, tag_name, manifest_digest)
+        manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
 
         # Use Redis pipeline for atomic operations
         pipe = self._redis.pipeline()
@@ -170,16 +168,10 @@ class PullMetrics(object):
 
         # Get repository_id if object is passed
         repository_id = repository_ref.id if hasattr(repository_ref, "id") else repository_ref
-        repository_path = (
-            f"{repository_ref.namespace_name}/{repository_ref.name}"
-            if hasattr(repository_ref, "namespace_name")
-            else str(repository_id)
-        )
 
         timestamp = int(datetime.now(timezone.utc).timestamp())
 
-        # Increment manifest counter
-        manifest_key = self._manifest_pull_key(repository_path, manifest_digest)
+        manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
 
         pipe = self._redis.pipeline()
         pipe.hset(manifest_key, "repository_id", repository_id)
@@ -237,7 +229,7 @@ class PullMetrics(object):
             logger.exception("Could not get pull statistics: %s", e)
             return None
 
-    def get_tag_pull_statistics(self, repository, tag_name, manifest_digest):
+    def get_tag_pull_statistics(self, repository_id, tag_name, manifest_digest):
         """
         Get pull statistics for a specific tag+manifest combination from Redis.
 
@@ -245,18 +237,22 @@ class PullMetrics(object):
         via data.model.pull_statistics.get_tag_pull_statistics instead.
 
         Args:
-            repository: Repository path (e.g., 'namespace/repo_name')
+            repository_id: Repository ID (integer)
             tag_name: Tag name
             manifest_digest: Manifest digest
         """
-        tag_key = self._tag_pull_key(repository, tag_name, manifest_digest)
+        tag_key = self._tag_pull_key(repository_id, tag_name, manifest_digest)
         return self._get_pull_statistics(tag_key)
 
-    def get_manifest_pull_statistics(self, repository, manifest_digest):
+    def get_manifest_pull_statistics(self, repository_id, manifest_digest):
         """
-        Get pull statistics for a specific manifest.
+        Get pull statistics for a specific manifest from Redis.
+
+        Args:
+            repository_id: Repository ID (integer)
+            manifest_digest: Manifest digest
         """
-        manifest_key = self._manifest_pull_key(repository, manifest_digest)
+        manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
         return self._get_pull_statistics(manifest_key)
 
     def shutdown(self):
