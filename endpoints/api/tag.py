@@ -426,6 +426,7 @@ class TagTimeMachineDelete(RepositoryParamResource):
 @resource("/v1/repository/<apirepopath:repository>/tag/<tag>/pull_statistics")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("tag", "The name of the tag")
+@show_if(features.IMAGE_PULL_STATS)
 class RepositoryTagPullStatistics(RepositoryParamResource):
     """
     Resource for retrieving pull statistics for a specific repository tag.
@@ -438,8 +439,6 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
         """
         Get pull statistics for a specific tag.
         """
-        if not features.IMAGE_PULL_STATS:
-            abort(404, "Image pull statistics feature is not enabled")
 
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:

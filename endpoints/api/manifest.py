@@ -31,6 +31,7 @@ from endpoints.api import (
     require_repo_read,
     require_repo_write,
     resource,
+    show_if,
     validate_json_request,
 )
 from endpoints.exception import NotFound
@@ -375,6 +376,7 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 )
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("manifestref", "The digest of the manifest")
+@show_if(features.IMAGE_PULL_STATS)
 class RepositoryManifestPullStatistics(RepositoryParamResource):
     """
     Resource for retrieving pull statistics for a specific repository manifest.
@@ -387,8 +389,6 @@ class RepositoryManifestPullStatistics(RepositoryParamResource):
         """
         Get pull statistics for a specific manifest.
         """
-        if not features.IMAGE_PULL_STATS:
-            abort(404, "Image pull statistics feature is not enabled")
 
         repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
         if repo_ref is None:
