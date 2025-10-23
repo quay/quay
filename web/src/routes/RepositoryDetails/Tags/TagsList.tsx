@@ -130,6 +130,10 @@ export default function TagsList(props: TagsProps) {
             tag.is_manifest_list ? getManifest(tag) : null,
           ),
         );
+
+        // Fetch pull statistics for the page size only
+        await Promise.all(resp.tags.map((tag: Tag) => getPullStats(tag)));
+
         allTags = page == 1 ? resp.tags : [...allTags, ...resp.tags];
 
         // Progressive rendering: update UI with tags as they load
@@ -142,10 +146,6 @@ export default function TagsList(props: TagsProps) {
       // After all tags are loaded, enrich with Cosign signature data
       // This requires all tags to be present to build the signature map correctly
       const enrichedTags = enrichTagsWithCosignData(allTags);
-      setTags(enrichedTags);
-
-      // Fetch pull statistics for all tags after cosign enrichment
-      await Promise.all(enrichedTags.map((tag: Tag) => getPullStats(tag)));
       setTags(enrichedTags);
     } catch (error: unknown) {
       console.error(error);
