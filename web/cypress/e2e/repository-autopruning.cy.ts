@@ -123,7 +123,9 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.visit('/repository/projectquay/repo1?tab=settings');
     cy.contains('Repository Auto-Prune Policies').click();
     cy.contains('Unable to complete request');
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'An unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('displays error when failing to create repo policy', () => {
@@ -136,7 +138,9 @@ describe('Repository settings - Repository autoprune policies', () => {
     attemptCreateTagNumberRepoPolicy(cy);
     cy.contains('Could not create repository auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'an unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('displays error when failing to update repo policy', () => {
@@ -151,7 +155,9 @@ describe('Repository settings - Repository autoprune policies', () => {
     attemptCreateCreationDateRepoPolicy(cy);
     cy.contains('Could not update repository auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'an unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('displays error when failing to delete repo policy', () => {
@@ -170,7 +176,9 @@ describe('Repository settings - Repository autoprune policies', () => {
     cy.contains('Save').click();
     cy.contains('Could not delete repository auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'an unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('shows corresponding namespace policy under repository auto-prune policies section', () => {
