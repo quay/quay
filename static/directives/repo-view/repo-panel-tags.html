@@ -131,18 +131,6 @@
         style="width: 140px;">
       <a ng-click="orderBy('manifest_digest')">Manifest</a>
     </td>
-    <td class="hidden-sm hidden-xs"
-        ng-class="tablePredicateClass('last_pulled', options.predicate, options.reverse)"
-        style="width: 140px;"
-        quay-require="['IMAGE_PULL_STATS']">
-      <a ng-click="orderBy('last_pulled')" data-title="When the tag was last pulled" data-container="body" bs-tooltip>Last Pulled</a>
-    </td>
-    <td class="hidden-xs"
-        ng-class="tablePredicateClass('pull_count', options.predicate, options.reverse)"
-        style="width: 90px;"
-        quay-require="['IMAGE_PULL_STATS']">
-      <a ng-click="orderBy('pull_count')" data-title="Number of times this tag has been pulled" data-container="body" bs-tooltip>Pull Count</a>
-    </td>
     <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
         style="width: 20px; position: relative;">
     </td>
@@ -218,19 +206,6 @@
       <!-- Manifest -->
       <td class="hidden-xs hidden-sm">
         <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
-      </td>
-
-      <!-- Last Pulled -->
-      <td class="hidden-sm hidden-xs" quay-require="['IMAGE_PULL_STATS']">
-        <span ng-if="tag.last_pull_date">
-          <time-ago datetime="tag.last_pull_date"></time-ago>
-        </span>
-        <span ng-if="!tag.last_pull_date" style="color: #999;">-</span>
-      </td>
-
-      <!-- Pull Count -->
-      <td class="hidden-xs" quay-require="['IMAGE_PULL_STATS']">
-        <span bo-text="tag.pull_count || 0"></span>
       </td>
 
       <!-- Manifest link -->

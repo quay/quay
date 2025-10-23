@@ -57,25 +57,6 @@
       $scope.viewScope.repositoryTags = $scope.repositoryTags;
     };
 
-    var loadTagPullStatistics = function(tags) {
-      // Load pull statistics for all tags
-      angular.forEach(tags, function(tag, tagName) {
-        var statsParams = {
-          'repository': $scope.namespace + '/' + $scope.name,
-          'tag': tagName
-        };
-
-        ApiService.getTagPullStatistics(null, statsParams).then(function(resp) {
-          tag.pull_count = resp.tag_pull_count;
-          tag.last_pull_date = resp.last_tag_pull_date;
-        }, function(error) {
-          // If feature is not enabled or stats not available, set defaults
-          tag.pull_count = 0;
-          tag.last_pull_date = null;
-        });
-      });
-    };
-
     var loadPaginatedRepositoryTags = function(page) {
       var params = {
         'repository': $scope.namespace + '/' + $scope.name,
@@ -102,8 +83,6 @@
         if (resp.has_additional) {
           loadPaginatedRepositoryTags(page + 1);
         } else {
-          // Load pull statistics after all tags are loaded
-          loadTagPullStatistics($scope.repositoryTags);
           $scope.viewScope.tagsLoading = false;
         }
       });
