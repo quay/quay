@@ -20,7 +20,7 @@ import {
   ToolbarGroup,
   ToolbarItem,
   Tooltip,
-  MenuContainer,
+  Popper,
 } from '@patternfly/react-core';
 import {
   PowerOffIcon,
@@ -28,7 +28,7 @@ import {
   UserCogIcon,
   WindowMaximizeIcon,
 } from '@patternfly/react-icons';
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {useAppNotifications} from 'src/hooks/useAppNotifications';
 import {GlobalAuthState, logoutUser} from 'src/resources/AuthResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -51,11 +51,16 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const {themePreference, setThemePreference} = useTheme();
   const config = useQuayConfig();
   const navigate = useNavigate();
   const showUIToggle =
-    config?.features?.UI_V2 && config?.config?.DEFAULT_UI !== 'react';
+    config?.features?.UI_V2 &&
+    !(
+      config?.config?.DISABLE_ANGULAR_UI &&
+      config?.config?.DEFAULT_UI === 'react'
+    );
 
   const queryClient = useQueryClient();
   const {user} = useCurrentUser();
@@ -65,6 +70,37 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   const onDropdownToggle = () => {
     setIsDropdownOpen((prev) => !prev);
   };
+
+  // Handle closing the menu when the escape key is pressed or the user clicks outside the menu
+  useEffect(() => {
+    const handleMenuKeys = (event: KeyboardEvent) => {
+      if (!isDropdownOpen) return;
+      if (
+        menuRef.current?.contains(event.target as Node) ||
+        toggleRef.current?.contains(event.target as Node)
+      ) {
+        if (event.key === 'Escape' || event.key === 'Tab') {
+          setIsDropdownOpen(false);
+          toggleRef.current?.focus();
+        }
+      }
+    };
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isDropdownOpen &&
+        !menuRef.current?.contains(event.target as Node) &&
+        !toggleRef.current?.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleMenuKeys);
+    window.addEventListener('click', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleMenuKeys);
+      window.removeEventListener('click', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const onMenuSelect = async (
     event: React.MouseEvent | undefined,
@@ -89,10 +125,31 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
         break;
       case 'theme-selector':
         break;
+      case 'ui-toggle':
+        // Keep menu open when interacting with the UI toggle switch
+        break;
       default:
         setIsDropdownOpen(false);
         break;
     }
+  };
+
+  // Toggle between old UI and new UI
+  const [isChecked, setIsChecked] = useState<boolean>(true);
+  const toggleSwitch = (
+    _event: React.FormEvent<HTMLInputElement>,
+    checked: boolean,
+  ) => {
+    setIsChecked(checked);
+
+    // Reload page and trigger patternfly cookie removal
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    const path = 'angular';
+
+    // Add a random arg so nginx redirect to / doesn't get cached by browser
+    const randomArg = '?_=' + new Date().getTime();
+    window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
   };
 
   const userMenu = (
@@ -154,6 +211,26 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
                 />
               </ToggleGroup>
             </MenuItem>
+            {showUIToggle && (
+              <MenuItem itemId="ui-toggle" key="ui-toggle" component="object">
+                <Flex
+                  spaceItems={{default: 'spaceItemsMd'}}
+                  flexWrap={{default: 'nowrap'}}
+                  className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
+                >
+                  <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
+                    Legacy UI
+                  </FlexItem>
+                  <Switch
+                    id="menu-ui-switch"
+                    label="Current UI"
+                    labelOff="Current UI"
+                    isChecked={isChecked}
+                    onChange={toggleSwitch}
+                  />
+                </Flex>
+              </MenuItem>
+            )}
           </MenuList>
         </MenuGroup>
         <Divider />
@@ -228,14 +305,15 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
   );
 
   const menuContainer = (
-    <MenuContainer
-      menu={userMenu}
-      menuRef={menuRef}
-      isOpen={isDropdownOpen}
-      toggle={toggle}
-      toggleRef={toggleRef}
-      onOpenChange={(isOpen) => setIsDropdownOpen(isOpen)}
-    />
+    <div ref={containerRef}>
+      <Popper
+        trigger={toggle}
+        popper={userMenu}
+        appendTo={() => document.body}
+        isVisible={isDropdownOpen}
+        placement="bottom-end"
+      />
+    </div>
   );
 
   const signInButtonText = quayConfig?.config?.REGISTRY_TITLE_SHORT
@@ -243,24 +321,6 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
     : 'Sign In';
 
   const signInButton = <Button>{signInButtonText}</Button>;
-
-  // Toggle between old UI and new UI
-  const [isChecked, setIsChecked] = React.useState<boolean>(true);
-  const toggleSwitch = (
-    _event: React.FormEvent<HTMLInputElement>,
-    checked: boolean,
-  ) => {
-    setIsChecked(checked);
-
-    // Reload page and trigger patternfly cookie removal
-    const protocol = window.location.protocol;
-    const host = window.location.host;
-    const path = 'angular';
-
-    // Add a random arg so nginx redirect to / doesn't get cached by browser
-    const randomArg = '?_=' + new Date().getTime();
-    window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
-  };
 
   const {unreadCount} = useAppNotifications();
 
@@ -274,33 +334,6 @@ export function HeaderToolbar({toggleDrawer}: {toggleDrawer: () => void}) {
             align={{default: 'alignRight'}}
             spacer={{default: 'spacerNone', md: 'spacerMd'}}
           >
-            {showUIToggle && (
-              <ToolbarItem
-                spacer={{
-                  default: 'spacerNone',
-                  md: 'spacerSm',
-                  lg: 'spacerMd',
-                  xl: 'spacerLg',
-                }}
-              >
-                <Flex
-                  spaceItems={{default: 'spaceItemsMd'}}
-                  flexWrap={{default: 'nowrap'}}
-                  className="pf-v5-u-text-nowrap pf-v5-u-pr-md"
-                >
-                  <FlexItem alignSelf={{default: 'alignSelfFlexStart'}}>
-                    Current UI
-                  </FlexItem>
-                  <Switch
-                    id="header-toolbar-ui-switch"
-                    label="New UI"
-                    labelOff="New UI"
-                    isChecked={isChecked}
-                    onChange={toggleSwitch}
-                  />
-                </Flex>
-              </ToolbarItem>
-            )}
             <ToolbarItem
               spacer={{
                 default: 'spacerNone',
