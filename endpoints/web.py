@@ -3,6 +3,10 @@ import logging
 import os
 from datetime import datetime, timedelta
 
+from util.metrics.otel import StatusCode, get_tracecontext, trace
+
+tracer = trace.get_tracer("quay.endpoints.web")
+
 from cachetools.func import lru_cache
 from flask import (
     Blueprint,
@@ -104,23 +108,37 @@ STATUS_TAGS = app.config["STATUS_TAGS"]
 
 @web.route("/", methods=["GET"], defaults={"path": ""})
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.index", record_exception=True, set_status_on_exception=True
+)
 def index(path, **kwargs):
     return render_page_template_with_routedata("index.html", **kwargs)
 
 
 @web.route("/_internal_ping")
 @anon_allowed
+@tracer.start_as_current_span(
+    "quay.endpoints.web.internal_ping", record_exception=True, set_status_on_exception=True
+)
 def internal_ping():
     return make_response("true", 200)
 
 
 @web.route("/500", methods=["GET"])
+@tracer.start_as_current_span(
+    "quay.endpoints.web.internal_error_display", record_exception=True, set_status_on_exception=True
+)
 def internal_error_display():
     return render_page_template_with_routedata("500.html")
 
 
 @web.errorhandler(404)
 @web.route("/404", methods=["GET"])
+@tracer.start_as_current_span(
+    "quay.endpoints.web.not_found_error_display",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def not_found_error_display(e=None):
     resp = index("", error_code=404, error_info=dict(reason="notfound"))
     resp.status_code = 404
@@ -128,6 +146,9 @@ def not_found_error_display(e=None):
 
 
 @web.route("/opensearch.xml")
+@tracer.start_as_current_span(
+    "quay.endpoints.web.opensearch", record_exception=True, set_status_on_exception=True
+)
 def opensearch():
     template = render_template(
         "opensearch.xml",
@@ -142,6 +163,9 @@ def opensearch():
 @web.route("/organization/<path:path>", methods=["GET"])
 @web.route("/organization/<path:path>/", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.org_view", record_exception=True, set_status_on_exception=True
+)
 def org_view(path):
     return index("")
 
@@ -149,6 +173,9 @@ def org_view(path):
 @web.route("/user/<path:path>", methods=["GET"])
 @web.route("/user/<path:path>/", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.user_view", record_exception=True, set_status_on_exception=True
+)
 def user_view(path):
     return index("")
 
@@ -156,18 +183,27 @@ def user_view(path):
 @web.route("/plans/")
 @no_cache
 @route_show_if(features.BILLING)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.plans", record_exception=True, set_status_on_exception=True
+)
 def plans():
     return index("")
 
 
 @web.route("/search")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.search", record_exception=True, set_status_on_exception=True
+)
 def search():
     return index("")
 
 
 @web.route("/guide/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.guide", record_exception=True, set_status_on_exception=True
+)
 def guide():
     return index("")
 
@@ -175,12 +211,18 @@ def guide():
 @web.route("/tour/")
 @web.route("/tour/<path:path>")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.tour", record_exception=True, set_status_on_exception=True
+)
 def tour(path=""):
     return index("")
 
 
 @web.route("/tutorial/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.tutorial", record_exception=True, set_status_on_exception=True
+)
 def tutorial():
     return index("")
 
@@ -188,6 +230,9 @@ def tutorial():
 @web.route("/organizations/")
 @web.route("/organizations/new/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.organizations", record_exception=True, set_status_on_exception=True
+)
 def organizations():
     return index("")
 
@@ -195,6 +240,9 @@ def organizations():
 @web.route("/superuser/")
 @no_cache
 @route_show_if(features.SUPER_USERS)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.superuser", record_exception=True, set_status_on_exception=True
+)
 def superuser():
     return index("")
 
@@ -202,42 +250,63 @@ def superuser():
 @web.route("/setup/")
 @no_cache
 @route_show_if(features.SUPER_USERS)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.setup", record_exception=True, set_status_on_exception=True
+)
 def setup():
     return index("")
 
 
 @web.route("/signin/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.signin", record_exception=True, set_status_on_exception=True
+)
 def signin(redirect=None):
     return index("")
 
 
 @web.route("/contact/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.contact", record_exception=True, set_status_on_exception=True
+)
 def contact():
     return index("")
 
 
 @web.route("/about/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.about", record_exception=True, set_status_on_exception=True
+)
 def about():
     return index("")
 
 
 @web.route("/new/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.new", record_exception=True, set_status_on_exception=True
+)
 def new():
     return index("")
 
 
 @web.route("/updateuser")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.updateuser", record_exception=True, set_status_on_exception=True
+)
 def updateuser():
     return index("")
 
 
 @web.route("/confirminvite")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.confirm_invite", record_exception=True, set_status_on_exception=True
+)
 def confirm_invite():
     code = request.values["code"]
     return index("", code=code)
@@ -246,18 +315,27 @@ def confirm_invite():
 @web.route("/repository/", defaults={"path": ""})
 @web.route("/repository/<path:path>", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.repository", record_exception=True, set_status_on_exception=True
+)
 def repository(path):
     return index("")
 
 
 @web.route("/repository/<path:path>/trigger/<trigger>", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.buildtrigger", record_exception=True, set_status_on_exception=True
+)
 def buildtrigger(path, trigger):
     return index("")
 
 
 @web.route("/security/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.security", record_exception=True, set_status_on_exception=True
+)
 def security():
     return index("")
 
@@ -265,12 +343,18 @@ def security():
 @web.route("/enterprise/")
 @no_cache
 @route_show_if(features.BILLING)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.enterprise", record_exception=True, set_status_on_exception=True
+)
 def enterprise():
     return redirect("/plans?tab=enterprise")
 
 
 @web.route("/__exp/<expname>")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.exp", record_exception=True, set_status_on_exception=True
+)
 def exp(expname):
     return index("")
 
@@ -278,18 +362,27 @@ def exp(expname):
 @web.route("/v1")
 @web.route("/v1/")
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.v1", record_exception=True, set_status_on_exception=True
+)
 def v1():
     return index("")
 
 
 @web.route("/tos", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.tos", record_exception=True, set_status_on_exception=True
+)
 def tos():
     return index("")
 
 
 @web.route("/privacy", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.privacy", record_exception=True, set_status_on_exception=True
+)
 def privacy():
     return index("")
 
@@ -298,6 +391,9 @@ def privacy():
 @web.route("/health/instance", methods=["GET"])
 @process_auth_or_cookie
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.instance_health", record_exception=True, set_status_on_exception=True
+)
 def instance_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
     (data, status_code) = checker.check_instance()
@@ -310,6 +406,9 @@ def instance_health():
 @web.route("/health/endtoend", methods=["GET"])
 @process_auth_or_cookie
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.endtoend_health", record_exception=True, set_status_on_exception=True
+)
 def endtoend_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
     (data, status_code) = checker.check_endtoend()
@@ -321,6 +420,9 @@ def endtoend_health():
 @web.route("/health/warning", methods=["GET"])
 @process_auth_or_cookie
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.warning_health", record_exception=True, set_status_on_exception=True
+)
 def warning_health():
     checker = get_healthchecker(app, config_provider, instance_keys)
     (data, status_code) = checker.check_warning()
@@ -333,6 +435,9 @@ def warning_health():
 @route_show_if(features.BILLING)  # Since this is only used in production.
 @process_auth_or_cookie
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.dbrevision_health", record_exception=True, set_status_on_exception=True
+)
 def dbrevision_health():
     # Find the revision from the database.
     result = db.execute_sql("select * from alembic_version limit 1").fetchone()
@@ -356,6 +461,9 @@ def dbrevision_health():
 
 @web.route("/health/enabledebug/<secret>", methods=["GET"])
 @no_cache
+@tracer.start_as_current_span(
+    "quay.endpoints.web.enable_health_debug", record_exception=True, set_status_on_exception=True
+)
 def enable_health_debug(secret):
     if not secret:
         abort(404)
@@ -380,6 +488,9 @@ def robots():
 @web.route("/buildlogs/<build_uuid>", methods=["GET"])
 @route_show_if(features.BUILD_SUPPORT)
 @process_auth_or_cookie
+@tracer.start_as_current_span(
+    "quay.endpoints.web.buildlogs", record_exception=True, set_status_on_exception=True
+)
 def buildlogs(build_uuid):
     found_build = model.build.get_repository_build(build_uuid)
     if not found_build:
@@ -408,6 +519,9 @@ def buildlogs(build_uuid):
 
 
 @web.route("/exportedlogs/<file_id>", methods=["GET"])
+@tracer.start_as_current_span(
+    "quay.endpoints.web.exportedlogs", record_exception=True, set_status_on_exception=True
+)
 def exportedlogs(file_id):
     # Only enable this endpoint if local storage is available.
     has_local_storage = False
@@ -440,6 +554,9 @@ def exportedlogs(file_id):
 @web.route("/logarchive/<file_id>", methods=["GET"])
 @route_show_if(features.BUILD_SUPPORT)
 @process_auth_or_cookie
+@tracer.start_as_current_span(
+    "quay.endpoints.web.logarchive", record_exception=True, set_status_on_exception=True
+)
 def logarchive(file_id):
     JSON_MIMETYPE = "application/json"
     try:
@@ -471,6 +588,9 @@ def logarchive(file_id):
 @web.route("/receipt", methods=["GET"])
 @route_show_if(features.BILLING)
 @require_session_login
+@tracer.start_as_current_span(
+    "quay.endpoints.web.receipt", record_exception=True, set_status_on_exception=True
+)
 def receipt():
     if not current_user.is_authenticated:
         abort(401)
@@ -508,6 +628,9 @@ def receipt():
 
 @web.route("/authrepoemail", methods=["GET"])
 @route_show_if(features.MAILING)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.confirm_repo_email", record_exception=True, set_status_on_exception=True
+)
 def confirm_repo_email():
     code = request.values["code"]
     record = None
@@ -535,6 +658,9 @@ def confirm_repo_email():
 @web.route("/confirm", methods=["GET"])
 @route_show_if(features.MAILING)
 @anon_allowed
+@tracer.start_as_current_span(
+    "quay.endpoints.web.confirm_email", record_exception=True, set_status_on_exception=True
+)
 def confirm_email():
     code = request.values["code"]
     user = None
@@ -570,6 +696,9 @@ def confirm_email():
 @web.route("/recovery", methods=["GET"])
 @route_show_if(features.MAILING)
 @anon_allowed
+@tracer.start_as_current_span(
+    "quay.endpoints.web.confirm_recovery", record_exception=True, set_status_on_exception=True
+)
 def confirm_recovery():
     code = request.values["code"]
     user = model.user.validate_reset_code(code)
@@ -591,6 +720,9 @@ def confirm_recovery():
 @web.route("/repository/<repopath:repository>/status", methods=["GET"])
 @parse_repository_name()
 @anon_protect
+@tracer.start_as_current_span(
+    "quay.endpoints.web.build_status_badge", record_exception=True, set_status_on_exception=True
+)
 def build_status_badge(namespace_name, repo_name):
     token = request.args.get("token", None)
     repo = model.repository.get_repository(namespace_name, repo_name)
@@ -634,6 +766,9 @@ class FlaskAuthorizationProvider(model.oauth.DatabaseAuthorizationProvider):
 
 @web.route("/oauth/authorizeapp", methods=["POST"])
 @process_auth_or_cookie
+@tracer.start_as_current_span(
+    "quay.endpoints.web.authorize_application", record_exception=True, set_status_on_exception=True
+)
 def authorize_application():
     # Check for an authenticated user.
     if not get_authenticated_user():
@@ -681,6 +816,9 @@ def authorize_application():
 
 
 @web.route(app.config["LOCAL_OAUTH_HANDLER"], methods=["GET"])
+@tracer.start_as_current_span(
+    "quay.endpoints.web.oauth_local_handler", record_exception=True, set_status_on_exception=True
+)
 def oauth_local_handler():
     if not current_user.is_authenticated:
         abort(401)
@@ -699,6 +837,9 @@ def oauth_local_handler():
 
 @web.route("/oauth/denyapp", methods=["POST"])
 @csrf_protect()
+@tracer.start_as_current_span(
+    "quay.endpoints.web.deny_application", record_exception=True, set_status_on_exception=True
+)
 def deny_application():
     if not current_user.is_authenticated:
         abort(401)
@@ -719,6 +860,11 @@ def deny_application():
 @param_required("redirect_uri")
 @param_required("scope")
 @process_auth_or_cookie
+@tracer.start_as_current_span(
+    "quay.endpoints.web.request_authorization_code",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def request_authorization_code():
     provider = FlaskAuthorizationProvider()
     response_type = request.args.get("response_type", "code")
@@ -841,6 +987,9 @@ def request_authorization_code():
 @param_required("scope")
 @param_required("username")
 @process_auth_or_cookie
+@tracer.start_as_current_span(
+    "quay.endpoints.web.assign_user_to_app", record_exception=True, set_status_on_exception=True
+)
 def assign_user_to_app():
     response_type = request.args.get("response_type", "code")
     client_id = request.args.get("client_id", None)
@@ -899,6 +1048,11 @@ def assign_user_to_app():
 @param_required("redirect_uri", allow_body=True)
 @param_required("code", allow_body=True)
 @param_required("scope", allow_body=True)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.exchange_code_for_token",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def exchange_code_for_token():
     grant_type = request.values.get("grant_type", None)
     client_id = request.values.get("client_id", None)
@@ -921,6 +1075,11 @@ def exchange_code_for_token():
 @require_session_login
 @parse_repository_name()
 @route_show_if(features.BITBUCKET_BUILD)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.attach_bitbucket_trigger",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def attach_bitbucket_trigger(namespace_name, repo_name):
     permission = AdministerRepositoryPermission(namespace_name, repo_name)
     if permission.can():
@@ -955,6 +1114,11 @@ def attach_bitbucket_trigger(namespace_name, repo_name):
 @web.route("/customtrigger/setup/<repopath:repository>", methods=["GET"])
 @require_session_login
 @parse_repository_name()
+@tracer.start_as_current_span(
+    "quay.endpoints.web.attach_custom_build_trigger",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def attach_custom_build_trigger(namespace_name, repo_name):
     permission = AdministerRepositoryPermission(namespace_name, repo_name)
     if permission.can():
@@ -983,6 +1147,9 @@ def attach_custom_build_trigger(namespace_name, repo_name):
 @process_oauth
 @parse_repository_name(include_tag=True)
 @anon_protect
+@tracer.start_as_current_span(
+    "quay.endpoints.web.redirect_to_repository", record_exception=True, set_status_on_exception=True
+)
 def redirect_to_repository(namespace_name, repo_name, tag_name):
     # Always return 200 for ac-discovery, to ensure that rkt and other ACI-compliant clients can
     # find the metadata they need. Permissions will be checked in the registry API.
@@ -1035,6 +1202,9 @@ def redirect_to_repository(namespace_name, repo_name, tag_name):
 @no_cache
 @process_oauth
 @anon_protect
+@tracer.start_as_current_span(
+    "quay.endpoints.web.redirect_to_namespace", record_exception=True, set_status_on_exception=True
+)
 def redirect_to_namespace(namespace):
     okay, _ = model.user.validate_username(namespace)
     if not okay:
@@ -1059,6 +1229,9 @@ def has_users():
 
 @web.route("/api/v1/user/initialize", methods=["POST"])
 @route_show_if(features.USER_INITIALIZE)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.user_initialize", record_exception=True, set_status_on_exception=True
+)
 def user_initialize():
     """
     Create initial user in an empty database
@@ -1131,6 +1304,9 @@ def user_initialize():
 
 @web.route("/config", methods=["GET", "OPTIONS"])
 @crossorigin(anonymous=False)
+@tracer.start_as_current_span(
+    "quay.endpoints.web.config", record_exception=True, set_status_on_exception=True
+)
 def config():
     response = jsonify(
         {

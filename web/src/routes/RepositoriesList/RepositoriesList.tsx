@@ -283,11 +283,10 @@ export default function RepositoriesList(props: RepositoriesListProps) {
 
   // Return component Error state
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return (
       <>
         <RepoListHeader shouldRender={currentOrg === null} />
-        <RequestError message={errorMessage} />
+        <RequestError err={error} />
       </>
     );
   }

@@ -109,7 +109,7 @@ export default function BuildHistory(props: BuildHistoryProps) {
   }
 
   if (isError) {
-    return <RequestError message={error as string} />;
+    return <RequestError err={error} />;
   }
 
   const setFilter = (filterType: string) => {

@@ -9,7 +9,9 @@ import {
 } from '@patternfly/react-core';
 import Conditional from 'src/components/empty/Conditional';
 
-export default function OIDCTeamSyncModal(props: OIDCTeamSyncModalProps) {
+export default function DirectoryTeamSyncModal(
+  props: DirectoryTeamSyncModalProps,
+) {
   const [groupName, setGroupName] = useState<string>('');
 
   const handleInputChange = (value: string) => {
@@ -58,12 +60,12 @@ export default function OIDCTeamSyncModal(props: OIDCTeamSyncModalProps) {
   );
 }
 
-type OIDCTeamSyncModalProps = {
+type DirectoryTeamSyncModalProps = {
   isModalOpen: boolean;
   toggleModal: () => void;
   titleText: string;
   primaryText: string;
   onConfirmSync: (string) => void;
-  secondaryText?: string;
+  secondaryText?: React.ReactNode;
   alertText?: string;
 };

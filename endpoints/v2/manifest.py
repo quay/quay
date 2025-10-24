@@ -3,6 +3,10 @@ from functools import wraps
 
 from flask import Response, request, url_for
 
+from util.metrics.otel import trace
+
+tracer = trace.get_tracer("quay.v2.manifest")
+
 import features
 from app import app, model_cache, pullmetrics, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
@@ -68,9 +72,14 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
+@tracer.start_as_current_span(
+    "quay.v2.manifest.fetch_manifest_by_tagname",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
     try:
         repository_ref = registry_model.lookup_repository(
@@ -151,9 +160,12 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
+@tracer.start_as_current_span(
+    "quay.v2.manifest.fetch_manifest_by_digest", record_exception=True, set_status_on_exception=True
+)
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
     try:
         repository_ref = registry_model.lookup_repository(
@@ -293,8 +305,14 @@ def _doesnt_accept_schema_v1():
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@tracer.start_as_current_span(
+    "quay.v2.manifest.write_manifest_by_tagname",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
+
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
 
 
@@ -318,6 +336,9 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@tracer.start_as_current_span(
+    "quay.v2.manifest.write_manifest_by_digest", record_exception=True, set_status_on_exception=True
+)
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:
@@ -395,6 +416,11 @@ def _parse_manifest(content_type, request_data):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@tracer.start_as_current_span(
+    "quay.v2.manifest.delete_manifest_by_digest",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     """
     Delete the manifest specified by the digest.
@@ -432,6 +458,9 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
+@tracer.start_as_current_span(
+    "quay.v2.manifest.delete_manifest_by_tag", record_exception=True, set_status_on_exception=True
+)
 def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
     """
     Deletes the manifest specified by the tag.

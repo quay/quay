@@ -11,7 +11,9 @@ import {
   PageSectionVariants,
   PanelFooter,
   Spinner,
+  Tooltip,
 } from '@patternfly/react-core';
+import {SyncIcon} from '@patternfly/react-icons';
 import TeamsViewToolbar from './TeamsViewToolbar';
 import TeamViewKebab from './TeamViewKebab';
 import {ITeams, useDeleteTeam, useFetchTeams} from 'src/hooks/UseTeams';
@@ -27,6 +29,7 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import Conditional from 'src/components/empty/Conditional';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
 import {usePaginatedSortableTable} from '../../../../../../hooks/usePaginatedSortableTable';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export const teamViewColumnNames = {
   teamName: 'Team name',
@@ -36,6 +39,7 @@ export const teamViewColumnNames = {
 };
 
 export default function TeamsViewList(props: TeamsViewListProps) {
+  const config = useQuayConfig();
   const {
     teams: allTeams,
     isLoadingTeams,
@@ -236,6 +240,10 @@ export default function TeamsViewList(props: TeamsViewListProps) {
     setIsSetRepoPermModalOpen(!isSetRepoPermModalOpen);
   };
 
+  const showSyncColumn =
+    config?.features?.TEAM_SYNCING &&
+    config?.config?.AUTHENTICATION_TYPE !== 'Database';
+
   if (isLoadingTeams) {
     return <Spinner />;
   }
@@ -278,6 +286,9 @@ export default function TeamsViewList(props: TeamsViewListProps) {
           <Thead>
             <Tr>
               <Th />
+              <Conditional if={showSyncColumn}>
+                <Th modifier="center" />
+              </Conditional>
               <Th sort={getSortableSort(1)}>{teamViewColumnNames.teamName}</Th>
               <Th sort={getSortableSort(2)}>{teamViewColumnNames.members}</Th>
               <Th sort={getSortableSort(3)}>
@@ -298,6 +309,15 @@ export default function TeamsViewList(props: TeamsViewListProps) {
                     isSelected: selectedTeams.some((t) => t.name === team.name),
                   }}
                 />
+                <Conditional if={showSyncColumn}>
+                  <Td modifier="center">
+                    {team.is_synced && (
+                      <Tooltip content="Team is synchronized with a backing group">
+                        <SyncIcon data-test-id="sync-icon" />
+                      </Tooltip>
+                    )}
+                  </Td>
+                </Conditional>
                 <Td dataLabel={teamViewColumnNames.teamName}>
                   {team.can_view ? (
                     <Link

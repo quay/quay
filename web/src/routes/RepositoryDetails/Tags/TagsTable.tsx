@@ -11,16 +11,22 @@ import {
 } from '@patternfly/react-table';
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
-import {Tag, Manifest} from 'src/resources/TagResource';
-import {useResetRecoilState} from 'recoil';
+import {Tag, Manifest, Label} from 'src/resources/TagResource';
+import {useRecoilValue, useResetRecoilState} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
 import TablePopover from './TablePopover';
 import SecurityDetails from './SecurityDetails';
 import {formatDate} from 'src/libs/utils';
 import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
+import {expandedViewState} from 'src/atoms/TagListState';
 import ColumnNames from './ColumnNames';
-import {DownloadIcon, ShieldAltIcon} from '@patternfly/react-icons';
+import {
+  DownloadIcon,
+  ShieldAltIcon,
+  TagIcon,
+  CubeIcon,
+} from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
@@ -81,9 +87,10 @@ function SubRow(props: SubRowProps) {
 }
 
 function TagsTableRow(props: RowProps) {
-  const config = useQuayConfig();
+  const {inReadOnlyMode} = useQuayState();
   const tag = props.tag;
   const rowIndex = props.rowIndex;
+  const expandedView = useRecoilValue(expandedViewState);
 
   // Reset SecurityDetailsState so that loading skeletons appear when viewing report
   const emptySecurityDetails = useResetRecoilState(SecurityDetailsState);
@@ -221,12 +228,7 @@ function TagsTableRow(props: RowProps) {
             <DownloadIcon />
           </TablePopover>
         </Td>
-        <Conditional
-          if={
-            props.repoDetails?.can_write &&
-            config?.registry_state !== 'readonly'
-          }
-        >
+        <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
           <Td>
             <TagActions
               org={props.org}
@@ -254,6 +256,77 @@ function TagsTableRow(props: RowProps) {
             />
           ))
         : null}
+      {expandedView && (
+        <Tr className="expanded-row">
+          <Td />
+          <Td colSpan={expandedColspan}>
+            <div className="expanded-row-content">
+              <div className="expanded-row-section">
+                <Tooltip content="Manifest">
+                  <CubeIcon style={{marginRight: '8px'}} />
+                </Tooltip>
+                <Tooltip content="The content-addressable SHA256 hash of this tag">
+                  <span className="manifest-link">
+                    <span className="id-label">SHA256</span>{' '}
+                    <Link
+                      to={getTagDetailPath(
+                        location.pathname,
+                        props.org,
+                        props.repo,
+                        tag.name,
+                        new Map([['tab', 'layers']]),
+                      )}
+                    >
+                      {tag.manifest_digest.substring(
+                        'sha256:'.length,
+                        'sha256:'.length + 12,
+                      )}
+                    </Link>
+                  </span>
+                </Tooltip>
+              </div>
+              <div className="expanded-row-section">
+                <Tooltip content="Labels">
+                  <TagIcon style={{marginRight: '8px'}} />
+                </Tooltip>
+                <Labels
+                  org={props.org}
+                  repo={props.repo}
+                  digest={tag.manifest_digest}
+                  cache={props.labelCache}
+                  setCache={props.setLabelCache}
+                />
+              </div>
+              {tag.cosign_signature_tag && (
+                <div className="expanded-row-section">
+                  <Tooltip content="Cosign Signature">
+                    <ShieldAltIcon style={{marginRight: '8px'}} />
+                  </Tooltip>
+                  <Tooltip content="The artifact containing the cosign signature for this tag">
+                    <span className="manifest-link">
+                      <span className="id-label">cosign</span>{' '}
+                      <Link
+                        to={getTagDetailPath(
+                          location.pathname,
+                          props.org,
+                          props.repo,
+                          tag.cosign_signature_tag,
+                          new Map([['tab', 'layers']]),
+                        )}
+                      >
+                        {tag.cosign_signature_tag}
+                      </Link>
+                    </span>
+                  </Tooltip>
+                </div>
+              )}
+            </div>
+          </Td>
+          <Conditional if={props.repoDetails?.can_write && !inReadOnlyMode}>
+            <Td />
+          </Conditional>
+        </Tr>
+      )}
     </Tbody>
   );
 }
@@ -326,6 +399,8 @@ export default function TagsTable(props: TableProps) {
             selectTag={props.selectTag}
             loadTags={props.loadTags}
             repoDetails={props.repoDetails}
+            labelCache={props.labelCache}
+            setLabelCache={props.setLabelCache}
           />
         ))}
       </Table>
@@ -349,6 +424,8 @@ interface TableProps {
   loadTags: () => void;
   repoDetails: RepositoryDetails;
   getSortableSort?: (columnIndex: number) => ThProps['sort'];
+  labelCache?: Record<string, Label[]>;
+  setLabelCache?: (cache: Record<string, Label[]>) => void;
 }
 
 interface RowProps {
@@ -362,6 +439,8 @@ interface RowProps {
   selectTag: (tag: Tag, rowIndex?: number, isSelecting?: boolean) => void;
   loadTags: () => void;
   repoDetails: RepositoryDetails;
+  labelCache?: Record<string, Label[]>;
+  setLabelCache?: (cache: Record<string, Label[]>) => void;
 }
 
 interface SubRowProps {

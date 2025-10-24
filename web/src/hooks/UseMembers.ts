@@ -103,6 +103,7 @@ export interface ITeamMember {
 export interface ITeamMembersCanSyncResponse {
   service: string;
   issuer_domain?: string;
+  base_dn?: string;
 }
 
 export interface ITeamMembersSyncedResponse {
@@ -138,6 +139,16 @@ export function useFetchTeamMembersForOrg(orgName: string, teamName: string) {
     ({signal}) => fetchTeamMembersForOrg(orgName, teamName, signal),
     {
       placeholderData: <ITeamMembersResponse>{},
+      refetchInterval: (data: ITeamMembersResponse) => {
+        // Poll every 5 seconds if team sync is enabled and waiting for first sync
+        if (
+          data?.synced &&
+          (!data.synced.last_updated || data.synced.last_updated === null)
+        ) {
+          return 5000; // Poll every 5 seconds
+        }
+        return false; // Stop polling once we have a timestamp
+      },
     },
   );
   const allMembers: ITeamMember[] = data?.members;

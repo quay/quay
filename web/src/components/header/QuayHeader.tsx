@@ -18,15 +18,14 @@ import {Link} from 'react-router-dom';
 import {SidebarState} from 'src/atoms/SidebarState';
 import {useSetRecoilState} from 'recoil';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import axios from 'src/libs/axios';
 import './QuayHeader.css';
 
 export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
   const setSidebarState = useSetRecoilState(SidebarState);
   const quayConfig = useQuayConfig();
   let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.ENTERPRISE_DARK_LOGO_URL) {
-    logoUrl = `${axios.defaults.baseURL}${quayConfig.config.ENTERPRISE_DARK_LOGO_URL}`;
+  if (quayConfig && quayConfig.config?.BRANDING?.logo) {
+    logoUrl = quayConfig.config.BRANDING.logo;
   } else if (
     window?.location?.hostname === 'stage.quay.io' ||
     window?.location?.hostname === 'quay.io'

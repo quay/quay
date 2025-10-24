@@ -159,6 +159,28 @@ describe('Signin page', () => {
     // Should not redirect
     cy.url().should('include', '/signin');
   });
+
+  it('Handles 500 server errors with user-friendly message', () => {
+    setupFailedSignin({}, 500);
+
+    // Fill and submit form
+    cy.get('#pf-login-username-id').type('user1');
+    cy.get('#pf-login-password-id').type('password');
+    cy.get('button[type=submit]').click();
+
+    // Should show user-friendly error message (not raw HTTP500)
+    cy.wait('@signinFail');
+    cy.get('#form-error-alert').should('be.visible');
+    cy.get('#form-error-alert').should(
+      'contain',
+      'unexpected issue occurred. Please try again or contact support',
+    );
+    cy.get('#form-error-alert').should('not.contain', 'HTTP500');
+    cy.get('#form-error-alert').should('not.contain', '500');
+
+    // Should not redirect
+    cy.url().should('include', '/signin');
+  });
 });
 
 describe('Forgot Password functionality', () => {
