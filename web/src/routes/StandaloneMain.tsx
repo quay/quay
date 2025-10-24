@@ -40,6 +40,7 @@ import ServiceKeys from './Superuser/ServiceKeys/ServiceKeys';
 import ChangeLog from './Superuser/ChangeLog/ChangeLog';
 import UsageLogs from './Superuser/UsageLogs/UsageLogs';
 import Messages from './Superuser/Messages/Messages';
+import BuildLogs from './Superuser/BuildLogs/BuildLogs';
 import {GlobalMessages} from 'src/components/GlobalMessages';
 
 const NavigationRoutes = [
@@ -91,6 +92,10 @@ const NavigationRoutes = [
   {
     path: NavigationPath.messages,
     Component: <Messages />,
+  },
+  {
+    path: NavigationPath.buildLogs,
+    Component: <BuildLogs />,
   },
 ];
 

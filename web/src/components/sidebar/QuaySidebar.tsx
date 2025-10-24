@@ -19,6 +19,7 @@ import ServiceKeys from 'src/routes/Superuser/ServiceKeys/ServiceKeys';
 import ChangeLog from 'src/routes/Superuser/ChangeLog/ChangeLog';
 import UsageLogs from 'src/routes/Superuser/UsageLogs/UsageLogs';
 import Messages from 'src/routes/Superuser/Messages/Messages';
+import BuildLogs from 'src/routes/Superuser/BuildLogs/BuildLogs';
 import React from 'react';
 
 interface SideNavProps {
@@ -44,13 +45,15 @@ export function QuaySidebar() {
       NavigationPath.changeLog,
       NavigationPath.usageLogs,
       NavigationPath.messages,
-      ...(quayConfig?.config?.BUILD_SUPPORT ? [NavigationPath.buildLogs] : []),
+      ...(quayConfig?.features?.BUILD_SUPPORT
+        ? [NavigationPath.buildLogs]
+        : []),
     ];
 
     if (superuserPaths.includes(location.pathname as NavigationPath)) {
       setIsSuperuserExpanded(true);
     }
-  }, [location.pathname]);
+  }, [location.pathname, quayConfig?.features?.BUILD_SUPPORT]);
 
   // Regular navigation routes
   const regularRoutes: SideNavProps[] = [
@@ -101,13 +104,13 @@ export function QuaySidebar() {
       component: <Messages />,
     },
     // Conditional Build Logs (if BUILD_SUPPORT enabled)
-    ...(quayConfig?.config?.BUILD_SUPPORT
+    ...(quayConfig?.features?.BUILD_SUPPORT
       ? [
           {
             isSideNav: true,
             navPath: NavigationPath.buildLogs,
             title: 'Build Logs',
-            component: <></>, // TODO: Implement BuildLogs component
+            component: <BuildLogs />,
           },
         ]
       : []),
