@@ -29,7 +29,7 @@ export default function SetupBuildTriggerModal(props: SetupBuildTriggerWizard) {
   if (isLoading) {
     modalContent = <LoadingPage />;
   } else if (isError) {
-    modalContent = <RequestError message={error as string} />;
+    modalContent = <RequestError err={error} />;
   } else if (trigger.is_active) {
     modalContent = (
       <div style={{padding: '2em'}}>

@@ -9,8 +9,16 @@ import {
   EmptyStateFooter,
 } from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 
 export default function RequestError(props: RequestErrorProps) {
+  const capitalizeFirstLetter = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const errorMessage = props.message || getErrorMessageFromUnknown(props.err);
+  const message = capitalizeFirstLetter(errorMessage);
+
   return (
     <PageSection variant={PageSectionVariants.light}>
       <EmptyState variant="full">
@@ -19,7 +27,7 @@ export default function RequestError(props: RequestErrorProps) {
           icon={<EmptyStateIcon icon={ExclamationTriangleIcon} />}
           headingLevel="h1"
         />
-        <EmptyStateBody>{props.message}</EmptyStateBody>
+        <EmptyStateBody>{message}</EmptyStateBody>
         <EmptyStateFooter>
           <Button title="Home" onClick={() => window.location.reload()}>
             Retry
@@ -31,5 +39,6 @@ export default function RequestError(props: RequestErrorProps) {
 }
 
 interface RequestErrorProps {
-  message: string;
+  err?: unknown;
+  message?: string;
 }

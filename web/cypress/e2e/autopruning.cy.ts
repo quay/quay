@@ -125,7 +125,9 @@ describe('Namespace settings - autoprune policies', () => {
     cy.visit('/organization/testorg?tab=Settings');
     cy.contains('Auto-Prune Policies').click();
     cy.contains('Unable to complete request');
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'An unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('displays error when failing to create policy', () => {
@@ -138,7 +140,9 @@ describe('Namespace settings - autoprune policies', () => {
     attemptCreateTagNumberPolicy(cy);
     cy.contains('Could not create auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'an unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('displays error when failing to update policy', () => {
@@ -153,7 +157,9 @@ describe('Namespace settings - autoprune policies', () => {
     attemptCreateCreationDatePolicy(cy);
     cy.contains('Could not update auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'an unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('displays error when failing to delete policy', () => {
@@ -172,7 +178,9 @@ describe('Namespace settings - autoprune policies', () => {
     cy.contains('Save').click();
     cy.contains('Could not delete auto-prune policy');
     cy.get('button[aria-label="Danger alert details"]').click();
-    cy.contains('AxiosError: Request failed with status code 500');
+    cy.contains(
+      'an unexpected issue occurred. Please try again or contact support',
+    );
   });
 
   it('shows the registry autoprune policy', () => {

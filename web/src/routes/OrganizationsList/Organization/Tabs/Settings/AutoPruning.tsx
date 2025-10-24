@@ -18,6 +18,7 @@ import {
 } from 'src/resources/NamespaceAutoPruneResource';
 import ReadonlyAutoprunePolicy from 'src/routes/RepositoryDetails/Settings/RepositoryAutoPruningReadonlyPolicy';
 import AutoPrunePolicyForm from 'src/components/AutoPrunePolicyForm';
+import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 
 // Must match convert_to_timedelta from backend
 export const shorthandTimeUnits = {
@@ -100,7 +101,7 @@ export default function AutoPruning(props: AutoPruning) {
       addAlert({
         title: 'Could not create auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorCreatePolicyDetails.toString(),
+        message: getErrorMessageFromUnknown(errorCreatePolicyDetails),
       });
     }
   }, [errorCreatePolicy]);
@@ -110,7 +111,7 @@ export default function AutoPruning(props: AutoPruning) {
       addAlert({
         title: 'Could not update auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorUpdatePolicyDetails.toString(),
+        message: getErrorMessageFromUnknown(errorUpdatePolicyDetails),
       });
     }
   }, [errorUpdatePolicy]);
@@ -120,7 +121,7 @@ export default function AutoPruning(props: AutoPruning) {
       addAlert({
         title: 'Could not delete auto-prune policy',
         variant: AlertVariant.Failure,
-        message: errorDeletePolicyDetails.toString(),
+        message: getErrorMessageFromUnknown(errorDeletePolicyDetails),
       });
     }
   }, [errorDeletePolicy]);
@@ -182,7 +183,7 @@ export default function AutoPruning(props: AutoPruning) {
   }
 
   if (!isNullOrUndefined(error)) {
-    return <RequestError message={error.toString()} />;
+    return <RequestError err={error} />;
   }
 
   return (
