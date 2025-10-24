@@ -50,7 +50,7 @@ describe('OIDC Team Sync', () => {
       cy.get('button:contains("Enable Team Sync")').click(),
     );
     cy.get('#directory-sync-modal').contains(
-      "Enter the group name you'd like to sync membership with:",
+      "Enter the Group Name you'd like to sync membership with:",
     );
     cy.get('button:contains("Enable Sync")').should('be.disabled');
     cy.get('#directory-sync-modal')
@@ -240,7 +240,7 @@ describe('OIDC Team Sync', () => {
     cy.wait('@getAzureTeamMembers');
     cy.get('button:contains("Enable Team Sync")').click();
     cy.get('#directory-sync-modal').contains(
-      "Enter the group Object Id you'd like to sync membership with:",
+      "Enter the Object Id you'd like to sync membership with:",
     );
   });
 

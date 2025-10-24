@@ -42,11 +42,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </FlexItem>
           </Flex>
           <Flex>
-            <Conditional
-              if={
-                props.isAdmin && !props.isReadOnly && !props.pageInReadOnlyMode
-              }
-            >
+            <Conditional if={props.isAdmin && !props.isReadOnly}>
               <FlexItem>
                 <Button
                   onClick={() =>
@@ -64,18 +60,20 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             <Conditional
               if={
                 props.displaySyncDirectory &&
-                props.teamCanSync?.service == 'oidc'
+                ['ldap', 'keystone', 'oidc'].includes(
+                  props.teamCanSync?.service || '',
+                )
               }
             >
               <FlexItem>
-                <Button onClick={props.toggleOIDCTeamSyncModal}>
+                <Button onClick={props.toggleDirectoryTeamSyncModal}>
                   Enable Team Sync
                 </Button>
               </FlexItem>
             </Conditional>
 
             <Conditional
-              if={props.pageInReadOnlyMode && props.teamCanSync != null}
+              if={props.pageInReadOnlyMode && props.teamCanSync !== null}
             >
               <FlexItem>
                 <Button onClick={props.toggleRemoveTeamSyncModal}>
@@ -130,8 +128,8 @@ interface ManageMembersToolbarProps {
   isReadOnly: boolean;
   isAdmin: boolean;
   displaySyncDirectory: boolean;
-  isOIDCTeamSyncModalOpen: boolean;
-  toggleOIDCTeamSyncModal: () => void;
+  isDirectoryTeamSyncModalOpen: boolean;
+  toggleDirectoryTeamSyncModal: () => void;
   teamCanSync?: ITeamMembersCanSyncResponse;
   pageInReadOnlyMode: boolean;
   isRemoveTeamSyncModalOpen: boolean;
