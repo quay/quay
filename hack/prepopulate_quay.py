@@ -17,9 +17,9 @@ Key options
   --repo-prefix       Prefix for repo names (default: repo)
   --tag-prefix        Prefix for tag names (default: v)
   --public-repos      Make all created repos public
-  --admin-username    Bootstrap admin username (default: admin)
+  --admin-username    Bootstrap admin username (default: user1)
   --admin-password    Bootstrap admin password (default: password)
-  --admin-email       Bootstrap admin email (default: admin@example.com)
+  --admin-email       Bootstrap admin email (default: user1@example.com)
   --location          ImageStorageLocation to use (default: local_us)
 
 Examples
