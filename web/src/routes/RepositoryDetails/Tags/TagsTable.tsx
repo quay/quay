@@ -26,8 +26,8 @@ import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import TagExpiration from './TagsTableExpiration';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
+import {useTagPullStatistics} from 'src/hooks/UseTags';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -90,6 +90,18 @@ function TagsTableRow(props: RowProps) {
   const resetSecurityDetails = () => emptySecurityDetails();
 
   const location = useLocation();
+
+  // Fetch pull statistics for this specific tag
+  const {
+    pullStatistics,
+    isLoading: isLoadingPullStats,
+    isError: isErrorPullStats,
+  } = useTagPullStatistics(
+    props.org,
+    props.repo,
+    tag.name,
+    config?.features?.IMAGE_PULL_STATS || false,
+  );
 
   return (
     <Tbody
@@ -172,10 +184,24 @@ function TagsTableRow(props: RowProps) {
         </Td>
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
-            {tag.last_pulled ? formatDate(tag.last_pulled) : 'Never'}
+            {isLoadingPullStats ? (
+              <Spinner size="sm" />
+            ) : isErrorPullStats ? (
+              'Error'
+            ) : pullStatistics?.last_tag_pull_date ? (
+              formatDate(pullStatistics.last_tag_pull_date)
+            ) : (
+              'Never'
+            )}
           </Td>
           <Td dataLabel={ColumnNames.pullCount}>
-            {tag.pull_count !== undefined ? tag.pull_count : 0}
+            {isLoadingPullStats ? (
+              <Spinner size="sm" />
+            ) : isErrorPullStats ? (
+              '-'
+            ) : (
+              pullStatistics?.tag_pull_count ?? 0
+            )}
           </Td>
         </Conditional>
         <Td

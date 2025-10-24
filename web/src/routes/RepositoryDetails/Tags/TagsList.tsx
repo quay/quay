@@ -4,7 +4,7 @@ import {
   PanelFooter,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
 import {
   searchTagsFilterState,
@@ -24,7 +24,6 @@ import {
   TagsResponse,
   getManifestByDigest,
   getTags,
-  getTagPullStatistics,
 } from 'src/resources/TagResource';
 import TagsTable from './TagsTable';
 import {TagsToolbar} from './TagsToolbar';
@@ -44,18 +43,6 @@ export default function TagsList(props: TagsProps) {
   const filteredTags = showSignatures
     ? tags
     : tags.filter((tag) => !isCosignSignatureTag(tag.name));
-
-  // Memoize columns configuration to prevent re-renders
-  const tableColumns = useMemo(
-    () => ({
-      2: (item: Tag) => item.name, // Tag Name
-      4: (item: Tag) => item.size || 0, // Size
-      5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
-      7: (item: Tag) => item.manifest_digest, // Manifest
-    }),
-    [],
-  );
 
   // Use unified table hook for sorting, filtering, and pagination
   const {
@@ -103,25 +90,6 @@ export default function TagsList(props: TagsProps) {
       tag.manifest_list = JSON.parse(manifestResp.manifest_data);
     };
 
-    const getPullStats = async (tag: Tag) => {
-      try {
-        const pullStats = await getTagPullStatistics(
-          props.organization,
-          props.repository,
-          tag.name,
-        );
-        if (pullStats) {
-          tag.pull_count = pullStats.tag_pull_count;
-          tag.last_pulled = pullStats.last_tag_pull_date;
-        }
-      } catch (error) {
-        console.warn(
-          `Failed to fetch pull statistics for tag ${tag.name}:`,
-          error,
-        );
-      }
-    };
-
     let page = 1;
     let hasAdditional = false;
     let allTags: Tag[] = [];
@@ -137,9 +105,6 @@ export default function TagsList(props: TagsProps) {
             tag.is_manifest_list ? getManifest(tag) : null,
           ),
         );
-
-        // Fetch pull statistics for the page size only
-        await Promise.all(resp.tags.map((tag: Tag) => getPullStats(tag)));
 
         allTags = page == 1 ? resp.tags : [...allTags, ...resp.tags];
 
