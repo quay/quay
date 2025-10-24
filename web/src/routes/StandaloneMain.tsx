@@ -12,6 +12,7 @@ import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
 
 import {QuayHeader} from 'src/components/header/QuayHeader';
 import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
+import {QuayFooter} from 'src/components/footer/QuayFooter';
 import {NavigationPath} from './NavigationPath';
 import OrganizationsList from './OrganizationsList/OrganizationsList';
 import Organization from './OrganizationsList/Organization/Organization';
@@ -150,6 +151,7 @@ export function StandaloneMain() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Outlet />
+        <QuayFooter />
       </Page>
     </ErrorBoundary>
   );
