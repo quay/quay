@@ -28,10 +28,12 @@ import {
   CubeIcon,
 } from '@patternfly/react-icons';
 import {ChildManifestSize} from 'src/components/Table/ImageSize';
+import Labels from 'src/components/labels/Labels';
 import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useQuayState} from 'src/hooks/UseQuayState';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
 import {useTagPullStatistics} from 'src/hooks/UseTags';
 
@@ -88,6 +90,7 @@ function SubRow(props: SubRowProps) {
 
 function TagsTableRow(props: RowProps) {
   const {inReadOnlyMode} = useQuayState();
+  const config = useQuayConfig();
   const tag = props.tag;
   const rowIndex = props.rowIndex;
   const expandedView = useRecoilValue(expandedViewState);
