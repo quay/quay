@@ -18,7 +18,7 @@ from endpoints.api.build import *
 from endpoints.api.discovery import *
 from endpoints.api.globalmessages import *  # type: ignore[no-redef]
 from endpoints.api.logs import *  # type: ignore[no-redef]
-from endpoints.api.manifest import *  # type: ignore[no-redef]
+from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.namespacequota import *
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
