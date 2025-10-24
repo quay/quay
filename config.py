@@ -263,6 +263,9 @@ class DefaultConfig(ImmutableConfig):
     # Real-time user events
     USER_EVENTS_REDIS = {"host": "localhost"}
 
+    # Pull metrics tracking (uses Redis DB 1)
+    PULL_METRICS_REDIS = {"host": "localhost", "db": 1}
+
     # Stripe config
     BILLING_TYPE = "FakeStripe"
 
@@ -370,6 +373,15 @@ class DefaultConfig(ImmutableConfig):
 
     # Allow realtime user events to be sent to redis
     FEATURE_USER_EVENTS = True
+
+    # Feature Flag: Whether to track and display image pull statistics
+    FEATURE_IMAGE_PULL_STATS = False
+
+    # Pull metrics thread pool configuration
+    PULL_METRICS_WORKER_COUNT = 5
+
+    # Redis flush worker configuration
+    REDIS_FLUSH_INTERVAL_SECONDS = 300  # 5 minutes default
 
     # Semver spec for which Docker versions we will blacklist
     # Documentation: http://pythonhosted.org/semantic_version/reference.html#semantic_version.Spec

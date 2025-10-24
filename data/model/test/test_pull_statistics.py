@@ -111,7 +111,7 @@ class TestPullStatistics:
         updated_stats = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "latest"
         )
-        assert updated_stats.tag_pull_count == 8  # 5 + 3
+        assert updated_stats.tag_pull_count == 5  # max(5, 3) = 5
         assert updated_stats.current_manifest_digest == "sha256:new456"
         assert updated_stats.last_tag_pull_date == datetime(2024, 1, 3, 12, 0, 0)
 
@@ -178,7 +178,7 @@ class TestPullStatistics:
             ManifestPullStatistics.repository == self.repo_id,
             ManifestPullStatistics.manifest_digest == "sha256:abc123",
         )
-        assert updated_stats.manifest_pull_count == 15  # 10 + 5
+        assert updated_stats.manifest_pull_count == 10  # max(10, 5) = 10
         assert updated_stats.last_manifest_pull_date == datetime(2024, 1, 3, 12, 0, 0)
 
     def test_get_tag_pull_statistics_existing(self, initialized_db):
@@ -275,7 +275,7 @@ class TestPullStatistics:
         final_stats = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "concurrent"
         )
-        assert final_stats.tag_pull_count == 18  # 10 + 5 + 3
+        assert final_stats.tag_pull_count == 10  # max(max(10, 5), 3) = 10
         assert final_stats.current_manifest_digest == "sha256:update2"  # Latest update
         assert final_stats.last_tag_pull_date == datetime(2024, 1, 3, 12, 0, 0)  # Latest timestamp
 
@@ -424,14 +424,14 @@ class TestPullStatistics:
         existing1 = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "existing1"
         )
-        assert existing1.tag_pull_count == 15  # 10 + 5
+        assert existing1.tag_pull_count == 10  # max(10, 5) = 10
         assert existing1.current_manifest_digest == "sha256:new1"
         assert existing1.last_tag_pull_date == datetime(2024, 1, 5, 12, 0, 0)
 
         existing2 = TagPullStatistics.get(
             TagPullStatistics.repository == self.repo_id, TagPullStatistics.tag_name == "existing2"
         )
-        assert existing2.tag_pull_count == 27  # 20 + 7
+        assert existing2.tag_pull_count == 20  # max(20, 7) = 20
         assert existing2.current_manifest_digest == "sha256:new2"
         assert existing2.last_tag_pull_date == datetime(2024, 1, 4, 12, 0, 0)
 
@@ -538,7 +538,7 @@ class TestPullStatistics:
             TagPullStatistics.repository == self.repo_id,
             TagPullStatistics.tag_name == "timestamp_test",
         )
-        assert updated.tag_pull_count == 15  # 10 + 5
+        assert updated.tag_pull_count == 10  # max(10, 5) = 10
         assert updated.last_tag_pull_date == datetime(
             2024, 1, 10, 12, 0, 0
         )  # Should keep later date

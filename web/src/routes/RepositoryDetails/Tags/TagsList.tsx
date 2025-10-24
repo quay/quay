@@ -4,7 +4,7 @@ import {
   PanelFooter,
 } from '@patternfly/react-core';
 import {CubesIcon} from '@patternfly/react-icons';
-import {useEffect, useState, useMemo} from 'react';
+import {useEffect, useState} from 'react';
 import {useRecoilState, useRecoilValue, useResetRecoilState} from 'recoil';
 import {
   searchTagsFilterState,
@@ -46,18 +46,6 @@ export default function TagsList(props: TagsProps) {
     ? tags
     : tags.filter((tag) => !isCosignSignatureTag(tag.name));
 
-  // Memoize columns configuration to prevent re-renders
-  const tableColumns = useMemo(
-    () => ({
-      2: (item: Tag) => item.name, // Tag Name
-      4: (item: Tag) => item.size || 0, // Size
-      5: (item: Tag) => item.last_modified, // Last Modified
-      6: (item: Tag) => item.expiration || '', // Expires
-      7: (item: Tag) => item.manifest_digest, // Manifest
-    }),
-    [],
-  );
-
   // Use unified table hook for sorting, filtering, and pagination
   const {
     paginatedData: paginatedTags,
@@ -65,7 +53,15 @@ export default function TagsList(props: TagsProps) {
     getSortableSort,
     paginationProps,
   } = usePaginatedSortableTable(filteredTags, {
-    columns: tableColumns,
+    columns: {
+      2: (item: Tag) => item.name, // Tag Name
+      4: (item: Tag) => item.size || 0, // Size
+      5: (item: Tag) => item.last_modified, // Last Modified
+      6: (item: Tag) => item.expiration || '', // Expires
+      7: (item: Tag) => item.manifest_digest, // Manifest
+      8: (item: Tag) => item.last_pulled || '', // Last Pulled
+      9: (item: Tag) => item.pull_count || 0, // Pull Count
+    },
     filter: searchFilter,
     initialPerPage: 20,
   });
@@ -95,6 +91,7 @@ export default function TagsList(props: TagsProps) {
       );
       tag.manifest_list = JSON.parse(manifestResp.manifest_data);
     };
+
     let page = 1;
     let hasAdditional = false;
     let allTags: Tag[] = [];
@@ -110,6 +107,7 @@ export default function TagsList(props: TagsProps) {
             tag.is_manifest_list ? getManifest(tag) : null,
           ),
         );
+
         allTags = page == 1 ? resp.tags : [...allTags, ...resp.tags];
 
         // Progressive rendering: update UI with tags as they load

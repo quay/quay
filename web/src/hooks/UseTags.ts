@@ -5,6 +5,7 @@ import {
   createTag,
   permanentlyDeleteTag,
   bulkDeleteTags,
+  getTagPullStatistics,
 } from 'src/resources/TagResource';
 import {getTags, restoreTag} from 'src/resources/TagResource';
 
@@ -17,7 +18,7 @@ export function useAllTags(org: string, repo: string) {
     isError: errorLoadingTags,
     error: errorTagsDetails,
     dataUpdatedAt,
-  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], ({signal}) =>
+  } = useQuery(['namespace', org, 'repo', repo, 'alltags'], () =>
     getTags(org, repo, 1, 50, null, false),
   );
 
@@ -136,5 +137,48 @@ export function usePermanentlyDeleteTag(org: string, repo: string) {
     permanentlyDeleteTag: mutate,
     success: isSuccess,
     error: isError,
+  };
+}
+
+export function useTagPullStatistics(
+  org: string,
+  repo: string,
+  tag: string,
+  enabled = true,
+) {
+  const {data, isLoading, isError, error} = useQuery(
+    ['tagPullStatistics', org, repo, tag],
+    () => getTagPullStatistics(org, repo, tag),
+    {
+      enabled: enabled,
+      retry: false,
+      staleTime: 60000, // Consider data fresh for 60 seconds
+    },
+  );
+
+  // Check if this is a 404 (no data available) vs a real error
+  const is404 =
+    isError &&
+    error instanceof ResourceError &&
+    (error as ResourceError & {error?: {response?: {status?: number}}}).error
+      ?.response?.status === 404;
+
+  // For 404 (no data), return default values with 0 pulls
+  // For other errors, return null so components can show error state
+  const pullStatistics = is404
+    ? {
+        tag_name: tag,
+        tag_pull_count: 0,
+        last_tag_pull_date: null,
+        current_manifest_digest: '',
+        last_manifest_pull_date: null,
+      }
+    : data || null;
+
+  return {
+    pullStatistics: pullStatistics,
+    isLoading: isLoading,
+    isError: isError && !is404, // Only report error for non-404 errors
+    error: error,
   };
 }

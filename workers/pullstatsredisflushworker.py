@@ -24,7 +24,6 @@ from data.model.pull_statistics import (
     bulk_upsert_tag_statistics,
 )
 from digest.digest_tools import Digest, InvalidDigestException
-from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
@@ -452,6 +451,11 @@ if __name__ == "__main__":
     # Check if Redis is configured
     if not app.config.get("PULL_METRICS_REDIS"):
         logger.debug("PULL_METRICS_REDIS not configured; skipping redis flush worker")
+        while True:
+            time.sleep(100000)
+
+    if app.config.get("TESTING", False):
+        logger.debug("Skipping redis flush worker during tests")
         while True:
             time.sleep(100000)
 

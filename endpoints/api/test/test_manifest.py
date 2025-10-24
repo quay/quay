@@ -1,6 +1,11 @@
+from datetime import datetime
+
 from mock import patch
 
 from app import app as realapp
+from data.database import ManifestPullStatistics, TagPullStatistics
+from data.model.repository import create_repository
+from data.model.user import get_user
 from data.registry_model import registry_model
 from endpoints.api.manifest import RepositoryManifest, _get_modelcard_layer_digest
 from endpoints.api.test.shared import conduct_api_call
@@ -14,8 +19,12 @@ from util.bytes import Bytes
 def test_repository_manifest(app):
     with client_with_identity("devtable", app) as cl:
         repo_ref = registry_model.lookup_repository("devtable", "simple")
+        assert repo_ref is not None, "Repository not found"
+
         tags = registry_model.list_all_active_repository_tags(repo_ref)
         for tag in tags:
+            if tag is None:
+                continue
             manifest_digest = tag.manifest_digest
             if manifest_digest is None:
                 continue
@@ -134,3 +143,105 @@ def test_modelcar_layer(app):
             layer_digest2
             == "sha256:22af0898315a239117308d39acd80636326c4987510b0ec6848e58eb584ba82e"
         )
+
+
+def test_repository_manifest_pull_statistics_with_data(app, initialized_db):
+    """Test getting pull statistics for a manifest when data exists."""
+    # Test the pull statistics retrieval directly via the model layer
+    from data.model.pull_statistics import get_manifest_pull_statistics
+
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    assert repo_ref is not None, "Repository not found"
+
+    tags = registry_model.list_all_active_repository_tags(repo_ref)
+
+    manifest_digest = None
+    for tag in tags:
+        if tag and tag.manifest_digest:
+            manifest_digest = tag.manifest_digest
+            break
+
+    assert manifest_digest is not None, "No manifest found in test repository"
+
+    # Create test pull statistics
+    ManifestPullStatistics.create(
+        repository=repo_ref._db_id,
+        manifest_digest=manifest_digest,
+        manifest_pull_count=42,
+        last_manifest_pull_date=datetime(2024, 1, 15, 10, 30, 0),
+    )
+
+    # Test data model layer
+    stats = get_manifest_pull_statistics(repo_ref.id, manifest_digest)
+    assert stats is not None
+    assert stats["manifest_digest"] == manifest_digest
+    assert stats["pull_count"] == 42
+    assert stats["last_pull_date"] is not None
+
+
+def test_repository_manifest_pull_statistics_no_data(app, initialized_db):
+    """Test getting pull statistics for a manifest when no data exists."""
+    from data.model.pull_statistics import get_manifest_pull_statistics
+
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    assert repo_ref is not None, "Repository not found"
+
+    tags = registry_model.list_all_active_repository_tags(repo_ref)
+
+    manifest_digest = None
+    for tag in tags:
+        if tag and tag.manifest_digest:
+            manifest_digest = tag.manifest_digest
+            break
+
+    assert manifest_digest is not None, "No manifest found in test repository"
+
+    # Don't create any pull statistics - test default behavior (should return None)
+    stats = get_manifest_pull_statistics(repo_ref.id, manifest_digest)
+    assert stats is None
+
+
+def test_repository_manifest_pull_statistics_nonexistent(app, initialized_db):
+    """Test getting pull statistics for a nonexistent manifest."""
+    from data.model.pull_statistics import get_manifest_pull_statistics
+
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    assert repo_ref is not None, "Repository not found"
+
+    # Test with nonexistent digest
+    stats = get_manifest_pull_statistics(
+        repo_ref.id, "sha256:nonexistent1234567890abcdef1234567890abcdef1234567890abcdef12345678"
+    )
+    assert stats is None
+
+
+def test_repository_manifest_pull_statistics_multiple_pulls(app, initialized_db):
+    """Test that pull statistics reflect multiple pull events."""
+    from data.model.pull_statistics import get_manifest_pull_statistics
+
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    assert repo_ref is not None, "Repository not found"
+
+    tags = registry_model.list_all_active_repository_tags(repo_ref)
+
+    manifest_digest = None
+    for tag in tags:
+        if tag and tag.manifest_digest:
+            manifest_digest = tag.manifest_digest
+            break
+
+    assert manifest_digest is not None
+
+    # Create test pull statistics with higher counts
+    ManifestPullStatistics.create(
+        repository=repo_ref._db_id,
+        manifest_digest=manifest_digest,
+        manifest_pull_count=150,
+        last_manifest_pull_date=datetime(2024, 2, 20, 14, 45, 0),
+    )
+
+    # Verify higher pull count
+    stats = get_manifest_pull_statistics(repo_ref.id, manifest_digest)
+    assert stats is not None
+    assert stats["pull_count"] == 150
+    assert stats["last_pull_date"] is not None

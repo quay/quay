@@ -131,10 +131,12 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                     else:
                         new_date = existing_record.last_tag_pull_date
 
+                    new_count = max(existing_record.tag_pull_count, update["pull_count"])
+
                     updates_for_existing.append(
                         {
                             "record": existing_record,
-                            "new_count": existing_record.tag_pull_count + update["pull_count"],
+                            "new_count": new_count,
                             "new_date": new_date,
                             "new_digest": update["manifest_digest"],
                         }
@@ -271,10 +273,12 @@ def bulk_upsert_manifest_statistics(manifest_updates: List[Dict]) -> int:
                     else:
                         new_date = existing_record.last_manifest_pull_date
 
+                    new_count = max(existing_record.manifest_pull_count, update["pull_count"])
+
                     updates_for_existing.append(
                         {
                             "record": existing_record,
-                            "new_count": existing_record.manifest_pull_count + update["pull_count"],
+                            "new_count": new_count,
                             "new_date": new_date,
                         }
                     )
