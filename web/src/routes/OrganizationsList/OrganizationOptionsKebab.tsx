@@ -11,11 +11,19 @@ import {CogIcon} from '@patternfly/react-icons';
 import RenameOrganizationModal from './modals/RenameOrganizationModal';
 import DeleteOrganizationModal from './modals/DeleteOrganizationModal';
 import TakeOwnershipModal from './modals/TakeOwnershipModal';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 
 export default function OrganizationOptionsKebab(
   props: OrganizationOptionsKebabProps,
 ) {
+  const {canModify} = useSuperuserPermissions();
   const [isKebabOpen, setIsKebabOpen] = useState<boolean>(false);
+
+  // If cannot modify, return null (no actions allowed)
+  // This handles: read-only mode, read-only superuser, and non-superusers
+  if (!canModify) {
+    return null;
+  }
   const [isRenameModalOpen, setIsRenameModalOpen] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [isTakeOwnershipModalOpen, setIsTakeOwnershipModalOpen] =

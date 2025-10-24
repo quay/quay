@@ -138,6 +138,7 @@ export default function OrganizationsList() {
     search,
     setSearch,
     deleteOrganizations,
+    userEmailMap,
   } = useOrganizations();
 
   const {isSuperUser} = useCurrentUser();
@@ -447,11 +448,17 @@ export default function OrganizationsList() {
               <Th sort={getSortableSort(1)} modifier="wrap">
                 {ColumnNames.name}
               </Th>
+              {isSuperUser && quayConfig?.features?.MAILING && (
+                <Th>{ColumnNames.adminEmail}</Th>
+              )}
               <Th>{ColumnNames.repoCount}</Th>
               <Th>{ColumnNames.teamsCount}</Th>
               <Th>{ColumnNames.membersCount}</Th>
               <Th>{ColumnNames.robotsCount}</Th>
               <Th>{ColumnNames.lastModified}</Th>
+              {isSuperUser &&
+                quayConfig?.features?.QUOTA_MANAGEMENT &&
+                quayConfig?.features?.EDIT_QUOTA && <Th>{ColumnNames.size}</Th>}
               {isSuperUser && <Th>{ColumnNames.options}</Th>}
             </Tr>
           </Thead>
@@ -470,6 +477,7 @@ export default function OrganizationsList() {
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}
+                  userEmail={org.isUser ? userEmailMap[org.name] : undefined}
                 ></OrgTableData>
               </Tr>
             ))}

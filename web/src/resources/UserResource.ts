@@ -26,6 +26,7 @@ export interface IUserResource {
   tag_expiration_s: number;
   prompts: [];
   super_user: boolean;
+  global_readonly_super_user?: boolean;
   company: string;
   family_name: string;
   given_name: string;

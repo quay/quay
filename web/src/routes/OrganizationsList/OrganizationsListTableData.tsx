@@ -14,6 +14,8 @@ import {OrganizationsTableItem} from './OrganizationsList';
 import {useQuery} from '@tanstack/react-query';
 import OrganizationOptionsKebab from './OrganizationOptionsKebab';
 import {useRepositories} from 'src/hooks/UseRepositories';
+import {renderQuotaConsumed} from 'src/libs/quotaUtils';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface CountProps {
   count: string | number;
@@ -39,9 +41,14 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
   );
 }
 
+interface OrgTableDataProps extends OrganizationsTableItem {
+  userEmail?: string;
+}
+
 // Get and assemble data from multiple endpoints to show in Org table
 // Only necessary because current API structure does not return all required data
-export default function OrgTableData(props: OrganizationsTableItem) {
+export default function OrgTableData(props: OrgTableDataProps) {
+  const config = useQuayConfig();
   // Get current user data for user avatars
   const {user: currentUser} = useCurrentUser();
   // const queryClient = useQueryClient();
@@ -138,6 +145,21 @@ export default function OrgTableData(props: OrganizationsTableItem) {
           </FlexItem>
         </Flex>
       </Td>
+      {isSuperUser && config?.features?.MAILING && (
+        <Td dataLabel={ColumnNames.adminEmail}>
+          {props.isUser ? (
+            props.userEmail ? (
+              <a href={`mailto:${props.userEmail}`}>{props.userEmail}</a>
+            ) : (
+              <span style={{color: '#888'}}>—</span>
+            )
+          ) : organization?.email ? (
+            <a href={`mailto:${organization.email}`}>{organization.email}</a>
+          ) : (
+            <span style={{color: '#888'}}>—</span>
+          )}
+        </Td>
+      )}
       <Td dataLabel={ColumnNames.repoCount}>
         <Count count={repoCount}></Count>
       </Td>
@@ -155,6 +177,21 @@ export default function OrgTableData(props: OrganizationsTableItem) {
           lastModifiedDate={lastModifiedDate}
         ></RepoLastModifiedDate>
       </Td>
+      {isSuperUser &&
+        config?.features?.QUOTA_MANAGEMENT &&
+        config?.features?.EDIT_QUOTA && (
+          <Td dataLabel={ColumnNames.size}>
+            {props.isUser ? (
+              <span style={{color: '#888'}}>—</span>
+            ) : (
+              renderQuotaConsumed(organization?.quota_report, {
+                showPercentage: true,
+                showTotal: true,
+                showBackfill: true,
+              })
+            )}
+          </Td>
+        )}
       {isSuperUser && (
         <Td dataLabel={ColumnNames.options}>
           <OrganizationOptionsKebab name={props.name} isUser={props.isUser} />

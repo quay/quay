@@ -1,6 +1,7 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode, BulkOperationError} from './ErrorHandling';
+import {IQuotaReport} from './RepositoryResource';
 
 export interface IAvatar {
   name: string;
@@ -23,6 +24,7 @@ export interface IOrganization {
   teams?: string[];
   tag_expiration_s: number;
   email: string;
+  quota_report?: IQuotaReport;
 }
 
 export async function fetchOrg(orgname: string, signal: AbortSignal) {

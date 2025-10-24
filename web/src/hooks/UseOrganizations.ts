@@ -75,6 +75,16 @@ export function useOrganizations() {
     });
   }
 
+  // Create a map of username -> email for easy lookup
+  const userEmailMap: Record<string, string> = {};
+  if (isSuperUser && superUserUsers) {
+    superUserUsers.forEach((user) => {
+      if (user.username && user.email) {
+        userEmailMap[user.username] = user.email;
+      }
+    });
+  }
+
   // Get query client for mutations
   const queryClient = useQueryClient();
 
@@ -117,6 +127,7 @@ export function useOrganizations() {
     superUserOrganizations,
     superUserUsers,
     organizationsTableDetails,
+    userEmailMap,
 
     // Fetching State
     loading,
