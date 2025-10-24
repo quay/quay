@@ -138,4 +138,3 @@ class TestConfig(DefaultConfig):
     DEFAULT_UI = "angular"
 
     FEATURE_OTEL_TRACING = True
-    FEATURE_IMAGE_PULL_STATS = True
