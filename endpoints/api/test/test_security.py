@@ -6953,7 +6953,7 @@ SECURITY_TESTS: List[
         TAG_PARAMS,
         {},
         "devtable",
-        404,
+        200,
     ),
     (
         RepositoryManifestPullStatistics,
