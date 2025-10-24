@@ -1,36 +1,34 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
-import {useDeleteSingleOrganization} from 'src/hooks/UseOrganizationActions';
+import {useDeleteUser} from 'src/hooks/UseUserActions';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 
-interface DeleteOrganizationModalProps {
+interface DeleteUserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  organizationName: string;
+  username: string;
 }
 
-export default function DeleteOrganizationModal(
-  props: DeleteOrganizationModalProps,
-) {
+export default function DeleteUserModal(props: DeleteUserModalProps) {
   const [error, setError] = useState<string | null>(null);
   const {addAlert} = useAlerts();
 
-  const {deleteOrganization, isLoading} = useDeleteSingleOrganization({
+  const {deleteUser, isLoading} = useDeleteUser({
     onSuccess: () => {
       addAlert({
         variant: AlertVariant.Success,
-        title: `Successfully deleted organization ${props.organizationName}`,
+        title: `Successfully deleted user ${props.username}`,
       });
       handleClose();
     },
     onError: (err) => {
       const errorMessage =
-        err?.response?.data?.error_message || 'Failed to delete organization';
+        err?.response?.data?.error_message || 'Failed to delete user';
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
-        title: `Failed to delete organization ${props.organizationName}`,
+        title: `Failed to delete user ${props.username}`,
         message: errorMessage,
       });
     },
@@ -43,24 +41,24 @@ export default function DeleteOrganizationModal(
 
   const handleDelete = () => {
     setError(null);
-    deleteOrganization(props.organizationName);
+    deleteUser(props.username);
   };
 
   return (
     <Modal
-      title="Delete Organization"
+      title="Delete User"
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
       actions={[
         <Button
-          key="confirm"
+          key="delete"
           variant="danger"
           onClick={handleDelete}
           isLoading={isLoading}
           isDisabled={isLoading}
         >
-          OK
+          Delete User
         </Button>,
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
@@ -68,9 +66,17 @@ export default function DeleteOrganizationModal(
       ]}
     >
       <Text>
-        Are you sure you want to delete this organization? Its data will be
-        deleted with it.
+        Are you sure you want to delete user <strong>{props.username}</strong>?
       </Text>
+      <Alert
+        variant="warning"
+        title="Warning"
+        isInline
+        style={{marginTop: 16}}
+      >
+        This action cannot be undone. All repositories and data owned by this
+        user will be permanently deleted.
+      </Alert>
       {error && (
         <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
           {error}

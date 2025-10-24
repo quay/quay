@@ -48,6 +48,7 @@ import './css/Organizations.scss';
 export interface OrganizationsTableItem {
   name: string;
   isUser: boolean;
+  userEnabled?: boolean; // Only used when isUser is true
 }
 
 function OrgListHeader({
@@ -477,6 +478,7 @@ export default function OrganizationsList() {
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}
+                  userEnabled={org.userEnabled}
                   userEmail={org.isUser ? userEmailMap[org.name] : undefined}
                 ></OrgTableData>
               </Tr>

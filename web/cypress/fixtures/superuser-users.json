@@ -10,6 +10,19 @@
         "color": "#ffff00",
         "kind": "user"
       },
+      "super_user": true,
+      "enabled": true
+    },
+    {
+      "username": "tom",
+      "email": "tom@example.com",
+      "verified": true,
+      "avatar": {
+        "name": "tom",
+        "hash": "t0mt0mt0mt0mt0mt0mt0mt0mt0mt0mt0m",
+        "color": "#4682B4",
+        "kind": "user"
+      },
       "super_user": false,
       "enabled": true
     },

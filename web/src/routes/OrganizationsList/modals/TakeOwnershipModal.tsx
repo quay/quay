@@ -1,6 +1,8 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useTakeOwnership} from 'src/hooks/UseOrganizationActions';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 interface TakeOwnershipModalProps {
   isOpen: boolean;
@@ -11,15 +13,26 @@ interface TakeOwnershipModalProps {
 
 export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
   const [error, setError] = useState<string | null>(null);
+  const {addAlert} = useAlerts();
+  const entityType = props.isUser ? 'user' : 'organization';
 
   const {takeOwnership, isLoading} = useTakeOwnership({
     onSuccess: () => {
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully took ownership of ${entityType} ${props.organizationName}`,
+      });
       handleClose();
     },
     onError: (err) => {
-      setError(
-        err?.response?.data?.error_message || 'Failed to take ownership',
-      );
+      const errorMessage =
+        err?.response?.data?.error_message || 'Failed to take ownership';
+      setError(errorMessage);
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: `Failed to take ownership of ${entityType} ${props.organizationName}`,
+        message: errorMessage,
+      });
     },
   });
 

@@ -32,11 +32,8 @@ describe('Superuser Framework', () => {
       cy.visit('/organization');
       cy.wait('@getConfigNoSuperuser');
 
-      // Verify superuser navigation items don't appear
-      cy.get('[data-testid="service-keys-nav"]').should('not.exist');
-      cy.get('[data-testid="change-log-nav"]').should('not.exist');
-      cy.get('[data-testid="usage-logs-nav"]').should('not.exist');
-      cy.get('[data-testid="messages-nav"]').should('not.exist');
+      // Verify Superuser parent section does not exist when feature is disabled
+      cy.get('[data-testid="superuser-nav"]').should('not.exist');
 
       // Verify organizations table has only 7 headers (no Actions column)
       cy.get('table thead tr th').should('have.length', 7);
@@ -141,11 +138,14 @@ describe('Superuser Framework', () => {
       cy.wait('@getConfigWithSuperuser');
       cy.wait('@getSuperUser');
 
-      // Verify superuser navigation items appear first
-      cy.contains('Service Keys').should('exist');
-      cy.contains('Change Log').should('exist');
-      cy.contains('Usage Logs').should('exist');
-      cy.contains('Messages').should('exist');
+      // Expand Superuser section first
+      cy.contains('Superuser').click();
+
+      // Verify superuser navigation items are visible within expanded section
+      cy.get('[data-testid="service-keys-nav"]').should('exist');
+      cy.get('[data-testid="change-log-nav"]').should('exist');
+      cy.get('[data-testid="usage-logs-nav"]').should('exist');
+      cy.get('[data-testid="messages-nav"]').should('exist');
 
       // Wait for all the organizations APIs that trigger table rendering
       cy.wait('@getSuperuserOrgs');
@@ -458,11 +458,17 @@ describe('Superuser Framework', () => {
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
-      // Verify all superuser navigation items are visible
-      cy.contains('Service Keys').should('be.visible');
-      cy.contains('Change Log').should('be.visible');
-      cy.contains('Usage Logs').should('be.visible');
-      cy.contains('Messages').should('be.visible');
+      // Verify Superuser parent is visible
+      cy.contains('Superuser').should('be.visible');
+
+      // Expand Superuser section
+      cy.contains('Superuser').click();
+
+      // Verify all child navigation items are visible
+      cy.get('[data-testid="service-keys-nav"]').should('be.visible');
+      cy.get('[data-testid="change-log-nav"]').should('be.visible');
+      cy.get('[data-testid="usage-logs-nav"]').should('be.visible');
+      cy.get('[data-testid="messages-nav"]').should('be.visible');
 
       // Test navigation links work
       cy.intercept('GET', '/api/v1/superuser/keys', {
@@ -470,7 +476,7 @@ describe('Superuser Framework', () => {
         body: {keys: []},
       }).as('getServiceKeys');
 
-      cy.contains('Service Keys').click();
+      cy.get('[data-testid="service-keys-nav"]').click();
       cy.wait('@getServiceKeys');
       cy.url().should('include', '/service-keys');
     });
@@ -495,11 +501,8 @@ describe('Superuser Framework', () => {
       cy.wait('@getConfig');
       cy.wait('@getRegularUser');
 
-      // Verify superuser navigation items are not visible
-      cy.contains('Service Keys').should('not.exist');
-      cy.contains('Change Log').should('not.exist');
-      cy.contains('Usage Logs').should('not.exist');
-      cy.contains('Messages').should('not.exist');
+      // Verify Superuser parent section does not exist for non-superusers
+      cy.contains('Superuser').should('not.exist');
 
       // Verify only standard navigation items are visible
       cy.contains('Organizations').should('be.visible');

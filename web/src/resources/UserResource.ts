@@ -27,6 +27,7 @@ export interface IUserResource {
   prompts: [];
   super_user: boolean;
   global_readonly_super_user?: boolean;
+  enabled?: boolean; // User enabled/disabled status (for superuser user management)
   company: string;
   family_name: string;
   given_name: string;
@@ -133,6 +134,51 @@ export async function createUser(
   });
   assertHttpCode(response.status, 200);
   return response.data;
+}
+
+export interface CreateSuperuserUserRequest {
+  username: string;
+  password: string;
+  email: string;
+}
+
+export interface CreateSuperuserUserResponse {
+  username: string;
+  email: string;
+  enabled: boolean;
+}
+
+export async function createSuperuserUser(
+  data: CreateSuperuserUserRequest,
+): Promise<CreateSuperuserUserResponse> {
+  const response: AxiosResponse<CreateSuperuserUserResponse> =
+    await axios.post('/api/v1/superuser/users/', data);
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export interface UpdateSuperuserUserRequest {
+  email?: string;
+  password?: string;
+  enabled?: boolean;
+}
+
+export async function updateSuperuserUser(
+  username: string,
+  data: UpdateSuperuserUserRequest,
+): Promise<void> {
+  const response: AxiosResponse = await axios.put(
+    `/api/v1/superuser/users/${username}`,
+    data,
+  );
+  assertHttpCode(response.status, 200);
+}
+
+export async function deleteSuperuserUser(username: string): Promise<void> {
+  const response: AxiosResponse = await axios.delete(
+    `/api/v1/superuser/users/${username}`,
+  );
+  assertHttpCode(response.status, 204);
 }
 
 export interface UpdateUserRequest {

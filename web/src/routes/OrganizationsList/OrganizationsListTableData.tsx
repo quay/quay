@@ -194,7 +194,11 @@ export default function OrgTableData(props: OrgTableDataProps) {
         )}
       {isSuperUser && (
         <Td dataLabel={ColumnNames.options}>
-          <OrganizationOptionsKebab name={props.name} isUser={props.isUser} />
+          <OrganizationOptionsKebab
+            name={props.name}
+            isUser={props.isUser}
+            userEnabled={props.userEnabled}
+          />
         </Td>
       )}
     </>

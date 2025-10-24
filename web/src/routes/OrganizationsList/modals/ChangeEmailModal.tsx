@@ -8,61 +8,65 @@ import {
   TextInput,
   Alert,
 } from '@patternfly/react-core';
-import {useRenameOrganization} from 'src/hooks/UseOrganizationActions';
+import {useChangeUserEmail} from 'src/hooks/UseUserActions';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
 
-interface RenameOrganizationModalProps {
+interface ChangeEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  organizationName: string;
+  username: string;
 }
 
-export default function RenameOrganizationModal(
-  props: RenameOrganizationModalProps,
-) {
-  const [newName, setNewName] = useState('');
+export default function ChangeEmailModal(props: ChangeEmailModalProps) {
+  const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const {addAlert} = useAlerts();
 
-  const {renameOrganization, isLoading} = useRenameOrganization({
-    onSuccess: (oldName: string, newName: string) => {
+  const {changeEmail, isLoading} = useChangeUserEmail({
+    onSuccess: () => {
       addAlert({
         variant: AlertVariant.Success,
-        title: `Successfully renamed organization from ${oldName} to ${newName}`,
+        title: `Successfully changed email for ${props.username}`,
       });
       handleClose();
     },
     onError: (err) => {
       const errorMessage =
-        err?.response?.data?.error_message || 'Failed to rename organization';
+        err?.response?.data?.error_message || 'Failed to change email';
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
-        title: `Failed to rename organization ${props.organizationName}`,
+        title: `Failed to change email for ${props.username}`,
         message: errorMessage,
       });
     },
   });
 
   const handleClose = () => {
-    setNewName('');
+    setNewEmail('');
     setError(null);
     props.onClose();
   };
 
   const handleSubmit = () => {
-    if (!newName.trim()) {
-      setError('Organization name cannot be empty');
+    if (!newEmail.trim()) {
+      setError('Email cannot be empty');
+      return;
+    }
+    // Basic email validation
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(newEmail.trim())) {
+      setError('Please enter a valid email address');
       return;
     }
     setError(null);
-    renameOrganization(props.organizationName, newName.trim());
+    changeEmail(props.username, newEmail.trim());
   };
 
   return (
     <Modal
-      title="Rename Organization"
+      title={`Change Email for ${props.username}`}
       isOpen={props.isOpen}
       onClose={handleClose}
       variant={ModalVariant.medium}
@@ -72,9 +76,9 @@ export default function RenameOrganizationModal(
           variant="primary"
           onClick={handleSubmit}
           isLoading={isLoading}
-          isDisabled={isLoading || !newName.trim()}
+          isDisabled={isLoading || !newEmail.trim()}
         >
-          OK
+          Change Email
         </Button>,
         <Button key="cancel" variant="link" onClick={handleClose}>
           Cancel
@@ -82,12 +86,13 @@ export default function RenameOrganizationModal(
       ]}
     >
       <Form>
-        <FormGroup label="Enter a new name for the organization:" isRequired>
+        <FormGroup label="Enter new email address:" isRequired>
           <TextInput
-            id="new-organization-name"
-            value={newName}
-            onChange={(_event, value) => setNewName(value)}
-            placeholder="New organization name"
+            id="new-email"
+            value={newEmail}
+            onChange={(_event, value) => setNewEmail(value)}
+            placeholder="user@example.com"
+            type="email"
             isDisabled={isLoading}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {

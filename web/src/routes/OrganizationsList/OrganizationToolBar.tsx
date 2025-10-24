@@ -1,17 +1,30 @@
-import {Toolbar, ToolbarContent, ToolbarItem} from '@patternfly/react-core';
+import {
+  Toolbar,
+  ToolbarContent,
+  ToolbarItem,
+  Button,
+} from '@patternfly/react-core';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {Kebab} from 'src/components/toolbar/Kebab';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 import * as React from 'react';
+import {useState} from 'react';
 import {FilterInput} from 'src/components/toolbar/FilterInput';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
+import {CreateUserModal} from './modals/CreateUserModal';
 
 export function OrganizationToolBar(props: OrganizationToolBarProps) {
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] =
+    useState<boolean>(false);
+  const {canModify} = useSuperuserPermissions();
+
   return (
-    <Toolbar>
-      <ToolbarContent>
+    <>
+      <Toolbar>
+        <ToolbarContent>
         <DropdownCheckbox
           selectedItems={props.selectedOrganization}
           deSelectAll={props.setSelectedOrganization}
@@ -31,6 +44,17 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
           isModalOpen={props.isOrganizationModalOpen}
           setModalOpen={props.setOrganizationModalOpen}
         />
+        {canModify && (
+          <ToolbarItem>
+            <Button
+              variant="primary"
+              onClick={() => setIsCreateUserModalOpen(true)}
+              data-testid="create-user-button"
+            >
+              Create User
+            </Button>
+          </ToolbarItem>
+        )}
         <ToolbarItem>
           {props.selectedOrganization?.length !== 0 ? (
             <Kebab
@@ -51,6 +75,19 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
         />
       </ToolbarContent>
     </Toolbar>
+
+    {/* Create User Modal */}
+    {canModify && (
+      <CreateUserModal
+        isOpen={isCreateUserModalOpen}
+        onClose={() => setIsCreateUserModalOpen(false)}
+        onSuccess={() => {
+          setIsCreateUserModalOpen(false);
+          // List will auto-refresh via React Query invalidation
+        }}
+      />
+    )}
+  </>
   );
 }
 

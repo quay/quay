@@ -14,7 +14,7 @@ export function useRenameOrganization({onSuccess, onError}) {
       return await renameOrganization(orgName, newName);
     },
     {
-      onSuccess: () => {
+      onSuccess: (data, variables) => {
         // Invalidate the main organizations list queries
         queryClient.invalidateQueries([
           'organization',
@@ -23,7 +23,7 @@ export function useRenameOrganization({onSuccess, onError}) {
         ]);
         queryClient.invalidateQueries(['organization', 'superuser', 'users']);
         queryClient.invalidateQueries(['user']);
-        onSuccess();
+        onSuccess(variables.orgName, variables.newName);
       },
       onError: (err) => {
         onError(err);
