@@ -42,11 +42,7 @@ export default function ManageMembersToolbar(props: ManageMembersToolbarProps) {
             </FlexItem>
           </Flex>
           <Flex>
-            <Conditional
-              if={
-                props.isAdmin && !props.isReadOnly && !props.pageInReadOnlyMode
-              }
-            >
+            <Conditional if={props.isAdmin && !props.isReadOnly}>
               <FlexItem>
                 <Button
                   onClick={() =>

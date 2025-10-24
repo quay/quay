@@ -49,7 +49,11 @@ import {useParams} from 'react-router-dom';
 import Empty from 'src/components/empty/Empty';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
-import {getAccountTypeForMember, formatDate} from 'src/libs/utils';
+import {
+  getAccountTypeForMember,
+  formatDate,
+  formatRelativeTime,
+} from 'src/libs/utils';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {useFetchTeams, useUpdateTeamDetails} from 'src/hooks/UseTeams';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
@@ -533,7 +537,18 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                     Last Updated
                   </TextListItem>
                   <TextListItem component={TextListItemVariants.dd}>
-                    {formatDate(teamSyncLastUpdated)}
+                    {!teamSyncLastUpdated || teamSyncLastUpdated === 'Never' ? (
+                      <Flex spaceItems={{default: 'spaceItemsSm'}}>
+                        <FlexItem>
+                          <Spinner size="md" />
+                        </FlexItem>
+                        <FlexItem>Waiting for first sync...</FlexItem>
+                      </Flex>
+                    ) : (
+                      <Tooltip content={formatDate(teamSyncLastUpdated)}>
+                        <span>{formatRelativeTime(teamSyncLastUpdated)}</span>
+                      </Tooltip>
+                    )}
                   </TextListItem>
                 </TextList>
               </TextContent>
