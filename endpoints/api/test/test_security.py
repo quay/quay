@@ -7033,10 +7033,6 @@ def test_all_apis_tested(app):
 
     for test in SECURITY_TESTS:
         view_class = test[0]
-        # Skip tests for resources that are None due to disabled features
-        # @show_if decorator will return None if the feature flag is disabled
-        if view_class is None:
-            continue
         required_tests.discard(
             "%s.%s::%s" % (view_class.__module__, view_class.__name__, test[1].upper())
         )
