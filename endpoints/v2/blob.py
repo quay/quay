@@ -9,9 +9,10 @@ from flask import Response
 from flask import abort as flask_abort
 from flask import redirect, request, url_for
 
-from app import app, get_app_url, model_cache, storage
-from auth.auth_context import get_authenticated_user
-from auth.permissions import ReadRepositoryPermission
+import features
+from app import app, get_app_url, model_cache, storage, usermanager
+from auth.auth_context import get_authenticated_context, get_authenticated_user
+from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data import database
 from data.model import namespacequota
@@ -66,7 +67,7 @@ BLOB_CONTENT_TYPE = "application/octet-stream"
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_allowed
 @cache_control(max_age=31436000)
 @inject_registry_model()
@@ -98,7 +99,7 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_allowed
 @check_region_blacklisted(BlobDownloadGeoBlocked)
 @cache_control(max_age=31536000)

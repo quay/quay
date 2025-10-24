@@ -72,7 +72,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 @tracer.start_as_current_span(
@@ -151,7 +151,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @log_unauthorized_pull
-@require_repo_read(allow_for_superuser=True)
+@require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @inject_registry_model()
 @tracer.start_as_current_span(
@@ -294,6 +294,7 @@ def _doesnt_accept_schema_v1():
 )
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest(request.content_type, request.data)
+
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
 
 
