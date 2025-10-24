@@ -36,6 +36,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useQuayState} from 'src/hooks/UseQuayState';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
 import {useTagPullStatistics} from 'src/hooks/UseTags';
+import TagExpiration from './TagsTableExpiration';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -83,7 +84,16 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 5 : 3} />{' '}
+      {props.manifest.digest ? (
+        <Td dataLabel="digest" noPadding={false} colSpan={1}>
+          <ExpandableRowContent>
+            {props.manifest.digest.substring(0, 19)}
+          </ExpandableRowContent>
+        </Td>
+      ) : (
+        <Td />
+      )}
+      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 4 : 2} />
     </Tr>
   );
 }
@@ -184,13 +194,17 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
         </Td>
-        <Td dataLabel={ColumnNames.expiration}>
-          {tag.expiration ? formatDate(tag.expiration) : 'Never'}
+        <Td dataLabel={ColumnNames.expires}>
+          <TagExpiration
+            org={props.org}
+            repo={props.repo}
+            tag={tag.name}
+            expiration={tag.expiration}
+            loadTags={props.loadTags}
+          />
         </Td>
-        <Td dataLabel={ColumnNames.manifest}>
-          <span style={{fontFamily: 'monospace', fontSize: '12px'}}>
-            {tag.manifest_digest.substring(0, 19)}...
-          </span>
+        <Td dataLabel={ColumnNames.digest}>
+          {tag.manifest_digest.substring(0, 19)}
         </Td>
         <Conditional if={config?.features?.IMAGE_PULL_STATS}>
           <Td dataLabel={ColumnNames.lastPulled}>
