@@ -71,7 +71,7 @@ unmirrored_repositories = Gauge(
 )
 
 # Repository mirroring metrics
-repo_mirror_tags_pending = Gauge(
+repo_mirror_pending_tags = Gauge(
     "quay_repository_mirror_pending_tags",
     "Total number of tags pending synchronization for each mirrored repository",
     labelnames=["namespace", "repository"],
@@ -329,7 +329,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
         )
         # Set metrics for empty tag list - this is a success
         sync_duration = time.time() - sync_start_time
-        repo_mirror_tags_pending.labels(
+        repo_mirror_pending_tags.labels(
             namespace=namespace,
             repository=repository_name,
         ).set(0)
@@ -354,7 +354,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     failed_tags = []
 
     # Set initial pending tags metric
-    repo_mirror_tags_pending.labels(
+    repo_mirror_pending_tags.labels(
         namespace=namespace,
         repository=repository_name,
     ).set(len(tags))
@@ -431,7 +431,7 @@ def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
 
             # Update pending tags metric after processing each tag
             remaining_tags = len(tags) - (tag_index + 1)
-            repo_mirror_tags_pending.labels(
+            repo_mirror_pending_tags.labels(
                 namespace=namespace,
                 repository=repository_name,
             ).set(remaining_tags)
@@ -1103,7 +1103,7 @@ def _update_mirror_metrics_on_failure(namespace, repository_name, failure_reason
     Helper function to update metrics when a mirror sync fails.
     """
     reason = failure_reason or "unknown_error"
-    repo_mirror_tags_pending.labels(
+    repo_mirror_pending_tags.labels(
         namespace=namespace,
         repository=repository_name,
     ).set(0)
