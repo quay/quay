@@ -24,7 +24,6 @@ from data.model.pull_statistics import (
     bulk_upsert_tag_statistics,
 )
 from digest.digest_tools import Digest, InvalidDigestException
-from util.locking import GlobalLock
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
