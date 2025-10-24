@@ -1,5 +1,6 @@
 import {
   ActionGroup,
+  Alert,
   Button,
   Divider,
   DrawerActions,
@@ -22,7 +23,10 @@ import EntitySearch from 'src/components/EntitySearch';
 import Conditional from 'src/components/empty/Conditional';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {useAlerts} from 'src/hooks/UseAlerts';
-import {useAddMembersToTeam} from 'src/hooks/UseMembers';
+import {
+  useAddMembersToTeam,
+  useFetchTeamMembersForOrg,
+} from 'src/hooks/UseMembers';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import {Entity} from 'src/resources/UserResource';
@@ -36,6 +40,11 @@ export default function AddNewTeamMemberDrawer(
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [error, setError] = useState<string>('');
   const {teamName} = useParams();
+
+  // Fetch team sync info to determine if team is in read-only mode
+  const {teamSyncInfo} = useFetchTeamMembersForOrg(props.orgName, teamName);
+  const pageInReadOnlyMode =
+    teamSyncInfo !== null && teamSyncInfo !== undefined;
 
   // Get robots
   const {robots, isLoadingRobots} = useFetchRobotAccounts(props.orgName);
@@ -81,7 +90,23 @@ export default function AddNewTeamMemberDrawer(
     </React.Fragment>,
   ];
 
-  const dropdownForCreator = (
+  const dropdownForCreator = pageInReadOnlyMode ? (
+    <EntitySearch
+      id="repository-creator-dropdown"
+      org={props.orgName}
+      includeTeams={false}
+      includeRobots={false}
+      isDisabled={true}
+      onSelect={(e: Entity) => {
+        setSelectedEntity(e);
+      }}
+      onClear={() => setSelectedEntity(null)}
+      value={selectedEntity?.name}
+      onError={() => setError('Unable to look up users')}
+      defaultOptions={creatorDefaultOptions}
+      placeholderText="Select a robot account to add to team"
+    />
+  ) : (
     <EntitySearch
       id="repository-creator-dropdown"
       org={props.orgName}
@@ -156,13 +181,26 @@ export default function AddNewTeamMemberDrawer(
             }
             ref={props.drawerRef}
           >
-            Add team member
+            {pageInReadOnlyMode
+              ? 'Add robot account to team'
+              : 'Add team member'}
           </h6>
           <DrawerActions>
             <DrawerCloseButton onClick={props.closeDrawer} />
           </DrawerActions>
         </DrawerHead>
         <DrawerPanelBody>
+          <Conditional if={pageInReadOnlyMode}>
+            <Alert
+              isInline
+              variant="info"
+              title="This team is synchronized with an external directory group"
+              style={{marginBottom: '1rem'}}
+            >
+              User membership is managed by the directory service. Only robot
+              accounts can be added to this team.
+            </Alert>
+          </Conditional>
           <Form id="add-new-member-form">
             <FormGroup fieldId="creator" label="Repository creator" isRequired>
               {dropdownForCreator}

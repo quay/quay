@@ -254,3 +254,12 @@ export const formatDateForInput = (isoDate: string): string => {
     return '';
   }
 };
+
+export function formatRelativeTime(date: string | number): string {
+  if (!date || date == -1 || date === 'Never') {
+    return 'Never';
+  }
+
+  const adjustedDate = typeof date === 'number' ? date * 1000 : date;
+  return moment(adjustedDate).fromNow();
+}

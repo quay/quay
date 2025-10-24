@@ -282,4 +282,43 @@ describe('Teams and membership page', () => {
       .contains(newDescription)
       .should('exist');
   });
+
+  it('Shows sync icon for synchronized teams', () => {
+    // Intercept config to enable team syncing feature
+    cy.intercept('GET', '/config', (req) => {
+      req.reply((res) => {
+        res.body.features = res.body.features || {};
+        res.body.features.TEAM_SYNCING = true;
+        res.body.config = res.body.config || {};
+        res.body.config.AUTHENTICATION_TYPE = 'OIDC';
+      });
+    }).as('getConfig');
+
+    // Intercept teams API to return a synced team
+    cy.intercept('GET', '/api/v1/organization/testorg', (req) => {
+      req.reply((res) => {
+        if (res.body.teams && res.body.teams.arsenal) {
+          res.body.teams.arsenal.is_synced = true;
+        }
+      });
+    }).as('getOrg');
+
+    cy.visit('/organization/testorg?tab=Teamsandmembership');
+    cy.get('#Teams').click();
+
+    // Search for the synced team
+    cy.get('#teams-view-search').type('arsenal');
+    cy.contains('1 - 1 of 1');
+
+    // Verify sync icon is visible for synced team
+    cy.get('svg[data-test-id="sync-icon"]')
+      .should('exist')
+      .should('be.visible');
+
+    // Verify tooltip appears on hover
+    cy.get('svg[data-test-id="sync-icon"]').trigger('mouseenter');
+    cy.contains('Team is synchronized with a backing group').should(
+      'be.visible',
+    );
+  });
 });

@@ -133,4 +133,6 @@ class TestConfig(DefaultConfig):
 
     CDN_SPECIFIC_NAMESPACES = ["redhat"]
 
+    DEFAULT_UI = "angular"
+
     FEATURE_OTEL_TRACING = True

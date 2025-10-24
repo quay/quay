@@ -49,7 +49,11 @@ import {useParams} from 'react-router-dom';
 import Empty from 'src/components/empty/Empty';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
-import {getAccountTypeForMember} from 'src/libs/utils';
+import {
+  getAccountTypeForMember,
+  formatDate,
+  formatRelativeTime,
+} from 'src/libs/utils';
 import {OrganizationDrawerContentType} from 'src/routes/OrganizationsList/Organization/Organization';
 import {useFetchTeams, useUpdateTeamDetails} from 'src/hooks/UseTeams';
 import DeleteModalForRowTemplate from 'src/components/modals/DeleteModalForRowTemplate';
@@ -57,9 +61,33 @@ import Conditional from 'src/components/empty/Conditional';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useTeamSync, useRemoveTeamSync} from 'src/hooks/UseTeamSync';
-import OIDCTeamSyncModal from 'src/components/modals/OIDCTeamSyncModal';
+import DirectoryTeamSyncModal from 'src/components/modals/DirectoryTeamSyncModal';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 import {usePaginatedSortableTable} from '../../../../../../../hooks/usePaginatedSortableTable';
+import {SupportedService} from 'src/resources/TeamSyncResource';
+
+function getServiceDisplayName(service: SupportedService): string {
+  const serviceNames: Record<SupportedService, string> = {
+    ldap: 'LDAP',
+    keystone: 'Keystone',
+    oidc: 'OIDC',
+  };
+  return serviceNames[service];
+}
+
+function getGroupFieldLabel(
+  service: SupportedService,
+  issuerDomain?: string,
+): string {
+  if (service === 'ldap') {
+    return 'Group DN';
+  } else if (service === 'keystone') {
+    return 'Group ID';
+  } else if (service === 'oidc') {
+    return issuerDomain?.includes('microsoft') ? 'Object Id' : 'Group Name';
+  }
+  return 'Group Name';
+}
 
 export enum TableModeType {
   AllMembers = 'All Members',
@@ -144,8 +172,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const [memberToBeDeleted, setMemberToBeDeleted] = useState<IMemberInfo>();
 
   // Team Sync states
-  const [isOIDCTeamSyncModalOpen, setIsOIDCTeamSyncModalOpen] = useState(false);
-  const [OIDCGroupName, setOIDCGroupName] = useState<string>('');
+  const [isDirectoryTeamSyncModalOpen, setIsDirectoryTeamSyncModalOpen] =
+    useState(false);
+  const [directoryGroupName, setDirectoryGroupName] = useState<string>('');
   const [teamSyncLastUpdated, setTeamSyncLastUpdated] =
     useState<string>('Never');
   const [pageInReadOnlyMode, setPageInReadOnlyMode] = useState<boolean>(false);
@@ -257,7 +286,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     orgName: organizationName,
     teamName: teamName,
     onSuccess: (response) => {
-      setIsOIDCTeamSyncModalOpen(false);
+      setIsDirectoryTeamSyncModalOpen(false);
       setPageInReadOnlyMode(true);
       addAlert({
         variant: AlertVariant.Success,
@@ -315,12 +344,20 @@ export default function ManageMembersList(props: ManageMembersListProps) {
 
   useEffect(() => {
     if (teamSyncInfo != null) {
-      if (teamSyncInfo.service == 'oidc') {
-        setOIDCGroupName(
+      if (teamSyncInfo.service === 'oidc') {
+        setDirectoryGroupName(
           (teamSyncInfo.config as {group_name?: string})?.group_name,
         );
+      } else if (teamSyncInfo.service === 'ldap') {
+        setDirectoryGroupName(
+          (teamSyncInfo.config as {group_dn?: string})?.group_dn,
+        );
+      } else if (teamSyncInfo.service === 'keystone') {
+        setDirectoryGroupName(
+          (teamSyncInfo.config as {group_id?: string})?.group_id,
+        );
       }
-      if (teamSyncInfo.last_updated != null) {
+      if (teamSyncInfo.last_updated !== null) {
         setTeamSyncLastUpdated(teamSyncInfo.last_updated);
       }
       setPageInReadOnlyMode(true);
@@ -434,7 +471,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   );
 
   const displaySyncDirectory =
-    teamCanSync != null &&
+    teamCanSync !== null &&
     !teamSyncInfo &&
     config?.registry_state !== 'readonly';
 
@@ -444,7 +481,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
       result.push(
         <Button
           variant="link"
-          onClick={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
+          onClick={() =>
+            setIsDirectoryTeamSyncModalOpen(!isDirectoryTeamSyncModalOpen)
+          }
           key="team-sync-btn"
         >
           Enable Team Sync
@@ -472,7 +511,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
         title={`This team is synchronized with a group in ${teamSyncInfo?.service} and its user membership is therefore read-only.`}
         id="teamsync-readonly-alert"
       />
-      <Conditional if={OIDCGroupName != null}>
+      <Conditional if={teamSyncInfo?.config}>
         <Accordion>
           <AccordionItem>
             <AccordionToggle
@@ -492,13 +531,24 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                     Bound to group
                   </TextListItem>
                   <TextListItem component={TextListItemVariants.dd}>
-                    {OIDCGroupName}
+                    {directoryGroupName}
                   </TextListItem>
                   <TextListItem component={TextListItemVariants.dt}>
                     Last Updated
                   </TextListItem>
                   <TextListItem component={TextListItemVariants.dd}>
-                    {teamSyncLastUpdated}
+                    {!teamSyncLastUpdated || teamSyncLastUpdated === 'Never' ? (
+                      <Flex spaceItems={{default: 'spaceItemsSm'}}>
+                        <FlexItem>
+                          <Spinner size="md" />
+                        </FlexItem>
+                        <FlexItem>Waiting for first sync...</FlexItem>
+                      </Flex>
+                    ) : (
+                      <Tooltip content={formatDate(teamSyncLastUpdated)}>
+                        <span>{formatRelativeTime(teamSyncLastUpdated)}</span>
+                      </Tooltip>
+                    )}
                   </TextListItem>
                 </TextList>
               </TextContent>
@@ -509,19 +559,39 @@ export default function ManageMembersList(props: ManageMembersListProps) {
     </>
   );
 
-  const OIDCTeamSyncModalHolder = (
-    <OIDCTeamSyncModal
-      isModalOpen={isOIDCTeamSyncModalOpen}
-      toggleModal={() => setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)}
-      titleText="Enable OIDC Team Sync"
-      primaryText="Team synchronization allows this team's user membership to be backed by a group in OIDC."
-      onConfirmSync={(groupName) =>
-        enableTeamSync(groupName, teamCanSync?.service)
+  const serviceDisplayName = getServiceDisplayName(
+    (teamCanSync?.service || 'oidc') as SupportedService,
+  );
+  const groupFieldLabel = getGroupFieldLabel(
+    (teamCanSync?.service || 'oidc') as SupportedService,
+    teamCanSync?.issuer_domain,
+  );
+
+  const directoryTeamSyncModalHolder = (
+    <DirectoryTeamSyncModal
+      isModalOpen={isDirectoryTeamSyncModalOpen}
+      toggleModal={() =>
+        setIsDirectoryTeamSyncModalOpen(!isDirectoryTeamSyncModalOpen)
       }
-      secondaryText={`Enter the group ${
-        teamCanSync?.issuer_domain?.includes('microsoft') ? `Object Id` : `name`
-      } you'd like to sync membership with:`}
-      alertText={`Please note that once team syncing is enabled, the membership of users who are already part of the team will be revoked. OIDC group will be the single source of truth. This is a non-reversible action. Team's user membership from within ${config?.config.REGISTRY_TITLE_SHORT} will be read-only.`}
+      titleText={`Enable ${serviceDisplayName} Team Sync`}
+      primaryText={`Team synchronization allows this team's user membership to be backed by a group in ${serviceDisplayName}.`}
+      onConfirmSync={(groupName) =>
+        enableTeamSync(
+          groupName,
+          (teamCanSync?.service || 'oidc') as SupportedService,
+        )
+      }
+      secondaryText={
+        teamCanSync?.base_dn ? (
+          <>
+            Enter the {groupFieldLabel} you&apos;d like to sync membership with,
+            relative to the base DN: <strong>{teamCanSync.base_dn}</strong>
+          </>
+        ) : (
+          `Enter the ${groupFieldLabel} you'd like to sync membership with:`
+        )
+      }
+      alertText={`Please note that once team syncing is enabled, the membership of users who are already part of the team will be revoked. ${serviceDisplayName} group will be the single source of truth. This is a non-reversible action. Team's user membership from within ${config?.config.REGISTRY_TITLE_SHORT} will be read-only.`}
     />
   );
 
@@ -559,10 +629,10 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           }
           secondaryActions={fetchSyncBtn()}
         />
-        <Conditional if={isOIDCTeamSyncModalOpen}>
-          {OIDCTeamSyncModalHolder}
+        <Conditional if={isDirectoryTeamSyncModalOpen}>
+          {directoryTeamSyncModalHolder}
         </Conditional>
-        <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync != null}>
+        <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync !== null}>
           {removeTeamSyncModalHolder}
         </Conditional>
       </>
@@ -590,9 +660,9 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           isReadOnly={config?.registry_state === 'readonly'}
           isAdmin={organization.is_admin}
           displaySyncDirectory={displaySyncDirectory}
-          isOIDCTeamSyncModalOpen={isOIDCTeamSyncModalOpen}
-          toggleOIDCTeamSyncModal={() =>
-            setIsOIDCTeamSyncModalOpen(!isOIDCTeamSyncModalOpen)
+          isDirectoryTeamSyncModalOpen={isDirectoryTeamSyncModalOpen}
+          toggleDirectoryTeamSyncModal={() =>
+            setIsDirectoryTeamSyncModalOpen(!isDirectoryTeamSyncModalOpen)
           }
           teamCanSync={teamCanSync}
           pageInReadOnlyMode={pageInReadOnlyMode}
@@ -606,12 +676,10 @@ export default function ManageMembersList(props: ManageMembersListProps) {
           <Conditional if={isDeleteModalForRowOpen}>
             {deleteRowModal}
           </Conditional>
-          <Conditional
-            if={isOIDCTeamSyncModalOpen && teamCanSync?.service == 'oidc'}
-          >
-            {OIDCTeamSyncModalHolder}
+          <Conditional if={isDirectoryTeamSyncModalOpen}>
+            {directoryTeamSyncModalHolder}
           </Conditional>
-          <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync != null}>
+          <Conditional if={isRemoveTeamSyncModalOpen && teamCanSync !== null}>
             {removeTeamSyncModalHolder}
           </Conditional>
           <Table aria-label="Selectable table" variant="compact">

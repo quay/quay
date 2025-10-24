@@ -5,6 +5,11 @@ from functools import wraps
 
 from flask import jsonify, make_response, request, session
 
+from util.metrics.otel import trace
+
+tracer = trace.get_tracer("quay.v1.index")
+
+
 from app import app, docker_v2_signing_key, storage, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import CredentialKind, validate_credentials
@@ -105,6 +110,9 @@ def generate_headers(scope=GrantType.READ_REPOSITORY, add_grant_for_status=None)
 @v1_bp.route("/users/", methods=["POST"])
 @anon_allowed
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.create_user", record_exception=True, set_status_on_exception=True
+)
 def create_user():
     user_data = request.get_json()
     if not user_data or not "username" in user_data:
@@ -157,6 +165,9 @@ def create_user():
 @v1_bp.route("/users/", methods=["GET"])
 @process_auth
 @anon_allowed
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.get_user", record_exception=True, set_status_on_exception=True
+)
 def get_user():
     context = get_authenticated_context()
     if not context or context.is_anonymous:
@@ -174,6 +185,9 @@ def get_user():
 @process_auth
 @anon_allowed
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.update_user", record_exception=True, set_status_on_exception=True
+)
 def update_user(username):
     permission = UserAdminPermission(username)
     if permission.can():
@@ -202,6 +216,9 @@ def update_user(username):
 @generate_headers(scope=GrantType.WRITE_REPOSITORY, add_grant_for_status=201)
 @anon_allowed
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.create_repository", record_exception=True, set_status_on_exception=True
+)
 def create_repository(namespace_name, repo_name):
     # Verify that the repository name is valid.
     if not REPOSITORY_NAME_REGEX.match(repo_name):
@@ -287,6 +304,9 @@ def create_repository(namespace_name, repo_name):
 @generate_headers(scope=GrantType.WRITE_REPOSITORY)
 @anon_allowed
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.update_images", record_exception=True, set_status_on_exception=True
+)
 def update_images(namespace_name, repo_name):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     if permission.can():
@@ -329,6 +349,11 @@ def update_images(namespace_name, repo_name):
 @ensure_namespace_enabled
 @generate_headers(scope=GrantType.READ_REPOSITORY)
 @anon_protect
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.get_repository_images",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def get_repository_images(namespace_name, repo_name):
     repository_ref = registry_model.lookup_repository(
         namespace_name, repo_name, kind_filter="image"
@@ -364,6 +389,11 @@ def get_repository_images(namespace_name, repo_name):
 @generate_headers(scope=GrantType.WRITE_REPOSITORY)
 @anon_allowed
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.delete_repository_images",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def delete_repository_images(namespace_name, repo_name):
     abort(501, "Not Implemented", issue="not-implemented")
 
@@ -375,6 +405,11 @@ def delete_repository_images(namespace_name, repo_name):
 @check_repository_state
 @anon_allowed
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.put_repository_auth",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def put_repository_auth(namespace_name, repo_name):
     abort(501, "Not Implemented", issue="not-implemented")
 
@@ -382,6 +417,9 @@ def put_repository_auth(namespace_name, repo_name):
 @v1_bp.route("/search", methods=["GET"])
 @process_auth
 @anon_protect
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.index.get_search", record_exception=True, set_status_on_exception=True
+)
 def get_search():
     query = request.args.get("q") or ""
 

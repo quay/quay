@@ -1,16 +1,22 @@
 import {ReactElement, useState} from 'react';
 import {
-  Button,
+  Dropdown,
   DropdownItem,
+  DropdownList,
+  MenuItem,
+  MenuToggle,
+  MenuToggleElement,
   Toolbar,
   ToolbarContent,
   ToolbarItem,
 } from '@patternfly/react-core';
+import {CogIcon} from '@patternfly/react-icons';
 import {useRecoilState} from 'recoil';
 import {
   searchTagsState,
   selectedTagsState,
   showSignaturesState,
+  expandedViewState,
 } from 'src/atoms/TagListState';
 import {Tag} from 'src/resources/TagResource';
 import {DeleteModal, ModalOptions} from './DeleteModal';
@@ -35,9 +41,11 @@ export function TagsToolbar(props: ToolBarProps) {
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
   const [showSignatures, setShowSignatures] =
     useRecoilState(showSignaturesState);
+  const [expandedView, setExpandedView] = useRecoilState(expandedViewState);
   const [isEditExpirationModalOpen, setIsEditExpirationModalOpen] =
     useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const kebabItems: ReactElement[] = [
     <DropdownItem
       key="set-expiration"
@@ -108,12 +116,48 @@ export function TagsToolbar(props: ToolBarProps) {
           onChange={setSearch}
         />
         <ToolbarItem>
-          <Button
-            variant="secondary"
-            onClick={() => setShowSignatures(!showSignatures)}
+          <Dropdown
+            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+              <MenuToggle
+                ref={toggleRef}
+                id="tags-settings-toggle"
+                aria-label="Tags view settings"
+                variant="plain"
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                isExpanded={isSettingsOpen}
+              >
+                <CogIcon />
+              </MenuToggle>
+            )}
+            isOpen={isSettingsOpen}
+            onOpenChange={(isOpen) => setIsSettingsOpen(isOpen)}
+            popperProps={{
+              enableFlip: true,
+              position: 'center',
+              direction: 'up',
+            }}
           >
-            {showSignatures ? 'Hide Signatures' : 'Show Signatures'}
-          </Button>
+            <DropdownList>
+              <MenuItem
+                itemId="expanded-view"
+                description="Display additional tag details inline"
+                hasCheckbox
+                isSelected={expandedView}
+                onClick={() => setExpandedView(!expandedView)}
+              >
+                Expanded View
+              </MenuItem>
+              <MenuItem
+                itemId="show-signatures"
+                description="Display cosign signature tags"
+                hasCheckbox
+                isSelected={showSignatures}
+                onClick={() => setShowSignatures(!showSignatures)}
+              >
+                Show Signatures
+              </MenuItem>
+            </DropdownList>
+          </Dropdown>
         </ToolbarItem>
         <ToolbarItem>
           {selectedTags?.length !== 0 ? (

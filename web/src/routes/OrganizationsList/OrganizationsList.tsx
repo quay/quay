@@ -362,7 +362,7 @@ export default function OrganizationsList() {
           isQueuing={false}
           showRegistrySize={false}
         />
-        <RequestError message={error as string} />
+        <RequestError err={error} />
       </>
     );
   }

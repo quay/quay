@@ -35,8 +35,10 @@ describe('Tags - Show/Hide Signatures', () => {
   it('shows signature tags when "Show Signatures" is clicked', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
-    // Click the "Show Signatures" button
-    cy.contains('button', 'Show Signatures').click();
+    // Open settings dropdown and enable Show Signatures
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Verify signature tags are now visible
     cy.contains(SIG_TAG).should('be.visible');
@@ -47,19 +49,27 @@ describe('Tags - Show/Hide Signatures', () => {
     cy.contains('latest').should('be.visible');
     cy.contains('manifestlist').should('be.visible');
 
-    // Verify button text changed to "Hide Signatures"
-    cy.contains('button', 'Hide Signatures').should('be.visible');
+    // Verify "Show Signatures" checkbox is checked
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures')
+      .find('input[type="checkbox"]')
+      .should('be.checked');
+    cy.get('#tags-settings-toggle').click();
   });
 
   it('hides signature tags when "Hide Signatures" is clicked', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
     // Show signatures first
-    cy.contains('button', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
     cy.contains(SIG_TAG).should('be.visible');
 
-    // Click "Hide Signatures"
-    cy.contains('button', 'Hide Signatures').click();
+    // Hide signatures
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
 
     // Verify signature tags are hidden again
     cy.contains(SIG_TAG).should('not.exist');
@@ -70,26 +80,33 @@ describe('Tags - Show/Hide Signatures', () => {
     cy.contains('latest').should('be.visible');
     cy.contains('manifestlist').should('be.visible');
 
-    // Verify button text changed back to "Show Signatures"
-    cy.contains('button', 'Show Signatures').should('be.visible');
+    // Verify "Show Signatures" checkbox is unchecked
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures')
+      .find('input[type="checkbox"]')
+      .should('not.be.checked');
+    cy.get('#tags-settings-toggle').click();
   });
 
   it('toggles between show and hide multiple times', () => {
     cy.visit('/repository/user1/hello-world?tab=tags');
 
     // Toggle to show
-    cy.contains('button', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
     cy.contains(SIG_TAG).should('be.visible');
-    cy.contains('button', 'Hide Signatures').should('be.visible');
 
     // Toggle to hide
-    cy.contains('button', 'Hide Signatures').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
     cy.contains(SIG_TAG).should('not.exist');
-    cy.contains('button', 'Show Signatures').should('be.visible');
 
     // Toggle to show again
-    cy.contains('button', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
+    cy.contains('[role="menuitem"]', 'Show Signatures').click();
+    cy.get('#tags-settings-toggle').click();
     cy.contains(SBOM_TAG).should('be.visible');
-    cy.contains('button', 'Hide Signatures').should('be.visible');
   });
 });

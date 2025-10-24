@@ -1,127 +1,110 @@
-import React, {useState, useEffect} from 'react';
 import {
   Alert,
   Button,
   Card,
   CardBody,
   CardTitle,
+  EmptyState,
+  EmptyStateHeader,
+  EmptyStateIcon,
+  Page,
   PageSection,
-  Spinner,
 } from '@patternfly/react-core';
-import {useNavigate} from 'react-router-dom';
-import axios from 'src/libs/axios';
-import {AxiosError} from 'axios';
+import {ExclamationCircleIcon} from '@patternfly/react-icons';
+import {useNavigate, useSearchParams} from 'react-router-dom';
+import {MinimalHeader} from 'src/components/header/MinimalHeader';
+import './OAuthError.css';
 
-interface OAuthErrorProps {
-  provider: string;
-  searchParams: URLSearchParams;
-}
-
-const FALLBACK_ERROR_MESSAGES = {
-  ologinerror: (provider: string) =>
-    `The e-mail address is already associated with an existing account. Please log in with your username and password and associate your ${provider} account.`,
-  access_denied: 'Access was denied. Please try again.',
-  invalid_request: 'Invalid OAuth request. Please try again.',
-  invalid_provider: 'Invalid OAuth provider specified.',
-};
-
-export function OAuthError({provider, searchParams}: OAuthErrorProps) {
+export function OAuthError() {
   const navigate = useNavigate();
-  const [backendError, setBackendError] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
 
-  const error = searchParams.get('error');
+  // Determine authentication from URL parameters (set by backend)
+  const isAuthenticated = searchParams.get('authenticated') === 'true';
+  const username = searchParams.get('username');
+
   const errorDescription = searchParams.get('error_description');
+  const provider = searchParams.get('provider') || 'OAuth Provider';
+  const registerRedirect = searchParams.get('register_redirect') === 'true';
+  const userCreation = searchParams.get('user_creation') === 'true';
 
-  useEffect(() => {
-    const fetchErrorDetails = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams(searchParams);
-        const baseURL =
-          process.env.REACT_QUAY_APP_API_URL ||
-          `${window.location.protocol}//${window.location.host}`;
-        await axios.get(
-          `${baseURL}/oauth2/${provider}/callback?${params.toString()}`,
-          {
-            headers: {Accept: 'application/json'},
-          },
-        );
-      } catch (err) {
-        if (err instanceof AxiosError && err.response?.data?.error_info) {
-          setBackendError(err.response.data.error_info);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  const displayMessage =
+    errorDescription || 'An unknown error occurred during authentication.';
 
-    fetchErrorDetails();
-  }, [provider, searchParams]);
-
-  let errorMessage = 'An unknown error occurred during authentication.';
-
-  if (backendError?.error_message) {
-    errorMessage = backendError.error_message;
-  } else if (errorDescription) {
-    errorMessage = errorDescription;
-  } else if (error && error in FALLBACK_ERROR_MESSAGES) {
-    const messageFunc =
-      FALLBACK_ERROR_MESSAGES[error as keyof typeof FALLBACK_ERROR_MESSAGES];
-    errorMessage =
-      typeof messageFunc === 'function' ? messageFunc(provider) : messageFunc;
-  }
-
-  const handleSignIn = () => {
-    navigate('/signin');
+  const handleAction = () => {
+    if (isAuthenticated && username) {
+      // User is logged in - redirect back to their external logins settings
+      navigate(`/organization/${username}?tab=Externallogins`);
+    } else {
+      // User is not logged in - redirect to signin
+      navigate('/signin');
+    }
   };
 
-  const handleRetryOAuth = () => {
-    navigate('/signin');
-  };
+  const actionButtonText = isAuthenticated
+    ? 'Return to Settings'
+    : 'Return to Sign In';
 
-  if (loading) {
-    return (
-      <PageSection>
-        <div style={{textAlign: 'center', padding: '2rem'}}>
-          <Spinner size="lg" />
-          <p>Loading error details...</p>
-        </div>
-      </PageSection>
-    );
-  }
-
-  return (
-    <PageSection>
-      <Card style={{maxWidth: '500px', margin: '0 auto'}}>
-        <CardTitle>{provider} Authentication Error</CardTitle>
+  // Error content rendered in both scenarios
+  const errorContent = (
+    <div className="oauth-error-container">
+      <Card className="oauth-error-card">
+        <CardTitle>
+          <EmptyState>
+            <EmptyStateHeader
+              titleText={`${provider} Authentication Error`}
+              icon={
+                <EmptyStateIcon
+                  icon={ExclamationCircleIcon}
+                  color="var(--pf-v5-global--danger-color--100)"
+                />
+              }
+              headingLevel="h2"
+            />
+          </EmptyState>
+        </CardTitle>
         <CardBody>
-          <Alert variant="danger" title="Authentication Failed" isInline>
-            {errorMessage}
+          <Alert
+            variant="danger"
+            title="Authentication Failed"
+            isInline
+            className="oauth-error-alert"
+          >
+            {displayMessage}
           </Alert>
 
-          {backendError?.register_redirect && (
+          {registerRedirect && userCreation && !isAuthenticated && (
             <Alert
               variant="info"
-              title="Account Association"
+              title="Account Registration Required"
               isInline
-              style={{marginTop: '1rem'}}
+              className="oauth-error-alert"
             >
-              You can associate your {provider} account after signing in with
-              your username and password.
+              To continue, please register using the sign-in form. You will be
+              able to reassociate this {provider} account to your new account in
+              the user settings panel.
             </Alert>
           )}
 
-          <div style={{marginTop: '1rem', display: 'flex', gap: '1rem'}}>
-            <Button variant="primary" onClick={handleSignIn}>
-              Sign in with username/password
-            </Button>
-            <Button variant="secondary" onClick={handleRetryOAuth}>
-              Try again
+          <div className="oauth-error-actions">
+            <Button variant="primary" onClick={handleAction}>
+              {actionButtonText}
             </Button>
           </div>
         </CardBody>
       </Card>
-    </PageSection>
+    </div>
   );
+
+  // Scenario 1: User not logged in - render with MinimalHeader
+  if (!isAuthenticated) {
+    return (
+      <Page header={<MinimalHeader />}>
+        <PageSection isFilled>{errorContent}</PageSection>
+      </Page>
+    );
+  }
+
+  // Scenario 2: User logged in - render content only
+  return <PageSection isFilled>{errorContent}</PageSection>;
 }

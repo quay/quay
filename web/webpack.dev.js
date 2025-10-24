@@ -28,6 +28,10 @@ module.exports = merge(common('development'), {
         target: 'http://localhost:8080',
         logLevel: 'debug',
       },
+      '/static': {
+        target: 'http://localhost:8080',
+        logLevel: 'debug',
+      },
     },
   },
   module: {
