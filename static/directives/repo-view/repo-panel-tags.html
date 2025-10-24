@@ -126,13 +126,13 @@
         style="width: 140px;">
       <a ng-click="orderBy('expiration_date')" data-title="When the tag expires" data-container="body" bs-tooltip>Expires</a>
     </td>
+    <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
+        style="width: 20px; position: relative;">
+    </td>
     <td class="hidden-xs hidden-sm"
         ng-class="tablePredicateClass('manifest_digest', options.predicate, options.reverse)"
         style="width: 140px;">
       <a ng-click="orderBy('manifest_digest')">Manifest</a>
-    </td>
-    <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
-        style="width: 20px; position: relative;">
     </td>
     <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
         ng-if="manifestTracks.length <= maxTrackCount"></td>
@@ -201,11 +201,6 @@
           <expiration-status-view expiration-date="tag.expiration_date"></expiration-status-view>
         </a>
         <expiration-status-view expiration-date="tag.expiration_date" ng-if="repository.tag_operations_disabled || !repository.can_write"></expiration-status-view>
-      </td>
-
-      <!-- Manifest -->
-      <td class="hidden-xs hidden-sm">
-        <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
       </td>
 
       <!-- Manifest link -->
