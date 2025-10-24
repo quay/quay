@@ -31,11 +31,9 @@ import {ChildManifestSize} from 'src/components/Table/ImageSize';
 import TagActions from './TagsActions';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import Conditional from 'src/components/empty/Conditional';
-import {useQuayState} from 'src/hooks/UseQuayState';
-import TagExpiration from './TagsTableExpiration';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import ManifestListSize from 'src/components/Table/ManifestListSize';
-import Labels from 'src/components/labels/Labels';
-import './Tags.css';
+import {useTagPullStatistics} from 'src/hooks/UseTags';
 
 function SubRow(props: SubRowProps) {
   return (
@@ -74,7 +72,7 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      <Td dataLabel="size" noPadding={false} colSpan={3}>
+      <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
           <ChildManifestSize
             org={props.org}
@@ -83,15 +81,7 @@ function SubRow(props: SubRowProps) {
           />
         </ExpandableRowContent>
       </Td>
-      {props.manifest.digest ? (
-        <Td dataLabel="digest" noPadding={false} colSpan={1}>
-          <ExpandableRowContent>
-            {props.manifest.digest.substring(0, 19)}
-          </ExpandableRowContent>
-        </Td>
-      ) : (
-        <Td />
-      )}
+      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 5 : 3} />{' '}
     </Tr>
   );
 }
@@ -108,10 +98,17 @@ function TagsTableRow(props: RowProps) {
 
   const location = useLocation();
 
-  // Calculate colspan dynamically based on whether actions column is shown
-  // Columns: expand(1) + select(1) + tag(1) + security(1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + actions(conditional)
-  const expandedColspan =
-    !inReadOnlyMode && props.repoDetails?.can_write ? 9 : 8;
+  // Fetch pull statistics for this specific tag
+  const {
+    pullStatistics,
+    isLoading: isLoadingPullStats,
+    isError: isErrorPullStats,
+  } = useTagPullStatistics(
+    props.org,
+    props.repo,
+    tag.name,
+    config?.features?.IMAGE_PULL_STATS || false,
+  );
 
   return (
     <Tbody
@@ -184,18 +181,36 @@ function TagsTableRow(props: RowProps) {
         <Td dataLabel={ColumnNames.lastModified}>
           {formatDate(tag.last_modified)}
         </Td>
-        <Td dataLabel={ColumnNames.expires}>
-          <TagExpiration
-            org={props.org}
-            repo={props.repo}
-            tag={tag.name}
-            expiration={tag.expiration}
-            loadTags={props.loadTags}
-          />
+        <Td dataLabel={ColumnNames.expiration}>
+          {tag.expiration ? formatDate(tag.expiration) : 'Never'}
         </Td>
-        <Td dataLabel={ColumnNames.digest}>
-          {tag.manifest_digest.substring(0, 19)}
+        <Td dataLabel={ColumnNames.manifest}>
+          <span style={{fontFamily: 'monospace', fontSize: '12px'}}>
+            {tag.manifest_digest.substring(0, 19)}...
+          </span>
         </Td>
+        <Conditional if={config?.features?.IMAGE_PULL_STATS}>
+          <Td dataLabel={ColumnNames.lastPulled}>
+            {isLoadingPullStats ? (
+              <Spinner size="sm" />
+            ) : isErrorPullStats ? (
+              'Error'
+            ) : pullStatistics?.last_tag_pull_date ? (
+              formatDate(pullStatistics.last_tag_pull_date)
+            ) : (
+              'Never'
+            )}
+          </Td>
+          <Td dataLabel={ColumnNames.pullCount}>
+            {isLoadingPullStats ? (
+              <Spinner size="sm" />
+            ) : isErrorPullStats ? (
+              '-'
+            ) : (
+              pullStatistics?.tag_pull_count ?? 0
+            )}
+          </Td>
+        </Conditional>
         <Td
           dataLabel={ColumnNames.pull}
           style={{
@@ -237,6 +252,7 @@ function TagsTableRow(props: RowProps) {
               rowIndex={rowIndex}
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
+              config={config}
             />
           ))
         : null}
@@ -316,6 +332,8 @@ function TagsTableRow(props: RowProps) {
 }
 
 export default function TagsTable(props: TableProps) {
+  const config = useQuayConfig();
+
   // Control expanded tags
   const [expandedTags, setExpandedTags] = useState<string[]>([]);
   const setTagExpanded = (tag: Tag, isExpanding = true) =>
@@ -356,6 +374,14 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(7)}>
               Manifest
             </Th>
+            <Conditional if={config?.features?.IMAGE_PULL_STATS}>
+              <Th modifier="wrap" sort={props.getSortableSort?.(8)}>
+                Last Pulled
+              </Th>
+              <Th modifier="wrap" sort={props.getSortableSort?.(9)}>
+                Pull Count
+              </Th>
+            </Conditional>
             <Th modifier="wrap">Pull</Th>
             <Th />
           </Tr>
@@ -424,4 +450,9 @@ interface SubRowProps {
   rowIndex: number;
   manifest: Manifest;
   isTagExpanded: (tag: Tag) => boolean;
+  config: {
+    features?: {
+      IMAGE_PULL_STATS?: boolean;
+    };
+  } | null;
 }

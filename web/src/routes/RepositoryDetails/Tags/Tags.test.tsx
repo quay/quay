@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, import/no-unresolved, import/extensions */
 import Tags from './Tags';
-import {render, screen, fireEvent} from '@testing-library/react';
+import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import {RecoilRoot} from 'recoil';
-import {mocked} from 'ts-jest/utils';
 import {
   Tag,
   TagsResponse,
@@ -10,16 +10,31 @@ import {
   getSecurityDetails,
   SecurityDetailsResponse,
   VulnerabilitySeverity,
+  getTagPullStatistics,
+  TagPullStatistics,
 } from 'src/resources/TagResource';
 import {MemoryRouter} from 'react-router-dom';
-
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {ResourceError} from 'src/resources/ErrorHandling';
 jest.mock('src/resources/TagResource', () => ({
   ...(jest.requireActual('src/resources/TagResource') as any),
   getTags: jest.fn(),
   getManifestByDigest: jest.fn(),
   getSecurityDetails: jest.fn(),
   deleteTag: jest.fn(),
+  getTagPullStatistics: jest.fn(),
 }));
+
+// Helper to create a QueryClient for tests
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        cacheTime: 0,
+      },
+    },
+  });
 
 const testOrg = 'testorg';
 const testRepo = 'testrepo';
@@ -40,6 +55,19 @@ const createTag = (name = 'latest'): Tag => {
     reversion: false,
     start_ts: 1654197152,
     manifest_list: null,
+  };
+};
+const createPullStatistics = (
+  tagName: string,
+  pullCount = 42,
+): TagPullStatistics => {
+  return {
+    tag_name: tagName,
+    tag_pull_count: pullCount,
+    last_tag_pull_date: '2025-10-24T10:30:00Z',
+    current_manifest_digest: 'sha256:fd0922d',
+    manifest_pull_count: pullCount,
+    last_manifest_pull_date: '2025-10-24T10:30:00Z',
   };
 };
 const createSecurityDetailsResponse = (): SecurityDetailsResponse => {
@@ -112,17 +140,25 @@ const createSecurityDetailsResponse = (): SecurityDetailsResponse => {
   };
 };
 
-test('Tags should render', async () => {
-  mocked(getTags, true).mockResolvedValue(createTagResponse());
-  mocked(getSecurityDetails, true).mockResolvedValue(
-    createSecurityDetailsResponse(),
-  );
-  render(
+// Wrapper component with all necessary providers
+const renderWithProviders = (component: React.ReactElement) => {
+  const queryClient = createTestQueryClient();
+  return render(
     <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
+      <QueryClientProvider client={queryClient}>
+        {component}
+      </QueryClientProvider>
     </RecoilRoot>,
     {wrapper: MemoryRouter},
   );
+};
+
+test('Tags should render', async () => {
+  (getTags as jest.Mock).mockResolvedValue(createTagResponse());
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
+    createSecurityDetailsResponse(),
+  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   const message = await screen.findByText('This repository is empty.');
   expect(message).toBeTruthy();
 });
@@ -130,16 +166,11 @@ test('Tags should render', async () => {
 test('Tags should appear in list', async () => {
   const mockResponse = createTagResponse();
   mockResponse.tags.push(createTag());
-  mocked(getTags, true).mockResolvedValue(mockResponse);
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (getTags as jest.Mock).mockResolvedValue(mockResponse);
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   const message = await screen.findByText('latest');
   expect(message).toBeTruthy();
 });
@@ -150,16 +181,11 @@ test('Filter search should return matching list', async () => {
   for (const tag of tagNames) {
     mockResponse.tags.push(createTag(tag));
   }
-  mocked(getTags, true).mockResolvedValue(mockResponse);
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (getTags as jest.Mock).mockResolvedValue(mockResponse);
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   expect(await screen.findByText('latest')).toBeTruthy();
   expect(await screen.findByText('slim')).toBeTruthy();
   expect(await screen.findByText('alpine')).toBeTruthy();
@@ -175,16 +201,11 @@ test('Updating per page should update table content', async () => {
   for (let i = 0; i < 40; i++) {
     mockResponse.tags.push(createTag(`tag${i}`));
   }
-  mocked(getTags, true).mockResolvedValue(mockResponse);
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (getTags as jest.Mock).mockResolvedValue(mockResponse);
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  const {container} = render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   const initialRows = await screen.findAllByTestId('table-entry');
   expect(initialRows.length).toBe(25);
   const perPageButton = (await screen.findByTestId('pagination')).querySelector(
@@ -207,16 +228,11 @@ test('Updating page should update table content', async () => {
   for (let i = 0; i < 40; i++) {
     mockResponse.tags.push(createTag(`tag${i}`));
   }
-  mocked(getTags, true).mockResolvedValue(mockResponse);
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (getTags as jest.Mock).mockResolvedValue(mockResponse);
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  const {container} = render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   const initialRows = await screen.findAllByTestId('table-entry');
   expect(initialRows.length).toBe(25);
   fireEvent(
@@ -231,16 +247,11 @@ test('Copy modal should show org and repo', async () => {
   const mockResponse = createTagResponse();
   const tag = createTag();
   mockResponse.tags.push(tag);
-  mocked(getTags, true).mockResolvedValue(mockResponse);
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (getTags as jest.Mock).mockResolvedValue(mockResponse);
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   expect(await screen.findByText(tag.name)).toBeTruthy();
   fireEvent.mouseOver(screen.getByTestId('pull'));
   expect(
@@ -261,19 +272,14 @@ test('Delete a single tag', async () => {
   const mockResponse = createTagResponse();
   const tag = createTag();
   mockResponse.tags.push(tag);
-  mocked(getTags, true)
+  (getTags as jest.Mock)
     .mockResolvedValueOnce(mockResponse)
     .mockResolvedValueOnce(createTagResponse());
-  mocked(deleteTag, true).mockResolvedValue();
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (deleteTag as jest.Mock).mockResolvedValue();
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   expect(await screen.findByText(tag.name)).toBeTruthy();
   const rowSelect = screen.getByLabelText('Select row 0', {selector: 'input'});
   fireEvent(
@@ -306,19 +312,14 @@ test('Delete a multiple tags', async () => {
   for (const tag of tagNames) {
     mockResponse.tags.push(createTag(tag));
   }
-  mocked(getTags, true)
+  (getTags as jest.Mock)
     .mockResolvedValueOnce(mockResponse)
     .mockResolvedValueOnce(createTagResponse());
-  mocked(deleteTag, true).mockResolvedValue();
-  mocked(getSecurityDetails, true).mockResolvedValue(
+  (deleteTag as jest.Mock).mockResolvedValue();
+  (getSecurityDetails as jest.Mock).mockResolvedValue(
     createSecurityDetailsResponse(),
   );
-  render(
-    <RecoilRoot>
-      <Tags organization={testOrg} repository={testRepo} />
-    </RecoilRoot>,
-    {wrapper: MemoryRouter},
-  );
+  renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
   expect(await screen.findByText('latest')).toBeTruthy();
   expect(await screen.findByText('slim')).toBeTruthy();
   expect(await screen.findByText('alpine')).toBeTruthy();
@@ -353,4 +354,120 @@ test('Delete a multiple tags', async () => {
     new MouseEvent('click', {bubbles: true, cancelable: true}),
   );
   expect(await screen.findByText('This repository is empty.')).toBeTruthy();
+});
+
+// Pull Statistics Tests
+describe('Pull Statistics', () => {
+  beforeEach(() => {
+    // Mock the config to enable IMAGE_PULL_STATS feature
+    jest.mock('src/hooks/UseQuayConfig', () => ({
+      useQuayConfig: () => ({
+        features: {
+          IMAGE_PULL_STATS: true,
+        },
+      }),
+    }));
+  });
+
+  test('Should show pull statistics when data is available', async () => {
+    const mockResponse = createTagResponse();
+    const tag = createTag('latest');
+    mockResponse.tags.push(tag);
+
+    mocked(getTags, true).mockResolvedValue(mockResponse);
+    mocked(getSecurityDetails, true).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+    (getTagPullStatistics as jest.Mock).mockResolvedValue(
+      createPullStatistics('latest', 42),
+    );
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+
+    expect(await screen.findByText('latest')).toBeTruthy();
+    // Wait for pull statistics to load
+    expect(await screen.findByText('42')).toBeTruthy();
+  });
+
+  test('Should show "Never" and 0 when no pull statistics available (404)', async () => {
+    const mockResponse = createTagResponse();
+    const tag = createTag('latest');
+    mockResponse.tags.push(tag);
+
+    mocked(getTags, true).mockResolvedValue(mockResponse);
+    mocked(getSecurityDetails, true).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+
+    // Mock 404 error
+    const error404 = new ResourceError(
+      'Pull statistics not available',
+      'testorg/testrepo:latest',
+      {response: {status: 404}} as unknown as Error,
+    );
+    (getTagPullStatistics as jest.Mock).mockRejectedValue(error404);
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+
+    expect(await screen.findByText('latest')).toBeTruthy();
+    // Should show "Never" for last pulled and 0 for pull count
+    await waitFor(() => {
+      const neverElements = screen.getAllByText('Never');
+      expect(neverElements.length).toBeGreaterThan(0);
+    });
+  });
+
+  test('Should show "Error" when real error occurs', async () => {
+    const mockResponse = createTagResponse();
+    const tag = createTag('latest');
+    mockResponse.tags.push(tag);
+
+    mocked(getTags, true).mockResolvedValue(mockResponse);
+    mocked(getSecurityDetails, true).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+
+    // Mock server error (500)
+    const error500 = new ResourceError(
+      'Unable to fetch pull statistics',
+      'testorg/testrepo:latest',
+      {response: {status: 500}} as unknown as Error,
+    );
+    (getTagPullStatistics as jest.Mock).mockRejectedValue(error500);
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+
+    expect(await screen.findByText('latest')).toBeTruthy();
+    // Should show "Error" for last pulled
+    expect(await screen.findByText('Error')).toBeTruthy();
+  });
+
+  test('Should only fetch pull statistics for visible tags (lazy loading)', async () => {
+    const mockResponse = createTagResponse();
+    // Create 30 tags
+    for (let i = 0; i < 30; i++) {
+      mockResponse.tags.push(createTag(`tag${i}`));
+    }
+
+    mocked(getTags, true).mockResolvedValue(mockResponse);
+    mocked(getSecurityDetails, true).mockResolvedValue(
+      createSecurityDetailsResponse(),
+    );
+    (getTagPullStatistics as jest.Mock).mockResolvedValue(
+      createPullStatistics('tag0', 10),
+    );
+
+    renderWithProviders(<Tags organization={testOrg} repository={testRepo} />);
+
+    // Wait for tags to render
+    expect(await screen.findByText('tag0')).toBeTruthy();
+
+    // Wait a bit for pull statistics to be called
+    await waitFor(() => {
+      // Should be called around 20 times (default page size) not 30 times
+      const calls = mocked(getTagPullStatistics, true).mock.calls.length;
+      expect(calls).toBeLessThan(25); // Allow some buffer
+      expect(calls).toBeGreaterThan(15); // Should have called for visible tags
+    });
+  });
 });

@@ -18,7 +18,7 @@ from endpoints.api.build import *
 from endpoints.api.discovery import *
 from endpoints.api.globalmessages import *  # type: ignore[no-redef]
 from endpoints.api.logs import *  # type: ignore[no-redef]
-from endpoints.api.manifest import *  # type: ignore[no-redef]
+from endpoints.api.manifest import *
 from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.namespacequota import *
 from endpoints.api.organization import *  # type: ignore[assignment,no-redef]
@@ -63,6 +63,7 @@ NOTIFICATION_PARAMS = {
 TOKEN_PARAMS = {"token_uuid": "someuuid"}
 TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
+TAG_PARAMS = {"repository": "devtable/simple", "tag": "latest"}
 EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
 
 
@@ -6921,6 +6922,70 @@ SECURITY_TESTS: List[
         None,
         "testuser",
         401,
+    ),
+    (
+        RepositoryTagPullStatistics,
+        "GET",
+        TAG_PARAMS,
+        {},
+        None,
+        401,
+    ),
+    (
+        RepositoryTagPullStatistics,
+        "GET",
+        TAG_PARAMS,
+        {},
+        "freshuser",
+        403,
+    ),
+    (
+        RepositoryTagPullStatistics,
+        "GET",
+        TAG_PARAMS,
+        {},
+        "reader",
+        403,
+    ),
+    (
+        RepositoryTagPullStatistics,
+        "GET",
+        TAG_PARAMS,
+        {},
+        "devtable",
+        200,
+    ),
+    (
+        RepositoryManifestPullStatistics,
+        "GET",
+        MANIFEST_PARAMS,
+        {},
+        None,
+        401,
+    ),
+    (
+        RepositoryManifestPullStatistics,
+        "GET",
+        MANIFEST_PARAMS,
+        {},
+        "freshuser",
+        403,
+    ),
+    (
+        RepositoryManifestPullStatistics,
+        "GET",
+        MANIFEST_PARAMS,
+        {},
+        "reader",
+        403,
+    ),
+    (
+        RepositoryManifestPullStatistics,
+        "GET",
+        MANIFEST_PARAMS,
+        {},
+        "devtable",
+        404,
     ),
 ]
 

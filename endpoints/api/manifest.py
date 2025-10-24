@@ -3,7 +3,6 @@ Manage the manifests of a repository.
 """
 import json
 import logging
-from datetime import datetime
 from typing import List, Optional
 
 from flask import request
@@ -12,6 +11,7 @@ import features
 from app import app, label_validator, storage
 from data.model import InvalidLabelKeyException, InvalidMediaTypeException
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.model.pull_statistics import get_manifest_pull_statistics
 from data.registry_model import registry_model
 from digest import digest_tools
 from endpoints.api import (
@@ -30,6 +30,7 @@ from endpoints.api import (
     require_repo_read,
     require_repo_write,
     resource,
+    show_if,
     validate_json_request,
 )
 from endpoints.exception import NotFound
@@ -365,3 +366,53 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 
         log_action("manifest_label_delete", namespace_name, metadata, repo_name=repository_name)
         return "", 204
+
+
+@resource(
+    '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>/pull_statistics'.format(
+        digest_tools.DIGEST_PATTERN
+    )
+)
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("manifestref", "The digest of the manifest")
+@show_if(features.IMAGE_PULL_STATS)
+class RepositoryManifestPullStatistics(RepositoryParamResource):
+    """
+    Resource for retrieving pull statistics for a specific repository manifest.
+    """
+
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
+    @disallow_for_app_repositories
+    @nickname("getManifestPullStatistics")
+    def get(self, namespace_name, repository_name, manifestref):
+        """
+        Get pull statistics for a specific manifest.
+        """
+
+        repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
+        if repo_ref is None:
+            raise NotFound()
+
+        # Get the manifest reference
+        manifest = registry_model.lookup_manifest_by_digest(repo_ref, manifestref)
+        if manifest is None:
+            raise NotFound()
+
+        # Get pull statistics from database
+        manifest_stats = get_manifest_pull_statistics(repo_ref.id, manifestref)
+
+        if not manifest_stats:
+            # Return default values if no statistics are available
+            return {
+                "manifest_digest": manifestref,
+                "manifest_pull_count": 0,
+                "last_manifest_pull_date": None,
+            }
+
+        last_pull = manifest_stats.get("last_pull_date")
+
+        return {
+            "manifest_digest": manifestref,
+            "manifest_pull_count": manifest_stats.get("pull_count", 0),
+            "last_manifest_pull_date": format_date(last_pull) if last_pull else None,
+        }

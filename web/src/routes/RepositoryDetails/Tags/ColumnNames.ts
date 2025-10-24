@@ -2,9 +2,11 @@ const ColumnNames = {
   name: 'Tag',
   security: 'Security',
   size: 'Size',
-  expires: 'Expires',
   lastModified: 'Last Modified',
-  digest: 'Digest',
+  expiration: 'Expires',
+  manifest: 'Manifest',
+  lastPulled: 'Last Pulled',
+  pullCount: 'Pull Count',
   pull: 'Pull',
 };
 
