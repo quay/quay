@@ -162,5 +162,6 @@
       "GITLAB_ENDPOINT": "https://gitlab.com/"
     }
   },
-  "registry_state": "normal"
+  "registry_state": "normal",
+  "version_number": "Quay test"
 }

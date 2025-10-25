@@ -24,7 +24,7 @@ from flask import (
 from flask_login import current_user
 
 import features
-from _init import ROOT_DIR
+from _init import ROOT_DIR, __version__
 from app import app, authentication, avatar
 from app import billing as stripe
 from app import (
@@ -1308,6 +1308,10 @@ def user_initialize():
     "quay.endpoints.web.config", record_exception=True, set_status_on_exception=True
 )
 def config():
+    version_number = ""
+    if not features.BILLING:
+        version_number = "Quay %s" % __version__
+
     response = jsonify(
         {
             "config": frontend_visible_config(app.config),
@@ -1316,6 +1320,7 @@ def config():
             "external_login": get_external_login_config(),
             "registry_state": app.config.get("REGISTRY_STATE", "normal"),
             "account_recovery_mode": app.config.get("ACCOUNT_RECOVERY_MODE", False),
+            "version_number": version_number,
         }
     )
     return response

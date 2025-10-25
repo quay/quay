@@ -7,8 +7,8 @@ const response = {
     AUTHENTICATION_TYPE: 'Database',
     AVATAR_KIND: 'local',
     BRANDING: {
-      footer_img: null,
-      footer_url: null,
+      footer_img: '/static/img/RedHat.svg',
+      footer_url: 'https://www.redhat.com',
       logo: '/static/img/quay-horizontal-color.svg',
     },
     CHANNEL_COLORS: [
@@ -45,10 +45,16 @@ const response = {
       '#e7ba52',
       '#a55194',
     ],
-    CONTACT_INFO: [],
+    CONTACT_INFO: ['mailto:support@example.com'],
     DEBUG: false,
     DOCUMENTATION_ROOT: 'https://docs.projectquay.io/',
     ENTERPRISE_LOGO_URL: '/static/img/quay-horizontal-color.svg',
+    FOOTER_LINKS: {
+      TERMS_OF_SERVICE_URL: 'https://example.com/terms',
+      PRIVACY_POLICY_URL: 'https://example.com/privacy',
+      SECURITY_URL: 'https://example.com/security',
+      ABOUT_URL: 'https://example.com/about',
+    },
     // ENTERPRISE_DARK_LOGO_URL:
     //  '/static/img/quay-horizontal-whiteblue-nobackground.svg',
     FEATURE_PROXY_CACHE: false,
@@ -148,6 +154,7 @@ const response = {
     },
   },
   registry_state: 'normal',
+  version_number: 'Quay local-dev',
 };
 
 mock.onGet('/config').reply((request: AxiosRequestConfig) => {

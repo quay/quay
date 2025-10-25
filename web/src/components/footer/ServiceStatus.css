@@ -1,0 +1,55 @@
+.service-status-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.service-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.2s ease;
+}
+
+.service-status-text {
+  color: inherit;
+}
+
+.service-status-icon:hover .service-status-indicator {
+  transform: scale(1.2);
+}
+
+/* none = operational */
+.service-status-indicator.none {
+  background-color: #3e8635;
+}
+
+/* minor = degraded performance or under maintenance */
+.service-status-indicator.minor {
+  background-color: #f0ab00;
+}
+
+/* major = partial outage */
+.service-status-indicator.major {
+  background-color: #ec7a08;
+}
+
+/* critical = major outage */
+.service-status-indicator.critical {
+  background-color: #c9190b;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

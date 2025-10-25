@@ -37,10 +37,11 @@ interface StatusData {
 
 export function useServiceStatus() {
   const [statusData, setStatusData] = useState<StatusData>(null);
-  if (isNullOrUndefined(StatusPage)) {
-    return {};
-  }
+
   useEffect(() => {
+    if (isNullOrUndefined(StatusPage)) {
+      return;
+    }
     const statusPageHandler = new StatusPage.page({page: STATUSPAGE_PAGE_ID});
     statusPageHandler.summary({
       success: (data) => {
