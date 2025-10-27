@@ -31,6 +31,7 @@ from auth.permissions import (
     SuperUserPermission,
     UserAdminPermission,
     UserReadPermission,
+    GlobalReadOnlySuperUserPermission,
 )
 from data import model
 from data.billing import get_plan
@@ -214,12 +215,12 @@ def user_view(user, previous_username=None):
             }
         )
 
-    if features.SUPER_USERS and SuperUserPermission().can():
+    if features.SUPER_USERS and (SuperUserPermission().can() or GlobalReadOnlySuperUserPermission().can()):
         user_response.update(
             {
                 "super_user": user
                 and user == get_authenticated_user()
-                and SuperUserPermission().can()
+                and (SuperUserPermission().can() or GlobalReadOnlySuperUserPermission().can())
             }
         )
 
