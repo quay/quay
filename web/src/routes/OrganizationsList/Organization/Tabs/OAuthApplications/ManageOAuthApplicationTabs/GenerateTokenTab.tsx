@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Button,
   Flex,
@@ -18,6 +18,7 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
+import TokenDisplayModal from 'src/components/modals/TokenDisplayModal';
 import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
 import {GlobalAuthState} from 'src/resources/AuthResource';
@@ -36,6 +37,10 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [customUser, setCustomUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Entity | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [oauthPopup, setOauthPopup] = useState<Window | null>(null);
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+  const [generatedScopes, setGeneratedScopes] = useState<string[]>([]);
+  const [isTokenDisplayModalOpen, setIsTokenDisplayModalOpen] = useState(false);
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
 
@@ -127,17 +132,54 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
     setSelectedUser(null);
   };
 
+  const handleOAuthMessage = useCallback(
+    (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        console.warn('Received message from unexpected origin:', event.origin);
+        return;
+      }
+
+      if (event.data.type === 'OAUTH_TOKEN_GENERATED') {
+        setGeneratedToken(event.data.token);
+        setGeneratedScopes(event.data.scope?.split(' ') || []);
+        setIsTokenDisplayModalOpen(true);
+        setIsAuthModalOpen(false);
+
+        // Clean up popup
+        if (oauthPopup && !oauthPopup.closed) {
+          oauthPopup.close();
+        }
+        setOauthPopup(null);
+      }
+    },
+    [oauthPopup],
+  );
+
+  useEffect(() => {
+    window.addEventListener('message', handleOAuthMessage);
+    return () => {
+      window.removeEventListener('message', handleOAuthMessage);
+    };
+  }, [handleOAuthMessage]);
+
   const handleAuthModalConfirm = () => {
+    // Close authorization modal
+    setIsAuthModalOpen(false);
+
     // Use POST form submission for both assignment and generation
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = generateUrl();
-    form.target = '_blank';
+
+    // Extract URL path and parameters from the generated URL
+    const fullUrl = new URL(generateUrl());
+    // Use relative path to go through nginx (not absolute URL to backend)
+    form.action = fullUrl.pathname;
+    form.target = 'oauth_authorization';
     form.style.display = 'none';
 
     // Extract URL parameters and add them as form fields
-    const url = new URL(generateUrl());
-    url.searchParams.forEach((value, key) => {
+    fullUrl.searchParams.forEach((value, key) => {
       const input = document.createElement('input');
       input.type = 'hidden';
       input.name = key;
@@ -154,11 +196,41 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
       form.appendChild(csrfInput);
     }
 
+    // Open popup window (600x700 centered)
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      '',
+      'oauth_authorization',
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+    );
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      // Popup was blocked
+      alert(
+        'Popup was blocked by your browser. Please allow popups for this site and try again.',
+      );
+      document.body.removeChild(form);
+      return;
+    }
+
+    setOauthPopup(popup);
+
+    // Submit form to popup
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
 
-    setIsAuthModalOpen(false);
+    // Set timeout to check if popup was closed manually
+    const checkPopupClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkPopupClosed);
+        setOauthPopup(null);
+      }
+    }, 500);
   };
 
   const handleAuthModalClose = () => {
@@ -292,6 +364,20 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           )}
           isAssignmentMode={customUser && selectedUser !== null}
           targetUsername={selectedUser?.name}
+        />
+      )}
+
+      {generatedToken && (
+        <TokenDisplayModal
+          isOpen={isTokenDisplayModalOpen}
+          onClose={() => {
+            setIsTokenDisplayModalOpen(false);
+            setGeneratedToken(null);
+            setGeneratedScopes([]);
+          }}
+          token={generatedToken}
+          applicationName={application.name}
+          scopes={generatedScopes}
         />
       )}
     </PageSection>
