@@ -613,7 +613,7 @@ describe('Organization OAuth Applications', () => {
       cy.get('[data-testid="generate-token-button"]').should('not.be.disabled');
     });
 
-    it('should open OAuth authorization in new tab when generating token', () => {
+    it('should open OAuth authorization in popup window when generating token', () => {
       cy.visit('/organization/testorg?tab=OAuthApplications');
       cy.wait('@getOrg');
       cy.wait('@getOAuthApplications');
@@ -668,13 +668,106 @@ describe('Organization OAuth Applications', () => {
           // Check form properties
           expect(capturedFormAction).to.include('/oauth/authorizeapp');
           expect(capturedFormMethod.toLowerCase()).to.equal('post');
-          expect(capturedFormTarget).to.equal('_blank');
+          expect(capturedFormTarget).to.equal('oauth_authorization');
 
           // Check form data
           expect(capturedFormData.client_id).to.exist;
           expect(capturedFormData.scope).to.contain('repo:read repo:write');
           expect(capturedFormData.response_type).to.equal('token');
         });
+    });
+
+    it('should display token in React modal after generation (not redirect to Angular)', () => {
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+
+      // Click generate token to open modal
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      // Stub window.open and postMessage to simulate OAuth flow
+      cy.window().then((win) => {
+        // Stub window.open to return a fake popup
+        const fakePopup = {
+          closed: false,
+          close: cy.stub(),
+        };
+        cy.stub(win, 'open').returns(fakePopup);
+
+        // Stub form submit to simulate OAuth callback
+        const submitStub = cy.stub(win.HTMLFormElement.prototype, 'submit');
+        submitStub.callsFake(function () {
+          // Simulate OAuth callback by posting message
+          setTimeout(() => {
+            win.postMessage(
+              {
+                type: 'OAUTH_TOKEN_GENERATED',
+                token: 'test-access-token-123456',
+                scope: 'repo:read',
+                state: null,
+              },
+              win.location.origin,
+            );
+          }, 100);
+        });
+      });
+
+      // Click authorize in modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // CRITICAL: Verify token modal appears in React UI
+      cy.contains('Access Token Generated', {timeout: 5000}).should('exist');
+      cy.contains('Your access token has been successfully generated').should(
+        'exist',
+      );
+      cy.contains('test-access-token-123456').should('exist');
+
+      // Verify user is still in React UI (no redirect to Angular)
+      cy.url().should('include', 'localhost');
+      cy.url().should('not.include', '/oauth/localapp');
+      cy.url().should('include', '/organization/testorg');
+    });
+
+    it('should handle popup blocked scenario gracefully', () => {
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+
+      // Click generate token to open modal
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      // Stub window.open to return null (popup blocked)
+      cy.window().then((win) => {
+        cy.stub(win, 'open').returns(null);
+
+        // Stub alert to capture the message
+        cy.stub(win, 'alert').as('alertStub');
+      });
+
+      // Click authorize in modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // Verify alert was shown about popup blocker
+      cy.get('@alertStub').should(
+        'have.been.calledWith',
+        'Popup was blocked by your browser. Please allow popups for this site and try again.',
+      );
     });
 
     it('should handle user assignment functionality', () => {
