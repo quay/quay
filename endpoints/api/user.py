@@ -215,7 +215,9 @@ def user_view(user, previous_username=None):
             }
         )
 
-    if features.SUPER_USERS and (SuperUserPermission().can() or GlobalReadOnlySuperUserPermission().can()):
+    if features.SUPER_USERS and (
+        SuperUserPermission().can() or GlobalReadOnlySuperUserPermission().can()
+    ):
         user_response.update(
             {
                 "super_user": user
