@@ -27,6 +27,8 @@ export interface Tag {
   modelcard?: string;
   cosign_signature_tag?: string;
   cosign_signature_manifest_digest?: string;
+  pull_count?: number;
+  last_pulled?: string;
 }
 
 export interface ManifestList {
@@ -151,7 +153,7 @@ export const VulnerabilityOrder = {
   [VulnerabilitySeverity.Unknown]: 5,
 };
 
-// TODO: Support cancellation signal here
+// TODO: Support cancelation signal here
 export async function getTags(
   org: string,
   repo: string,
@@ -424,4 +426,40 @@ export async function permanentlyDeleteTag(
     },
   );
   assertHttpCode(response.status, 200);
+}
+
+export interface TagPullStatistics {
+  tag_name: string;
+  tag_pull_count: number;
+  last_tag_pull_date: string | null;
+  current_manifest_digest: string;
+  manifest_pull_count: number;
+  last_manifest_pull_date: string | null;
+}
+
+export async function getTagPullStatistics(
+  org: string,
+  repo: string,
+  tag: string,
+) {
+  try {
+    const response: AxiosResponse<TagPullStatistics> = await axios.get(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}/pull_statistics`,
+    );
+    assertHttpCode(response.status, 200);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      throw new ResourceError(
+        'Pull statistics not available (feature may be disabled or no data)',
+        `${org}/${repo}:${tag}`,
+        error,
+      );
+    }
+    throw new ResourceError(
+      'Unable to fetch pull statistics',
+      `${org}/${repo}:${tag}`,
+      error,
+    );
+  }
 }

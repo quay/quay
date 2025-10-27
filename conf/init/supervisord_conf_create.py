@@ -55,6 +55,7 @@ def registry_services():
         "quotaregistrysizeworker": {"autostart": "true"},
         "autopruneworker": {"autostart": "true"},
         "proxycacheblobworker": {"autostart": "true"},
+        "pullstatsredisflushworker": {"autostart": "true"},
     }
 
 
@@ -96,6 +97,7 @@ def config_services():
         "quotaregistrysizeworker": {"autostart": "false"},
         "autopruneworker": {"autostart": "false"},
         "proxycacheblobworker": {"autostart": "false"},
+        "pullstatsredisflushworker": {"autostart": "false"},
     }
 
 
@@ -137,6 +139,12 @@ if __name__ == "__main__":
         config = registry_services()
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
+
+    # Enable pullstatsredisflushworker only if IMAGE_PULL_STATS feature is enabled
+    feature_enabled = os.getenv("FEATURE_IMAGE_PULL_STATS", "false").lower() == "true"
+    if not feature_enabled and "pullstatsredisflushworker" in config:
+        config["pullstatsredisflushworker"]["autostart"] = "false"
+
     generate_supervisord_config(
         os.path.join(QUAYCONF_DIR, "supervisord.conf"),
         config,

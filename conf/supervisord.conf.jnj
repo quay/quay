@@ -404,6 +404,18 @@ autostart = {{ config['proxycacheblobworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:pullstatsredisflushworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/pullstatsredisflushworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.pullstatsredisflushworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.pullstatsredisflushworker
+{% endif -%}
+autostart = {{ config['pullstatsredisflushworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:config-editor]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s,
