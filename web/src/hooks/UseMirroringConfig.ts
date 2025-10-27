@@ -1,5 +1,6 @@
 import {useState, useEffect} from 'react';
 import {
+  MirroringConfig,
   MirroringConfigResponse,
   getMirrorConfig,
   createMirrorConfig,
@@ -101,11 +102,9 @@ export const useMirroringConfig = (
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
 
-    const mirrorConfig = {
+    const mirrorConfig: Partial<MirroringConfig> = {
       is_enabled: data.isEnabled,
       external_reference: data.externalReference,
-      external_registry_username: data.username || null,
-      external_registry_password: data.password || null,
       sync_start_date: data.syncStartDate
         ? timestampToISO(timestampFromISO(data.syncStartDate))
         : timestampToISO(Math.floor(Date.now() / 1000)),
@@ -126,6 +125,15 @@ export const useMirroringConfig = (
         rule_value: tagPatterns,
       },
     };
+
+    // Only include credentials if:
+    // 1. Creating new config (no existing config), OR
+    // 2. Password field has been filled in (user is updating credentials)
+    // This prevents clearing existing credentials when updating other fields
+    if (!config || data.password) {
+      mirrorConfig.external_registry_username = data.username || null;
+      mirrorConfig.external_registry_password = data.password || null;
+    }
 
     if (config) {
       await updateMirrorConfig(namespace, repoName, mirrorConfig);
