@@ -7,7 +7,7 @@ from urllib.parse import urlunparse
 
 from flask import request, url_for
 
-from app import app
+from app import app, model_cache
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
@@ -286,7 +286,7 @@ class BuildTriggerActivate(RepositoryParamResource):
             pull_robot_name = request.get_json().get("pull_robot", None)
             if pull_robot_name:
                 try:
-                    pull_robot = model.user.lookup_robot(pull_robot_name)
+                    pull_robot = model.user.lookup_robot(pull_robot_name, model_cache)
                 except model.InvalidRobotException:
                     raise NotFound()
 
