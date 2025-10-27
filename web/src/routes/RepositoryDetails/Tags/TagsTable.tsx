@@ -111,6 +111,13 @@ function TagsTableRow(props: RowProps) {
 
   const location = useLocation();
 
+  // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
+  // Columns: expand(1) + select(1) + tag(1) + security(1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
+  // Expanded row content spans all except first two (expand + select)
+  const hasActions = !inReadOnlyMode && props.repoDetails?.can_write;
+  const hasPullStats = config?.features?.IMAGE_PULL_STATS;
+  const expandedColspan = 7 + (hasPullStats ? 2 : 0) + (hasActions ? 1 : 0);
+
   // Fetch pull statistics for this specific tag
   const {
     pullStatistics,
