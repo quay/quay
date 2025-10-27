@@ -28,10 +28,10 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     SuperUserPermission,
     UserAdminPermission,
     UserReadPermission,
-    GlobalReadOnlySuperUserPermission,
 )
 from data import model
 from data.billing import get_plan

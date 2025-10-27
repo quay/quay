@@ -78,7 +78,7 @@ def team_view(orgname, team):
         "description": team.description,
         "role": team.role_name,
         "avatar": avatar.get_data_for_team(team),
-        "can_view": ViewTeamPermission(orgname, team.name).can(),
+        "can_view": ViewTeamPermission(orgname, team.name).can() or allow_if_global_readonly_superuser(),
         "repo_count": team.repo_count,
         "member_count": team.member_count,
         "is_synced": team.is_synced,
