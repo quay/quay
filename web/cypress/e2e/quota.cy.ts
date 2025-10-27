@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-describe('Organization Quota Management', () => {
+describe('Quota Management', () => {
   beforeEach(() => {
     // Handle pre-existing CanceledError from organization page navigation
     cy.on('uncaught:exception', (err) => {
@@ -13,212 +13,175 @@ describe('Organization Quota Management', () => {
       return true;
     });
 
+    // Seed database
     cy.exec('npm run quay:seed');
+
+    // Get CSRF token and login
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
         cy.loginByCSRF(token);
       });
-    cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
-    cy.intercept('GET', '/api/v1/plans/', {fixture: 'plans.json'}).as(
-      'getPlans',
-    );
   });
 
-  describe('Feature Flag Behavior', () => {
+  describe('Feature Flags', () => {
     it('should not show quota tab when QUOTA_MANAGEMENT feature is disabled', () => {
-      cy.intercept('GET', '/config', (req) =>
-        req.reply((res) => {
-          res.body.features['QUOTA_MANAGEMENT'] = false;
-          res.body.features['EDIT_QUOTA'] = true;
-          res.body.features['SUPER_USERS'] = true;
-          return res;
-        }),
-      ).as('getConfigNoQuota');
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = false;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
 
       cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfigNoQuota');
+      cy.wait('@getConfig');
 
       cy.get('[data-testid="Quota"]').should('not.exist');
     });
 
     it('should not show quota tab when EDIT_QUOTA feature is disabled', () => {
-      cy.intercept('GET', '/config', (req) =>
-        req.reply((res) => {
-          res.body.features['QUOTA_MANAGEMENT'] = true;
-          res.body.features['EDIT_QUOTA'] = false;
-          res.body.features['SUPER_USERS'] = true;
-          return res;
-        }),
-      ).as('getConfigNoEditQuota');
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = false;
+        config.features.SUPER_USERS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
 
       cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfigNoEditQuota');
+      cy.wait('@getConfig');
 
       cy.get('[data-testid="Quota"]').should('not.exist');
     });
 
     it('should show quota tab when all required features are enabled', () => {
-      cy.intercept('GET', '/config', (req) =>
-        req.reply((res) => {
-          res.body.features['QUOTA_MANAGEMENT'] = true;
-          res.body.features['EDIT_QUOTA'] = true;
-          res.body.features['SUPER_USERS'] = true;
-          return res;
-        }),
-      ).as('getConfigQuotaEnabled');
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getQuota');
 
       cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfigQuotaEnabled');
+      cy.wait('@getConfig');
 
       cy.get('[data-testid="Quota"]').should('exist');
     });
   });
 
-  describe('Quota Management Form - No Existing Quota', () => {
+  describe('Organization Settings - Read-Only (Non-Superuser)', () => {
     beforeEach(() => {
-      // Enable quota features
-      cy.intercept('GET', '/config', (req) =>
-        req.reply((res) => {
-          res.body.features['QUOTA_MANAGEMENT'] = true;
-          res.body.features['EDIT_QUOTA'] = true;
-          res.body.features['SUPER_USERS'] = true;
-          return res;
-        }),
-      ).as('getConfig');
+      // Mock regular user
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
 
-      // Mock no existing quota (empty array response)
-      cy.intercept('GET', '/api/v1/organization/projectquay/quota*', {
+      cy.fixture('user.json').then((user) => {
+        user.super_user = false;
+        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+      });
+    });
+
+    it('should display alert when no quota is configured for non-superuser', () => {
+      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
         statusCode: 200,
         body: [],
       }).as('getQuotaEmpty');
-    });
 
-    it('should display initial state with no quota configured', () => {
       cy.visit('/organization/projectquay?tab=Settings');
       cy.wait('@getConfig');
 
-      // Check quota tab exists and click it
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-
-      // Wait for quota management form to appear
-      cy.get('#quota-management-form', {timeout: 10000}).should('be.visible');
-
-      // Now wait for the API call after form loads
-      cy.wait('@getQuotaEmpty');
-
-      // Check basic form elements exist
-      cy.get('[data-testid="quota-value-input"]').should('exist');
-    });
-
-    it('should enable Apply button when valid quota is entered', () => {
-      cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfig');
-
-      // Wait for quota tab to be available before clicking
       cy.get('[data-testid="Quota"]').should('be.visible').click();
       cy.wait('@getQuotaEmpty');
 
-      // Enter valid quota value
-      cy.get('[data-testid="quota-value-input"]').clear().type('10');
-
-      // Apply button should now be enabled
-      cy.get('[data-testid="apply-quota-button"]').should('not.be.disabled');
+      // Should see alert for non-superuser with no quota
+      cy.get('[data-testid="no-quota-alert"]').should('be.visible');
+      cy.contains('Quota must be configured by a superuser').should('exist');
     });
 
-    it('should successfully create new quota', () => {
-      // Mock POST for quota creation
-      cy.intercept('POST', '/api/v1/organization/projectquay/quota*', {
-        statusCode: 201,
-        body: 'Created',
-      }).as('createQuota');
-
-      cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfig');
-
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-
-      // Wait for quota management form to appear
-      cy.get('#quota-management-form', {timeout: 10000}).should('be.visible');
-      cy.wait('@getQuotaEmpty'); // Use the beforeEach intercept
-
-      // Wait for form elements to be ready
-      cy.get('[data-testid="quota-value-input"]', {timeout: 10000}).should(
-        'be.visible',
-      );
-
-      // Fill form
-      cy.get('[data-testid="quota-value-input"]').clear().type('10');
-
-      // Submit form
-      cy.get('[data-testid="apply-quota-button"]').should('not.be.disabled');
-      cy.get('[data-testid="apply-quota-button"]').click();
-
-      cy.wait('@createQuota');
-
-      // Just check that the form is still there (success is hard to verify consistently)
-      cy.get('[data-testid="apply-quota-button"]').should('exist');
-    });
-
-    it('should handle server errors when creating quota', () => {
-      // Mock server error response (simulating server-side validation or system error)
-      cy.intercept('POST', '**/api/v1/organization/projectquay/quota*', {
-        statusCode: 400,
-        body: {message: 'Server validation failed'},
-      }).as('createQuotaError');
-
-      cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfig');
-
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-
-      // Wait for quota management form to appear
-      cy.get('#quota-management-form', {timeout: 10000}).should('be.visible');
-
-      // Wait for form elements to be ready
-      cy.get('[data-testid="quota-value-input"]', {timeout: 10000}).should(
-        'be.visible',
-      );
-      cy.get('[data-testid="apply-quota-button"]', {timeout: 10000}).should(
-        'be.visible',
-      );
-
-      // Fill form with valid data to enable the button
-      cy.get('[data-testid="quota-value-input"]').clear().type('10');
-
-      // Verify button becomes enabled
-      cy.get('[data-testid="apply-quota-button"]').should('not.be.disabled');
-
-      // Submit the form - this should trigger a server error
-      cy.get('[data-testid="apply-quota-button"]').click();
-
-      cy.wait('@createQuotaError');
-      // Check for the actual error message format from addDisplayError
-      cy.contains('quota creation error').should('exist');
-    });
-  });
-
-  describe('Quota Management Form - Existing Quota', () => {
-    beforeEach(() => {
-      // Enable quota features
-      cy.intercept('GET', '/config', (req) =>
-        req.reply((res) => {
-          res.body.features['QUOTA_MANAGEMENT'] = true;
-          res.body.features['EDIT_QUOTA'] = true;
-          res.body.features['SUPER_USERS'] = true;
-          return res;
-        }),
-      ).as('getConfig');
-
-      // Mock existing quota with limits
+    it('should display read-only quota when quota is configured for non-superuser', () => {
       cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
         statusCode: 200,
         body: [
           {
             id: 1,
-            limit_bytes: 10737418240, // 10 GiB
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [],
+            default_config_exists: false,
+          },
+        ],
+      }).as('getQuotaWithData');
+
+      cy.visit('/organization/projectquay?tab=Settings');
+      cy.wait('@getConfig');
+
+      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      cy.wait('@getQuotaWithData');
+
+      // Should see read-only alert
+      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
+
+      // All fields should be disabled
+      cy.get('[data-testid="quota-value-input"]').should('be.disabled');
+      cy.get('[data-testid="quota-unit-select-toggle"]').should('be.disabled');
+
+      // Apply and Remove buttons should NOT exist
+      cy.get('[data-testid="apply-quota-button"]').should('not.exist');
+      cy.get('[data-testid="remove-quota-button"]').should('not.exist');
+    });
+  });
+
+  describe('Organization Settings - Read-Only (Superuser)', () => {
+    beforeEach(() => {
+      // Mock superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+    });
+
+    it('should display alert when no quota is configured for superuser', () => {
+      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getQuotaEmpty');
+
+      cy.visit('/organization/projectquay?tab=Settings');
+      cy.wait('@getConfig');
+
+      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      cy.wait('@getQuotaEmpty');
+
+      // Should see alert for superuser with no quota
+      cy.get('[data-testid="no-quota-superuser-alert"]').should('be.visible');
+      cy.contains(
+        'Use the "Configure Quota" option from the Organizations list page to set up quota for this organization.',
+      ).should('exist');
+    });
+
+    it('should display read-only quota when quota is configured for superuser', () => {
+      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
             limit: '10.0 GiB',
             default_config: false,
             limits: [
@@ -227,64 +190,390 @@ describe('Organization Quota Management', () => {
                 type: 'Warning',
                 limit_percent: 80,
               },
+            ],
+            default_config_exists: false,
+          },
+        ],
+      }).as('getQuotaWithData');
+
+      cy.visit('/organization/projectquay?tab=Settings');
+      cy.wait('@getConfig');
+
+      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      cy.wait('@getQuotaWithData');
+
+      // Should see read-only alert (same as non-superuser)
+      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
+
+      // All fields should be disabled (even for superusers in org-view)
+      cy.get('[data-testid="quota-value-input"]').should('be.disabled');
+      cy.get('[data-testid="quota-unit-select-toggle"]').should('be.disabled');
+
+      // Apply and Remove buttons should NOT exist
+      cy.get('[data-testid="apply-quota-button"]').should('not.exist');
+      cy.get('[data-testid="remove-quota-button"]').should('not.exist');
+
+      // Quota policy fields should also be disabled
+      cy.get('[data-testid="new-limit-type-select"]').should('be.disabled');
+      cy.get('[data-testid="new-limit-percent-input"]').should('be.disabled');
+      cy.get('[data-testid="add-limit-button"]').should('be.disabled');
+    });
+  });
+
+  describe('Configure Quota Modal - Access Control', () => {
+    beforeEach(() => {
+      // Mock superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.fixture('superuser-organizations.json').then((orgsData) => {
+        cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+          'getSuperuserOrganizations',
+        );
+      });
+
+      cy.fixture('superuser-users.json').then((usersData) => {
+        cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+          'getSuperuserUsers',
+        );
+      });
+
+      // Mock organization details
+      cy.intercept('GET', '/api/v1/organization/testorg', {
+        statusCode: 200,
+        body: {
+          name: 'testorg',
+          email: 'testorg@example.com',
+          teams: {owners: 'admin'},
+        },
+      });
+
+      cy.intercept('GET', '/api/v1/organization/projectquay', {
+        statusCode: 200,
+        body: {
+          name: 'projectquay',
+          email: 'projectquay@example.com',
+          teams: {},
+        },
+      });
+
+      // Mock robots/members
+      cy.intercept('GET', '/api/v1/organization/*/robots', {
+        statusCode: 200,
+        body: {robots: []},
+      });
+
+      cy.intercept('GET', '/api/v1/organization/*/members', {
+        statusCode: 200,
+        body: {members: []},
+      });
+    });
+
+    it('should show Configure Quota option for organizations', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getQuota');
+
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
+
+      // Find testorg row and click kebab menu
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+
+      // Should see Configure Quota option
+      cy.contains('Configure Quota').should('be.visible');
+    });
+
+    it('should hide Configure Quota when feature flags are disabled', () => {
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = false; // Disable quota management
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfigNoQuota');
+      });
+
+      cy.visit('/organization');
+      cy.wait('@getConfigNoQuota');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
+
+      // Find testorg row and click kebab menu
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+
+      // Should NOT see Configure Quota option
+      cy.contains('Configure Quota').should('not.exist');
+    });
+
+    it('should hide Configure Quota for non-superusers', () => {
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('user.json').then((user) => {
+        user.super_user = false;
+        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+      });
+
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getUser');
+
+      // For non-superusers, kebab menu should not exist at all
+      cy.get('[data-testid="testorg-options-toggle"]').should('not.exist');
+    });
+  });
+
+  describe('Configure Quota Modal - Create Quota', () => {
+    beforeEach(() => {
+      // Mock superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.fixture('superuser-organizations.json').then((orgsData) => {
+        cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+          'getSuperuserOrganizations',
+        );
+      });
+
+      // Mock organization details
+      cy.intercept('GET', '/api/v1/organization/testorg', {
+        statusCode: 200,
+        body: {
+          name: 'testorg',
+          email: 'testorg@example.com',
+          teams: {owners: 'admin'},
+        },
+      });
+
+      // Mock robots/members
+      cy.intercept('GET', '/api/v1/organization/*/robots', {
+        statusCode: 200,
+        body: {robots: []},
+      });
+
+      cy.intercept('GET', '/api/v1/organization/*/members', {
+        statusCode: 200,
+        body: {members: []},
+      });
+    });
+
+    it('should successfully create quota from modal', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getQuotaEmpty');
+
+      cy.intercept('POST', '/api/v1/organization/testorg/quota*', {
+        statusCode: 201,
+        body: 'Created',
+      }).as('createQuota');
+
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
+
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
+
+      // Wait for modal to open
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaEmpty');
+
+      // Verify modal title
+      cy.contains('Configure Quota for testorg').should('exist');
+
+      // Fields should NOT be disabled in super-user view
+      cy.get('[data-testid="quota-value-input"]').should('not.be.disabled');
+      cy.get('[data-testid="quota-value-input"]').clear().type('100');
+
+      // Apply button should be enabled
+      cy.get('[data-testid="apply-quota-button"]')
+        .should('not.be.disabled')
+        .click();
+
+      cy.wait('@createQuota');
+    });
+
+    it('should handle creation errors', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getQuotaEmpty');
+
+      cy.intercept('POST', '/api/v1/organization/testorg/quota*', {
+        statusCode: 400,
+        body: {message: 'Validation error'},
+      }).as('createQuotaError');
+
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
+
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
+
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaEmpty');
+
+      // Enter quota value
+      cy.get('[data-testid="quota-value-input"]').clear().type('100');
+      cy.get('[data-testid="apply-quota-button"]').click();
+
+      cy.wait('@createQuotaError');
+
+      // Should see error message
+      cy.contains('quota creation error').should('exist');
+    });
+  });
+
+  describe('Configure Quota Modal - Update Quota', () => {
+    beforeEach(() => {
+      // Mock superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.fixture('superuser-organizations.json').then((orgsData) => {
+        cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+          'getSuperuserOrganizations',
+        );
+      });
+
+      // Mock organization details
+      cy.intercept('GET', '/api/v1/organization/testorg', {
+        statusCode: 200,
+        body: {
+          name: 'testorg',
+          email: 'testorg@example.com',
+          teams: {owners: 'admin'},
+        },
+      });
+
+      // Mock robots/members
+      cy.intercept('GET', '/api/v1/organization/*/robots', {
+        statusCode: 200,
+        body: {robots: []},
+      });
+
+      cy.intercept('GET', '/api/v1/organization/*/members', {
+        statusCode: 200,
+        body: {members: []},
+      });
+    });
+
+    it('should display existing quota in modal', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [
               {
-                id: 2,
-                type: 'Reject',
-                limit_percent: 90,
+                id: 1,
+                type: 'Warning',
+                limit_percent: 80,
               },
             ],
             default_config_exists: false,
           },
         ],
-      }).as('getQuotaWithLimits');
-    });
+      }).as('getQuotaWithData');
 
-    it('should display existing quota configuration', () => {
-      cy.visit('/organization/projectquay?tab=Settings');
+      cy.visit('/organization');
       cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
 
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaWithLimits');
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
 
-      // Check quota value and unit are populated
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaWithData');
+
+      // Should display existing quota value
       cy.get('[data-testid="quota-value-input"]').should('have.value', '10');
       cy.get('[data-testid="quota-unit-select-toggle"]').should(
         'contain.text',
         'GiB',
       );
 
-      // Check Quota Policy section is visible
-      cy.get('[data-testid="quota-policy-section"]').should('exist');
-
-      // Check existing limits are displayed
+      // Should show existing limits
       cy.get('[data-testid="quota-limit-1"]').should('exist');
-      cy.get('[data-testid="quota-limit-2"]').should('exist');
-
-      // Check limit values
-      cy.get('[data-testid="quota-limit-1"]').within(() => {
-        cy.contains('Warning').should('exist');
-        cy.get('[data-testid="limit-percent-input"]').should(
-          'have.value',
-          '80',
-        );
-      });
-
-      cy.get('[data-testid="quota-limit-2"]').within(() => {
-        cy.contains('Reject').should('exist');
-        cy.get('[data-testid="limit-percent-input"]').should(
-          'have.value',
-          '90',
-        );
-      });
+      cy.contains('Warning').should('exist');
     });
 
     it('should successfully update existing quota', () => {
-      cy.intercept('PUT', '**/api/v1/organization/projectquay/quota/1*', {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [],
+            default_config_exists: false,
+          },
+        ],
+      }).as('getQuotaWithData');
+
+      cy.intercept('PUT', '**/api/v1/organization/testorg/quota/1*', {
         statusCode: 200,
         body: {
           id: 1,
-          limit_bytes: 21474836480, // 20 GiB
+          limit_bytes: 21474836480,
           limit: '20.0 GiB',
           default_config: false,
           limits: [],
@@ -292,311 +581,312 @@ describe('Organization Quota Management', () => {
         },
       }).as('updateQuota');
 
-      cy.visit('/organization/projectquay?tab=Settings');
+      cy.visit('/organization');
       cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
 
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaWithLimits');
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
+
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaWithData');
 
       // Update quota value
       cy.get('[data-testid="quota-value-input"]').clear().type('20');
-
-      // Submit form
       cy.get('[data-testid="apply-quota-button"]').click();
 
       cy.wait('@updateQuota');
       cy.contains('Successfully updated quota').should('exist');
     });
+  });
 
-    it('should successfully delete entire quota', () => {
-      cy.intercept('DELETE', '/api/v1/organization/projectquay/quota/1*', {
+  describe('Configure Quota Modal - Delete Quota', () => {
+    beforeEach(() => {
+      // Mock superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.fixture('superuser-organizations.json').then((orgsData) => {
+        cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+          'getSuperuserOrganizations',
+        );
+      });
+
+      // Mock organization details
+      cy.intercept('GET', '/api/v1/organization/testorg', {
+        statusCode: 200,
+        body: {
+          name: 'testorg',
+          email: 'testorg@example.com',
+          teams: {owners: 'admin'},
+        },
+      });
+
+      // Mock robots/members
+      cy.intercept('GET', '/api/v1/organization/*/robots', {
+        statusCode: 200,
+        body: {robots: []},
+      });
+
+      cy.intercept('GET', '/api/v1/organization/*/members', {
+        statusCode: 200,
+        body: {members: []},
+      });
+    });
+
+    it('should successfully delete quota', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [],
+            default_config_exists: false,
+          },
+        ],
+      }).as('getQuotaWithData');
+
+      cy.intercept('DELETE', '/api/v1/organization/testorg/quota/1*', {
         statusCode: 204,
       }).as('deleteQuota');
 
-      cy.visit('/organization/projectquay?tab=Settings');
+      cy.visit('/organization');
       cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
 
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaWithLimits');
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
+
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaWithData');
 
       // Click Remove button
-      cy.get('[data-testid="remove-quota-button"]').click();
-
-      // Wait for delete confirmation modal to appear
-      cy.contains('Delete Quota').should('be.visible');
+      cy.get('[data-testid="remove-quota-button"]')
+        .should('be.visible')
+        .click();
 
       // Confirm deletion in modal
+      cy.contains('Delete Quota').should('be.visible');
       cy.get('[data-testid="confirm-delete-quota"]')
         .should('be.visible')
         .click();
 
       cy.wait('@deleteQuota');
-
-      // Just verify deletion occurred - don't try to verify complex post-delete state
-      cy.get('[data-testid="remove-quota-button"]').should('exist');
     });
   });
 
-  describe('Quota Policy Management', () => {
-    const mockQuotaNoLimits = {
-      id: 1,
-      limit_bytes: 10737418240, // 10 GiB
-      limit: '10.0 GiB',
-      default_config: false,
-      limits: [],
-      default_config_exists: false,
-    };
-
+  describe('Configure Quota Modal - Quota Limits', () => {
     beforeEach(() => {
-      // Enable quota features
-      cy.intercept('GET', '/config', (req) =>
-        req.reply((res) => {
-          res.body.features['QUOTA_MANAGEMENT'] = true;
-          res.body.features['EDIT_QUOTA'] = true;
-          res.body.features['SUPER_USERS'] = true;
-          return res;
-        }),
-      ).as('getConfig');
+      // Mock superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
 
-      // Mock quota without limits
-      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.fixture('superuser-organizations.json').then((orgsData) => {
+        cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+          'getSuperuserOrganizations',
+        );
+      });
+
+      // Mock organization details
+      cy.intercept('GET', '/api/v1/organization/testorg', {
         statusCode: 200,
-        body: [mockQuotaNoLimits],
+        body: {
+          name: 'testorg',
+          email: 'testorg@example.com',
+          teams: {owners: 'admin'},
+        },
+      });
+
+      // Mock robots/members
+      cy.intercept('GET', '/api/v1/organization/*/robots', {
+        statusCode: 200,
+        body: {robots: []},
+      });
+
+      cy.intercept('GET', '/api/v1/organization/*/members', {
+        statusCode: 200,
+        body: {members: []},
+      });
+    });
+
+    it('should successfully add quota limit', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [],
+            default_config_exists: false,
+          },
+        ],
       }).as('getQuotaNoLimits');
-    });
 
-    it('should display quota policy section with no limits', () => {
-      cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfig');
-
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaNoLimits');
-
-      // Check Quota Policy section is visible
-      cy.get('[data-testid="quota-policy-section"]').should('exist');
-
-      // Check headers are displayed
-      cy.contains('Action').should('exist');
-      cy.contains('Quota Threshold').should('exist');
-
-      // Check Add Limit form is displayed
-      cy.get('[data-testid="add-limit-form"]').should('exist');
-
-      // Check info message about no policy defined
-      cy.get('[data-testid="no-policy-info"]').should('exist');
-      cy.contains('No quota policy defined').should('exist');
-    });
-
-    it('should successfully add a new quota limit', () => {
-      cy.intercept('POST', '/api/v1/organization/projectquay/quota/1/limit*', {
+      cy.intercept('POST', '/api/v1/organization/testorg/quota/1/limit*', {
         statusCode: 201,
         body: 'Created',
       }).as('createQuotaLimit');
 
-      cy.visit('/organization/projectquay?tab=Settings');
+      cy.visit('/organization');
       cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
 
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
+
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
       cy.wait('@getQuotaNoLimits');
 
-      // Fill Add Limit form
+      // Fields should NOT be disabled in modal
+      cy.get('[data-testid="new-limit-type-select"]').should('not.be.disabled');
       cy.get('[data-testid="new-limit-type-select"]').click();
       cy.contains('Warning').click();
 
-      cy.get('[data-testid="new-limit-percent-input"]').clear().type('80');
+      cy.get('[data-testid="new-limit-percent-input"]')
+        .should('not.be.disabled')
+        .clear()
+        .type('80');
 
-      // Click Add Limit button
-      cy.get('[data-testid="add-limit-button"]').click();
+      cy.get('[data-testid="add-limit-button"]')
+        .should('not.be.disabled')
+        .click();
 
       cy.wait('@createQuotaLimit');
-
-      // Just verify the API call succeeded - complex state updates are hard to verify consistently
-      cy.get('[data-testid="add-limit-button"]').should('exist');
     });
 
-    it('should successfully update an existing quota limit', () => {
-      // First mock creating a limit
-      cy.intercept('POST', '/api/v1/organization/projectquay/quota/1/limit*', {
-        statusCode: 201,
-        body: 'Created',
-      }).as('createQuotaLimit');
-
-      // Mock the updated quota response AFTER creating the limit
-      const mockQuotaWithNewLimit = {
-        ...mockQuotaNoLimits,
-        limits: [
+    it('should successfully update quota limit', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [
           {
             id: 1,
-            type: 'Warning',
-            limit_percent: 80,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [
+              {
+                id: 1,
+                type: 'Warning',
+                limit_percent: 80,
+              },
+            ],
+            default_config_exists: false,
           },
         ],
-      };
+      }).as('getQuotaWithLimits');
 
-      // Then mock updating that limit
-      cy.intercept('PUT', '/api/v1/organization/projectquay/quota/1/limit/1*', {
+      cy.intercept('PUT', '/api/v1/organization/testorg/quota/1/limit/1*', {
         statusCode: 200,
         body: 'Updated',
       }).as('updateQuotaLimit');
 
-      cy.visit('/organization/projectquay?tab=Settings');
+      cy.visit('/organization');
       cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
 
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaNoLimits');
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
 
-      // First CREATE a limit
-      cy.get('[data-testid="new-limit-type-select"]').click();
-      cy.contains('Warning').click();
-      cy.get('[data-testid="new-limit-percent-input"]').clear().type('80');
-      cy.get('[data-testid="add-limit-button"]').click();
-      cy.wait('@createQuotaLimit');
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaWithLimits');
 
-      // After successful creation, update the GET intercept to return quota WITH the new limit
-      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
-        statusCode: 200,
-        body: [mockQuotaWithNewLimit],
-      }).as('getQuotaWithLimit');
+      // Update limit percentage
+      cy.get('[data-testid="limit-percent-input"]')
+        .should('not.be.disabled')
+        .clear()
+        .type('85');
 
-      // Force a page reload to refresh the data
-      cy.reload();
-      cy.wait('@getConfig');
-
-      // Navigate back to quota tab
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaWithLimit');
-
-      // Now the limit should be visible
-      cy.contains('Warning').should('be.visible');
-
-      // Now UPDATE that limit percentage
-      cy.get('[data-testid="limit-percent-input"]').clear().type('85');
-
-      // Update button should be enabled after change
-      cy.get('[data-testid="update-limit-button"]').should('not.be.disabled');
-      cy.get('[data-testid="update-limit-button"]').click();
+      cy.get('[data-testid="update-limit-button"]')
+        .should('not.be.disabled')
+        .click();
 
       cy.wait('@updateQuotaLimit');
     });
 
-    it('should successfully remove a quota limit', () => {
-      // First mock creating a limit
-      cy.intercept('POST', '/api/v1/organization/projectquay/quota/1/limit*', {
-        statusCode: 201,
-        body: 'Created',
-      }).as('createQuotaLimit');
-
-      // Mock the updated quota response AFTER creating the limit
-      const mockQuotaWithNewLimit = {
-        ...mockQuotaNoLimits,
-        limits: [
+    it('should successfully remove quota limit', () => {
+      cy.intercept('GET', '**/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [
           {
             id: 1,
-            type: 'Warning',
-            limit_percent: 80,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [
+              {
+                id: 1,
+                type: 'Warning',
+                limit_percent: 80,
+              },
+            ],
+            default_config_exists: false,
           },
         ],
-      };
+      }).as('getQuotaWithLimits');
 
-      // Then mock deleting that limit
-      cy.intercept(
-        'DELETE',
-        '/api/v1/organization/projectquay/quota/1/limit/1*',
-        {
-          statusCode: 204,
-        },
-      ).as('deleteQuotaLimit');
+      cy.intercept('DELETE', '/api/v1/organization/testorg/quota/1/limit/1*', {
+        statusCode: 204,
+      }).as('deleteQuotaLimit');
 
-      cy.visit('/organization/projectquay?tab=Settings');
+      cy.visit('/organization');
       cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getSuperuserOrganizations');
 
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaNoLimits');
+      // Open Configure Quota modal
+      cy.get('[data-testid="testorg-options-toggle"]')
+        .should('be.visible')
+        .click();
+      cy.contains('Configure Quota').click();
 
-      // First CREATE a limit
-      cy.get('[data-testid="new-limit-type-select"]').click();
-      cy.contains('Warning').click();
-      cy.get('[data-testid="new-limit-percent-input"]').clear().type('80');
-      cy.get('[data-testid="add-limit-button"]').click();
-      cy.wait('@createQuotaLimit');
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.wait('@getQuotaWithLimits');
 
-      // After successful creation, update the GET intercept to return quota WITH the new limit
-      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
-        statusCode: 200,
-        body: [mockQuotaWithNewLimit],
-      }).as('getQuotaWithLimit');
-
-      // Force a page reload to refresh the data
-      cy.reload();
-      cy.wait('@getConfig');
-
-      // Navigate back to quota tab
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaWithLimit');
-
-      // Now the limit should be visible
-      cy.contains('Warning').should('be.visible');
-
-      // Now REMOVE that limit - since there's only one, just click the remove button directly
-      cy.get('[data-testid="remove-limit-button"]').click();
+      // Remove limit
+      cy.get('[data-testid="remove-limit-button"]')
+        .should('not.be.disabled')
+        .click();
 
       cy.wait('@deleteQuotaLimit');
-
-      // Just verify the API call succeeded
-      cy.get('[data-testid="add-limit-button"]').should('exist');
-    });
-
-    it('should validate Add Limit form fields', () => {
-      cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfig');
-
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaNoLimits');
-
-      // Add Limit button should be disabled when fields are empty
-      cy.get('[data-testid="add-limit-button"]').should('be.disabled');
-
-      // Select action only
-      cy.get('[data-testid="new-limit-type-select"]').click();
-      cy.contains('Warning').click();
-      cy.get('[data-testid="add-limit-button"]').should('be.disabled');
-
-      // Add valid percentage
-      cy.get('[data-testid="new-limit-percent-input"]').type('80');
-      cy.get('[data-testid="add-limit-button"]').should('not.be.disabled');
-    });
-
-    it('should validate percentage input range', () => {
-      cy.visit('/organization/projectquay?tab=Settings');
-      cy.wait('@getConfig');
-
-      // Wait for quota tab to be available before clicking
-      cy.get('[data-testid="Quota"]').should('be.visible').click();
-      cy.wait('@getQuotaNoLimits');
-
-      // Test invalid percentage values
-      cy.get('[data-testid="new-limit-percent-input"]')
-        .clear()
-        .type('0')
-        .should('have.value', '');
-
-      cy.get('[data-testid="new-limit-percent-input"]')
-        .clear()
-        .type('101')
-        .should('have.value', '10');
-
-      // Test valid percentage
-      cy.get('[data-testid="new-limit-percent-input"]')
-        .clear()
-        .type('50')
-        .should('have.value', '50');
     });
   });
 });

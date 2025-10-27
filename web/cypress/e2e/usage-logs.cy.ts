@@ -1,4 +1,4 @@
-describe('Usage Logs Export', () => {
+describe('Usage Logs', () => {
   const aggregateLogsResp = {
     aggregated: [
       {
@@ -166,8 +166,7 @@ describe('Usage Logs Export', () => {
       'POST',
       'api/v1/repository/user1/hello-world/exportlogs?starttime=$endtime=',
     ).as('exportRepositoryLogs');
-    cy.visit('/repository/user1/hello-world');
-    cy.contains('Logs').click();
+    cy.visit('/repository/user1/hello-world?tab=logs'); // lowercase l for repository
     cy.contains('Export').click();
     cy.get('[id="export-logs-callback"]').type('example@example.com');
     cy.contains('Confirm').click();
@@ -178,8 +177,7 @@ describe('Usage Logs Export', () => {
       'POST',
       'api/v1/repository/user1/hello-world/exportlogs?starttime=$endtime=',
     ).as('exportRepositoryLogs');
-    cy.visit('/repository/user1/hello-world');
-    cy.contains('Logs').click();
+    cy.visit('/repository/user1/hello-world?tab=logs'); // lowercase l for repository
     cy.contains('Export').click();
     cy.get('[id="export-logs-callback"]').type('blahblah');
     cy.contains('Confirm').should('be.disabled');
@@ -191,8 +189,7 @@ describe('Usage Logs Export', () => {
       '/api/v1/organization/projectquay/aggregatelogs?*',
       aggregateLogsResp,
     );
-    cy.visit('/organization/projectquay');
-    cy.contains('Logs').click();
+    cy.visit('/organization/projectquay?tab=Logs'); // Capital L for organization
     cy.get('[class=pf-v5-c-chart]')
       .should('be.visible')
       .and((chart) => {
@@ -204,8 +201,7 @@ describe('Usage Logs Export', () => {
 
   it('shows usage logs  table', () => {
     cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
-    cy.visit('/organization/projectquay');
-    cy.contains('Logs').click();
+    cy.visit('/organization/projectquay?tab=Logs');
     cy.get('table')
       .contains(
         'td',
@@ -250,8 +246,7 @@ describe('Usage Logs Export', () => {
       '/api/v1/organization/projectquay/aggregatelogs?*',
       aggregateLogsResp,
     );
-    cy.visit('/organization/projectquay');
-    cy.contains('Logs').click();
+    cy.visit('/organization/projectquay?tab=Logs');
 
     cy.contains('Hide Chart').click();
     cy.get('[class=pf-v5-c-chart]').should('not.exist');
@@ -261,16 +256,14 @@ describe('Usage Logs Export', () => {
   });
 
   it('empty chart', () => {
-    cy.visit('/organization/projectquay');
-    cy.contains('Logs').click();
+    cy.visit('/organization/projectquay?tab=Logs');
     cy.contains('No data to display.').should('be.visible');
   });
 
   it('filter logs', () => {
     cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
 
-    cy.visit('/organization/projectquay');
-    cy.contains('Logs').click();
+    cy.visit('/organization/projectquay?tab=Logs');
 
     cy.get('[id="log-filter-input"]').type('create');
 
@@ -288,5 +281,165 @@ describe('Usage Logs Export', () => {
         'Change visibility for repository projectquay/testrepo to private',
       )
       .should('not.exist');
+  });
+});
+
+describe('Usage Logs - Superuser', () => {
+  const superuserLogsResp = {
+    start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
+    end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
+    logs: [
+      {
+        kind: 'account_change_plan',
+        metadata: {
+          namespace: 'user1',
+        },
+        ip: '172.31.0.1',
+        datetime: 'Wed, 29 Oct 2025 14:01:14 -0000',
+        performer: {
+          kind: 'user',
+          name: 'user1',
+          is_robot: false,
+          avatar: {
+            name: 'user1',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+      {
+        kind: 'account_change_plan',
+        metadata: {
+          namespace: 'user1',
+        },
+        ip: '172.31.0.1',
+        datetime: 'Wed, 29 Oct 2025 13:55:45 -0000',
+        performer: {
+          kind: 'user',
+          name: 'user1',
+          is_robot: false,
+          avatar: {
+            name: 'user1',
+            hash: '1b0c76c87a2c2cbc9c36339e055007194d9910eaa8124fda43527a8fb1f3c53a',
+            color: '#a1d99b',
+            kind: 'user',
+          },
+        },
+      },
+    ],
+  };
+
+  const superuserAggregateLogsResp = {
+    aggregated: [
+      {
+        kind: 'account_change_plan',
+        count: 4,
+        datetime: new Date(),
+      },
+      {
+        kind: 'account_change_plan',
+        count: 1,
+        datetime: new Date(),
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    cy.exec('npm run quay:seed');
+    cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
+      .then((response) => response.body.csrf_token)
+      .then((token) => {
+        cy.loginByCSRF(token);
+      });
+  });
+
+  it('displays superuser usage logs page', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/superuser/aggregatelogs?*',
+      superuserAggregateLogsResp,
+    );
+    cy.intercept('GET', '/api/v1/superuser/logs?*', superuserLogsResp);
+
+    cy.visit('/usage-logs');
+
+    // Verify page title
+    cy.contains('h1', 'Usage Logs').should('be.visible');
+
+    // Verify chart controls exist
+    cy.contains('button', 'Hide Chart').should('be.visible');
+
+    // Verify table exists
+    cy.get('[role="grid"]').should('be.visible');
+
+    // Verify namespace column exists (superuser only)
+    cy.contains('th', 'Namespace').should('be.visible');
+  });
+
+  it('toggles chart visibility on superuser page', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/superuser/aggregatelogs?*',
+      superuserAggregateLogsResp,
+    );
+    cy.intercept('GET', '/api/v1/superuser/logs?*', superuserLogsResp);
+
+    cy.visit('/usage-logs');
+
+    // Verify chart is visible initially - use class selector to avoid matching header logo
+    cy.get('[class=pf-v5-c-chart]').should('exist');
+
+    // Hide chart
+    cy.contains('button', 'Hide Chart').click();
+
+    // Verify chart is hidden (not in DOM)
+    cy.get('[class=pf-v5-c-chart]').should('not.exist');
+
+    // Verify button text changed
+    cy.contains('button', 'Show Chart').should('be.visible');
+
+    // Show chart again
+    cy.contains('button', 'Show Chart').click();
+
+    // Verify chart is visible
+    cy.get('[class=pf-v5-c-chart]').should('exist');
+    cy.contains('button', 'Hide Chart').should('be.visible');
+  });
+
+  it('filters superuser logs', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/superuser/aggregatelogs?*',
+      superuserAggregateLogsResp,
+    );
+    cy.intercept('GET', '/api/v1/superuser/logs?*', superuserLogsResp);
+
+    cy.visit('/usage-logs');
+
+    // Type in filter
+    cy.get('[placeholder="Filter logs"]').type('change');
+
+    // Verify filter input has value
+    cy.get('[placeholder="Filter logs"]').should('have.value', 'change');
+  });
+
+  it('displays table columns for superuser', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/superuser/aggregatelogs?*',
+      superuserAggregateLogsResp,
+    );
+    cy.intercept('GET', '/api/v1/superuser/logs?*', superuserLogsResp);
+
+    cy.visit('/usage-logs');
+
+    // Verify all expected column headers exist
+    cy.contains('th', 'Date & Time').should('be.visible');
+    cy.contains('th', 'Description').should('be.visible');
+    cy.contains('th', 'Namespace').should('be.visible');
+    cy.contains('th', 'Repository').should('be.visible');
+    cy.contains('th', 'Performed by').should('be.visible');
+    cy.contains('th', 'IP Address').should('be.visible');
   });
 });

@@ -23,8 +23,12 @@ export default function BuildLogs() {
 
   const {isSuperUser} = useSuperuserPermissions();
   const quayConfig = useQuayConfig();
-  const {data: build, isLoading, isError, error} =
-    useFetchBuildLogsSuperuser(submittedUuid);
+  const {
+    data: build,
+    isLoading,
+    isError,
+    error,
+  } = useFetchBuildLogsSuperuser(submittedUuid);
 
   // Check if BUILD_SUPPORT is enabled
   if (!quayConfig?.features?.BUILD_SUPPORT) {
@@ -206,7 +210,9 @@ export default function BuildLogs() {
           <Button
             type="submit"
             variant="primary"
-            isDisabled={!buildUuid.trim() || (submittedUuid !== null && isLoading)}
+            isDisabled={
+              !buildUuid.trim() || (submittedUuid !== null && isLoading)
+            }
             data-testid="load-build-button"
           >
             {submittedUuid !== null && isLoading ? 'Loading...' : 'Get Logs'}

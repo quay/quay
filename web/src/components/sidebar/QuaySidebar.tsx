@@ -166,7 +166,9 @@ export function QuaySidebar() {
                   isActive={location.pathname === route.navPath}
                   data-testid={getTestId(route.title)}
                 >
-                  <Link to={route.navPath}>{route.title}</Link>
+                  <Link to={route.navPath} data-testid={getTestId(route.title)}>
+                    {route.title}
+                  </Link>
                 </NavItem>
               ) : null,
             )}

@@ -28,9 +28,7 @@ import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemp
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
-import {useDeleteOrganizations} from 'src/hooks/UseDeleteOrganizations';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
-import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {
   useRegistrySize,

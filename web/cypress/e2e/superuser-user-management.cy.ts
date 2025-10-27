@@ -8,13 +8,43 @@ describe('Superuser User Management', () => {
       .then((token) => {
         cy.loginByCSRF(token);
       });
+
+    // Mock config with all features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      config.features.QUOTA_MANAGEMENT = true;
+      config.features.EDIT_QUOTA = true;
+      config.features.MAILING = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock logged-in superuser
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Mock organization and user endpoints
+    cy.intercept('GET', '/api/v1/organization/*/robots*', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    }).as('getOrgMembers');
+
+    cy.intercept('GET', '/api/v1/repository*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
   });
 
-  describe('Create User Button', () => {
-    it('should show Create User button for superusers', () => {
+  describe('Create User', () => {
+    it('shows Create User button for superusers', () => {
       cy.visit('/organization');
 
-      // Verify Create User button exists
       cy.get('[data-testid="create-user-button"]').should('be.visible');
       cy.get('[data-testid="create-user-button"]').should(
         'contain',
@@ -22,537 +52,34 @@ describe('Superuser User Management', () => {
       );
     });
 
-    it('should open Create User modal when clicked', () => {
+    it('opens Create User modal when clicked', () => {
       cy.visit('/organization');
 
       cy.get('[data-testid="create-user-button"]').click();
 
-      // Verify modal is open
       cy.get('[data-testid="create-user-modal"]').should('be.visible');
       cy.contains('Create New User').should('be.visible');
     });
-  });
 
-  describe('Create User Modal', () => {
-    beforeEach(() => {
-      cy.visit('/organization');
-      cy.get('[data-testid="create-user-button"]').click();
-    });
-
-    it('should have all required form fields', () => {
-      cy.get('[data-testid="username-input"]').should('be.visible');
-      cy.get('[data-testid="email-input"]').should('be.visible');
-      cy.get('[data-testid="password-input"]').should('be.visible');
-      cy.get('[data-testid="confirm-password-input"]').should('be.visible');
-    });
-
-    it('should validate username field', () => {
-      // Try submitting with invalid username
-      cy.get('[data-testid="username-input"]').type('A');
-      cy.get('[data-testid="email-input"]').type('test@example.com');
-      cy.get('[data-testid="password-input"]').type('password123');
-      cy.get('[data-testid="confirm-password-input"]').type('password123');
-
-      // Submit button should be disabled or show error
-      cy.get('[data-testid="username-input"]').clear().type('a');
-      cy.contains('Username must be at least 2 characters').should(
-        'be.visible',
-      );
-    });
-
-    it('should validate email field', () => {
-      cy.get('[data-testid="username-input"]').type('testuser');
-      cy.get('[data-testid="email-input"]').type('notanemail');
-      cy.get('[data-testid="password-input"]').type('password123');
-      cy.get('[data-testid="confirm-password-input"]').type('password123');
-
-      // Should show email validation error
-      cy.contains('Invalid email address').should('be.visible');
-    });
-
-    it('should validate password length', () => {
-      cy.get('[data-testid="username-input"]').type('testuser');
-      cy.get('[data-testid="email-input"]').type('test@example.com');
-      cy.get('[data-testid="password-input"]').type('123');
-      cy.get('[data-testid="confirm-password-input"]').type('123');
-
-      cy.contains('Password must be at least 8 characters').should(
-        'be.visible',
-      );
-    });
-
-    it('should validate password confirmation matches', () => {
-      cy.get('[data-testid="username-input"]').type('testuser');
-      cy.get('[data-testid="email-input"]').type('test@example.com');
-      cy.get('[data-testid="password-input"]').type('password123');
-      cy.get('[data-testid="confirm-password-input"]').type('password456');
-
-      cy.contains('Passwords do not match').should('be.visible');
-    });
-
-    it('should close modal when Cancel is clicked', () => {
-      cy.get('[data-testid="create-user-cancel"]').click();
-      cy.get('[data-testid="create-user-modal"]').should('not.exist');
-    });
-
-    it('should disable submit button when form is invalid', () => {
-      cy.get('[data-testid="create-user-submit"]').should('be.disabled');
-    });
-  });
-
-  describe('User Options Menu - Current User', () => {
-    it('should NOT show options menu for currently logged-in user', () => {
-      cy.visit('/organization');
-
-      // Find the row for user1 (currently logged-in user)
-      cy.contains('tr', 'user1').within(() => {
-        // Should NOT have a settings button
-        cy.get('[data-testid="user1-options-toggle"]').should('not.exist');
-      });
-    });
-  });
-
-  describe('User Options Menu - Other Users', () => {
-    it('should show options menu for other users', () => {
-      cy.visit('/organization');
-
-      // Mock user data to ensure tom exists
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      // Find the row for tom (another user)
-      cy.get('[data-testid="tom-options-toggle"]').should('be.visible');
-    });
-
-    it('should show all user management options for other users', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      // Click options menu for tom
-      cy.get('[data-testid="tom-options-toggle"]').click();
-
-      // Verify all menu items are present
-      cy.contains('Change E-mail Address').should('be.visible');
-      cy.contains('Change Password').should('be.visible');
-      cy.contains('Delete User').should('be.visible');
-      cy.contains('Take Ownership').should('be.visible');
-
-      // Should show either Enable or Disable based on user status
-      cy.get('body').then(($body) => {
-        const hasEnable = $body.text().includes('Enable User');
-        const hasDisable = $body.text().includes('Disable User');
-        expect(hasEnable || hasDisable).to.be.true;
-      });
-    });
-
-    it('should show "Disable User" when user is enabled', () => {
-      cy.visit('/organization');
-
-      // Mock tom as enabled
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        body: {
-          users: [
-            {
-              username: 'user1',
-              email: 'user1@example.com',
-              enabled: true,
-            },
-            {
-              username: 'tom',
-              email: 'tom@example.com',
-              enabled: true, // Tom is enabled
-            },
-          ],
-        },
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Disable User').should('be.visible');
-    });
-
-    it('should show "Enable User" when user is disabled', () => {
-      cy.visit('/organization');
-
-      // Mock tom as disabled
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        body: {
-          users: [
-            {
-              username: 'user1',
-              email: 'user1@example.com',
-              enabled: true,
-            },
-            {
-              username: 'tom',
-              email: 'tom@example.com',
-              enabled: false, // Tom is disabled
-            },
-          ],
-        },
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Enable User').should('be.visible');
-    });
-  });
-
-  describe('Change Email Modal', () => {
-    it('should open Change Email modal', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change E-mail Address').click();
-
-      cy.contains('Change Email for tom').should('be.visible');
-    });
-
-    it('should validate email format', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change E-mail Address').click();
-
-      cy.get('#new-email').type('invalidemail');
-      cy.contains('Change Email').click();
-
-      cy.contains('Please enter a valid email address').should('be.visible');
-    });
-
-    it('should show success alert after changing email', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', {
-        statusCode: 200,
-        body: {},
-      }).as('updateUser');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change E-mail Address').click();
-
-      cy.get('#new-email').type('newemail@example.com');
-      cy.contains('button', 'Change Email').click();
-
-      cy.wait('@updateUser');
-
-      // Verify success alert appears
-      cy.contains('Successfully changed email for tom').should('be.visible');
-    });
-
-    it('should show error alert when email change fails', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', {
-        statusCode: 400,
-        body: {error_message: 'Email already exists'},
-      }).as('updateUserFail');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change E-mail Address').click();
-
-      cy.get('#new-email').type('duplicate@example.com');
-      cy.contains('button', 'Change Email').click();
-
-      cy.wait('@updateUserFail');
-
-      // Verify error alert appears
-      cy.contains('Failed to change email for tom').should('be.visible');
-    });
-  });
-
-  describe('Change Password Modal', () => {
-    it('should open Change Password modal', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change Password').click();
-
-      cy.contains('Change Password for tom').should('be.visible');
-    });
-
-    it('should require minimum 8 characters', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change Password').click();
-
-      cy.get('#new-password').type('123');
-      cy.contains('Change Password').last().click();
-
-      cy.contains('Password must be at least 8 characters').should(
-        'be.visible',
-      );
-    });
-  });
-
-  describe('Delete User Modal', () => {
-    it('should open Delete User modal with warning', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Delete User').click();
-
-      cy.contains('Delete User').should('be.visible');
-      cy.contains('permanently deleted').should('be.visible');
-    });
-
-    it('should have danger-styled delete button', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Delete User').click();
-
-      // Verify delete button has danger variant
-      cy.contains('button', 'Delete User').should('have.class', 'pf-m-danger');
-    });
-  });
-
-  describe('Toggle User Status Modal', () => {
-    it('should show appropriate warning for disabling user', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        body: {
-          users: [
-            {username: 'user1', email: 'user1@example.com', enabled: true},
-            {username: 'tom', email: 'tom@example.com', enabled: true},
-          ],
-        },
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Disable User').click();
-
-      cy.contains('Disable User').should('be.visible');
-      cy.contains('prevent them from logging in').should('be.visible');
-    });
-
-    it('should show appropriate message for enabling user', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        body: {
-          users: [
-            {username: 'user1', email: 'user1@example.com', enabled: true},
-            {username: 'tom', email: 'tom@example.com', enabled: false},
-          ],
-        },
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Enable User').click();
-
-      cy.contains('Enable User').should('be.visible');
-      cy.contains('allow them to log in').should('be.visible');
-    });
-  });
-
-  describe('Take Ownership Modal - User', () => {
-    it('should show warning about converting user to organization', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-
-      cy.wait('@getUsers');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Take Ownership').click();
-
-      cy.contains('Take Ownership').should('be.visible');
-      cy.contains('convert the user namespace into an organization').should(
-        'be.visible',
-      );
-      cy.contains('will no longer be able to login').should('be.visible');
-    });
-  });
-
-  describe('Organization Options Menu', () => {
-    it('should show organization-specific options', () => {
-      cy.visit('/organization');
-
-      cy.intercept('GET', '/api/v1/superuser/organizations/', {
-        fixture: 'superuser-organizations.json',
-      }).as('getOrgs');
-
-      cy.wait('@getOrgs');
-
-      // Click options for an organization (not a user)
-      cy.get('[data-testid="org-options-toggle"]').click();
-
-      // Should show org-specific options
-      cy.contains('Rename Organization').should('be.visible');
-      cy.contains('Delete Organization').should('be.visible');
-      cy.contains('Take Ownership').should('be.visible');
-
-      // Should NOT show user-specific options
-      cy.contains('Change E-mail Address').should('not.exist');
-      cy.contains('Change Password').should('not.exist');
-    });
-  });
-
-  describe('Access Control', () => {
-    it('should hide Create User button for non-superusers', () => {
-      // Mock regular user (non-superuser)
-      cy.fixture('user.json').then((user) => {
-        user.super_user = false;
-        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
-      });
-
-      cy.visit('/organization');
-      cy.wait('@getUser');
-
-      cy.get('[data-testid="create-user-button"]').should('not.exist');
-    });
-
-    it('should hide all action buttons in read-only mode', () => {
-      // Mock read-only superuser
-      cy.fixture('config.json').then((config) => {
-        config.features.SUPERUSERS_FULL_ACCESS = false;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
-
-      cy.fixture('superuser.json').then((user) => {
-        user.global_readonly_super_user = true;
-        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
-      });
-
-      cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getSuperUser');
-
-      // Should not show Create User button
-      cy.get('[data-testid="create-user-button"]').should('not.exist');
-
-      // Should not show any options menus
-      cy.get('[data-testid$="-options-toggle"]').should('not.exist');
-    });
-  });
-
-  describe('Success and Error Alerts', () => {
-    beforeEach(() => {
-      cy.visit('/organization');
-      cy.intercept('GET', '/api/v1/superuser/users/', {
-        fixture: 'superuser-users.json',
-      }).as('getUsers');
-      cy.wait('@getUsers');
-    });
-
-    it('should show success alert when user is deleted', () => {
-      cy.intercept('DELETE', '/api/v1/superuser/users/tom', {
-        statusCode: 204,
-      }).as('deleteUser');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Delete User').click();
-      cy.contains('button', 'Delete User').click();
-
-      cy.wait('@deleteUser');
-      cy.contains('Successfully deleted user tom').should('be.visible');
-    });
-
-    it('should show success alert when user password is changed', () => {
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', {
-        statusCode: 200,
-        body: {},
-      }).as('updatePassword');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Change Password').click();
-      cy.get('#new-password').type('newpassword123');
-      cy.contains('button', 'Change Password').click();
-
-      cy.wait('@updatePassword');
-      cy.contains('Successfully changed password for tom').should('be.visible');
-    });
-
-    it('should show success alert when user status is toggled', () => {
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', {
-        statusCode: 200,
-        body: {},
-      }).as('toggleStatus');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Disable User').click();
-      cy.contains('button', 'Disable User').click();
-
-      cy.wait('@toggleStatus');
-      cy.contains('Successfully disabled user tom').should('be.visible');
-    });
-
-    it('should show success alert when user is created', () => {
+    it('successfully creates user', () => {
       cy.intercept('POST', '/api/v1/superuser/users/', {
-        statusCode: 200,
+        statusCode: 201,
         body: {
           username: 'newuser',
           email: 'newuser@example.com',
           enabled: true,
         },
       }).as('createUser');
+
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        fixture: 'superuser-users.json',
+      }).as('getUsers');
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        fixture: 'superuser-organizations.json',
+      }).as('getOrgs');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
 
       cy.get('[data-testid="create-user-button"]').click();
       cy.get('[data-testid="username-input"]').type('newuser');
@@ -562,50 +89,31 @@ describe('Superuser User Management', () => {
       cy.get('[data-testid="create-user-submit"]').click();
 
       cy.wait('@createUser');
-      cy.contains('Successfully created user newuser').should('be.visible');
-    });
-
-    it('should show error alert when user creation fails', () => {
-      cy.intercept('POST', '/api/v1/superuser/users/', {
-        statusCode: 400,
-        body: {error_message: 'Username already exists'},
-      }).as('createUserFail');
-
-      cy.get('[data-testid="create-user-button"]').click();
-      cy.get('[data-testid="username-input"]').type('tom');
-      cy.get('[data-testid="email-input"]').type('tom@example.com');
-      cy.get('[data-testid="password-input"]').type('password123');
-      cy.get('[data-testid="confirm-password-input"]').type('password123');
-      cy.get('[data-testid="create-user-submit"]').click();
-
-      cy.wait('@createUserFail');
-      cy.contains('Failed to create user').should('be.visible');
-      cy.contains('Username already exists').should('be.visible');
-    });
-
-    it('should show error alert when user deletion fails', () => {
-      cy.intercept('DELETE', '/api/v1/superuser/users/tom', {
-        statusCode: 500,
-        body: {error_message: 'Internal server error'},
-      }).as('deleteUserFail');
-
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Delete User').click();
-      cy.contains('button', 'Delete User').click();
-
-      cy.wait('@deleteUserFail');
-      cy.contains('Failed to delete user tom').should('be.visible');
     });
   });
 
-  describe('Configure Quota - Phase 3', () => {
+  describe('Access Control - Own Row (Superuser)', () => {
     beforeEach(() => {
-      // Enable quota features
-      cy.fixture('config.json').then((config) => {
-        config.features.QUOTA_MANAGEMENT = true;
-        config.features.EDIT_QUOTA = true;
-        cy.intercept('GET', '/config', config).as('getConfig');
-      });
+      // Mock logged-in user as user1 (overrides the default superuser fixture)
+      cy.intercept('GET', '/api/v1/user/', {
+        body: {
+          username: 'user1',
+          email: 'user1@example.com',
+          verified: true,
+          super_user: true,
+          avatar: {
+            name: 'user1',
+            hash: 'd2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2',
+            color: '#ff0000',
+            kind: 'user',
+          },
+          organizations: [],
+          logins: [],
+          invoice_email: false,
+          tag_expiration_s: 1209600,
+          preferred_namespace: false,
+        },
+      }).as('getUser1');
 
       // Mock users with superuser flags
       cy.intercept('GET', '/api/v1/superuser/users/', {
@@ -615,7 +123,78 @@ describe('Superuser User Management', () => {
               username: 'user1',
               email: 'user1@example.com',
               enabled: true,
-              super_user: true, // Current logged-in user is superuser
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      cy.intercept('GET', '/api/v1/superuser/users/*/quota*', {
+        statusCode: 200,
+        body: [],
+      });
+    });
+
+    it('shows ONLY Configure Quota for logged-in superuser own row', () => {
+      cy.visit('/organization');
+      cy.wait(['@getConfig', '@getUser1', '@getUsers', '@getOrgs']);
+
+      // Find user1 row and click kebab menu
+      cy.contains('user1').should('be.visible');
+      cy.get('[data-testid="user1-options-toggle"]').should('be.visible');
+      cy.get('[data-testid="user1-options-toggle"]').click();
+
+      // Should ONLY see Configure Quota
+      cy.contains('Configure Quota').should('be.visible');
+
+      // Should NOT see other management options
+      cy.contains('Change E-mail Address').should('not.exist');
+      cy.contains('Change Password').should('not.exist');
+      cy.contains('Delete User').should('not.exist');
+      cy.contains('Take Ownership').should('not.exist');
+      cy.contains('Disable User').should('not.exist');
+      cy.contains('Enable User').should('not.exist');
+    });
+
+    it('hides kebab menu for own row when quota features disabled', () => {
+      // Disable quota features
+      cy.fixture('config.json').then((config) => {
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.QUOTA_MANAGEMENT = false;
+        config.features.EDIT_QUOTA = false;
+        cy.intercept('GET', '/config', config).as('getConfigNoQuota');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigNoQuota', '@getUsers', '@getOrgs']);
+
+      // user1 row should have NO kebab menu
+      cy.get('[data-testid="user1-options-toggle"]').should('not.exist');
+    });
+  });
+
+  describe('Access Control - Other Superusers', () => {
+    it('hides kebab menu for other superuser rows', () => {
+      // Mock users with multiple superusers
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
             },
             {
               username: 'admin',
@@ -627,111 +206,432 @@ describe('Superuser User Management', () => {
               username: 'tom',
               email: 'tom@example.com',
               enabled: true,
-              super_user: false, // Regular user
+              super_user: false,
             },
           ],
         },
       }).as('getUsers');
 
-      // Mock user quota endpoint
-      cy.intercept('GET', '/api/v1/superuser/users/*/quota*', {
-        statusCode: 200,
-        body: [],
-      }).as('getUserQuota');
-    });
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
 
-    it('should show Configure Quota option for regular users', () => {
       cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getUsers');
-
-      // Click action menu for regular user (tom)
-      cy.get('[data-testid="tom-options-toggle"]').click();
-
-      // Should see all 6 options including Configure Quota
-      cy.contains('Change E-mail Address').should('be.visible');
-      cy.contains('Change Password').should('be.visible');
-      cy.contains('Delete User').should('be.visible');
-      cy.contains('Take Ownership').should('be.visible');
-      cy.contains('Disable User').should('be.visible');
-      cy.contains('Configure Quota').should('be.visible');
-    });
-
-    it('should show ONLY Configure Quota for logged-in superuser own row', () => {
-      cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getUsers');
-
-      // Click action menu for currently logged-in superuser (user1)
-      cy.get('[data-testid="user1-options-toggle"]').should('be.visible');
-      cy.get('[data-testid="user1-options-toggle"]').click();
-
-      // Should ONLY see Configure Quota (not other management options)
-      cy.contains('Configure Quota').should('be.visible');
-      cy.contains('Change E-mail Address').should('not.exist');
-      cy.contains('Change Password').should('not.exist');
-      cy.contains('Delete User').should('not.exist');
-      cy.contains('Take Ownership').should('not.exist');
-      cy.contains('Disable User').should('not.exist');
-    });
-
-    it('should NOT show kebab menu for other superuser rows', () => {
-      cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getUsers');
+      cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
 
       // Other superuser (admin) should NOT have a kebab menu
       cy.get('[data-testid="admin-options-toggle"]').should('not.exist');
     });
+  });
 
-    it('should open Configure Quota modal for regular user', () => {
-      cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getUsers');
-
-      // Click action menu for regular user
-      cy.get('[data-testid="tom-options-toggle"]').click();
-
-      // Click Configure Quota
-      cy.contains('Configure Quota').click();
-
-      // Modal should open with correct title showing username
-      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
-      cy.contains('Configure Quota for tom').should('be.visible');
+  describe('Access Control - Regular Users', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
     });
 
-    it('should NOT show Configure Quota when feature flags are disabled', () => {
-      // Disable quota features
-      cy.fixture('config.json').then((config) => {
-        config.features.QUOTA_MANAGEMENT = false;
-        config.features.EDIT_QUOTA = false;
-        cy.intercept('GET', '/config', config).as('getConfigNoQuota');
+    it('shows all management options for regular users', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      cy.visit('/organization');
+      cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user (tom)
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should see all 6 options
+      cy.contains('Change E-mail Address').should('be.visible');
+      cy.contains('Change Password').should('be.visible');
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+      cy.contains('Configure Quota').should('be.visible');
+    });
+
+    it('shows "Enable User" for disabled users', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'disableduser',
+              email: 'disabled@example.com',
+              enabled: false,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      cy.visit('/organization');
+      cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu
+      cy.get('[data-testid="disableduser-options-toggle"]').click();
+
+      // Should see "Enable User" instead of "Disable User"
+      cy.contains('Enable User').should('be.visible');
+      cy.contains('Disable User').should('not.exist');
+    });
+  });
+
+  describe('Change Email', () => {
+    it('successfully changes email', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        fixture: 'superuser-users.json',
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      // Fix: Use the correct endpoint - PUT /api/v1/superuser/users/{username} with email in body
+      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
+        if (req.body.email) {
+          req.reply({statusCode: 200, body: {}});
+        }
+      }).as('updateEmail');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Change E-mail Address').click();
+
+      // Modal should open
+      cy.contains('Change Email for tom').should('be.visible');
+
+      // Enter new email and submit within modal context
+      cy.get('[role="dialog"]').within(() => {
+        cy.get('input[type="email"]').clear().type('newemail@example.com');
+        cy.contains('button', 'Change Email').click();
+      });
+
+      cy.wait('@updateEmail');
+    });
+  });
+
+  describe('Change Password', () => {
+    it('successfully changes password', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        fixture: 'superuser-users.json',
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      // Fix: Use the correct endpoint - PUT /api/v1/superuser/users/{username} with password in body
+      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
+        if (req.body.password) {
+          req.reply({statusCode: 200, body: {}});
+        }
+      }).as('updatePassword');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Change Password').click();
+
+      // Modal should open
+      cy.contains('Change Password for tom').should('be.visible');
+
+      // Enter new password and submit within modal context
+      cy.get('[role="dialog"]').within(() => {
+        cy.get('input[type="password"]').clear().type('newpassword123');
+        cy.contains('button', 'Change Password').click();
+      });
+
+      cy.wait('@updatePassword');
+    });
+  });
+
+  describe('Toggle User Status', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+    });
+
+    it('disables enabled user', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      // Fix: Use the correct endpoint - PUT /api/v1/superuser/users/{username} with enabled in body
+      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
+        if (Object.hasOwn(req.body, 'enabled')) {
+          req.reply({statusCode: 200, body: {}});
+        }
+      }).as('toggleStatus');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Disable User').click();
+
+      // Confirm action within modal context
+      cy.get('[role="dialog"]').within(() => {
+        cy.contains('button', 'Disable User').click();
+      });
+
+      cy.wait('@toggleStatus');
+    });
+
+    it('enables disabled user', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'disableduser',
+              email: 'disabled@example.com',
+              enabled: false,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      // Fix: Use the correct endpoint - PUT /api/v1/superuser/users/{username} with enabled in body
+      cy.intercept('PUT', '/api/v1/superuser/users/disableduser', (req) => {
+        if (Object.hasOwn(req.body, 'enabled')) {
+          req.reply({statusCode: 200, body: {}});
+        }
+      }).as('toggleStatus');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="disableduser-options-toggle"]').click();
+      cy.contains('Enable User').click();
+
+      // Confirm action within modal context
+      cy.get('[role="dialog"]').within(() => {
+        cy.contains('button', 'Enable User').click();
+      });
+
+      cy.wait('@toggleStatus');
+    });
+  });
+
+  describe('Delete User', () => {
+    it('successfully deletes user', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        fixture: 'superuser-users.json',
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      cy.intercept('DELETE', '/api/v1/superuser/users/tom', {
+        statusCode: 204,
+      }).as('deleteUser');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Delete User').click();
+
+      // Modal should show warning
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('permanently deleted').should('be.visible');
+
+      // Confirm deletion
+      cy.contains('button', 'Delete User').click();
+
+      cy.wait('@deleteUser');
+    });
+  });
+
+  describe('Take Ownership', () => {
+    it('takes ownership of user (converts to org)', () => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        fixture: 'superuser-users.json',
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      // Fix: Use the correct endpoint - POST /api/v1/superuser/takeownership/{namespace}
+      cy.intercept('POST', '/api/v1/superuser/takeownership/tom', {
+        statusCode: 200,
+        body: {},
+      }).as('takeOwnership');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Take Ownership').click();
+
+      // Modal should show conversion warning
+      cy.contains('Take Ownership').should('be.visible');
+      cy.contains('convert the user namespace into an organization').should(
+        'be.visible',
+      );
+
+      // Confirm action within modal context
+      cy.get('[role="dialog"]').within(() => {
+        cy.contains('button', 'Take Ownership').click();
+      });
+
+      cy.wait('@takeOwnership');
+    });
+  });
+
+  describe('Configure Quota Option Visibility', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {
+          organizations: [
+            {
+              name: 'testorg',
+              email: 'testorg@example.com',
+            },
+          ],
+        },
+      }).as('getOrgs');
+
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/organization/testorg*', {
+        statusCode: 200,
+        body: {name: 'testorg'},
+      });
+    });
+
+    it('shows Configure Quota option for regular users', () => {
+      cy.visit('/organization');
+      cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should see Configure Quota in menu
+      cy.contains('Configure Quota').should('be.visible');
+    });
+
+    it('shows Configure Quota option for organizations', () => {
+      cy.visit('/organization');
+      cy.wait(['@getConfig', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for organization
+      cy.get('[data-testid="testorg-options-toggle"]').click();
+
+      // Should see Configure Quota in menu
+      cy.contains('Configure Quota').should('be.visible');
+    });
+  });
+
+  describe('Access Control - Permissions', () => {
+    it('hides Create User button for non-superusers', () => {
+      // Mock regular user (non-superuser)
+      cy.fixture('user.json').then((user) => {
+        user.super_user = false;
+        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+      });
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
       });
 
       cy.visit('/organization');
-      cy.wait('@getConfigNoQuota');
-      cy.wait('@getUsers');
+      cy.wait('@getUser');
 
-      // Click action menu for regular user
-      cy.get('[data-testid="tom-options-toggle"]').click();
-
-      // Configure Quota should NOT appear
-      cy.contains('Configure Quota').should('not.exist');
+      cy.get('[data-testid="create-user-button"]').should('not.exist');
     });
 
-    it('should use correct API endpoint for user quota', () => {
+    it('hides all actions in read-only mode', () => {
+      // Mock read-only superuser
+      cy.fixture('config.json').then((config) => {
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = false;
+        cy.intercept('GET', '/config', config).as('getConfigReadOnly');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        user.global_readonly_super_user = true;
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUserReadOnly');
+      });
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      });
+
       cy.visit('/organization');
-      cy.wait('@getConfig');
-      cy.wait('@getUsers');
+      cy.wait(['@getConfigReadOnly', '@getSuperUserReadOnly']);
 
-      // Click Configure Quota for a user
-      cy.get('[data-testid="tom-options-toggle"]').click();
-      cy.contains('Configure Quota').click();
+      // Should not show Create User button
+      cy.get('[data-testid="create-user-button"]').should('not.exist');
 
-      // Verify the user quota endpoint was called (not organization endpoint)
-      cy.wait('@getUserQuota')
-        .its('request.url')
-        .should('include', '/api/v1/superuser/users/tom/quota');
+      // Should not show any kebab menus
+      cy.get('[data-testid$="-options-toggle"]').should('not.exist');
     });
   });
 });

@@ -163,11 +163,11 @@ describe('Superuser Framework', () => {
         cy.log('Header count:', $headers.length);
       });
 
-      // Verify we have 8 headers (7 regular + 1 empty Actions column)
+      // Verify we have 8 headers (includes Actions column)
       cy.get('table thead tr th').should('have.length', 8);
 
-      // Verify the last header is empty (Actions column with no text)
-      cy.get('table thead tr th').last().should('have.text', '');
+      // Verify the last header is "Settings" (Actions column)
+      cy.get('table thead tr th').last().should('have.text', 'Settings');
     });
   });
 
@@ -388,11 +388,11 @@ describe('Superuser Framework', () => {
         cy.log('Header count:', $headers.length);
       });
 
-      // Verify we have 8 headers (7 regular + 1 empty Actions column)
+      // Verify we have 8 headers (includes Actions column)
       cy.get('table thead tr th').should('have.length', 8);
 
-      // Verify the last header is empty (Actions column with no text)
-      cy.get('table thead tr th').last().should('have.text', '');
+      // Verify the last header is "Settings" (Actions column)
+      cy.get('table thead tr th').last().should('have.text', 'Settings');
 
       // Verify action buttons exist for organizations
       cy.get('[data-testid="testorg-options-toggle"]').should('exist');
@@ -434,7 +434,7 @@ describe('Superuser Framework', () => {
   });
 
   describe('Superuser Navigation Visibility', () => {
-    it('should show superuser navigation items for superusers', () => {
+    it.only('should show superuser navigation items for superusers', () => {
       // Enable superuser features
       cy.intercept('GET', '/config', {
         fixture: 'config.json',

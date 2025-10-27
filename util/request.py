@@ -11,11 +11,10 @@ BASE_CROSS_DOMAIN_HEADERS = [
     "Authorization",
     "Content-Type",
     "X-Requested-With",
-    "X-Next-CSRF-Token",
 ]
 
 # Additional headers that are allowed if CORS is restricted to single origin
-SINGLE_ORIGIN_CROSS_DOMAIN_HEADERS = ["Cookie", "X-CSRF-Token", "X-Next-CSRF-Token"]
+SINGLE_ORIGIN_CROSS_DOMAIN_HEADERS = ["Cookie", "X-CSRF-Token"]
 
 
 def get_request_ip():
@@ -68,7 +67,6 @@ def crossorigin(anonymous=True):
                 methods=cors_methods,
                 headers=headers,
                 credentials=credentials,
-                expose_headers=["X-Next-CSRF-Token"],
             )
             return decorator(func)(*args, **kwargs)
 

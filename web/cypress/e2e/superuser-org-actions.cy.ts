@@ -105,7 +105,7 @@ describe('Superuser Organization Actions', () => {
 
       // Should show Actions column for superusers
       cy.get('table thead tr th').should('have.length', 8); // With Actions column
-      cy.get('table thead tr th').last().should('have.text', ''); // Empty header
+      cy.get('table thead tr th').last().should('have.text', 'Settings'); // Settings header
 
       // Should show action buttons for organizations
       cy.get('[data-testid="testorg-options-toggle"]').should('exist');

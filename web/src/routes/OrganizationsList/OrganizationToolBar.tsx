@@ -25,69 +25,69 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
     <>
       <Toolbar>
         <ToolbarContent>
-        <DropdownCheckbox
-          selectedItems={props.selectedOrganization}
-          deSelectAll={props.setSelectedOrganization}
-          allItemsList={props.organizationsList}
-          itemsPerPageList={props.paginatedOrganizationsList}
-          onItemSelect={props.onSelectOrganization}
-        />
-        <FilterInput
-          id="orgslist-search-input"
-          searchState={props.search}
-          onChange={props.setSearch}
-        />
-        <ToolbarButton
-          id="create-organization-button"
-          buttonValue="Create Organization"
-          Modal={props.createOrgModal}
-          isModalOpen={props.isOrganizationModalOpen}
-          setModalOpen={props.setOrganizationModalOpen}
-        />
-        {canModify && (
+          <DropdownCheckbox
+            selectedItems={props.selectedOrganization}
+            deSelectAll={props.setSelectedOrganization}
+            allItemsList={props.organizationsList}
+            itemsPerPageList={props.paginatedOrganizationsList}
+            onItemSelect={props.onSelectOrganization}
+          />
+          <FilterInput
+            id="orgslist-search-input"
+            searchState={props.search}
+            onChange={props.setSearch}
+          />
+          <ToolbarButton
+            id="create-organization-button"
+            buttonValue="Create Organization"
+            Modal={props.createOrgModal}
+            isModalOpen={props.isOrganizationModalOpen}
+            setModalOpen={props.setOrganizationModalOpen}
+          />
+          {canModify && (
+            <ToolbarItem>
+              <Button
+                variant="primary"
+                onClick={() => setIsCreateUserModalOpen(true)}
+                data-testid="create-user-button"
+              >
+                Create User
+              </Button>
+            </ToolbarItem>
+          )}
           <ToolbarItem>
-            <Button
-              variant="primary"
-              onClick={() => setIsCreateUserModalOpen(true)}
-              data-testid="create-user-button"
-            >
-              Create User
-            </Button>
+            {props.selectedOrganization?.length !== 0 ? (
+              <Kebab
+                isKebabOpen={props.isKebabOpen}
+                setKebabOpen={props.setKebabOpen}
+                kebabItems={props.kebabItems}
+                useActions={true}
+              />
+            ) : null}
+            {props.deleteKebabIsOpen ? props.deleteModal : null}
           </ToolbarItem>
-        )}
-        <ToolbarItem>
-          {props.selectedOrganization?.length !== 0 ? (
-            <Kebab
-              isKebabOpen={props.isKebabOpen}
-              setKebabOpen={props.setKebabOpen}
-              kebabItems={props.kebabItems}
-              useActions={true}
-            />
-          ) : null}
-          {props.deleteKebabIsOpen ? props.deleteModal : null}
-        </ToolbarItem>
-        <ToolbarPagination
-          itemsList={props.organizationsList}
-          perPage={props.perPage}
-          page={props.page}
-          setPage={props.setPage}
-          setPerPage={props.setPerPage}
-        />
-      </ToolbarContent>
-    </Toolbar>
+          <ToolbarPagination
+            itemsList={props.organizationsList}
+            perPage={props.perPage}
+            page={props.page}
+            setPage={props.setPage}
+            setPerPage={props.setPerPage}
+          />
+        </ToolbarContent>
+      </Toolbar>
 
-    {/* Create User Modal */}
-    {canModify && (
-      <CreateUserModal
-        isOpen={isCreateUserModalOpen}
-        onClose={() => setIsCreateUserModalOpen(false)}
-        onSuccess={() => {
-          setIsCreateUserModalOpen(false);
-          // List will auto-refresh via React Query invalidation
-        }}
-      />
-    )}
-  </>
+      {/* Create User Modal */}
+      {canModify && (
+        <CreateUserModal
+          isOpen={isCreateUserModalOpen}
+          onClose={() => setIsCreateUserModalOpen(false)}
+          onSuccess={() => {
+            setIsCreateUserModalOpen(false);
+            // List will auto-refresh via React Query invalidation
+          }}
+        />
+      )}
+    </>
   );
 }
 

@@ -151,7 +151,7 @@ function PluginMain() {
         <NewUserEmptyPage setCreateUserModalOpen={setConfirmUserModalOpen} />
       ) : (
         <Routes>
-          <Route index element={<Navigate to="repository" replace />} />
+          <Route index element={<Navigate to="organization" replace />} />
           {NavigationRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}

@@ -151,8 +151,10 @@ export interface CreateSuperuserUserResponse {
 export async function createSuperuserUser(
   data: CreateSuperuserUserRequest,
 ): Promise<CreateSuperuserUserResponse> {
-  const response: AxiosResponse<CreateSuperuserUserResponse> =
-    await axios.post('/api/v1/superuser/users/', data);
+  const response: AxiosResponse<CreateSuperuserUserResponse> = await axios.post(
+    '/api/v1/superuser/users/',
+    data,
+  );
   assertHttpCode(response.status, 200);
   return response.data;
 }

@@ -32,7 +32,9 @@ export default function ToggleUserStatusModal(
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
-        title: `Failed to ${action === 'disabled' ? 'disable' : 'enable'} user ${props.username}`,
+        title: `Failed to ${
+          action === 'disabled' ? 'disable' : 'enable'
+        } user ${props.username}`,
         message: errorMessage,
       });
     },
@@ -77,12 +79,7 @@ export default function ToggleUserStatusModal(
         <strong>{props.username}</strong>?
       </Text>
       {props.currentlyEnabled && (
-        <Alert
-          variant="warning"
-          title="Note"
-          isInline
-          style={{marginTop: 16}}
-        >
+        <Alert variant="warning" title="Note" isInline style={{marginTop: 16}}>
           Disabling this user will prevent them from logging in and accessing
           their repositories.
         </Alert>

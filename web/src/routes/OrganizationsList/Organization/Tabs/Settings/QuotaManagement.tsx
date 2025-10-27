@@ -470,8 +470,8 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
             title="No Quota Configured"
             data-testid="no-quota-superuser-alert"
           >
-            Use the "Configure Quota" option from the Organizations list page to
-            set up quota for this organization.
+            Use the &quot;Configure Quota&quot; option from the Organizations
+            list page to set up quota for this organization.
           </Alert>
         ) : (
           <Alert
