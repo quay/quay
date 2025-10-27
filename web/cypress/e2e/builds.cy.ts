@@ -250,7 +250,7 @@ describe('Repository Builds', () => {
     );
     cy.intercept(
       'GET',
-      '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+      '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
       {fixture: 'testrepo.json'},
     ).as('getRepo');
     cy.intercept('GET', '/api/v1/organization/testorg', {
@@ -263,7 +263,7 @@ describe('Repository Builds', () => {
       repoFixture.state = 'MIRROR';
       cy.intercept(
         'GET',
-        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
         repoFixture,
       ).as('getRepo');
     });
@@ -285,7 +285,7 @@ describe('Repository Builds', () => {
       repoFixture.state = 'READONLY';
       cy.intercept(
         'GET',
-        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
         repoFixture,
       ).as('getRepo');
     });
@@ -981,7 +981,7 @@ describe('Repository Builds', () => {
     }).as('getBuildTriggers');
     cy.intercept(
       'GET',
-      '/api/v1/repository/testorg/privaterepo?includeStats=false&includeTags=false',
+      '/api/v1/repository/testorg/privaterepo?includeStats=true&includeTags=false',
       {statusCode: 200, body: {is_public: false}},
     ).as('getRepoDetails');
     cy.intercept(
@@ -1300,7 +1300,7 @@ describe('Repository Builds - Create GitHub Build Triggers', () => {
     );
     cy.intercept(
       'GET',
-      '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+      '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
       {fixture: 'testrepo.json'},
     ).as('getRepo');
     cy.intercept('GET', '/api/v1/organization/testorg', {
@@ -1774,7 +1774,7 @@ describe('Repository Builds - View build logs', () => {
       fixture.can_write = true;
       cy.intercept(
         'GET',
-        '/api/v1/repository/testorg/testrepo?includeStats=false&includeTags=false',
+        '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
         fixture,
       ).as('getrepo');
     });

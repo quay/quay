@@ -79,7 +79,7 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
     return getNetworkError(error.code as AxiosErrorCode);
   }
 
-  if (error.response.status) {
+  if (error.response?.status) {
     // For server errors (5xx), provide user-friendly message
     if (error.response.status >= 500 && error.response.status < 600) {
       return 'an unexpected issue occurred. Please try again or contact support';
