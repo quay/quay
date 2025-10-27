@@ -18,6 +18,7 @@ export type OrganizationDetail = {
   name: string;
   isUser: boolean;
   userEnabled?: boolean;
+  userSuperuser?: boolean;
 };
 
 export function useOrganizations() {
@@ -79,6 +80,7 @@ export function useOrganizations() {
       name: username,
       isUser: true,
       userEnabled: userObj?.enabled,
+      userSuperuser: userObj?.super_user,
     });
   }
 

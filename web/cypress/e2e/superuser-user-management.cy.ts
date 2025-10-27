@@ -547,7 +547,11 @@ describe('Superuser User Management', () => {
     it('should show success alert when user is created', () => {
       cy.intercept('POST', '/api/v1/superuser/users/', {
         statusCode: 200,
-        body: {username: 'newuser', email: 'newuser@example.com', enabled: true},
+        body: {
+          username: 'newuser',
+          email: 'newuser@example.com',
+          enabled: true,
+        },
       }).as('createUser');
 
       cy.get('[data-testid="create-user-button"]').click();
@@ -591,6 +595,143 @@ describe('Superuser User Management', () => {
 
       cy.wait('@deleteUserFail');
       cy.contains('Failed to delete user tom').should('be.visible');
+    });
+  });
+
+  describe('Configure Quota - Phase 3', () => {
+    beforeEach(() => {
+      // Enable quota features
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      // Mock users with superuser flags
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true, // Current logged-in user is superuser
+            },
+            {
+              username: 'admin',
+              email: 'admin@example.com',
+              enabled: true,
+              super_user: true, // Another superuser
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false, // Regular user
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      // Mock user quota endpoint
+      cy.intercept('GET', '/api/v1/superuser/users/*/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getUserQuota');
+    });
+
+    it('should show Configure Quota option for regular users', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getUsers');
+
+      // Click action menu for regular user (tom)
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should see all 6 options including Configure Quota
+      cy.contains('Change E-mail Address').should('be.visible');
+      cy.contains('Change Password').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Configure Quota').should('be.visible');
+    });
+
+    it('should show ONLY Configure Quota for logged-in superuser own row', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getUsers');
+
+      // Click action menu for currently logged-in superuser (user1)
+      cy.get('[data-testid="user1-options-toggle"]').should('be.visible');
+      cy.get('[data-testid="user1-options-toggle"]').click();
+
+      // Should ONLY see Configure Quota (not other management options)
+      cy.contains('Configure Quota').should('be.visible');
+      cy.contains('Change E-mail Address').should('not.exist');
+      cy.contains('Change Password').should('not.exist');
+      cy.contains('Delete User').should('not.exist');
+      cy.contains('Take Ownership').should('not.exist');
+      cy.contains('Disable User').should('not.exist');
+    });
+
+    it('should NOT show kebab menu for other superuser rows', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getUsers');
+
+      // Other superuser (admin) should NOT have a kebab menu
+      cy.get('[data-testid="admin-options-toggle"]').should('not.exist');
+    });
+
+    it('should open Configure Quota modal for regular user', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getUsers');
+
+      // Click action menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Click Configure Quota
+      cy.contains('Configure Quota').click();
+
+      // Modal should open with correct title showing username
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.contains('Configure Quota for tom').should('be.visible');
+    });
+
+    it('should NOT show Configure Quota when feature flags are disabled', () => {
+      // Disable quota features
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = false;
+        config.features.EDIT_QUOTA = false;
+        cy.intercept('GET', '/config', config).as('getConfigNoQuota');
+      });
+
+      cy.visit('/organization');
+      cy.wait('@getConfigNoQuota');
+      cy.wait('@getUsers');
+
+      // Click action menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Configure Quota should NOT appear
+      cy.contains('Configure Quota').should('not.exist');
+    });
+
+    it('should use correct API endpoint for user quota', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getUsers');
+
+      // Click Configure Quota for a user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Configure Quota').click();
+
+      // Verify the user quota endpoint was called (not organization endpoint)
+      cy.wait('@getUserQuota')
+        .its('request.url')
+        .should('include', '/api/v1/superuser/users/tom/quota');
     });
   });
 });

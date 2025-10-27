@@ -440,4 +440,109 @@ describe('Superuser Organization Actions', () => {
       cy.wait('@takeOwnership');
     });
   });
+
+  describe('Configure Quota - Phase 3', () => {
+    beforeEach(() => {
+      // Setup superuser access with full mocking + quota features enabled
+      cy.fixture('config.json').then((config) => {
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.fixture('superuser-organizations.json').then((orgsData) => {
+        cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+          'getSuperuserOrganizations',
+        );
+      });
+
+      cy.fixture('superuser-users.json').then((usersData) => {
+        cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+          'getSuperuserUsers',
+        );
+      });
+
+      // Mock organization data
+      cy.intercept('GET', '/api/v1/organization/testorg', {
+        statusCode: 200,
+        body: {
+          name: 'testorg',
+          email: 'testorg@example.com',
+          teams: {owners: 'admin'},
+        },
+      });
+
+      cy.intercept('GET', '/api/v1/organization/*/robots', {
+        statusCode: 200,
+        body: {robots: []},
+      });
+      cy.intercept('GET', '/api/v1/organization/*/members', {
+        statusCode: 200,
+        body: {members: []},
+      });
+      cy.intercept('GET', '/api/v1/repository?namespace=*', {
+        statusCode: 200,
+        body: {repositories: []},
+      });
+
+      // Mock quota endpoint (no quota initially)
+      cy.intercept('GET', '/api/v1/organization/testorg/quota*', {
+        statusCode: 200,
+        body: [],
+      }).as('getOrgQuota');
+    });
+
+    it('should show Configure Quota option for organizations', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+
+      // Click action menu for organization
+      cy.get('[data-testid="testorg-options-toggle"]').click();
+
+      // Should see Configure Quota option
+      cy.contains('Configure Quota').should('be.visible');
+    });
+
+    it('should open Configure Quota modal for organization', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+
+      // Click action menu
+      cy.get('[data-testid="testorg-options-toggle"]').click();
+
+      // Click Configure Quota
+      cy.contains('Configure Quota').click();
+
+      // Modal should open with correct title
+      cy.get('[data-testid="configure-quota-modal"]').should('be.visible');
+      cy.contains('Configure Quota for testorg').should('be.visible');
+    });
+
+    it('should NOT show Configure Quota when feature flags are disabled', () => {
+      // Disable quota features
+      cy.fixture('config.json').then((config) => {
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.QUOTA_MANAGEMENT = false;
+        config.features.EDIT_QUOTA = false;
+        cy.intercept('GET', '/config', config).as('getConfigNoQuota');
+      });
+
+      cy.visit('/organization');
+      cy.wait('@getConfigNoQuota');
+      cy.wait('@getSuperUser');
+
+      // Click action menu for organization
+      cy.get('[data-testid="testorg-options-toggle"]').click();
+
+      // Configure Quota should NOT appear
+      cy.contains('Configure Quota').should('not.exist');
+    });
+  });
 });

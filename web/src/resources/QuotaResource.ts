@@ -27,13 +27,19 @@ export interface ICreateQuotaLimitParams {
   threshold_percent: number;
 }
 
-// Fetch organization quota
+// Fetch organization quota (or user quota if isUser=true)
 export async function fetchOrganizationQuota(
   orgName: string,
   signal?: AbortSignal,
+  isUser?: boolean,
 ): Promise<IQuota[]> {
   try {
-    const response = await axios.get(`/api/v1/organization/${orgName}/quota`, {
+    // Build endpoint based on whether it's a user or organization
+    const endpoint = isUser
+      ? `/api/v1/superuser/users/${orgName}/quota`
+      : `/api/v1/organization/${orgName}/quota`;
+
+    const response = await axios.get(endpoint, {
       signal,
     });
     return response.data;
@@ -57,65 +63,81 @@ export async function fetchOrganizationQuota(
   }
 }
 
-// Create organization quota
+// Create organization quota (or user quota if isUser=true)
 export async function createOrganizationQuota(
   orgName: string,
   params: ICreateQuotaParams,
+  isUser?: boolean,
 ): Promise<void> {
-  await axios.post(`/api/v1/organization/${orgName}/quota`, params);
+  const endpoint = isUser
+    ? `/api/v1/superuser/users/${orgName}/quota`
+    : `/api/v1/organization/${orgName}/quota`;
+  await axios.post(endpoint, params);
 }
 
-// Update organization quota
+// Update organization quota (or user quota if isUser=true)
 export async function updateOrganizationQuota(
   orgName: string,
   quotaId: string,
   params: IUpdateQuotaParams,
+  isUser?: boolean,
 ): Promise<void> {
-  await axios.put(`/api/v1/organization/${orgName}/quota/${quotaId}`, params);
+  const endpoint = isUser
+    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
+    : `/api/v1/organization/${orgName}/quota/${quotaId}`;
+  await axios.put(endpoint, params);
 }
 
-// Delete organization quota
+// Delete organization quota (or user quota if isUser=true)
 export async function deleteOrganizationQuota(
   orgName: string,
   quotaId: string,
+  isUser?: boolean,
 ): Promise<void> {
-  await axios.delete(`/api/v1/organization/${orgName}/quota/${quotaId}`);
+  const endpoint = isUser
+    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
+    : `/api/v1/organization/${orgName}/quota/${quotaId}`;
+  await axios.delete(endpoint);
 }
 
-// Create quota limit
+// Create quota limit (for organization or user quota)
 export async function createQuotaLimit(
   orgName: string,
   quotaId: string,
   params: ICreateQuotaLimitParams,
+  isUser?: boolean,
 ): Promise<void> {
-  await axios.post(
-    `/api/v1/organization/${orgName}/quota/${quotaId}/limit`,
-    params,
-  );
+  const endpoint = isUser
+    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}/limit`
+    : `/api/v1/organization/${orgName}/quota/${quotaId}/limit`;
+  await axios.post(endpoint, params);
 }
 
-// Update quota limit
+// Update quota limit (for organization or user quota)
 export async function updateQuotaLimit(
   orgName: string,
   quotaId: string,
   limitId: string,
   params: ICreateQuotaLimitParams,
+  isUser?: boolean,
 ): Promise<void> {
-  await axios.put(
-    `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
-    params,
-  );
+  const endpoint = isUser
+    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}/limit/${limitId}`
+    : `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
+  await axios.put(endpoint, params);
 }
 
-// Delete quota limit
+// Delete quota limit (for organization or user quota)
 export async function deleteQuotaLimit(
   orgName: string,
   quotaId: string,
   limitId: string,
+  isUser?: boolean,
 ): Promise<void> {
-  await axios.delete(
-    `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`,
-  );
+  const endpoint = isUser
+    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}/limit/${limitId}`
+    : `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
+  await axios.delete(endpoint);
 }
 
 // Helper function to convert bytes to human readable format

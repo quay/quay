@@ -49,6 +49,7 @@ export interface OrganizationsTableItem {
   name: string;
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
+  userSuperuser?: boolean; // Only used when isUser is true
 }
 
 function OrgListHeader({
@@ -479,6 +480,7 @@ export default function OrganizationsList() {
                   name={org.name}
                   isUser={org.isUser}
                   userEnabled={org.userEnabled}
+                  userSuperuser={org.userSuperuser}
                   userEmail={org.isUser ? userEmailMap[org.name] : undefined}
                 ></OrgTableData>
               </Tr>

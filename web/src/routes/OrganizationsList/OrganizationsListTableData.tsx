@@ -198,6 +198,7 @@ export default function OrgTableData(props: OrgTableDataProps) {
             name={props.name}
             isUser={props.isUser}
             userEnabled={props.userEnabled}
+            userSuperuser={props.userSuperuser}
           />
         </Td>
       )}

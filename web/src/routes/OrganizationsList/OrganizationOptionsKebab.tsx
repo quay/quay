@@ -17,16 +17,41 @@ import DeleteUserModal from './modals/DeleteUserModal';
 import ToggleUserStatusModal from './modals/ToggleUserStatusModal';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {ConfigureQuotaModal} from './modals/ConfigureQuotaModal';
 
 export default function OrganizationOptionsKebab(
   props: OrganizationOptionsKebabProps,
 ) {
   const {canModify} = useSuperuserPermissions();
   const {user} = useCurrentUser();
+  const quayConfig = useQuayConfig();
   const [isKebabOpen, setIsKebabOpen] = useState<boolean>(false);
 
   // Check if this is the currently logged-in user
   const isCurrentUser = props.isUser && user?.username === props.name;
+
+  // Check if the row represents a superuser
+  const isRowSuperuser = props.userSuperuser === true;
+
+  // Angular access control logic:
+  // Show kebab menu when:
+  // 1. canModify (not in read-only mode AND not read-only superuser) AND
+  // 2. (Row is superuser AND viewing own row AND quota features enabled)
+  //    OR (Row is NOT superuser)
+  const shouldShowMenu =
+    canModify &&
+    (isRowSuperuser &&
+    isCurrentUser &&
+    quayConfig?.features?.QUOTA_MANAGEMENT &&
+    quayConfig?.features?.EDIT_QUOTA
+      ? true
+      : !isRowSuperuser);
+
+  // Early return if menu should not be shown (handles other superuser rows)
+  if (props.isUser && !shouldShowMenu) {
+    return null;
+  }
 
   // If cannot modify, return null (no actions allowed)
   // This handles: read-only mode, read-only superuser, and non-superusers
@@ -46,6 +71,10 @@ export default function OrganizationOptionsKebab(
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] =
     useState<boolean>(false);
   const [isToggleUserStatusModalOpen, setIsToggleUserStatusModalOpen] =
+    useState<boolean>(false);
+
+  // Configure Quota modal state
+  const [isConfigureQuotaModalOpen, setIsConfigureQuotaModalOpen] =
     useState<boolean>(false);
 
   const handleMenuItemClick = (action: string) => {
@@ -99,47 +128,90 @@ export default function OrganizationOptionsKebab(
     >
       Take Ownership
     </DropdownItem>,
+    // Add Configure Quota option (only for organizations, not users)
+    ...(quayConfig?.features?.QUOTA_MANAGEMENT &&
+    quayConfig?.features?.EDIT_QUOTA
+      ? [
+          <DropdownItem
+            key="configureQuota"
+            onClick={() => setIsConfigureQuotaModalOpen(true)}
+            data-testid="configure-quota-option"
+          >
+            Configure Quota
+          </DropdownItem>,
+        ]
+      : []),
   ];
 
-  // For the currently logged-in user, don't show user management actions
-  // Only show Configure Quota (which will be added in phase 3)
-  const userMenuItems = isCurrentUser
-    ? [
-        // Currently logged-in user - no actions shown (quota will be added in phase 3)
-      ]
-    : [
-        // Other users - show all user management actions
-        <DropdownItem
-          key="changeEmail"
-          onClick={() => handleMenuItemClick('Change E-mail Address')}
-        >
-          Change E-mail Address
-        </DropdownItem>,
-        <DropdownItem
-          key="changePassword"
-          onClick={() => handleMenuItemClick('Change Password')}
-        >
-          Change Password
-        </DropdownItem>,
-        <DropdownItem
-          key="toggleStatus"
-          onClick={() => handleMenuItemClick('Toggle User Status')}
-        >
-          {props.userEnabled ? 'Disable User' : 'Enable User'}
-        </DropdownItem>,
-        <DropdownItem
-          key="deleteUser"
-          onClick={() => handleMenuItemClick('Delete User')}
-        >
-          Delete User
-        </DropdownItem>,
-        <DropdownItem
-          key="takeOwnership"
-          onClick={() => handleMenuItemClick('Take Ownership')}
-        >
-          Take Ownership
-        </DropdownItem>,
-      ];
+  // Determine user menu items based on user type and viewing context
+  const userMenuItems =
+    isCurrentUser && isRowSuperuser
+      ? [
+          // Currently logged-in SUPERUSER viewing their own row
+          // ONLY show Configure Quota (if features enabled)
+          ...(quayConfig?.features?.QUOTA_MANAGEMENT &&
+          quayConfig?.features?.EDIT_QUOTA
+            ? [
+                <DropdownItem
+                  key="configureQuota"
+                  onClick={() => setIsConfigureQuotaModalOpen(true)}
+                  data-testid="configure-quota-option"
+                >
+                  Configure Quota
+                </DropdownItem>,
+              ]
+            : []),
+        ]
+      : isRowSuperuser
+      ? [] // Other superuser rows - no menu (already filtered by shouldShowMenu check above)
+      : [
+          // Regular user rows (not superusers)
+          // Show all user management options
+          <DropdownItem
+            key="changeEmail"
+            onClick={() => handleMenuItemClick('Change E-mail Address')}
+          >
+            Change E-mail Address
+          </DropdownItem>,
+          <DropdownItem
+            key="changePassword"
+            onClick={() => handleMenuItemClick('Change Password')}
+          >
+            Change Password
+          </DropdownItem>,
+          <DropdownItem
+            key="toggleStatus"
+            onClick={() => handleMenuItemClick('Toggle User Status')}
+          >
+            {props.userEnabled ? 'Disable User' : 'Enable User'}
+          </DropdownItem>,
+          <DropdownItem
+            key="deleteUser"
+            onClick={() => handleMenuItemClick('Delete User')}
+          >
+            Delete User
+          </DropdownItem>,
+          <DropdownItem
+            key="takeOwnership"
+            onClick={() => handleMenuItemClick('Take Ownership')}
+          >
+            Take Ownership
+          </DropdownItem>,
+
+          // Add Configure Quota for regular users
+          ...(quayConfig?.features?.QUOTA_MANAGEMENT &&
+          quayConfig?.features?.EDIT_QUOTA
+            ? [
+                <DropdownItem
+                  key="configureQuota"
+                  onClick={() => setIsConfigureQuotaModalOpen(true)}
+                  data-testid="configure-quota-option"
+                >
+                  Configure Quota
+                </DropdownItem>,
+              ]
+            : []),
+        ];
 
   const menuItems = props.isUser ? userMenuItems : organizationMenuItems;
 
@@ -217,6 +289,17 @@ export default function OrganizationOptionsKebab(
         username={props.name}
         currentlyEnabled={props.userEnabled ?? true}
       />
+
+      {/* Configure Quota Modal - For both users and organizations */}
+      {quayConfig?.features?.QUOTA_MANAGEMENT &&
+        quayConfig?.features?.EDIT_QUOTA && (
+          <ConfigureQuotaModal
+            isOpen={isConfigureQuotaModalOpen}
+            onClose={() => setIsConfigureQuotaModalOpen(false)}
+            organizationName={props.name}
+            isUser={props.isUser}
+          />
+        )}
     </>
   );
 }
@@ -225,4 +308,5 @@ interface OrganizationOptionsKebabProps {
   name: string;
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
+  userSuperuser?: boolean; // Only used when isUser is true
 }
