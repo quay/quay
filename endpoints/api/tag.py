@@ -5,14 +5,17 @@ from datetime import datetime
 
 from flask import abort, request
 
+import features
 from app import app, docker_v2_signing_key, model_cache, storage
 from auth.auth_context import get_authenticated_user
-from data.model import repository as repository_model
+from data.model.pull_statistics import (
+    get_manifest_pull_statistics,
+    get_tag_pull_statistics,
+)
 from data.registry_model import registry_model
 from endpoints.api import RepositoryParamResource
 from endpoints.api import abort as custom_abort
 from endpoints.api import (
-    deprecated,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
@@ -416,3 +419,61 @@ class TagTimeMachineDelete(RepositoryParamResource):
             repo_name=repository,
         )
         return "", 200
+
+
+@resource("/v1/repository/<apirepopath:repository>/tag/<tag>/pull_statistics")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("tag", "The name of the tag")
+@show_if(features.IMAGE_PULL_STATS)
+class RepositoryTagPullStatistics(RepositoryParamResource):
+    """
+    Resource for retrieving pull statistics for a specific repository tag.
+    """
+
+    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
+    @disallow_for_app_repositories
+    @nickname("getTagPullStatistics")
+    def get(self, namespace, repository, tag):
+        """
+        Get pull statistics for a specific tag.
+        """
+
+        repo_ref = registry_model.lookup_repository(namespace, repository)
+        if repo_ref is None:
+            raise NotFound()
+
+        # Get the tag reference
+        tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+        if tag_ref is None:
+            raise NotFound()
+
+        # Get pull statistics from database
+        tag_stats = get_tag_pull_statistics(repo_ref.id, tag)
+        manifest_stats = get_manifest_pull_statistics(repo_ref.id, tag_ref.manifest_digest)
+
+        if not tag_stats:
+            # Return default values if no statistics are available
+            return {
+                "tag_name": tag,
+                "tag_pull_count": 0,
+                "last_tag_pull_date": None,
+                "current_manifest_digest": tag_ref.manifest_digest,
+                "manifest_pull_count": 0,
+                "last_manifest_pull_date": None,
+            }
+
+        last_tag_pull = tag_stats.get("last_pull_date")
+        last_manifest_pull = manifest_stats.get("last_pull_date") if manifest_stats else None
+
+        return {
+            "tag_name": tag,
+            "tag_pull_count": tag_stats.get("pull_count", 0),
+            "last_tag_pull_date": format_date(last_tag_pull) if last_tag_pull else None,
+            "current_manifest_digest": tag_stats.get(
+                "current_manifest_digest", tag_ref.manifest_digest
+            ),
+            "manifest_pull_count": manifest_stats.get("pull_count", 0) if manifest_stats else 0,
+            "last_manifest_pull_date": format_date(last_manifest_pull)
+            if last_manifest_pull
+            else None,
+        }
