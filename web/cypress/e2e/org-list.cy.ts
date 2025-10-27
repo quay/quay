@@ -62,7 +62,7 @@ describe('Org List Page', () => {
 
     // Valid org name
     cy.get('#create-org-name-input').type('cypress');
-    // cy.get('#create-org-confirm').should('be.disabled'); // TODO this is broken, need to fix
+    cy.get('#create-org-confirm').should('be.disabled');
 
     // Valid email address
     cy.get('#create-org-email-input').type('cypress');
