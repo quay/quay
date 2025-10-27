@@ -227,7 +227,8 @@ class OrgRobotList(ApiResource):
                 or allow_if_global_readonly_superuser()
             ) and parsed_args.get("token", True)
             include_permissions = (
-                AdministerOrganizationPermission(orgname).can() or allow_if_global_readonly_superuser()
+                AdministerOrganizationPermission(orgname).can() 
+                or allow_if_global_readonly_superuser()
             ) and parsed_args.get("permissions", False)
             return robots_list(
                 orgname,
