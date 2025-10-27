@@ -107,7 +107,10 @@ export const CreateOrganizationModal = (
           onClick={createOrganizationHandler}
           form="modal-with-form-form"
           isDisabled={
-            invalidEmailFlag || !organizationName || !validation.isValid
+            invalidEmailFlag ||
+            !organizationName ||
+            !organizationEmail ||
+            !validation.isValid
           }
         >
           Create
@@ -152,8 +155,13 @@ export const CreateOrganizationModal = (
             </HelperText>
           </FormHelperText>
         </FormGroup>
-        <FormGroup label="Organization Email" fieldId="create-org-email">
+        <FormGroup
+          label="Organization Email"
+          isRequired
+          fieldId="create-org-email"
+        >
           <TextInput
+            isRequired
             type="email"
             id="create-org-email-input"
             name="create-org-email-input"
