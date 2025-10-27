@@ -109,7 +109,6 @@ export function StandaloneMain() {
       <Page
         header={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
-        style={{height: '100vh'}}
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
         notificationDrawer={notificationDrawer}
@@ -142,15 +141,17 @@ export function StandaloneMain() {
           </ErrorBoundary>
         </Conditional>
         <Alerts />
-        <Routes>
-          <Route index element={<Navigate to="/organization" replace />} />
-          {NavigationRoutes.map(({path, Component}, key) => (
-            <Route path={path} key={key} element={Component} />
-          ))}
-          <Route path="oauth-error" element={<OAuthError />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Outlet />
+        <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+          <Routes>
+            <Route index element={<Navigate to="/organization" replace />} />
+            {NavigationRoutes.map(({path, Component}, key) => (
+              <Route path={path} key={key} element={Component} />
+            ))}
+            <Route path="oauth-error" element={<OAuthError />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Outlet />
+        </div>
         <QuayFooter />
       </Page>
     </ErrorBoundary>
