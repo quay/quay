@@ -82,6 +82,25 @@ jobs:
         name: cypress-videos
         path: web/cypress/videos
 
+    - name: Upload CTRF report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ctrf-report
+        path: web/cypress/reports/ctrf-report.json
+
+    - name: Publish test results to PR
+      uses: ctrf-io/github-test-reporter@v1
+      if: always() && github.event_name == 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        report-path: web/cypress/reports/ctrf-report.json
+        annotate: true
+        on-fail-only: false
+        pull-request-report: true
+        update-comment: true
+
     - name: Create report
       run: |
         mkdir -p logs/
