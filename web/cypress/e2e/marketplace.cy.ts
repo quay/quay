@@ -102,7 +102,6 @@ const privateResponse = {
 
 describe('Marketplace Section', () => {
   beforeEach(() => {
-    cy.exec('npm run quay:seed');
     cy.intercept('GET', '/config', {fixture: 'config.json'}).as('getConfig');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)

@@ -2,7 +2,6 @@
 
 describe('Account Settings Page', () => {
   beforeEach(() => {
-    cy.exec('npm run quay:seed');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
