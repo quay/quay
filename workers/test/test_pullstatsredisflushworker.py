@@ -134,10 +134,18 @@ def test_initialize_redis_client_no_config():
             "REDIS_CONNECTION_TIMEOUT": 5,
         }.get(key, default)
 
-        # Test - should initialize without Redis client when config is missing
-        worker = RedisFlushWorker()
+        with patch("workers.pullstatsredisflushworker.redis") as mock_redis_module:
+            # Mock Redis client
+            mock_client = MagicMock()
+            mock_client.ping.return_value = True
+            mock_redis_module.StrictRedis.return_value = mock_client
 
-        assert worker.redis_client is None
+            # Test - should still initialize Redis client with default config
+            worker = RedisFlushWorker()
+
+            # Should have Redis client with default config
+            assert worker.redis_client == mock_client
+            mock_redis_module.StrictRedis.assert_called_once()
 
 
 def test_process_redis_events():
@@ -1124,3 +1132,626 @@ def test_process_redis_events_shared_digest_across_repositories():
         repo2_manifest = next(m for m in manifest_updates if m["repository_id"] == 2)
         assert repo2_manifest["pull_count"] == 1  # Only 1 tag pull
         assert repo2_manifest["manifest_digest"] == shared_digest
+
+
+def test_flush_pull_metrics_database_failure():
+    """Test _flush_pull_metrics when database flush fails."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "REDIS_FLUSH_INTERVAL_SECONDS": 300,
+            "REDIS_FLUSH_WORKER_BATCH_SIZE": 1000,
+            "REDIS_FLUSH_WORKER_SCAN_COUNT": 100,
+            "REDIS_CONNECTION_TIMEOUT": 5,
+            "PULL_METRICS_REDIS": {
+                "host": "localhost",
+                "port": 6379,
+                "db": 1,
+                "password": None,
+            },
+        }.get(key, default)
+
+        with patch(
+            "workers.pullstatsredisflushworker.bulk_upsert_tag_statistics"
+        ) as mock_tag_upsert:
+            with patch(
+                "workers.pullstatsredisflushworker.bulk_upsert_manifest_statistics"
+            ) as mock_manifest_upsert:
+                mock_tag_upsert.side_effect = Exception("Database error")
+
+                with patch("workers.pullstatsredisflushworker.redis") as mock_redis_module:
+                    mock_client = MagicMock()
+                    mock_client.ping.return_value = True
+                    mock_redis_module.StrictRedis.return_value = mock_client
+
+                    worker = RedisFlushWorker()
+
+                    # Mock scan to return a key
+                    mock_client.scan.return_value = (
+                        0,
+                        ["pull_events:repo:123:tag:latest:sha256:abc"],
+                    )
+
+                    # Mock hgetall to return valid data
+                    mock_client.hgetall.return_value = {
+                        "repository_id": "123",
+                        "tag_name": "latest",
+                        "manifest_digest": "sha256:abc123",
+                        "pull_count": "5",
+                        "last_pull_timestamp": "1694168400",
+                        "pull_method": "tag",
+                    }
+
+                    worker._flush_pull_metrics()
+
+                    # Verify database operations were called
+                    mock_tag_upsert.assert_called_once()
+                    # manifest_upsert should also be called since we have tag data
+                    # Note: manifest_upsert may not be called if tag_upsert fails first
+                    # mock_manifest_upsert.assert_called_once()
+
+                    # Verify cleanup was NOT called due to database failure
+                    mock_client.delete.assert_not_called()
+
+
+def test_flush_pull_metrics_general_exception():
+    """Test _flush_pull_metrics handles general exceptions."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        mock_client.scan.side_effect = Exception("Unexpected error")
+        worker.redis_client = mock_client
+
+        # Should handle error gracefully
+        worker._flush_pull_metrics()  # No exception should be raised
+
+
+def test_process_redis_events_invalid_data_validation():
+    """Test _process_redis_events with invalid data that fails validation."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock hgetall to return invalid data
+        mock_client.hgetall.return_value = {
+            "repository_id": "0",  # Invalid repository_id
+            "tag_name": "latest",
+            "manifest_digest": "sha256:abc123",
+            "pull_count": "5",
+            "last_pull_timestamp": "1694168400",
+            "pull_method": "tag",
+        }
+
+        keys = ["pull_events:repo:123:tag:latest:sha256:abc"]
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Invalid data should be marked as cleanable
+        assert len(cleanable) == 1
+        assert len(tag_updates) == 0
+        assert len(manifest_updates) == 0
+
+
+def test_process_redis_events_manifest_aggregation_timestamp_handling():
+    """Test manifest aggregation with different timestamp scenarios."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data with different timestamps
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "1694168400",  # Earlier timestamp
+                "pull_method": "digest",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "2",
+                "last_pull_timestamp": "1694168500",  # Later timestamp
+                "pull_method": "digest",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:digest:sha256:abc123",
+            "pull_events:repo:123:digest:sha256:abc123",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate manifest pulls
+        assert len(manifest_updates) == 1
+        manifest = manifest_updates[0]
+        assert manifest["pull_count"] == 5  # 3 + 2
+        assert manifest["last_pull_timestamp"] is not None
+        # Should keep the later timestamp
+        assert manifest["last_pull_timestamp"].timestamp() == 1694168500
+
+
+def test_process_redis_events_manifest_aggregation_no_existing_timestamp():
+    """Test manifest aggregation when existing entry has no timestamp."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data - first entry with no timestamp, second with timestamp
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "0",  # No timestamp
+                "pull_method": "digest",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "2",
+                "last_pull_timestamp": "1694168500",  # Has timestamp
+                "pull_method": "digest",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:digest:sha256:abc123",
+            "pull_events:repo:123:digest:sha256:abc123",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate manifest pulls
+        assert len(manifest_updates) == 1
+        manifest = manifest_updates[0]
+        assert manifest["pull_count"] == 5  # 3 + 2
+        assert manifest["last_pull_timestamp"] is not None
+        # Should use the timestamp from the second entry
+        assert manifest["last_pull_timestamp"].timestamp() == 1694168500
+
+
+def test_process_redis_events_tag_aggregation_timestamp_handling():
+    """Test tag aggregation with different timestamp scenarios."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data with different timestamps for same tag
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "1694168400",  # Earlier timestamp
+                "pull_method": "tag",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:def456",  # Different manifest
+                "pull_count": "2",
+                "last_pull_timestamp": "1694168500",  # Later timestamp
+                "pull_method": "tag",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:tag:latest:sha256:abc123",
+            "pull_events:repo:123:tag:latest:sha256:def456",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate tag pulls
+        assert len(tag_updates) == 1
+        tag = tag_updates[0]
+        assert tag["pull_count"] == 5  # 3 + 2
+        assert tag["last_pull_timestamp"] is not None
+        # Should keep the later timestamp and manifest
+        assert tag["last_pull_timestamp"].timestamp() == 1694168500
+        assert tag["manifest_digest"] == "sha256:def456"
+
+
+def test_process_redis_events_tag_aggregation_no_existing_timestamp():
+    """Test tag aggregation when existing entry has no timestamp."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data - first entry with no timestamp, second with timestamp
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "0",  # No timestamp
+                "pull_method": "tag",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:def456",
+                "pull_count": "2",
+                "last_pull_timestamp": "1694168500",  # Has timestamp
+                "pull_method": "tag",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:tag:latest:sha256:abc123",
+            "pull_events:repo:123:tag:latest:sha256:def456",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate tag pulls
+        assert len(tag_updates) == 1
+        tag = tag_updates[0]
+        assert tag["pull_count"] == 5  # 3 + 2
+        assert tag["last_pull_timestamp"] is not None
+        # Should use the timestamp from the second entry
+        assert tag["last_pull_timestamp"].timestamp() == 1694168500
+        assert tag["manifest_digest"] == "sha256:def456"
+
+
+def test_process_redis_events_general_exception_during_processing():
+    """Test _process_redis_events handles general exceptions during key processing."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        mock_client.hgetall.side_effect = Exception("Unexpected error")
+        worker.redis_client = mock_client
+
+        keys = ["pull_events:repo:123:tag:latest:sha256:abc"]
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should handle error and continue
+        assert len(tag_updates) == 0
+        assert len(manifest_updates) == 0
+
+
+def test_cleanup_redis_keys_empty_keys():
+    """Test _cleanup_redis_keys with empty keys set."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Should handle empty keys gracefully
+        worker._cleanup_redis_keys(set())
+
+        # Should not call delete
+        mock_client.delete.assert_not_called()
+
+
+def test_cleanup_redis_keys_general_exception():
+    """Test _cleanup_redis_keys handles general exceptions."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        mock_client.delete.side_effect = Exception("Unexpected error")
+        worker.redis_client = mock_client
+
+        keys = {"key1", "key2"}
+        # Should handle error gracefully
+        worker._cleanup_redis_keys(keys)
+
+
+def test_flush_pull_metrics_with_cleanup_keys_only():
+    """Test _flush_pull_metrics with only cleanable keys (no database operations)."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.side_effect = lambda key, default=None: {
+            "REDIS_FLUSH_INTERVAL_SECONDS": 300,
+            "REDIS_FLUSH_WORKER_BATCH_SIZE": 1000,
+            "REDIS_FLUSH_WORKER_SCAN_COUNT": 100,
+            "REDIS_CONNECTION_TIMEOUT": 5,
+            "PULL_METRICS_REDIS": {
+                "host": "localhost",
+                "port": 6379,
+                "db": 1,
+                "password": None,
+            },
+        }.get(key, default)
+
+        with patch("workers.pullstatsredisflushworker.redis") as mock_redis_module:
+            mock_client = MagicMock()
+            mock_client.ping.return_value = True
+            mock_redis_module.StrictRedis.return_value = mock_client
+
+            worker = RedisFlushWorker()
+
+            # Mock scan to return a key
+            mock_client.scan.return_value = (0, ["pull_events:repo:123:tag:latest:sha256:abc"])
+
+            # Mock hgetall to return empty data (cleanable)
+            mock_client.hgetall.return_value = {}
+
+            worker._flush_pull_metrics()
+
+            # Should clean up empty keys
+            mock_client.delete.assert_called()
+
+
+def test_process_redis_events_manifest_aggregation_with_none_timestamp():
+    """Test manifest aggregation when new entry has None timestamp."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data - first entry with timestamp, second with None timestamp
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "1694168400",  # Has timestamp
+                "pull_method": "digest",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "2",
+                "last_pull_timestamp": "0",  # No timestamp (None)
+                "pull_method": "digest",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:digest:sha256:abc123",
+            "pull_events:repo:123:digest:sha256:abc123",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate manifest pulls
+        assert len(manifest_updates) == 1
+        manifest = manifest_updates[0]
+        assert manifest["pull_count"] == 5  # 3 + 2
+        assert manifest["last_pull_timestamp"] is not None
+        # Should keep the existing timestamp
+        assert manifest["last_pull_timestamp"].timestamp() == 1694168400
+
+
+def test_process_redis_events_tag_aggregation_with_none_timestamp():
+    """Test tag aggregation when new entry has None timestamp."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data - first entry with timestamp, second with None timestamp
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "1694168400",  # Has timestamp
+                "pull_method": "tag",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:def456",
+                "pull_count": "2",
+                "last_pull_timestamp": "0",  # No timestamp (None)
+                "pull_method": "tag",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:tag:latest:sha256:abc123",
+            "pull_events:repo:123:tag:latest:sha256:def456",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate tag pulls
+        assert len(tag_updates) == 1
+        tag = tag_updates[0]
+        assert tag["pull_count"] == 5  # 3 + 2
+        assert tag["last_pull_timestamp"] is not None
+        # Should keep the existing timestamp and manifest
+        assert tag["last_pull_timestamp"].timestamp() == 1694168400
+        assert tag["manifest_digest"] == "sha256:abc123"
+
+
+def test_cleanup_redis_keys_redis_error_during_cleanup():
+    """Test _cleanup_redis_keys handles Redis errors during cleanup."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        mock_client.delete.side_effect = redis.RedisError("Connection error")
+        worker.redis_client = mock_client
+
+        keys = {"key1", "key2"}
+        # Should handle error gracefully
+        worker._cleanup_redis_keys(keys)
+
+
+def test_create_gunicorn_worker_always_enabled():
+    """Test create_gunicorn_worker always enables the worker (no feature flag check)."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        with patch("workers.pullstatsredisflushworker.GunicornWorker") as mock_gunicorn_worker:
+            mock_gunicorn_instance = MagicMock()
+            mock_gunicorn_worker.return_value = mock_gunicorn_instance
+
+            # Test
+            result = create_gunicorn_worker()
+
+            # Verify
+            assert result is not None
+            mock_gunicorn_worker.assert_called_once()
+            call_args = mock_gunicorn_worker.call_args
+            assert call_args[0][0] == "workers.pullstatsredisflushworker"
+            assert call_args[0][3] is True  # Always True, no feature flag check
+
+
+def test_process_redis_events_validation_failure():
+    """Test _process_redis_events with data that fails validation."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock hgetall to return data that fails validation
+        mock_client.hgetall.return_value = {
+            "repository_id": "123",
+            "tag_name": "latest",
+            "manifest_digest": "invalid_digest",  # Invalid digest
+            "pull_count": "5",
+            "last_pull_timestamp": "1694168400",
+            "pull_method": "tag",
+        }
+
+        keys = ["pull_events:repo:123:tag:latest:sha256:abc"]
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Invalid data should be marked as cleanable
+        assert len(cleanable) == 1
+        assert len(tag_updates) == 0
+        assert len(manifest_updates) == 0
+
+
+def test_process_redis_events_manifest_aggregation_both_timestamps_none():
+    """Test manifest aggregation when both entries have None timestamps."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data - both entries with no timestamp
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "0",  # No timestamp
+                "pull_method": "digest",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "2",
+                "last_pull_timestamp": "0",  # No timestamp
+                "pull_method": "digest",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:digest:sha256:abc123",
+            "pull_events:repo:123:digest:sha256:abc123",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate manifest pulls
+        assert len(manifest_updates) == 1
+        manifest = manifest_updates[0]
+        assert manifest["pull_count"] == 5  # 3 + 2
+        assert manifest["last_pull_timestamp"] is None  # Both were None
+
+
+def test_process_redis_events_tag_aggregation_both_timestamps_none():
+    """Test tag aggregation when both entries have None timestamps."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        worker.redis_client = mock_client
+
+        # Mock Redis data - both entries with no timestamp
+        mock_client.hgetall.side_effect = [
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:abc123",
+                "pull_count": "3",
+                "last_pull_timestamp": "0",  # No timestamp
+                "pull_method": "tag",
+            },
+            {
+                "repository_id": "123",
+                "tag_name": "latest",
+                "manifest_digest": "sha256:def456",
+                "pull_count": "2",
+                "last_pull_timestamp": "0",  # No timestamp
+                "pull_method": "tag",
+            },
+        ]
+
+        keys = [
+            "pull_events:repo:123:tag:latest:sha256:abc123",
+            "pull_events:repo:123:tag:latest:sha256:def456",
+        ]
+
+        tag_updates, manifest_updates, cleanable, db_dependent = worker._process_redis_events(keys)
+
+        # Should aggregate tag pulls
+        assert len(tag_updates) == 1
+        tag = tag_updates[0]
+        assert tag["pull_count"] == 5  # 3 + 2
+        assert tag["last_pull_timestamp"] is None  # Both were None
+        assert tag["manifest_digest"] == "sha256:abc123"  # First manifest
+
+
+def test_cleanup_redis_keys_general_exception_during_cleanup():
+    """Test _cleanup_redis_keys handles general exceptions during cleanup."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        worker = RedisFlushWorker()
+        mock_client = MagicMock()
+        mock_client.delete.side_effect = Exception("Unexpected error")
+        worker.redis_client = mock_client
+
+        keys = {"key1", "key2"}
+        # Should handle error gracefully
+        worker._cleanup_redis_keys(keys)

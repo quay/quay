@@ -463,7 +463,7 @@ class RedisFlushWorker(Worker):
 
 def create_gunicorn_worker():
     """Create the Gunicorn worker instance."""
-    worker = GunicornWorker(__name__, app, RedisFlushWorker(), features.IMAGE_PULL_STATS)
+    worker = GunicornWorker(__name__, app, RedisFlushWorker(), True)
     return worker
 
 
@@ -473,11 +473,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    # Check if Redis pull metrics feature is enabled
-    if not features.IMAGE_PULL_STATS:
-        logger.debug("Redis pull metrics disabled; skipping redisflushworker")
-        while True:
-            time.sleep(100000)
+    # Redis pull metrics are always enabled
 
     # Check if Redis is configured
     if not app.config.get("PULL_METRICS_REDIS"):
