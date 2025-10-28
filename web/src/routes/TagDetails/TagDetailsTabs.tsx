@@ -65,12 +65,14 @@ export default function TagTabs(props: TagTabsProps) {
       <Tab
         eventKey={TabIndex.SecurityReport}
         title={<TabTitleText>Security Report</TabTitleText>}
+        isHidden={!quayConfig?.features?.SECURITY_SCANNER}
       >
         <SecurityReport />
       </Tab>
       <Tab
         eventKey={TabIndex.Packages}
         title={<TabTitleText>Packages</TabTitleText>}
+        isHidden={!quayConfig?.features?.SECURITY_SCANNER}
       >
         <Packages />
       </Tab>

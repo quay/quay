@@ -64,17 +64,19 @@ function SubRow(props: SubRowProps) {
       ) : (
         <Td />
       )}
-      <Td dataLabel="security" noPadding={false} colSpan={1}>
-        <ExpandableRowContent>
-          <SecurityDetails
-            org={props.org}
-            repo={props.repo}
-            digest={props.manifest.digest}
-            tag={props.tag.name}
-            variant="condensed"
-          />
-        </ExpandableRowContent>
-      </Td>
+      <Conditional if={props.config?.features?.SECURITY_SCANNER}>
+        <Td dataLabel="security" noPadding={false} colSpan={1}>
+          <ExpandableRowContent>
+            <SecurityDetails
+              org={props.org}
+              repo={props.repo}
+              digest={props.manifest.digest}
+              tag={props.tag.name}
+              variant="condensed"
+            />
+          </ExpandableRowContent>
+        </Td>
+      </Conditional>
       <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
           <ChildManifestSize
@@ -93,7 +95,12 @@ function SubRow(props: SubRowProps) {
       ) : (
         <Td />
       )}
-      <Td colSpan={props.config?.features?.IMAGE_PULL_STATS ? 4 : 2} />
+      <Td
+        colSpan={
+          (props.config?.features?.IMAGE_PULL_STATS ? 4 : 2) +
+          (props.config?.features?.SECURITY_SCANNER ? 0 : 1)
+        }
+      />
     </Tr>
   );
 }
@@ -112,11 +119,13 @@ function TagsTableRow(props: RowProps) {
   const location = useLocation();
 
   // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
-  // Columns: expand(1) + select(1) + tag(1) + security(1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
+  // Columns: expand(1) + select(1) + tag(1) + security(0-1) + size(1) + lastModified(1) + expires(1) + manifest(1) + pull(1) + pullStats(0-2) + actions(0-1)
   // Expanded row content spans all except first two (expand + select)
   const hasActions = !inReadOnlyMode && props.repoDetails?.can_write;
   const hasPullStats = config?.features?.IMAGE_PULL_STATS;
-  const expandedColspan = 7 + (hasPullStats ? 2 : 0) + (hasActions ? 1 : 0);
+  const hasSecurity = config?.features?.SECURITY_SCANNER;
+  const expandedColspan =
+    7 + (hasPullStats ? 2 : 0) + (hasActions ? 1 : 0) - (hasSecurity ? 0 : 1);
 
   // Fetch pull statistics for this specific tag
   const {
@@ -178,19 +187,21 @@ function TagsTableRow(props: RowProps) {
             </Tooltip>
           )}
         </Td>
-        <Td dataLabel={ColumnNames.security}>
-          {tag.is_manifest_list ? (
-            'See Child Manifests'
-          ) : (
-            <SecurityDetails
-              org={props.org}
-              repo={props.repo}
-              digest={tag.manifest_digest}
-              tag={tag.name}
-              variant="condensed"
-            />
-          )}
-        </Td>
+        <Conditional if={config?.features?.SECURITY_SCANNER}>
+          <Td dataLabel={ColumnNames.security}>
+            {tag.is_manifest_list ? (
+              'See Child Manifests'
+            ) : (
+              <SecurityDetails
+                org={props.org}
+                repo={props.repo}
+                digest={tag.manifest_digest}
+                tag={tag.name}
+                variant="condensed"
+              />
+            )}
+          </Td>
+        </Conditional>
         <Td dataLabel={ColumnNames.size}>
           {tag.manifest_list ? (
             <ManifestListSize manifests={tag.manifest_list.manifests} />
@@ -385,7 +396,9 @@ export default function TagsTable(props: TableProps) {
             <Th modifier="wrap" sort={props.getSortableSort?.(2)}>
               Tag
             </Th>
-            <Th modifier="wrap">Security</Th>
+            <Conditional if={config?.features?.SECURITY_SCANNER}>
+              <Th modifier="wrap">Security</Th>
+            </Conditional>
             <Th modifier="wrap" sort={props.getSortableSort?.(4)}>
               Size
             </Th>
