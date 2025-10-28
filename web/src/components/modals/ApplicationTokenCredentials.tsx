@@ -15,7 +15,6 @@ import {
   Text,
 } from '@patternfly/react-core';
 import {IApplicationToken} from 'src/resources/UserResource';
-import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 interface ApplicationTokenCredentialsProps {
@@ -32,7 +31,6 @@ export default function ApplicationTokenCredentials({
   isNewlyCreated = false,
 }: ApplicationTokenCredentialsProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
-  const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
 
   const getServerHostname = () => {
@@ -40,7 +38,7 @@ export default function ApplicationTokenCredentials({
   };
 
   const getContainerLoginCommand = (runtime: 'docker' | 'podman') => {
-    return `${runtime} login -u="${user?.username}" -p="${token?.token_code}" ${getServerHostname()}`;
+    return `${runtime} login -u="$app" -p="${token?.token_code}" ${getServerHostname()}`;
   };
 
   const kubernetesYaml = useMemo(() => {
@@ -48,7 +46,7 @@ export default function ApplicationTokenCredentials({
     const dockerConfigJson = {
       auths: {
         [hostname]: {
-          auth: btoa(`${user?.username}:${token?.token_code}`),
+          auth: btoa(`$app:${token?.token_code}`),
           email: '',
         },
       },
@@ -57,11 +55,11 @@ export default function ApplicationTokenCredentials({
     return `apiVersion: v1
 kind: Secret
 metadata:
-  name: ${user?.username}-pull-secret
+  name: ${token?.title}-pull-secret
 data:
   .dockerconfigjson: ${btoa(JSON.stringify(dockerConfigJson))}
 type: kubernetes.io/dockerconfigjson`;
-  }, [user?.username, token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
+  }, [token?.title, token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
 
   const rktConfig = useMemo(() => {
     const hostname = getServerHostname();
@@ -71,23 +69,23 @@ type: kubernetes.io/dockerconfigjson`;
   "domains": ["${hostname}"],
   "type": "basic",
   "credentials": {
-    "user": "${user?.username}",
+    "user": "$app",
     "password": "${token?.token_code}"
   }
 }`;
-  }, [user?.username, token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
+  }, [token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
 
   const dockerConfig = useMemo(() => {
     const hostname = getServerHostname();
     return `{
   "auths": {
     "${hostname}": {
-      "auth": "${btoa(`${user?.username}:${token?.token_code}`)}",
+      "auth": "${btoa(`$app:${token?.token_code}`)}",
       "email": ""
     }
   }
 }`;
-  }, [user?.username, token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
+  }, [token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
 
   return (
     <Modal
@@ -150,7 +148,7 @@ type: kubernetes.io/dockerconfigjson`;
                 isReadOnly
                 data-testid="copy-username"
               >
-                {user?.username}
+                $app
               </ClipboardCopy>
             </FormGroup>
             <FormGroup label="Token" fieldId="token-code">
@@ -185,7 +183,7 @@ type: kubernetes.io/dockerconfigjson`;
               className="pf-v5-u-mb-md"
             >
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
-                {`kubectl create -f ${user?.username}-pull-secret.yaml --namespace=NAMESPACE`}
+                {`kubectl create -f ${token?.title}-pull-secret.yaml --namespace=NAMESPACE`}
               </ClipboardCopy>
             </FormGroup>
             <FormGroup label="Step 3: Reference in pod spec">
@@ -194,7 +192,7 @@ type: kubernetes.io/dockerconfigjson`;
               </Text>
               <CodeBlock>
                 <CodeBlockCode>
-                  {`imagePullSecrets:\n  - name: ${user?.username}-pull-secret`}
+                  {`imagePullSecrets:\n  - name: ${token?.title}-pull-secret`}
                 </CodeBlockCode>
               </CodeBlock>
             </FormGroup>
