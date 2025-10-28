@@ -1,0 +1,52 @@
+name: Web CI - Test Report
+
+on:
+  workflow_run:
+    workflows: ["Web CI"]
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  report:
+    name: Publish Test Results
+    runs-on: ubuntu-22.04
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    steps:
+      - name: Download CTRF report
+        uses: actions/download-artifact@v4
+        with:
+          name: ctrf-report
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download PR metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-metadata
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Read PR number
+        id: pr
+        run: |
+          PR_NUMBER=$(head -n 1 pr-metadata.txt)
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Publish test results to PR
+        uses: ctrf-io/github-test-reporter@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          report-path: ctrf-report.json
+          issue: ${{ steps.pr.outputs.number }}
+          pull-request-report: true
+          on-fail-only: false
+          update-comment: true
+          annotate: true

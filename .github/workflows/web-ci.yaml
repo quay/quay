@@ -7,12 +7,6 @@ on:
   pull_request:
     branches:
     - "*"
-
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
-
 jobs:
   cypress:
     name: Cypress Tests
@@ -103,18 +97,18 @@ jobs:
         name: ctrf-report
         path: web/cypress/reports/ctrf-report.json
 
-    - name: Publish test results to PR
-      uses: ctrf-io/github-test-reporter@v1
+    - name: Save PR metadata
       if: always() && github.event_name == 'pull_request'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo ${{ github.event.number }} > pr-metadata.txt
+        echo ${{ github.event.pull_request.head.sha }} >> pr-metadata.txt
+
+    - name: Upload PR metadata
+      uses: actions/upload-artifact@v4
+      if: always() && github.event_name == 'pull_request'
       with:
-        report-path: web/cypress/reports/ctrf-report.json
-        on-fail-only: false
-        collapse-large-reports: true
-        update-comment: true
-        pull-request-report: true
-        pull-request: true
+        name: pr-metadata
+        path: pr-metadata.txt
 
     - name: Create report
       run: |
