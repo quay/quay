@@ -21,10 +21,13 @@ from data.database import (
     Manifest,
     ManifestBlob,
     ManifestLabel,
+    ManifestPullStatistics,
     Tag,
     TagNotificationSuccess,
+    TagPullStatistics,
     UploadedBlob,
 )
+from data.model import pull_statistics
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
@@ -740,3 +743,322 @@ def test_tag_cleanup_with_autoprune_policy(default_tag_policy, initialized_db):
         TagNotificationSuccess.select().where(TagNotificationSuccess.tag == tag.id).count()
     )
     assert tag_notification_count == 0
+
+
+def test_gc_cleans_up_pull_statistics(default_tag_policy, initialized_db):
+    """
+    Verify that GC removes tag pull statistics when tags are deleted.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create two tags pointing to the same manifest
+    model.oci.tag.retarget_tag("tag1", manifest)
+    model.oci.tag.retarget_tag("tag2", manifest)
+
+    # Create pull statistics for both tags
+    pull_statistics.bulk_upsert_tag_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag1",
+                "pull_count": 10,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag2",
+                "pull_count": 5,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+        ]
+    )
+
+    # Create pull statistics for the manifest
+    pull_statistics.bulk_upsert_manifest_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "manifest_digest": manifest.digest,
+                "pull_count": 15,
+                "last_pull_timestamp": datetime.utcnow(),
+            }
+        ]
+    )
+
+    # Verify stats exist for both tags
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 1
+    )
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # Delete tag1 and run GC
+    with assert_gc_integrity(expect_storage_removed=False):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # Verify tag1 stats are cleaned up
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 0
+    )
+
+    # Verify tag2 stats still exist
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # Manifest stats should still exist since manifest is still referenced by tag2
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    )
+
+    # Delete tag2 and run GC
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag2", expect_gc=True)
+
+    # Verify all tag pull statistics are cleaned up
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+
+    # Check if manifest was GC'd
+    manifest_exists = Manifest.select().where(Manifest.id == manifest.id).count() > 0
+    manifest_stats_count = (
+        ManifestPullStatistics.select().where(ManifestPullStatistics.repository == repo).count()
+    )
+
+    # If manifest was GC'd, its stats should be gone too
+    if not manifest_exists:
+        assert manifest_stats_count == 0, "Manifest was GC'd, so its stats should be cleaned up"
+
+
+def test_gc_pull_statistics_with_shared_manifest(default_tag_policy, initialized_db):
+    """
+    Verify that tag pull statistics are deleted when tags are removed,
+    and manifest pull statistics persist while the manifest is still referenced.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create two tags pointing to the same manifest
+    model.oci.tag.retarget_tag("tag1", manifest)
+    model.oci.tag.retarget_tag("tag2", manifest)
+
+    # Create pull statistics for both tags
+    pull_statistics.bulk_upsert_tag_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag1",
+                "pull_count": 10,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag2",
+                "pull_count": 5,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+        ]
+    )
+
+    # Create pull statistics for the manifest
+    pull_statistics.bulk_upsert_manifest_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "manifest_digest": manifest.digest,
+                "pull_count": 15,
+                "last_pull_timestamp": datetime.utcnow(),
+            }
+        ]
+    )
+
+    # Verify stats exist
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 2
+    assert (
+        ManifestPullStatistics.select().where(ManifestPullStatistics.repository == repo).count()
+        == 1
+    )
+
+    # Delete tag1 and run GC
+    with assert_gc_integrity(expect_storage_removed=False):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # Verify tag1 stats are cleaned up but tag2 stats remain
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 0
+    )
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # Verify manifest stats still exist (manifest still referenced by tag2)
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    )
+
+    # Delete tag2 and run GC
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag2", expect_gc=True)
+
+    # Verify all tag pull statistics are cleaned up
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+
+
+def test_gc_removes_manifest_stats_when_unreferenced(default_tag_policy, initialized_db):
+    """
+    Verify that manifest pull statistics are only deleted when the manifest is no longer
+    referenced by any tags and gets garbage collected.
+
+    This test uses the same manifest for both tags to explicitly test that manifest stats
+    persist while at least one tag references the manifest, and are only removed when
+    the last tag is deleted and the manifest is GC'd.
+    """
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+
+    # Create a single manifest
+    manifest, built = create_manifest_for_testing(
+        repo, differentiation_field="1", include_shared_blob=True
+    )
+
+    # Create two tags pointing to the SAME manifest
+    model.oci.tag.retarget_tag("tag1", manifest)
+    model.oci.tag.retarget_tag("tag2", manifest)
+
+    # Create pull statistics for both tags
+    pull_statistics.bulk_upsert_tag_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag1",
+                "pull_count": 10,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+            {
+                "repository_id": repo.id,
+                "tag_name": "tag2",
+                "pull_count": 5,
+                "last_pull_timestamp": datetime.utcnow(),
+                "manifest_digest": manifest.digest,
+            },
+        ]
+    )
+
+    # Create pull statistics for the manifest
+    pull_statistics.bulk_upsert_manifest_statistics(
+        [
+            {
+                "repository_id": repo.id,
+                "manifest_digest": manifest.digest,
+                "pull_count": 15,
+                "last_pull_timestamp": datetime.utcnow(),
+            }
+        ]
+    )
+
+    # Verify stats exist
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 2
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    )
+
+    # Delete tag1 and run GC - manifest should NOT be GC'd since tag2 still references it
+    with assert_gc_integrity(expect_storage_removed=False):
+        delete_tag(repo, "tag1", expect_gc=True)
+
+    # Verify tag1 stats are cleaned up
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag1")
+        .count()
+        == 0
+    )
+
+    # Verify tag2 stats still exist
+    assert (
+        TagPullStatistics.select()
+        .where(TagPullStatistics.repository == repo, TagPullStatistics.tag_name == "tag2")
+        .count()
+        == 1
+    )
+
+    # CRITICAL CHECK: Manifest stats should STILL exist because tag2 still references the manifest
+    assert (
+        ManifestPullStatistics.select()
+        .where(
+            ManifestPullStatistics.repository == repo,
+            ManifestPullStatistics.manifest_digest == manifest.digest,
+        )
+        .count()
+        == 1
+    ), "Manifest stats should persist while tag2 still references the manifest"
+
+    # Verify the manifest itself still exists
+    assert Manifest.select().where(Manifest.id == manifest.id).count() == 1
+
+    # Delete tag2 (the LAST tag) and run GC - now the manifest should be GC'd
+    with assert_gc_integrity(expect_storage_removed=True):
+        delete_tag(repo, "tag2", expect_gc=True)
+
+    # Verify all tag stats are cleaned up
+    assert TagPullStatistics.select().where(TagPullStatistics.repository == repo).count() == 0
+
+    # Check if manifest was GC'd
+    manifest_exists = Manifest.select().where(Manifest.id == manifest.id).count() > 0
+
+    if not manifest_exists:
+        # If manifest was GC'd, its pull statistics should also be deleted
+        assert (
+            ManifestPullStatistics.select()
+            .where(
+                ManifestPullStatistics.repository == repo,
+                ManifestPullStatistics.manifest_digest == manifest.digest,
+            )
+            .count()
+            == 0
+        ), "Manifest was GC'd but its pull statistics were not cleaned up"

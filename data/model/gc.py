@@ -355,10 +355,21 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
         if reloaded_tag.lifetime_end_ms != tag.lifetime_end_ms:
             return False
 
+        # Delete pull statistics for the tag.
+        deleted_tag_pull_stats = (
+            TagPullStatistics.delete()
+            .where(
+                TagPullStatistics.repository == context.repository,
+                TagPullStatistics.tag_name == tag.name,
+            )
+            .execute()
+        )
+
         # Delete the tag.
         delete_tag_notifications_for_tag(tag)
         tag.delete_instance()
 
+    gc_table_rows_deleted.labels(table="TagPullStatistics").inc(deleted_tag_pull_stats)
     gc_table_rows_deleted.labels(table="Tag").inc()
 
 
@@ -492,6 +503,16 @@ def _garbage_collect_manifest(manifest_id, context):
             .execute()
         )
 
+        # Delete pull statistics for the manifest.
+        deleted_manifest_pull_stats = (
+            ManifestPullStatistics.delete()
+            .where(
+                ManifestPullStatistics.repository == context.repository,
+                ManifestPullStatistics.manifest_digest == manifest.digest,
+            )
+            .execute()
+        )
+
         # Delete the manifest.
         manifest.delete_instance()
 
@@ -509,6 +530,7 @@ def _garbage_collect_manifest(manifest_id, context):
     gc_table_rows_deleted.labels(table="ManifestChild").inc(deleted_manifest_child)
     gc_table_rows_deleted.labels(table="ManifestBlob").inc(deleted_manifest_blob)
     gc_table_rows_deleted.labels(table="ManifestSecurityStatus").inc(deleted_manifest_security)
+    gc_table_rows_deleted.labels(table="ManifestPullStatistics").inc(deleted_manifest_pull_stats)
     gc_table_rows_deleted.labels(table="Manifest").inc()
 
     return True
