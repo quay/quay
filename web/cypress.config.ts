@@ -1,4 +1,5 @@
 import {defineConfig} from 'cypress';
+import {GenerateCtrfReport} from 'cypress-ctrf-json-reporter';
 
 export default defineConfig({
   chromeWebSecurity: false, // Required for stripe integration tests
@@ -11,7 +12,12 @@ export default defineConfig({
     defaultCommandTimeout: 25000,
     retries: 0,
     setupNodeEvents(on, config) {
-      // implement node event listeners here
+      // CTRF JSON reporter for test results
+      new GenerateCtrfReport({
+        on,
+        outputDir: 'cypress/reports',
+        outputFile: 'ctrf-report.json',
+      });
     },
   },
   viewportWidth: 1280,
