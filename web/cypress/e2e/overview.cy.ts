@@ -1,6 +1,5 @@
 describe('Overview List Page', () => {
   beforeEach(() => {
-    cy.exec('npm run quay:seed');
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -10,7 +9,6 @@ describe('Overview List Page', () => {
   });
 
   it('Dropdowns', () => {
-    cy.visit('/overview');
     cy.get('#store-containers-dropdown').click();
 
     cy.get('#store-containers-info').should('be.visible');
@@ -26,8 +24,6 @@ describe('Overview List Page', () => {
   });
 
   it('External Links', () => {
-    cy.visit('/overview');
-
     cy.get('#try-quayio-button').click();
     cy.location('pathname').should('eq', '/organization');
 
@@ -38,7 +34,6 @@ describe('Overview List Page', () => {
   });
 
   it('Tabs', () => {
-    cy.visit('/overview');
     cy.get('#pf-tab-1-pricing-tab').click();
     cy.get('#purchase-plans').should('be.visible');
 
@@ -56,7 +51,6 @@ describe('Overview List Page', () => {
       '#XXXXL',
       '#XXXXXL',
     ];
-    cy.visit('/overview');
     cy.get('#pf-tab-1-pricing-tab').click();
 
     options.forEach((option) => {
