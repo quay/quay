@@ -213,7 +213,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
       alert(
         'Popup was blocked by your browser. Please allow popups for this site and try again.',
       );
-      document.body.removeChild(form);
+      // Note: form hasn't been added to DOM yet, so no need to remove it
       return;
     }
 

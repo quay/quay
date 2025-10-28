@@ -728,7 +728,12 @@ describe('Organization OAuth Applications', () => {
       cy.contains('Your access token has been successfully generated').should(
         'exist',
       );
-      cy.contains('test-access-token-123456').should('exist');
+
+      // Verify token is displayed in the ClipboardCopy input
+      cy.get('.pf-v5-c-clipboard-copy input').should(
+        'have.value',
+        'test-access-token-123456',
+      );
 
       // Verify user is still in React UI (no redirect to Angular)
       cy.url().should('include', 'localhost');
