@@ -18,6 +18,7 @@ from data import database
 from data.model import namespacequota
 from data.registry_model import registry_model
 from data.registry_model.blobuploader import (
+    BlobDigestMismatchException,
     BlobRangeMismatchException,
     BlobTooLargeException,
     BlobUploadException,
@@ -601,6 +602,14 @@ def _upload_chunk(blob_uploader, commit_digest=None):
             span.set_status(StatusCode.ERROR)
             raise InvalidRequest(message="Invalid range header")
 
+        # _upload_chunk is also used on monolithic_upload_or_last_chunk
+        # where monolithic will not have content-range but content-length set
+        # ensure we hav a length set to raise BlobTooLarge if necessary
+        if all(
+            [start_offset == 0, length == -1, int(request.headers.get("content-length", 0)) != 0]
+        ):
+            length = int(request.headers.get("content-length"))
+
         input_fp = get_input_stream(request)
 
         try:
@@ -621,6 +630,27 @@ def _upload_chunk(blob_uploader, commit_digest=None):
             _abort_range_not_satisfiable(
                 blob_uploader.blob_upload.byte_count, blob_uploader.blob_upload_id
             )
-        except BlobUploadException:
+        except BlobDigestMismatchException as ble:
+            span.record_exception(ble)
+            span.set_status(StatusCode.ERROR)
             logger.exception("Exception when uploading blob to %s", blob_uploader.blob_upload_id)
-            raise BlobUploadInvalid()
+            rsp = BlobUploadInvalid(
+                detail={"reason": str(type(ble))},
+            )
+            rsp.message = f"BlobDigestMismatchException {blob_uploader.blob_upload_id}"
+            rsp.error_code_str = 416
+            rsp.http_status_code = 416
+            raise rsp
+        except BlobUploadException as ble:
+            span.record_exception(ble)
+            span.set_status(StatusCode.ERROR)
+            logger.exception("Exception when uploading blob to %s", blob_uploader.blob_upload_id)
+            rsp = BlobUploadInvalid(
+                detail={
+                    "reason": str(type(ble)),
+                }
+            )
+            rsp.message = str(ble)
+            rsp.error_code_str = 413
+            rsp.http_status_code = 413
+            raise rsp

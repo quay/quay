@@ -151,6 +151,7 @@ class LayerTooLarge(V2RegistryException):
                 up_str,
                 max_str,
             )
+        super(LayerTooLarge, self).__init__("LAYER_TOO_LARGE", message, detail, 413)
 
 
 class QuotaExceeded(V2RegistryException):
