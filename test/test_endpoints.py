@@ -495,6 +495,20 @@ class WebEndpointTestCase(EndpointTestCase):
         self.getResponse("web.redirect_to_namespace", namespace="devtable", expected_code=302)
         self.getResponse("web.redirect_to_namespace", namespace="buynlarge", expected_code=302)
 
+    def test_config_with_billing_disabled(self):
+        with toggle_feature("BILLING", False):
+            resp = self.getResponse("web.config", expected_code=200)
+            data = py_json.loads(resp)
+            self.assertIn("version_number", data)
+            self.assertTrue(data["version_number"].startswith("Quay "))
+
+    def test_config_with_billing_enabled(self):
+        with toggle_feature("BILLING", True):
+            resp = self.getResponse("web.config", expected_code=200)
+            data = py_json.loads(resp)
+            self.assertIn("version_number", data)
+            self.assertEqual(data["version_number"], "")
+
 
 class OAuthTestCase(EndpointTestCase):
     @parameterized.expand(["token", "code"])
