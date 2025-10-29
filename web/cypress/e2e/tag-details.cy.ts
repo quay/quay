@@ -30,7 +30,7 @@ describe('Tag Details Page', () => {
       .contains('hello-world')
       .should('exist');
     cy.get('[data-testid="modified"]')
-      .contains(formatDate('Thu, 14 Aug 2025, 17:34:11 -0000'))
+      .contains(formatDate('Thu, 25 Aug 2025, 17:34:11 -0000'))
       .should('exist');
     cy.get('[data-testid="digest-clipboardcopy"]')
       .contains(
@@ -87,7 +87,7 @@ describe('Tag Details Page', () => {
       'include',
       '/repository/user1/hello-world/tag/latest?tab=securityreport',
     );
-    cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
+    cy.contains('Quay Security Reporting has detected 42 vulnerabilities');
   });
 
   it('switch to packages tab', () => {
