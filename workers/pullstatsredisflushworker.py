@@ -199,8 +199,11 @@ class RedisFlushWorker(Worker):
         Returns:
             Tuple of (tag_updates, manifest_updates, cleanable_keys, database_dependent_keys)
         """
-        tag_updates = []
-        manifest_updates = []
+        # Use dictionaries to aggregate updates by unique key
+        tag_updates_dict: Dict[Tuple[int, str], Dict] = {}  # Key: (repository_id, tag_name)
+        manifest_updates_dict: Dict[
+            Tuple[int, str], Dict
+        ] = {}  # Key: (repository_id, manifest_digest)
         cleanable_keys = set()  # Keys that can always be cleaned up (empty/invalid)
         database_dependent_keys = (
             set()
@@ -242,27 +245,51 @@ class RedisFlushWorker(Worker):
                     datetime.fromtimestamp(last_pull_timestamp) if last_pull_timestamp > 0 else None
                 )
 
-                # Always update manifest stats (both tag and digest pulls)
-                manifest_updates.append(
-                    {
+                # Aggregate manifest stats (both tag and digest pulls)
+                manifest_key = (repository_id, manifest_digest)
+                if manifest_key in manifest_updates_dict:
+                    # Aggregate with existing entry
+                    existing = manifest_updates_dict[manifest_key]
+                    existing["pull_count"] += pull_count
+                    # Keep the latest timestamp
+                    if pull_timestamp and existing["last_pull_timestamp"]:
+                        if pull_timestamp > existing["last_pull_timestamp"]:
+                            existing["last_pull_timestamp"] = pull_timestamp
+                    elif pull_timestamp:
+                        existing["last_pull_timestamp"] = pull_timestamp
+                else:
+                    # New entry
+                    manifest_updates_dict[manifest_key] = {
                         "repository_id": repository_id,
                         "manifest_digest": manifest_digest,
                         "pull_count": pull_count,
                         "last_pull_timestamp": pull_timestamp,
                     }
-                )
 
-                # Additionally update tag stats for tag pulls
+                # Additionally aggregate tag stats for tag pulls
                 if pull_method == "tag" and tag_name:
-                    tag_updates.append(
-                        {
+                    tag_key = (repository_id, tag_name)
+                    if tag_key in tag_updates_dict:
+                        # Aggregate with existing entry
+                        existing = tag_updates_dict[tag_key]
+                        existing["pull_count"] += pull_count
+                        # Keep the latest timestamp and manifest
+                        if pull_timestamp and existing["last_pull_timestamp"]:
+                            if pull_timestamp > existing["last_pull_timestamp"]:
+                                existing["last_pull_timestamp"] = pull_timestamp
+                                existing["manifest_digest"] = manifest_digest
+                        elif pull_timestamp:
+                            existing["last_pull_timestamp"] = pull_timestamp
+                            existing["manifest_digest"] = manifest_digest
+                    else:
+                        # New entry
+                        tag_updates_dict[tag_key] = {
                             "repository_id": repository_id,
                             "tag_name": tag_name,
                             "manifest_digest": manifest_digest,
                             "pull_count": pull_count,
                             "last_pull_timestamp": pull_timestamp,
                         }
-                    )
 
                 # Mark this key for cleanup only after successful database write
                 # ToDo: add exception handling after database write implementation
@@ -274,6 +301,10 @@ class RedisFlushWorker(Worker):
             except Exception as e:
                 logger.error(f"RedisFlushWorker: Error processing key {key}: {e}")
                 continue
+
+        # Convert aggregated dictionaries to lists
+        tag_updates = list(tag_updates_dict.values())
+        manifest_updates = list(manifest_updates_dict.values())
 
         return tag_updates, manifest_updates, cleanable_keys, database_dependent_keys
 
