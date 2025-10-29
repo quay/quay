@@ -28,7 +28,7 @@ export function QuaySidebar() {
   const quayConfig = useQuayConfig();
   const routes: SideNavProps[] = [
     {
-      isSideNav: quayConfig?.config?.BRANDING.quay_io ? true : false,
+      isSideNav: quayConfig?.config?.BRANDING?.quay_io ? true : false,
       navPath: NavigationPath.overviewList,
       title: 'Overview',
       component: <OverviewList />,

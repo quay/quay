@@ -65,7 +65,7 @@ describe('Update User Component', () => {
     cy.get('button[type="submit"]').should('contain.text', 'Confirm Username');
   });
 
-  it.only('successfully confirms username', () => {
+  it('successfully confirms username', () => {
     cy.intercept('GET', '/api/v1/user/', {
       statusCode: 200,
       body: {

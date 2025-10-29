@@ -613,7 +613,7 @@ describe('Organization OAuth Applications', () => {
       cy.get('[data-testid="generate-token-button"]').should('not.be.disabled');
     });
 
-    it('should open OAuth authorization in new tab when generating token', () => {
+    it('should open OAuth authorization in popup window when generating token', () => {
       cy.visit('/organization/testorg?tab=OAuthApplications');
       cy.wait('@getOrg');
       cy.wait('@getOAuthApplications');
@@ -668,13 +668,107 @@ describe('Organization OAuth Applications', () => {
           // Check form properties
           expect(capturedFormAction).to.include('/oauth/authorizeapp');
           expect(capturedFormMethod.toLowerCase()).to.equal('post');
-          expect(capturedFormTarget).to.equal('_blank');
+          expect(capturedFormTarget).to.equal('oauth_authorization');
 
           // Check form data
           expect(capturedFormData.client_id).to.exist;
           expect(capturedFormData.scope).to.contain('repo:read repo:write');
           expect(capturedFormData.response_type).to.equal('token');
         });
+    });
+
+    it('should display token in React modal after generation (not redirect to Angular)', () => {
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+
+      // Click generate token to open modal
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      // Stub window.open and postMessage to simulate OAuth flow
+      cy.window().then((win) => {
+        // Stub window.open to return a fake popup
+        const fakePopup = {
+          closed: false,
+          close: cy.stub(),
+        };
+        cy.stub(win, 'open').returns(fakePopup);
+
+        // Stub form submit to simulate OAuth callback
+        const submitStub = cy.stub(win.HTMLFormElement.prototype, 'submit');
+        submitStub.callsFake(function () {
+          // Simulate OAuth callback by posting message
+          setTimeout(() => {
+            win.postMessage(
+              {
+                type: 'OAUTH_TOKEN_GENERATED',
+                token: 'test-access-token-123456',
+                scope: 'repo:read',
+                state: null,
+              },
+              win.location.origin,
+            );
+          }, 100);
+        });
+      });
+
+      // Click authorize in modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // CRITICAL: Verify token modal appears in React UI
+      cy.contains('Access Token Generated', {timeout: 5000}).should('exist');
+      cy.contains('Your access token has been successfully generated').should(
+        'exist',
+      );
+
+      // Verify token is displayed in the ClipboardCopy input
+      cy.get('.pf-v5-c-clipboard-copy input').should(
+        'have.value',
+        'test-access-token-123456',
+      );
+
+      // Verify user is still in React UI (no redirect to Angular)
+      cy.url().should('include', 'localhost');
+      cy.url().should('not.include', '/oauth/localapp');
+      cy.url().should('include', '/organization/testorg');
+    });
+
+    it('should handle popup blocked scenario gracefully', () => {
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+
+      // Click generate token to open modal
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      // Stub window.open to return null (popup blocked) BEFORE clicking authorize
+      cy.window().then((win) => {
+        cy.stub(win, 'open').returns(null);
+      });
+
+      // Click authorize in modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // Verify PatternFly warning alert appears (not browser alert)
+      cy.contains(
+        'Popup was blocked by your browser. Please allow popups for this site and try again.',
+      ).should('exist');
     });
 
     it('should handle user assignment functionality', () => {
@@ -702,6 +796,82 @@ describe('Organization OAuth Applications', () => {
         'contain.text',
         'Assign token',
       );
+    });
+
+    it('should assign token with correct parameter placement (query string)', () => {
+      // Mock configuration with ASSIGN_OAUTH_TOKEN feature
+      cy.intercept('GET', '/config', (req) =>
+        req.reply((res) => {
+          res.body.features = {
+            ...res.body.features,
+            ASSIGN_OAUTH_TOKEN: true,
+          };
+          res.body.config.LOCAL_OAUTH_HANDLER = '/oauth/localapp';
+          res.body.config.PREFERRED_URL_SCHEME = 'http';
+          res.body.config.SERVER_HOSTNAME = 'localhost:8080';
+          return res;
+        }),
+      ).as('getConfig');
+
+      // Mock the assignuser OAuth endpoint with success response
+      cy.intercept('POST', '/oauth/authorize/assignuser*', {
+        statusCode: 200,
+        body: {
+          message: 'Token assigned successfully',
+        },
+      }).as('assignToken');
+
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Click assign another user
+      cy.get('[data-testid="assign-user-button"]').click();
+
+      // Search for user (user2 exists in seed data)
+      cy.get('#entity-search-input').type('user2');
+
+      // Select user from results
+      cy.contains('user2').click();
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+      cy.get('[data-testid="scope-repo:write"]').check();
+
+      // Click assign token button
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      // Authorization modal should appear
+      cy.get('[role="dialog"]').should('be.visible');
+
+      // Click assign token button in modal to trigger fetch request
+      cy.get('[role="dialog"]').contains('Assign token').click();
+
+      // Wait for the assign token request and verify it was called
+      cy.wait('@assignToken').then((interception) => {
+        // Verify query parameters are present in URL
+        expect(interception.request.url).to.include('username=user2');
+        expect(interception.request.url).to.include('client_id=TEST123');
+        expect(interception.request.url).to.match(/scope=repo(%3A|:)read/);
+        expect(interception.request.url).to.include('redirect_uri=');
+        expect(interception.request.url).to.include('response_type=token');
+        expect(interception.request.url).to.include('format=json');
+      });
+
+      // Verify success alert appears (PatternFly alert)
+      cy.contains('Token assigned successfully').should('exist');
+
+      // Verify modal is closed
+      cy.get('[role="dialog"]').should('not.exist');
+
+      // Verify form is reset (user selection cleared)
+      cy.get('[data-testid="cancel-assign-button"]').should('not.exist');
+      cy.get('[data-testid="assign-user-button"]').should('exist');
     });
   });
 

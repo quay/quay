@@ -10,6 +10,7 @@ import {CreateAccount} from 'src/routes/CreateAccount/CreateAccount';
 import UpdateUser from 'src/routes/UpdateUser/UpdateUser';
 import {OAuthCallbackHandler} from 'src/routes/OAuthCallback/OAuthCallbackHandler';
 import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
+import OAuthLocalHandler from 'src/routes/OAuthLocalHandler';
 import {StandaloneMain} from 'src/routes/StandaloneMain';
 import {ThemeProvider} from './contexts/ThemeContext';
 
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/createaccount" element={<CreateAccount />} />
               <Route path="/updateuser" element={<UpdateUser />} />
               <Route path="/oauth-error" element={<OAuthError />} />
+              <Route path="/oauth/localapp" element={<OAuthLocalHandler />} />
               <Route
                 path="/oauth2/:provider/callback/*"
                 element={<OAuthCallbackHandler />}

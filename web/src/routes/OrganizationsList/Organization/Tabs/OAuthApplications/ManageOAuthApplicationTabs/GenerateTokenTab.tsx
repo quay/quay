@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   Button,
   Flex,
@@ -18,10 +18,13 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
+import TokenDisplayModal from 'src/components/modals/TokenDisplayModal';
 import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
 import {GlobalAuthState} from 'src/resources/AuthResource';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 interface GenerateTokenTabProps {
   application: IOAuthApplication | null;
@@ -36,8 +39,13 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [customUser, setCustomUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Entity | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [oauthPopup, setOauthPopup] = useState<Window | null>(null);
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+  const [generatedScopes, setGeneratedScopes] = useState<string[]>([]);
+  const [isTokenDisplayModalOpen, setIsTokenDisplayModalOpen] = useState(false);
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
+  const {addAlert} = useAlerts();
 
   // Initialize form with all scopes set to false
   const defaultValues: GenerateTokenFormData = {};
@@ -62,11 +70,8 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   };
 
   const getUrl = (path: string): string => {
-    const scheme =
-      quayConfig?.config?.PREFERRED_URL_SCHEME ||
-      window.location.protocol.replace(':', '');
-    const hostname =
-      quayConfig?.config?.SERVER_HOSTNAME || window.location.host;
+    const scheme = window.location.protocol.replace(':', '');
+    const hostname = window.location.host;
     return `${scheme}://${hostname}${path}`;
   };
 
@@ -84,6 +89,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
         redirect_uri: getUrl(
           quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
         ),
+        format: 'json',
       });
       return getUrl(`/oauth/authorize/assignuser?${params.toString()}`);
     } else {
@@ -127,38 +133,133 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
     setSelectedUser(null);
   };
 
-  const handleAuthModalConfirm = () => {
-    // Use POST form submission for both assignment and generation
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = generateUrl();
-    form.target = '_blank';
-    form.style.display = 'none';
+  const handleOAuthMessage = useCallback(
+    (event: MessageEvent) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        console.warn('Received message from unexpected origin:', event.origin);
+        return;
+      }
 
-    // Extract URL parameters and add them as form fields
-    const url = new URL(generateUrl());
-    url.searchParams.forEach((value, key) => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = value;
-      form.appendChild(input);
-    });
+      if (event.data.type === 'OAUTH_TOKEN_GENERATED') {
+        setGeneratedToken(event.data.token);
+        setGeneratedScopes(event.data.scope?.split(' ') || []);
+        setIsTokenDisplayModalOpen(true);
+        setIsAuthModalOpen(false);
 
-    // Add CSRF token for POST request
-    if (GlobalAuthState.csrfToken) {
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = '_csrf_token';
-      csrfInput.value = GlobalAuthState.csrfToken;
-      form.appendChild(csrfInput);
-    }
+        // Clean up popup
+        if (oauthPopup && !oauthPopup.closed) {
+          oauthPopup.close();
+        }
+        setOauthPopup(null);
+      }
+    },
+    [oauthPopup],
+  );
 
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+  useEffect(() => {
+    window.addEventListener('message', handleOAuthMessage);
+    return () => {
+      window.removeEventListener('message', handleOAuthMessage);
+    };
+  }, [handleOAuthMessage]);
 
+  const handleAuthModalConfirm = async () => {
     setIsAuthModalOpen(false);
+
+    const fullUrl = new URL(generateUrl());
+    const isAssignmentFlow = fullUrl.pathname.includes(
+      '/oauth/authorize/assignuser',
+    );
+
+    if (isAssignmentFlow) {
+      const formData = new FormData();
+      if (GlobalAuthState.csrfToken) {
+        formData.append('_csrf_token', GlobalAuthState.csrfToken);
+      }
+
+      try {
+        // Use relative URL for fetch to ensure proper proxy handling
+        const response = await fetch(fullUrl.pathname + fullUrl.search, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to assign token');
+        }
+
+        const data = await response.json();
+        addAlert({
+          variant: AlertVariant.Success,
+          title: data.message || 'Token assigned successfully',
+        });
+        setCustomUser(false);
+        setSelectedUser(null);
+      } catch (error) {
+        console.error('Error assigning token:', error);
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: 'Failed to assign token. Please try again.',
+        });
+      }
+    } else {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.target = 'oauth_authorization';
+      form.style.display = 'none';
+      form.action = fullUrl.pathname;
+
+      fullUrl.searchParams.forEach((value, key) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      if (GlobalAuthState.csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_csrf_token';
+        csrfInput.value = GlobalAuthState.csrfToken;
+        form.appendChild(csrfInput);
+      }
+
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        '',
+        'oauth_authorization',
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+      );
+
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        addAlert({
+          variant: AlertVariant.Warning,
+          title:
+            'Popup was blocked by your browser. Please allow popups for this site and try again.',
+        });
+        return;
+      }
+
+      setOauthPopup(popup);
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      const checkPopupClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopupClosed);
+          setOauthPopup(null);
+        }
+      }, 500);
+    }
   };
 
   const handleAuthModalClose = () => {
@@ -292,6 +393,20 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
           )}
           isAssignmentMode={customUser && selectedUser !== null}
           targetUsername={selectedUser?.name}
+        />
+      )}
+
+      {generatedToken && (
+        <TokenDisplayModal
+          isOpen={isTokenDisplayModalOpen}
+          onClose={() => {
+            setIsTokenDisplayModalOpen(false);
+            setGeneratedToken(null);
+            setGeneratedScopes([]);
+          }}
+          token={generatedToken}
+          applicationName={application.name}
+          scopes={generatedScopes}
         />
       )}
     </PageSection>
