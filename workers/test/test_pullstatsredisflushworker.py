@@ -1607,24 +1607,48 @@ def test_cleanup_redis_keys_redis_error_during_cleanup():
         worker._cleanup_redis_keys(keys)
 
 
-def test_create_gunicorn_worker_always_enabled():
-    """Test create_gunicorn_worker always enables the worker (no feature flag check)."""
+def test_create_gunicorn_worker_uses_feature_flag():
+    """Test create_gunicorn_worker uses the IMAGE_PULL_STATS feature flag."""
     with patch("workers.pullstatsredisflushworker.app") as mock_app:
         mock_app.config.get.return_value = 300
 
         with patch("workers.pullstatsredisflushworker.GunicornWorker") as mock_gunicorn_worker:
-            mock_gunicorn_instance = MagicMock()
-            mock_gunicorn_worker.return_value = mock_gunicorn_instance
+            with patch("workers.pullstatsredisflushworker.features") as mock_features:
+                mock_features.IMAGE_PULL_STATS = True
+                mock_gunicorn_instance = MagicMock()
+                mock_gunicorn_worker.return_value = mock_gunicorn_instance
 
-            # Test
-            result = create_gunicorn_worker()
+                # Test
+                result = create_gunicorn_worker()
 
-            # Verify
-            assert result is not None
-            mock_gunicorn_worker.assert_called_once()
-            call_args = mock_gunicorn_worker.call_args
-            assert call_args[0][0] == "workers.pullstatsredisflushworker"
-            assert call_args[0][3] is True  # Always True, no feature flag check
+                # Verify
+                assert result is not None
+                mock_gunicorn_worker.assert_called_once()
+                call_args = mock_gunicorn_worker.call_args
+                assert call_args[0][0] == "workers.pullstatsredisflushworker"
+                assert call_args[0][3] is True  # Uses feature flag value
+
+
+def test_create_gunicorn_worker_with_feature_disabled():
+    """Test create_gunicorn_worker uses the IMAGE_PULL_STATS feature flag when disabled."""
+    with patch("workers.pullstatsredisflushworker.app") as mock_app:
+        mock_app.config.get.return_value = 300
+
+        with patch("workers.pullstatsredisflushworker.GunicornWorker") as mock_gunicorn_worker:
+            with patch("workers.pullstatsredisflushworker.features") as mock_features:
+                mock_features.IMAGE_PULL_STATS = False
+                mock_gunicorn_instance = MagicMock()
+                mock_gunicorn_worker.return_value = mock_gunicorn_instance
+
+                # Test
+                result = create_gunicorn_worker()
+
+                # Verify
+                assert result is not None
+                mock_gunicorn_worker.assert_called_once()
+                call_args = mock_gunicorn_worker.call_args
+                assert call_args[0][0] == "workers.pullstatsredisflushworker"
+                assert call_args[0][3] is False  # Uses feature flag value
 
 
 def test_process_redis_events_validation_failure():
