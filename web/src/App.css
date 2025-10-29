@@ -26,6 +26,12 @@ html, body, #root,  .App {
     padding-top: 0;
 }
 
+.pf-v5-c-page__main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
 .disabled-link {
     pointer-events: none;
     color: var(--pf-v5-global--palette--black);

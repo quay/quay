@@ -12,6 +12,7 @@ import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
 
 import {QuayHeader} from 'src/components/header/QuayHeader';
 import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
+import {QuayFooter} from 'src/components/footer/QuayFooter';
 import {NavigationPath} from './NavigationPath';
 import OrganizationsList from './OrganizationsList/OrganizationsList';
 import Organization from './OrganizationsList/Organization/Organization';
@@ -108,7 +109,6 @@ export function StandaloneMain() {
       <Page
         header={<QuayHeader toggleDrawer={toggleDrawer} />}
         sidebar={<QuaySidebar />}
-        style={{height: '100vh'}}
         isManagedSidebar
         defaultManagedSidebarIsOpen={true}
         notificationDrawer={notificationDrawer}
@@ -141,15 +141,18 @@ export function StandaloneMain() {
           </ErrorBoundary>
         </Conditional>
         <Alerts />
-        <Routes>
-          <Route index element={<Navigate to="/organization" replace />} />
-          {NavigationRoutes.map(({path, Component}, key) => (
-            <Route path={path} key={key} element={Component} />
-          ))}
-          <Route path="oauth-error" element={<OAuthError />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Outlet />
+        <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+          <Routes>
+            <Route index element={<Navigate to="/organization" replace />} />
+            {NavigationRoutes.map(({path, Component}, key) => (
+              <Route path={path} key={key} element={Component} />
+            ))}
+            <Route path="oauth-error" element={<OAuthError />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Outlet />
+        </div>
+        <QuayFooter />
       </Page>
     </ErrorBoundary>
   );
