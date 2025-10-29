@@ -25,6 +25,7 @@ import axiosIns from 'src/libs/axios';
 import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 import OverviewList from './OverviewList/OverviewList';
 import {LoadingPage} from 'src/components/LoadingPage';
+import SystemStatusBanner from 'src/components/SystemStatusBanner';
 
 const NavigationRoutes = [
   {
@@ -138,6 +139,7 @@ function PluginMain() {
           </FlexItem>
         </Flex>
       </Banner>
+      <SystemStatusBanner />
       {user && (
         <CreateNewUser
           user={user}

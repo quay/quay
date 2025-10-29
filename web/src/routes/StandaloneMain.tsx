@@ -35,6 +35,7 @@ import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
 import {NotificationDrawerListComponent} from 'src/components/notifications/NotificationDrawerList';
 import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
+import SystemStatusBanner from 'src/components/SystemStatusBanner';
 
 const NavigationRoutes = [
   {
@@ -135,6 +136,7 @@ export function StandaloneMain() {
             </FlexItem>
           </Flex>
         </Banner>
+        <SystemStatusBanner />
         <Conditional if={quayConfig?.features?.BILLING}>
           <ErrorBoundary fallback={<>Error loading registry status</>}>
             <RegistryStatus />

@@ -3,6 +3,7 @@ import {ListVariant, LoginPage} from '@patternfly/react-core';
 import logo from 'src/assets/quay.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useLoginFooterItems} from 'src/components/LoginFooter';
+import SystemStatusBanner from 'src/components/SystemStatusBanner';
 import './LoginPageLayout.css';
 
 interface LoginPageLayoutProps {
@@ -35,17 +36,20 @@ export function LoginPageLayout({
   }, [quayConfig]);
 
   return (
-    <LoginPage
-      className={className}
-      brandImgSrc={logoUrl}
-      brandImgAlt="Red Hat Quay"
-      backgroundImgSrc="assets/images/rh_login.jpeg"
-      textContent={description}
-      loginTitle={title}
-      footerListItems={footerListItems}
-      footerListVariants={ListVariant.inline}
-    >
-      {children}
-    </LoginPage>
+    <>
+      <SystemStatusBanner />
+      <LoginPage
+        className={className}
+        brandImgSrc={logoUrl}
+        brandImgAlt="Red Hat Quay"
+        backgroundImgSrc="assets/images/rh_login.jpeg"
+        textContent={description}
+        loginTitle={title}
+        footerListItems={footerListItems}
+        footerListVariants={ListVariant.inline}
+      >
+        {children}
+      </LoginPage>
+    </>
   );
 }
