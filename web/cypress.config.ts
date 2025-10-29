@@ -17,6 +17,7 @@ export default defineConfig({
         on,
         outputDir: 'cypress/reports',
         outputFile: 'ctrf-report.json',
+        screenshot: true, // Enable base64-encoded screenshots for failed tests
       });
     },
   },
