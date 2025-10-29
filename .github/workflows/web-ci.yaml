@@ -40,6 +40,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.12
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -57,6 +58,13 @@ jobs:
         cat web/cypress/test/extra-config.yaml >> local-dev/stack/config.yaml
         docker restart quay-quay
         sleep 30
+
+    - name: Set up Node.js with npm caching
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
 
     - name: Cypress run
       uses: cypress-io/github-action@v5
@@ -104,6 +112,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+
+    - name: Set up Node.js with npm caching
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: web/package-lock.json
 
     - name: Install dependencies
       run: cd web && npm install
