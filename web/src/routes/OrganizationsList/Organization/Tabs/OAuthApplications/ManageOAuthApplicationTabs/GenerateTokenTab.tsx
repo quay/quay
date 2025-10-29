@@ -23,6 +23,8 @@ import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
 import {GlobalAuthState} from 'src/resources/AuthResource';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
+import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant} from 'src/atoms/AlertState';
 
 interface GenerateTokenTabProps {
   application: IOAuthApplication | null;
@@ -43,6 +45,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [isTokenDisplayModalOpen, setIsTokenDisplayModalOpen] = useState(false);
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
+  const {addAlert} = useAlerts();
 
   // Initialize form with all scopes set to false
   const defaultValues: GenerateTokenFormData = {};
@@ -67,11 +70,8 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   };
 
   const getUrl = (path: string): string => {
-    const scheme =
-      quayConfig?.config?.PREFERRED_URL_SCHEME ||
-      window.location.protocol.replace(':', '');
-    const hostname =
-      quayConfig?.config?.SERVER_HOSTNAME || window.location.host;
+    const scheme = window.location.protocol.replace(':', '');
+    const hostname = window.location.host;
     return `${scheme}://${hostname}${path}`;
   };
 
@@ -89,6 +89,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
         redirect_uri: getUrl(
           quayConfig.config.LOCAL_OAUTH_HANDLER || '/oauth/localapp',
         ),
+        format: 'json',
       });
       return getUrl(`/oauth/authorize/assignuser?${params.toString()}`);
     } else {
@@ -163,74 +164,102 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
     };
   }, [handleOAuthMessage]);
 
-  const handleAuthModalConfirm = () => {
-    // Close authorization modal
+  const handleAuthModalConfirm = async () => {
     setIsAuthModalOpen(false);
 
-    // Use POST form submission for both assignment and generation
-    const form = document.createElement('form');
-    form.method = 'POST';
-
-    // Extract URL path and parameters from the generated URL
     const fullUrl = new URL(generateUrl());
-    // Use relative path to go through nginx (not absolute URL to backend)
-    form.action = fullUrl.pathname;
-    form.target = 'oauth_authorization';
-    form.style.display = 'none';
-
-    // Extract URL parameters and add them as form fields
-    fullUrl.searchParams.forEach((value, key) => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = value;
-      form.appendChild(input);
-    });
-
-    // Add CSRF token for POST request
-    if (GlobalAuthState.csrfToken) {
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = '_csrf_token';
-      csrfInput.value = GlobalAuthState.csrfToken;
-      form.appendChild(csrfInput);
-    }
-
-    // Open popup window (600x700 centered)
-    const width = 600;
-    const height = 700;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-
-    const popup = window.open(
-      '',
-      'oauth_authorization',
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+    const isAssignmentFlow = fullUrl.pathname.includes(
+      '/oauth/authorize/assignuser',
     );
 
-    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-      // Popup was blocked
-      alert(
-        'Popup was blocked by your browser. Please allow popups for this site and try again.',
-      );
-      // Note: form hasn't been added to DOM yet, so no need to remove it
-      return;
-    }
-
-    setOauthPopup(popup);
-
-    // Submit form to popup
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-
-    // Set timeout to check if popup was closed manually
-    const checkPopupClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkPopupClosed);
-        setOauthPopup(null);
+    if (isAssignmentFlow) {
+      const formData = new FormData();
+      if (GlobalAuthState.csrfToken) {
+        formData.append('_csrf_token', GlobalAuthState.csrfToken);
       }
-    }, 500);
+
+      try {
+        // Use relative URL for fetch to ensure proper proxy handling
+        const response = await fetch(fullUrl.pathname + fullUrl.search, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to assign token');
+        }
+
+        const data = await response.json();
+        addAlert({
+          variant: AlertVariant.Success,
+          title: data.message || 'Token assigned successfully',
+        });
+        setCustomUser(false);
+        setSelectedUser(null);
+      } catch (error) {
+        console.error('Error assigning token:', error);
+        addAlert({
+          variant: AlertVariant.Failure,
+          title: 'Failed to assign token. Please try again.',
+        });
+      }
+    } else {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.target = 'oauth_authorization';
+      form.style.display = 'none';
+      form.action = fullUrl.pathname;
+
+      fullUrl.searchParams.forEach((value, key) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      if (GlobalAuthState.csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_csrf_token';
+        csrfInput.value = GlobalAuthState.csrfToken;
+        form.appendChild(csrfInput);
+      }
+
+      const width = 600;
+      const height = 700;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        '',
+        'oauth_authorization',
+        `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+      );
+
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        addAlert({
+          variant: AlertVariant.Warning,
+          title:
+            'Popup was blocked by your browser. Please allow popups for this site and try again.',
+        });
+        return;
+      }
+
+      setOauthPopup(popup);
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      const checkPopupClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopupClosed);
+          setOauthPopup(null);
+        }
+      }, 500);
+    }
   };
 
   const handleAuthModalClose = () => {

@@ -757,22 +757,18 @@ describe('Organization OAuth Applications', () => {
       // Click generate token to open modal
       cy.get('[data-testid="generate-token-button"]').click();
 
-      // Stub window.open to return null (popup blocked)
+      // Stub window.open to return null (popup blocked) BEFORE clicking authorize
       cy.window().then((win) => {
         cy.stub(win, 'open').returns(null);
-
-        // Stub alert to capture the message
-        cy.stub(win, 'alert').as('alertStub');
       });
 
       // Click authorize in modal
       cy.get('[role="dialog"]').contains('Authorize Application').click();
 
-      // Verify alert was shown about popup blocker
-      cy.get('@alertStub').should(
-        'have.been.calledWith',
+      // Verify PatternFly warning alert appears (not browser alert)
+      cy.contains(
         'Popup was blocked by your browser. Please allow popups for this site and try again.',
-      );
+      ).should('exist');
     });
 
     it('should handle user assignment functionality', () => {
@@ -800,6 +796,82 @@ describe('Organization OAuth Applications', () => {
         'contain.text',
         'Assign token',
       );
+    });
+
+    it('should assign token with correct parameter placement (query string)', () => {
+      // Mock configuration with ASSIGN_OAUTH_TOKEN feature
+      cy.intercept('GET', '/config', (req) =>
+        req.reply((res) => {
+          res.body.features = {
+            ...res.body.features,
+            ASSIGN_OAUTH_TOKEN: true,
+          };
+          res.body.config.LOCAL_OAUTH_HANDLER = '/oauth/localapp';
+          res.body.config.PREFERRED_URL_SCHEME = 'http';
+          res.body.config.SERVER_HOSTNAME = 'localhost:8080';
+          return res;
+        }),
+      ).as('getConfig');
+
+      // Mock the assignuser OAuth endpoint with success response
+      cy.intercept('POST', '/oauth/authorize/assignuser*', {
+        statusCode: 200,
+        body: {
+          message: 'Token assigned successfully',
+        },
+      }).as('assignToken');
+
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Click assign another user
+      cy.get('[data-testid="assign-user-button"]').click();
+
+      // Search for user (user2 exists in seed data)
+      cy.get('#entity-search-input').type('user2');
+
+      // Select user from results
+      cy.contains('user2').click();
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+      cy.get('[data-testid="scope-repo:write"]').check();
+
+      // Click assign token button
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      // Authorization modal should appear
+      cy.get('[role="dialog"]').should('be.visible');
+
+      // Click assign token button in modal to trigger fetch request
+      cy.get('[role="dialog"]').contains('Assign token').click();
+
+      // Wait for the assign token request and verify it was called
+      cy.wait('@assignToken').then((interception) => {
+        // Verify query parameters are present in URL
+        expect(interception.request.url).to.include('username=user2');
+        expect(interception.request.url).to.include('client_id=TEST123');
+        expect(interception.request.url).to.match(/scope=repo(%3A|:)read/);
+        expect(interception.request.url).to.include('redirect_uri=');
+        expect(interception.request.url).to.include('response_type=token');
+        expect(interception.request.url).to.include('format=json');
+      });
+
+      // Verify success alert appears (PatternFly alert)
+      cy.contains('Token assigned successfully').should('exist');
+
+      // Verify modal is closed
+      cy.get('[role="dialog"]').should('not.exist');
+
+      // Verify form is reset (user selection cleared)
+      cy.get('[data-testid="cancel-assign-button"]').should('not.exist');
+      cy.get('[data-testid="assign-user-button"]').should('exist');
     });
   });
 
