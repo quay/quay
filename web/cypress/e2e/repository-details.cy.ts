@@ -27,6 +27,16 @@ describe('Repository Details Page', () => {
     cy.contains('Description').should('exist');
   });
 
+  it('renders repository activity heatmap', () => {
+    cy.visit('/repository/user1/hello-world');
+    // Verify Repository Activity card exists
+    cy.contains('Repository Activity').should('exist');
+    // Verify heatmap SVG is rendered
+    cy.get('.activity-heatmap-svg').should('exist');
+    // Verify heatmap has cells
+    cy.get('.activity-heatmap-cell').should('have.length.greaterThan', 0);
+  });
+
   it('edits repository description', () => {
     cy.intercept('PUT', '/api/v1/repository/user1/hello-world', {
       statusCode: 200,
