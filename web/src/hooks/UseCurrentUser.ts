@@ -17,7 +17,13 @@ export function useCurrentUser(enabled = true) {
   // Check both possible feature flag names for superuser support
   const superUserFeatureEnabled =
     config?.features?.SUPERUSERS_FULL_ACCESS || config?.features?.SUPER_USERS;
-  const isSuperUser = superUserFeatureEnabled && user?.super_user;
+
+  // User is considered a superuser if they are either:
+  // 1. A regular superuser (super_user flag set)
+  // 2. A global readonly superuser (is_global_readonly_superuser flag set)
+  const isSuperUser =
+    superUserFeatureEnabled &&
+    (user?.super_user || user?.is_global_readonly_superuser);
 
   return {user, loading, error, isSuperUser};
 }

@@ -223,6 +223,16 @@ def user_view(user, previous_username=None):
             }
         )
 
+    # Add is_global_readonly_superuser flag for global readonly superusers
+    if features.SUPER_USERS and allow_if_global_readonly_superuser():
+        user_response.update(
+            {
+                "is_global_readonly_superuser": user
+                and user == get_authenticated_user()
+                and allow_if_global_readonly_superuser()
+            }
+        )
+
     return user_response
 
 

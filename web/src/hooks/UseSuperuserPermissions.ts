@@ -10,7 +10,7 @@ export function useSuperuserPermissions() {
   const {inReadOnlyMode} = useQuayState();
 
   const isSuperUser = user?.super_user === true;
-  const isReadOnlySuperUser = user?.global_readonly_super_user === true;
+  const isReadOnlySuperUser = user?.is_global_readonly_superuser === true;
 
   // User can modify data if: superuser AND NOT read-only superuser AND registry NOT in read-only mode
   const canModify = isSuperUser && !isReadOnlySuperUser && !inReadOnlyMode;
