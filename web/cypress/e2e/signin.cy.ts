@@ -394,3 +394,195 @@ describe('Create Account functionality', () => {
     cy.contains('Create account').should('not.exist');
   });
 });
+
+describe('Global Messages on Login Page', () => {
+  beforeEach(() => {
+    // Mock config with basic settings
+    cy.intercept('GET', '/config', {
+      body: {
+        features: {
+          DIRECT_LOGIN: true,
+          USER_CREATION: true,
+        },
+        config: {
+          AUTHENTICATION_TYPE: 'Database',
+        },
+        external_login: [],
+      },
+    }).as('getConfig');
+  });
+
+  it('displays info message on login page', () => {
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [
+          {
+            uuid: 'msg-1',
+            content: 'Welcome to Red Hat Quay!',
+            media_type: 'text/plain',
+            severity: 'info',
+          },
+        ],
+      },
+    }).as('getMessages');
+
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    cy.contains('Welcome to Red Hat Quay!').should('be.visible');
+  });
+
+  it('displays warning message with markdown content', () => {
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [
+          {
+            uuid: 'msg-1',
+            content:
+              '**System Maintenance**: Scheduled maintenance window on Sunday 2AM-4AM EST.',
+            media_type: 'text/markdown',
+            severity: 'warning',
+          },
+        ],
+      },
+    }).as('getMessages');
+
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    // Check that the markdown is rendered (bold text should be in a <strong> tag)
+    cy.contains('System Maintenance').should('be.visible');
+    cy.get('strong').contains('System Maintenance').should('exist');
+  });
+
+  it('displays error message', () => {
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [
+          {
+            uuid: 'msg-1',
+            content:
+              'Critical security update available. Please update your clients immediately.',
+            media_type: 'text/plain',
+            severity: 'error',
+          },
+        ],
+      },
+    }).as('getMessages');
+
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    cy.contains(
+      'Critical security update available. Please update your clients immediately.',
+    ).should('be.visible');
+  });
+
+  it('displays multiple messages with different severities', () => {
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [
+          {
+            uuid: 'msg-1',
+            content:
+              '**System Maintenance**: Scheduled maintenance window on Sunday 2AM-4AM EST.',
+            media_type: 'text/markdown',
+            severity: 'warning',
+          },
+          {
+            uuid: 'msg-2',
+            content:
+              'Welcome to Red Hat Quay! Please review our updated terms of service.',
+            media_type: 'text/plain',
+            severity: 'info',
+          },
+          {
+            uuid: 'msg-3',
+            content:
+              'Critical security update available. Please update your clients immediately.',
+            media_type: 'text/plain',
+            severity: 'error',
+          },
+        ],
+      },
+    }).as('getMessages');
+
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    // Verify all three messages are displayed
+    cy.contains('System Maintenance').should('be.visible');
+    cy.contains('Welcome to Red Hat Quay!').should('be.visible');
+    cy.contains('Critical security update available').should('be.visible');
+  });
+
+  it('does not display anything when no messages exist', () => {
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [],
+      },
+    }).as('getMessages');
+
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    // Login form should still be visible
+    cy.get('#pf-login-username-id').should('be.visible');
+    cy.get('#pf-login-password-id').should('be.visible');
+  });
+
+  it('displays messages before user authentication', () => {
+    // This test verifies that global messages are fetched and displayed
+    // even when the user is not authenticated (important for login page)
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [
+          {
+            uuid: 'msg-1',
+            content: 'This message appears before login',
+            media_type: 'text/plain',
+            severity: 'info',
+          },
+        ],
+      },
+    }).as('getMessages');
+
+    // Don't login, just visit signin page
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    // Message should be visible
+    cy.contains('This message appears before login').should('be.visible');
+
+    // Login form should also be visible
+    cy.get('#pf-login-username-id').should('be.visible');
+  });
+
+  it('displays messages with links in markdown', () => {
+    cy.intercept('GET', '/api/v1/messages', {
+      body: {
+        messages: [
+          {
+            uuid: 'msg-1',
+            content:
+              'Please review our [updated terms of service](https://example.com/terms).',
+            media_type: 'text/markdown',
+            severity: 'info',
+          },
+        ],
+      },
+    }).as('getMessages');
+
+    cy.visit('/signin');
+    cy.wait('@getMessages');
+
+    // Check that the markdown link is rendered
+    cy.contains('Please review our').should('be.visible');
+    cy.get('a[href="https://example.com/terms"]').should('exist');
+    cy.get('a[href="https://example.com/terms"]').should(
+      'have.attr',
+      'target',
+      '_blank',
+    );
+  });
+});

@@ -4,6 +4,7 @@ import logo from 'src/assets/quay.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useLoginFooterItems} from 'src/components/LoginFooter';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
+import {GlobalMessages} from 'src/components/GlobalMessages';
 import './LoginPageLayout.css';
 
 interface LoginPageLayoutProps {
@@ -38,6 +39,7 @@ export function LoginPageLayout({
   return (
     <>
       <SystemStatusBanner />
+      <GlobalMessages />
       <LoginPage
         className={className}
         brandImgSrc={logoUrl}
