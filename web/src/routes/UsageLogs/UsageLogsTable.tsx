@@ -16,7 +16,7 @@ import {
   Thead,
   Tr,
 } from '@patternfly/react-table';
-import {useInfiniteQuery} from '@tanstack/react-query';
+import {useInfiniteQuery, useQueryClient} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
@@ -24,12 +24,41 @@ import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useState, useMemo} from 'react';
 
+interface LogEntry {
+  datetime: string;
+  kind: string;
+  metadata: {
+    [key: string]: string;
+    namespace?: string;
+    repo?: string;
+    performer?: string;
+  };
+  namespace?: {
+    name?: string;
+    username?: string;
+  };
+  performer?: {
+    name?: string;
+  };
+  ip: string;
+}
+
+interface LogPage {
+  logs: LogEntry[];
+  nextPage?: string;
+}
+
 interface UsageLogsTableProps {
   starttime: string;
   endtime: string;
   org: string;
   repo: string;
   type: string;
+  isSuperuser?: boolean;
+  freshLogin?: {
+    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
+    isFreshLoginRequired: (error: unknown) => boolean;
+  };
 }
 
 interface LogEntry {
@@ -63,6 +92,8 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     return data;
   };
 
+  const queryClient = useQueryClient();
+
   const {
     data: logs,
     isLoading: loadingLogs,
@@ -72,17 +103,53 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       'usageLogs',
       props.starttime,
       props.endtime,
-      {org: props.org, repo: props.repo ? props.repo : 'isOrg', type: 'table'},
+      {
+        org: props.org,
+        repo: props.repo ? props.repo : 'isOrg',
+        type: 'table',
+        isSuperuser: props.isSuperuser,
+      },
     ],
     queryFn: async ({pageParam = undefined}) => {
-      const logResp = await getLogs(
-        props.org,
-        props.repo,
-        props.starttime,
-        props.endtime,
-        pageParam,
-      );
-      return logResp;
+      try {
+        const logResp = await getLogs(
+          props.org,
+          props.repo,
+          props.starttime,
+          props.endtime,
+          pageParam,
+          props.isSuperuser,
+        );
+        return logResp;
+      } catch (error: unknown) {
+        // Check if this is a fresh login required error and we have fresh login integration
+        if (
+          props.isSuperuser &&
+          props.freshLogin?.isFreshLoginRequired(error)
+        ) {
+          // Show fresh login modal with retry operation
+          props.freshLogin.showFreshLoginModal(async () => {
+            // Retry the query after successful verification
+            queryClient.invalidateQueries({
+              queryKey: [
+                'usageLogs',
+                props.starttime,
+                props.endtime,
+                {
+                  org: props.org,
+                  repo: props.repo ? props.repo : 'isOrg',
+                  type: 'table',
+                  isSuperuser: props.isSuperuser,
+                },
+              ],
+            });
+          });
+
+          // Don't throw the error - the modal will handle retry
+          throw new Error('Fresh login required');
+        }
+        throw error;
+      }
     },
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
     select: (data) => {
@@ -91,6 +158,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       );
       return data;
     },
+    retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
   });
 
   // Flatten all log pages into a single array for our table hook
@@ -152,6 +220,8 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                     Date & Time
                   </Th>
                   <Th sort={getSortableSort(1)}>Description</Th>
+                  {props.isSuperuser && <Th>Namespace</Th>}
+                  {!props.repo && <Th>Repository</Th>}
                   <Th sort={getSortableSort(2)}>Performed by</Th>
                   <Th sort={getSortableSort(3)}>IP Address</Th>
                 </Tr>
@@ -171,10 +241,22 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
                           ) as React.ReactNode)
                         : 'No description available'}
                     </Td>
+                    {props.isSuperuser && (
+                      <Td>
+                        {log.namespace?.name || log.namespace?.username || ''}
+                      </Td>
+                    )}
+                    {!props.repo && (
+                      <Td>
+                        {log.metadata?.namespace && log.metadata?.repo
+                          ? `${log.metadata.namespace}/${log.metadata.repo}`
+                          : log.metadata?.repo || ''}
+                      </Td>
+                    )}
                     <Td>
                       {log.performer?.name
                         ? log.performer?.name
-                        : (log.metadata?.performer as string) || 'Unknown'}
+                        : (log.metadata?.performer as string) || '(anonymous)'}
                     </Td>
                     <Td>{log.ip}</Td>
                   </Tr>

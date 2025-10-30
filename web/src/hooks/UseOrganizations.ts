@@ -14,7 +14,12 @@ import {
 import {fetchUsersAsSuperUser} from 'src/resources/UserResource';
 import {useCurrentUser} from './UseCurrentUser';
 
-export type OrganizationDetail = {name: string; isUser: boolean};
+export type OrganizationDetail = {
+  name: string;
+  isUser: boolean;
+  userEnabled?: boolean;
+  userSuperuser?: boolean;
+};
 
 export function useOrganizations() {
   // Get user and config data
@@ -69,9 +74,23 @@ export function useOrganizations() {
     });
   }
   for (const username of usernames) {
+    // Find the user's enabled status from superUserUsers
+    const userObj = (superUserUsers || []).find((u) => u.username === username);
     organizationsTableDetails.push({
       name: username,
       isUser: true,
+      userEnabled: userObj?.enabled,
+      userSuperuser: userObj?.super_user,
+    });
+  }
+
+  // Create a map of username -> email for easy lookup
+  const userEmailMap: Record<string, string> = {};
+  if (isSuperUser && superUserUsers) {
+    superUserUsers.forEach((user) => {
+      if (user.username && user.email) {
+        userEmailMap[user.username] = user.email;
+      }
     });
   }
 
@@ -117,6 +136,7 @@ export function useOrganizations() {
     superUserOrganizations,
     superUserUsers,
     organizationsTableDetails,
+    userEmailMap,
 
     // Fetching State
     loading,

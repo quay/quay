@@ -41,14 +41,23 @@ export async function getAggregateLogs(
   repo: string = null,
   starttime: string,
   endtime: string,
+  isSuperuser = false,
 ) {
-  const url =
-    repo != null
-      ? `/api/v1/repository/${org}/${repo}/aggregatelogs`
-      : `/api/v1/organization/${org}/aggregatelogs`;
+  let url: string;
+
+  if (isSuperuser) {
+    url = `/api/v1/superuser/aggregatelogs`;
+  } else {
+    url =
+      repo != null
+        ? `/api/v1/repository/${org}/${repo}/aggregatelogs`
+        : `/api/v1/organization/${org}/aggregatelogs`;
+  }
+
   const response: AxiosResponse = await axios.get(url, {
     params: {starttime: `${starttime}`, endtime: `${endtime}`},
   });
+
   assertHttpCode(response.status, 200);
   return response.data.aggregated;
 }
@@ -59,11 +68,19 @@ export async function getLogs(
   starttime: string,
   endtime: string,
   next_page: string = null,
+  isSuperuser = false,
 ) {
-  const url =
-    repo != null
-      ? `/api/v1/repository/${org}/${repo}/logs`
-      : `/api/v1/organization/${org}/logs`;
+  let url: string;
+
+  if (isSuperuser) {
+    url = `/api/v1/superuser/logs`;
+  } else {
+    url =
+      repo != null
+        ? `/api/v1/repository/${org}/${repo}/logs`
+        : `/api/v1/organization/${org}/logs`;
+  }
+
   const response = await axios.get(url, {
     params: {
       starttime: `${starttime}`,

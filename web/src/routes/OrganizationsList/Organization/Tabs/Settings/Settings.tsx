@@ -72,6 +72,7 @@ export default function Settings(props: SettingsProps) {
         <QuotaManagement
           organizationName={props.organizationName}
           isUser={props.isUserOrganization}
+          view="organization-view"
         />
       ),
       visible:

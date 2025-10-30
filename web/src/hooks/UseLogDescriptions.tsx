@@ -1,3 +1,4 @@
+import React from 'react';
 import {isNullOrUndefined} from 'src/libs/utils';
 import {useEvents} from './UseEvents';
 
@@ -19,10 +20,22 @@ export function useLogDescriptions() {
     return '';
   };
 
-  const getTriggerDescription = (service: string, config: Config) => {
+  const getConfigObject = (config: string | Config): Config => {
+    if (typeof config === 'string') {
+      try {
+        return JSON.parse(config);
+      } catch {
+        return {};
+      }
+    }
+    return config || {};
+  };
+
+  const getTriggerDescription = (service: string, config: string | Config) => {
+    const configObj = getConfigObject(config);
     let buildSource = '';
-    if (config) {
-      buildSource = config.build_source;
+    if (configObj) {
+      buildSource = configObj.build_source || '';
     }
 
     switch (service) {
@@ -54,33 +67,91 @@ export function useLogDescriptions() {
     return policyMessage;
   };
 
+  // Helper function to format service key names (mimics Angular's kid filter)
+  const formatServiceKeyName = (metadata: Metadata) => {
+    if (metadata.name) {
+      return metadata.name;
+    }
+    return metadata.kid ? metadata.kid.substr(0, 12) : '';
+  };
+
+  // Helper function to format Unix timestamps (mimics Angular's date filters)
+  const formatUnixTimestamp = (timestamp: string | number) => {
+    if (!timestamp) return '';
+    // Handle both string and number timestamps
+    const unixTime =
+      typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
+    return new Date(unixTime * 1000).toLocaleString();
+  };
+
+  // Helper function to wrap variables with styling (mimics Angular's code tag styling)
+  const wrapVariable = (
+    value: string | React.ReactNode,
+    className = 'log-variable',
+  ) => {
+    return (
+      <code
+        className={className}
+        style={{
+          padding: '2px 4px',
+          borderRadius: '3px',
+          fontFamily: 'monospace',
+          fontSize: '0.9em',
+          color: 'var(--pf-v5-global--Color--200)',
+        }}
+      >
+        {value}
+      </code>
+    );
+  };
+
   const descriptions = {
     user_create: function (metadata: Metadata) {
       if (metadata.superuser) {
-        return `Superuser ${metadata.superuser} created user ${metadata.username}`;
+        return (
+          <>
+            Superuser {wrapVariable(metadata.superuser)} created user{' '}
+            {wrapVariable(metadata.username)}
+          </>
+        );
       } else {
-        return `User ${metadata.username} created`;
+        return <>User {wrapVariable(metadata.username)} created</>;
       }
     },
     user_delete: function (metadata: Metadata) {
       if (metadata.superuser) {
-        return `Superuser ${metadata.superuser} deleted user ${metadata.username}`;
+        return (
+          <>
+            Superuser {wrapVariable(metadata.superuser)} deleted user{' '}
+            {wrapVariable(metadata.username)}
+          </>
+        );
       } else {
-        return `User ${metadata.username} deleted`;
+        return <>User {wrapVariable(metadata.username)} deleted</>;
       }
     },
     user_enable: function (metadata: Metadata) {
       if (metadata.superuser) {
-        return `Superuser ${metadata.superuser} enabled user ${metadata.username}`;
+        return (
+          <>
+            Superuser {wrapVariable(metadata.superuser)} enabled user{' '}
+            {wrapVariable(metadata.username)}
+          </>
+        );
       } else {
-        return `User ${metadata.username} enabled`;
+        return <>User {wrapVariable(metadata.username)} enabled</>;
       }
     },
     user_disable: function (metadata: Metadata) {
       if (metadata.superuser) {
-        return `Superuser ${metadata.superuser} disabled user ${metadata.username}`;
+        return (
+          <>
+            Superuser {wrapVariable(metadata.superuser)} disabled user{' '}
+            {wrapVariable(metadata.username)}
+          </>
+        );
       } else {
-        return `User ${metadata.username} disabled`;
+        return <>User {wrapVariable(metadata.username)} disabled</>;
       }
     },
     user_change_password: function (metadata: Metadata) {
@@ -135,13 +206,18 @@ export function useLogDescriptions() {
       return 'Convert account to organization';
     },
     create_robot: function (metadata: Metadata) {
-      return `Create Robot Account ${metadata.robot}`;
+      return <>Create Robot Account {wrapVariable(metadata.robot)}</>;
     },
     delete_robot: function (metadata: Metadata) {
-      return `Delete Robot Account ${metadata.robot}`;
+      return <>Delete Robot Account {wrapVariable(metadata.robot)}</>;
     },
     create_repo: function (metadata: Metadata) {
-      return `Create Repository ${metadata.namespace}/${metadata.repo}`;
+      return (
+        <>
+          Create Repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+        </>
+      );
     },
     repo_mirror_sync_started: function (metadata: Metadata) {
       return `Mirror started for ${metadata.message}`;
@@ -212,17 +288,35 @@ export function useLogDescriptions() {
       }
     },
     change_repo_state: function (metadata: Metadata) {
-      return `Repository state changed to ${metadata.state_changed
-        .toLowerCase()
-        .replace('_', ' ')}`;
+      return (
+        <>
+          Repository state changed to{' '}
+          {wrapVariable(metadata.state_changed.toUpperCase())}
+        </>
+      );
     },
     push_repo: function (metadata: Metadata) {
       if (metadata.tag) {
-        return `Push of ${metadata.tag} to repository ${metadata.namespace}/${metadata.repo}`;
+        return (
+          <>
+            Push of {wrapVariable(metadata.tag)} to repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
       } else if (metadata.release) {
-        return `Push of ${metadata.release} to repository ${metadata.namespace}/${metadata.repo}`;
+        return (
+          <>
+            Push of {wrapVariable(metadata.release)} to repository{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
       } else {
-        return `Repository push to ${metadata.namespace}/${metadata.repo}`;
+        return (
+          <>
+            Repository push to{' '}
+            {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
       }
     },
     repo_verb: function (metadata: Metadata) {
@@ -279,24 +373,57 @@ export function useLogDescriptions() {
       }
     },
     delete_repo: function (metadata: Metadata) {
-      return `Delete repository ${metadata.repo}`;
+      return <>Delete repository {wrapVariable(metadata.repo)}</>;
     },
     change_repo_permission: function (metadata: Metadata) {
       if (metadata.username) {
-        return `Change permission for user ${metadata.username} in repository ${metadata.repo} to ${metadata.role}`;
+        return (
+          <>
+            Change permission for user {wrapVariable(metadata.username)} in
+            repository {wrapVariable(metadata.repo)} to{' '}
+            {wrapVariable(metadata.role)}
+          </>
+        );
       } else if (metadata.team) {
-        return `Change permission for team ${metadata.team} in repository ${metadata.repo} to ${metadata.role}`;
+        return (
+          <>
+            Change permission for team {wrapVariable(metadata.team)} in
+            repository {wrapVariable(metadata.repo)} to{' '}
+            {wrapVariable(metadata.role)}
+          </>
+        );
       } else if (metadata.token) {
-        return `Change permission for token ${metadata.token} in repository ${metadata.repo} to ${metadata.role}`;
+        return (
+          <>
+            Change permission for token {wrapVariable(metadata.token)} in
+            repository {wrapVariable(metadata.repo)} to{' '}
+            {wrapVariable(metadata.role)}
+          </>
+        );
       }
     },
     delete_repo_permission: function (metadata: Metadata) {
       if (metadata.username) {
-        return `Remove permission for user ${metadata.username} from repository ${metadata.namespace}/${metadata.repo}`;
+        return (
+          <>
+            Remove permission for user {wrapVariable(metadata.username)} from
+            repository {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
       } else if (metadata.team) {
-        return `Remove permission for team ${metadata.team}  from repository ${metadata.namespace}/${metadata.repo}`;
+        return (
+          <>
+            Remove permission for team {wrapVariable(metadata.team)} from
+            repository {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
       } else if (metadata.token) {
-        return `Remove permission for token ${metadata.token} from repository ${metadata.namespace}/${metadata.repo}`;
+        return (
+          <>
+            Remove permission for token {wrapVariable(metadata.token)} from
+            repository {wrapVariable(`${metadata.namespace}/${metadata.repo}`)}
+          </>
+        );
       }
     },
     revert_tag: function (metadata: Metadata) {
@@ -307,7 +434,13 @@ export function useLogDescriptions() {
       }
     },
     autoprune_tag_delete: function (metadata: Metadata) {
-      return `Tag ${metadata.tag} pruned in repository ${metadata.namespace}/${metadata.repo} by ${metadata.performer}`;
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} pruned in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)} by{' '}
+          {wrapVariable(metadata.performer)}
+        </>
+      );
     },
     create_namespace_autoprune_policy: function (metadata: Metadata) {
       return `Created namespace autoprune policy: "${autoPrunePolicyDescription(
@@ -336,7 +469,13 @@ export function useLogDescriptions() {
       return `Deleted repository autoprune policy for repository: ${metadata.namespace}/${metadata.repo}`;
     },
     delete_tag: function (metadata: Metadata) {
-      return `Tag ${metadata.tag} deleted in repository ${metadata.namespace}/${metadata.repo} by user ${metadata.username}`;
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} deleted in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)} by user{' '}
+          {wrapVariable(metadata.username)}
+        </>
+      );
     },
     permanently_delete_tag: function (metadata: Metadata) {
       if (metadata.manifest_digest) {
@@ -346,7 +485,14 @@ export function useLogDescriptions() {
       }
     },
     create_tag: function (metadata: Metadata) {
-      return `Tag ${metadata.tag} created in repository ${metadata.namespace}/${metadata.repo} on image ${metadata.image} by user ${metadata.username}`;
+      return (
+        <>
+          Tag {wrapVariable(metadata.tag)} created in repository{' '}
+          {wrapVariable(`${metadata.namespace}/${metadata.repo}`)} on image{' '}
+          {wrapVariable(metadata.image)} by user{' '}
+          {wrapVariable(metadata.username)}
+        </>
+      );
     },
     move_tag: function (metadata: Metadata) {
       if (metadata.manifest_digest) {
@@ -366,10 +512,20 @@ export function useLogDescriptions() {
       }
     },
     add_repo_accesstoken: function (metadata: Metadata) {
-      return `Create access token ${metadata.token} in repository ${metadata.repo}`;
+      return (
+        <>
+          Create access token {wrapVariable(metadata.token)} in repository{' '}
+          {wrapVariable(metadata.repo)}
+        </>
+      );
     },
     delete_repo_accesstoken: function (metadata: Metadata) {
-      return `Delete access token ${metadata.token} in repository ${metadata.repo}`;
+      return (
+        <>
+          Delete access token {wrapVariable(metadata.token)} in repository{' '}
+          {wrapVariable(metadata.repo)}
+        </>
+      );
     },
     set_repo_description: function (metadata: Metadata) {
       return `Change description for repository ${metadata.namespace}/${metadata.repo} to ${metadata.description}`;
@@ -377,8 +533,8 @@ export function useLogDescriptions() {
     build_dockerfile: function (metadata: Metadata) {
       if (metadata.trigger_id) {
         const triggerDescription = getTriggerDescription(
-          metadata['service'],
-          metadata['config'],
+          metadata.service,
+          (metadata.config as string | Config) || '',
         );
         return (
           `Build from Dockerfile for repository ${metadata.namespace}/${metadata.repo} triggered by ` +
@@ -388,10 +544,10 @@ export function useLogDescriptions() {
       return `Build from Dockerfile for repository ${metadata.namespace}/${metadata.repo}`;
     },
     org_create: function (metadata: Metadata) {
-      return `Organization ${metadata.namespace} created`;
+      return <>Organization {wrapVariable(metadata.namespace)} created</>;
     },
     org_delete: function (metadata: Metadata) {
-      return `Organization ${metadata.namespace} deleted`;
+      return <>Organization {wrapVariable(metadata.namespace)} deleted</>;
     },
     org_change_email: function (metadata: Metadata) {
       return `Change organization email from ${metadata.old_email} to ${metadata.email}`;
@@ -406,7 +562,7 @@ export function useLogDescriptions() {
       }
     },
     org_change_tag_expiration: function (metadata: Metadata) {
-      `Change time machine window to ${metadata.tag_expiration}`;
+      return `Change time machine window to ${metadata.tag_expiration}`;
     },
     org_change_name: function (metadata: Metadata) {
       if (metadata.superuser) {
@@ -416,44 +572,96 @@ export function useLogDescriptions() {
       }
     },
     org_create_team: function (metadata: Metadata) {
-      return `Create team ${metadata.team}`;
+      return <>Create team {wrapVariable(metadata.team)}</>;
     },
     org_delete_team: function (metadata: Metadata) {
-      return `Delete team ${metadata.team}`;
+      return <>Delete team {wrapVariable(metadata.team)}</>;
     },
     org_add_team_member: function (metadata: Metadata) {
-      return `Add member ${metadata.member} to team ${metadata.team}`;
+      return (
+        <>
+          Add member {wrapVariable(metadata.member)} to team{' '}
+          {wrapVariable(metadata.team)}
+        </>
+      );
     },
     org_remove_team_member: function (metadata: Metadata) {
-      return `Remove member ${metadata.member} from team ${metadata.team}`;
+      return (
+        <>
+          Remove member {wrapVariable(metadata.member)} from team{' '}
+          {wrapVariable(metadata.team)}
+        </>
+      );
     },
     org_invite_team_member: function (metadata: Metadata) {
       if (metadata.user) {
-        return `Invite ${metadata.user} to team ${metadata.team}`;
+        return (
+          <>
+            Invite {wrapVariable(metadata.user)} to team{' '}
+            {wrapVariable(metadata.team)}
+          </>
+        );
       } else {
-        return `Invite ${metadata.email} to team ${metadata.team}`;
+        return (
+          <>
+            Invite {wrapVariable(metadata.email)} to team{' '}
+            {wrapVariable(metadata.team)}
+          </>
+        );
       }
     },
     org_delete_team_member_invite: function (metadata: Metadata) {
       if (metadata.user) {
-        return `Rescind invite of ${metadata.user} to team ${metadata.team}`;
+        return (
+          <>
+            Rescind invite of {wrapVariable(metadata.user)} to team{' '}
+            {wrapVariable(metadata.team)}
+          </>
+        );
       } else {
-        return `Rescind invite of ${metadata.email} to team ${metadata.team}`;
+        return (
+          <>
+            Rescind invite of {wrapVariable(metadata.email)} to team{' '}
+            {wrapVariable(metadata.team)}
+          </>
+        );
       }
     },
 
     org_team_member_invite_accepted: function (metadata: Metadata) {
-      return `User ${metadata.member}, invited by ${metadata.inviter}, joined team ${metadata.team}`;
+      return (
+        <>
+          User {wrapVariable(metadata.member)}, invited by{' '}
+          {wrapVariable(metadata.inviter)}, joined team{' '}
+          {wrapVariable(metadata.team)}
+        </>
+      );
     },
     org_team_member_invite_declined: function (metadata: Metadata) {
-      return `User ${metadata.member}, invited by ${metadata.inviter}, declined to join team ${metadata.team}`;
+      return (
+        <>
+          User {wrapVariable(metadata.member)}, invited by{' '}
+          {wrapVariable(metadata.inviter)}, declined to join team{' '}
+          {wrapVariable(metadata.team)}
+        </>
+      );
     },
 
     org_set_team_description: function (metadata: Metadata) {
-      return `Change description of team ${metadata.team} to ${metadata.description}`;
+      return (
+        <>
+          Change description of team {wrapVariable(metadata.team)} to{' '}
+          {wrapVariable(metadata.description)}
+        </>
+      );
     },
     org_set_team_role: function (metadata: Metadata) {
-      return `Change permission of team ${metadata.team} to ${metadata.role}`;
+      return (
+        <>
+          Change permission of team {wrapVariable(metadata.team)} to{' '}
+          {wrapVariable(metadata.role)}
+        </>
+      );
     },
     create_prototype_permission: function (metadata: Metadata) {
       if (metadata.delegate_user) {
@@ -497,21 +705,21 @@ export function useLogDescriptions() {
     setup_repo_trigger: function (metadata: Metadata) {
       const triggerDescription = getTriggerDescription(
         metadata.service,
-        metadata.config,
+        (metadata.config as string | Config) || '',
       );
       return 'Setup build trigger - ' + triggerDescription;
     },
     delete_repo_trigger: function (metadata: Metadata) {
       const triggerDescription = getTriggerDescription(
-        metadata['service'],
-        metadata['config'],
+        metadata.service,
+        (metadata.config as string | Config) || '',
       );
       return 'Delete build trigger - ' + triggerDescription;
     },
     toggle_repo_trigger: function (metadata: Metadata) {
       const triggerDescription = getTriggerDescription(
-        metadata['service'],
-        metadata['config'],
+        metadata.service,
+        (metadata.config as string | Config) || '',
       );
       if (metadata.enabled) {
         return 'Build trigger enabled - ' + triggerDescription;
@@ -520,16 +728,37 @@ export function useLogDescriptions() {
       }
     },
     create_application: function (metadata: Metadata) {
-      return `Create application ${metadata.application_name} with client ID ${metadata.client_id}`;
+      return (
+        <>
+          Create application {wrapVariable(metadata.application_name)} with{' '}
+          client ID {wrapVariable(metadata.client_id)}
+        </>
+      );
     },
     update_application: function (metadata: Metadata) {
-      return `Update application to ${metadata.application_name} for client ID ${metadata.client_id}`;
+      return (
+        <>
+          Update application to {wrapVariable(metadata.application_name)} for{' '}
+          client ID {wrapVariable(metadata.client_id)}
+        </>
+      );
     },
     delete_application: function (metadata: Metadata) {
-      return `Delete application ${metadata.application_name} with client ID ${metadata.client_id}`;
+      return (
+        <>
+          Delete application {wrapVariable(metadata.application_name)} with{' '}
+          client ID {wrapVariable(metadata.client_id)}
+        </>
+      );
     },
     reset_application_client_secret: function (metadata: Metadata) {
-      return `Reset the client secret of application ${metadata.application_name} with client ID ${metadata.client_id}`;
+      return (
+        <>
+          Reset the client secret of application{' '}
+          {wrapVariable(metadata.application_name)} with client ID{' '}
+          {wrapVariable(metadata.client_id)}
+        </>
+      );
     },
     add_repo_notification: function (metadata: Metadata) {
       const event = events.events.find((e) => e.type == metadata.event);
@@ -547,38 +776,87 @@ export function useLogDescriptions() {
     },
 
     regenerate_robot_token: function (metadata: Metadata) {
-      return `Regenerated token for robot ${metadata.robot}`;
+      return <>Regenerated token for robot {wrapVariable(metadata.robot)}</>;
     },
 
     service_key_create: function (metadata: Metadata) {
+      const keyName = formatServiceKeyName(metadata);
       if (metadata.preshared) {
-        return `Manual creation of preshared service key ${metadata.kid} for service ${metadata.service}`;
+        return (
+          <>
+            Manual creation of preshared service key {wrapVariable(keyName)} for
+            service {wrapVariable(metadata.service)}
+          </>
+        );
       } else {
-        return `Creation of service key ${metadata.kid} for service ${metadata.service} by ${metadata.user_agent}`;
+        return (
+          <>
+            Creation of service key {wrapVariable(keyName)} for service{' '}
+            {wrapVariable(metadata.service)} by{' '}
+            {wrapVariable(metadata.user_agent)}
+          </>
+        );
       }
     },
 
     service_key_approve: function (metadata: Metadata) {
-      `Approval of service key ${metadata.kid}`;
+      return (
+        <>
+          Approval of service key {wrapVariable(formatServiceKeyName(metadata))}
+        </>
+      );
     },
     service_key_modify: function (metadata: Metadata) {
-      `Modification of service key ${metadata.kid}`;
+      return (
+        <>
+          Modification of service key{' '}
+          {wrapVariable(formatServiceKeyName(metadata))}
+        </>
+      );
     },
     service_key_delete: function (metadata: Metadata) {
-      `Deletion of service key ${metadata.kid}`;
+      return (
+        <>
+          Deletion of service key {wrapVariable(formatServiceKeyName(metadata))}
+        </>
+      );
     },
     service_key_extend: function (metadata: Metadata) {
-      `Change of expiration of service key ${metadata.kid} from ${metadata.old_expiration_date}] to ${metadata.expiration_date}`;
+      const keyName = formatServiceKeyName(metadata);
+      const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+      const newDate = formatUnixTimestamp(metadata.expiration_date);
+      return (
+        <>
+          Change of expiration of service key {wrapVariable(keyName)} from{' '}
+          {wrapVariable(oldDate)} to {wrapVariable(newDate)}
+        </>
+      );
     },
     service_key_rotate: function (metadata: Metadata) {
-      `Automatic rotation of service key ${metadata.kid} by ${metadata.user_agent}`;
+      return (
+        <>
+          Automatic rotation of service key{' '}
+          {wrapVariable(formatServiceKeyName(metadata))} by{' '}
+          {wrapVariable(metadata.user_agent)}
+        </>
+      );
     },
 
     take_ownership: function (metadata: Metadata) {
       if (metadata.was_user) {
-        return `Superuser ${metadata.superuser} took ownership of user namespace ${metadata.namespace}`;
+        return (
+          <>
+            Superuser {wrapVariable(metadata.superuser)} took ownership of user
+            namespace {wrapVariable(metadata.namespace)}
+          </>
+        );
       } else {
-        return `Superuser ${metadata.superuser} took ownership of organization ${metadata.namespace}`;
+        return (
+          <>
+            Superuser {wrapVariable(metadata.superuser)} took ownership of
+            organization {wrapVariable(metadata.namespace)}
+          </>
+        );
       }
     },
 
@@ -591,21 +869,35 @@ export function useLogDescriptions() {
 
     change_tag_expiration: function (metadata: Metadata) {
       if (metadata.expiration_date && metadata.old_expiration_date) {
-        return `Tag ${metadata.tag} set to expire on ${metadata.expiration_date} (previously ${metadata.old_expiration_date})`;
+        const newDate = formatUnixTimestamp(metadata.expiration_date);
+        const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+        return `Tag ${metadata.tag} set to expire on ${newDate} (previously ${oldDate})`;
       } else if (metadata.expiration_date) {
-        return `Tag ${metadata.tag} set to expire on ${metadata.expiration_date}`;
+        const newDate = formatUnixTimestamp(metadata.expiration_date);
+        return `Tag ${metadata.tag} set to expire on ${newDate}`;
       } else if (metadata.old_expiration_date) {
-        return `Tag ${metadata.tag} set to no longer expire (previously ${metadata.old_expiration_date})`;
+        const oldDate = formatUnixTimestamp(metadata.old_expiration_date);
+        return `Tag ${metadata.tag} set to no longer expire (previously ${oldDate})`;
       } else {
         return `Tag ${metadata.tag} set to no longer expire`;
       }
     },
 
     create_app_specific_token: function (metadata: Metadata) {
-      return `Created external application token ${metadata.app_specific_token_title}`;
+      return (
+        <>
+          Created external application token{' '}
+          {wrapVariable(metadata.app_specific_token_title)}
+        </>
+      );
     },
     revoke_app_specific_token: function (metadata: Metadata) {
-      return `Revoked external application token ${metadata.app_specific_token_title}`;
+      return (
+        <>
+          Revoked external application token{' '}
+          {wrapVariable(metadata.app_specific_token_title)}
+        </>
+      );
     },
     repo_mirror: function (metadata: Metadata) {
       if (metadata.message) {
@@ -614,8 +906,63 @@ export function useLogDescriptions() {
         return `Repository mirror ${metadata.verb} by Skopeo`;
       }
     },
+    start_build_trigger: function (metadata: Metadata) {
+      const triggerDescription = getTriggerDescription(
+        metadata.service,
+        (metadata.config as string | Config) || '',
+      );
+      return 'Manually start build from trigger - ' + triggerDescription;
+    },
+    cancel_build: function (metadata: Metadata) {
+      return `Cancel build ${metadata.build_uuid}`;
+    },
+    pull_repo_failed: function (metadata: Metadata) {
+      let message = `Pull from repository ${metadata.namespace}/${metadata.repo} failed`;
+
+      if (metadata.tag) {
+        message += ` for tag ${metadata.tag}`;
+      } else if (metadata.manifest_digest) {
+        message += ` for manifest ${metadata.manifest_digest}`;
+      }
+
+      if (metadata.message) {
+        message += ` with message ${metadata.message}`;
+      }
+
+      return message;
+    },
+    push_repo_failed: function (metadata: Metadata) {
+      let message = `Push to repository ${metadata.namespace}/${metadata.repo} failed`;
+
+      if (metadata.tag) {
+        message += ` for tag ${metadata.tag}`;
+      } else if (metadata.manifest_digest) {
+        message += ` for manifest ${metadata.manifest_digest}`;
+      }
+
+      if (metadata.message) {
+        message += ` with message ${metadata.message}`;
+      }
+
+      return message;
+    },
+    delete_tag_failed: function (metadata: Metadata) {
+      let message = `Delete tag ${metadata.namespace}/${metadata.repo} failed`;
+
+      if (metadata.tag) {
+        message += ` for tag ${metadata.tag}`;
+      } else if (metadata.manifest_digest) {
+        message += ` for manifest ${metadata.manifest_digest}`;
+      }
+
+      if (metadata.message) {
+        message += ` with message ${metadata.message}`;
+      }
+
+      return message;
+    },
     create_proxy_cache_config: function (metadata: Metadata) {
-      return 'Created proxy cache for namespace';
+      return `Create proxy cache for ${metadata.namespace} with upstream ${metadata.upstream_registry}`;
     },
     delete_proxy_cache_config: function () {
       return 'Deleted proxy cache for namespace';
@@ -627,10 +974,89 @@ export function useLogDescriptions() {
       return `Team syncing disabled for ${metadata.team}`;
     },
     login_success: function (metadata: Metadata) {
-      return `Successful login`;
+      if (metadata.type == 'v2auth') {
+        if (metadata.kind == 'app_specific_token') {
+          return (
+            <>
+              Login to registry with app-specific token{' '}
+              {wrapVariable(metadata.app_specific_token_title)}
+            </>
+          );
+        } else if (metadata.kind == 'robot') {
+          return (
+            <>Login to registry with robot {wrapVariable(metadata.robot)}</>
+          );
+        } else {
+          return 'Login to registry';
+        }
+      } else {
+        return 'Login to Quay';
+      }
+    },
+    logout_success: function () {
+      return 'Logout from Quay';
+    },
+    login_failure: function (metadata: Metadata) {
+      if (metadata.type == 'v2auth') {
+        let message = 'Login to registry failed';
+
+        if (metadata.kind == 'app_specific_token') {
+          message += ` with app-specific token`;
+          if (metadata.app_specific_token_title) {
+            message += ` ${metadata.app_specific_token_title}`;
+          }
+          if (metadata.username) {
+            message += ` (owned by ${metadata.username})`;
+          }
+        } else if (metadata.kind == 'robot') {
+          message += ` with robot ${metadata.robot}`;
+          if (metadata.username) {
+            message += ` (owned by ${metadata.username})`;
+          }
+        } else if (metadata.kind == 'user') {
+          message += ` with user ${metadata.username}`;
+        }
+
+        if (metadata.message) {
+          message += ` with message: ${metadata.message}`;
+        }
+
+        return message;
+      } else if (metadata.type == 'quayauth') {
+        if (metadata.kind == 'user') {
+          let message = 'Login to Quay failed';
+          if (metadata.username) {
+            message += ` with username ${metadata.username}`;
+          }
+          if (metadata.message) {
+            message += ` with message: ${metadata.message}`;
+          }
+          return message;
+        } else if (metadata.kind == 'oauth') {
+          let message = 'API access to Quay failed';
+          if (metadata.token) {
+            message += ` with token ${metadata.token}`;
+            if (metadata.username && metadata.application_name) {
+              message += ` (owned by ${metadata.username} in application ${metadata.application_name})`;
+            }
+          }
+          if (metadata.message) {
+            message += ` with message: ${metadata.message}`;
+          }
+          return message;
+        }
+      } else {
+        return 'Login to Quay failed';
+      }
     },
     oauth_token_assigned: function (metadata) {
-      return `OAuth token assigned to user ${metadata.assigned_user} by ${metadata.assigning_user} for application ${metadata.application}`;
+      return (
+        <>
+          OAuth token assigned to user {wrapVariable(metadata.assigned_user)} by{' '}
+          {wrapVariable(metadata.assigning_user)} for application{' '}
+          {wrapVariable(metadata.application)}
+        </>
+      );
     },
     export_logs_success: function (metadata: Metadata) {
       if (metadata.repo) {
@@ -682,7 +1108,7 @@ export function useLogDescriptions() {
   return descriptions;
 }
 
-function obfuscate_email(email: Array) {
+function obfuscate_email(email: string) {
   const email_array = email.split('@');
   return (
     email_array[0].substring(0, 2) +

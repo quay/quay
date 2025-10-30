@@ -1,0 +1,46 @@
+{
+  "organizations": [
+    {
+      "name": "testorg",
+      "email": "testorg@example.com",
+      "avatar": {
+        "name": "testorg",
+        "hash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "color": "#00ff00",
+        "kind": "organization"
+      },
+      "is_admin": true,
+      "is_member": true,
+      "teams": ["owners", "developers"],
+      "tag_expiration_s": 1209600
+    },
+    {
+      "name": "projectquay",
+      "email": "projectquay@example.com",
+      "avatar": {
+        "name": "projectquay",
+        "hash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "color": "#0000ff",
+        "kind": "organization"
+      },
+      "is_admin": false,
+      "is_member": true,
+      "teams": [],
+      "tag_expiration_s": 1209600
+    },
+    {
+      "name": "coreos",
+      "email": "coreos@example.com",
+      "avatar": {
+        "name": "coreos",
+        "hash": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+        "color": "#ff00ff",
+        "kind": "organization"
+      },
+      "is_admin": true,
+      "is_member": true,
+      "teams": ["owners"],
+      "tag_expiration_s": 1209600
+    }
+  ]
+}

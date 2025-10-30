@@ -1,6 +1,7 @@
 import {AxiosError, AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode, BulkOperationError} from './ErrorHandling';
+import {IQuotaReport} from './RepositoryResource';
 
 export interface IAvatar {
   name: string;
@@ -23,6 +24,7 @@ export interface IOrganization {
   teams?: string[];
   tag_expiration_s: number;
   email: string;
+  quota_report?: IQuotaReport;
 }
 
 export async function fetchOrg(orgname: string, signal: AbortSignal) {
@@ -135,5 +137,21 @@ export async function updateOrgSettings(
       (params[key] == null || params[key] == undefined) && delete params[key],
   );
   const response = await axios.put(updateSettingsUrl, params);
+  return response.data;
+}
+
+export async function renameOrganization(orgName: string, newName: string) {
+  const renameOrgUrl = `/api/v1/superuser/organizations/${orgName}`;
+  const response: AxiosResponse = await axios.put(renameOrgUrl, {
+    name: newName,
+  });
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
+
+export async function takeOwnership(namespace: string) {
+  const takeOwnershipUrl = `/api/v1/superuser/takeownership/${namespace}`;
+  const response: AxiosResponse = await axios.post(takeOwnershipUrl);
+  assertHttpCode(response.status, 200);
   return response.data;
 }

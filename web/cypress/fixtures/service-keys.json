@@ -1,0 +1,76 @@
+{
+  "keys": [
+    {
+      "kid": "test-key-1",
+      "name": "Clair Scanner Key",
+      "service": "clair-scanner",
+      "created_date": "2024-01-15T10:30:00Z",
+      "expiration_date": "2025-01-15T10:30:00Z",
+      "approval": {
+        "approval_type": "ServiceKeyApprovalType.SUPERUSER",
+        "approver": {
+          "name": "superuser",
+          "username": "superuser",
+          "kind": "user"
+        },
+        "notes": "Approved for production use"
+      },
+      "metadata": {
+        "scanner_version": "v4.0.1",
+        "environment": "production"
+      }
+    },
+    {
+      "kid": "test-key-2",
+      "name": "Build Worker Key",
+      "service": "build-worker",
+      "created_date": "2024-02-01T14:20:00Z",
+      "expiration_date": "2024-12-31T23:59:59Z",
+      "approval": {
+        "approval_type": "ServiceKeyApprovalType.AUTOMATIC",
+        "approver": {
+          "name": "admin",
+          "username": "admin",
+          "kind": "user"
+        }
+      },
+      "metadata": {
+        "worker_pool": "default",
+        "region": "us-east-1"
+      }
+    },
+    {
+      "kid": "test-key-3",
+      "name": "Test Service Key",
+      "service": "test-service",
+      "created_date": "2024-03-01T09:15:00Z",
+      "metadata": {
+        "test": true,
+        "environment": "staging"
+      }
+    },
+    {
+      "kid": "expired-key-1",
+      "name": "Expired Scanner",
+      "service": "legacy-scanner",
+      "created_date": "2023-01-01T00:00:00Z",
+      "expiration_date": "2023-12-31T23:59:59Z",
+      "approval": {
+        "approval_type": "ServiceKeyApprovalType"
+      },
+      "metadata": {
+        "legacy": true
+      }
+    },
+    {
+      "kid": "expiring-soon-key",
+      "name": "Expiring Soon",
+      "service": "temp-service",
+      "created_date": "2024-02-15T12:00:00Z",
+      "expiration_date": "2024-12-25T12:00:00Z",
+      "metadata": {
+        "temporary": true
+      }
+    }
+  ]
+}

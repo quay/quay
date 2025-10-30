@@ -27,8 +27,8 @@ import RequestError from 'src/components/errors/RequestError';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
-import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {
   useRegistrySize,
@@ -46,6 +46,8 @@ import './css/Organizations.scss';
 export interface OrganizationsTableItem {
   name: string;
   isUser: boolean;
+  userEnabled?: boolean; // Only used when isUser is true
+  userSuperuser?: boolean; // Only used when isUser is true
 }
 
 function OrgListHeader({
@@ -136,7 +138,10 @@ export default function OrganizationsList() {
     search,
     setSearch,
     deleteOrganizations,
+    userEmailMap,
   } = useOrganizations();
+
+  const {isSuperUser} = useCurrentUser();
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
 
@@ -443,11 +448,18 @@ export default function OrganizationsList() {
               <Th sort={getSortableSort(1)} modifier="wrap">
                 {ColumnNames.name}
               </Th>
+              {isSuperUser && quayConfig?.features?.MAILING && (
+                <Th>{ColumnNames.adminEmail}</Th>
+              )}
               <Th>{ColumnNames.repoCount}</Th>
               <Th>{ColumnNames.teamsCount}</Th>
               <Th>{ColumnNames.membersCount}</Th>
               <Th>{ColumnNames.robotsCount}</Th>
               <Th>{ColumnNames.lastModified}</Th>
+              {isSuperUser &&
+                quayConfig?.features?.QUOTA_MANAGEMENT &&
+                quayConfig?.features?.EDIT_QUOTA && <Th>{ColumnNames.size}</Th>}
+              {isSuperUser && <Th>{ColumnNames.options}</Th>}
             </Tr>
           </Thead>
           <Tbody>
@@ -465,6 +477,9 @@ export default function OrganizationsList() {
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}
+                  userEnabled={org.userEnabled}
+                  userSuperuser={org.userSuperuser}
+                  userEmail={org.isUser ? userEmailMap[org.name] : undefined}
                 ></OrgTableData>
               </Tr>
             ))}

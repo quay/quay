@@ -39,11 +39,16 @@ const Breadcrumb = {
 export enum NavigationPath {
   // Side Nav
   home = '/',
-  organizationsList = '/organization',
-
   overviewList = '/overview',
-
+  organizationsList = '/organization',
   repositoriesList = '/repository',
+
+  // Superuser sections
+  serviceKeys = '/service-keys',
+  changeLog = '/change-log',
+  usageLogs = '/usage-logs',
+  messages = '/messages',
+  buildLogs = '/superuser/build-logs',
 
   // Organization detail
   organizationDetail = '/organization/:organizationName',

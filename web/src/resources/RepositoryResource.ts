@@ -33,6 +33,8 @@ export interface RepositoryCreationResponse {
 export interface IQuotaReport {
   quota_bytes: number;
   configured_quota: number;
+  percent_consumed?: number; // may come from API
+  backfill_status?: 'waiting' | 'running' | null; // for org-level display
 }
 
 export enum RepositoryState {
