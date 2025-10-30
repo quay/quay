@@ -39,6 +39,7 @@ export function useOrganizations() {
     fetchOrgsAsSuperUser,
     {
       enabled: isSuperUser,
+      retry: false,
     },
   );
 
@@ -48,24 +49,34 @@ export function useOrganizations() {
     fetchUsersAsSuperUser,
     {
       enabled: isSuperUser,
+      retry: false,
     },
   );
 
-  // Get org names
-  let orgnames: string[];
-  if (isSuperUser) {
-    orgnames = (superUserOrganizations || []).map((org) => org.name);
-  } else {
-    orgnames = (user?.organizations || []).map((org) => org.name);
+  // Build org names list: always include user's orgs, add superuser orgs if available
+  const userOrgNames = (user?.organizations || []).map((org) => org.name);
+  let orgnames: string[] = [...userOrgNames];
+
+  if (isSuperUser && superUserOrganizations) {
+    const superOrgNames = superUserOrganizations.map((org) => org.name);
+    const additionalOrgNames = superOrgNames.filter(
+      (name) => !userOrgNames.includes(name),
+    );
+    orgnames = [...orgnames, ...additionalOrgNames];
   }
-  // Get user names
-  let usernames: string[];
-  if (isSuperUser) {
-    usernames = (superUserUsers || [])
+
+  // Build user names list: always include current user, add superuser users if available
+  const currentUsername = user?.username ? [user.username] : [];
+  let usernames: string[] = [...currentUsername];
+
+  if (isSuperUser && superUserUsers) {
+    const superUsernames = superUserUsers
       .map((user) => user.username)
       .filter((x) => x);
-  } else {
-    usernames = user?.username ? [user.username] : [];
+    const additionalUsernames = superUsernames.filter(
+      (name) => !currentUsername.includes(name),
+    );
+    usernames = [...usernames, ...additionalUsernames];
   }
 
   const organizationsTableDetails = [] as OrganizationDetail[];
