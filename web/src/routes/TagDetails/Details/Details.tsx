@@ -107,7 +107,6 @@ export default function Details(props: DetailsProps) {
                   repo={props.repo}
                   digest={props.digest}
                   tag={props.tag.name}
-                  cacheResults={true}
                 />
               </DescriptionListDescription>
             </DescriptionListGroup>

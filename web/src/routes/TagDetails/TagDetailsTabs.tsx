@@ -67,14 +67,18 @@ export default function TagTabs(props: TagTabsProps) {
         title={<TabTitleText>Security Report</TabTitleText>}
         isHidden={!quayConfig?.features?.SECURITY_SCANNER}
       >
-        <SecurityReport />
+        <SecurityReport
+          org={props.org}
+          repo={props.repo}
+          digest={props.digest}
+        />
       </Tab>
       <Tab
         eventKey={TabIndex.Packages}
         title={<TabTitleText>Packages</TabTitleText>}
         isHidden={!quayConfig?.features?.SECURITY_SCANNER}
       >
-        <Packages />
+        <Packages org={props.org} repo={props.repo} digest={props.digest} />
       </Tab>
       <Tab
         eventKey={TabIndex.ModelCard}
