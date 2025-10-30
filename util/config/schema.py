@@ -1436,6 +1436,11 @@ CONFIG_SCHEMA = {
             "description": "User feedback form for UI-V2",
             "x-example": "http://url-for-user-feedback-form.com",
         },
+        "DISABLE_ANGULAR_UI": {
+            "type": "boolean",
+            "description": "Disable legacy Angular UI pages and redirects. Defaults to False",
+            "x-example": False,
+        },
         "FEATURE_UI_V2": {
             "type": "boolean",
             "description": "Enables user to try the beta UI Environment",

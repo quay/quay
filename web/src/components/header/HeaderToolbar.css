@@ -7,7 +7,8 @@
   --pf-v5-c-switch--Height: 1rem;
 }
 
-.pf-v5-c-switch__label {
+/* Limit white switch label color to dark theme only */
+.pf-v5-theme-dark .pf-v5-c-switch__label {
   --pf-v5-c-switch__input--checked__label--Color: white;
   --pf-v5-c-switch__input--not-checked__label--Color: white;
 }

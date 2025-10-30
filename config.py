@@ -56,6 +56,7 @@ CLIENT_WHITELIST = [
     "FEATURE_AUTO_PRUNE",
     "DEFAULT_NAMESPACE_AUTOPRUNE_POLICY",
     "DEFAULT_UI",
+    "DISABLE_ANGULAR_UI",
 ]
 
 
@@ -875,6 +876,8 @@ class DefaultConfig(ImmutableConfig):
 
     # Default to new UI
     DEFAULT_UI = "react"
+    # If true, disables legacy Angular UI pages and redirects
+    DISABLE_ANGULAR_UI = False
 
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
