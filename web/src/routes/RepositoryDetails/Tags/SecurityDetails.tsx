@@ -1,8 +1,5 @@
-import {useEffect, useState} from 'react';
-import {
-  SecurityDetailsResponse,
-  getSecurityDetails,
-} from 'src/resources/TagResource';
+import {useMemo} from 'react';
+import {useSecurityDetails} from 'src/hooks/UseSecurityDetails';
 import {Link, useLocation} from 'react-router-dom';
 import {Skeleton} from '@patternfly/react-core';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
@@ -13,12 +10,7 @@ import {
   CheckCircleIcon,
 } from '@patternfly/react-icons';
 import {getSeverityColor} from 'src/libs/utils';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
-import {useResetRecoilState, useSetRecoilState} from 'recoil';
-import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
+import {isErrorString} from 'src/resources/ErrorHandling';
 
 enum Variant {
   condensed = 'condensed',
@@ -26,14 +18,11 @@ enum Variant {
 }
 
 export default function SecurityDetails(props: SecurityDetailsProps) {
-  const [status, setStatus] = useState<string>();
-  const [hasFeatures, setHasFeatures] = useState<boolean>(false);
-  const [vulnCount, setVulnCount] =
-    useState<Map<VulnerabilitySeverity, number>>();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [err, setErr] = useState<string>();
-  const setGlobalErr = useSetRecoilState(SecurityDetailsErrorState);
-  const setGlobalData = useSetRecoilState(SecurityDetailsState);
+  const {
+    data: securityDetails,
+    error,
+    isLoading,
+  } = useSecurityDetails(props.org, props.repo, props.digest);
   const location = useLocation();
 
   const severityOrder = [
@@ -45,6 +34,31 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
     VulnerabilitySeverity.Unknown,
   ];
 
+  // Calculate vulnerability counts from security details
+  const vulnCount = useMemo(() => {
+    const vulns = new Map<VulnerabilitySeverity, number>();
+    if (securityDetails?.data) {
+      for (const feature of securityDetails.data.Layer.Features) {
+        if (feature.Vulnerabilities) {
+          for (const vuln of feature.Vulnerabilities) {
+            if (vuln.Severity in VulnerabilitySeverity) {
+              if (vulns.has(vuln.Severity)) {
+                vulns.set(vuln.Severity, vulns.get(vuln.Severity) + 1);
+              } else {
+                vulns.set(vuln.Severity, 1);
+              }
+            }
+          }
+        }
+      }
+    }
+    return vulns;
+  }, [securityDetails]);
+
+  const hasFeatures =
+    securityDetails?.data?.Layer?.Features?.length > 0 || false;
+  const status = securityDetails?.status;
+
   const getHighestSeverity = () => {
     for (const severity of severityOrder) {
       if (vulnCount.get(severity) != null && vulnCount.get(severity) > 0) {
@@ -52,58 +66,16 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
       }
     }
   };
-
-  useEffect(() => {
-    if (props.digest !== '') {
-      (async () => {
-        try {
-          setLoading(true);
-          const securityDetails: SecurityDetailsResponse =
-            await getSecurityDetails(props.org, props.repo, props.digest);
-          const vulns = new Map<VulnerabilitySeverity, number>();
-          if (securityDetails.data) {
-            if (props.cacheResults) setGlobalData(securityDetails);
-            setHasFeatures(securityDetails.data.Layer.Features.length > 0);
-            for (const feature of securityDetails.data.Layer.Features) {
-              if (feature.Vulnerabilities) {
-                for (const vuln of feature.Vulnerabilities) {
-                  if (vuln.Severity in VulnerabilitySeverity) {
-                    if (vulns.has(vuln.Severity)) {
-                      vulns.set(vuln.Severity, vulns.get(vuln.Severity) + 1);
-                    } else {
-                      vulns.set(vuln.Severity, 1);
-                    }
-                  }
-                }
-              }
-            }
-          }
-          setStatus(securityDetails.status);
-          setVulnCount(vulns);
-          setLoading(false);
-        } catch (error: any) {
-          console.error(error);
-          const message = addDisplayError(
-            'Unable to get security details',
-            error,
-          );
-          if (props.cacheResults) setGlobalErr(message);
-          setErr(message);
-          setLoading(false);
-        }
-      })();
-    }
-  }, [props.digest]);
   const queryParams = new Map<string, string>([
     ['tab', TabIndex.SecurityReport],
     ['digest', props.digest],
   ]);
 
-  if (loading) {
+  if (isLoading) {
     return <Skeleton width="50%"></Skeleton>;
   }
 
-  if (isErrorString(err)) {
+  if (isErrorString(error?.message)) {
     return <>Unable to get security details</>;
   }
 
@@ -211,5 +183,4 @@ export interface SecurityDetailsProps {
   tag: string;
   digest: string;
   variant?: Variant | 'condensed' | 'full';
-  cacheResults?: boolean;
 }

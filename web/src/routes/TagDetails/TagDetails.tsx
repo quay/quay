@@ -1,11 +1,6 @@
 import {PageSection, PageSectionVariants, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import {useLocation, useSearchParams} from 'react-router-dom';
-import {useResetRecoilState} from 'recoil';
-import {
-  SecurityDetailsErrorState,
-  SecurityDetailsState,
-} from 'src/atoms/SecurityDetailsState';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import RequestError from 'src/components/errors/RequestError';
@@ -33,8 +28,6 @@ export default function TagDetails() {
     useState<ManifestByDigestResponse>(null);
   const [err, setErr] = useState<string>();
   const quayConfig = useQuayConfig();
-  const resetSecurityDetails = useResetRecoilState(SecurityDetailsState);
-  const resetSecurityError = useResetRecoilState(SecurityDetailsErrorState);
   const [tagDetails, setTagDetails] = useState<Tag>({
     name: '',
     is_manifest_list: false,
@@ -56,11 +49,6 @@ export default function TagDetails() {
   const org = parseOrgNameFromUrl(location.pathname);
   const repo = parseRepoNameFromUrl(location.pathname);
   const tag = parseTagNameFromUrl(location.pathname);
-
-  useEffect(() => {
-    resetSecurityDetails();
-    resetSecurityError();
-  }, [org, repo, tag]);
 
   useEffect(() => {
     (async () => {

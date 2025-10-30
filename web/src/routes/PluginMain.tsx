@@ -1,7 +1,7 @@
 import {Banner, Flex, FlexItem, Page} from '@patternfly/react-core';
 
 import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
-import {RecoilRoot, useSetRecoilState} from 'recoil';
+import {RecoilRoot} from 'recoil';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import useChrome from '@redhat-cloud-services/frontend-components/useChrome';
@@ -17,7 +17,6 @@ import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {GlobalAuthState} from '../resources/AuthResource';
-import {IsPluginState} from '../atoms/QuayConfigState';
 import {CreateNewUser} from 'src/components/modals/CreateNewUser';
 import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 import axios from 'axios';
@@ -69,7 +68,6 @@ function PluginMain() {
   }
 
   const quayConfig = useQuayConfig();
-  const setIsPluginState = useSetRecoilState(IsPluginState);
   const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
   const [tokenReady, setTokenReady] = useState(false);
 
@@ -89,7 +87,6 @@ function PluginMain() {
   }, [quayConfig]);
 
   useEffect(() => {
-    setIsPluginState(true);
     if (user?.prompts && user.prompts.includes('confirm_username')) {
       setConfirmUserModalOpen(true);
     }

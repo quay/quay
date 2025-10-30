@@ -12,13 +12,12 @@ import {
 import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
 import {Tag, Manifest, Label} from 'src/resources/TagResource';
-import {useRecoilValue, useResetRecoilState} from 'recoil';
+import {useRecoilValue} from 'recoil';
 import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
 import TablePopover from './TablePopover';
 import SecurityDetails from './SecurityDetails';
 import {formatDate} from 'src/libs/utils';
-import {SecurityDetailsState} from 'src/atoms/SecurityDetailsState';
 import {expandedViewState} from 'src/atoms/TagListState';
 import ColumnNames from './ColumnNames';
 import {
@@ -111,11 +110,6 @@ function TagsTableRow(props: RowProps) {
   const tag = props.tag;
   const rowIndex = props.rowIndex;
   const expandedView = useRecoilValue(expandedViewState);
-
-  // Reset SecurityDetailsState so that loading skeletons appear when viewing report
-  const emptySecurityDetails = useResetRecoilState(SecurityDetailsState);
-  const resetSecurityDetails = () => emptySecurityDetails();
-
   const location = useLocation();
 
   // Calculate colspan dynamically based on whether actions column and pull stats columns are shown
@@ -174,7 +168,6 @@ function TagsTableRow(props: RowProps) {
               props.repo,
               tag.name,
             )}
-            onClick={resetSecurityDetails}
           >
             {tag.name}
           </Link>
