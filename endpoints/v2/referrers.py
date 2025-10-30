@@ -39,14 +39,14 @@ def list_manifest_referrers(namespace_name, repo_name, manifest_ref, registry_mo
             namespace_name, repo_name, raise_on_error=True, manifest_ref=manifest_ref
         )
     except RepositoryDoesNotExist as e:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     try:
         manifest = registry_model.lookup_manifest_by_digest(
             repository_ref, manifest_ref, raise_on_error=True, allow_hidden=True
         )
     except ManifestDoesNotExist as e:
-        raise ManifestInvalid(str(e))
+        raise ManifestInvalid(message=str(e))
 
     artifact_type = request.args.get("artifactType", None)
 

@@ -91,7 +91,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
         )
     except RepositoryDoesNotExist as e:
         image_pulls.labels("v2", "tag", 404).inc()
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     try:
         tag = registry_model.get_repo_tag(repository_ref, manifest_ref, raise_on_error=True)
@@ -104,10 +104,10 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
                 "Tag %s was deleted or has expired. To pull, revive via time machine" % manifest_ref
             )
             image_pulls.labels("v2", "tag", 404).inc()
-            raise TagExpired(msg)
+            raise TagExpired(message=msg)
 
         image_pulls.labels("v2", "tag", 404).inc()
-        raise ManifestUnknown(str(e))
+        raise ManifestUnknown(message=str(e))
 
     manifest = registry_model.get_manifest_for_tag(tag)
     if manifest is None:
@@ -121,7 +121,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
         )
     except (ManifestException, ManifestDoesNotExist) as e:
         image_pulls.labels("v2", "tag", 404).inc()
-        raise ManifestUnknown(str(e))
+        raise ManifestUnknown(message=str(e))
 
     if manifest_bytes is None:
         image_pulls.labels("v2", "tag", 404).inc()
@@ -177,7 +177,7 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
         )
     except RepositoryDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     try:
         manifest = registry_model.lookup_cached_manifest_by_digest(
@@ -189,7 +189,7 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
         )
     except ManifestDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
-        raise ManifestUnknown(str(e))
+        raise ManifestUnknown(message=str(e))
 
     track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
     image_pulls.labels("v2", "manifest", 200).inc()
@@ -357,7 +357,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     )
     if repository_ref is None:
         image_pushes.labels("v2", 404, "").inc()
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     manifest = registry_model.create_manifest_with_temp_tag(
@@ -433,7 +433,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
             namespace_name, repo_name, model_cache=model_cache
         )
         if repository_ref is None:
-            raise NameUnknown("repository not found")
+            raise NameUnknown(message="repository not found")
 
         manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
         if manifest is None:
@@ -470,7 +470,7 @@ def delete_manifest_by_tag(namespace_name, repo_name, manifest_ref):
             namespace_name, repo_name, model_cache=model_cache
         )
         if repository_ref is None:
-            raise NameUnknown("repository not found")
+            raise NameUnknown(message="repository not found")
 
         tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
         if tag is None:
@@ -521,7 +521,7 @@ def _write_manifest(
         namespace_name, repo_name, model_cache=model_cache
     )
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     # Create the manifest(s) and retarget the tag to point to it.
     try:

@@ -34,7 +34,7 @@ from endpoints.v2.errors import NameUnknown, TooManyTagsRequested
 def list_all_tags(namespace_name, repo_name, last_pagination_tag_name, limit, pagination_callback):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     tags = []
     has_more = False

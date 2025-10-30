@@ -279,7 +279,7 @@ def start_blob_upload(namespace_name, repo_name):
 
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
@@ -353,7 +353,7 @@ def start_blob_upload(namespace_name, repo_name):
 def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
@@ -386,7 +386,7 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
@@ -440,7 +440,7 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     # Find the upload.
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False) and app.config.get(
         "FEATURE_VERIFY_QUOTA", True
@@ -489,7 +489,7 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 def cancel_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown("repository not found")
+        raise NameUnknown(message="repository not found")
 
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
