@@ -43,6 +43,7 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
 
 interface OrgTableDataProps extends OrganizationsTableItem {
   userEmail?: string;
+  quota_report?: import('src/libs/quotaUtils').IQuotaReport;
 }
 
 // Get and assemble data from multiple endpoints to show in Org table
@@ -182,13 +183,24 @@ export default function OrgTableData(props: OrgTableDataProps) {
         config?.features?.EDIT_QUOTA && (
           <Td dataLabel={ColumnNames.size}>
             {props.isUser ? (
-              <span style={{color: '#888'}}>—</span>
+              props.quota_report ? (
+                renderQuotaConsumed(props.quota_report, {
+                  showPercentage: true,
+                  showTotal: true,
+                  showBackfill: true,
+                })
+              ) : (
+                <span style={{color: '#888'}}>—</span>
+              )
             ) : (
-              renderQuotaConsumed(organization?.quota_report, {
-                showPercentage: true,
-                showTotal: true,
-                showBackfill: true,
-              })
+              renderQuotaConsumed(
+                props.quota_report || organization?.quota_report,
+                {
+                  showPercentage: true,
+                  showTotal: true,
+                  showBackfill: true,
+                },
+              )
             )}
           </Td>
         )}
