@@ -241,18 +241,20 @@ describe('Create Account Page', () => {
     );
     cy.contains('verify your email address').should('be.visible');
 
-    // Form should be hidden
-    cy.get('#username').should('not.exist');
-    cy.get('#email').should('not.exist');
-    cy.get('#password').should('not.exist');
+    // Form should be hidden (check visibility, not existence since display:none keeps elements in DOM)
+    cy.get('#username').should('not.be.visible');
+    cy.get('#email').should('not.be.visible');
+    cy.get('#password').should('not.be.visible');
 
     // Should not redirect to organization page
     cy.url().should('include', '/createaccount');
     cy.url().should('not.include', '/organization');
 
-    // Should show sign in link
-    cy.contains('Already have an account?');
-    cy.contains('Sign in').should('be.visible');
+    // Should show sign in link (it's outside the form when awaiting verification)
+    // Find the visible link that's not inside a hidden form
+    cy.get('a[href="/signin"]').should('be.visible');
+    // The text should also be visible (rendered outside the hidden form)
+    cy.contains('body', 'Already have an account?').should('be.visible');
 
     // Verify no auto-login was attempted - signin API should not be called
     // If signin was attempted, it would have thrown an error from the intercept
