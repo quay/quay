@@ -143,15 +143,14 @@ export default function UsageLogs(props: UsageLogsProps) {
           </Split>
         </FlexItem>
         <FlexItem>
-          {chartHidden ? null : (
-            <UsageLogsGraph
-              starttime={logStartDate}
-              endtime={logEndDate}
-              repo={props.repository}
-              org={props.organization}
-              type={props.type}
-            />
-          )}
+          <UsageLogsGraph
+            starttime={logStartDate}
+            endtime={logEndDate}
+            repo={props.repository}
+            org={props.organization}
+            type={props.type}
+            isHidden={chartHidden}
+          />
         </FlexItem>
         <FlexItem>
           <UsageLogsTable

@@ -22,6 +22,7 @@ interface UsageLogsGraphProps {
   org: string;
   type: string;
   isSuperuser?: boolean;
+  isHidden?: boolean;
   freshLogin?: {
     showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
     isFreshLoginRequired: (error: unknown) => boolean;
@@ -159,6 +160,11 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
     });
 
     return legends;
+  }
+
+  // If hidden, return null
+  if (props.isHidden) {
+    return null;
   }
 
   if (getLegendData().length === 0) {
