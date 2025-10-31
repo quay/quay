@@ -19,6 +19,7 @@ import features
 from app import app
 from data.database import UseThenDisconnect
 from util.log import logfile_path
+from util.saas.exceptionlog import _sentry_before_send_ignore_known
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,7 @@ class Worker(object):
                         integrations=integrations,
                         default_integrations=False,
                         auto_session_tracking=True,
+                        before_send=_sentry_before_send_ignore_known,
                     )
                     sentry_sdk.set_tag("worker", worker_name)
                 except Exception as e:
