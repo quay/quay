@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -29,12 +30,12 @@ func buildEndpoint(endpointURL string, host string, port int, defaultIsSecure bo
 		endpoint = endpointURL
 
 		// Determine security from scheme
-		if len(endpoint) >= 8 && endpoint[:8] == "https://" {
+		if strings.HasPrefix(endpoint, "https://") {
 			isSecure = true
-			endpoint = endpoint[8:] // Strip "https://"
-		} else if len(endpoint) >= 7 && endpoint[:7] == "http://" {
+			endpoint = strings.TrimPrefix(endpoint, "https://")
+		} else if strings.HasPrefix(endpoint, "http://") {
 			isSecure = false
-			endpoint = endpoint[7:] // Strip "http://"
+			endpoint = strings.TrimPrefix(endpoint, "http://")
 		} else {
 			// No scheme in endpoint_url, use default
 			isSecure = defaultIsSecure
