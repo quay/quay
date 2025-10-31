@@ -15,6 +15,7 @@ import ChangeEmailModal from './modals/ChangeEmailModal';
 import ChangePasswordModal from './modals/ChangePasswordModal';
 import DeleteUserModal from './modals/DeleteUserModal';
 import ToggleUserStatusModal from './modals/ToggleUserStatusModal';
+import SendRecoveryEmailModal from './modals/SendRecoveryEmailModal';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -68,6 +69,8 @@ export default function OrganizationOptionsKebab(
     useState<boolean>(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] =
     useState<boolean>(false);
+  const [isSendRecoveryEmailModalOpen, setIsSendRecoveryEmailModalOpen] =
+    useState<boolean>(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] =
     useState<boolean>(false);
   const [isToggleUserStatusModalOpen, setIsToggleUserStatusModalOpen] =
@@ -97,6 +100,9 @@ export default function OrganizationOptionsKebab(
         break;
       case 'Change Password':
         setIsChangePasswordModalOpen(true);
+        break;
+      case 'Send Recovery E-mail':
+        setIsSendRecoveryEmailModalOpen(true);
         break;
       case 'Delete User':
         setIsDeleteUserModalOpen(true);
@@ -179,6 +185,17 @@ export default function OrganizationOptionsKebab(
           >
             Change Password
           </DropdownItem>,
+          // Add Send Recovery E-mail for regular users (only if MAILING feature enabled)
+          ...(quayConfig?.features?.MAILING
+            ? [
+                <DropdownItem
+                  key="sendRecoveryEmail"
+                  onClick={() => handleMenuItemClick('Send Recovery E-mail')}
+                >
+                  Send Recovery E-mail
+                </DropdownItem>,
+              ]
+            : []),
           <DropdownItem
             key="toggleStatus"
             onClick={() => handleMenuItemClick('Toggle User Status')}
@@ -276,6 +293,11 @@ export default function OrganizationOptionsKebab(
       <ChangePasswordModal
         isOpen={isChangePasswordModalOpen}
         onClose={() => setIsChangePasswordModalOpen(false)}
+        username={props.name}
+      />
+      <SendRecoveryEmailModal
+        isOpen={isSendRecoveryEmailModalOpen}
+        onClose={() => setIsSendRecoveryEmailModalOpen(false)}
         username={props.name}
       />
       <DeleteUserModal
