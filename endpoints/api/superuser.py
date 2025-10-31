@@ -479,7 +479,6 @@ class SuperUserList(ApiResource):
 
     schemas = {
         "CreateInstallUser": {
-            "id": "CreateInstallUser",
             "description": "Data for creating a user",
             "required": ["username"],
             "properties": {
@@ -627,7 +626,6 @@ class SuperUserManagement(ApiResource):
 
     schemas = {
         "UpdateUser": {
-            "id": "UpdateUser",
             "type": "object",
             "description": "Description of updates for a user",
             "properties": {
@@ -832,7 +830,6 @@ class SuperUserOrganizationManagement(ApiResource):
 
     schemas = {
         "UpdateOrg": {
-            "id": "UpdateOrg",
             "type": "object",
             "description": "Description of updates for an organization",
             "properties": {
@@ -917,7 +914,6 @@ class SuperUserServiceKeyManagement(ApiResource):
 
     schemas = {
         "CreateServiceKey": {
-            "id": "CreateServiceKey",
             "type": "object",
             "description": "Description of creation of a service key",
             "required": ["service", "expiration"],
@@ -939,8 +935,8 @@ class SuperUserServiceKeyManagement(ApiResource):
                     "description": "If specified, the extra notes for the key",
                 },
                 "expiration": {
+                    "type": ["number", "null"],
                     "description": "The expiration date as a unix timestamp",
-                    "anyOf": [{"type": "number"}, {"type": "null"}],
                 },
             },
         },
@@ -1051,7 +1047,6 @@ class SuperUserServiceKey(ApiResource):
 
     schemas = {
         "PutServiceKey": {
-            "id": "PutServiceKey",
             "type": "object",
             "description": "Description of updates for a service key",
             "properties": {
@@ -1064,8 +1059,8 @@ class SuperUserServiceKey(ApiResource):
                     "description": "The key/value pairs of this key's metadata",
                 },
                 "expiration": {
+                    "type": ["number", "null"],
                     "description": "The expiration date as a unix timestamp",
-                    "anyOf": [{"type": "number"}, {"type": "null"}],
                 },
             },
         },
@@ -1173,7 +1168,6 @@ class SuperUserServiceKeyApproval(ApiResource):
 
     schemas = {
         "ApproveServiceKey": {
-            "id": "ApproveServiceKey",
             "type": "object",
             "description": "Information for approving service keys",
             "properties": {

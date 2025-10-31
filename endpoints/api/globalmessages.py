@@ -28,7 +28,6 @@ class GlobalUserMessages(ApiResource):
 
     schemas = {
         "GetMessage": {
-            "id": "GetMessage",
             "type": "object",
             "description": "Messages that a super user has saved in the past",
             "properties": {
@@ -62,7 +61,6 @@ class GlobalUserMessages(ApiResource):
             },
         },
         "CreateMessage": {
-            "id": "CreateMessage",
             "type": "object",
             "description": "Create a new message",
             "properties": {
