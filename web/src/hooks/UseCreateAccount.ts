@@ -24,10 +24,16 @@ export function useCreateAccount() {
 
     try {
       // Create the user account
-      await createUser(username, password, email);
+      const response = await createUser(username, password, email);
 
       // Clear CSRF token after account creation (session state changed)
       GlobalAuthState.csrfToken = null;
+
+      // Check if email verification is required
+      if (response.awaiting_verification === true) {
+        // Email verification required, return success but indicate verification is needed
+        return {success: true, awaitingVerification: true};
+      }
 
       // Auto-login after successful account creation
       try {
