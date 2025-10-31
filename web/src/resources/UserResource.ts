@@ -352,3 +352,17 @@ export async function revokeApplicationToken(tokenUuid: string): Promise<void> {
     );
   }
 }
+
+export interface SendRecoveryEmailResponse {
+  email: string;
+}
+
+export async function sendRecoveryEmail(
+  username: string,
+): Promise<SendRecoveryEmailResponse> {
+  const response: AxiosResponse<SendRecoveryEmailResponse> = await axios.post(
+    `/api/v1/superusers/users/${username}/sendrecovery`,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
