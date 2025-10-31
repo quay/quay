@@ -77,5 +77,23 @@ export function useLoginFooterItems() {
     );
   }
 
+  // Add Contact link if configured
+  const hasContact =
+    quayConfig?.config?.CONTACT_INFO &&
+    quayConfig.config.CONTACT_INFO.length > 0;
+  if (hasContact) {
+    const contactHref =
+      quayConfig.config.CONTACT_INFO.length === 1
+        ? quayConfig.config.CONTACT_INFO[0]
+        : '/contact/';
+    footerItems.push(
+      <ListItem key="contact">
+        <a href={contactHref} target="_self">
+          Contact
+        </a>
+      </ListItem>,
+    );
+  }
+
   return footerItems.length > 0 ? footerItems : null;
 }
