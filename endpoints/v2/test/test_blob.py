@@ -3,6 +3,7 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 
+import bitmath
 import pytest
 from flask import url_for
 from playhouse.test_utils import assert_query_count
@@ -513,6 +514,94 @@ def test_blob_upload_offset(client, app):
         expected_code=416,
         headers=headers,
         body="something",
+    )
+
+
+def test_blob_exception(client, app):
+    user = model.user.get_user("devtable")
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+    token = generate_bearer_token(
+        realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+    )
+
+    params = {
+        "repository": "devtable/simple",
+    }
+    headers = {
+        "Authorization": "Bearer %s" % token,
+    }
+    response = conduct_call(
+        client, "v2.start_blob_upload", url_for, "POST", params, expected_code=202, headers=headers
+    )
+
+    upload_uuid = response.headers["Docker-Upload-UUID"]
+    digest = hashlib.sha256("".encode("utf8")).hexdigest()
+
+    params = {
+        "repository": "devtable/simple",
+        "upload_uuid": upload_uuid,
+        "digest": f"sha256:{digest}",
+    }
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+        "content-length": str(int(bitmath.parse_string_unsafe("500G").bytes)),
+    }
+
+    # checking for an PUT call with a content-length (monolithic) exceeding max
+    # with this PR the return code should also be specific to 416 in such use-case
+    conduct_call(
+        client,
+        "v2.monolithic_upload_or_last_chunk",
+        url_for,
+        "PUT",
+        params,
+        expected_code=416,
+        headers=headers,
+        body="something",
+    )
+
+    params = {
+        "repository": "devtable/simple",
+    }
+    headers = {
+        "Authorization": "Bearer %s" % token,
+    }
+    response = conduct_call(
+        client, "v2.start_blob_upload", url_for, "POST", params, expected_code=202, headers=headers
+    )
+
+    upload_uuid = response.headers["Docker-Upload-UUID"]
+    digest = hashlib.sha256("".encode("utf8")).hexdigest()
+
+    params = {
+        "repository": "devtable/simple",
+        "upload_uuid": upload_uuid,
+        "digest": f"sha256:{digest}",
+    }
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+        "content-length": str(int(bitmath.parse_string_unsafe("5M").bytes)),
+    }
+
+    # checking for an PUT call with a content-length (monolithic) acceptable
+    conduct_call(
+        client,
+        "v2.monolithic_upload_or_last_chunk",
+        url_for,
+        "PUT",
+        params,
+        expected_code=201,
+        headers=headers,
     )
 
 
