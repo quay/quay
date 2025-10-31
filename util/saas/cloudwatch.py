@@ -30,10 +30,10 @@ def start_cloudwatch_sender(metrics, app):
         return
 
     if use_sts:
-        sender = CloudWatchSender(metrics, namespace)
+        sender = CloudWatchSender(metrics, None, None, namespace)
         sender.start()
     else:
-        sender = CloudWatchSender(metrics, namespace, access_key, secret_key)
+        sender = CloudWatchSender(metrics, access_key, secret_key, namespace)
         sender.start()
 
 
@@ -45,7 +45,7 @@ class CloudWatchSender(Thread):
     Supports both IAM key based auth and STS roles
     """
 
-    def __init__(self, metrics, namespace, aws_access_key=None, aws_secret_key=None):
+    def __init__(self, metrics, aws_access_key, aws_secret_key, namespace):
         Thread.__init__(self)
         self.daemon = True
 
