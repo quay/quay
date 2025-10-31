@@ -6,6 +6,7 @@ import {
   searchOrgsState,
 } from 'src/atoms/OrganizationListState';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import {IQuotaReport} from 'src/libs/quotaUtils';
 import {
   bulkDeleteOrganizations,
   createOrg,
@@ -19,6 +20,7 @@ export type OrganizationDetail = {
   isUser: boolean;
   userEnabled?: boolean;
   userSuperuser?: boolean;
+  quota_report?: IQuotaReport;
 };
 
 export function useOrganizations() {
@@ -68,19 +70,25 @@ export function useOrganizations() {
 
   const organizationsTableDetails = [] as OrganizationDetail[];
   for (const orgname of orgnames) {
+    // Find the organization object to get quota_report
+    const orgObj = (superUserOrganizations || []).find(
+      (o) => o.name === orgname,
+    );
     organizationsTableDetails.push({
       name: orgname,
       isUser: false,
+      quota_report: orgObj?.quota_report,
     });
   }
   for (const username of usernames) {
-    // Find the user's enabled status from superUserUsers
+    // Find the user's enabled status and quota_report from superUserUsers
     const userObj = (superUserUsers || []).find((u) => u.username === username);
     organizationsTableDetails.push({
       name: username,
       isUser: true,
       userEnabled: userObj?.enabled,
       userSuperuser: userObj?.super_user,
+      quota_report: userObj?.quota_report,
     });
   }
 

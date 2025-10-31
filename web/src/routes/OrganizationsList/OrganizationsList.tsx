@@ -480,6 +480,7 @@ export default function OrganizationsList() {
                   userEnabled={org.userEnabled}
                   userSuperuser={org.userSuperuser}
                   userEmail={org.isUser ? userEmailMap[org.name] : undefined}
+                  quota_report={org.quota_report}
                 ></OrgTableData>
               </Tr>
             ))}

@@ -135,4 +135,111 @@ describe('Org List Page', () => {
     cy.get('td[data-label="Name"]').should('have.length', 20);
     cy.contains('1 - 20 of 30').should('exist');
   });
+
+  it('Superuser displays quota consumed column (PROJQUAY-9641)', () => {
+    // This test verifies that superusers can see quota consumed data
+    // for organizations and user namespaces in the organizations list
+
+    // Mock config with quota features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.QUOTA_MANAGEMENT = true;
+      config.features.EDIT_QUOTA = true;
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Mock superuser organizations with quota_report data
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      // Add quota_report to organizations
+      orgsData.organizations[0].quota_report = {
+        quota_bytes: 10737418240,
+        configured_quota: 53687091200,
+      };
+      orgsData.organizations[1].quota_report = {
+        quota_bytes: 5368709120,
+        configured_quota: 21474836480,
+      };
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    // Mock superuser users with quota_report data
+    cy.fixture('superuser-users.json').then((usersData) => {
+      // Add quota_report to users
+      usersData.users[0].quota_report = {
+        quota_bytes: 2147483648,
+        configured_quota: 10737418240,
+      };
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    // Mock organization details
+    cy.intercept('GET', '/api/v1/organization/testorg', {
+      statusCode: 200,
+      body: {
+        name: 'testorg',
+        email: 'testorg@example.com',
+        teams: {owners: 'admin'},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/projectquay', {
+      statusCode: 200,
+      body: {
+        name: 'projectquay',
+        email: 'projectquay@example.com',
+        teams: {},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/coreos', {
+      statusCode: 200,
+      body: {
+        name: 'coreos',
+        email: 'coreos@example.com',
+        teams: {owners: 'admin'},
+      },
+    });
+
+    // Mock robots/members/repositories for all organizations
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Verify the Size column header exists for superusers
+    cy.contains('th', 'Size').should('exist');
+
+    // Verify quota data cells are visible and contain actual data
+    cy.get('td[data-label="Size"]').should('exist');
+
+    // Verify at least one organization shows quota consumed data (not "—")
+    // The quota should be displayed as "10.0 GiB / 50.0 GiB" format
+    cy.get('td[data-label="Size"]').first().should('not.contain.text', '—');
+  });
 });
