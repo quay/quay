@@ -616,7 +616,7 @@ describe('Superuser User Management', () => {
       });
 
       cy.fixture('superuser.json').then((user) => {
-        user.global_readonly_super_user = true;
+        user.is_global_readonly_superuser = true;
         cy.intercept('GET', '/api/v1/user/', user).as('getSuperUserReadOnly');
       });
 

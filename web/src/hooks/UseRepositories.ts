@@ -12,9 +12,11 @@ import {
   IRepository,
 } from 'src/resources/RepositoryResource';
 import {useCurrentUser} from './UseCurrentUser';
+import {useOrganizations} from './UseOrganizations';
 
 export function useRepositories(organization?: string) {
-  const {user} = useCurrentUser();
+  const {user, isSuperUser} = useCurrentUser();
+  const {organizationsTableDetails} = useOrganizations();
 
   // Keep state of current search in this hook
   const [page, setPage] = useState(1);
@@ -24,9 +26,14 @@ export function useRepositories(organization?: string) {
   const [currentOrganization, setCurrentOrganization] = useState(organization);
   const [partialResults, setPartialResults] = useState<IRepository[]>([]);
 
+  // Build list of namespaces to fetch repositories for
+  // For superusers, use the complete organizations list (includes all orgs + users)
+  // For regular users, use only their own organizations + username
   const listOfOrgNames: string[] = currentOrganization
     ? [currentOrganization]
-    : user?.organizations.map((org) => org.name).concat(user.username);
+    : isSuperUser
+    ? organizationsTableDetails?.map((org) => org.name) || []
+    : user?.organizations.map((org) => org.name).concat(user.username) || [];
 
   const handlePartialResults = useCallback((newRepos: IRepository[]) => {
     setPartialResults((prev) => [...prev, ...newRepos]);

@@ -26,7 +26,7 @@ export interface IUserResource {
   tag_expiration_s: number;
   prompts: [];
   super_user: boolean;
-  global_readonly_super_user?: boolean;
+  is_global_readonly_superuser?: boolean;
   enabled?: boolean; // User enabled/disabled status (for superuser user management)
   company: string;
   family_name: string;

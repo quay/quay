@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from flask import url_for
 from mock import patch
@@ -8,6 +6,7 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.user import User
 from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
+from test.fixtures import *
 
 
 def test_user_metadata_update(app):
@@ -133,3 +132,54 @@ def test_initialize_user(
                         assert 40 == len(user.json.get("access_token", ""))
                     else:
                         assert not user.json.get("access_token")
+
+
+def test_user_response_includes_super_user_field_for_regular_superuser(app):
+    """Test that regular superusers get super_user=True in the response."""
+    with patch("endpoints.api.user.SuperUserPermission") as mock_super_perm, patch(
+        "endpoints.api.user.allow_if_global_readonly_superuser", return_value=False
+    ):
+        mock_super_perm.return_value.can.return_value = True
+
+        with client_with_identity("devtable", app) as cl:
+            resp = conduct_api_call(cl, User, "GET", None, None, 200)
+
+            # Verify the super_user field is present and True
+            assert "super_user" in resp.json
+            assert resp.json["super_user"] is True
+
+            # Verify is_global_readonly_superuser is not True
+            assert resp.json.get("is_global_readonly_superuser", False) is False
+
+
+def test_user_response_includes_is_global_readonly_superuser_field(app):
+    """Test that global readonly superusers get the is_global_readonly_superuser field."""
+    with patch("endpoints.api.user.SuperUserPermission") as mock_super_perm, patch(
+        "endpoints.api.user.allow_if_global_readonly_superuser", return_value=True
+    ):
+        mock_super_perm.return_value.can.return_value = False
+
+        with client_with_identity("freshuser", app) as cl:
+            resp = conduct_api_call(cl, User, "GET", None, None, 200)
+
+            # Verify the field is present and True
+            assert "is_global_readonly_superuser" in resp.json
+            assert resp.json["is_global_readonly_superuser"] is True
+
+            # Verify super_user is not True for global readonly users
+            assert resp.json.get("super_user", False) is False
+
+
+def test_user_response_for_regular_user_has_no_superuser_fields(app):
+    """Test that regular users don't get superuser fields set to True in the response."""
+    with patch("endpoints.api.user.SuperUserPermission") as mock_super_perm, patch(
+        "endpoints.api.user.allow_if_global_readonly_superuser", return_value=False
+    ):
+        mock_super_perm.return_value.can.return_value = False
+
+        with client_with_identity("freshuser", app) as cl:
+            resp = conduct_api_call(cl, User, "GET", None, None, 200)
+
+            # Verify superuser fields are not True
+            assert resp.json.get("super_user", False) is False
+            assert resp.json.get("is_global_readonly_superuser", False) is False
