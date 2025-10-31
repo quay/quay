@@ -1110,4 +1110,170 @@ describe('Organization OAuth Applications', () => {
       cy.contains('OAuth Applications').should('exist');
     });
   });
+
+  describe('User External Logins - Authorize Application', () => {
+    it('should authorize assigned application from user external logins tab', () => {
+      // Mock config with ASSIGN_OAUTH_TOKEN feature enabled
+      cy.intercept('GET', '/config', (req) =>
+        req.reply((res) => {
+          res.body.features = {
+            ...res.body.features,
+            ASSIGN_OAUTH_TOKEN: true,
+          };
+          res.body.config.LOCAL_OAUTH_HANDLER = '/oauth/localapp';
+          res.body.config.PREFERRED_URL_SCHEME = 'http';
+          res.body.config.SERVER_HOSTNAME = 'localhost:8080';
+          return res;
+        }),
+      ).as('getConfig');
+
+      // Mock user2's organization data
+      cy.intercept('GET', '/api/v1/organization/user2', {
+        body: {
+          name: 'user2',
+          email: 'user2@example.com',
+          is_admin: false,
+          is_member: true,
+        },
+      }).as('getUser2Org');
+
+      // Mock user2's already authorized applications (empty for this test)
+      cy.intercept('GET', '/api/v1/user/authorizations', {
+        body: {
+          authorizations: [],
+        },
+      }).as('getAuthorizedApps');
+
+      // Mock user2's ASSIGNED applications (apps waiting for authorization)
+      cy.intercept('GET', '/api/v1/user/assignedauthorization', {
+        body: {
+          authorizations: [
+            {
+              application: {
+                name: 'test-app',
+                description: 'Test OAuth application',
+                url: 'https://example.com',
+                organization: {
+                  name: 'testorg',
+                  avatar: {
+                    name: 'testorg',
+                    hash: 'abc123',
+                    command: [],
+                    kind: 'user',
+                  },
+                },
+                clientId: 'TEST123',
+              },
+              scopes: [
+                {
+                  scope: 'user:read',
+                  description:
+                    'This application will be able to read user information such as username and email address.',
+                },
+              ],
+              uuid: 'assigned-uuid-123',
+              responseType: 'token',
+              redirectUri: 'http://localhost:8080/oauth/localapp',
+            },
+          ],
+        },
+      }).as('getAssignedApps');
+
+      // Mock the /oauth/authorize endpoint to return authorization data
+      cy.intercept('GET', '/oauth/authorize?*', {
+        body: {
+          application: {
+            name: 'test-app',
+            description: 'Test OAuth application',
+            organization: {
+              name: 'testorg',
+            },
+          },
+          client_id: 'TEST123',
+          redirect_uri: 'http://localhost:8080/oauth/localapp',
+          scope: 'user:read',
+          response_type: 'token',
+          assignment_uuid: 'assigned-uuid-123',
+          csrf_token_val: 'test-csrf-token',
+          scopes: [
+            {
+              scope: 'user:read',
+              title: 'Read User Information',
+              description:
+                'This application will be able to read user information such as username and email address.',
+              icon: 'fa-user',
+              dangerous: false,
+            },
+          ],
+          has_dangerous_scopes: false,
+        },
+      }).as('getAuthorizationData');
+
+      // Visit user2's external logins page
+      cy.visit('/organization/user2?tab=Externallogins');
+      cy.wait('@getConfig');
+      cy.wait('@getUser2Org');
+      cy.wait('@getAuthorizedApps');
+      cy.wait('@getAssignedApps');
+
+      // Find and click the "Authorize Application" button
+      cy.contains('Authorize Application').should('exist').click();
+
+      // Wait for authorization data to be fetched
+      cy.wait('@getAuthorizationData');
+
+      // Verify the authorization modal appears
+      cy.get('[role="dialog"]').should('be.visible');
+      cy.contains('test-app').should('be.visible');
+      cy.contains('This application would like permission to:').should(
+        'be.visible',
+      );
+
+      // Stub window.open and form submission to simulate OAuth flow
+      cy.window().then((win) => {
+        // Stub window.open to return a fake popup
+        const fakePopup = {
+          closed: false,
+          close: cy.stub(),
+        };
+        cy.stub(win, 'open').returns(fakePopup);
+
+        // Stub form submit to simulate OAuth callback
+        const submitStub = cy.stub(win.HTMLFormElement.prototype, 'submit');
+        submitStub.callsFake(function () {
+          // Simulate successful OAuth callback by posting message
+          setTimeout(() => {
+            win.postMessage(
+              {
+                type: 'OAUTH_TOKEN_GENERATED',
+                token: 'test-generated-token-456',
+                scope: 'user:read',
+                state: null,
+              },
+              win.location.origin,
+            );
+          }, 100);
+        });
+      });
+
+      // Click "Authorize Application" button in the modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // Verify token display modal appears
+      cy.contains('Access Token Generated', {timeout: 5000}).should('exist');
+      cy.contains('Your access token has been successfully generated').should(
+        'exist',
+      );
+
+      // Verify token is displayed in the ClipboardCopy input
+      cy.get('.pf-v5-c-clipboard-copy input').should(
+        'have.value',
+        'test-generated-token-456',
+      );
+
+      // Verify user is still in the External Logins tab (no redirect)
+      cy.url().should('include', '/organization/user2');
+      cy.url().should('include', 'tab=Externallogins');
+    });
+  });
 });
