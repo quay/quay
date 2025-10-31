@@ -28,6 +28,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
     SuperUserPermission,
     UserAdminPermission,
     UserReadPermission,
@@ -214,12 +215,14 @@ def user_view(user, previous_username=None):
             }
         )
 
-    if features.SUPER_USERS and SuperUserPermission().can():
+    if features.SUPER_USERS and (
+        SuperUserPermission().can() or GlobalReadOnlySuperUserPermission().can()
+    ):
         user_response.update(
             {
                 "super_user": user
                 and user == get_authenticated_user()
-                and SuperUserPermission().can()
+                and (SuperUserPermission().can() or GlobalReadOnlySuperUserPermission().can())
             }
         )
 
