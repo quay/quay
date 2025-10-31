@@ -1,5 +1,5 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import {useRecoilState, useRecoilValue} from 'recoil';
 import {
   searchOrgsFilterState,
@@ -53,65 +53,88 @@ export function useOrganizations() {
     },
   );
 
-  // Build org names list: always include user's orgs, add superuser orgs if available
-  const userOrgNames = (user?.organizations || []).map((org) => org.name);
-  let orgnames: string[] = [...userOrgNames];
+  const organizationsTableDetails = useMemo(() => {
+    // Build org names list: always include user's orgs, add superuser orgs if available
+    const userOrgNames = (user?.organizations || []).map((org) => org.name);
+    let orgnames: string[] = [...userOrgNames];
 
-  if (isSuperUser && superUserOrganizations) {
-    const superOrgNames = superUserOrganizations.map((org) => org.name);
-    const additionalOrgNames = superOrgNames.filter(
-      (name) => !userOrgNames.includes(name),
-    );
-    orgnames = [...orgnames, ...additionalOrgNames];
-  }
+    if (isSuperUser && superUserOrganizations) {
+      const superOrgNames = superUserOrganizations.map((org) => org.name);
+      const additionalOrgNames = superOrgNames.filter(
+        (name) => !userOrgNames.includes(name),
+      );
+      orgnames = [...orgnames, ...additionalOrgNames];
+    }
 
-  // Build user names list: always include current user, add superuser users if available
-  const currentUsername = user?.username ? [user.username] : [];
-  let usernames: string[] = [...currentUsername];
+    // Build user names list: always include current user, add superuser users if available
+    const currentUsername = user?.username ? [user.username] : [];
+    let usernames: string[] = [...currentUsername];
 
-  if (isSuperUser && superUserUsers) {
-    const superUsernames = superUserUsers
-      .map((user) => user.username)
-      .filter((x) => x);
-    const additionalUsernames = superUsernames.filter(
-      (name) => !currentUsername.includes(name),
-    );
-    usernames = [...usernames, ...additionalUsernames];
-  }
+    if (isSuperUser && superUserUsers) {
+      const superUsernames = superUserUsers
+        .map((user) => user.username)
+        .filter((x) => x);
+      const additionalUsernames = superUsernames.filter(
+        (name) => !currentUsername.includes(name),
+      );
+      usernames = [...usernames, ...additionalUsernames];
+    }
 
-  const organizationsTableDetails = [] as OrganizationDetail[];
-  for (const orgname of orgnames) {
-    // Find the organization object to get quota_report
-    const orgObj = (superUserOrganizations || []).find(
-      (o) => o.name === orgname,
-    );
-    organizationsTableDetails.push({
-      name: orgname,
-      isUser: false,
-      quota_report: orgObj?.quota_report,
-    });
-  }
-  for (const username of usernames) {
-    // Find the user's enabled status and quota_report from superUserUsers
-    const userObj = (superUserUsers || []).find((u) => u.username === username);
-    organizationsTableDetails.push({
-      name: username,
-      isUser: true,
-      userEnabled: userObj?.enabled,
-      userSuperuser: userObj?.super_user,
-      quota_report: userObj?.quota_report,
-    });
-  }
+    const details = [] as OrganizationDetail[];
+    for (const orgname of orgnames) {
+      const orgObj = (superUserOrganizations || []).find(
+        (o) => o.name === orgname,
+      );
+      details.push({
+        name: orgname,
+        isUser: false,
+        quota_report: orgObj?.quota_report,
+      });
+    }
+    for (const username of usernames) {
+      const userObj = (superUserUsers || []).find(
+        (u) => u.username === username,
+      );
+      details.push({
+        name: username,
+        isUser: true,
+        userEnabled: userObj?.enabled,
+        userSuperuser: userObj?.super_user,
+        quota_report: userObj?.quota_report,
+      });
+    }
 
-  // Create a map of username -> email for easy lookup
-  const userEmailMap: Record<string, string> = {};
-  if (isSuperUser && superUserUsers) {
-    superUserUsers.forEach((user) => {
-      if (user.username && user.email) {
-        userEmailMap[user.username] = user.email;
-      }
-    });
-  }
+    return details;
+  }, [user, isSuperUser, superUserOrganizations, superUserUsers]);
+
+  const userEmailMap = useMemo(() => {
+    const emailMap: Record<string, string> = {};
+    if (isSuperUser && superUserUsers) {
+      superUserUsers.forEach((user) => {
+        if (user.username && user.email) {
+          emailMap[user.username] = user.email;
+        }
+      });
+    }
+    return emailMap;
+  }, [isSuperUser, superUserUsers]);
+
+  const usernames = useMemo(() => {
+    const currentUsername = user?.username ? [user.username] : [];
+    let usernamesList: string[] = [...currentUsername];
+
+    if (isSuperUser && superUserUsers) {
+      const superUsernames = superUserUsers
+        .map((user) => user.username)
+        .filter((x) => x);
+      const additionalUsernames = superUsernames.filter(
+        (name) => !currentUsername.includes(name),
+      );
+      usernamesList = [...usernamesList, ...additionalUsernames];
+    }
+
+    return usernamesList;
+  }, [user, isSuperUser, superUserUsers]);
 
   // Get query client for mutations
   const queryClient = useQueryClient();
