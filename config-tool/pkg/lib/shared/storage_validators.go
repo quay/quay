@@ -170,6 +170,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 					FieldGroup: fgName,
 					Message:    "Invalid endpoint configuration: " + err.Error(),
 				})
+				return false, errors
 			}
 		} else {
 			// Default to AWS S3
@@ -484,6 +485,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 					FieldGroup: fgName,
 					Message:    "Invalid endpoint configuration: " + err.Error(),
 				})
+				return false, errors
 			}
 		} else {
 			// Default to AWS S3
