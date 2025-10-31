@@ -122,11 +122,16 @@ export interface CreateUserRequest {
   email: string;
 }
 
+export interface CreateUserResponse {
+  awaiting_verification?: boolean;
+  [key: string]: any; // Allow other fields from the API response
+}
+
 export async function createUser(
   username: string,
   password: string,
   email: string,
-) {
+): Promise<CreateUserResponse> {
   const response = await axios.post('/api/v1/user/', {
     username,
     password,

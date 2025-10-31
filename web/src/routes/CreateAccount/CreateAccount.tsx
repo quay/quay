@@ -22,6 +22,7 @@ export function CreateAccount() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
 
   const {createAccountWithAutoLogin, isLoading, error, setError} =
     useCreateAccount();
@@ -75,7 +76,10 @@ export function CreateAccount() {
       return;
     }
 
-    await createAccountWithAutoLogin(username, password, email);
+    const result = await createAccountWithAutoLogin(username, password, email);
+    if (result.success && result.awaitingVerification) {
+      setAwaitingVerification(true);
+    }
   };
 
   const errMessage = (
@@ -89,166 +93,194 @@ export function CreateAccount() {
   );
 
   const createAccountForm = (
-    <Form>
-      <FormGroup
-        label="Username"
-        isRequired
-        fieldId="username"
-        validated={validateUsername(username)}
-      >
-        <TextInput
-          isRequired
-          type="text"
-          id="username"
-          name="username"
-          value={username}
-          onChange={(_event, v) => setUsername(v)}
-          validated={validateUsername(username)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validateUsername(username) === ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validateUsername(username) === ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Username must be at least 3 characters and contain only letters,
-              numbers, hyphens, underscores, and periods
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup
-        label="Email"
-        isRequired
-        fieldId="email"
-        validated={validateEmail(email)}
-      >
-        <TextInput
-          isRequired
-          type="email"
-          id="email"
-          name="email"
-          value={email}
-          onChange={(_event, v) => setEmail(v)}
-          validated={validateEmail(email)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validateEmail(email) === ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validateEmail(email) === ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Please enter a valid email address
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup
-        label="Password"
-        isRequired
-        fieldId="password"
-        validated={validatePassword(password)}
-      >
-        <TextInput
-          isRequired
-          type="password"
-          id="password"
-          name="password"
-          value={password}
-          onChange={(_event, v) => setPassword(v)}
-          validated={validatePassword(password)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validatePassword(password) === ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validatePassword(password) === ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Password must be at least 8 characters long
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      <FormGroup
-        label="Confirm Password"
-        isRequired
-        fieldId="confirm-password"
-        validated={validateConfirmPassword(confirmPassword)}
-      >
-        <TextInput
-          isRequired
-          type="password"
-          id="confirm-password"
-          name="confirm-password"
-          value={confirmPassword}
-          onChange={(_event, v) => setConfirmPassword(v)}
-          validated={validateConfirmPassword(confirmPassword)}
-        />
-        <FormHelperText>
-          <HelperText>
-            <HelperTextItem
-              variant={
-                validateConfirmPassword(confirmPassword) ===
-                ValidatedOptions.error
-                  ? 'error'
-                  : 'default'
-              }
-              icon={
-                validateConfirmPassword(confirmPassword) ===
-                ValidatedOptions.error ? (
-                  <ExclamationCircleIcon />
-                ) : undefined
-              }
-            >
-              Passwords must match
-            </HelperTextItem>
-          </HelperText>
-        </FormHelperText>
-      </FormGroup>
-
-      {error && errMessage}
-
-      <FormGroup>
-        <Button
-          variant="primary"
-          type="submit"
-          isBlock
-          isDisabled={!isFormValid() || isLoading}
-          isLoading={isLoading}
-          onClick={onCreateAccountClick}
+    <>
+      {awaitingVerification && (
+        <Alert
+          variant="info"
+          isInline
+          title=""
+          style={{marginBottom: '20px'}}
+          data-testid="awaiting-verification-alert"
         >
-          Create Account
-        </Button>
-      </FormGroup>
+          Thank you for registering! We have sent you an activation email. You
+          must <strong>verify your email address</strong> before you can
+          continue.
+        </Alert>
+      )}
 
-      <FormGroup>
+      <Form style={{display: awaitingVerification ? 'none' : 'block'}}>
+        <FormGroup
+          label="Username"
+          isRequired
+          fieldId="username"
+          validated={validateUsername(username)}
+        >
+          <TextInput
+            isRequired
+            type="text"
+            id="username"
+            name="username"
+            value={username}
+            onChange={(_event, v) => setUsername(v)}
+            validated={validateUsername(username)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validateUsername(username) === ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validateUsername(username) === ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Username must be at least 3 characters and contain only letters,
+                numbers, hyphens, underscores, and periods
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup
+          label="Email"
+          isRequired
+          fieldId="email"
+          validated={validateEmail(email)}
+        >
+          <TextInput
+            isRequired
+            type="email"
+            id="email"
+            name="email"
+            value={email}
+            onChange={(_event, v) => setEmail(v)}
+            validated={validateEmail(email)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validateEmail(email) === ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validateEmail(email) === ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Please enter a valid email address
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup
+          label="Password"
+          isRequired
+          fieldId="password"
+          validated={validatePassword(password)}
+        >
+          <TextInput
+            isRequired
+            type="password"
+            id="password"
+            name="password"
+            value={password}
+            onChange={(_event, v) => setPassword(v)}
+            validated={validatePassword(password)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validatePassword(password) === ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validatePassword(password) === ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Password must be at least 8 characters long
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        <FormGroup
+          label="Confirm Password"
+          isRequired
+          fieldId="confirm-password"
+          validated={validateConfirmPassword(confirmPassword)}
+        >
+          <TextInput
+            isRequired
+            type="password"
+            id="confirm-password"
+            name="confirm-password"
+            value={confirmPassword}
+            onChange={(_event, v) => setConfirmPassword(v)}
+            validated={validateConfirmPassword(confirmPassword)}
+          />
+          <FormHelperText>
+            <HelperText>
+              <HelperTextItem
+                variant={
+                  validateConfirmPassword(confirmPassword) ===
+                  ValidatedOptions.error
+                    ? 'error'
+                    : 'default'
+                }
+                icon={
+                  validateConfirmPassword(confirmPassword) ===
+                  ValidatedOptions.error ? (
+                    <ExclamationCircleIcon />
+                  ) : undefined
+                }
+              >
+                Passwords must match
+              </HelperTextItem>
+            </HelperText>
+          </FormHelperText>
+        </FormGroup>
+
+        {error && errMessage}
+
+        <FormGroup>
+          <Button
+            variant="primary"
+            type="submit"
+            isBlock
+            isDisabled={!isFormValid() || isLoading}
+            isLoading={isLoading}
+            onClick={onCreateAccountClick}
+          >
+            Create Account
+          </Button>
+        </FormGroup>
+
+        <FormGroup>
+          <div style={{textAlign: 'center', marginTop: '16px'}}>
+            Already have an account?{' '}
+            <Link
+              to="/signin"
+              style={{color: 'var(--pf-v5-global--link--Color)'}}
+            >
+              Sign in
+            </Link>
+          </div>
+        </FormGroup>
+      </Form>
+
+      {awaitingVerification && (
         <div style={{textAlign: 'center', marginTop: '16px'}}>
           Already have an account?{' '}
           <Link
@@ -258,8 +290,8 @@ export function CreateAccount() {
             Sign in
           </Link>
         </div>
-      </FormGroup>
-    </Form>
+      )}
+    </>
   );
 
   return (
