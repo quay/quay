@@ -242,4 +242,30 @@ describe('Org List Page', () => {
     // The quota should be displayed as "10.0 GiB / 50.0 GiB" format
     cy.get('td[data-label="Size"]').first().should('not.contain.text', '—');
   });
+
+  it('Superuser displays user status labels', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+
+    cy.get('#orgslist-search-input').type('user1');
+
+    cy.contains('a', 'user1')
+      .parents('tr')
+      .within(() => {
+        cy.contains('Superuser').should('exist');
+      });
+  });
 });
