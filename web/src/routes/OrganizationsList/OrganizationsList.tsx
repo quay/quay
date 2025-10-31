@@ -411,9 +411,11 @@ export default function OrganizationsList() {
         handleCalculateClick={handleCalculateClick}
         isQueuing={isQueuing}
         showRegistrySize={
-          user?.super_user &&
-          quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA
+          !!(
+            user?.super_user &&
+            quayConfig?.features?.QUOTA_MANAGEMENT &&
+            quayConfig?.features?.EDIT_QUOTA
+          )
         }
       />
       <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
