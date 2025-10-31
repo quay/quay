@@ -31,10 +31,9 @@ def start_cloudwatch_sender(metrics, app):
 
     if use_sts:
         sender = CloudWatchSender(metrics, None, None, namespace)
-        sender.start()
     else:
         sender = CloudWatchSender(metrics, access_key, secret_key, namespace)
-        sender.start()
+    sender.start()
 
 
 class CloudWatchSender(Thread):
