@@ -1,5 +1,5 @@
 import {Td} from '@patternfly/react-table';
-import {Skeleton, Flex, FlexItem} from '@patternfly/react-core';
+import {Skeleton, Flex, FlexItem, Label} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
@@ -126,24 +126,49 @@ export default function OrgTableData(props: OrgTableDataProps) {
   return (
     <>
       <Td dataLabel={ColumnNames.name}>
-        <Flex alignItems={{default: 'alignItemsCenter'}}>
-          {/* Show avatar for organizations OR current user */}
-          {((props.isUser &&
-            currentUser?.username === props.name &&
-            currentUser?.avatar) ||
-            (!props.isUser && organization?.avatar)) && (
-            <FlexItem spacer={{default: 'spacerSm'}}>
-              <Avatar
-                avatar={
-                  props.isUser ? currentUser?.avatar : organization?.avatar
-                }
-                size="sm"
-              />
+        <Flex
+          alignItems={{default: 'alignItemsCenter'}}
+          justifyContent={{default: 'justifyContentSpaceBetween'}}
+        >
+          <Flex alignItems={{default: 'alignItemsCenter'}}>
+            {/* Show avatar for organizations OR current user */}
+            {((props.isUser &&
+              currentUser?.username === props.name &&
+              currentUser?.avatar) ||
+              (!props.isUser && organization?.avatar)) && (
+              <FlexItem spacer={{default: 'spacerSm'}}>
+                <Avatar
+                  avatar={
+                    props.isUser ? currentUser?.avatar : organization?.avatar
+                  }
+                  size="sm"
+                />
+              </FlexItem>
+            )}
+            <FlexItem>
+              <Link to={props.name}>{props.name}</Link>
             </FlexItem>
+          </Flex>
+          {/* Show status labels for users (right-aligned, superuser only) */}
+          {isSuperUser && props.isUser && (
+            <Flex spaceItems={{default: 'spaceItemsXs'}}>
+              {currentUser?.username === props.name && (
+                <FlexItem>
+                  <Label color="green">You</Label>
+                </FlexItem>
+              )}
+              {props.userSuperuser && (
+                <FlexItem>
+                  <Label color="blue">Superuser</Label>
+                </FlexItem>
+              )}
+              {props.userEnabled === false && (
+                <FlexItem>
+                  <Label>Disabled</Label>
+                </FlexItem>
+              )}
+            </Flex>
           )}
-          <FlexItem>
-            <Link to={props.name}>{props.name}</Link>
-          </FlexItem>
         </Flex>
       </Td>
       {isSuperUser && config?.features?.MAILING && (
