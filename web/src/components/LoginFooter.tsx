@@ -7,6 +7,12 @@ export function useLoginFooterItems() {
 
   const footerItems: React.ReactNode[] = [];
 
+  if (quayConfig?.version_number) {
+    footerItems.push(
+      <ListItem key="version">{quayConfig.version_number}</ListItem>,
+    );
+  }
+
   if (quayConfig?.config?.FOOTER_LINKS?.TERMS_OF_SERVICE_URL) {
     footerItems.push(
       <ListItem key="terms">
@@ -72,6 +78,24 @@ export function useLoginFooterItems() {
           rel="noopener noreferrer"
         >
           Documentation
+        </a>
+      </ListItem>,
+    );
+  }
+
+  // Add Contact link if configured
+  const hasContact =
+    quayConfig?.config?.CONTACT_INFO &&
+    quayConfig.config.CONTACT_INFO.length > 0;
+  if (hasContact) {
+    const contactHref =
+      quayConfig.config.CONTACT_INFO.length === 1
+        ? quayConfig.config.CONTACT_INFO[0]
+        : '/contact/';
+    footerItems.push(
+      <ListItem key="contact">
+        <a href={contactHref} target="_self">
+          Contact
         </a>
       </ListItem>,
     );
