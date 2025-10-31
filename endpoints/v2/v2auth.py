@@ -97,7 +97,7 @@ def generate_registry_jwt(auth_result):
 
     if auth_credentials_sent and not has_valid_auth_context:
         # The auth credentials sent for the user are invalid.
-        raise InvalidLogin(auth_result.error_message)
+        raise InvalidLogin(message=auth_result.error_message)
 
     if not has_valid_auth_context and len(scope_params) == 0:
         # In this case, we are doing an auth flow, and it's not an anonymous pull.
@@ -220,7 +220,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
         logger.debug("Match: %s", match)
         logger.debug("len: %s", len(scope_param))
         logger.warning("Unable to decode repository and actions: %s", scope_param)
-        raise InvalidRequest("Unable to decode repository and actions: %s" % scope_param)
+        raise InvalidRequest(message="Unable to decode repository and actions: %s" % scope_param)
 
     logger.debug("Match: %s", match.groups())
 
