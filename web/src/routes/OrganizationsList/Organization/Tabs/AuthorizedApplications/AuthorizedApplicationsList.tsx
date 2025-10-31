@@ -220,9 +220,11 @@ export default function AuthorizedApplicationsList() {
           variant="info"
           isInline
           title="You have not authorized any external applications."
+          style={{marginTop: '16px'}}
         />
       ) : (
         <Table
+          style={{marginTop: '16px'}}
           aria-label="Authorized applications table"
           data-testid="authorized-apps-table"
         >
