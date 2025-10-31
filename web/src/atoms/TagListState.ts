@@ -1,4 +1,4 @@
-import {atom, atomFamily, selector} from 'recoil';
+import {atom, selector} from 'recoil';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {Tag} from 'src/resources/TagResource';
 import ColumnNames from 'src/routes/RepositoryDetails/Tags/ColumnNames';
@@ -74,11 +74,6 @@ export const selectedTagsState = atom({
 export const currentOpenPopoverState = atom({
   key: 'currentOpenPopoverState',
   default: '',
-});
-
-export const childManifestSizeState = atomFamily({
-  key: 'childManifestDigest',
-  default: null,
 });
 
 export const showSignaturesState = atom({

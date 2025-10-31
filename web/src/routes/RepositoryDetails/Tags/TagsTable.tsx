@@ -78,11 +78,7 @@ function SubRow(props: SubRowProps) {
       </Conditional>
       <Td dataLabel="size" noPadding={false} colSpan={1}>
         <ExpandableRowContent>
-          <ChildManifestSize
-            org={props.org}
-            repo={props.repo}
-            digest={props.manifest.digest}
-          />
+          <ChildManifestSize manifest={props.manifest} />
         </ExpandableRowContent>
       </Td>
       {props.manifest.digest ? (
@@ -281,6 +277,7 @@ function TagsTableRow(props: RowProps) {
               manifest={manifest}
               isTagExpanded={props.isTagExpanded}
               config={config}
+              location={location}
             />
           ))
         : null}
@@ -483,6 +480,8 @@ interface SubRowProps {
   config: {
     features?: {
       IMAGE_PULL_STATS?: boolean;
+      SECURITY_SCANNER?: boolean;
     };
   } | null;
+  location: ReturnType<typeof useLocation>;
 }

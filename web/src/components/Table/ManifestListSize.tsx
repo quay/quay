@@ -1,36 +1,31 @@
-import {Skeleton} from '@patternfly/react-core';
 import prettyBytes from 'pretty-bytes';
 import {Manifest} from 'src/resources/TagResource';
-import {useRecoilValue} from 'recoil';
-import {childManifestSizeState} from 'src/atoms/TagListState';
 
 export default function ManifestListSize(props: ManifestListSizeProps) {
-  const childManifestSizes = props.manifests.map((manifest) =>
-    useRecoilValue(childManifestSizeState(manifest.digest)),
-  );
+  // Use sizes directly from manifest data (already fetched in parent)
+  const sizes = props.manifests
+    .map((manifest) => manifest.size)
+    .filter((size) => size > 0);
 
-  const loadedSizes = childManifestSizes
-    .filter((size) => size != null)
-    .map((size) => size);
-
-  const loading = loadedSizes.length < props.manifests.length;
-
-  if (loading) {
-    return <Skeleton />;
-  } else {
-    if (loadedSizes.length === 1) {
-      return <>{prettyBytes(loadedSizes[0])}</>;
-    } else {
-      const lowestValue = Math.min(...loadedSizes);
-      const highestValue = Math.max(...loadedSizes);
-
-      return (
-        <>
-          {prettyBytes(lowestValue)} ~ {prettyBytes(highestValue)}
-        </>
-      );
-    }
+  // If no valid sizes, show Unknown
+  if (sizes.length === 0) {
+    return <>Unknown</>;
   }
+
+  // Single manifest or all same size
+  if (sizes.length === 1) {
+    return <>{prettyBytes(sizes[0])}</>;
+  }
+
+  // Multiple manifests with different sizes - show range
+  const lowestValue = Math.min(...sizes);
+  const highestValue = Math.max(...sizes);
+
+  return (
+    <>
+      {prettyBytes(lowestValue)} ~ {prettyBytes(highestValue)}
+    </>
+  );
 }
 
 interface ManifestListSizeProps {
