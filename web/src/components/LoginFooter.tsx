@@ -7,6 +7,12 @@ export function useLoginFooterItems() {
 
   const footerItems: React.ReactNode[] = [];
 
+  if (quayConfig?.version_number) {
+    footerItems.push(
+      <ListItem key="version">{quayConfig.version_number}</ListItem>,
+    );
+  }
+
   if (quayConfig?.config?.FOOTER_LINKS?.TERMS_OF_SERVICE_URL) {
     footerItems.push(
       <ListItem key="terms">
