@@ -11,8 +11,7 @@ import './Tags.css';
 import {isNullOrUndefined} from 'src/libs/utils';
 import Conditional from 'src/components/empty/Conditional';
 import {useDeleteTag} from 'src/hooks/UseTags';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertDetails, AlertVariant} from 'src/atoms/AlertState';
+import {AlertDetails, AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export interface ModalOptions {
   isOpen: boolean;
@@ -26,7 +25,7 @@ export function DeleteModal(props: ModalProps) {
     errorDeleteTags,
     errorDeleteTagDetails,
   } = useDeleteTag(props.org, props.repo);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const isReadonly: boolean = props.repoDetails?.state !== 'NORMAL';
 
   useEffect(() => {

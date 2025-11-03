@@ -38,8 +38,7 @@ import {
   TriggeredBuildDescription,
 } from 'src/routes/RepositoryDetails/Builds/BuildHistory';
 import Conditional from 'src/components/empty/Conditional';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 import {useEffect, useState} from 'react';
 import {
@@ -59,7 +58,7 @@ import {RepositoryBuildPhase} from 'src/resources/BuildResource';
 export default function Build() {
   const location = useLocation();
   const navigate = useNavigate();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [poll, setPoll] = useState<boolean>(true);
   const [showTimestamps, setShowTimestamps] = useState<boolean>(false);
   const [modalOpen, setModalOpen] = useState<boolean>(false);

@@ -15,13 +15,12 @@ import logo from 'src/assets/quay.svg';
 import rh_logo from 'src/assets/RH_QuayIO2.svg';
 import {HeaderToolbar} from './HeaderToolbar';
 import {Link} from 'react-router-dom';
-import {SidebarState} from 'src/atoms/SidebarState';
-import {useSetRecoilState} from 'recoil';
+import {useUI} from 'src/contexts/UIContext';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import './QuayHeader.css';
 
 export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
-  const setSidebarState = useSetRecoilState(SidebarState);
+  const {toggleSidebar} = useUI();
   const quayConfig = useQuayConfig();
   let logoUrl = logo;
   if (quayConfig && quayConfig.config?.BRANDING?.logo) {
@@ -33,17 +32,13 @@ export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
     logoUrl = rh_logo;
   }
 
-  const toggleSidebarVisibility = () => {
-    setSidebarState((oldState) => ({isOpen: !oldState.isOpen}));
-  };
-
   return (
     <Masthead>
       <MastheadToggle>
         <Button
           variant="plain"
           aria-label="Global navigation"
-          onClick={toggleSidebarVisibility}
+          onClick={toggleSidebar}
         >
           <BarsIcon />
         </Button>

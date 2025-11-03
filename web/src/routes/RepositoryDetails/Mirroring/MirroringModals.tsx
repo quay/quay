@@ -1,5 +1,5 @@
 import React from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant} from 'src/contexts/UIContext';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
 import {CreateTeamModal} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/createPermissionDrawer/CreateTeamModal';
 import {Entity} from 'src/resources/UserResource';

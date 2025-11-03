@@ -1,12 +1,11 @@
 import {Button, Modal, ModalVariant} from '@patternfly/react-core';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useToggleBuildTrigger} from 'src/hooks/UseBuildTriggers';
 
 export default function BuildTriggerToggleModal(
   props: BuildTriggerToggleModalProps,
 ) {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {toggleTrigger} = useToggleBuildTrigger(
     props.org,
     props.repo,

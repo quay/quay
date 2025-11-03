@@ -32,8 +32,7 @@ import AddTeamMember from './AddTeamMember';
 import Review from './ReviewTeam';
 import ReviewAndFinishFooter from './ReviewAndFinishFooter';
 import {useAddRepoPermissionToTeam} from 'src/hooks/UseTeams';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const [selectedRepoPerms, setSelectedRepoPerms] = useRecoilState(
@@ -47,7 +46,7 @@ export const CreateTeamWizard = (props: CreateTeamWizardProps): JSX.Element => {
   const [deletedTeamMembers, setDeletedTeamMembers] = useState<ITeamMember[]>(
     [],
   );
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   // Fetching repos
   const {repos} = useRepositories(props.orgName);

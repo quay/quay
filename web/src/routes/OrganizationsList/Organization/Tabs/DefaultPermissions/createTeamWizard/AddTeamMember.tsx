@@ -16,8 +16,7 @@ import {
 import {getAccountTypeForMember} from 'src/libs/utils';
 import {TrashIcon} from '@patternfly/react-icons';
 import NameAndDescription from 'src/components/modals/robotAccountWizard/NameAndDescription';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import ToggleDrawer from 'src/components/ToggleDrawer';
 
 const memberAndRobotColNames = {
@@ -30,7 +29,7 @@ export default function AddTeamMember(props: AddTeamMemberProps) {
   const [perPage, setPerPage] = useState(20);
   const [newRobotAccntName, setNewRobotAccntName] = useState('');
   const [newRobotAccntDescription, setNewRobotAccntDescription] = useState('');
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {error, robots} = useFetchRobotAccounts(props.orgName);
 

@@ -10,8 +10,7 @@ import {
 } from '@patternfly/react-core';
 
 import {exportLogs} from 'src/hooks/UseUsageLogs';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export default function ExportLogsModal(props: ExportLogsModalProps) {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -22,7 +21,7 @@ export default function ExportLogsModal(props: ExportLogsModalProps) {
   const handleModalToggle = (_event: KeyboardEvent | React.MouseEvent) => {
     setIsModalOpen(!isModalOpen);
   };
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const exportLogsClick = (callback: string) => {
     return exportLogs(

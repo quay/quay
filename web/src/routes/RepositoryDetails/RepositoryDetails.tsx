@@ -15,13 +15,12 @@ import {
 } from '@patternfly/react-core';
 import {useEffect, useRef, useState} from 'react';
 import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Conditional from 'src/components/empty/Conditional';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import RequestError from 'src/components/errors/RequestError';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useRepository} from 'src/hooks/UseRepository';
 import {useFetchTeams} from 'src/hooks/UseTeams';
@@ -73,7 +72,7 @@ export default function RepositoryDetails() {
   );
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [err, setErr] = useState<string>();
 
   const drawerRef = useRef<HTMLDivElement>();

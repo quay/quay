@@ -1,12 +1,11 @@
 import {Button, Modal, ModalVariant} from '@patternfly/react-core';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useDeleteBuildTrigger} from 'src/hooks/UseBuildTriggers';
 
 export default function BuildTriggerDeleteModal(
   props: BuildTriggerDeleteModalProps,
 ) {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {deleteTrigger} = useDeleteBuildTrigger(
     props.org,
     props.repo,

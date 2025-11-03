@@ -24,8 +24,7 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useQuayState} from 'src/hooks/UseQuayState';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import axios from 'src/libs/axios';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import React from 'react';
@@ -91,7 +90,7 @@ export default function Information(props: InformationProps) {
   const {organization, repository, repoDetails} = props;
   const config = useQuayConfig();
   const {inReadOnlyMode} = useQuayState();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const queryClient = useQueryClient();
 
   const [description, setDescription] = useState(

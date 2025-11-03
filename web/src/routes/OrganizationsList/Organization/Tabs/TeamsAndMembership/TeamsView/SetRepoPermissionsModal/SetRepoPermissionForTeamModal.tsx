@@ -3,7 +3,7 @@ import {Button, Modal, ModalVariant, Spinner} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import Empty from 'src/components/empty/Empty';
 import {CubesIcon} from '@patternfly/react-icons';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import SetRepoPermissionsToolbar from './SetRepoPermissionsForTeamToolbar';
 import {
   ITeamRepoPerms,
@@ -12,7 +12,6 @@ import {
 } from 'src/hooks/UseTeams';
 import {SetRepoPermForTeamRoleDropDown} from './SetRepoPermForTeamRoleDropDown';
 import {formatDate} from 'src/libs/utils';
-import {AlertVariant} from 'src/atoms/AlertState';
 
 export const setRepoPermForTeamColumnNames = {
   repoName: 'Repository',
@@ -50,7 +49,7 @@ export default function SetRepoPermissionForTeamModal(
     [],
   );
   const [isKebabOpen, setKebabOpen] = useState(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   useEffect(() => {
     if (successUpdateRepoPerm) {
