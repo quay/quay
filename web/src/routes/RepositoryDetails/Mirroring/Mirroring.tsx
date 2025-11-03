@@ -69,13 +69,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
   const robotOptions = [
     <React.Fragment key="dropdown-options">
       <SelectOption
-        key="create-team"
-        component="button"
-        onClick={() => formHook.setIsCreateTeamModalOpen(true)}
-      >
-        <UsersIcon /> &nbsp; Create team
-      </SelectOption>
-      <SelectOption
         key="create-robot"
         component="button"
         onClick={() => formHook.setIsCreateRobotModalOpen(true)}
@@ -83,17 +76,6 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
         <DesktopIcon /> &nbsp; Create robot account
       </SelectOption>
       <Divider component="li" key="divider" />
-      <SelectGroup label="Teams" key="teams">
-        {teams?.map(({name}) => (
-          <SelectOption
-            key={name}
-            value={name}
-            onClick={() => formHook.handleTeamSelect(name)}
-          >
-            {name}
-          </SelectOption>
-        ))}
-      </SelectGroup>
       <SelectGroup label="Robot accounts" key="robot-accounts">
         {robots?.map(({name}) => (
           <SelectOption
