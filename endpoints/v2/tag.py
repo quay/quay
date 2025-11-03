@@ -1,9 +1,5 @@
 from flask import jsonify
 
-from util.metrics.otel import trace
-
-tracer = trace.get_tracer("quay.endpoints.v2.tag")
-
 from app import app, model_cache
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.registry_model import registry_model
@@ -28,9 +24,6 @@ from endpoints.v2.errors import NameUnknown, TooManyTagsRequested
 @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
 @anon_protect
 @oci_tag_paginate()
-@tracer.start_as_current_span(
-    "quay.endpoints.v2.tag.list_all_tags", record_exception=True, set_status_on_exception=True
-)
 def list_all_tags(namespace_name, repo_name, last_pagination_tag_name, limit, pagination_callback):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:

@@ -1,10 +1,6 @@
 import logging
 import re
 
-from util.metrics.otel import StatusCode, trace
-
-tracer = trace.get_tracer("quay.endpoints.v2.blob")
-
 from flask import Response
 from flask import abort as flask_abort
 from flask import redirect, request, url_for
@@ -71,9 +67,6 @@ BLOB_CONTENT_TYPE = "application/octet-stream"
 @anon_allowed
 @cache_control(max_age=31436000)
 @inject_registry_model()
-@tracer.start_as_current_span(
-    "quay.v2.blobs.check_blob_exists", record_exception=True, set_status_on_exception=True
-)
 def check_blob_exists(namespace_name, repo_name, digest, registry_model):
     # Find the blob.
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
@@ -104,9 +97,6 @@ def check_blob_exists(namespace_name, repo_name, digest, registry_model):
 @check_region_blacklisted(BlobDownloadGeoBlocked)
 @cache_control(max_age=31536000)
 @inject_registry_model()
-@tracer.start_as_current_span(
-    "quay.v2.blobs.download_blob", record_exception=True, set_status_on_exception=True
-)
 def download_blob(namespace_name, repo_name, digest, registry_model):
     # Find the blob.
     blob = registry_model.get_cached_repo_blob(model_cache, namespace_name, repo_name, digest)
@@ -272,9 +262,6 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
-@tracer.start_as_current_span(
-    "quay.v2.blobs.start_blob_upload", record_exception=True, set_status_on_exception=True
-)
 def start_blob_upload(namespace_name, repo_name):
 
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
@@ -347,9 +334,6 @@ def start_blob_upload(namespace_name, repo_name):
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
-@tracer.start_as_current_span(
-    "quay.v2.blobs.fetch_existing_upload", record_exception=True, set_status_on_exception=True
-)
 def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -380,9 +364,6 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
-@tracer.start_as_current_span(
-    "quay.v2.blobs.upload_chunk", record_exception=True, set_status_on_exception=True
-)
 def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -425,11 +406,6 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
-@tracer.start_as_current_span(
-    "quay.v2.blobs.monolithic_upload_or_last_chunk",
-    record_exception=True,
-    set_status_on_exception=True,
-)
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 
     # Ensure the digest is present before proceeding.
@@ -483,9 +459,6 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
-@tracer.start_as_current_span(
-    "quay.v2.blobs.cancel_upload", record_exception=True, set_status_on_exception=True
-)
 def cancel_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -509,9 +482,6 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
 @anon_protect
 @check_readonly
 @check_pushes_disabled
-@tracer.start_as_current_span(
-    "quay.v2.blobs.delete_digest", record_exception=True, set_status_on_exception=True
-)
 def delete_digest(namespace_name, repo_name, digest):
     # We do not support deleting arbitrary digests, as they break repo images.
     raise Unsupported()
@@ -590,37 +560,26 @@ def _upload_chunk(blob_uploader, commit_digest=None):
     If commit_digest is specified, the upload is committed to a blob once the stream's data has been
     read and stored.
     """
-    with tracer.start_as_current_span(
-        "quay._upload_chunk",
-    ) as span:
-        start_offset, length = _start_offset_and_length(request.headers.get("content-range"))
-        span.set_attribute("offset", str(start_offset))
-        span.set_attribute("length", str(length))
+    start_offset, length = _start_offset_and_length(request.headers.get("content-range"))
+    if None in {start_offset, length}:
+        raise InvalidRequest(message="Invalid range header")
 
-        if None in {start_offset, length}:
-            span.set_status(StatusCode.ERROR)
-            raise InvalidRequest(message="Invalid range header")
+    input_fp = get_input_stream(request)
 
-        input_fp = get_input_stream(request)
+    try:
+        # Upload the data received.
+        blob_uploader.upload_chunk(app.config, input_fp, start_offset, length)
 
-        try:
-            # Upload the data received.
-            blob_uploader.upload_chunk(app.config, input_fp, start_offset, length)
-
-            if commit_digest is not None:
-                # Commit the upload to a blob.
-                return blob_uploader.commit_to_blob(app.config, commit_digest)
-        except BlobTooLargeException as ble:
-            span.record_exception(ble)
-            span.set_status(StatusCode.ERROR)
-            raise LayerTooLarge(uploaded=ble.uploaded, max_allowed=ble.max_allowed)
-        except BlobRangeMismatchException as ble:
-            span.record_exception(ble)
-            span.set_status(StatusCode.ERROR)
-            logger.exception("Exception when uploading blob to %s", blob_uploader.blob_upload_id)
-            _abort_range_not_satisfiable(
-                blob_uploader.blob_upload.byte_count, blob_uploader.blob_upload_id
-            )
-        except BlobUploadException:
-            logger.exception("Exception when uploading blob to %s", blob_uploader.blob_upload_id)
-            raise BlobUploadInvalid()
+        if commit_digest is not None:
+            # Commit the upload to a blob.
+            return blob_uploader.commit_to_blob(app.config, commit_digest)
+    except BlobTooLargeException as ble:
+        raise LayerTooLarge(uploaded=ble.uploaded, max_allowed=ble.max_allowed)
+    except BlobRangeMismatchException:
+        logger.exception("Exception when uploading blob to %s", blob_uploader.blob_upload_id)
+        _abort_range_not_satisfiable(
+            blob_uploader.blob_upload.byte_count, blob_uploader.blob_upload_id
+        )
+    except BlobUploadException:
+        logger.exception("Exception when uploading blob to %s", blob_uploader.blob_upload_id)
+        raise BlobUploadInvalid()

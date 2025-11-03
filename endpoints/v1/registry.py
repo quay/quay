@@ -4,10 +4,6 @@ from datetime import datetime
 from functools import wraps
 from time import time
 
-from util.metrics.otel import trace
-
-tracer = trace.get_tracer("quay.v1.registry")
-
 from flask import Response
 from flask import abort as flask_abort
 from flask import make_response, redirect, request, session
@@ -90,11 +86,6 @@ def set_cache_headers(f):
 @require_completion
 @set_cache_headers
 @anon_protect
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.head_image_layer",
-    record_exception=True,
-    set_status_on_exception=True,
-)
 def head_image_layer(namespace, repository, image_id, headers):
     permission = ReadRepositoryPermission(namespace, repository)
     repository_ref = registry_model.lookup_repository(namespace, repository, kind_filter="image")
@@ -135,11 +126,6 @@ def head_image_layer(namespace, repository, image_id, headers):
 @set_cache_headers
 @check_region_blacklisted()
 @anon_protect
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.head_image_layer",
-    record_exception=True,
-    set_status_on_exception=True,
-)
 def get_image_layer(namespace, repository, image_id, headers):
     permission = ReadRepositoryPermission(namespace, repository)
     repository_ref = registry_model.lookup_repository(namespace, repository, kind_filter="image")
@@ -193,11 +179,6 @@ def get_image_layer(namespace, repository, image_id, headers):
 @check_repository_state
 @anon_protect
 @check_readonly
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.put_image_layer",
-    record_exception=True,
-    set_status_on_exception=True,
-)
 def put_image_layer(namespace, repository, image_id):
     logger.debug("Checking repo permissions")
     permission = ModifyRepositoryPermission(namespace, repository)
@@ -303,11 +284,6 @@ def put_image_layer(namespace, repository, image_id):
 @check_repository_state
 @anon_protect
 @check_readonly
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.put_image_checksum",
-    record_exception=True,
-    set_status_on_exception=True,
-)
 def put_image_checksum(namespace, repository, image_id):
     logger.debug("Checking repo permissions")
     permission = ModifyRepositoryPermission(namespace, repository)
@@ -371,9 +347,6 @@ def put_image_checksum(namespace, repository, image_id):
 @require_completion
 @set_cache_headers
 @anon_protect
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.get_image_json", record_exception=True, set_status_on_exception=True
-)
 def get_image_json(namespace, repository, image_id, headers):
     logger.debug("Checking repo permissions")
     permission = ReadRepositoryPermission(namespace, repository)
@@ -406,11 +379,6 @@ def get_image_json(namespace, repository, image_id, headers):
 @require_completion
 @set_cache_headers
 @anon_protect
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.get_image_ancestry",
-    record_exception=True,
-    set_status_on_exception=True,
-)
 def get_image_ancestry(namespace, repository, image_id, headers):
     logger.debug("Checking repo permissions")
     permission = ReadRepositoryPermission(namespace, repository)
@@ -437,9 +405,6 @@ def get_image_ancestry(namespace, repository, image_id, headers):
 @check_repository_state
 @anon_protect
 @check_readonly
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.registry.put_image_json", record_exception=True, set_status_on_exception=True
-)
 def put_image_json(namespace, repository, image_id):
     logger.debug("Checking repo permissions")
     permission = ModifyRepositoryPermission(namespace, repository)
