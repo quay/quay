@@ -34,17 +34,38 @@ export default function ExternalLoginsList() {
 
   if (!externalLogins || externalLogins.length === 0) {
     return (
-      <PageSection variant={PageSectionVariants.light}>
-        <Alert
-          variant="info"
-          isInline
-          title="No external login providers configured"
-          data-testid="no-external-providers-alert"
+      <>
+        <PageSection
+          variant={PageSectionVariants.light}
+          data-testid="external-logins-tab"
         >
-          External login providers have not been configured for this Quay
-          instance.
-        </Alert>
-      </PageSection>
+          <TextContent>
+            <Text component={TextVariants.h1}>External Logins</Text>
+            <Text component={TextVariants.p}>
+              The external logins panel lists all supported external login
+              providers, which can be used for one-click OAuth-based login to
+              Quay. Accounts can be attached or detached by clicking the
+              associated button below.
+            </Text>
+          </TextContent>
+
+          <Alert
+            variant="info"
+            isInline
+            title="No external login providers configured"
+            data-testid="no-external-providers-alert"
+            style={{marginTop: '16px'}}
+          >
+            External login providers have not been configured for this Quay
+            instance.
+          </Alert>
+        </PageSection>
+
+        <div style={{margin: '25px 0'}} />
+
+        {/* Show Authorized Applications even when no external logins configured */}
+        <AuthorizedApplicationsList />
+      </>
     );
   }
 
