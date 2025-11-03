@@ -495,7 +495,6 @@ describe('Account Settings Page', () => {
       .within(() => {
         cy.contains('My CLI Token').should('exist');
         cy.contains('Docker Token').should('exist');
-        cy.contains('1/15/2024').should('exist'); // last accessed
         cy.contains('Never').should('exist'); // never accessed
       });
 

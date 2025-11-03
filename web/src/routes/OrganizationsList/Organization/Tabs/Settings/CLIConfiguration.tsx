@@ -16,6 +16,7 @@ import {
   DropdownList,
   MenuToggle,
   Modal,
+  Tooltip,
 } from '@patternfly/react-core';
 import {Table, Thead, Tr, Th, Tbody, Td} from '@patternfly/react-table';
 import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
@@ -31,6 +32,7 @@ import {IApplicationToken} from 'src/resources/UserResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useState} from 'react';
+import {formatRelativeTime, formatDate} from 'src/libs/utils';
 
 export const CliConfiguration = () => {
   const quayConfig = useQuayConfig();
@@ -80,9 +82,17 @@ export const CliConfiguration = () => {
     }));
   };
 
-  const formatDate = (dateString: string | null) => {
+  const renderDateCell = (dateString: string | null) => {
     if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleDateString();
+
+    const relativeTime = formatRelativeTime(dateString);
+    const fullDate = formatDate(dateString);
+
+    return (
+      <Tooltip content={fullDate}>
+        <span>{relativeTime}</span>
+      </Tooltip>
+    );
   };
 
   const showEncryptedPassword =
@@ -232,12 +242,14 @@ export const CliConfiguration = () => {
                           </Button>
                         </Td>
                         <Td dataLabel="Last Accessed">
-                          {formatDate(token.last_accessed)}
+                          {renderDateCell(token.last_accessed)}
                         </Td>
                         <Td dataLabel="Expiration">
-                          {formatDate(token.expiration)}
+                          {renderDateCell(token.expiration)}
                         </Td>
-                        <Td dataLabel="Created">{formatDate(token.created)}</Td>
+                        <Td dataLabel="Created">
+                          {renderDateCell(token.created)}
+                        </Td>
                         <Td isActionCell>
                           <Dropdown
                             isOpen={dropdownOpen[token.uuid] || false}
