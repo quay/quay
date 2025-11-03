@@ -218,6 +218,59 @@ describe('Quota Management', () => {
       cy.get('[data-testid="new-limit-percent-input"]').should('be.disabled');
       cy.get('[data-testid="add-limit-button"]').should('be.disabled');
     });
+
+    it('should prevent quota submission attempts from organization-view (should not show 403 errors)', () => {
+      cy.intercept('GET', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 10737418240,
+            limit: '10.0 GiB',
+            default_config: false,
+            limits: [
+              {
+                id: 1,
+                type: 'Warning',
+                limit_percent: 80,
+              },
+            ],
+            default_config_exists: false,
+          },
+        ],
+      }).as('getQuotaWithData');
+
+      // Ensure no API calls are made when attempting to submit from org-view
+      cy.intercept('POST', '**/api/v1/organization/projectquay/quota*', {
+        statusCode: 403,
+      }).as('createQuota');
+      cy.intercept('PUT', '**/api/v1/organization/projectquay/quota/*', {
+        statusCode: 403,
+      }).as('updateQuota');
+
+      cy.visit('/organization/projectquay?tab=Settings');
+      cy.wait('@getConfig');
+
+      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      cy.wait('@getQuotaWithData');
+
+      // Form is read-only, so even if form submission is triggered,
+      // it should be blocked client-side and not make API calls
+      // Attempt to trigger form submission (which should be blocked)
+      cy.get('[data-testid="quota-management-form"]').within(() => {
+        // Since fields are disabled, form submission should not be possible
+        // But verify that even if someone tries, no API call is made
+        cy.get('body').type('{enter}'); // Simulate Enter key press
+      });
+
+      // Verify no API calls were made (no 403 errors should occur)
+      cy.get('@createQuota.all').should('have.length', 0);
+      cy.get('@updateQuota.all').should('have.length', 0);
+
+      // Verify error alert would show if submission attempted
+      // (though it shouldn't be triggered since fields are disabled)
+      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
+    });
   });
 
   describe('Configure Quota Modal - Access Control', () => {
