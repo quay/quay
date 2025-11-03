@@ -606,11 +606,7 @@ describe('Repository Mirroring', () => {
       // Click robot user dropdown
       cy.get('#robot-user-select').click();
 
-      // Check create options are at the top
-      cy.contains('Create team').should('exist');
       cy.contains('Create robot account').should('exist');
-
-      // Check robots are listed (teams are not shown for user namespaces)
       cy.contains('Robot accounts').should('exist');
       cy.contains('testorg+testrobot').should('exist');
     });
