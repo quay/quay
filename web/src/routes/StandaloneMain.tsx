@@ -14,12 +14,8 @@ import {QuayHeader} from 'src/components/header/QuayHeader';
 import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
 import {QuayFooter} from 'src/components/footer/QuayFooter';
 import {NavigationPath} from './NavigationPath';
-import OrganizationsList from './OrganizationsList/OrganizationsList';
-import Organization from './OrganizationsList/Organization/Organization';
-import RepositoriesList from './RepositoriesList/RepositoriesList';
-import RepositoryTagRouter from './RepositoryTagRouter';
 
-import {useEffect, useState} from 'react';
+import {useEffect, useState, lazy, Suspense} from 'react';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
@@ -29,19 +25,34 @@ import {InfoCircleIcon} from '@patternfly/react-icons';
 import axios from 'axios';
 import axiosIns from 'src/libs/axios';
 import Alerts from './Alerts';
-import OverviewList from './OverviewList/OverviewList';
-import SetupBuildTriggerRedirect from './SetupBuildtrigger/SetupBuildTriggerRedirect';
 import Conditional from 'src/components/empty/Conditional';
 import RegistryStatus from './RegistryStatus';
 import {NotificationDrawerListComponent} from 'src/components/notifications/NotificationDrawerList';
 import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
-import ServiceKeys from './Superuser/ServiceKeys/ServiceKeys';
-import ChangeLog from './Superuser/ChangeLog/ChangeLog';
-import UsageLogs from './Superuser/UsageLogs/UsageLogs';
-import Messages from './Superuser/Messages/Messages';
-import BuildLogs from './Superuser/BuildLogs/BuildLogs';
 import {GlobalMessages} from 'src/components/GlobalMessages';
+import {LoadingPage} from 'src/components/LoadingPage';
+
+// Lazy load route components for better performance
+const OrganizationsList = lazy(
+  () => import('./OrganizationsList/OrganizationsList'),
+);
+const Organization = lazy(
+  () => import('./OrganizationsList/Organization/Organization'),
+);
+const RepositoriesList = lazy(
+  () => import('./RepositoriesList/RepositoriesList'),
+);
+const RepositoryTagRouter = lazy(() => import('./RepositoryTagRouter'));
+const OverviewList = lazy(() => import('./OverviewList/OverviewList'));
+const SetupBuildTriggerRedirect = lazy(
+  () => import('./SetupBuildtrigger/SetupBuildTriggerRedirect'),
+);
+const ServiceKeys = lazy(() => import('./Superuser/ServiceKeys/ServiceKeys'));
+const ChangeLog = lazy(() => import('./Superuser/ChangeLog/ChangeLog'));
+const UsageLogs = lazy(() => import('./Superuser/UsageLogs/UsageLogs'));
+const Messages = lazy(() => import('./Superuser/Messages/Messages'));
+const BuildLogs = lazy(() => import('./Superuser/BuildLogs/BuildLogs'));
 
 const NavigationRoutes = [
   {
@@ -172,14 +183,16 @@ export function StandaloneMain() {
         </Conditional>
         <Alerts />
         <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-          <Routes>
-            <Route index element={<Navigate to="/organization" replace />} />
-            {NavigationRoutes.map(({path, Component}, key) => (
-              <Route path={path} key={key} element={Component} />
-            ))}
-            <Route path="oauth-error" element={<OAuthError />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<LoadingPage />}>
+            <Routes>
+              <Route index element={<Navigate to="/organization" replace />} />
+              {NavigationRoutes.map(({path, Component}, key) => (
+                <Route path={path} key={key} element={Component} />
+              ))}
+              <Route path="oauth-error" element={<OAuthError />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
           <Outlet />
         </div>
         <QuayFooter />
