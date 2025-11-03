@@ -538,7 +538,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   const hasQuota = organizationQuota !== null;
 
   return (
-    <Form id="quota-management-form" onSubmit={handleSubmit(onSubmit)}>
+    <Form
+      id="quota-management-form"
+      data-testid="quota-management-form"
+      onSubmit={handleSubmit(onSubmit)}
+    >
       {/* Show appropriate message based on view and user type */}
       {isReadOnly && props.view === 'organization-view' && hasExistingQuota && (
         <Alert

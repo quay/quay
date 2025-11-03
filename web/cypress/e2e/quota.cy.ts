@@ -254,22 +254,26 @@ describe('Quota Management', () => {
       cy.get('[data-testid="Quota"]').should('be.visible').click();
       cy.wait('@getQuotaWithData');
 
-      // Form is read-only, so even if form submission is triggered,
-      // it should be blocked client-side and not make API calls
-      // Attempt to trigger form submission (which should be blocked)
-      cy.get('[data-testid="quota-management-form"]').within(() => {
-        // Since fields are disabled, form submission should not be possible
-        // But verify that even if someone tries, no API call is made
-        cy.get('body').type('{enter}'); // Simulate Enter key press
-      });
+      // Verify the form is rendered and read-only alert is visible
+      cy.get('[data-testid="quota-management-form"]').should('be.visible');
+      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
+
+      // Verify all form fields are disabled (read-only mode)
+      cy.get('[data-testid="quota-value-input"]').should('be.disabled');
+      cy.get('[data-testid="quota-unit-select-toggle"]').should('be.disabled');
+
+      // Verify action buttons don't exist (they're hidden in organization-view)
+      cy.get('[data-testid="apply-quota-button"]').should('not.exist');
+      cy.get('[data-testid="remove-quota-button"]').should('not.exist');
+
+      // Since form submission is prevented by disabled fields and hidden buttons,
+      // and our guards in onSubmit(), no API calls should be made
+      // Wait a bit to ensure no API calls are triggered
+      cy.wait(1000);
 
       // Verify no API calls were made (no 403 errors should occur)
       cy.get('@createQuota.all').should('have.length', 0);
       cy.get('@updateQuota.all').should('have.length', 0);
-
-      // Verify error alert would show if submission attempted
-      // (though it shouldn't be triggered since fields are disabled)
-      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
     });
   });
 
