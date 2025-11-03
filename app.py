@@ -11,7 +11,6 @@ from flask_mail import Mail
 from flask_principal import Principal
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-from opentelemetry.trace.status import StatusCode
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -57,7 +56,7 @@ from util.ipresolver import IPResolver
 from util.label_validator import LabelValidator
 from util.log import filter_logs
 from util.marketplace import MarketplaceSubscriptionApi, MarketplaceUserApi
-from util.metrics.otel import get_tracecontext, get_traceparent, init_exporter
+from util.metrics.otel import init_exporter
 from util.metrics.prometheus import PrometheusPlugin
 from util.names import urn_generator
 from util.pullmetrics import PullMetricsBuilderModule
@@ -371,27 +370,9 @@ def load_user(user_uuid):
 get_app_url = partial(get_app_url, app.config)
 
 if features.OTEL_TRACING:
-
-    def request_hook(span, environ):
-        if span and span.is_recording():
-            for header in request.headers:
-                span.set_attribute(header[0], str(header[1]))
-
-    def response_hook(span, status, response_headers):
-        if span and span.is_recording():
-            status_code = int(status.split()[0])
-            if all([status_code >= 200, status_code < 400]):
-                span.set_status(StatusCode.OK)
-            else:
-                span.set_status(StatusCode.ERROR)
-            tparent = get_traceparent(span)
-            response_headers.append(("traceparent", tparent))
-
     FlaskInstrumentor().instrument_app(
         app,
         excluded_urls=app.config.get("OTEL_TRACING_EXCLUDED_URLS", None),
-        request_hook=request_hook,
-        response_hook=response_hook,
     )
     Psycopg2Instrumentor().instrument()
     init_exporter(app.config)

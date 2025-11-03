@@ -3,10 +3,6 @@ from functools import wraps
 
 from flask import Blueprint, jsonify, make_response
 
-from util.metrics.otel import trace
-
-tracer = trace.get_tracer("quay.v1")
-
 import features
 from app import app
 from data.readreplica import ReadOnlyModeException
@@ -28,9 +24,6 @@ def internal_ping():
 
 @v1_bp.route("/_ping")
 @anon_allowed
-@tracer.start_as_current_span(
-    "quay.endpoints.v1._ping", record_exception=True, set_status_on_exception=True
-)
 def ping():
     # NOTE: any changes made here must also be reflected in the nginx config
     response = make_response("true", 200)
@@ -40,9 +33,6 @@ def ping():
 
 
 @v1_bp.app_errorhandler(ReadOnlyModeException)
-@tracer.start_as_current_span(
-    "quay.endpoints.v1.handle_readonly", record_exception=True, set_status_on_exception=True
-)
 def handle_readonly(ex):
     response = jsonify(
         {

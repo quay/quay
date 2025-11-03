@@ -4,10 +4,6 @@ from datetime import datetime, timedelta
 
 from prometheus_client import Counter, Gauge
 
-from util.metrics.otel import StatusCode, get_tracecontext, trace
-
-tracer = trace.get_tracer("quay.queue")
-
 from data.database import QueueItem, db, db_for_update, db_random_func
 from util.morecollections import AttrDict
 
@@ -102,9 +98,6 @@ class WorkQueue(object):
             ~(QueueItem.queue_name << running_query)
         )
 
-    @tracer.start_as_current_span(
-        "quay.queue.num_alive_jobs", record_exception=True, set_status_on_exception=True
-    )
     def num_alive_jobs(self, canonical_name_list):
         """
         Returns the number of alive queue items with a given prefix.
@@ -123,9 +116,6 @@ class WorkQueue(object):
             .count()
         )
 
-    @tracer.start_as_current_span(
-        "quay.queue.num_available_jobs_between", record_exception=True, set_status_on_exception=True
-    )
     def num_available_jobs_between(
         self, available_min_time, available_max_time, canonical_name_list
     ):
@@ -152,9 +142,6 @@ class WorkQueue(object):
     def _item_by_id_for_update(queue_id):
         return db_for_update(QueueItem.select().where(QueueItem.id == queue_id)).get()
 
-    @tracer.start_as_current_span(
-        "quay.queue.get_metrics", record_exception=True, set_status_on_exception=True
-    )
     def get_metrics(self):
         now = datetime.utcnow()
         name_match_query = self._name_match_query()
@@ -174,18 +161,12 @@ class WorkQueue(object):
 
         return (running_count, available_not_running_count, available_count)
 
-    @tracer.start_as_current_span(
-        "quay.queue.update_metrics", record_exception=True, set_status_on_exception=True
-    )
     def update_metrics(self):
         (running_count, available_not_running_count, available_count) = self.get_metrics()
         queue_items_locked.labels(self._queue_name).set(running_count)
         queue_items_available.labels(self._queue_name).set(available_count)
         queue_items_available_unlocked.labels(self._queue_name).set(available_not_running_count)
 
-    @tracer.start_as_current_span(
-        "quay.queue.has_retries_remaining", record_exception=True, set_status_on_exception=True
-    )
     def has_retries_remaining(self, item_id):
         """
         Returns whether the queue item with the given id has any retries remaining.
@@ -198,9 +179,6 @@ class WorkQueue(object):
             except QueueItem.DoesNotExist:
                 return False
 
-    @tracer.start_as_current_span(
-        "quay.queue.delete_namespaced_items", record_exception=True, set_status_on_exception=True
-    )
     def delete_namespaced_items(self, namespace, subpath=None):
         """
         Deletes all items in this queue that exist under the given namespace.
@@ -212,9 +190,6 @@ class WorkQueue(object):
         queue_prefix = "%s/%s/%s%%" % (self._queue_name, namespace, subpath_query)
         return QueueItem.delete().where(QueueItem.queue_name**queue_prefix).execute()
 
-    @tracer.start_as_current_span(
-        "quay.queue.alive", record_exception=True, set_status_on_exception=True
-    )
     def alive(self, canonical_name_list):
         """
         Returns True if a job matching the canonical name list is currently processing or available.
@@ -265,9 +240,6 @@ class WorkQueue(object):
             queue_item_puts.labels(self._queue_name).inc(len(current_batch))
             remaining = remaining[batch_size:]
 
-    @tracer.start_as_current_span(
-        "quay.queue.get", record_exception=True, set_status_on_exception=True
-    )
     def put(self, canonical_name_list, message, available_after=0, retries_remaining=5):
         """
         Put an item, if it shouldn't be processed for some number of seconds, specify that amount as
@@ -344,9 +316,6 @@ class WorkQueue(object):
         changed = set_unavailable_query.execute()
         return changed == 1
 
-    @tracer.start_as_current_span(
-        "quay.queue.get", record_exception=True, set_status_on_exception=True
-    )
     def get(self, processing_time=300, ordering_required=False):
         """
         Get an available item and mark it as unavailable for the default of five minutes.
@@ -382,9 +351,6 @@ class WorkQueue(object):
             }
         )
 
-    @tracer.start_as_current_span(
-        "quay.queue.cancel", record_exception=True, set_status_on_exception=True
-    )
     def cancel(self, item_id):
         """
         Attempts to cancel the queue item with the given ID from the queue.
@@ -394,15 +360,9 @@ class WorkQueue(object):
         count_removed = QueueItem.delete().where(QueueItem.id == item_id).execute()
         return count_removed > 0
 
-    @tracer.start_as_current_span(
-        "quay.queue.complete", record_exception=True, set_status_on_exception=True
-    )
     def complete(self, completed_item):
         self._currently_processing = not self.cancel(completed_item.id)
 
-    @tracer.start_as_current_span(
-        "quay.queue.incomplete", record_exception=True, set_status_on_exception=True
-    )
     def incomplete(self, incomplete_item, retry_after=300, restore_retry=False):
         with self._transaction_factory(db):
             retry_date = datetime.utcnow() + timedelta(seconds=retry_after)
@@ -421,9 +381,6 @@ class WorkQueue(object):
             except QueueItem.DoesNotExist:
                 return False
 
-    @tracer.start_as_current_span(
-        "quay.queue.extend_processing", record_exception=True, set_status_on_exception=True
-    )
     def extend_processing(
         self, item, seconds_from_now, minimum_extension=MINIMUM_EXTENSION, updated_data=None
     ):

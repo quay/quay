@@ -8,10 +8,6 @@ from io import BufferedIOBase, BytesIO, StringIO
 from itertools import chain
 from uuid import uuid4
 
-from util.metrics.otel import StatusCode, get_tracecontext, trace
-
-tracer = trace.get_tracer("cloud.py")
-
 import boto3.session
 import botocore.config
 import botocore.exceptions
@@ -161,80 +157,17 @@ class _CloudStorage(BaseStorageV2):
         if deferred_refreshable_credentials:
             self._session._session._credentials = deferred_refreshable_credentials
 
-    def response_tracing_headers(self, **kwargs):
-        name = f"boto3.{str(kwargs.get('event_name', 'before-send.s3.unknown')).split('.')[-1]}"
-        with tracer.start_as_current_span(name) as span:
-            sctx = span.get_span_context()
-            for k in kwargs.get("parsed", {}):
-                if isinstance(kwargs["parsed"][k], bytes):
-                    span.set_attribute(k, kwargs["parsed"][k].decode("utf8"))
-                else:
-                    span.set_attribute(k, str(kwargs["parsed"][k]))
-            for k in kwargs.get("context", {}):
-                if isinstance(kwargs.get("context")[k], bytes):
-                    span.set_attribute(k, kwargs["context"][k].decode("utf8"))
-                else:
-                    span.set_attribute(k, str(kwargs["context"][k]))
-
-    def add_tracing_headers(self, request, **kwargs):
-        name = f"boto3.{str(kwargs.get('event_name', 'before-send.s3.unknown')).split('.')[-1]}"
-        with tracer.start_as_current_span(name) as span:
-            sctx = span.get_span_context()
-            span.set_attribute("method", str(request.method))
-            span.set_attribute("hook-name", str(kwargs.get("event_name", "unknown")))
-            for k in request.headers:
-                if isinstance(request.headers[k], bytes):
-                    span.set_attribute(k, request.headers[k].decode("utf8"))
-                else:
-                    span.set_attribute(k, str(request.headers[k]))
-
-            try:
-                request.headers[
-                    "traceparent"
-                ] = f"00-{hex(sctx.trace_id)[2:]}-{hex(sctx.span_id)[2:]}-01"
-                request.headers["x-b3-traceid"] = hex(sctx.trace_id)[2:]
-                request.headers["x-b3-spanid"] = hex(sctx.span_id)[2:]
-                request.headers["x-b3-parentspanid"] = hex(sctx.span_id)[2:]
-                request.headers["x-b3-sampled"] = "1"
-                logger.error(f"[OTEL] request {request.headers}")
-            except Exception as trerr:
-                logger.error(f"OTEL {trerr}")
-
-    def create_trace(self, operation_name, params, **kwargs):
-        try:
-            # ctx = get_tracecontext()
-            name = "boto3." + str(operation_name)
-            with tracer.start_as_current_span(name) as span:
-                for k in params:
-                    span.set_attribute(k, str(params[k]))
-                for k in kwargs:
-                    span.set_attribute(k, str(kwargs[k]))
-                span.set_status(StatusCode.OK)
-        except Exception as trerr:
-            logger.error(f"OTEL createtraces {trerr}")
-
     def _initialize_cloud_conn(self):
         if not self._initialized:
-            with tracer.start_as_current_span(
-                "quay.storage.initialize",
-            ) as span:
-
-                span.set_status(StatusCode.ERROR)
-                for k in self._connect_kwargs:
-                    span.set_attribute(k, str(self._connect_kwargs[k]))
-                self._session.events.register("before-send.s3.*", self.add_tracing_headers)
-                self._session.events.register("after-call.s3.*", self.response_tracing_headers)
-                # Low-level client. Needed to generate presigned urls
-                self._cloud_conn = self._session.client("s3", **self._connect_kwargs)
-                self._cloud_bucket = self._session.resource("s3", **self._connect_kwargs).Bucket(
-                    self._bucket_name
-                )
-
-                # This will raise a ClientError if the bucket does ot exists.
-                # We actually want an exception raised if the bucket does not exists (same as in boto2)
-                self._cloud_conn.head_bucket(Bucket=self._bucket_name)
-                span.set_status(StatusCode.OK)
-                self._initialized = True
+            # Low-level client. Needed to generate presigned urls
+            self._cloud_conn = self._session.client("s3", **self._connect_kwargs)
+            self._cloud_bucket = self._session.resource("s3", **self._connect_kwargs).Bucket(
+                self._bucket_name
+            )
+            # This will raise a ClientError if the bucket does ot exists.
+            # We actually want an exception raised if the bucket does not exists (same as in boto2)
+            self._cloud_conn.head_bucket(Bucket=self._bucket_name)
+            self._initialized = True
 
     def _debug_key(self, obj):
         """
@@ -289,9 +222,6 @@ class _CloudStorage(BaseStorageV2):
     def get_cloud_bucket(self):
         return self._cloud_bucket
 
-    @tracer.start_as_current_span(
-        "quay.storage.get_content", record_exception=True, set_status_on_exception=True
-    )
     def get_content(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -306,9 +236,6 @@ class _CloudStorage(BaseStorageV2):
 
             raise
 
-    @tracer.start_as_current_span(
-        "quay.storage.put_content", record_exception=True, set_status_on_exception=True
-    )
     def put_content(self, path, content):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -319,42 +246,22 @@ class _CloudStorage(BaseStorageV2):
     def get_supports_resumable_downloads(self):
         return True
 
-    @tracer.start_as_current_span(
-        "quay.storage.get_direct_download_url", record_exception=True, set_status_on_exception=True
-    )
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         self._initialize_cloud_conn()
         path = self._init_path(path)
 
-        with tracer.start_as_current_span(
-            "quay.storage.presigned_url",
-            attributes=dict(
-                path=str(path),
-                request_ip=str(request_ip),
-                expires_in=expires_in,
-                requires_cors=requires_cors,
-                head=head,
-            ),
-        ) as span:
+        client_method = "get_object"
+        if head:
+            client_method = "head_object"
 
-            client_method = "get_object"
-            if head:
-                client_method = "head_object"
+        return self.get_cloud_conn().generate_presigned_url(
+            client_method,
+            Params={"Bucket": self._bucket_name, "Key": path},
+            ExpiresIn=expires_in,
+        )
 
-            uri = self.get_cloud_conn().generate_presigned_url(
-                client_method,
-                Params={"Bucket": self._bucket_name, "Key": path},
-                ExpiresIn=expires_in,
-            )
-            span.set_attribute("presign_url", uri)
-            span.set_status(StatusCode.OK)
-            return uri
-
-    @tracer.start_as_current_span(
-        "quay.storage.get_direct_upload_url", record_exception=True, set_status_on_exception=True
-    )
     def get_direct_upload_url(self, path, mime_type, requires_cors=True):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -368,12 +275,8 @@ class _CloudStorage(BaseStorageV2):
             ExpiresIn=300,
         )
 
-    @tracer.start_as_current_span(
-        "quay.storage.stream_read", record_exception=True, set_status_on_exception=True
-    )
     def stream_read(self, path):
         self._initialize_cloud_conn()
-
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -390,12 +293,8 @@ class _CloudStorage(BaseStorageV2):
                 break
             yield data
 
-    @tracer.start_as_current_span(
-        "quay.storage.stream_read_file", record_exception=True, set_status_on_exception=True
-    )
     def stream_read_file(self, path):
         self._initialize_cloud_conn()
-
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -406,15 +305,9 @@ class _CloudStorage(BaseStorageV2):
             raise
         return StreamReadKeyAsFile(obj.get()["Body"])
 
-    @tracer.start_as_current_span(
-        "quay.storage.__initiate_multipart_upload",
-        record_exception=True,
-        set_status_on_exception=True,
-    )
     def __initiate_multipart_upload(self, path, content_type, content_encoding):
         # Minimum size of upload part size on S3 is 5MB
         self._initialize_cloud_conn()
-
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
 
@@ -528,12 +421,8 @@ class _CloudStorage(BaseStorageV2):
 
         return total_bytes_written, write_error
 
-    @tracer.start_as_current_span(
-        "quay.storage.exists", record_exception=True, set_status_on_exception=True
-    )
     def exists(self, path):
         self._initialize_cloud_conn()
-
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -544,12 +433,8 @@ class _CloudStorage(BaseStorageV2):
             raise
         return True
 
-    @tracer.start_as_current_span(
-        "quay.storage.remove", record_exception=True, set_status_on_exception=True
-    )
     def remove(self, path):
         self._initialize_cloud_conn()
-
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -569,12 +454,8 @@ class _CloudStorage(BaseStorageV2):
                 obj = self.get_cloud_bucket().Object(content["Key"])
                 obj.delete()
 
-    @tracer.start_as_current_span(
-        "quay.storage.checksum", record_exception=True, set_status_on_exception=True
-    )
     def get_checksum(self, path):
         self._initialize_cloud_conn()
-
         path = self._init_path(path)
         obj = self.get_cloud_bucket().Object(path)
         try:
@@ -586,9 +467,6 @@ class _CloudStorage(BaseStorageV2):
 
         return obj.e_tag[1:-1][:7]
 
-    @tracer.start_as_current_span(
-        "quay.storage.copy_to", record_exception=True, set_status_on_exception=True
-    )
     def copy_to(self, destination, path):
         """
         Copies the given path from this storage to the destination storage.
@@ -659,9 +537,6 @@ class _CloudStorage(BaseStorageV2):
 
         return random_uuid, metadata
 
-    @tracer.start_as_current_span(
-        "quay.storage.stream_upload_chunk", record_exception=True, set_status_on_exception=True
-    )
     def stream_upload_chunk(self, uuid, offset, length, in_fp, storage_metadata, content_type=None):
         self._initialize_cloud_conn()
 
@@ -734,16 +609,13 @@ class _CloudStorage(BaseStorageV2):
             except botocore.exceptions.ClientError as s3re:
                 # sometimes HTTPStatusCode isn't set for some reason, so we need
                 # to protect ourselves against a KeyError.
-                with tracer.start_as_current_span(
-                    "boto3.Exception", attributes={"args": str(args), "kwargs": str(kwargs)}
-                ) as span:
-                    if (
-                        remaining_retries
-                        and s3re.response["Error"].get("HTTPStatusCode", 0) == 200
-                        and s3re.response["Error"].get("Code", "") == "InternalError"
-                    ):
-                        # Weird internal error case. Retry.
-                        continue
+                if (
+                    remaining_retries
+                    and s3re.response["Error"].get("HTTPStatusCode", 0) == 200
+                    and s3re.response["Error"].get("Code", "") == "InternalError"
+                ):
+                    # Weird internal error case. Retry.
+                    continue
 
                 # Otherwise, raise it.
                 logger.exception("Exception trying to perform action %s", action)
@@ -768,9 +640,6 @@ class _CloudStorage(BaseStorageV2):
             ):
                 yield subchunk
 
-    @tracer.start_as_current_span(
-        "quay.storage.complete_chunked_upload", record_exception=True, set_status_on_exception=True
-    )
     def complete_chunked_upload(self, uuid, final_path, storage_metadata, force_client_side=False):
         self._initialize_cloud_conn()
         chunk_list = self._chunk_list_from_metadata(storage_metadata)
@@ -820,56 +689,26 @@ class _CloudStorage(BaseStorageV2):
 
                 # [_PartUpload]
                 upload_parts = []
-
                 for index, chunk in enumerate(updated_chunks):
                     abs_chunk_path = self._init_path(chunk.path)
 
-                    with tracer.start_as_current_span(
-                        "quay.storage.action_with_retry",
-                        attributes={
-                            "action": "copy_from",
-                            "Bucket": self.get_cloud_bucket().name,
-                            "Key": chunk.path,
-                            "Range": f"bytes={chunk.offset}-{chunk.length + chunk.offset - 1}",
-                        },
-                    ) as span:
-                        part_copy = self._perform_action_with_retry(
-                            mpu.Part(index + 1).copy_from,
-                            CopySource={
-                                "Bucket": self.get_cloud_bucket().name,
-                                "Key": abs_chunk_path,
-                            },
-                            CopySourceRange="bytes=%s-%s"
-                            % (chunk.offset, chunk.length + chunk.offset - 1),
-                        )
-                        span.set_status(StatusCode.OK)
-
-                        span.add_event(
-                            "quay.storag.part.append",
-                            attributes={
-                                "index": index + 1,
-                                "etag": part_copy["CopyPartResult"]["ETag"],
-                            },
-                        )
-                        upload_parts.append(
-                            _PartUpload(index + 1, part_copy["CopyPartResult"]["ETag"])
-                        )
-
-                with tracer.start_as_current_span(
-                    "quay.storage.action_with_retry",
-                    attributes={
-                        "action": "complete",
-                        "Bucket": self.get_cloud_bucket().name,
-                    },
-                ) as span:
-                    self._perform_action_with_retry(
-                        mpu.complete,
-                        MultipartUpload={
-                            "Parts": [
-                                {"ETag": p.e_tag, "PartNumber": p.part_number} for p in upload_parts
-                            ]
-                        },
+                    part_copy = self._perform_action_with_retry(
+                        mpu.Part(index + 1).copy_from,
+                        CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
+                        CopySourceRange="bytes=%s-%s"
+                        % (chunk.offset, chunk.length + chunk.offset - 1),
                     )
+
+                    upload_parts.append(_PartUpload(index + 1, part_copy["CopyPartResult"]["ETag"]))
+
+                self._perform_action_with_retry(
+                    mpu.complete,
+                    MultipartUpload={
+                        "Parts": [
+                            {"ETag": p.e_tag, "PartNumber": p.part_number} for p in upload_parts
+                        ]
+                    },
+                )
             except (botocore.exceptions.ClientError, IOError) as ioe:
                 # Something bad happened, log it and then give up
                 msg = "Exception when attempting server-side assembly for: %s"
@@ -882,9 +721,6 @@ class _CloudStorage(BaseStorageV2):
             # pass that to stream_write to chunk and upload the final object.
             self._client_side_chunk_join(final_path, chunk_list)
 
-    @tracer.start_as_current_span(
-        "quay.storage.cancel_chunked_upload", record_exception=True, set_status_on_exception=True
-    )
     def cancel_chunked_upload(self, uuid, storage_metadata):
         self._initialize_cloud_conn()
 
@@ -892,9 +728,6 @@ class _CloudStorage(BaseStorageV2):
         for chunk in self._chunk_list_from_metadata(storage_metadata):
             self.remove(chunk.path)
 
-    @tracer.start_as_current_span(
-        "quay.storage.clean_partial_uploads", record_exception=True, set_status_on_exception=True
-    )
     def clean_partial_uploads(self, deletion_date_threshold):
         self._initialize_cloud_conn()
         path = self._init_path("uploads")
