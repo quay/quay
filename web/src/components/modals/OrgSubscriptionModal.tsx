@@ -13,8 +13,7 @@ import {
   SelectOption,
 } from '@patternfly/react-core';
 import React from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useManageOrgSubscriptions} from 'src/hooks/UseMarketplaceSubscriptions';
 
 interface OrgSubscriptionModalProps {
@@ -29,7 +28,7 @@ export default function OrgSubscriptionModal(props: OrgSubscriptionModalProps) {
   const [selectedSku, setSelectedSku] = React.useState('');
   const [menuIsOpen, setMenuIsOpen] = React.useState(false);
   const [bindingQuantity, setBindingQuantity] = React.useState(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const onSelect = (
     _event: React.MouseEvent<Element, MouseEvent> | undefined,
     value: string | number | undefined,

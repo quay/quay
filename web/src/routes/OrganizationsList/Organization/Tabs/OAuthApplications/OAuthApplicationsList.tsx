@@ -18,8 +18,7 @@ import ManageOAuthApplicationDrawer from './ManageOAuthApplicationDrawer';
 import Conditional from 'src/components/empty/Conditional';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import Empty from 'src/components/empty/Empty';
 import {KeyIcon} from '@patternfly/react-icons';
@@ -44,7 +43,7 @@ export default function OAuthApplicationsList(
     IOAuthApplication[]
   >([]);
   const [error, setError] = useState<string[]>([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     loading,

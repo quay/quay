@@ -9,8 +9,7 @@ import {
   Alert,
 } from '@patternfly/react-core';
 import {useChangeUserPassword} from 'src/hooks/UseUserActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -21,7 +20,7 @@ interface ChangePasswordModalProps {
 export default function ChangePasswordModal(props: ChangePasswordModalProps) {
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {changePassword, isLoading} = useChangeUserPassword({
     onSuccess: () => {

@@ -7,14 +7,13 @@ import {
   PageSidebarBody,
 } from '@patternfly/react-core';
 import {Link, useLocation} from 'react-router-dom';
-import {SidebarState} from 'src/atoms/SidebarState';
 import {NavigationPath} from 'src/routes/NavigationPath';
 import OrganizationsList from 'src/routes/OrganizationsList/OrganizationsList';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
-import {useRecoilValue} from 'recoil';
 import OverviewList from 'src/routes/OverviewList/OverviewList';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
+import {useUI} from 'src/contexts/UIContext';
 import ServiceKeys from 'src/routes/Superuser/ServiceKeys/ServiceKeys';
 import ChangeLog from 'src/routes/Superuser/ChangeLog/ChangeLog';
 import UsageLogs from 'src/routes/Superuser/UsageLogs/UsageLogs';
@@ -31,7 +30,7 @@ interface SideNavProps {
 
 export function QuaySidebar() {
   const location = useLocation();
-  const sidebarState = useRecoilValue(SidebarState);
+  const {isSidebarOpen} = useUI();
   const quayConfig = useQuayConfig();
   const {isSuperUser} = useCurrentUser();
 
@@ -178,7 +177,7 @@ export function QuaySidebar() {
     </Nav>
   );
 
-  if (sidebarState.isOpen) {
+  if (isSidebarOpen) {
     return (
       <PageSidebar className="page-sidebar" theme="dark">
         <PageSidebarBody>{Navigation}</PageSidebarBody>

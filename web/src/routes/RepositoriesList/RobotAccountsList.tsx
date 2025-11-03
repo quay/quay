@@ -50,8 +50,7 @@ import {
 import {useRobotRepoPermissions} from 'src/hooks/useRobotAccounts';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {RobotFederationModal} from 'src/components/modals/RobotFederationModal';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 
@@ -113,7 +112,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [isRobotFederationModalOpen, setRobotFederationModalOpen] =
     useState<boolean>(false);
 
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {robotAccountsForOrg} = useRobotAccounts({
     name: props.organizationName,

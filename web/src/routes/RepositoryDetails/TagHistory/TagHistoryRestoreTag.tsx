@@ -3,12 +3,11 @@ import {TagAction, TagEntry} from './types';
 import {ReactElement, useEffect, useState} from 'react';
 import {Alert, Button, Label, Modal} from '@patternfly/react-core';
 import {useRestoreTag} from 'src/hooks/UseTags';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 export default function RestoreTag(props: RestoreTagProps) {
   const {tagEntry, org, repo} = props;
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const {restoreTag, success, error} = useRestoreTag(org, repo);
 

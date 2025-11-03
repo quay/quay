@@ -18,11 +18,10 @@ import {DesktopIcon} from '@patternfly/react-icons';
 import React, {useState} from 'react';
 import {Ref} from 'react';
 import {useParams} from 'react-router-dom';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import EntitySearch from 'src/components/EntitySearch';
 import Conditional from 'src/components/empty/Conditional';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {
   useAddMembersToTeam,
   useFetchTeamMembersForOrg,
@@ -50,7 +49,7 @@ export default function AddNewTeamMemberDrawer(
   const {robots, isLoadingRobots} = useFetchRobotAccounts(props.orgName);
   // Get teams
   const {teams} = useFetchTeams(props.orgName);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const creatorDefaultOptions = [
     <React.Fragment key="creator">

@@ -1,14 +1,13 @@
 import {Alert, Button, Modal, ModalVariant} from '@patternfly/react-core';
 import {useEffect} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useDeleteCollaborator} from 'src/hooks/UseMembers';
 import {IMembers} from 'src/resources/MembersResource';
 
 export default function CollaboratorsDeleteModal(
   props: CollaboratorsDeleteModalProps,
 ) {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const deleteMsg =
     'User will be removed from all teams and repositories under this organization in which they are a member or have permissions.';
   const deleteAlert = (

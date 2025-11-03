@@ -7,8 +7,7 @@ import {
   AlertVariant as PFAlertVariant,
 } from '@patternfly/react-core';
 import {useSendRecoveryEmail} from 'src/hooks/UseUserActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface SendRecoveryEmailModalProps {
   isOpen: boolean;
@@ -21,7 +20,7 @@ export default function SendRecoveryEmailModal(
 ) {
   const [error, setError] = useState<string | null>(null);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {sendRecovery, isLoading} = useSendRecoveryEmail({
     onSuccess: (data) => {

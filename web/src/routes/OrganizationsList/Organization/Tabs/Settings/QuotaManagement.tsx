@@ -23,8 +23,7 @@ import {PlusIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
 import {useForm, Controller} from 'react-hook-form';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
-import {AlertVariant as AlertVariantState} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant as AlertVariantState, useUI} from 'src/contexts/UIContext';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {
@@ -119,7 +118,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   }>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const {addAlert, clearAllAlerts} = useAlerts();
+  const {addAlert, clearAllAlerts} = useUI();
 
   // Check if there's already a "Reject" limit to prevent adding duplicates
   const hasRejectLimit = limits.some((limit) => limit.type === 'Reject');

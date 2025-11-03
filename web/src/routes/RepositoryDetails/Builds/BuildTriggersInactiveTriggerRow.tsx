@@ -1,13 +1,12 @@
 import {Td, Tr} from '@patternfly/react-table';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Conditional from 'src/components/empty/Conditional';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {useDeleteBuildTrigger} from 'src/hooks/UseBuildTriggers';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export default function InactiveTrigger(props: InactiveTriggerProps) {
   const config = useQuayConfig();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {deleteTrigger} = useDeleteBuildTrigger(
     props.org,
     props.repo,

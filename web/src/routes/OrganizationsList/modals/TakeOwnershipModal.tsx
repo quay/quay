@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useTakeOwnership} from 'src/hooks/UseOrganizationActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface TakeOwnershipModalProps {
   isOpen: boolean;
@@ -13,7 +12,7 @@ interface TakeOwnershipModalProps {
 
 export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const entityType = props.isUser ? 'user' : 'organization';
 
   const {takeOwnership, isLoading} = useTakeOwnership({

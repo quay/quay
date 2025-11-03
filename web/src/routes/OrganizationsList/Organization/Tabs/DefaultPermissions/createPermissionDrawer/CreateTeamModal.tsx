@@ -11,8 +11,7 @@ import {
 } from '@patternfly/react-core';
 import {ExclamationCircleIcon} from '@patternfly/react-icons';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useCreateTeam} from 'src/hooks/UseTeams';
 
 type validate = 'success' | 'error' | 'default';
@@ -23,7 +22,7 @@ export const CreateTeamModal = (props: CreateTeamModalProps): JSX.Element => {
 
   const [validatedName, setValidatedName] = useState<validate>('default');
   const [nameHelperText, setNameHelperText] = useState(props.nameHelperText);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const handleNameChange = (
     _event: React.FormEvent<HTMLInputElement>,

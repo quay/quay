@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useToggleUserStatus} from 'src/hooks/UseUserActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface ToggleUserStatusModalProps {
   isOpen: boolean;
@@ -15,7 +14,7 @@ export default function ToggleUserStatusModal(
   props: ToggleUserStatusModalProps,
 ) {
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const action = props.currentlyEnabled ? 'disabled' : 'enabled';
 
   const {toggleStatus, isLoading} = useToggleUserStatus({
