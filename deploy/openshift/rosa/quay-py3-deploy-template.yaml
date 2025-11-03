@@ -84,20 +84,6 @@ objects:
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: ${NAME}-grpc-lb-svc
-    annotations: ${{GRPC_LB_ANNOTATIONS}}
-  spec:
-    ports:
-    - name: grpc
-      protocol: TCP
-      port: ${{GRPC_LB_SERVICE_PORT}}
-      targetPort: ${{GRPC_LB_SERVICE_TARGET_PORT}}
-    type: LoadBalancer
-    selector:
-      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -494,20 +480,3 @@ parameters:
       }
     displayName: HTTPS service annotations.
     description: HTTPS Service annotations.
-  - name: GRPC_LB_SERVICE_PORT
-    value: "443"
-  - name: GRPC_LB_SERVICE_TARGET_PORT
-    value: "55443"
-    displayName: loadbalancer service target port
-  - name: GRPC_LB_ANNOTATIONS
-    value: |-
-      {
-      "service.beta.kubernetes.io/aws-load-balancer-name": "quay-py3-grpc-lb",
-      "service.beta.kubernetes.io/aws-load-balancer-type": "external",
-      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
-      "service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
-      "service.beta.kubernetes.io/aws-load-balancer-ip-address-type": "ipv4",
-      "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": "red-hat-managed=true"
-      }
-    displayName: GRPC service annotations.
-    description: GRPC Service annotations.
