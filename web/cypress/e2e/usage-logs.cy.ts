@@ -408,20 +408,108 @@ describe('Usage Logs - Superuser', () => {
   });
 
   it('filters superuser logs', () => {
+    const multipleLogsResp = {
+      start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
+      end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
+      logs: [
+        {
+          kind: 'user_create',
+          metadata: {
+            username: 'testuser',
+            namespace: 'testuser',
+          },
+          ip: '172.18.0.1',
+          datetime: 'Wed, 29 Oct 2025 14:01:14 -0000',
+          performer: {
+            kind: 'user',
+            name: 'admin',
+            is_robot: false,
+          },
+          namespace: {
+            name: 'testuser',
+          },
+        },
+        {
+          kind: 'org_create',
+          metadata: {
+            namespace: 'projectquay',
+          },
+          ip: '192.168.1.1',
+          datetime: 'Wed, 29 Oct 2025 13:55:45 -0000',
+          performer: {
+            kind: 'user',
+            name: 'user1',
+            is_robot: false,
+          },
+          namespace: {
+            name: 'projectquay',
+          },
+        },
+        {
+          kind: 'account_change_plan',
+          metadata: {
+            namespace: 'user1',
+          },
+          ip: '172.31.0.1',
+          datetime: 'Wed, 29 Oct 2025 13:50:00 -0000',
+          performer: {
+            kind: 'user',
+            name: 'user1',
+            is_robot: false,
+          },
+          namespace: {
+            name: 'user1',
+          },
+        },
+      ],
+    };
+
     cy.intercept(
       'GET',
       '/api/v1/superuser/aggregatelogs?*',
       superuserAggregateLogsResp,
     );
-    cy.intercept('GET', '/api/v1/superuser/logs?*', superuserLogsResp);
+    cy.intercept('GET', '/api/v1/superuser/logs?*', multipleLogsResp);
 
     cy.visit('/usage-logs');
 
-    // Type in filter
-    cy.get('[placeholder="Filter logs"]').type('change');
+    // Wait for logs to load
+    cy.contains('td', 'User testuser created').should('be.visible');
+    cy.contains('td', 'Organization projectquay created').should('be.visible');
+    cy.contains('td', 'Change plan').should('be.visible');
 
-    // Verify filter input has value
-    cy.get('[placeholder="Filter logs"]').should('have.value', 'change');
+    // Filter by namespace
+    cy.get('[placeholder="Filter logs"]').type('projectquay');
+    cy.contains('td', 'Organization projectquay created').should('be.visible');
+    cy.contains('td', 'User testuser created').should('not.exist');
+    cy.contains('td', 'Change plan').should('not.exist');
+
+    // Clear and filter by performer
+    cy.get('[placeholder="Filter logs"]').clear();
+    cy.get('[placeholder="Filter logs"]').type('admin');
+    cy.contains('td', 'User testuser created').should('be.visible');
+    cy.contains('td', 'Organization projectquay created').should('not.exist');
+    cy.contains('td', 'Change plan').should('not.exist');
+
+    // Clear and filter by IP address
+    cy.get('[placeholder="Filter logs"]').clear();
+    cy.get('[placeholder="Filter logs"]').type('192.168');
+    cy.contains('td', 'Organization projectquay created').should('be.visible');
+    cy.contains('td', 'User testuser created').should('not.exist');
+    cy.contains('td', 'Change plan').should('not.exist');
+
+    // Clear and filter by description
+    cy.get('[placeholder="Filter logs"]').clear();
+    cy.get('[placeholder="Filter logs"]').type('created');
+    cy.contains('td', 'User testuser created').should('be.visible');
+    cy.contains('td', 'Organization projectquay created').should('be.visible');
+    cy.contains('td', 'Change plan').should('not.exist');
+
+    // Clear filter
+    cy.get('[placeholder="Filter logs"]').clear();
+    cy.contains('td', 'User testuser created').should('be.visible');
+    cy.contains('td', 'Organization projectquay created').should('be.visible');
+    cy.contains('td', 'Change plan').should('be.visible');
   });
 
   it('displays table columns for superuser', () => {
