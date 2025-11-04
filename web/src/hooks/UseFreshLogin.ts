@@ -1,29 +1,13 @@
 import {useState, useCallback} from 'react';
-import axios from 'src/libs/axios';
-import {AxiosResponse, AxiosError} from 'axios';
-import {assertHttpCode} from 'src/resources/ErrorHandling';
-
-interface VerifyUserRequest {
-  password: string;
-}
-
-interface VerifyUserResponse {
-  success: boolean;
-}
+import {getCsrfToken} from 'src/libs/axios';
+import {AxiosError} from 'axios';
+import {verifyUser} from 'src/resources/AuthResource';
 
 interface FreshLoginState {
   isModalOpen: boolean;
   isLoading: boolean;
   error: string | null;
   pendingOperations: (() => Promise<void>)[];
-}
-
-async function verifyUser(password: string): Promise<void> {
-  const response: AxiosResponse<VerifyUserResponse> = await axios.post(
-    '/api/v1/signin/verify',
-    {password} as VerifyUserRequest,
-  );
-  assertHttpCode(response.status, 200);
 }
 
 export function useFreshLogin() {
@@ -57,26 +41,37 @@ export function useFreshLogin() {
       try {
         await verifyUser(password);
 
-        // On success, retry all pending operations
-        const {pendingOperations} = state;
+        // On success, retrieve and execute all pending operations
+        // Use functional setState to get current state instead of stale closure
+        let operationsToRetry: (() => Promise<void>)[] = [];
+
+        setState((prevState) => {
+          operationsToRetry = prevState.pendingOperations;
+          return {
+            ...prevState,
+            isLoading: false,
+            error: null,
+            // Keep modal open and don't clear pending operations yet
+          };
+        });
+
+        // Explicitly fetch new CSRF token after password verification
+        // The backend generates a new CSRF token and updates the session during password verification
+        // Fetching it explicitly ensures we have the correct token that matches the server session
+        await getCsrfToken();
+
+        // Execute all pending operations - keep modal open until all complete
+        for (const operation of operationsToRetry) {
+          await operation(); // Let errors propagate to the original error handler
+        }
+
+        // All operations succeeded - now close the modal and clear pending operations
         setState({
           isModalOpen: false,
           isLoading: false,
           error: null,
           pendingOperations: [],
         });
-
-        // Execute all pending operations
-        for (const operation of pendingOperations) {
-          try {
-            await operation();
-          } catch (error) {
-            console.error(
-              'Failed to retry operation after fresh login:',
-              error,
-            );
-          }
-        }
       } catch (error: unknown) {
         const axiosError = error as AxiosError;
         const errorMessage =
@@ -90,7 +85,7 @@ export function useFreshLogin() {
         throw error; // Re-throw so the modal can handle it
       }
     },
-    [state.pendingOperations],
+    [], // Remove state.pendingOperations from dependencies - we read from prevState instead
   );
 
   const handleCancel = useCallback(() => {

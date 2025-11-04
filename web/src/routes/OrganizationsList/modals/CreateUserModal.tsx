@@ -11,6 +11,8 @@ import {
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {useFreshLogin} from 'src/hooks/UseFreshLogin';
+import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -45,6 +47,16 @@ export function CreateUserModal(props: CreateUserModalProps) {
     },
   });
 
+  const {
+    isModalOpen: isFreshLoginModalOpen,
+    isLoading: isFreshLoginLoading,
+    error: freshLoginError,
+    showFreshLoginModal,
+    handleVerify,
+    handleCancel: handleFreshLoginCancel,
+    isFreshLoginRequired,
+  } = useFreshLogin();
+
   const {createUser, isLoading} = useCreateUser({
     onSuccess: (username: string) => {
       addAlert({
@@ -55,12 +67,32 @@ export function CreateUserModal(props: CreateUserModalProps) {
       setErrorMessage(null);
       props.onSuccess();
     },
-    onError: (error: string) => {
-      setErrorMessage(error);
+    onError: (err: any) => {
+      // Check if fresh login is required
+      if (isFreshLoginRequired(err)) {
+        // Get form data for retry
+        const formData = watch();
+        // Show fresh login modal and retry on success
+        showFreshLoginModal(() =>
+          createUser({
+            username: formData.username,
+            email: formData.email,
+            password: formData.password,
+          }),
+        );
+        return;
+      }
+
+      const errorMsg =
+        err?.response?.data?.error_message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to create user';
+      setErrorMessage(errorMsg);
       addAlert({
         variant: AlertVariant.Failure,
         title: 'Failed to create user',
-        message: error,
+        message: errorMsg,
       });
     },
   });
@@ -83,145 +115,154 @@ export function CreateUserModal(props: CreateUserModalProps) {
   };
 
   return (
-    <Modal
-      variant={ModalVariant.medium}
-      title="Create New User"
-      isOpen={props.isOpen}
-      onClose={handleClose}
-      data-testid="create-user-modal"
-      actions={[
-        <Button
-          key="submit"
-          type="submit"
-          variant="primary"
-          isDisabled={!isValid || isLoading}
-          isLoading={isLoading}
-          onClick={handleSubmit(onSubmit)}
-          data-testid="create-user-submit"
-        >
-          Create User
-        </Button>,
-        <Button
-          key="cancel"
-          variant="link"
-          onClick={handleClose}
-          data-testid="create-user-cancel"
-        >
-          Cancel
-        </Button>,
-      ]}
-    >
-      <Form onSubmit={handleSubmit(onSubmit)}>
-        {errorMessage && (
-          <Alert
-            variant="danger"
-            title="Error creating user"
-            isInline
-            style={{marginBottom: '1em'}}
+    <>
+      <Modal
+        variant={ModalVariant.medium}
+        title="Create New User"
+        isOpen={props.isOpen}
+        onClose={handleClose}
+        data-testid="create-user-modal"
+        actions={[
+          <Button
+            key="submit"
+            type="submit"
+            variant="primary"
+            isDisabled={!isValid || isLoading}
+            isLoading={isLoading}
+            onClick={handleSubmit(onSubmit)}
+            data-testid="create-user-submit"
           >
-            {errorMessage}
-          </Alert>
-        )}
+            Create User
+          </Button>,
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={handleClose}
+            data-testid="create-user-cancel"
+          >
+            Cancel
+          </Button>,
+        ]}
+      >
+        <Form onSubmit={handleSubmit(onSubmit)}>
+          {errorMessage && (
+            <Alert
+              variant="danger"
+              title="Error creating user"
+              isInline
+              style={{marginBottom: '1em'}}
+            >
+              {errorMessage}
+            </Alert>
+          )}
 
-        <FormGroup
-          label="Username"
-          isRequired
-          fieldId="username"
-          helperTextInvalid={errors.username?.message}
-          validated={errors.username ? 'error' : 'default'}
-        >
-          <TextInput
-            id="username"
-            type="text"
-            data-testid="username-input"
+          <FormGroup
+            label="Username"
+            isRequired
+            fieldId="username"
+            helperTextInvalid={errors.username?.message}
             validated={errors.username ? 'error' : 'default'}
-            isDisabled={isLoading}
-            {...register('username', {
-              required: 'Username is required',
-              minLength: {
-                value: 2,
-                message: 'Username must be at least 2 characters',
-              },
-              maxLength: {
-                value: 255,
-                message: 'Username must be less than 255 characters',
-              },
-              pattern: {
-                value: /^[a-z0-9_][a-z0-9_-]*$/,
-                message:
-                  'Username must contain only lowercase letters, numbers, hyphens, and underscores',
-              },
-            })}
-          />
-        </FormGroup>
+          >
+            <TextInput
+              id="username"
+              type="text"
+              data-testid="username-input"
+              validated={errors.username ? 'error' : 'default'}
+              isDisabled={isLoading}
+              {...register('username', {
+                required: 'Username is required',
+                minLength: {
+                  value: 2,
+                  message: 'Username must be at least 2 characters',
+                },
+                maxLength: {
+                  value: 255,
+                  message: 'Username must be less than 255 characters',
+                },
+                pattern: {
+                  value: /^[a-z0-9_][a-z0-9_-]*$/,
+                  message:
+                    'Username must contain only lowercase letters, numbers, hyphens, and underscores',
+                },
+              })}
+            />
+          </FormGroup>
 
-        <FormGroup
-          label="Email"
-          isRequired
-          fieldId="email"
-          helperTextInvalid={errors.email?.message}
-          validated={errors.email ? 'error' : 'default'}
-        >
-          <TextInput
-            id="email"
-            type="email"
-            data-testid="email-input"
+          <FormGroup
+            label="Email"
+            isRequired
+            fieldId="email"
+            helperTextInvalid={errors.email?.message}
             validated={errors.email ? 'error' : 'default'}
-            isDisabled={isLoading}
-            {...register('email', {
-              required: 'Email is required',
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Invalid email address',
-              },
-            })}
-          />
-        </FormGroup>
+          >
+            <TextInput
+              id="email"
+              type="email"
+              data-testid="email-input"
+              validated={errors.email ? 'error' : 'default'}
+              isDisabled={isLoading}
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: 'Invalid email address',
+                },
+              })}
+            />
+          </FormGroup>
 
-        <FormGroup
-          label="Password"
-          isRequired
-          fieldId="password"
-          helperTextInvalid={errors.password?.message}
-          validated={errors.password ? 'error' : 'default'}
-        >
-          <TextInput
-            id="password"
-            type="password"
-            data-testid="password-input"
+          <FormGroup
+            label="Password"
+            isRequired
+            fieldId="password"
+            helperTextInvalid={errors.password?.message}
             validated={errors.password ? 'error' : 'default'}
-            isDisabled={isLoading}
-            {...register('password', {
-              required: 'Password is required',
-              minLength: {
-                value: 8,
-                message: 'Password must be at least 8 characters',
-              },
-            })}
-          />
-        </FormGroup>
+          >
+            <TextInput
+              id="password"
+              type="password"
+              data-testid="password-input"
+              validated={errors.password ? 'error' : 'default'}
+              isDisabled={isLoading}
+              {...register('password', {
+                required: 'Password is required',
+                minLength: {
+                  value: 8,
+                  message: 'Password must be at least 8 characters',
+                },
+              })}
+            />
+          </FormGroup>
 
-        <FormGroup
-          label="Confirm Password"
-          isRequired
-          fieldId="confirmPassword"
-          helperTextInvalid={errors.confirmPassword?.message}
-          validated={errors.confirmPassword ? 'error' : 'default'}
-        >
-          <TextInput
-            id="confirmPassword"
-            type="password"
-            data-testid="confirm-password-input"
+          <FormGroup
+            label="Confirm Password"
+            isRequired
+            fieldId="confirmPassword"
+            helperTextInvalid={errors.confirmPassword?.message}
             validated={errors.confirmPassword ? 'error' : 'default'}
-            isDisabled={isLoading}
-            {...register('confirmPassword', {
-              required: 'Please confirm your password',
-              validate: (value) =>
-                value === password || 'Passwords do not match',
-            })}
-          />
-        </FormGroup>
-      </Form>
-    </Modal>
+          >
+            <TextInput
+              id="confirmPassword"
+              type="password"
+              data-testid="confirm-password-input"
+              validated={errors.confirmPassword ? 'error' : 'default'}
+              isDisabled={isLoading}
+              {...register('confirmPassword', {
+                required: 'Please confirm your password',
+                validate: (value) =>
+                  value === password || 'Passwords do not match',
+              })}
+            />
+          </FormGroup>
+        </Form>
+      </Modal>
+      <FreshLoginModal
+        isOpen={isFreshLoginModalOpen}
+        onVerify={handleVerify}
+        onCancel={handleFreshLoginCancel}
+        isLoading={isFreshLoginLoading}
+        error={freshLoginError}
+      />
+    </>
   );
 }

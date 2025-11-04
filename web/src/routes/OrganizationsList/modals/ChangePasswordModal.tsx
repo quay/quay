@@ -10,6 +10,8 @@ import {
 } from '@patternfly/react-core';
 import {useChangeUserPassword} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {useFreshLogin} from 'src/hooks/UseFreshLogin';
+import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -22,6 +24,16 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
   const [error, setError] = useState<string | null>(null);
   const {addAlert} = useUI();
 
+  const {
+    isModalOpen: isFreshLoginModalOpen,
+    isLoading: isFreshLoginLoading,
+    error: freshLoginError,
+    showFreshLoginModal,
+    handleVerify,
+    handleCancel: handleFreshLoginCancel,
+    isFreshLoginRequired,
+  } = useFreshLogin();
+
   const {changePassword, isLoading} = useChangeUserPassword({
     onSuccess: () => {
       addAlert({
@@ -31,6 +43,13 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
       handleClose();
     },
     onError: (err) => {
+      // Check if fresh login is required
+      if (isFreshLoginRequired(err)) {
+        // Show fresh login modal and retry on success
+        showFreshLoginModal(() => changePassword(props.username, newPassword));
+        return;
+      }
+
       const errorMessage =
         err?.response?.data?.error_message || 'Failed to change password';
       setError(errorMessage);
@@ -62,48 +81,57 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
   };
 
   return (
-    <Modal
-      title={`Change Password for ${props.username}`}
-      isOpen={props.isOpen}
-      onClose={handleClose}
-      variant={ModalVariant.medium}
-      actions={[
-        <Button
-          key="confirm"
-          variant="primary"
-          onClick={handleSubmit}
-          isLoading={isLoading}
-          isDisabled={isLoading || !newPassword}
-        >
-          Change Password
-        </Button>,
-        <Button key="cancel" variant="link" onClick={handleClose}>
-          Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Enter new password:" isRequired>
-          <TextInput
-            id="new-password"
-            value={newPassword}
-            onChange={(_event, value) => setNewPassword(value)}
-            placeholder="New password (min 8 characters)"
-            type="password"
-            isDisabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSubmit();
-              }
-            }}
-          />
-        </FormGroup>
-        {error && (
-          <Alert variant="danger" title="Error" isInline>
-            {error}
-          </Alert>
-        )}
-      </Form>
-    </Modal>
+    <>
+      <Modal
+        title={`Change Password for ${props.username}`}
+        isOpen={props.isOpen}
+        onClose={handleClose}
+        variant={ModalVariant.medium}
+        actions={[
+          <Button
+            key="confirm"
+            variant="primary"
+            onClick={handleSubmit}
+            isLoading={isLoading}
+            isDisabled={isLoading || !newPassword}
+          >
+            Change Password
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleClose}>
+            Cancel
+          </Button>,
+        ]}
+      >
+        <Form>
+          <FormGroup label="Enter new password:" isRequired>
+            <TextInput
+              id="new-password"
+              value={newPassword}
+              onChange={(_event, value) => setNewPassword(value)}
+              placeholder="New password (min 8 characters)"
+              type="password"
+              isDisabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSubmit();
+                }
+              }}
+            />
+          </FormGroup>
+          {error && (
+            <Alert variant="danger" title="Error" isInline>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </Modal>
+      <FreshLoginModal
+        isOpen={isFreshLoginModalOpen}
+        onVerify={handleVerify}
+        onCancel={handleFreshLoginCancel}
+        isLoading={isFreshLoginLoading}
+        error={freshLoginError}
+      />
+    </>
   );
 }
