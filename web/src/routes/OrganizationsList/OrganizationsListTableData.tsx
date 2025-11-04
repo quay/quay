@@ -52,15 +52,6 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const config = useQuayConfig();
   // Get current user data for user avatars
   const {user: currentUser} = useCurrentUser();
-  // const queryClient = useQueryClient();
-  // useEffect(() => {
-  //   return () => {
-  //     queryClient.cancelQueries(['organization', props.name]);
-  //     queryClient.cancelQueries(['organization', props.name, 'members']);
-  //     queryClient.cancelQueries(['organization', props.name, 'robots']);
-  //     queryClient.cancelQueries(['organization', props.name, 'repositories']);
-  //   };
-  // }, [props.name]);
 
   const {isSuperUser} = useCurrentUser();
 
@@ -75,14 +66,18 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const {data: members} = useQuery(
     ['organization', props.name, 'members'],
     ({signal}) => fetchMembersForOrg(props.name, signal),
-    {placeholderData: props.isUser ? [] : undefined},
+    {
+      placeholderData: props.isUser ? [] : undefined,
+      enabled: !props.isUser,
+    },
   );
   const memberCount = props.isUser ? 0 : members ? members.length : null;
 
   // Get robots
   const {data: robots} = useQuery(
     ['organization', props.name, 'robots'],
-    ({signal}) => fetchRobotsForNamespace(props.name, false, signal),
+    ({signal}) => fetchRobotsForNamespace(props.name, props.isUser, signal),
+    {placeholderData: []},
   );
   const robotCount = robots ? robots.length : null;
 
@@ -110,18 +105,11 @@ export default function OrgTableData(props: OrgTableDataProps) {
       : [],
   );
 
-  let teamCountVal: string;
-  if (!props.isUser) {
-    useQuery(
-      ['organization', props.name, 'teams'],
-      () => organization?.teams || [],
-    );
-    teamCountVal = organization?.teams
-      ? Object.keys(organization?.teams)?.length.toString()
-      : '0';
-  } else {
-    teamCountVal = 'N/A';
-  }
+  const teamCountVal: string = props.isUser
+    ? 'N/A'
+    : organization?.teams
+    ? Object.keys(organization.teams).length.toString()
+    : '0';
 
   return (
     <>
