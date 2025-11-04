@@ -10,6 +10,8 @@ import {
 } from '@patternfly/react-core';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {useFreshLogin} from 'src/hooks/UseFreshLogin';
+import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 
 interface ChangeEmailModalProps {
   isOpen: boolean;
@@ -22,6 +24,16 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
   const [error, setError] = useState<string | null>(null);
   const {addAlert} = useUI();
 
+  const {
+    isModalOpen: isFreshLoginModalOpen,
+    isLoading: isFreshLoginLoading,
+    error: freshLoginError,
+    showFreshLoginModal,
+    handleVerify,
+    handleCancel: handleFreshLoginCancel,
+    isFreshLoginRequired,
+  } = useFreshLogin();
+
   const {changeEmail, isLoading} = useChangeUserEmail({
     onSuccess: () => {
       addAlert({
@@ -31,6 +43,13 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
       handleClose();
     },
     onError: (err) => {
+      // Check if fresh login is required
+      if (isFreshLoginRequired(err)) {
+        // Show fresh login modal and retry on success
+        showFreshLoginModal(() => changeEmail(props.username, newEmail.trim()));
+        return;
+      }
+
       const errorMessage =
         err?.response?.data?.error_message || 'Failed to change email';
       setError(errorMessage);
@@ -64,48 +83,57 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
   };
 
   return (
-    <Modal
-      title={`Change Email for ${props.username}`}
-      isOpen={props.isOpen}
-      onClose={handleClose}
-      variant={ModalVariant.medium}
-      actions={[
-        <Button
-          key="confirm"
-          variant="primary"
-          onClick={handleSubmit}
-          isLoading={isLoading}
-          isDisabled={isLoading || !newEmail.trim()}
-        >
-          Change Email
-        </Button>,
-        <Button key="cancel" variant="link" onClick={handleClose}>
-          Cancel
-        </Button>,
-      ]}
-    >
-      <Form>
-        <FormGroup label="Enter new email address:" isRequired>
-          <TextInput
-            id="new-email"
-            value={newEmail}
-            onChange={(_event, value) => setNewEmail(value)}
-            placeholder="user@example.com"
-            type="email"
-            isDisabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSubmit();
-              }
-            }}
-          />
-        </FormGroup>
-        {error && (
-          <Alert variant="danger" title="Error" isInline>
-            {error}
-          </Alert>
-        )}
-      </Form>
-    </Modal>
+    <>
+      <Modal
+        title={`Change Email for ${props.username}`}
+        isOpen={props.isOpen}
+        onClose={handleClose}
+        variant={ModalVariant.medium}
+        actions={[
+          <Button
+            key="confirm"
+            variant="primary"
+            onClick={handleSubmit}
+            isLoading={isLoading}
+            isDisabled={isLoading || !newEmail.trim()}
+          >
+            Change Email
+          </Button>,
+          <Button key="cancel" variant="link" onClick={handleClose}>
+            Cancel
+          </Button>,
+        ]}
+      >
+        <Form>
+          <FormGroup label="Enter new email address:" isRequired>
+            <TextInput
+              id="new-email"
+              value={newEmail}
+              onChange={(_event, value) => setNewEmail(value)}
+              placeholder="user@example.com"
+              type="email"
+              isDisabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSubmit();
+                }
+              }}
+            />
+          </FormGroup>
+          {error && (
+            <Alert variant="danger" title="Error" isInline>
+              {error}
+            </Alert>
+          )}
+        </Form>
+      </Modal>
+      <FreshLoginModal
+        isOpen={isFreshLoginModalOpen}
+        onVerify={handleVerify}
+        onCancel={handleFreshLoginCancel}
+        isLoading={isFreshLoginLoading}
+        error={freshLoginError}
+      />
+    </>
   );
 }

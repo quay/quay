@@ -85,3 +85,20 @@ export async function verifyEmailAddress(data: EmailVerificationRequest) {
   assertHttpCode(response.status, 200);
   return response.data;
 }
+
+interface VerifyUserRequest {
+  password: string;
+}
+
+interface VerifyUserResponse {
+  success: boolean;
+}
+
+export async function verifyUser(password: string) {
+  const response = await axios.post<VerifyUserResponse>(
+    '/api/v1/signin/verify',
+    {password} as VerifyUserRequest,
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
