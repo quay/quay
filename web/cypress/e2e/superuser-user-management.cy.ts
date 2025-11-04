@@ -231,7 +231,7 @@ describe('Superuser User Management', () => {
       }).as('getOrgs');
     });
 
-    it('shows all management options for regular users', () => {
+    it('shows all management options for regular users (without Configure Quota)', () => {
       cy.intercept('GET', '/api/v1/superuser/users/', {
         body: {
           users: [
@@ -257,13 +257,14 @@ describe('Superuser User Management', () => {
       // Click kebab menu for regular user (tom)
       cy.get('[data-testid="tom-options-toggle"]').click();
 
-      // Should see all 6 options
+      // Should see all user management options (but NOT Configure Quota)
       cy.contains('Change E-mail Address').should('be.visible');
       cy.contains('Change Password').should('be.visible');
       cy.contains('Disable User').should('be.visible');
       cy.contains('Delete User').should('be.visible');
       cy.contains('Take Ownership').should('be.visible');
-      cy.contains('Configure Quota').should('be.visible');
+      // Configure Quota should NOT be visible for regular users (only superusers can configure quota)
+      cy.contains('Configure Quota').should('not.exist');
     });
 
     it('shows "Enable User" for disabled users', () => {
