@@ -11,7 +11,13 @@ describe('Org List Page', () => {
   });
 
   it('Search Filter', () => {
+    // Add API mocks before visiting
+    cy.fixture('config.json').then((config) => {
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
     cy.visit('/organization');
+    cy.wait('@getConfig'); // Wait for config to load
 
     // Filter for a single org
     cy.get('#orgslist-search-input').type('user1');
@@ -241,5 +247,206 @@ describe('Org List Page', () => {
     // Verify at least one organization shows quota consumed data (not "—")
     // The quota should be displayed as "10.0 GiB / 50.0 GiB" format
     cy.get('td[data-label="Size"]').first().should('not.contain.text', '—');
+  });
+
+  it('Superuser displays user status labels', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+
+    cy.get('#orgslist-search-input').type('user1');
+
+    cy.contains('a', 'user1')
+      .parents('tr')
+      .within(() => {
+        cy.contains('Superuser').should('exist');
+      });
+  });
+
+  it('Shows user orgs when superuser API fails', () => {
+    // Setup superuser with feature flags enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser with user's own organizations
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Simulate superuser API endpoints returning 403 (fresh login required)
+    cy.intercept('GET', '/api/v1/superuser/organizations/', {
+      statusCode: 403,
+      body: {error: 'Fresh login required'},
+    }).as('getSuperuserOrganizationsFailed');
+
+    cy.intercept('GET', '/api/v1/superuser/users/', {
+      statusCode: 403,
+      body: {error: 'Fresh login required'},
+    }).as('getSuperuserUsersFailed');
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+    cy.wait('@getSuperuserOrganizationsFailed');
+    cy.wait('@getSuperuserUsersFailed');
+
+    // Should still show user's own organizations from /api/v1/user/
+    cy.contains('testorg').should('exist');
+    cy.contains('superuser').should('exist');
+
+    // Verify the organization is clickable
+    cy.contains('testorg').should('be.visible');
+  });
+
+  it('Shows combined orgs for superuser when API succeeds', () => {
+    // Setup superuser with feature flags enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock superuser with user's own organizations (only testorg)
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Mock successful superuser API calls with additional orgs
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    // Mock organization details
+    cy.intercept('GET', '/api/v1/organization/testorg', {
+      statusCode: 200,
+      body: {
+        name: 'testorg',
+        email: 'testorg@example.com',
+        teams: {owners: 'admin'},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/projectquay', {
+      statusCode: 200,
+      body: {
+        name: 'projectquay',
+        email: 'projectquay@example.com',
+        teams: {},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/coreos', {
+      statusCode: 200,
+      body: {
+        name: 'coreos',
+        email: 'coreos@example.com',
+        teams: {owners: 'admin'},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Should show user's own org (testorg)
+    cy.contains('testorg').should('exist');
+
+    // Should also show additional orgs from superuser API
+    cy.contains('projectquay').should('exist');
+    cy.contains('coreos').should('exist');
+
+    // Should show current user
+    cy.contains('superuser').should('exist');
+  });
+
+  it('Shows no duplicates when user org appears in superuser API', () => {
+    // Setup superuser
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    cy.fixture('superuser.json').then((user) => {
+      cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+    });
+
+    // Superuser API includes testorg (which user is also a member of)
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getSuperUser');
+
+    // Count how many times testorg appears - should be exactly once
+    cy.get('td[data-label="Name"]')
+      .contains('testorg')
+      .parents('tr')
+      .should('have.length', 1);
   });
 });

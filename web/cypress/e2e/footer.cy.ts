@@ -19,6 +19,9 @@ describe('Footer', () => {
     cy.visit('/organization');
     cy.wait('@getConfig');
 
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
+
     // Check that footer is visible
     cy.get('#quay-footer').should('be.visible');
 
@@ -43,6 +46,9 @@ describe('Footer', () => {
     cy.visit('/organization');
     cy.wait('@getConfig');
 
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
+
     // Check that documentation link has correct attributes
     cy.get('.quay-footer-list')
       .contains('a', 'Documentation')
@@ -54,10 +60,12 @@ describe('Footer', () => {
     // Check on organization page
     cy.visit('/organization');
     cy.wait('@getConfig');
+    cy.get('#quay-footer').scrollIntoView();
     cy.get('#quay-footer').should('be.visible');
 
     // Check on repositories page
     cy.visit('/repository');
+    cy.get('#quay-footer').scrollIntoView();
     cy.get('#quay-footer').should('be.visible');
   });
 
@@ -75,6 +83,9 @@ describe('Footer', () => {
 
     cy.visit('/organization');
     cy.wait('@getConfigWithFooterLinks');
+
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
 
     // Check that configured footer links are present
     cy.get('.quay-footer-list')
@@ -99,6 +110,9 @@ describe('Footer', () => {
 
     cy.visit('/organization');
     cy.wait('@getConfigWithFooterImg');
+
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
 
     // Check that footer image link exists
     cy.get('.quay-footer-container')
@@ -133,6 +147,9 @@ describe('Footer', () => {
     cy.visit('/organization');
     cy.wait('@getConfigWithFooterImgNoUrl');
 
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
+
     // Check that footer image exists
     cy.get('.quay-footer-container')
       .find('img')
@@ -156,6 +173,9 @@ describe('Footer', () => {
     cy.visit('/organization');
     cy.wait('@getConfigQuayIO');
 
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
+
     // Service status component should be rendered
     // (actual status behavior is tested in UseServiceStatus hook tests)
     cy.get('.quay-footer-list li').should('have.length.at.least', 1);
@@ -171,6 +191,9 @@ describe('Footer', () => {
     cy.visit('/organization');
     cy.wait('@getConfigQuayIO');
 
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
+
     // Check that TrustArc container exists
     cy.get('#teconsent').should('exist');
   });
@@ -184,6 +207,9 @@ describe('Footer', () => {
     cy.visit('/organization');
     cy.wait('@getConfigQuayIO');
 
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
+
     // Check that consent blackbar exists
     cy.get('#consent_blackbar').should('exist');
     cy.get('#consent_blackbar').should('have.css', 'position', 'fixed');
@@ -193,6 +219,9 @@ describe('Footer', () => {
   it('service status and TrustArc are not displayed for non-quay.io', () => {
     cy.visit('/organization');
     cy.wait('@getConfig');
+
+    // Scroll to footer to make it visible
+    cy.get('#quay-footer').scrollIntoView();
 
     // Check that service status icon does not exist
     cy.get('.service-status-icon').should('not.exist');
