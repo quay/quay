@@ -38,7 +38,7 @@ export default function ApplicationTokenCredentials({
   };
 
   const getContainerLoginCommand = (runtime: 'docker' | 'podman') => {
-    return `${runtime} login -u="$app" -p="${token?.token_code}" ${getServerHostname()}`;
+    return `${runtime} login -u='$app' -p='${token?.token_code}' ${getServerHostname()}`;
   };
 
   const kubernetesYaml = useMemo(() => {

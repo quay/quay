@@ -378,11 +378,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               isReadOnly
               id="podman-login"
             >
-              {'podman login -u="' +
+              {"podman login -u='" +
                 tokenData.name +
-                '" -p="' +
+                "' -p='" +
                 tokenData.token +
-                '" ' +
+                "' " +
                 domain}
             </ClipboardCopy>
           </TextContent>
@@ -410,11 +410,11 @@ export default function RobotTokensModal(props: RobotTokensModalProps) {
               isReadOnly
               id="docker login"
             >
-              {'docker login -u="' +
+              {"docker login -u='" +
                 tokenData.name +
-                '" -p="' +
+                "' -p='" +
                 tokenData.token +
-                '" ' +
+                "' " +
                 domain}
             </ClipboardCopy>
           </TextContent>
