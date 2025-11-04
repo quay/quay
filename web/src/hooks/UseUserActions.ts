@@ -2,7 +2,7 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {
   updateSuperuserUser,
   deleteSuperuserUser,
-  UpdateSuperuserUserRequest,
+  sendRecoveryEmail,
 } from 'src/resources/UserResource';
 
 export function useChangeUserEmail({onSuccess, onError}) {
@@ -129,5 +129,27 @@ export function useDeleteUser({onSuccess, onError}) {
   return {
     deleteUser: async (username: string) => deleteUserMutator.mutate(username),
     isLoading: deleteUserMutator.isLoading,
+  };
+}
+
+export function useSendRecoveryEmail({onSuccess, onError}) {
+  const sendRecoveryEmailMutator = useMutation(
+    async (username: string) => {
+      return await sendRecoveryEmail(username);
+    },
+    {
+      onSuccess: (data) => {
+        onSuccess(data);
+      },
+      onError: (err) => {
+        onError(err);
+      },
+    },
+  );
+
+  return {
+    sendRecovery: async (username: string) =>
+      sendRecoveryEmailMutator.mutate(username),
+    isLoading: sendRecoveryEmailMutator.isLoading,
   };
 }
