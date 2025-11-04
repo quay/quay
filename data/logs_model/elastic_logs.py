@@ -21,7 +21,7 @@ INDEX_NAME_PREFIX = "logentry_"
 INDEX_DATE_FORMAT = "%Y-%m-%d"
 
 # Timeout for default connection
-ELASTICSEARCH_DEFAULT_CONNECTION_TIMEOUT = 30
+ELASTICSEARCH_DEFAULT_CONNECTION_TIMEOUT = 60
 
 # Timeout for template api Connection
 ELASTICSEARCH_TEMPLATE_CONNECTION_TIMEOUT = 60
@@ -141,6 +141,8 @@ class ElasticsearchLogs(object):
                 verify_certs=True,
                 connection_class=RequestsHttpConnection,
                 timeout=ELASTICSEARCH_DEFAULT_CONNECTION_TIMEOUT,
+                maxsize=25,
+                max_retries=3,
             )
 
             # Create a second connection with a timeout of 60s vs 10s.

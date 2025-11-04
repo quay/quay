@@ -221,7 +221,7 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             ignore_ids = [kind_map[kind_name] for kind_name in filter_kinds]
             search = search.exclude("terms", kind_id=ignore_ids)
 
-        return search
+        return search.params(preference="_local")
 
     def _base_query_date_range(
         self,
@@ -269,7 +269,7 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             performer_id, repository_id, account_id, filter_kinds, index=index
         )
         search = search.sort({"datetime": "desc"}, {"random_id.keyword": "desc"})
-        search = search.extra(size=size)
+        search = search.extra(size=size, track_total_hits=False)
 
         if after_datetime is not None and after_random_id is not None:
             after_datetime_epoch_ms = epoch_ms(after_datetime)
@@ -428,7 +428,7 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
                 "by_date", "date_histogram", field="datetime", interval="day"
             )
             # es returns all buckets when size=0
-            search = search.extra(size=0)
+            search = search.extra(size=0, track_total_hits=False)
             resp = search.execute()
 
         if not resp.aggregations:
