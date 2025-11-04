@@ -439,6 +439,68 @@ describe('Superuser Organization Actions', () => {
       // Wait for API call
       cy.wait('@takeOwnership');
     });
+
+    it('should show password verification when fresh login is required', () => {
+      cy.visit('/organization');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+
+      // First attempt returns fresh_login_required error
+      cy.intercept('POST', '/api/v1/superuser/takeownership/testorg', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+          error_message: 'Fresh login required',
+        },
+      }).as('takeOwnershipRequiresFresh');
+
+      // Click action menu for testorg
+      cy.get('[data-testid="testorg-options-toggle"]').click();
+
+      // Click Take Ownership
+      cy.contains('Take Ownership').click();
+
+      // Should open take ownership modal
+      cy.get('[role="dialog"]').should('exist');
+      cy.contains('Take Ownership').should('exist');
+
+      // Confirm take ownership
+      cy.get('button').contains('Take Ownership').click();
+
+      // Wait for the fresh login required response
+      cy.wait('@takeOwnershipRequiresFresh');
+
+      // Should show fresh login modal instead of error
+      cy.contains('Please Verify').should('exist');
+      cy.contains(
+        'It has been more than a few minutes since you last logged in',
+      ).should('exist');
+      cy.get('#fresh-password').should('exist');
+
+      // Mock successful password verification
+      cy.intercept('POST', '/api/v1/signin/verify', {
+        statusCode: 200,
+        body: {success: true},
+      }).as('verifyPassword');
+
+      // Mock successful take ownership after verification
+      cy.intercept('POST', '/api/v1/superuser/takeownership/testorg', {
+        statusCode: 200,
+      }).as('takeOwnershipSuccess');
+
+      // Enter password and verify
+      cy.get('#fresh-password').type('password');
+      cy.get('button').contains('Verify').click();
+
+      // Wait for verification
+      cy.wait('@verifyPassword');
+
+      // Should retry take ownership and succeed
+      cy.wait('@takeOwnershipSuccess');
+
+      // Fresh login modal should close
+      cy.contains('Please Verify').should('not.exist');
+    });
   });
 
   describe('Configure Quota - Phase 3', () => {
