@@ -14,6 +14,7 @@ import OAuthLocalHandler from 'src/routes/OAuthLocalHandler';
 import {StandaloneMain} from 'src/routes/StandaloneMain';
 import {ThemeProvider} from './contexts/ThemeContext';
 
+// test
 export default function App() {
   useAnalytics();
 
