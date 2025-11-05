@@ -141,7 +141,6 @@ class ElasticsearchLogs(object):
                 verify_certs=True,
                 connection_class=RequestsHttpConnection,
                 timeout=ELASTICSEARCH_DEFAULT_CONNECTION_TIMEOUT,
-                maxsize=25,
                 max_retries=3,
             )
 
