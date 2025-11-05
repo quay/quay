@@ -2452,6 +2452,76 @@ class TestChangeRepoVisibility(ApiTestCase):
 
         self.assertEqual(False, json["is_public"])
 
+    def test_plan_limit_enforcement_for_regular_users(self):
+        """
+        Test that plan limits are enforced for regular (non-superuser) users.
+
+        This test is identical to test_trychangevisibility but uses a non-superuser
+        to validate that license limits are still enforced for regular users.
+        """
+        from data import model
+
+        # Use NO_ACCESS_USER (freshuser) who is definitely not a superuser
+        # Set up billing for this user so the UserPlan endpoint works
+        user = model.user.get_user(NO_ACCESS_USER)
+        user.stripe_id = "test_stripe_id_freshuser"
+        user.save()
+
+        self.login(NO_ACCESS_USER)
+
+        # Change the subscription to a limited plan first
+        self.putJsonResponse(UserPlan, data=dict(plan="personal-2018"))
+
+        # Create private repositories until we hit the plan limit
+        # The personal-2018 plan allows a limited number of private repos
+        for i in range(20):
+            try:
+                self.postJsonResponse(
+                    RepositoryList,
+                    data=dict(
+                        namespace=NO_ACCESS_USER,
+                        repository=f"private_{i}",
+                        description="private repo to exhaust limit",
+                        visibility="private",
+                    ),
+                    expected_code=201,
+                )
+            except AssertionError:
+                # Hit the limit, which is expected
+                break
+
+        test_repo = NO_ACCESS_USER + "/simple"
+
+        # Create one more repository as public (should work)
+        self.postJsonResponse(
+            RepositoryList,
+            data=dict(
+                namespace=NO_ACCESS_USER,
+                repository="simple",
+                description="test repository",
+                visibility="public",
+            ),
+            expected_code=201,
+        )
+
+        # Verify the visibility.
+        json = self.getJsonResponse(Repository, params=dict(repository=test_repo))
+
+        self.assertEqual(True, json["is_public"])
+
+        # Try to make private - should be blocked by plan limit for regular users.
+        self.postJsonResponse(
+            RepositoryVisibility,
+            params=dict(repository=test_repo),
+            data=dict(visibility="private"),
+            expected_code=402,
+        )
+
+        # Verify the visibility stayed public (blocked by plan limit).
+        json = self.getJsonResponse(Repository, params=dict(repository=test_repo))
+
+        self.assertEqual(True, json["is_public"])
+
 
 class TestDeleteRepository(ApiTestCase):
     SIMPLE_REPO = ADMIN_ACCESS_USER + "/simple"
