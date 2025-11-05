@@ -20,7 +20,7 @@ def _location_aware(unbound_func, requires_write=False):
                 break
 
         if not storage:
-            storage = self._storages[random.sample(locations, 1)[0]]
+            storage = self._storages[random.sample(sorted(locations), 1)[0]]
 
         storage_func = getattr(storage, unbound_func.__name__)
         return storage_func(*args, **kwargs)
