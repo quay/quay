@@ -22,6 +22,7 @@ import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {extractTextFromReactNode} from 'src/libs/utils';
 import {useState, useMemo} from 'react';
 
 interface LogEntry {
@@ -85,13 +86,6 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     setFilterValue(value);
   };
 
-  const filterLogs = (data: LogPage, filterValue: string): LogPage => {
-    data.logs = data.logs.filter(function (log: LogEntry) {
-      return log.kind.includes(filterValue);
-    });
-    return data;
-  };
-
   const queryClient = useQueryClient();
 
   const {
@@ -152,12 +146,6 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       }
     },
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
-    select: (data) => {
-      data.pages = data.pages.map((logs: LogPage) =>
-        filterLogs(logs, filterValue),
-      );
-      return data;
-    },
     retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
   });
 
@@ -170,8 +158,37 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
   // Create filter function for the table hook
   const searchFilter = useMemo(() => {
     if (!filterValue) return undefined;
-    return (log: LogEntry) => log.kind.includes(filterValue);
-  }, [filterValue]);
+    const searchTerm = filterValue.toLowerCase();
+    return (log: LogEntry) => {
+      // Search across multiple fields for better filtering
+      const namespace = log.namespace?.name || log.namespace?.username || '';
+      const repo = log.metadata?.repo
+        ? `${log.metadata?.namespace || ''}/${log.metadata.repo}`
+        : '';
+      const performer =
+        log.performer?.name || (log.metadata?.performer as string) || '';
+      const ip = log.ip || '';
+      const kind = log.kind || '';
+
+      // Get the description text if available
+      // Use extractTextFromReactNode to convert JSX elements to searchable plain text
+      const description = logDescriptions[log.kind]
+        ? typeof logDescriptions[log.kind] === 'function'
+          ? extractTextFromReactNode(logDescriptions[log.kind](log.metadata))
+          : extractTextFromReactNode(logDescriptions[log.kind])
+        : '';
+
+      // Check if any field contains the search term (case-insensitive)
+      return (
+        namespace.toLowerCase().includes(searchTerm) ||
+        repo.toLowerCase().includes(searchTerm) ||
+        performer.toLowerCase().includes(searchTerm) ||
+        ip.toLowerCase().includes(searchTerm) ||
+        kind.toLowerCase().includes(searchTerm) ||
+        description.toLowerCase().includes(searchTerm)
+      );
+    };
+  }, [filterValue, logDescriptions]);
 
   // Use unified table hook for sorting and pagination
   const {
