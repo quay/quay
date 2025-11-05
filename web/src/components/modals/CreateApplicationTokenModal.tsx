@@ -12,6 +12,8 @@ import {
 import {useCreateApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
 import CredentialsModal from './CredentialsModal';
+import {useUI} from 'src/contexts/UIContext';
+import {AlertVariant} from 'src/contexts/UIContext';
 
 interface CreateApplicationTokenModalProps {
   isOpen: boolean;
@@ -27,14 +29,24 @@ export default function CreateApplicationTokenModal({
     null,
   );
   const [error, setError] = useState('');
+  const {addAlert} = useUI();
 
   const createTokenMutator = useCreateApplicationToken({
     onSuccess: (data) => {
       setCreatedToken(data.token);
       setError('');
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully created application token "${title}"`,
+      });
     },
     onError: (err) => {
       setError(err.message);
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: 'Failed to create application token',
+        message: err.message,
+      });
     },
   });
 

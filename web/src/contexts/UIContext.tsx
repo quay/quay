@@ -60,7 +60,7 @@ export function UIProvider({children}: UIProviderProps) {
   const addAlert = useCallback((alert: AlertDetails) => {
     const alertWithKey = {
       ...alert,
-      key: alert.key ?? crypto.randomUUID(),
+      key: alert.key ?? Math.random().toString(36).substring(7),
     };
     setAlerts((prev) => [...prev, alertWithKey]);
   }, []);
