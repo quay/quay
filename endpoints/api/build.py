@@ -30,6 +30,7 @@ from endpoints.api import (
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     api,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
@@ -310,7 +311,7 @@ class RepositoryBuildList(RepositoryParamResource):
                 (robot_namespace, _) = result
                 if (
                     not AdministerOrganizationPermission(robot_namespace).can()
-                    and not allow_if_superuser()
+                    and not allow_if_superuser_with_full_access()
                 ):
                     raise Unauthorized()
             else:
@@ -326,7 +327,7 @@ class RepositoryBuildList(RepositoryParamResource):
                     not ModifyRepositoryPermission(
                         associated_repository.namespace_user.username, associated_repository.name
                     )
-                    and not allow_if_superuser()
+                    and not allow_if_superuser_with_full_access()
                 ):
                     raise Unauthorized()
 

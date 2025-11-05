@@ -2412,18 +2412,18 @@ class TestChangeRepoVisibility(ApiTestCase):
         # Change the subscription of the namespace.
         self.putJsonResponse(UserPlan, data=dict(plan="personal-2018"))
 
-        # Try to make private.
+        # Try to make private. Superusers with full access bypass license limits.
         self.postJsonResponse(
             RepositoryVisibility,
             params=dict(repository=self.SIMPLE_REPO),
             data=dict(visibility="private"),
-            expected_code=402,
+            expected_code=200,
         )
 
-        # Verify the visibility.
+        # Verify the visibility changed to private (superuser bypassed license limit).
         json = self.getJsonResponse(Repository, params=dict(repository=self.SIMPLE_REPO))
 
-        self.assertEqual(True, json["is_public"])
+        self.assertEqual(False, json["is_public"])
 
     def test_changevisibility(self):
         self.login(ADMIN_ACCESS_USER)

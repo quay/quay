@@ -29,6 +29,7 @@ from endpoints.api import (
     ApiResource,
     RepositoryParamResource,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     format_date,
     log_action,
     nickname,
@@ -69,6 +70,10 @@ def check_allowed_private_repos(namespace):
 
     If so, raises a ExceedsLicenseException.
     """
+    # Superusers with full access bypass license limits
+    if allow_if_superuser_with_full_access():
+        return
+
     # Not enabled if billing is disabled.
     if not features.BILLING:
         return
@@ -142,7 +147,7 @@ class RepositoryList(ApiResource):
 
         permission = CreateRepositoryPermission(namespace_name)
 
-        if (permission.can() or allow_if_superuser()) and not (
+        if (permission.can() or allow_if_superuser_with_full_access()) and not (
             features.RESTRICTED_USERS
             and usermanager.is_restricted_user(owner.username)
             and owner.username == namespace_name
