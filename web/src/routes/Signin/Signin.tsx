@@ -185,7 +185,7 @@ export function Signin() {
         err.response &&
         err.response.status === 403;
       if (authErr && err.response.data.invalidCredentials) {
-        setErr('Invalid login credentials');
+        setErr(err.response.data.message || 'Invalid login credentials');
       } else if (authErr) {
         setErr('CSRF token expired - please refresh');
       } else {

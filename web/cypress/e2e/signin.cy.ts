@@ -92,7 +92,7 @@ describe('Signin page', () => {
     setupFailedSignin(
       {
         invalidCredentials: true,
-        message: 'Invalid credentials',
+        message: 'Invalid login credentials',
       },
       403,
     );
@@ -102,7 +102,7 @@ describe('Signin page', () => {
     cy.get('#pf-login-password-id').type('wrongpassword');
     cy.get('button[type=submit]').click();
 
-    // Should show error message
+    // Should show error message from backend
     cy.wait('@signinFail');
     cy.contains('Invalid login credentials');
 
@@ -126,6 +126,32 @@ describe('Signin page', () => {
     // Should show CSRF error message
     cy.wait('@signinFail');
     cy.contains('CSRF token expired - please refresh');
+
+    // Should not redirect
+    cy.url().should('include', '/signin');
+  });
+
+  it('Handles INVITE_ONLY_USER_CREATION error message correctly', () => {
+    setupFailedSignin(
+      {
+        invalidCredentials: true,
+        message:
+          'User creation is disabled. Please contact your administrator to gain access.',
+      },
+      403,
+    );
+
+    // Fill and submit form with LDAP credentials for non-existent user
+    cy.get('#pf-login-username-id').type('larry');
+    cy.get('#pf-login-password-id').type('password');
+    cy.get('button[type=submit]').click();
+
+    // Should show the backend's specific error message, not generic "Invalid login credentials"
+    cy.wait('@signinFail');
+    cy.contains(
+      'User creation is disabled. Please contact your administrator to gain access.',
+    );
+    cy.contains('Invalid login credentials').should('not.exist');
 
     // Should not redirect
     cy.url().should('include', '/signin');
