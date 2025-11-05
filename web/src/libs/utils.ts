@@ -1,4 +1,5 @@
 import moment, {Duration} from 'moment';
+import React from 'react';
 import {ITeamMember} from 'src/hooks/UseMembers';
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
 
@@ -262,4 +263,41 @@ export function formatRelativeTime(date: string | number): string {
 
   const adjustedDate = typeof date === 'number' ? date * 1000 : date;
   return moment(adjustedDate).fromNow();
+}
+
+/**
+ * Recursively extracts plain text from a React node (JSX elements, fragments, etc.)
+ * This is useful for making JSX content searchable in filters.
+ *
+ * @param node - A React node (string, number, element, fragment, array, etc.)
+ * @returns The plain text content extracted from the React node
+ *
+ * @example
+ * const jsx = <>Push of <code>tag123</code> to repository <code>user/repo</code></>;
+ * extractTextFromReactNode(jsx); // Returns: "Push of tag123 to repository user/repo"
+ */
+export function extractTextFromReactNode(node: React.ReactNode): string {
+  // Handle primitives (strings and numbers)
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+
+  // Handle null, undefined, or boolean values
+  if (node == null || typeof node === 'boolean') {
+    return '';
+  }
+
+  // Handle arrays (e.g., from fragments or multiple children)
+  if (Array.isArray(node)) {
+    return node.map(extractTextFromReactNode).join('');
+  }
+
+  // Handle React elements (check if it's a valid React element)
+  if (React.isValidElement(node)) {
+    // Recursively extract text from children
+    return extractTextFromReactNode(node.props.children);
+  }
+
+  // Fallback for unknown types
+  return '';
 }
