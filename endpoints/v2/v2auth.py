@@ -24,6 +24,7 @@ from data.registry_model.datatypes import RepositoryReference
 from endpoints.api import (
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     log_action,
 )
 from endpoints.decorators import anon_protect
@@ -264,7 +265,10 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             # Lookup the repository. If it exists, make sure the entity has modify
             # permission. Otherwise, make sure the entity has create permission.
             if repository_ref:
-                if ModifyRepositoryPermission(namespace, reponame).can() or allow_if_superuser():
+                if (
+                    ModifyRepositoryPermission(namespace, reponame).can()
+                    or allow_if_superuser_with_full_access()
+                ):
                     if repository_ref is not None and repository_ref.kind != "image":
                         raise Unsupported(message=invalid_repo_message)
 
@@ -383,7 +387,10 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     if "*" in requested_actions:
         # Grant * user is admin
-        if AdministerRepositoryPermission(namespace, reponame).can() or allow_if_superuser():
+        if (
+            AdministerRepositoryPermission(namespace, reponame).can()
+            or allow_if_superuser_with_full_access()
+        ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 

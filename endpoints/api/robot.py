@@ -27,6 +27,7 @@ from endpoints.api import (
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     log_action,
     max_json_size,
     nickname,
@@ -276,7 +277,7 @@ class OrgRobot(ApiResource):
         Create a new robot in the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             create_data = request.get_json(silent=True) or {}
 
             try:
@@ -308,7 +309,7 @@ class OrgRobot(ApiResource):
         Delete an existing organization robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             robot_username = format_robot_username(orgname, robot_shortname)
             if not model.robot_has_mirror(robot_username):
                 model.delete_robot(robot_username)
@@ -408,7 +409,7 @@ class RegenerateOrgRobot(ApiResource):
         Regenerates the token for an organization robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             robot = model.regenerate_org_robot_token(robot_shortname, orgname)
             log_action("regenerate_robot_token", orgname, {"robot": robot_shortname})
             return robot.to_dict(include_token=True)
@@ -442,7 +443,7 @@ class OrgRobotFederation(ApiResource):
     @validate_json_request("CreateRobotFederation", optional=False)
     def post(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             fed_config = self._parse_federation_config(request)
 
             robot_username = format_robot_username(orgname, robot_shortname)
@@ -460,7 +461,7 @@ class OrgRobotFederation(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     def delete(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             robot_username = format_robot_username(orgname, robot_shortname)
             robot = lookup_robot(robot_username)
             delete_robot_federation_config(robot)

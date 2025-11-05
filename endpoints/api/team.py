@@ -24,6 +24,7 @@ from endpoints.api import (
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     format_date,
     internal_only,
     log_action,
@@ -212,7 +213,7 @@ class OrganizationTeam(ApiResource):
         Update the org-wide permission for the specified team.
         """
         edit_permission = AdministerOrganizationPermission(orgname)
-        if edit_permission.can() or allow_if_superuser():
+        if edit_permission.can() or allow_if_superuser_with_full_access():
             team = None
 
             details = request.get_json()
@@ -262,7 +263,7 @@ class OrganizationTeam(ApiResource):
         Delete the specified team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             model.team.remove_team(orgname, teamname, get_authenticated_user().username)
             log_action("org_delete_team", orgname, {"team": teamname})
             return "", 204
@@ -360,7 +361,7 @@ class TeamMemberList(ApiResource):
         view_permission = ViewTeamPermission(orgname, teamname)
         edit_permission = AdministerOrganizationPermission(orgname)
 
-        if view_permission.can() or allow_if_any_superuser():
+        if view_permission.can() or (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
             team = None
             try:
                 team = model.team.get_organization_team(orgname, teamname)
@@ -423,7 +424,7 @@ class TeamMember(ApiResource):
         Adds or invites a member to an existing team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             team = None
             user = None
 
@@ -465,7 +466,7 @@ class TeamMember(ApiResource):
         If the user is merely invited to join the team, then the invite is removed instead.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             # Remote the user from the team.
             invoking_user = get_authenticated_user().username
 
@@ -515,7 +516,7 @@ class InviteTeamMember(ApiResource):
         Invites an email address to an existing team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             team = None
 
             # Find the team.
@@ -543,7 +544,7 @@ class InviteTeamMember(ApiResource):
         Delete an invite of an email address to join a team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             team = None
 
             # Find the team.
@@ -580,7 +581,7 @@ class TeamPermissions(ApiResource):
         Returns the list of repository permissions for the org's team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_any_superuser():
+        if permission.can() or (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
             try:
                 team = model.team.get_organization_team(orgname, teamname)
             except model.InvalidTeamException:
