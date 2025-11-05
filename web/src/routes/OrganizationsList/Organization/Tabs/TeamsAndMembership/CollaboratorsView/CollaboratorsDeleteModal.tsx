@@ -54,7 +54,7 @@ export default function CollaboratorsDeleteModal(
             removeCollaborator({
               collaborator: props.collaborator.name,
             });
-            props.toggleModal;
+            props.toggleModal();
           }}
           data-testid={`${props.collaborator.name}-del-btn`}
         >

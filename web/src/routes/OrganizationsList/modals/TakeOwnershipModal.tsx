@@ -45,8 +45,6 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
     takeOwnership(props.organizationName);
   };
 
-  const entityType = props.isUser ? 'user' : 'organization';
-
   return (
     <Modal
       title="Take Ownership"

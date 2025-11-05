@@ -45,13 +45,6 @@ export default function EditableLabels(props: EditableLabelsProps) {
     (label: ImageLabel) => label.source_type === 'api',
   );
 
-  if (error) {
-    return <>Unable to get labels</>;
-  }
-  if (loading) {
-    return <Skeleton width="100%" />;
-  }
-
   useEffect(() => {
     if (successCreatingLabels) {
       addAlert({
@@ -115,7 +108,19 @@ export default function EditableLabels(props: EditableLabelsProps) {
     errorCreatingLabels,
     successDeletingLabels,
     errorDeletingLabels,
+    loadingLabelChanges,
+    addAlert,
+    props.onComplete,
+    errorCreatingLabelsDetails,
+    errorDeletingLabelsDetails,
   ]);
+
+  if (error) {
+    return <>Unable to get labels</>;
+  }
+  if (loading) {
+    return <Skeleton width="100%" />;
+  }
 
   const onEditComplete = (newLabel: string) => {
     if (newLabel === '') {
