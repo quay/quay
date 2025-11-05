@@ -11,7 +11,7 @@ from datetime import datetime
 from functools import reduce
 from typing import Dict, List, Optional
 
-from peewee import IntegrityError
+from peewee import Case, IntegrityError, fn
 
 from data.database import (
     ManifestPullStatistics,
@@ -125,19 +125,16 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
                     # Record exists - prepare for bulk update
                     existing_record = existing_records[key]
 
-                    # Use simple comparison instead of max() (consistent with codebase pattern)
-                    if existing_record.last_tag_pull_date < update["last_pull_date"]:
-                        new_date = update["last_pull_date"]
-                    else:
-                        new_date = existing_record.last_tag_pull_date
-
-                    new_count = max(existing_record.tag_pull_count, update["pull_count"])
+                    # Note: update["pull_count"] represents new pulls since last flush (from Redis),
+                    increment = update["pull_count"]
 
                     updates_for_existing.append(
                         {
                             "record": existing_record,
-                            "new_count": new_count,
-                            "new_date": new_date,
+                            "increment": increment,
+                            "new_date": update[
+                                "last_pull_date"
+                            ],  # Pass incoming date, make SQL handle the latest between the concurrent requestsmax
                             "new_digest": update["manifest_digest"],
                         }
                     )
@@ -156,12 +153,22 @@ def bulk_upsert_tag_statistics(tag_updates: List[Dict]) -> int:
             rows_affected = 0
 
             # Bulk update existing records
+            # Use atomic SQL updates to avoid race conditions with concurrent flush workers
             for update_data in updates_for_existing:
                 record = update_data["record"]
-                record.tag_pull_count = update_data["new_count"]
-                record.last_tag_pull_date = update_data["new_date"]
-                record.current_manifest_digest = update_data["new_digest"]
-                record.save()
+                increment = update_data["increment"]
+                new_date = update_data["new_date"]
+                # Use atomic SQL update: tag_pull_count = tag_pull_count + increment
+                # This prevents race conditions where multiple flush workers update simultaneously
+                TagPullStatistics.update(
+                    tag_pull_count=TagPullStatistics.tag_pull_count + increment,
+                    last_tag_pull_date=Case(
+                        None,
+                        ((TagPullStatistics.last_tag_pull_date < new_date, new_date),),
+                        TagPullStatistics.last_tag_pull_date,
+                    ),
+                    current_manifest_digest=update_data["new_digest"],
+                ).where(TagPullStatistics.id == record.id).execute()
                 rows_affected += 1
 
             # Bulk insert new records
@@ -267,19 +274,14 @@ def bulk_upsert_manifest_statistics(manifest_updates: List[Dict]) -> int:
                     # Record exists - prepare for bulk update
                     existing_record = existing_records[key]
 
-                    # Use simple comparison instead of max() (consistent with codebase pattern)
-                    if existing_record.last_manifest_pull_date < update["last_pull_date"]:
-                        new_date = update["last_pull_date"]
-                    else:
-                        new_date = existing_record.last_manifest_pull_date
-
-                    new_count = max(existing_record.manifest_pull_count, update["pull_count"])
+                    # Note: update["pull_count"] represents new pulls since last flush (from Redis),
+                    increment = update["pull_count"]
 
                     updates_for_existing.append(
                         {
                             "record": existing_record,
-                            "new_count": new_count,
-                            "new_date": new_date,
+                            "increment": increment,
+                            "new_date": update["last_pull_date"],
                         }
                     )
                 else:
@@ -298,9 +300,18 @@ def bulk_upsert_manifest_statistics(manifest_updates: List[Dict]) -> int:
             # Bulk update existing records
             for update_data in updates_for_existing:
                 record = update_data["record"]
-                record.manifest_pull_count = update_data["new_count"]
-                record.last_manifest_pull_date = update_data["new_date"]
-                record.save()
+                increment = update_data["increment"]
+                new_date = update_data["new_date"]
+                # Use atomic SQL update: manifest_pull_count = manifest_pull_count + increment
+                # For timestamp,  CASE will atomically keep the latest timestamp
+                ManifestPullStatistics.update(
+                    manifest_pull_count=ManifestPullStatistics.manifest_pull_count + increment,
+                    last_manifest_pull_date=Case(
+                        None,
+                        ((ManifestPullStatistics.last_manifest_pull_date < new_date, new_date),),
+                        ManifestPullStatistics.last_manifest_pull_date,
+                    ),
+                ).where(ManifestPullStatistics.id == record.id).execute()
                 rows_affected += 1
 
             # Bulk insert new records
