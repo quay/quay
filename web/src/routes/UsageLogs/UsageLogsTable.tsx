@@ -22,6 +22,7 @@ import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
+import {extractTextFromReactNode} from 'src/libs/utils';
 import {useState, useMemo} from 'react';
 
 interface LogEntry {
@@ -170,10 +171,11 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       const kind = log.kind || '';
 
       // Get the description text if available
+      // Use extractTextFromReactNode to convert JSX elements to searchable plain text
       const description = logDescriptions[log.kind]
         ? typeof logDescriptions[log.kind] === 'function'
-          ? String(logDescriptions[log.kind](log.metadata))
-          : String(logDescriptions[log.kind])
+          ? extractTextFromReactNode(logDescriptions[log.kind](log.metadata))
+          : extractTextFromReactNode(logDescriptions[log.kind])
         : '';
 
       // Check if any field contains the search term (case-insensitive)

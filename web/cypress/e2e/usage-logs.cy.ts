@@ -473,10 +473,17 @@ describe('Usage Logs - Superuser', () => {
 
     cy.visit('/usage-logs');
 
-    // Wait for logs to load
-    cy.contains('td', 'User testuser created').should('be.visible');
-    cy.contains('td', 'Organization projectquay created').should('be.visible');
-    cy.contains('td', 'Change plan').should('be.visible');
+    // Wait for the table to be visible first
+    cy.get('[aria-label="Usage logs table"]').should('be.visible');
+
+    // Wait for logs to load - use scrollIntoView to ensure visibility
+    cy.contains('td', 'User testuser created')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.contains('td', 'Organization projectquay created')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.contains('td', 'Change plan').scrollIntoView().should('be.visible');
 
     // Filter by namespace
     cy.get('[placeholder="Filter logs"]').type('projectquay');
