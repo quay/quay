@@ -589,6 +589,122 @@ describe('Superuser User Management', () => {
     });
   });
 
+  describe('Send Recovery Email', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+    });
+
+    it('shows Send Recovery E-mail option when MAILING feature enabled', () => {
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should see Send Recovery E-mail option
+      cy.contains('Send Recovery E-mail').should('be.visible');
+    });
+
+    it('hides Send Recovery E-mail option when MAILING feature disabled', () => {
+      // Disable MAILING feature
+      cy.fixture('config.json').then((config) => {
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = false;
+        cy.intercept('GET', '/config', config).as('getConfigNoMailing');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigNoMailing', '@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should NOT see Send Recovery E-mail option
+      cy.contains('Send Recovery E-mail').should('not.exist');
+    });
+
+    it('successfully sends recovery email', () => {
+      cy.intercept('POST', '/api/v1/superusers/users/tom/sendrecovery', {
+        statusCode: 200,
+        body: {email: 'tom@example.com'},
+      }).as('sendRecoveryEmail');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Send Recovery E-mail').click();
+
+      // Modal should open
+      cy.contains('Send Recovery Email').should('be.visible');
+      cy.contains('Are you sure you want to send a recovery email').should(
+        'be.visible',
+      );
+
+      // Send recovery email
+      cy.get('[role="dialog"]').within(() => {
+        cy.contains('button', 'Send Recovery Email').click();
+      });
+
+      cy.wait('@sendRecoveryEmail');
+
+      // Success message should be shown
+      cy.contains('A recovery email has been sent to tom@example.com').should(
+        'be.visible',
+      );
+    });
+
+    it('displays error when sending recovery email fails', () => {
+      cy.intercept('POST', '/api/v1/superusers/users/tom/sendrecovery', {
+        statusCode: 400,
+        body: {
+          error_message: 'Cannot send a recovery email for non-database auth',
+        },
+      }).as('sendRecoveryEmailError');
+
+      cy.visit('/organization');
+      cy.wait(['@getUsers', '@getOrgs']);
+
+      cy.get('[data-testid="tom-options-toggle"]').click();
+      cy.contains('Send Recovery E-mail').click();
+
+      // Modal should open
+      cy.contains('Send Recovery Email').should('be.visible');
+
+      // Send recovery email
+      cy.get('[role="dialog"]').within(() => {
+        cy.contains('button', 'Send Recovery Email').click();
+      });
+
+      cy.wait('@sendRecoveryEmailError');
+
+      // Error message should be shown
+      cy.contains('Cannot send a recovery email for non-database auth').should(
+        'be.visible',
+      );
+    });
+  });
+
   describe('Access Control - Permissions', () => {
     it('hides Create User button for non-superusers', () => {
       // Mock regular user (non-superuser)
