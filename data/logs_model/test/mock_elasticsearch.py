@@ -173,12 +173,14 @@ SEARCH_REQUEST_START = {
     "sort": [{"datetime": "desc"}, {"random_id.keyword": "desc"}],
     "query": {"bool": {"filter": [{"term": {"performer_id": 1}}, {"term": {"repository_id": 1}}]}},
     "size": 2,
+    "track_total_hits": False,
 }
 SEARCH_REQUEST_END = {
     "sort": [{"datetime": "desc"}, {"random_id.keyword": "desc"}],
     "query": {"bool": {"filter": [{"term": {"performer_id": 1}}, {"term": {"repository_id": 1}}]}},
     "search_after": [1520479800000, 233],
     "size": 2,
+    "track_total_hits": False,
 }
 SEARCH_REQUEST_FILTER = {
     "sort": [{"datetime": "desc"}, {"random_id.keyword": "desc"}],
@@ -192,6 +194,7 @@ SEARCH_REQUEST_FILTER = {
         }
     },
     "size": 2,
+    "track_total_hits": False,
 }
 SEARCH_PAGE_TOKEN = {
     "datetime": datetime(2018, 3, 8, 3, 30).isoformat(),
@@ -274,6 +277,7 @@ AGGS_REQUEST = {
         }
     },
     "size": 0,
+    "track_total_hits": False,
 }
 
 AGGS_COUNT = [
