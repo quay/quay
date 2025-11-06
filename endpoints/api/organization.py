@@ -89,11 +89,14 @@ def team_view(orgname, team):
 def org_view(o, teams):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
-    is_any_superuser = allow_if_any_superuser()
+    # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+    can_view_as_superuser = allow_if_global_readonly_superuser() or (
+        features.SUPERUSERS_FULL_ACCESS and allow_if_superuser()
+    )
 
     view = {
         "name": o.username,
-        "email": o.email if is_admin or is_any_superuser else "",
+        "email": o.email if is_admin or can_view_as_superuser else "",
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
@@ -259,7 +262,12 @@ class Organization(ApiResource):
             raise NotFound()
 
         teams = None
-        if OrganizationMemberPermission(orgname).can() or allow_if_any_superuser():
+        # Global readonly superusers can always view teams, regular superusers need FULL_ACCESS
+        if (
+            OrganizationMemberPermission(orgname).can()
+            or allow_if_global_readonly_superuser()
+            or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 
@@ -437,7 +445,12 @@ class OrganizationCollaboratorList(ApiResource):
         List outside collaborators of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can() and not allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            not permission.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             raise Unauthorized()
 
         try:
@@ -945,7 +958,12 @@ class OrganizationProxyCacheConfig(ApiResource):
         Retrieves the proxy cache configuration of the organization.
         """
         permission = OrganizationMemberPermission(orgname)
-        if not permission.can() and not allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            not permission.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             raise Unauthorized()
 
         try:

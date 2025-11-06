@@ -6,6 +6,7 @@ import logging
 
 from flask import abort, request
 
+import features
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import (
@@ -222,7 +223,12 @@ class OrgRobotList(ApiResource):
         List the organization's robots.
         """
         permission = OrganizationMemberPermission(orgname)
-        if permission.can() or allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             include_token = (
                 AdministerOrganizationPermission(orgname).can()
                 or allow_if_global_readonly_superuser()
@@ -262,7 +268,12 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             robot = model.get_org_robot(robot_shortname, orgname)
             return robot.to_dict(include_metadata=True, include_token=True)
 
@@ -361,7 +372,12 @@ class OrgRobotPermissions(ApiResource):
         Returns the list of repository permissions for the org's robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             robot = model.get_org_robot(robot_shortname, orgname)
             permissions = model.list_robot_permissions(robot.name)
 
@@ -432,7 +448,12 @@ class OrgRobotFederation(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname, robot_shortname):
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             robot_username = format_robot_username(orgname, robot_shortname)
             robot = lookup_robot(robot_username)
             return get_robot_federation_config(robot)
