@@ -22,7 +22,7 @@ import {EllipsisVIcon, KeyIcon} from '@patternfly/react-icons';
 import {GenerateEncryptedPassword} from 'src/components/modals/GenerateEncryptedPasswordModal';
 import CreateApplicationTokenModal from 'src/components/modals/CreateApplicationTokenModal';
 import RevokeTokenModal from 'src/components/modals/RevokeTokenModal';
-import ApplicationTokenCredentials from 'src/components/modals/ApplicationTokenCredentials';
+import CredentialsModal from 'src/components/modals/CredentialsModal';
 import {
   useApplicationTokens,
   useApplicationToken,
@@ -353,10 +353,15 @@ export const CliConfiguration = () => {
           )}
 
           {fetchedToken && !isFetchingToken && (
-            <ApplicationTokenCredentials
+            <CredentialsModal
               isOpen={viewTokenModalOpen}
               onClose={handleCloseViewModal}
-              token={fetchedToken}
+              credentials={{
+                username: '$app',
+                password: fetchedToken.token_code,
+                title: fetchedToken.title,
+              }}
+              type="token"
             />
           )}
         </>
