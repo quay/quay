@@ -15,6 +15,7 @@ import ChangeEmailModal from './modals/ChangeEmailModal';
 import ChangePasswordModal from './modals/ChangePasswordModal';
 import DeleteUserModal from './modals/DeleteUserModal';
 import ToggleUserStatusModal from './modals/ToggleUserStatusModal';
+import SendRecoveryEmailModal from './modals/SendRecoveryEmailModal';
 import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -27,6 +28,22 @@ export default function OrganizationOptionsKebab(
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
   const [isKebabOpen, setIsKebabOpen] = useState<boolean>(false);
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isTakeOwnershipModalOpen, setIsTakeOwnershipModalOpen] =
+    useState<boolean>(false);
+  const [isChangeEmailModalOpen, setIsChangeEmailModalOpen] =
+    useState<boolean>(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] =
+    useState<boolean>(false);
+  const [isSendRecoveryEmailModalOpen, setIsSendRecoveryEmailModalOpen] =
+    useState<boolean>(false);
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] =
+    useState<boolean>(false);
+  const [isToggleUserStatusModalOpen, setIsToggleUserStatusModalOpen] =
+    useState<boolean>(false);
+  const [isConfigureQuotaModalOpen, setIsConfigureQuotaModalOpen] =
+    useState<boolean>(false);
 
   // Check if this is the currently logged-in user
   const isCurrentUser = props.isUser && user?.username === props.name;
@@ -34,7 +51,6 @@ export default function OrganizationOptionsKebab(
   // Check if the row represents a superuser
   const isRowSuperuser = props.userSuperuser === true;
 
-  // Angular access control logic:
   // Show kebab menu when:
   // 1. canModify (not in read-only mode AND not read-only superuser) AND
   // 2. (Row is superuser AND viewing own row AND quota features enabled)
@@ -58,24 +74,6 @@ export default function OrganizationOptionsKebab(
   if (!canModify) {
     return null;
   }
-  const [isRenameModalOpen, setIsRenameModalOpen] = useState<boolean>(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
-  const [isTakeOwnershipModalOpen, setIsTakeOwnershipModalOpen] =
-    useState<boolean>(false);
-
-  // User modal states
-  const [isChangeEmailModalOpen, setIsChangeEmailModalOpen] =
-    useState<boolean>(false);
-  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] =
-    useState<boolean>(false);
-  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] =
-    useState<boolean>(false);
-  const [isToggleUserStatusModalOpen, setIsToggleUserStatusModalOpen] =
-    useState<boolean>(false);
-
-  // Configure Quota modal state
-  const [isConfigureQuotaModalOpen, setIsConfigureQuotaModalOpen] =
-    useState<boolean>(false);
 
   const handleMenuItemClick = (action: string) => {
     setIsKebabOpen(false);
@@ -97,6 +95,9 @@ export default function OrganizationOptionsKebab(
         break;
       case 'Change Password':
         setIsChangePasswordModalOpen(true);
+        break;
+      case 'Send Recovery E-mail':
+        setIsSendRecoveryEmailModalOpen(true);
         break;
       case 'Delete User':
         setIsDeleteUserModalOpen(true);
@@ -179,6 +180,17 @@ export default function OrganizationOptionsKebab(
           >
             Change Password
           </DropdownItem>,
+          // Add Send Recovery E-mail for regular users (only if MAILING feature enabled)
+          ...(quayConfig?.features?.MAILING
+            ? [
+                <DropdownItem
+                  key="sendRecoveryEmail"
+                  onClick={() => handleMenuItemClick('Send Recovery E-mail')}
+                >
+                  Send Recovery E-mail
+                </DropdownItem>,
+              ]
+            : []),
           <DropdownItem
             key="toggleStatus"
             onClick={() => handleMenuItemClick('Toggle User Status')}
@@ -276,6 +288,11 @@ export default function OrganizationOptionsKebab(
       <ChangePasswordModal
         isOpen={isChangePasswordModalOpen}
         onClose={() => setIsChangePasswordModalOpen(false)}
+        username={props.name}
+      />
+      <SendRecoveryEmailModal
+        isOpen={isSendRecoveryEmailModalOpen}
+        onClose={() => setIsSendRecoveryEmailModalOpen(false)}
         username={props.name}
       />
       <DeleteUserModal
