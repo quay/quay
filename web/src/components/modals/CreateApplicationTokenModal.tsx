@@ -11,7 +11,7 @@ import {
 } from '@patternfly/react-core';
 import {useCreateApplicationToken} from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
-import ApplicationTokenCredentials from './ApplicationTokenCredentials';
+import CredentialsModal from './CredentialsModal';
 
 interface CreateApplicationTokenModalProps {
   isOpen: boolean;
@@ -64,10 +64,15 @@ export default function CreateApplicationTokenModal({
   // If token was created successfully, show credentials
   if (createdToken) {
     return (
-      <ApplicationTokenCredentials
+      <CredentialsModal
         isOpen={isOpen}
         onClose={handleClose}
-        token={createdToken}
+        credentials={{
+          username: '$app',
+          password: createdToken.token_code,
+          title: createdToken.title,
+        }}
+        type="token"
         isNewlyCreated={true}
       />
     );
