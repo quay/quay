@@ -100,7 +100,12 @@ class OrganizationQuotaList(ApiResource):
     @nickname("listOrganizationQuota")
     def get(self, orgname):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            not orgperm.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             raise Unauthorized()
 
         try:
@@ -201,7 +206,12 @@ class OrganizationQuota(ApiResource):
     @nickname("getOrganizationQuota")
     def get(self, orgname, quota_id):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not allow_if_any_superuser():
+        # Global readonly superusers can always view, regular superusers need FULL_ACCESS
+        if (
+            not orgperm.can()
+            and not allow_if_global_readonly_superuser()
+            and not (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+        ):
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
