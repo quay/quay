@@ -26,6 +26,7 @@ export default function CollaboratorsDeleteModal(
         variant: AlertVariant.Failure,
         title: `Error deleting collaborator`,
       });
+      props.toggleModal();
     }
   }, [errorDeleteCollaborator]);
 
@@ -35,6 +36,7 @@ export default function CollaboratorsDeleteModal(
         variant: AlertVariant.Success,
         title: `Successfully deleted collaborator`,
       });
+      props.toggleModal();
     }
   }, [successDeleteCollaborator]);
 
@@ -54,7 +56,6 @@ export default function CollaboratorsDeleteModal(
             removeCollaborator({
               collaborator: props.collaborator.name,
             });
-            props.toggleModal();
           }}
           data-testid={`${props.collaborator.name}-del-btn`}
         >
