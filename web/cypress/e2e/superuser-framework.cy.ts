@@ -434,7 +434,7 @@ describe('Superuser Framework', () => {
   });
 
   describe('Superuser Navigation Visibility', () => {
-    it.only('should show superuser navigation items for superusers', () => {
+    it('should show superuser navigation items for superusers', () => {
       // Enable superuser features
       cy.intercept('GET', '/config', {
         fixture: 'config.json',
