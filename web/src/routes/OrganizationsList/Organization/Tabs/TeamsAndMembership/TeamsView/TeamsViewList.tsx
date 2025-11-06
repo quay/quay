@@ -22,8 +22,7 @@ import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemp
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {getTeamMemberPath} from 'src/routes/NavigationPath';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import SetRepoPermissionForTeamModal from 'src/routes/OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/SetRepoPermissionsModal/SetRepoPermissionForTeamModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import Conditional from 'src/components/empty/Conditional';
@@ -76,7 +75,7 @@ export default function TeamsViewList(props: TeamsViewListProps) {
   const [deleteModalIsOpen, setDeleteModalIsOpen] = useState(false);
   const [err, setIsError] = useState<string[]>();
   const [searchParams] = useSearchParams();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [isSetRepoPermModalOpen, setIsSetRepoPermModalOpen] = useState(false);
   const [repoPermForTeam, setRepoPermForTeam] = useState<string>('');
   const [isDeleteModalForRowOpen, setIsDeleteModalForRowOpen] = useState(false);

@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useDeleteSingleOrganization} from 'src/hooks/UseOrganizationActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface DeleteOrganizationModalProps {
   isOpen: boolean;
@@ -14,7 +13,7 @@ export default function DeleteOrganizationModal(
   props: DeleteOrganizationModalProps,
 ) {
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {deleteOrganization, isLoading} = useDeleteSingleOrganization({
     onSuccess: () => {

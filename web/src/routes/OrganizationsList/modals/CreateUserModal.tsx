@@ -10,8 +10,7 @@ import {
 } from '@patternfly/react-core';
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -28,7 +27,7 @@ interface CreateUserFormData {
 
 export function CreateUserModal(props: CreateUserModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     register,

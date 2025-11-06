@@ -1,6 +1,6 @@
 import React from 'react';
 import {Modal, ModalVariant, Button, Form} from '@patternfly/react-core';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {useUI} from 'src/contexts/UIContext';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {useOAuthApplicationForm} from 'src/hooks/UseOAuthApplicationForm';
 import {OAuthApplicationFormData} from './types';
@@ -8,7 +8,7 @@ import {OAuthApplicationFormData} from './types';
 export default function CreateOAuthApplicationModal(
   props: CreateOAuthApplicationModalProps,
 ) {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {control, errors, formValues, handleSubmit, isValid} =
     useOAuthApplicationForm(

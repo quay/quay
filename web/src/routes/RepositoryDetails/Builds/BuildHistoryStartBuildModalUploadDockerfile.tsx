@@ -12,12 +12,11 @@ import {
 import {DesktopIcon} from '@patternfly/react-icons';
 import React from 'react';
 import {useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import EntitySearch from 'src/components/EntitySearch';
 import FileUpload from 'src/components/FileUpload';
 import Conditional from 'src/components/empty/Conditional';
 import CreateRobotAccountModal from 'src/components/modals/CreateRobotAccountModal';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {useStartDockerfileBuild} from 'src/hooks/UseBuilds';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useRepository, useTransitivePermissions} from 'src/hooks/UseRepository';
@@ -37,7 +36,7 @@ export default function DockerfileUploadBuild(
   const [privateRepo, setPrivatRepo] = useState<string>();
   const [selectedRobot, setSelectedRobot] = useState<string>(null);
   const [isCreateRobotModalOpen, setIsCreateRobotModalOpen] = useState(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {teams} = useFetchTeams(props.org);
   const [org, repo] = privateRepo?.split('/') ?? [null, null];
   const {repoDetails} = useRepository(org, repo);

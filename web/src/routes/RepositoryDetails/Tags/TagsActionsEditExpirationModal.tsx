@@ -14,14 +14,13 @@ import {
   TimePicker,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSetExpiration} from 'src/hooks/UseTags';
 import {formatDate, isNullOrUndefined} from 'src/libs/utils';
 
 export default function EditExpirationModal(props: EditExpirationModalProps) {
   const [date, setDate] = useState<Date>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {
     setExpiration,
     successSetExpiration,

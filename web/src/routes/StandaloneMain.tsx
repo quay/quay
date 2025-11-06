@@ -39,6 +39,7 @@ import {OAuthError} from 'src/routes/OAuthCallback/OAuthError';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
 import {GlobalMessages} from 'src/components/GlobalMessages';
 import {LoadingPage} from 'src/components/LoadingPage';
+import {useUI} from 'src/contexts/UIContext';
 
 // Lazy load route components for better performance
 const OrganizationsList = lazy(
@@ -212,8 +213,15 @@ export function StandaloneMain() {
 
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
+  const location = useLocation();
+  const {clearAllAlerts} = useUI();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Clear alerts when navigating to a different route
+  useEffect(() => {
+    clearAllAlerts();
+  }, [location.pathname, clearAllAlerts]);
 
   const toggleDrawer = () => {
     setIsDrawerOpen((prev) => !prev);

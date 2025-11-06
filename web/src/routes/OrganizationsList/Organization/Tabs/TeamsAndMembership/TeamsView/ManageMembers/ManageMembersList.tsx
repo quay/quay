@@ -47,8 +47,7 @@ import {
 } from '@patternfly/react-icons';
 import {useParams} from 'react-router-dom';
 import Empty from 'src/components/empty/Empty';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {
   getAccountTypeForMember,
   formatDate,
@@ -164,7 +163,7 @@ export default function ManageMembersList(props: ManageMembersListProps) {
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<ITeamMember[]>(
     [],
   );
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const [isEditing, setIsEditing] = useState(false);
   const [teamDescr, setTeamDescr] = useState<string>();

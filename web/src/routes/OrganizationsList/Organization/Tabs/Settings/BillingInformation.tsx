@@ -19,8 +19,7 @@ import {useOrganization} from 'src/hooks/UseOrganization';
 import {useUpgradePlan} from 'src/hooks/UseUpgradePlan';
 import {AxiosError} from 'axios';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Alerts from 'src/routes/Alerts';
 import MarketplaceDetails from './MarketplaceDetails';
 
@@ -31,7 +30,7 @@ type BillingInformationProps = {
 export const BillingInformation = (props: BillingInformationProps) => {
   const organizationName = props.organizationName;
   const {user} = useCurrentUser();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {
     updateUser,
     loading: userUpdateLoading,

@@ -25,6 +25,8 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useCreateRepository} from 'src/hooks/UseCreateRepository';
+import {useUI} from 'src/contexts/UIContext';
+import {AlertVariant} from 'src/contexts/UIContext';
 
 enum visibilityType {
   PUBLIC = 'PUBLIC',
@@ -39,6 +41,7 @@ export default function CreateRepositoryModalTemplate(
   }
   const [err, setErr] = useState<string>();
   const quayConfig = useQuayConfig();
+  const {addAlert} = useUI();
 
   const [currentOrganization, setCurrentOrganization] = useState({
     // For org scoped view, the name is set current org and for Repository list view,
@@ -53,10 +56,23 @@ export default function CreateRepositoryModalTemplate(
 
   const {createRepository} = useCreateRepository({
     onSuccess: () => {
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully created repository ${currentOrganization.name}/${newRepository.name}`,
+      });
       props.handleModalToggle();
     },
     onError: (error) => {
-      setErr(addDisplayError('Unable to create repository', error));
+      const errorMessage = addDisplayError(
+        'Unable to create repository',
+        error,
+      );
+      setErr(errorMessage);
+      addAlert({
+        variant: AlertVariant.Failure,
+        title: 'Unable to create repository',
+        message: errorMessage,
+      });
     },
   });
 

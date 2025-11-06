@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useDeleteUser} from 'src/hooks/UseUserActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface DeleteUserModalProps {
   isOpen: boolean;
@@ -12,7 +11,7 @@ interface DeleteUserModalProps {
 
 export default function DeleteUserModal(props: DeleteUserModalProps) {
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {deleteUser, isLoading} = useDeleteUser({
     onSuccess: () => {
