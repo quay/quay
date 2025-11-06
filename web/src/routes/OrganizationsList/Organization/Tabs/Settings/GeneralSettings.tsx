@@ -17,8 +17,7 @@ import {
 import {useForm, Controller} from 'react-hook-form';
 import moment from 'moment';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
@@ -65,7 +64,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
     useOrganization(organizationName);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {updateOrgSettings} = useOrganizationSettings({
     name: organizationName,

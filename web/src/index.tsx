@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import reportWebVitals from './reportWebVitals';
 import {RecoilRoot} from 'recoil';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {UIProvider} from './contexts/UIContext';
 
 // Load App after patternfly so custom CSS that overrides patternfly doesn't require !important
 import App from './App';
@@ -22,9 +23,11 @@ const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <RecoilRoot>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
+      <UIProvider>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </UIProvider>
     </RecoilRoot>
   </React.StrictMode>,
 );

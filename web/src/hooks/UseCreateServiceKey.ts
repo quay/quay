@@ -1,5 +1,5 @@
 import {useForm} from 'react-hook-form';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant} from 'src/contexts/UIContext';
 import {
   createServiceKey,
   CreateServiceKeyRequest,

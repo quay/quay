@@ -3,13 +3,12 @@ import {TagAction, TagEntry} from './types';
 import ManifestDigest from 'src/components/ManifestDigest';
 import {useEffect, useState} from 'react';
 import {usePermanentlyDeleteTag} from 'src/hooks/UseTags';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 
 export default function PermanentlyDeleteTag(props: RestoreTagProps) {
   const {tagEntry} = props;
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const {permanentlyDeleteTag, success, error} = usePermanentlyDeleteTag(
     props.org,

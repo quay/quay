@@ -11,8 +11,7 @@ import {
   IOAuthApplication,
   useUpdateOAuthApplication,
 } from 'src/hooks/UseOAuthApplications';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {OAuthApplicationFormData} from '../types';
 
@@ -23,7 +22,7 @@ interface SettingsTabProps {
 }
 
 export default function SettingsTab(props: SettingsTabProps) {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {
     control,

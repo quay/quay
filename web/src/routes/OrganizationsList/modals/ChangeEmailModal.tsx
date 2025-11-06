@@ -9,8 +9,7 @@ import {
   Alert,
 } from '@patternfly/react-core';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface ChangeEmailModalProps {
   isOpen: boolean;
@@ -21,7 +20,7 @@ interface ChangeEmailModalProps {
 export default function ChangeEmailModal(props: ChangeEmailModalProps) {
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {changeEmail, isLoading} = useChangeUserEmail({
     onSuccess: () => {

@@ -6,14 +6,13 @@ import {
   Title,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useCreateTag} from 'src/hooks/UseTags';
 import {isNullOrUndefined} from 'src/libs/utils';
 
 export default function AddTagModal(props: AddTagModalProps) {
   const [value, setValue] = useState('');
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {createTag, successCreateTag, errorCreateTag} = useCreateTag(
     props.org,
     props.repo,
