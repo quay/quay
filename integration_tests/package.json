@@ -94,7 +94,7 @@
     "eslint-plugin-import": "2.x",
     "eslint-plugin-react": "7.x",
     "eslint-plugin-react-hooks": "^1.6.0",
-    "file-loader": "1.x",
+    "file-loader": "6.x",
     "fork-ts-checker-webpack-plugin": "0.x",
     "glob": "7.x",
     "glslify-loader": "1.x",
