@@ -104,7 +104,7 @@
     "jasmine-reporters": "2.x",
     "jest": "21.x",
     "jest-cli": "21.x",
-    "mini-css-extract-plugin": "0.4.x",
+    "mini-css-extract-plugin": "0.12.x",
     "node-sass": "4.8.x",
     "protractor": "5.4.x",
     "protractor-fail-fast": "3.x",
