@@ -29,7 +29,7 @@
     "history": "4.x",
     "immutable": "3.x",
     "js-base64": "^2.5.1",
-    "js-yaml": "3.x",
+    "js-yaml": "4.x",
     "lodash-es": "4.x",
     "memoize-one": "5.x",
     "murmurhash-js": "1.0.x",
