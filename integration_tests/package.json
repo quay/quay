@@ -59,7 +59,7 @@
     "typesafe-actions": "^4.2.1",
     "url-polyfill": "^1.1.5",
     "url-search-params-polyfill": "2.x",
-    "whatwg-fetch": "2.x",
+    "whatwg-fetch": "3.x",
     "xterm": "^3.12.2"
   },
   "devDependencies": {
