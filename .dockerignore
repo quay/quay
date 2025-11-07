@@ -23,6 +23,7 @@ htmlcov
 .coverage
 coverage
 .cache
+.npm
 .npm-debug.log
 test/__pycache__
 __pycache__
