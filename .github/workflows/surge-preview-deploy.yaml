@@ -1,0 +1,91 @@
+name: Surge Preview Deploy
+on:
+  workflow_run:
+    workflows: ["Surge Preview Build"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    name: Deploy to Surge
+    runs-on: ubuntu-22.04
+    # Only run on pull request events
+    if: github.event.workflow_run.event == 'pull_request'
+
+    permissions:
+      # Required to post comments on PRs
+      pull-requests: write
+      # Required for checkout
+      contents: read
+
+    steps:
+    - name: Download build artifact
+      uses: dawidd6/action-download-artifact@v8
+      with:
+        name: preview-build
+        workflow: surge-preview-build.yaml
+        run_id: ${{ github.event.workflow_run.id }}
+        path: .
+
+    - name: Read PR number
+      id: pr
+      run: |
+        PR_NUMBER=$(cat preview-build/pr_number.txt)
+        echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Surge
+      id: deploy
+      run: |
+        DEPLOY_DOMAIN="quay-pr-${{ steps.pr.outputs.number }}.surge.sh"
+        cd web/dist
+        npx surge . $DEPLOY_DOMAIN --token ${{ secrets.SURGE_TOKEN }}
+        echo "url=https://$DEPLOY_DOMAIN" >> $GITHUB_OUTPUT
+      env:
+        SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
+
+    - name: Comment PR with deployment URL
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const deploymentUrl = '${{ steps.deploy.outputs.url }}';
+          const prNumber = ${{ steps.pr.outputs.number }};
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Surge Preview Deployment')
+          );
+
+          const commentBody = `## Surge Preview Deployment
+
+          ✅ **Preview deployed successfully!**
+
+          🔗 **Preview URL:** ${deploymentUrl}
+
+          🔧 Built with \`MOCK_API=true\` from commit ${{ github.event.workflow_run.head_sha }}
+
+          _This preview will be updated on every push to this PR._`;
+
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: commentBody
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }

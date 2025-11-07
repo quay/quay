@@ -1,0 +1,50 @@
+name: Surge Preview Build
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'web/**'
+
+jobs:
+  build:
+    name: Build Preview
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout PR code
+      uses: actions/checkout@v5
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: 'web/package-lock.json'
+
+    - name: Install dependencies
+      run: cd web && npm install
+
+    - name: Build with mocked API
+      run: cd web && npm run build
+      env:
+        MOCK_API: 'true'
+
+    - name: Setup Surge for SPA routing
+      run: |
+        cd web/dist
+        cp index.html 200.html
+
+    - name: Save PR number
+      if: success()
+      run: |
+        mkdir -p ./preview-build
+        echo ${{ github.event.pull_request.number }} > ./preview-build/pr_number.txt
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: preview-build
+        path: |
+          web/dist/
+          preview-build/pr_number.txt
