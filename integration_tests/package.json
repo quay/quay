@@ -45,7 +45,7 @@
     "react-jsonschema-form": "^1.0.4",
     "react-lightweight-tooltip": "1.x",
     "react-modal": "3.x",
-    "react-redux": "5.x",
+    "react-redux": "9.x",
     "react-router-dom": "4.x",
     "react-tagsinput": "3.19.x",
     "react-transition-group": "2.3.x",
