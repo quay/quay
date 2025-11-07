@@ -22,7 +22,7 @@
     "angular-file-upload": "^2.6.0",
     "angular-route": "1.6.2",
     "angular-sanitize": "1.6.2",
-    "bootbox": "^5.4.0",
+    "bootbox": "^6.0.0",
     "bootstrap": "^3.3.2",
     "bootstrap-datepicker": "^1.6.4",
     "cal-heatmap": "^3.3.10",
