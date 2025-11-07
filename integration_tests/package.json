@@ -99,7 +99,7 @@
     "glob": "7.x",
     "glslify-loader": "1.x",
     "html-webpack-plugin": "3.x",
-    "jasmine-console-reporter": "2.x",
+    "jasmine-console-reporter": "3.x",
     "jasmine-core": "2.x",
     "jasmine-reporters": "2.x",
     "jest": "21.x",
