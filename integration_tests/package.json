@@ -28,7 +28,7 @@
     "fuzzysearch": "1.0.x",
     "history": "4.x",
     "immutable": "3.x",
-    "js-base64": "^2.5.1",
+    "js-base64": "^3.0.0",
     "js-yaml": "3.x",
     "lodash-es": "4.x",
     "memoize-one": "5.x",
