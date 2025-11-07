@@ -69,7 +69,7 @@
     "karma-chrome-launcher": "^2.1.1",
     "karma-coverage": "^0.5.5",
     "karma-es6-shim": "^1.0.0",
-    "karma-jasmine": "^0.3.8",
+    "karma-jasmine": "^5.0.0",
     "karma-webpack": "^5.0.0",
     "ngtemplate-loader": "^2.1.0",
     "protractor": "^5.1.2",
