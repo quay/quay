@@ -26,7 +26,7 @@
     "bootstrap": "^3.3.2",
     "bootstrap-datepicker": "^1.6.4",
     "cal-heatmap": "^3.3.10",
-    "clipboard": "^1.6.1",
+    "clipboard": "^2.0.0",
     "core-js": "^2.4.1",
     "d3": "^3.3.3",
     "eonasdan-bootstrap-datetimepicker": "^4.17.43",
