@@ -37,7 +37,7 @@
     "process": "^0.11.10",
     "@sentry/browser": "^7.100.0",
     "rxjs": "5.5.7",
-    "showdown": "^1.6.4",
+    "showdown": "^2.0.0",
     "url-parse": "^1.5.9"
   },
   "devDependencies": {
@@ -48,7 +48,7 @@
     "@types/core-js": "^0.9.39",
     "@types/jasmine": "^2.5.41",
     "@types/jquery": "^2.0.40",
-    "@types/showdown": "^1.4.32",
+    "@types/showdown": "^2.0.0",
     "angular-mocks": "1.6.4",
     "css-loader": "0.25.0",
     "file-loader": "^6.2.0",

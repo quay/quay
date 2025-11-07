@@ -54,7 +54,7 @@
     "sanitize-html": "1.x",
     "screenfull": "4.x",
     "semver": "^6.0.0",
-    "showdown": "1.8.x",
+    "showdown": "2.1.x",
     "text-encoding": "0.x",
     "typesafe-actions": "^4.2.1",
     "url-polyfill": "^1.1.5",
