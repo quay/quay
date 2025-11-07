@@ -115,7 +115,7 @@
     "thread-loader": "1.x",
     "ts-jest": "21.x",
     "ts-loader": "5.3.3",
-    "ts-node": "5.x",
+    "ts-node": "10.x",
     "typescript": "3.4.4",
     "webpack": "4.29.6",
     "webpack-bundle-analyzer": "2.x",
