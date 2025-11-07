@@ -116,7 +116,7 @@
     "ts-jest": "21.x",
     "ts-loader": "5.3.3",
     "ts-node": "5.x",
-    "typescript": "3.4.4",
+    "typescript": "5.9.3",
     "webpack": "4.29.6",
     "webpack-bundle-analyzer": "2.x",
     "webpack-cli": "^2.0.12",
