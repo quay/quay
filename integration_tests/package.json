@@ -51,7 +51,7 @@
     "react-transition-group": "2.3.x",
     "react-virtualized": "9.x",
     "redux": "4.0.1",
-    "sanitize-html": "1.x",
+    "sanitize-html": "2.x",
     "screenfull": "4.x",
     "semver": "^6.0.0",
     "showdown": "1.8.x",
