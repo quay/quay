@@ -42,7 +42,7 @@
     "ts-jest": "^29.1.1",
     "typescript": "^5.8.3",
     "use-react-router-breadcrumbs": "^4.0.1",
-    "web-vitals": "^3.4.0"
+    "web-vitals": "^5.0.0"
   },
   "scripts": {
     "start": "webpack serve --color --progress --config webpack.dev.js",
