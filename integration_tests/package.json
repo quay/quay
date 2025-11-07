@@ -65,7 +65,7 @@
   "devDependencies": {
     "@types/classnames": "^2.2.7",
     "@types/enzyme": "3.x",
-    "@types/glob": "7.x",
+    "@types/glob": "9.x",
     "@types/immutable": "3.x",
     "@types/jasmine": "2.8.x",
     "@types/jasminewd2": "2.0.x",
