@@ -37,7 +37,7 @@
     "jsrsasign": "^11.1.0",
     "jszip": "^3.8.0",
     "moment": "^2.29",
-    "moment-timezone": "^0.5.35",
+    "moment-timezone": "^0.6.0",
     "ng-metadata": "^4.0.1",
     "node-forge": "^0.10.0",
     "@sentry/browser": "^7.100.0",
