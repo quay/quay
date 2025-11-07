@@ -1,4 +1,9 @@
-<div class="announcement inline quay-message-bar-element" ng-show="messages.length || inReadOnlyMode || inAccountRecoveryMode">
+<div class="announcement inline quay-message-bar-element" ng-show="messages.length || inReadOnlyMode || inAccountRecoveryMode || true">
+  <div class="quay-service-status-description warning">
+    <div style="display: inline-block">
+      The TLS certificate for cdn01.quay.io is set to be renewed on November 17, 2025. <a href="https://access.redhat.com/articles/7133408" target="_blank" rel="noreferrer">Learn more</a>.
+    </div>
+  </div>
   <div class="quay-service-status-description info" ng-if="inReadOnlyMode">
     <div style="display: inline-block">
       <span class="registry-name"></span>&nbsp;is currently in read-only mode. Pulls and other read-only operations

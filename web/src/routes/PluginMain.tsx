@@ -149,6 +149,28 @@ function PluginMain() {
           </FlexItem>
         </Flex>
       </Banner>
+      <Banner variant="gold">
+        <Flex
+          spaceItems={{default: 'spaceItemsSm'}}
+          justifyContent={{default: 'justifyContentCenter'}}
+        >
+          <FlexItem>
+            <InfoCircleIcon />
+          </FlexItem>
+          <FlexItem>
+            The TLS certificate for cdn01.quay.io is set to be renewed on
+            November 17, 2025.{' '}
+            <a
+              href="https://access.redhat.com/articles/7133408"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more
+            </a>
+            .
+          </FlexItem>
+        </Flex>
+      </Banner>
       <SystemStatusBanner />
       {user && (
         <CreateNewUser
