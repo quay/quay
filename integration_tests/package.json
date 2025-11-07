@@ -17,7 +17,7 @@
     "debug-test-suite": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' node -r ts-node/register --inspect-brk ./node_modules/.bin/protractor protractor.conf.ts"
   },
   "dependencies": {
-    "@patternfly/patternfly": "^5.0.4",
+    "@patternfly/patternfly": "^6.0.0",
     "@patternfly/react-charts": "^7.1.0",
     "@patternfly/react-core": "^5.1.0",
     "brace": "0.11.x",
