@@ -48,7 +48,7 @@
     "react-redux": "5.x",
     "react-router-dom": "4.x",
     "react-tagsinput": "3.19.x",
-    "react-transition-group": "2.3.x",
+    "react-transition-group": "2.9.x",
     "react-virtualized": "9.x",
     "redux": "4.0.1",
     "sanitize-html": "1.x",
