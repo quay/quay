@@ -16,8 +16,7 @@ import {
   IOAuthApplication,
   useResetOAuthApplicationClientSecret,
 } from 'src/hooks/UseOAuthApplications';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {ConfirmationModal} from 'src/components/modals/ConfirmationModal';
 
 interface OAuthInformationTabProps {
@@ -29,7 +28,7 @@ interface OAuthInformationTabProps {
 
 export default function OAuthInformationTab(props: OAuthInformationTabProps) {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {resetOAuthApplicationClientSecretMutation} =
     useResetOAuthApplicationClientSecret(

@@ -15,8 +15,7 @@ import {CubeIcon} from '@patternfly/react-icons';
 import {useAuthorizedApplications} from 'src/hooks/UseAuthorizedApplications';
 import GenerateTokenAuthorizationModal from 'src/components/modals/GenerateTokenAuthorizationModal';
 import TokenDisplayModal from 'src/components/modals/TokenDisplayModal';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {GlobalAuthState} from 'src/resources/AuthResource';
 import {useQueryClient} from '@tanstack/react-query';
 
@@ -33,7 +32,7 @@ export default function AuthorizedApplicationsList() {
     isRevoking,
     isDeletingAssigned,
   } = useAuthorizedApplications();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const queryClient = useQueryClient();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);

@@ -18,7 +18,7 @@ import {FormTextInput} from 'src/components/forms/FormTextInput';
 import {FormCheckbox} from 'src/components/forms/FormCheckbox';
 import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant} from 'src/contexts/UIContext';
 import {
   MirroringConfigResponse,
   getMirrorConfig,

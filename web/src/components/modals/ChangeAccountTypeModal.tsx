@@ -18,8 +18,7 @@ import {
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useConvertAccount} from 'src/hooks/UseConvertAccount';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Avatar from 'src/components/Avatar';
 
 interface ChangeAccountTypeModalProps {
@@ -33,7 +32,7 @@ export default function ChangeAccountTypeModal({
 }: ChangeAccountTypeModalProps) {
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const canConvert = user?.organizations?.length === 0;
   const [convertStep, setConvertStep] = useState(canConvert ? 1 : 0); // Start at step 1 if can convert
   const [accountType, setAccountType] = useState('organization'); // Default to organization

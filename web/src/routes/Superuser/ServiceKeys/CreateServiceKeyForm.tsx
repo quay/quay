@@ -12,7 +12,7 @@ import {
   HelperTextItem,
 } from '@patternfly/react-core';
 import {useCreateServiceKey} from 'src/hooks/UseCreateServiceKey';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
 
 interface CreateServiceKeyFormProps {
@@ -26,7 +26,7 @@ export const CreateServiceKeyForm: React.FC<CreateServiceKeyFormProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const [error, setError] = React.useState<string | null>(null);
 
   const formHook = useCreateServiceKey(addAlert, setError, () => {

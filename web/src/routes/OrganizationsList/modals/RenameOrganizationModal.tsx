@@ -9,8 +9,7 @@ import {
   Alert,
 } from '@patternfly/react-core';
 import {useRenameOrganization} from 'src/hooks/UseOrganizationActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface RenameOrganizationModalProps {
   isOpen: boolean;
@@ -23,7 +22,7 @@ export default function RenameOrganizationModal(
 ) {
   const [newName, setNewName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {renameOrganization, isLoading} = useRenameOrganization({
     onSuccess: (oldName: string, newName: string) => {
