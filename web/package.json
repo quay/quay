@@ -102,7 +102,7 @@
     "sass": "^1.64.1",
     "sass-loader": "^16.0.5",
     "serve": "^14.2.0",
-    "style-loader": "^3.3.3",
+    "style-loader": "^4.0.0",
     "svg-url-loader": "^8.0.0",
     "terser-webpack-plugin": "^5.3.9",
     "ts-loader": "^9.5.0",
