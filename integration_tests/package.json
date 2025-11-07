@@ -112,7 +112,7 @@
     "read-pkg": "5.x",
     "resolve-url-loader": "2.x",
     "sass-loader": "6.x",
-    "thread-loader": "1.x",
+    "thread-loader": "4.x",
     "ts-jest": "21.x",
     "ts-loader": "5.3.3",
     "ts-node": "5.x",
