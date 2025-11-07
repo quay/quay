@@ -110,7 +110,7 @@
     "protractor-fail-fast": "3.x",
     "protractor-jasmine2-screenshot-reporter": "0.5.x",
     "read-pkg": "5.x",
-    "resolve-url-loader": "2.x",
+    "resolve-url-loader": "5.x",
     "sass-loader": "6.x",
     "thread-loader": "1.x",
     "ts-jest": "21.x",
