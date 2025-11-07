@@ -50,7 +50,7 @@
     "react-tagsinput": "3.19.x",
     "react-transition-group": "2.3.x",
     "react-virtualized": "9.x",
-    "redux": "4.0.1",
+    "redux": "4.2.1",
     "sanitize-html": "1.x",
     "screenfull": "4.x",
     "semver": "^6.0.0",
