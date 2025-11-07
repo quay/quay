@@ -84,7 +84,7 @@
     "@typescript-eslint/parser": "^1.7.0",
     "bootstrap-sass": "^3.3.7",
     "cache-loader": "1.x",
-    "chalk": "2.3.x",
+    "chalk": "2.4.x",
     "chromedriver": "^2.43.3",
     "circular-dependency-plugin": "5.0.2",
     "css-loader": "0.28.x",
