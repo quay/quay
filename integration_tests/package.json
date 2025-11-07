@@ -31,7 +31,7 @@
     "js-base64": "^2.5.1",
     "js-yaml": "3.x",
     "lodash-es": "4.x",
-    "memoize-one": "5.x",
+    "memoize-one": "6.x",
     "murmurhash-js": "1.0.x",
     "openshift-logos-icon": "1.7.1",
     "plotly.js": "1.47.3",
