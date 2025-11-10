@@ -151,7 +151,7 @@ export function useCreateQuotaLimit(
       quotaId: string;
       params: ICreateQuotaLimitParams;
     }) => {
-      return createQuotaLimit(orgName, quotaId, params, isUser);
+      return createQuotaLimit(orgName, quotaId, params);
     },
     {
       onSuccess: () => {
@@ -188,7 +188,7 @@ export function useUpdateQuotaLimit(
       limitId: string;
       params: ICreateQuotaLimitParams;
     }) => {
-      return updateQuotaLimit(orgName, quotaId, limitId, params, isUser);
+      return updateQuotaLimit(orgName, quotaId, limitId, params);
     },
     {
       onSuccess: () => {
@@ -217,7 +217,7 @@ export function useDeleteQuotaLimit(
 
   const {mutate: deleteLimitMutation, isLoading: isDeletingLimit} = useMutation(
     async ({quotaId, limitId}: {quotaId: string; limitId: string}) => {
-      return deleteQuotaLimit(orgName, quotaId, limitId, isUser);
+      return deleteQuotaLimit(orgName, quotaId, limitId);
     },
     {
       onSuccess: () => {
