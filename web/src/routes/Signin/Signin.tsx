@@ -184,7 +184,9 @@ export function Signin() {
         err instanceof AxiosError &&
         err.response &&
         err.response.status === 403;
-      if (authErr && err.response.data.invalidCredentials) {
+      if (authErr && err.response.data.needsEmailVerification) {
+        setErr('You must verify your email address before you can sign in');
+      } else if (authErr && err.response.data.invalidCredentials) {
         setErr(err.response.data.message || 'Invalid login credentials');
       } else if (authErr) {
         setErr('CSRF token expired - please refresh');
