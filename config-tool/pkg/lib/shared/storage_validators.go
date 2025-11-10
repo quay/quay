@@ -266,7 +266,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		var credentials *sts.Credentials
 		// Prefer using web tokens to authenticate and fallback to access and secret keys
 		if webIdentityTokenFile != "" {
-			sess := session.Must(session.NewSession(awsConfig))
+			sess, err := session.NewSession(awsConfig)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not create AWS session for STS with Web Identity Token: " + err.Error(),
+				})
+				return false, errors
+			}
 			svc := sts.New(sess)
 			webIdentityToken, err := os.ReadFile(webIdentityTokenFile)
 			if err != nil {
@@ -295,7 +303,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			credentials = assumeRoleOutput.Credentials
 		} else {
 			awsConfig.Credentials = awscredentials.NewStaticCredentials(args.STSUserAccessKey, args.STSUserSecretKey, "")
-			sess := session.Must(session.NewSession(awsConfig))
+			sess, err := session.NewSession(awsConfig)
+			if err != nil {
+				errors = append(errors, ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not create AWS session for STS: " + err.Error(),
+				})
+				return false, errors
+			}
 			svc := sts.New(sess)
 			assumeRoleInput := &sts.AssumeRoleInput{
 				RoleArn:         aws.String(roleToAssumeArn),
