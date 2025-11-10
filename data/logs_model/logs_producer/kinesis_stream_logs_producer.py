@@ -51,7 +51,6 @@ class KinesisStreamLogsProducer(LogProducerInterface):
         aws_region,
         aws_access_key=None,
         aws_secret_key=None,
-        use_sts=False,
         connect_timeout=None,
         read_timeout=None,
         max_retries=None,
@@ -72,19 +71,14 @@ class KinesisStreamLogsProducer(LogProducerInterface):
             retries={"max_attempts": self._max_retries},
             max_pool_connections=self._max_pool_connections,
         )
-        if use_sts:
-            self._producer = boto3.client(
-                "kinesis", use_ssl=True, region_name=self._aws_region, config=client_config
-            )
-        else:
-            self._producer = boto3.client(
-                "kinesis",
-                use_ssl=True,
-                region_name=self._aws_region,
-                aws_access_key_id=self._aws_access_key,
-                aws_secret_access_key=self._aws_secret_key,
-                config=client_config,
-            )
+        self._producer = boto3.client(
+            "kinesis",
+            use_ssl=True,
+            region_name=self._aws_region,
+            aws_access_key_id=self._aws_access_key,
+            aws_secret_access_key=self._aws_secret_key,
+            config=client_config,
+        )
 
     def send(self, logentry):
         try:

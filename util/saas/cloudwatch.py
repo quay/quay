@@ -22,17 +22,13 @@ def start_cloudwatch_sender(metrics, app):
     """
     access_key = app.config.get("CLOUDWATCH_AWS_ACCESS_KEY", "")
     secret_key = app.config.get("CLOUDWATCH_AWS_SECRET_KEY", "")
-    use_sts = app.config.get("CLOUDWATCH_USE_STS", False)
     namespace = app.config.get("CLOUDWATCH_NAMESPACE")
 
     if not namespace:
         logger.debug("CloudWatch not configured")
         return
 
-    if use_sts:
-        sender = CloudWatchSender(metrics, None, None, namespace)
-    else:
-        sender = CloudWatchSender(metrics, access_key, secret_key, namespace)
+    sender = CloudWatchSender(metrics, access_key, secret_key, namespace)
     sender.start()
 
 
