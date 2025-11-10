@@ -131,6 +131,33 @@ describe('Signin page', () => {
     cy.url().should('include', '/signin');
   });
 
+  it('Handles unverified email correctly', () => {
+    setupFailedSignin(
+      {
+        needsEmailVerification: true,
+        invalidCredentials: false,
+        message: null,
+      },
+      403,
+    );
+
+    // Fill and submit form with user who hasn't verified email
+    cy.get('#pf-login-username-id').type('unverifieduser');
+    cy.get('#pf-login-password-id').type('password');
+    cy.get('button[type=submit]').click();
+
+    // Should show email verification error message
+    cy.wait('@signinFail');
+    cy.contains('You must verify your email address before you can sign in');
+
+    // Should NOT show CSRF or invalid credentials error
+    cy.contains('CSRF token expired').should('not.exist');
+    cy.contains('Invalid login credentials').should('not.exist');
+
+    // Should not redirect
+    cy.url().should('include', '/signin');
+  });
+
   it('Handles INVITE_ONLY_USER_CREATION error message correctly', () => {
     setupFailedSignin(
       {
