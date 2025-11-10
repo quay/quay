@@ -1,5 +1,3 @@
-from test.fixtures import *
-
 import pytest
 from flask import url_for
 from mock import patch
@@ -8,6 +6,7 @@ from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.user import User
 from endpoints.test.shared import client_with_identity, conduct_call
 from features import FeatureNameValue
+from test.fixtures import *
 
 
 def test_user_metadata_update(app):
@@ -133,3 +132,37 @@ def test_initialize_user(
                         assert 40 == len(user.json.get("access_token", ""))
                     else:
                         assert not user.json.get("access_token")
+
+
+def test_endpoints_donot_return_none():
+    # since this happens only on empty installations we'll just hardcode a
+    # test for a filter check
+
+    testdata1 = ["org1", "org2", "org3", None]
+    testdata2 = [None]
+    testdata3 = ["org1", "org2", "org3"]
+
+    class OrganizationsFake(object):
+        def __init__(self, values):
+            self._values = values
+
+        def values(self):
+            return self._values
+
+    def org_view(o, user_admin=False):
+        return (o, True)
+
+    def filter_none_type(organizations):
+        return list(filter(lambda x: not isinstance(x, type(None)), list(organizations.values())))
+
+    assert not None in filter_none_type(OrganizationsFake(testdata1))
+    assert None in OrganizationsFake(testdata1)._values
+    assert not None in filter_none_type(OrganizationsFake(testdata2))
+    assert None in OrganizationsFake(testdata2)._values
+    assert not None in filter_none_type(OrganizationsFake(testdata2))
+    assert None in OrganizationsFake(testdata2)._values
+
+    # call the same logic as in endpoints/api/user.py user_response.update
+    assert sorted(
+        [org_view(o, user_admin=False) for o in filter_none_type(OrganizationsFake(testdata1))]
+    ) == [("org1", True), ("org2", True), ("org3", True)]
