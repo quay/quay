@@ -4,7 +4,6 @@ from storage.cloud import (
     CloudFrontedS3Storage,
     GoogleCloudStorage,
     IBMCloudStorage,
-    IRSAS3Storage,
     RadosGWStorage,
     RHOCSStorage,
     S3Storage,
@@ -35,7 +34,6 @@ STORAGE_DRIVER_CLASSES = {
     "MultiCDNStorage": MultiCDNStorage,
     "IBMCloudStorage": IBMCloudStorage,
     "STSS3Storage": STSS3Storage,
-    "IRSAS3Storage": IRSAS3Storage,
     "AkamaiS3Storage": AkamaiS3Storage,
 }
 

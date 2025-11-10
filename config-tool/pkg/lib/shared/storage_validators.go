@@ -161,9 +161,10 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		bucketName = args.S3Bucket
 
 		// Build endpoint from either endpoint_url (boto3) or host+port (boto2)
+		var awsConfig *aws.Config
 		if args.EndpointURL != "" || args.Host != "" {
 			var err error
-			endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, true)
+			endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args)
 			if err != nil {
 				errors = append(errors, ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -176,16 +177,17 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			// Default to AWS S3
 			endpoint = "s3.amazonaws.com"
 			isSecure = true
+			awsConfig = &aws.Config{}
 		}
 
 		if len(errors) > 0 {
 			return false, errors
 		}
 
-		// If no keys are provided, we attempt to use IAM
+		// If no keys are provided, use default credential chain (supports EC2 IAM roles, IRSA, etc.)
 		if args.S3AccessKey == "" || args.S3SecretKey == "" {
 
-			sess, err := session.NewSession()
+			sess, err := session.NewSession(awsConfig)
 			if err != nil {
 				newError := ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -196,83 +198,25 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 				return false, errors
 			}
 
-			// Get credentials and set
-			appCreds := ec2rolecreds.NewCredentials(sess)
-			value, err := appCreds.Get()
+			// Get credentials from default credential chain (includes EC2 IAM roles, IRSA, etc.)
+			creds, err := sess.Config.Credentials.Get()
 			if err != nil {
 				newError := ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 					FieldGroup: fgName,
-					Message:    "No access key or secret key were provided. Attempted to fetch IAM role and failed.",
+					Message:    "No access key or secret key were provided. Attempted to fetch credentials from default chain and failed.",
 				}
 				errors = append(errors, newError)
 				return false, errors
 			}
 
-			accessKey = value.AccessKeyID
-			secretKey = value.SecretAccessKey
-			token = value.SessionToken
+			accessKey = creds.AccessKeyID
+			secretKey = creds.SecretAccessKey
+			token = creds.SessionToken
 
 		}
 
 		log.Debugf("S3 Storage parameters: ")
-		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
-
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
-			errors = append(errors, err)
-		}
-
-	case "IRSAS3Storage":
-		log.Debugf("Using IRSA S3 Storage.")
-
-		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
-			errors = append(errors, err)
-		}
-
-		bucketName = args.S3Bucket
-
-		// Build endpoint configuration for STS and S3
-		var awsConfig *aws.Config
-		var err error
-		endpoint, isSecure, awsConfig, err = buildSTSEndpointConfig(args)
-		if err != nil {
-			errors = append(errors, ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Invalid endpoint configuration: " + err.Error(),
-			})
-			return false, errors
-		}
-
-		// IRSA uses automatic credential discovery via AWS_WEB_IDENTITY_TOKEN_FILE and AWS_ROLE_ARN
-		sess, err := session.NewSession(awsConfig)
-		if err != nil {
-			newError := ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not create S3 session for IRSA. Error: " + err.Error(),
-			}
-			errors = append(errors, newError)
-			return false, errors
-		}
-
-		// Get temp credentials from the default credential chain (includes web identity token)
-		creds, err := sess.Config.Credentials.Get()
-		if err != nil {
-			newError := ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not fetch IRSA credentials. Ensure AWS_WEB_IDENTITY_TOKEN_FILE and AWS_ROLE_ARN are set. Error: " + err.Error(),
-			}
-			errors = append(errors, newError)
-			return false, errors
-		}
-
-		accessKey = creds.AccessKeyID
-		secretKey = creds.SecretAccessKey
-		token = creds.SessionToken
-
-		log.Debugf("IRSA S3 Storage parameters: ")
 		log.Debugf("hostname: %s, bucket name: %s, TLS enabled: %t", endpoint, bucketName, isSecure)
 
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
