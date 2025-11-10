@@ -105,11 +105,8 @@ export async function createQuotaLimit(
   orgName: string,
   quotaId: string,
   params: ICreateQuotaLimitParams,
-  isUser?: boolean,
 ): Promise<void> {
-  const endpoint = isUser
-    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}/limit`
-    : `/api/v1/organization/${orgName}/quota/${quotaId}/limit`;
+  const endpoint = `/api/v1/organization/${orgName}/quota/${quotaId}/limit`;
   await axios.post(endpoint, params);
 }
 
@@ -119,11 +116,8 @@ export async function updateQuotaLimit(
   quotaId: string,
   limitId: string,
   params: ICreateQuotaLimitParams,
-  isUser?: boolean,
 ): Promise<void> {
-  const endpoint = isUser
-    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}/limit/${limitId}`
-    : `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
+  const endpoint = `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
   await axios.put(endpoint, params);
 }
 
@@ -132,11 +126,8 @@ export async function deleteQuotaLimit(
   orgName: string,
   quotaId: string,
   limitId: string,
-  isUser?: boolean,
 ): Promise<void> {
-  const endpoint = isUser
-    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}/limit/${limitId}`
-    : `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
+  const endpoint = `/api/v1/organization/${orgName}/quota/${quotaId}/limit/${limitId}`;
   await axios.delete(endpoint);
 }
 
