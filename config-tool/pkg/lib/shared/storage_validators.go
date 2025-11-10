@@ -203,7 +203,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 				newError := ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 					FieldGroup: fgName,
-					Message:    "No access key or secret key were provided. Attempted to fetch credentials from default chain and failed.",
+					Message:    fmt.Sprintf("No access key or secret key were provided. Attempted to fetch credentials from default chain and failed: %v", err),
 				}
 				errors = append(errors, newError)
 				return false, errors
