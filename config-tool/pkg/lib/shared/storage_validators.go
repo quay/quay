@@ -64,7 +64,7 @@ func buildSTSEndpointConfig(args *DistributedStorageArgs) (string, bool, *aws.Co
 
 	if args.EndpointURL != "" || args.Host != "" {
 		var err error
-		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, true)
+		s3Endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, args.IsSecure)
 		if err != nil {
 			return "", false, nil, err
 		}
@@ -422,7 +422,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		// Build endpoint from either endpoint_url (boto3) or host+port (boto2)
 		if args.EndpointURL != "" || args.Host != "" {
 			var err error
-			endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, true)
+			endpoint, isSecure, err = buildEndpoint(args.EndpointURL, args.Host, args.Port, args.IsSecure)
 			if err != nil {
 				errors = append(errors, ValidationError{
 					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
