@@ -3,8 +3,13 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.9/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.9.17"></a>
+## [v3.9.17] - 2025-10-13
+### [Redhat-3.9] Deps
+- [a7ef0ba0](https://github.com/quay/quay/commit/a7ef0ba08cceae0f625929936c37184f65325bfb): update Authlib version to 1.6.5 (PROJQUAY-9441) ([#4354](https://github.com/quay/quay/issues/4354))
+
 <a name="v3.9.16"></a>
-## [v3.9.16] - 2025-09-01
+## [v3.9.16] - 2025-09-09
 ### [Redhat 3.9] Deps
 - [096f28f9](https://github.com/quay/quay/commit/096f28f98958ffa9a75f33dc4cf459ed53b3fd40): update sha.js to 2.4.12 (PROJQUAY-9345) ([#4224](https://github.com/quay/quay/issues/4224))
 ### [Redhat-3.9] Deps
@@ -1609,7 +1614,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.9.16...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.9.17...HEAD
+[v3.9.17]: https://github.com/quay/quay/compare/v3.9.16...v3.9.17
 [v3.9.16]: https://github.com/quay/quay/compare/v3.9.15...v3.9.16
 [v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
 [v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
