@@ -51,6 +51,25 @@ services:
     ports:
       - "6379:6379"
 
+  ldap:
+    container_name: quay-ldap
+    image: docker.io/389ds/dirsrv:latest
+    environment:
+      DS_DM_PASSWORD: "admin"
+    volumes:
+      - "./local-dev/ldap/base.ldif:/data/ldif/base.ldif:ro"
+      - "./local-dev/ldap/init-389ds.sh:/data/init-389ds.sh:ro"
+    ports:
+      - "3389:3389"
+      - "6636:3636"
+    command: >
+      bash -c "
+      /usr/lib/dirsrv/dscontainer -r &
+      sleep 10 &&
+      bash /data/init-389ds.sh &&
+      wait
+      "
+
   local-dev-frontend:
     user: ${DOCKER_USER:-root}
     container_name: quay-local-dev-frontend
