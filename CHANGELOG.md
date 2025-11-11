@@ -3,8 +3,10 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.10/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.10.16"></a>
-## [v3.10.16] - 0001-01-01
+<a name="v3.10.17"></a>
+## [v3.10.17] - 2025-10-13
+### [Redhat-3.10] Deps
+- [102b9f02](https://github.com/quay/quay/commit/102b9f0202658022b8d7a86ffa434bd241e07bb4): update Authlib version to 1.6.5 (PROJQUAY-9437) ([#4353](https://github.com/quay/quay/issues/4353))
 
 <a name="v3.10.15"></a>
 ## [v3.10.15] - 2025-09-10
@@ -2116,8 +2118,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.10.16...HEAD
-[v3.10.16]: https://github.com/quay/quay/compare/v3.10.15...v3.10.16
+[Unreleased]: https://github.com/quay/quay/compare/v3.10.17...HEAD
+[v3.10.17]: https://github.com/quay/quay/compare/v3.10.15...v3.10.17
 [v3.10.15]: https://github.com/quay/quay/compare/v3.10.14...v3.10.15
 [v3.10.14]: https://github.com/quay/quay/compare/v3.10.13...v3.10.14
 [v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
