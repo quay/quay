@@ -6,12 +6,20 @@ import pytest
 import requests
 from jwt import DecodeError
 
+from app import model_cache
 from auth.test.mock_oidc_server import generate_mock_oidc_token, mock_get, mock_request
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
+from data.cache import cache_key
 from data.model import InvalidRobotCredentialException, InvalidRobotException
 from test.fixtures import *
 from util.security.federated_robot_auth import validate_federated_auth
+
+
+def clear_robot_cache(username):
+    if model_cache is not None:
+        robot_cache_key = cache_key.for_robot_lookup(username, model_cache.cache_config)
+        model_cache.invalidate(robot_cache_key)
 
 
 def test_validate_federated_robot_auth_bad_header(app):
@@ -52,6 +60,7 @@ def test_validate_federated_robot_auth_invalid_jwt(app):
     header = f"Basic {creds.decode('utf-8')}"
     with pytest.raises(DecodeError) as e:
         validate_federated_auth(header)
+    clear_robot_cache(robot.username)
 
 
 def test_validate_federated_robot_auth_no_fed_config(app):
@@ -63,6 +72,7 @@ def test_validate_federated_robot_auth_no_fed_config(app):
         result = validate_federated_auth(header)
 
     assert "Robot does not have federated login configured" in str(e)
+    clear_robot_cache(robot.username)
 
 
 @patch.object(requests.Session, "request", mock_request)
@@ -86,6 +96,7 @@ def test_validate_federated_robot_auth_expired_jwt(app):
     with pytest.raises(InvalidRobotCredentialException) as e:
         validate_federated_auth(header)
         assert "Signature has expired" in str(e)
+    clear_robot_cache(robot.username)
 
 
 @patch.object(requests.Session, "request", mock_request)
@@ -108,3 +119,4 @@ def test_validate_federated_robot_auth_valid_jwt(app):
     assert result.error_message is None
     assert not result.missing
     assert result.kind == AuthKind.federated
+    clear_robot_cache(robot.username)

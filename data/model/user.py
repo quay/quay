@@ -9,6 +9,7 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
 from auth.auth_context import get_authenticated_context
+from data.cache import cache_key
 from data.database import (
     AutoPruneTaskStatus,
     DeletedNamespace,
@@ -63,7 +64,9 @@ from data.model import (
     namespacequota,
     notification,
 )
+from data.model.datatypes import UserDataType
 from data.readreplica import ReadOnlyModeException
+from data.registry_model.datatype import FromDictionaryException
 from data.text import prefix_search
 from util.backoff import exponential_backoff
 from util.bytes import Bytes
@@ -266,7 +269,7 @@ def get_user_prompts(user):
     return [prompt.kind.name for prompt in query]
 
 
-def change_username(user_id, new_username):
+def change_username(user_id, new_username, model_cache=None):
     (username_valid, username_issue) = validate_username(new_username)
     if not username_valid:
         raise InvalidUsernameException("Invalid username %s: %s" % (new_username, username_issue))
@@ -283,6 +286,13 @@ def change_username(user_id, new_username):
             new_robot_name = format_robot_username(new_username, robot_shortname)
             robot.username = new_robot_name
             robot.save()
+
+            # Invalidate lookup_robot cache
+            if model_cache is not None:
+                robot_cache_key = cache_key.for_robot_lookup(
+                    robot.username, model_cache.cache_config
+                )
+                model_cache.invalidate(robot_cache_key)
 
         # Rename the user
         user.username = new_username
@@ -445,30 +455,45 @@ def retrieve_robot_token(robot):
     return token
 
 
-def get_robot_and_metadata(robot_shortname, parent):
+def get_robot_and_metadata(robot_shortname, parent, model_cache=None):
     """
     Returns a tuple of the robot matching the given shortname, its token, and its metadata.
     """
     robot_username = format_robot_username(parent.username, robot_shortname)
-    robot, metadata = lookup_robot_and_metadata(robot_username)
+    robot, metadata = lookup_robot_and_metadata(robot_username, model_cache)
     token = retrieve_robot_token(robot)
     return robot, token, metadata
 
 
-def lookup_robot(robot_username):
+def lookup_robot(robot_username, model_cache=None):
     try:
         robot_username.encode("ascii")
     except UnicodeEncodeError:
         raise InvalidRobotException("Could not find robot with specified username")
+        return None
 
-    try:
-        return User.get(username=robot_username, robot=True)
-    except User.DoesNotExist:
+    def lookup_robot_loader():
+        try:
+            resp = User.get(username=robot_username, robot=True)
+            return UserDataType.to_dict(resp)
+        except User.DoesNotExist:
+            return None
+
+    if model_cache is not None:
+        lookup_robot_key = cache_key.for_robot_lookup(robot_username, model_cache.cache_config)
+        robot = model_cache.retrieve(lookup_robot_key, lookup_robot_loader)
+    else:
+        robot = lookup_robot_loader()
+
+    if not robot:
         raise InvalidRobotException("Could not find robot with specified username")
 
+    from_dict = UserDataType.from_dict(robot)
+    return from_dict
 
-def lookup_robot_and_metadata(robot_username):
-    robot = lookup_robot(robot_username)
+
+def lookup_robot_and_metadata(robot_username, model_cache=None):
+    robot = lookup_robot(robot_username, model_cache)
     return robot, get_or_create_robot_metadata(robot)
 
 
@@ -510,7 +535,7 @@ def get_matching_robots(name_prefix, username, limit=10):
     return User.select(can_use_read_replica=True).where(prefix_checks).limit(limit)
 
 
-def verify_robot(robot_username, password, instance_keys):
+def verify_robot(robot_username, password, instance_keys, model_cache=None):
     if config.app_config.get("ROBOTS_DISALLOW", False):
         if not robot_username in config.app_config.get("ROBOTS_WHITELIST", []):
             msg = "Robot account have been disabled. Please contact your administrator."
@@ -526,7 +551,7 @@ def verify_robot(robot_username, password, instance_keys):
     if result is None:
         raise InvalidRobotException("%s is an invalid robot name" % robot_username)
 
-    robot = lookup_robot(robot_username)
+    robot = lookup_robot(robot_username, model_cache)
     assert robot.robot
 
     # Find the owner user and ensure it is not disabled.
@@ -559,10 +584,10 @@ def verify_robot(robot_username, password, instance_keys):
     return robot
 
 
-def regenerate_robot_token(robot_shortname, parent):
+def regenerate_robot_token(robot_shortname, parent, model_cache=None):
     robot_username = format_robot_username(parent.username, robot_shortname)
 
-    robot, metadata = lookup_robot_and_metadata(robot_username)
+    robot, metadata = lookup_robot_and_metadata(robot_username, model_cache)
     password = random_string_generator(length=64)()
     robot.email = str(uuid4())
     robot.uuid = str(uuid4())
@@ -583,6 +608,11 @@ def regenerate_robot_token(robot_shortname, parent):
         login.save()
         robot.save()
 
+        # Invalidate lookup_robot cache
+        if model_cache is not None:
+            robot_cache_key = cache_key.for_robot_lookup(robot_username, model_cache.cache_config)
+            model_cache.invalidate(robot_cache_key)
+
     return robot, password, metadata
 
 
@@ -595,10 +625,15 @@ def generate_temp_robot_jwt_token(instance_keys):
     return token
 
 
-def delete_robot(robot_username):
+def delete_robot(robot_username, model_cache=None):
     try:
         robot = User.get(username=robot_username, robot=True, can_use_read_replica=True)
         robot.delete_instance(recursive=True, delete_nullable=True)
+
+        # Invalidate lookup_robot cache
+        if model_cache is not None:
+            robot_cache_key = cache_key.for_robot_lookup(robot_username, model_cache.cache_config)
+            model_cache.invalidate(robot_cache_key)
 
     except User.DoesNotExist:
         raise InvalidRobotException("Could not find robot with username: %s" % robot_username)
@@ -1307,7 +1342,7 @@ def get_solely_admined_organizations(user_obj):
     return solely_admined
 
 
-def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
+def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False, model_cache=None):
     """
     Marks a namespace (as referenced by the given user) for deletion.
 
@@ -1338,7 +1373,7 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
         queue.delete_namespaced_items(user.username)
 
     # Delete non-repository related items. This operation is very quick, so we can do so here.
-    _delete_user_linked_data(user)
+    _delete_user_linked_data(user, model_cache)
 
     with db_transaction():
         original_username = user.username
@@ -1384,7 +1419,7 @@ def delete_namespace_via_marker(marker_id, queues):
     return delete_user(marker.namespace, queues)
 
 
-def delete_user(user, queues):
+def delete_user(user, queues, model_cache=None):
     """
     Deletes a user/organization/robot.
 
@@ -1397,6 +1432,10 @@ def delete_user(user, queues):
     if user.enabled:
         user.enabled = False
         user.save()
+
+    if user.robot and model_cache:
+        robot_cache_key = cache_key.for_robot_lookup(user.username, model_cache.cache_config)
+        model_cache.invalidate(robot_cache_key)
 
     # Delete all queue items for the user.
     for queue in queues:
@@ -1424,7 +1463,7 @@ def delete_user(user, queues):
     NamespaceAutoPrunePolicy.delete().where(NamespaceAutoPrunePolicy.namespace == user).execute()
 
     # Delete non-repository related items.
-    _delete_user_linked_data(user)
+    _delete_user_linked_data(user, model_cache)
 
     # Delete the user itself.
     try:
@@ -1434,7 +1473,7 @@ def delete_user(user, queues):
         return False
 
 
-def _delete_user_linked_data(user):
+def _delete_user_linked_data(user, model_cache=None):
     if user.organization:
         # Delete the organization's teams.
         with db_transaction():
@@ -1474,6 +1513,13 @@ def _delete_user_linked_data(user):
         for robot in robots:
             robot.delete_instance(recursive=True, delete_nullable=True)
 
+            # Invalidate lookup_robot cache
+            if model_cache is not None:
+                robot_cache_key = cache_key.for_robot_lookup(
+                    robot.username, model_cache.cache_config
+                )
+                model_cache.invalidate(robot_cache_key)
+
     # Null out any service key approvals. We technically lose information here, but its better than
     # falling and only occurs if a superuser is being deleted.
     ServiceKeyApproval.update(approver=None).where(ServiceKeyApproval.approver == user).execute()
@@ -1488,12 +1534,12 @@ def _delete_user_linked_data(user):
     OauthAssignedToken.delete().where(OauthAssignedToken.assigned_user == user).execute()
 
 
-def get_pull_credentials(robotname):
+def get_pull_credentials(robotname, model_cache=None):
     """
     Returns the pull credentials for a robot with the given name.
     """
     try:
-        robot = lookup_robot(robotname)
+        robot = lookup_robot(robotname, model_cache)
     except InvalidRobotException:
         return None
 

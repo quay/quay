@@ -5,7 +5,7 @@ from flask import request
 from jwt import InvalidTokenError
 
 import features
-from app import app, authentication, instance_keys
+from app import app, authentication, instance_keys, model_cache
 from auth.credential_consts import (
     ACCESS_TOKEN_USERNAME,
     APP_SPECIFIC_TOKEN_USERNAME,
@@ -120,7 +120,9 @@ def validate_credentials(auth_username, auth_password_or_token):
     if is_robot:
         logger.debug("Found credentials header for robot %s", auth_username)
         try:
-            robot = model.user.verify_robot(auth_username, auth_password_or_token, instance_keys)
+            robot = model.user.verify_robot(
+                auth_username, auth_password_or_token, instance_keys, model_cache
+            )
             assert robot
             logger.debug("Successfully validated credentials for robot %s", auth_username)
             return ValidateResult(AuthKind.credentials, robot=robot), CredentialKind.robot
@@ -133,7 +135,7 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
                 try:
-                    performer = model.user.lookup_robot(auth_username)
+                    performer = model.user.lookup_robot(auth_username, model_cache)
                 except User.DoesNotExist:
                     performer = None
 
@@ -162,7 +164,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                 robot_owner, _ = parse_robot_username(auth_username)
 
                 try:
-                    performer = model.user.lookup_robot(auth_username)
+                    performer = model.user.lookup_robot(auth_username, model_cache)
                 except User.DoesNotExist:
                     performer = None
 

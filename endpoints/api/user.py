@@ -19,6 +19,7 @@ from app import (
     ip_resolver,
     marketplace_subscriptions,
     marketplace_users,
+    model_cache,
     namespace_gc_queue,
     oauth_login,
     url_scheme_and_hostname,
@@ -509,7 +510,7 @@ class User(ApiResource):
                         # Username already used.
                         raise request_error(message="Username is already in use")
 
-                    user = model.user.change_username(user.id, new_username)
+                    user = model.user.change_username(user.id, new_username, model_cache)
                     log_action("user_change_name", new_username, {"old_username": old_username})
                 elif confirm_username:
                     model.user.remove_user_prompt(user, "confirm_username")
@@ -615,7 +616,7 @@ class User(ApiResource):
         authed_user = get_authenticated_user()
 
         model.user.mark_namespace_for_deletion(
-            get_authenticated_user(), all_queues, namespace_gc_queue
+            get_authenticated_user(), all_queues, namespace_gc_queue, model_cache=model_cache
         )
 
         deleted_user = model.user.get_user_by_id(authed_user.id)

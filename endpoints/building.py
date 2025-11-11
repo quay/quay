@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from flask import request
 
-from app import app, dockerfile_build_queue
+from app import app, dockerfile_build_queue, model_cache
 from auth.auth_context import get_authenticated_user
 from data import model
 from data.database import RepositoryState, db
@@ -100,7 +100,11 @@ def start_build(
             pull_robot_name=pull_robot_name,
         )
 
-        pull_creds = model.user.get_pull_credentials(pull_robot_name) if pull_robot_name else None
+        pull_creds = (
+            model.user.get_pull_credentials(pull_robot_name, model_cache)
+            if pull_robot_name
+            else None
+        )
 
         json_data = json.dumps({"build_uuid": build_request.uuid, "pull_credentials": pull_creds})
 

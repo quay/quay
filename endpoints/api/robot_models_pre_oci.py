@@ -1,5 +1,5 @@
 import features
-from app import avatar
+from app import avatar, model_cache
 from data import model
 from data.database import (
     FederatedLogin,
@@ -118,7 +118,9 @@ class RobotPreOCIModel(RobotInterface):
         return list(robots.values())
 
     def regenerate_user_robot_token(self, robot_shortname, owning_user):
-        robot, password, metadata = model.user.regenerate_robot_token(robot_shortname, owning_user)
+        robot, password, metadata = model.user.regenerate_robot_token(
+            robot_shortname, owning_user, model_cache
+        )
         return Robot(
             robot.username,
             password,
@@ -130,7 +132,9 @@ class RobotPreOCIModel(RobotInterface):
 
     def regenerate_org_robot_token(self, robot_shortname, orgname):
         parent = model.organization.get_organization(orgname)
-        robot, password, metadata = model.user.regenerate_robot_token(robot_shortname, parent)
+        robot, password, metadata = model.user.regenerate_robot_token(
+            robot_shortname, parent, model_cache
+        )
         return Robot(
             robot.username,
             password,
@@ -140,8 +144,8 @@ class RobotPreOCIModel(RobotInterface):
             metadata.unstructured_json,
         )
 
-    def delete_robot(self, robot_username):
-        model.user.delete_robot(robot_username)
+    def delete_robot(self, robot_username, model_cache=None):
+        model.user.delete_robot(robot_username, model_cache)
 
     def create_user_robot(self, robot_shortname, owning_user, description, unstructured_metadata):
         robot, password = model.user.create_robot(
@@ -172,7 +176,9 @@ class RobotPreOCIModel(RobotInterface):
 
     def get_org_robot(self, robot_shortname, orgname):
         parent = model.organization.get_organization(orgname)
-        robot, password, metadata = model.user.get_robot_and_metadata(robot_shortname, parent)
+        robot, password, metadata = model.user.get_robot_and_metadata(
+            robot_shortname, parent, model_cache
+        )
         return Robot(
             robot.username,
             password,
@@ -183,7 +189,9 @@ class RobotPreOCIModel(RobotInterface):
         )
 
     def get_user_robot(self, robot_shortname, owning_user):
-        robot, password, metadata = model.user.get_robot_and_metadata(robot_shortname, owning_user)
+        robot, password, metadata = model.user.get_robot_and_metadata(
+            robot_shortname, owning_user, model_cache
+        )
         return Robot(
             robot.username,
             password,
@@ -194,7 +202,7 @@ class RobotPreOCIModel(RobotInterface):
         )
 
     def robot_has_mirror(self, robot_username):
-        robot = model.user.lookup_robot(robot_username)
+        robot = model.user.lookup_robot(robot_username, model_cache)
         return model.repo_mirror.robot_has_mirror(robot)
 
 

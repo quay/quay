@@ -1,7 +1,7 @@
 from flask import request
 
 import features
-from app import all_queues, namespace_gc_queue, userfiles
+from app import all_queues, model_cache, namespace_gc_queue, userfiles
 from auth.permissions import (
     AdministerRepositoryPermission,
     ModifyRepositoryPermission,
@@ -170,7 +170,7 @@ class PreOCIModel(SuperuserDataInterface):
     def change_organization_name(self, old_org_name, new_org_name):
         org = model.organization.get_organization(old_org_name)
         if new_org_name is not None:
-            org = model.user.change_username(org.id, new_org_name)
+            org = model.user.change_username(org.id, new_org_name, model_cache)
 
         quotas = _get_namespace_quotas(org)
 
@@ -178,7 +178,9 @@ class PreOCIModel(SuperuserDataInterface):
 
     def mark_organization_for_deletion(self, name):
         org = model.organization.get_organization(name)
-        model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue, force=True)
+        model.user.mark_namespace_for_deletion(
+            org, all_queues, namespace_gc_queue, force=True, model_cache=model_cache
+        )
 
     def take_ownership(self, namespace, authed_user):
         entity = model.user.get_user_or_org(namespace)
@@ -209,7 +211,9 @@ class PreOCIModel(SuperuserDataInterface):
 
     def mark_user_for_deletion(self, username):
         user = model.user.get_nonrobot_user(username)
-        model.user.mark_namespace_for_deletion(user, all_queues, namespace_gc_queue, force=True)
+        model.user.mark_namespace_for_deletion(
+            user, all_queues, namespace_gc_queue, force=True, model_cache=model_cache
+        )
 
     def create_reset_password_email_code(self, email):
         code = model.user.create_reset_password_email_code(email)
