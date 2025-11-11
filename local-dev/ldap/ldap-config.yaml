@@ -1,0 +1,13 @@
+AUTHENTICATION_TYPE: LDAP
+FEATURE_TEAM_SYNCING: true
+LDAP_ADMIN_DN: cn=Directory Manager
+LDAP_ADMIN_PASSWD: admin
+LDAP_ALLOW_INSECURE_FALLBACK: true
+LDAP_BASE_DN:
+  - dc=example
+  - dc=org
+LDAP_EMAIL_ATTR: mail
+LDAP_UID_ATTR: uid
+LDAP_URI: ldap://quay-ldap:3389
+LDAP_USER_RDN:
+  - ou=users
