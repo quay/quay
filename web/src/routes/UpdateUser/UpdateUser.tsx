@@ -47,6 +47,38 @@ export default function UpdateUser() {
       if (updatedUser?.prompts?.length) {
         setIsUpdating(false);
       } else {
+        // Check for stored redirect URL (set by external login flow)
+        const redirectUrl = localStorage.getItem('quay.redirectAfterLoad');
+        localStorage.removeItem('quay.redirectAfterLoad');
+
+        if (redirectUrl) {
+          // Validate redirect URL to prevent open redirect vulnerability
+          try {
+            // Allow relative paths (starting with /)
+            if (redirectUrl.startsWith('/')) {
+              window.location.href = redirectUrl;
+              return;
+            }
+
+            // For absolute URLs, validate they are same-origin
+            const url = new URL(redirectUrl);
+            if (url.origin === window.location.origin) {
+              window.location.href = redirectUrl;
+              return;
+            }
+
+            // Invalid URL - fall through to default navigation
+            console.warn(
+              'Ignoring redirect URL from different origin:',
+              redirectUrl,
+            );
+          } catch (err) {
+            // Invalid URL format - fall through to default navigation
+            console.warn('Invalid redirect URL format:', redirectUrl, err);
+          }
+        }
+
+        // Default navigation if no valid redirect URL
         navigate('/');
       }
     },
