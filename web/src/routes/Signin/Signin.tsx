@@ -26,6 +26,8 @@ import {useExternalLogins} from 'src/hooks/UseExternalLogins';
 import {useExternalLoginAuth} from 'src/hooks/UseExternalLoginAuth';
 import {ExternalLoginButton} from 'src/components/ExternalLoginButton';
 import {LoginPageLayout} from 'src/components/LoginPageLayout';
+import {useQueryClient} from '@tanstack/react-query';
+import {fetchUser} from 'src/resources/UserResource';
 
 type ViewType = 'signin' | 'forgotPassword';
 
@@ -48,6 +50,7 @@ export function Signin() {
   const navigate = useNavigate();
   const quayConfig = useQuayConfig();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const {
     requestRecovery,
     isLoading: sendingRecovery,
@@ -170,6 +173,29 @@ export function Signin() {
         setAuthState((old) => ({...old, isSignedIn: true, username: username}));
         await getCsrfToken();
         GlobalAuthState.isLoggedIn = true;
+
+        // Fetch fresh user data to check for prompts
+        let user;
+        try {
+          user = await queryClient.fetchQuery(['user'], fetchUser);
+        } catch (fetchErr) {
+          // If fetching user fails, show error and stop navigation
+          setErr(
+            addDisplayError(
+              'Login successful but failed to load user data. Please refresh the page.',
+              fetchErr,
+            ),
+          );
+          return;
+        }
+
+        // If user has prompts (e.g., confirm_username), redirect to updateuser
+        if (user.prompts && user.prompts.length > 0) {
+          navigate('/updateuser');
+          return;
+        }
+
+        // Otherwise, redirect to the intended destination
         const redirectUrl = searchParams.get('redirect_url');
         if (redirectUrl) {
           window.location.href = redirectUrl;
