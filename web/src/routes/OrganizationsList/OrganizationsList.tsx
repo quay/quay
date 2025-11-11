@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   DropdownItem,
   Modal,
@@ -57,6 +58,8 @@ function OrgListHeader({
   handleCalculateClick,
   isQueuing,
   showRegistrySize,
+  isExternalAuth,
+  isSuperUser,
 }) {
   return (
     <>
@@ -89,6 +92,19 @@ function OrgListHeader({
           )}
         </div>
       </PageSection>
+      {isSuperUser && isExternalAuth && (
+        <PageSection variant={PageSectionVariants.light}>
+          <Alert
+            variant="info"
+            isInline
+            title="External authentication configured"
+            data-testid="external-auth-alert"
+          >
+            Red Hat Quay is configured to use external authentication, so users
+            can only be created in that system
+          </Alert>
+        </PageSection>
+      )}
     </>
   );
 }
@@ -100,6 +116,8 @@ OrgListHeader.propTypes = {
   handleCalculateClick: PropTypes.func.isRequired,
   isQueuing: PropTypes.bool.isRequired,
   showRegistrySize: PropTypes.bool.isRequired,
+  isExternalAuth: PropTypes.bool.isRequired,
+  isSuperUser: PropTypes.bool.isRequired,
 };
 
 export default function OrganizationsList() {
@@ -114,6 +132,12 @@ export default function OrganizationsList() {
   // Get current user for superuser check
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
+
+  // Determine authentication type for external auth alert
+  const isExternalAuth =
+    quayConfig?.config?.AUTHENTICATION_TYPE &&
+    quayConfig.config.AUTHENTICATION_TYPE !== 'Database' &&
+    quayConfig.config.AUTHENTICATION_TYPE !== 'AppToken';
 
   // Registry size data (only fetch if superuser)
   const {registrySize, refetch: refetchRegistrySize} = useRegistrySize();
@@ -349,6 +373,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <LoadingPage />
       </>
@@ -366,6 +392,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <RequestError err={error} />
       </>
@@ -383,6 +411,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <Empty
           icon={CubesIcon}
@@ -417,6 +447,8 @@ export default function OrganizationsList() {
             quayConfig?.features?.EDIT_QUOTA
           )
         }
+        isExternalAuth={!!isExternalAuth}
+        isSuperUser={!!user?.super_user}
       />
       <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
 
@@ -442,6 +474,7 @@ export default function OrganizationsList() {
           setSelectedOrganization={setSelectedOrganization}
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
+          isExternalAuth={!!isExternalAuth}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>
