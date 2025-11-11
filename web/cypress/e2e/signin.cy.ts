@@ -234,6 +234,78 @@ describe('Signin page', () => {
     // Should not redirect
     cy.url().should('include', '/signin');
   });
+
+  it('Redirects to username confirmation page when user has prompts', () => {
+    // Mock successful login
+    setupSuccessfulSignin();
+
+    // Mock user API to return user with confirm_username prompt
+    cy.intercept('GET', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        anonymous: false,
+        username: 'test_ldap_user',
+        email: 'test@example.com',
+        verified: true,
+        prompts: ['confirm_username'],
+        organizations: [],
+        logins: [
+          {
+            service: 'ldap',
+            service_identifier: 'test_ldap_user',
+            metadata: {
+              service_username: 'test_ldap_user',
+            },
+          },
+        ],
+      },
+    }).as('getUserWithPrompt');
+
+    // Fill and submit login form
+    cy.get('#pf-login-username-id').type('test_ldap_user');
+    cy.get('#pf-login-password-id').type('password');
+    cy.get('button[type=submit]').click();
+
+    // Wait for signin and user fetch
+    cy.wait('@signinSuccess');
+    cy.wait('@getCsrfToken');
+    cy.wait('@getUserWithPrompt');
+
+    // Should redirect to updateuser page for username confirmation
+    cy.url().should('include', '/updateuser');
+  });
+
+  it('Redirects to organization page when user has no prompts', () => {
+    // Mock successful login
+    setupSuccessfulSignin();
+
+    // Mock user API to return user without prompts
+    cy.intercept('GET', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        anonymous: false,
+        username: 'user1',
+        email: 'user1@example.com',
+        verified: true,
+        prompts: [],
+        organizations: [],
+        logins: [],
+      },
+    }).as('getUserNoPrompt');
+
+    // Fill and submit login form
+    cy.get('#pf-login-username-id').type('user1');
+    cy.get('#pf-login-password-id').type('password');
+    cy.get('button[type=submit]').click();
+
+    // Wait for signin and user fetch
+    cy.wait('@signinSuccess');
+    cy.wait('@getCsrfToken');
+    cy.wait('@getUserNoPrompt');
+
+    // Should redirect to organization page
+    cy.url().should('include', '/organization');
+  });
 });
 
 describe('Forgot Password functionality', () => {
