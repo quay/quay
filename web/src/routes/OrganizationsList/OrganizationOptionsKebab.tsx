@@ -51,6 +51,9 @@ export default function OrganizationOptionsKebab(
   // Check if the row represents a superuser
   const isRowSuperuser = props.userSuperuser === true;
 
+  // Determine authentication type
+  const isDatabaseAuth = quayConfig?.config?.AUTHENTICATION_TYPE === 'Database';
+
   // Show kebab menu when:
   // 1. canModify (not in read-only mode AND not read-only superuser) AND
   // 2. (Row is superuser AND viewing own row AND quota features enabled)
@@ -167,21 +170,26 @@ export default function OrganizationOptionsKebab(
       ? [] // Other superuser rows - no menu (already filtered by shouldShowMenu check above)
       : [
           // Regular user rows (not superusers)
-          // Show all user management options
-          <DropdownItem
-            key="changeEmail"
-            onClick={() => handleMenuItemClick('Change E-mail Address')}
-          >
-            Change E-mail Address
-          </DropdownItem>,
-          <DropdownItem
-            key="changePassword"
-            onClick={() => handleMenuItemClick('Change Password')}
-          >
-            Change Password
-          </DropdownItem>,
-          // Add Send Recovery E-mail for regular users (only if MAILING feature enabled)
-          ...(quayConfig?.features?.MAILING
+          // Show user management options based on authentication type
+          // Only show Change Email and Change Password for Database authentication
+          ...(isDatabaseAuth
+            ? [
+                <DropdownItem
+                  key="changeEmail"
+                  onClick={() => handleMenuItemClick('Change E-mail Address')}
+                >
+                  Change E-mail Address
+                </DropdownItem>,
+                <DropdownItem
+                  key="changePassword"
+                  onClick={() => handleMenuItemClick('Change Password')}
+                >
+                  Change Password
+                </DropdownItem>,
+              ]
+            : []),
+          // Add Send Recovery E-mail for regular users (only if MAILING feature enabled and Database auth)
+          ...(quayConfig?.features?.MAILING && isDatabaseAuth
             ? [
                 <DropdownItem
                   key="sendRecoveryEmail"
