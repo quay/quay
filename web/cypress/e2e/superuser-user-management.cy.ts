@@ -862,4 +862,139 @@ describe('Superuser User Management', () => {
       cy.contains('Take Ownership').should('be.visible');
     });
   });
+
+  describe('Authentication Type - Create User Button', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+    });
+
+    describe('Database authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'Database';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigDatabase');
+      });
+
+      it('shows Create User button', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigDatabase', '@getSuperUser', '@getOrgs']);
+
+        // Should show Create User button
+        cy.get('[data-testid="create-user-button"]').should('be.visible');
+
+        // Should NOT show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('not.exist');
+      });
+    });
+
+    describe('LDAP authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'LDAP';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigLDAP');
+      });
+
+      it('hides Create User button and shows alert', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigLDAP', '@getSuperUser', '@getOrgs']);
+
+        // Should NOT show Create User button
+        cy.get('[data-testid="create-user-button"]').should('not.exist');
+
+        // Should show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('be.visible');
+        cy.get('[data-testid="external-auth-alert"]').should(
+          'contain',
+          'Red Hat Quay is configured to use external authentication',
+        );
+        cy.get('[data-testid="external-auth-alert"]').should(
+          'contain',
+          'users can only be created in that system',
+        );
+      });
+    });
+
+    describe('OIDC authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'OIDC';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigOIDC');
+      });
+
+      it('hides Create User button and shows alert', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigOIDC', '@getSuperUser', '@getOrgs']);
+
+        // Should NOT show Create User button
+        cy.get('[data-testid="create-user-button"]').should('not.exist');
+
+        // Should show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('be.visible');
+      });
+    });
+
+    describe('AppToken authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'AppToken';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigAppToken');
+      });
+
+      it('shows Create User button', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigAppToken', '@getSuperUser']);
+
+        // Should show Create User button (AppToken is not external auth)
+        cy.get('[data-testid="create-user-button"]').should('be.visible');
+
+        // Should NOT show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('not.exist');
+      });
+    });
+
+    describe('non-superuser with external auth', () => {
+      beforeEach(() => {
+        cy.fixture('config.json').then((config) => {
+          config.config.AUTHENTICATION_TYPE = 'LDAP';
+          config.features.SUPER_USERS = false;
+          cy.intercept('GET', '/config', config).as('getConfigLDAPNonSuper');
+
+          cy.fixture('user.json').then((user) => {
+            user.super_user = false;
+            cy.intercept('GET', '/api/v1/user/', user).as('getNonSuperUser');
+
+            // Visit after both intercepts are set up
+            cy.visit('/organization');
+            cy.wait(['@getConfigLDAPNonSuper', '@getNonSuperUser']);
+          });
+        });
+      });
+
+      it('hides both button and alert', () => {
+        // Should NOT show Create User button
+        cy.get('[data-testid="create-user-button"]').should('not.exist');
+
+        // Should NOT show external auth alert (not a superuser)
+        cy.get('[data-testid="external-auth-alert"]').should('not.exist');
+      });
+    });
+  });
 });
