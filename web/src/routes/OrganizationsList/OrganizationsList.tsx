@@ -9,7 +9,6 @@ import {
   PanelFooter,
   Title,
 } from '@patternfly/react-core';
-import PropTypes from 'prop-types';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -43,12 +42,24 @@ import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
 import './css/Organizations.scss';
+import {IRegistrySize} from 'src/resources/RegistrySizeResource';
 
 export interface OrganizationsTableItem {
   name: string;
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
   userSuperuser?: boolean; // Only used when isUser is true
+}
+
+interface OrgListHeaderProps {
+  registrySize: IRegistrySize | null;
+  formatLastRan: (lastRan: number | null) => string;
+  getRegistrySizeStatus: () => string;
+  handleCalculateClick: () => void;
+  isQueuing: boolean;
+  showRegistrySize: boolean;
+  isExternalAuth: boolean;
+  isSuperUser: boolean;
 }
 
 function OrgListHeader({
@@ -60,7 +71,7 @@ function OrgListHeader({
   showRegistrySize,
   isExternalAuth,
   isSuperUser,
-}) {
+}: OrgListHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
@@ -108,17 +119,6 @@ function OrgListHeader({
     </>
   );
 }
-
-OrgListHeader.propTypes = {
-  registrySize: PropTypes.object,
-  formatLastRan: PropTypes.func.isRequired,
-  getRegistrySizeStatus: PropTypes.func.isRequired,
-  handleCalculateClick: PropTypes.func.isRequired,
-  isQueuing: PropTypes.bool.isRequired,
-  showRegistrySize: PropTypes.bool.isRequired,
-  isExternalAuth: PropTypes.bool.isRequired,
-  isSuperUser: PropTypes.bool.isRequired,
-};
 
 export default function OrganizationsList() {
   const [isOrganizationModalOpen, setOrganizationModalOpen] = useState(false);
