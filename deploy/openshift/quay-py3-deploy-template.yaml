@@ -301,6 +301,44 @@ objects:
             value: ${WORKER_COUNT_WEB}
           - name: WORKER_COUNT_REGISTRY
             value: ${WORKER_COUNT_REGISTRY}
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: read-only-endpoint-config
+  data:
+    READ_ONLY_ENDPOINT: "${{READ_ONLY_ENDPOINT}}"
+
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: manage-read-only-endpoint
+  spec:
+    template:
+      spec:
+        containers:
+        - name: manage-endpoint
+          image: amazon/aws-cli
+          envFrom:
+          - configMapRef:
+              name: read-only-endpoint-config
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ "$READ_ONLY_ENDPOINT" = "true" ]; then
+                if ! aws rds describe-db-proxy-endpoints --db-proxy-name $PROXY_NAME --query "DBProxyEndpoints[?DBProxyEndpointName=='read-only-endpoint']" --output text | grep -q .; then
+                  aws rds create-db-proxy-endpoint \
+                    --db-proxy-name $PROXY_NAME \
+                    --db-proxy-endpoint-name "read-only-endpoint" \
+                    --vpc-subnet-ids <subnet_ids> \
+                    --target-role "READ_ONLY"
+                else
+                  echo "Read-only endpoint already exists. Skipping creation."
+                fi
+              else
+                echo "READ_ONLY_ENDPOINT is not set to true. Skipping endpoint management."
+              fi
+        restartPolicy: OnFailure
+
 parameters:
   - name: NAME
     value: "quay-py3"
