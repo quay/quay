@@ -1,8 +1,11 @@
 /// <reference types="cypress" />
 
 describe('Superuser User Management', () => {
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
+  });
+
+  beforeEach(() => {
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -748,6 +751,115 @@ describe('Superuser User Management', () => {
 
       // Should not show any kebab menus
       cy.get('[data-testid$="-options-toggle"]').should('not.exist');
+    });
+  });
+
+  describe('Authentication Type - User Actions Menu', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+    });
+
+    it('hides Change Email and Change Password for LDAP authentication', () => {
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'LDAP';
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = true;
+        cy.intercept('GET', '/config', config).as('getConfigLDAP');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigLDAP', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should NOT see Change Email and Change Password
+      cy.contains('Change E-mail Address').should('not.exist');
+      cy.contains('Change Password').should('not.exist');
+
+      // Should still see other options
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+
+      // Should NOT see Send Recovery E-mail for LDAP
+      cy.contains('Send Recovery E-mail').should('not.exist');
+    });
+
+    it('hides Change Email and Change Password for OIDC authentication', () => {
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'OIDC';
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = true;
+        cy.intercept('GET', '/config', config).as('getConfigOIDC');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigOIDC', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should NOT see Change Email and Change Password
+      cy.contains('Change E-mail Address').should('not.exist');
+      cy.contains('Change Password').should('not.exist');
+
+      // Should still see other options
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+
+      // Should NOT see Send Recovery E-mail for OIDC
+      cy.contains('Send Recovery E-mail').should('not.exist');
+    });
+
+    it('shows Change Email and Change Password for Database authentication', () => {
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'Database';
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = true;
+        cy.intercept('GET', '/config', config).as('getConfigDatabase');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigDatabase', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should see Change Email and Change Password for Database auth
+      cy.contains('Change E-mail Address').should('be.visible');
+      cy.contains('Change Password').should('be.visible');
+
+      // Should see all other options
+      cy.contains('Send Recovery E-mail').should('be.visible');
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
     });
   });
 });
