@@ -1,8 +1,15 @@
 import React, {useState} from 'react';
 import {DatePicker, TimePicker} from '@patternfly/react-core';
-import PropTypes from 'prop-types';
 
-export default function DateTimePicker(props) {
+interface DateTimePickerProps {
+  id?: string;
+  value: Date | null;
+  setValue: React.Dispatch<React.SetStateAction<Date | null>>;
+  futureDatesOnly?: boolean;
+  initialDate?: Date;
+}
+
+export default function DateTimePicker(props: DateTimePickerProps) {
   const {id, value, setValue, futureDatesOnly, initialDate} = props;
   const userLocale = navigator.language;
   const date = value ?? initialDate;
@@ -65,11 +72,3 @@ export default function DateTimePicker(props) {
     </span>
   );
 }
-
-DateTimePicker.propTypes = {
-  id: PropTypes.string,
-  value: PropTypes.instanceOf(Date),
-  setValue: PropTypes.func.isRequired,
-  futureDatesOnly: PropTypes.bool,
-  initialDate: PropTypes.instanceOf(Date),
-};
