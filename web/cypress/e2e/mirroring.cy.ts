@@ -425,6 +425,103 @@ describe('Repository Mirroring', () => {
       cy.wait('@updateMirrorConfig');
       cy.contains('Mirror configuration saved successfully').should('exist');
     });
+
+    it('should preserve credentials when updating tag pattern without changing password (PROJQUAY-9608)', () => {
+      cy.intercept(
+        'PUT',
+        '/api/v1/repository/user1/hello-world/mirror',
+        (req) => {
+          // Verify credentials are NOT sent when password is empty
+          expect(req.body).to.not.have.property('external_registry_username');
+          expect(req.body).to.not.have.property('external_registry_password');
+
+          // Verify tag pattern update is sent
+          expect(req.body.root_rule).to.deep.equal({
+            rule_kind: 'tag_glob_csv',
+            rule_value: ['latest', 'v*', '1.0'],
+          });
+
+          req.reply({
+            statusCode: 201,
+            body: {
+              is_enabled: true,
+              external_reference: 'quay.io/library/hello-world',
+              external_registry_username: 'testuser',
+              sync_status: 'NEVER_RUN',
+              robot_username: 'user1+testrobot',
+              sync_start_date: '2024-01-01T12:00:00Z',
+              sync_interval: 3600,
+              skopeo_timeout_interval: 300,
+              external_registry_config: {
+                verify_tls: true,
+                unsigned_images: false,
+                proxy: {
+                  http_proxy: null,
+                  https_proxy: null,
+                  no_proxy: null,
+                },
+              },
+              root_rule: {
+                rule_kind: 'tag_glob_csv',
+                rule_value: ['latest', 'v*', '1.0'],
+              },
+            },
+          });
+        },
+      ).as('updateMirrorConfig');
+
+      cy.visit('/repository/user1/hello-world?tab=mirroring');
+      cy.wait('@getRepo');
+      cy.wait('@getMirrorConfig');
+
+      // Verify password field shows "None" (indicating empty value for existing config)
+      cy.get('[data-testid="password-input"]').should('have.value', 'None');
+
+      // Update tag pattern without changing password
+      cy.get('[data-testid="tags-input"]').clear().type('latest, v*, 1.0');
+
+      // Submit form
+      cy.get('[data-testid="submit-button"]').click();
+
+      cy.wait('@updateMirrorConfig');
+      cy.contains('Mirror configuration saved successfully').should('exist');
+    });
+
+    it('should include credentials when password is provided during update', () => {
+      cy.intercept(
+        'PUT',
+        '/api/v1/repository/user1/hello-world/mirror',
+        (req) => {
+          // Verify credentials ARE sent when password is filled in
+          expect(req.body.external_registry_username).to.equal('newuser');
+          expect(req.body.external_registry_password).to.equal('newpassword');
+
+          req.reply({
+            statusCode: 201,
+            body: {
+              is_enabled: true,
+              external_reference: 'quay.io/library/hello-world',
+              external_registry_username: 'newuser',
+              sync_status: 'NEVER_RUN',
+            },
+          });
+        },
+      ).as('updateMirrorConfig');
+
+      cy.visit('/repository/user1/hello-world?tab=mirroring');
+      cy.wait('@getRepo');
+      cy.wait('@getMirrorConfig');
+
+      // Update credentials
+      cy.get('[data-testid="username-input"]').clear().type('newuser');
+      cy.get('[data-testid="password-input"]').type('newpassword');
+
+      // Submit form
+      cy.get('[data-testid="submit-button"]').click();
+
+      cy.wait('@updateMirrorConfig');
+      cy.contains('Mirror configuration saved successfully').should('exist');
+    });
   });
 
   describe('Sync Operations', () => {
