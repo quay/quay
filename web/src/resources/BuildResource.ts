@@ -483,13 +483,20 @@ export interface ISuperuserBuild {
   error?: string;
 }
 
-// Fetch build by UUID (superuser only)
+// Fetch build by UUID (superuser only) - includes logs from separate endpoint
 export async function fetchBuildLogsSuperuser(
   buildUuid: string,
   signal?: AbortSignal,
 ): Promise<ISuperuserBuild> {
-  const response = await axios.get(`/api/v1/superuser/${buildUuid}/build`, {
-    signal,
-  });
-  return response.data;
+  // Fetch both build info and logs in parallel
+  const [buildResponse, logsResponse] = await Promise.all([
+    axios.get(`/api/v1/superuser/${buildUuid}/build`, {signal}),
+    axios.get(`/api/v1/superuser/${buildUuid}/logs`, {signal}),
+  ]);
+
+  // Merge logs into build object
+  return {
+    ...buildResponse.data,
+    logs: logsResponse.data.logs || [],
+  };
 }
