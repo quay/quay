@@ -23,6 +23,7 @@ from endpoints.api import (
     RepositoryParamResource,
     abort,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     api,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
@@ -281,7 +282,7 @@ class BuildTriggerActivate(RepositoryParamResource):
             raise InvalidRequest("Trigger config is not sufficient for activation.")
 
         user_permission = UserAdminPermission(trigger.connected_user.username)
-        if user_permission.can() or allow_if_superuser():
+        if user_permission.can() or allow_if_superuser_with_full_access():
             # Update the pull robot (if any).
             pull_robot_name = request.get_json().get("pull_robot", None)
             if pull_robot_name:
