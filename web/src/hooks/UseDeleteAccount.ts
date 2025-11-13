@@ -11,10 +11,9 @@ export function useDeleteAccount({onSuccess, onError}) {
     },
     {
       onSuccess: () => {
-        onSuccess();
         // Clear all cache since user account is deleted
         queryClient.clear();
-        // Redirect to signin would typically happen in the onSuccess callback
+        onSuccess();
       },
       onError: (err) => {
         onError(err);
