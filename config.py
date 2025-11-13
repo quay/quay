@@ -863,7 +863,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_EXPORT_COMPLIANCE = False
 
     # Feature Flag: Enables user to try the beta UI Environment
-    FEATURE_UI_V2 = False
+    FEATURE_UI_V2 = True
     FEATURE_UI_MODELCARD = False
     UI_MODELCARD_ARTIFACT_TYPE = "application/x-mlmodel"
     UI_MODELCARD_ANNOTATION: Optional[Dict[str, str]] = {}
