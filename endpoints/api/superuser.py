@@ -32,6 +32,7 @@ from endpoints.api import (
     Unauthorized,
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
+    allow_if_superuser_with_full_access,
     format_date,
     internal_only,
     log_action,
@@ -1250,9 +1251,11 @@ class SuperUserAppTokens(ApiResource):
         """
         Returns a list of all app specific tokens in the system.
 
-        This endpoint is for system-wide auditing by superusers and global read-only superusers.
+        This endpoint is for system-wide auditing by global read-only superusers and
+        full access superusers only. Regular superusers without full access are denied.
         """
-        if allow_if_any_superuser():
+        # Global readonly superusers can always audit, regular superusers need FULL_ACCESS
+        if allow_if_global_readonly_superuser() or allow_if_superuser_with_full_access():
             expiring = parsed_args["expiring"]
 
             if expiring:

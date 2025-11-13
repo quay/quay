@@ -8,7 +8,7 @@ from data.database import Repository as RepositoryTable
 from data.database import RepositoryState
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from endpoints.api import allow_if_any_superuser
+from endpoints.api import allow_if_global_readonly_superuser, allow_if_superuser
 from endpoints.api.repository_models_interface import (
     ApplicationRepository,
     Channel,
@@ -129,6 +129,7 @@ class PreOCIModel(RepositoryDataInterface):
             # Also note the +1 on the limit, as paginate_query uses the extra result to determine whether
             # there is a next page.
             start_id = model.modelutil.pagination_start(page_token)
+            # Global readonly superusers can always see all repos, regular superusers need FULL_ACCESS
             repo_query = model.repository.get_visible_repositories(
                 username=username,
                 include_public=public,
@@ -136,7 +137,10 @@ class PreOCIModel(RepositoryDataInterface):
                 limit=REPOS_PER_PAGE + 1,
                 kind_filter=repo_kind,
                 namespace=namespace,
-                is_superuser=allow_if_any_superuser(),
+                is_superuser=(
+                    allow_if_global_readonly_superuser()
+                    or (features.SUPERUSERS_FULL_ACCESS and allow_if_superuser())
+                ),
             )
 
             repos, next_page_token = model.modelutil.paginate_query(

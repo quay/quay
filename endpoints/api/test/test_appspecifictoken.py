@@ -337,16 +337,10 @@ def test_superuser_endpoint_sees_all_tokens(app):
                 assert "token_code" not in token
 
         # Test global readonly superuser
-        # Mock global readonly superuser by mocking the permission classes
-        with patch("endpoints.api.SuperUserPermission") as mock_super_perm, patch(
-            "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro_perm, patch(
-            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
-        ):
-            # Not a regular superuser, but is a global readonly superuser
-            mock_super_perm.return_value.can.return_value = False
-            mock_global_ro_perm.return_value.can.return_value = True
-
+        # Mock global readonly superuser by mocking the permission functions
+        with patch(
+            "endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=True
+        ), patch("endpoints.api.superuser.allow_if_superuser_with_full_access", return_value=False):
             with client_with_identity("reader", app) as cl:
                 # On /v1/superuser/apptokens, global readonly superuser should see all tokens
                 resp = conduct_api_call(cl, SuperUserAppTokens, "GET", None, None, 200).json
@@ -361,6 +355,17 @@ def test_superuser_endpoint_sees_all_tokens(app):
         # Clean up
         devtable_token.delete_instance()
         reader_token.delete_instance()
+
+
+def test_superuser_endpoint_requires_full_access(app):
+    """Test that regular superusers without FULL_ACCESS get 403 on /v1/superuser/apptokens"""
+    # Mock a regular superuser (not global readonly) without FULL_ACCESS
+    with patch(
+        "endpoints.api.superuser.allow_if_global_readonly_superuser", return_value=False
+    ), patch("endpoints.api.superuser.allow_if_superuser_with_full_access", return_value=False):
+        with client_with_identity("devtable", app) as cl:
+            # Regular superuser without FULL_ACCESS should get 403
+            conduct_api_call(cl, SuperUserAppTokens, "GET", None, None, 403)
 
 
 def test_superuser_endpoint_expiring_tokens(app):
