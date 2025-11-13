@@ -43,7 +43,7 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
             metadata_json={},
         )
 
-    result = secscan_model.load_security_information(manifest, True)
+    result = secscan_model.load_security_information(manifest, True, False)
 
     assert isinstance(result, SecurityInformationLookupResult)
     assert result.status == expected_status
