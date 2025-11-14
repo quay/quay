@@ -56,10 +56,6 @@ interface UsageLogsTableProps {
   repo: string;
   type: string;
   isSuperuser?: boolean;
-  freshLogin?: {
-    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
-    isFreshLoginRequired: (error: unknown) => boolean;
-  };
 }
 
 interface LogEntry {
@@ -116,37 +112,10 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
         );
         return logResp;
       } catch (error: unknown) {
-        // Check if this is a fresh login required error and we have fresh login integration
-        if (
-          props.isSuperuser &&
-          props.freshLogin?.isFreshLoginRequired(error)
-        ) {
-          // Show fresh login modal with retry operation
-          props.freshLogin.showFreshLoginModal(async () => {
-            // Retry the query after successful verification
-            queryClient.invalidateQueries({
-              queryKey: [
-                'usageLogs',
-                props.starttime,
-                props.endtime,
-                {
-                  org: props.org,
-                  repo: props.repo ? props.repo : 'isOrg',
-                  type: 'table',
-                  isSuperuser: props.isSuperuser,
-                },
-              ],
-            });
-          });
-
-          // Don't throw the error - the modal will handle retry
-          throw new Error('Fresh login required');
-        }
         throw error;
       }
     },
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
-    retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
   });
 
   // Flatten all log pages into a single array for our table hook

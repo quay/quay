@@ -11,8 +11,6 @@ import {
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
-import {useFreshLogin} from 'src/hooks/UseFreshLogin';
-import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -47,16 +45,6 @@ export function CreateUserModal(props: CreateUserModalProps) {
     },
   });
 
-  const {
-    isModalOpen: isFreshLoginModalOpen,
-    isLoading: isFreshLoginLoading,
-    error: freshLoginError,
-    showFreshLoginModal,
-    handleVerify,
-    handleCancel: handleFreshLoginCancel,
-    isFreshLoginRequired,
-  } = useFreshLogin();
-
   const {createUser, isLoading} = useCreateUser({
     onSuccess: (username: string) => {
       addAlert({
@@ -68,26 +56,15 @@ export function CreateUserModal(props: CreateUserModalProps) {
       props.onSuccess();
     },
     onError: (err: any) => {
-      // Check if fresh login is required
-      if (isFreshLoginRequired(err)) {
-        // Get form data for retry
-        const formData = watch();
-        // Show fresh login modal and retry on success
-        showFreshLoginModal(() =>
-          createUser({
-            username: formData.username,
-            email: formData.email,
-            password: formData.password,
-          }),
-        );
-        return;
-      }
-
       const errorMsg =
         err?.response?.data?.error_message ||
         err?.response?.data?.message ||
         err?.message ||
         'Failed to create user';
+      // Ignore errors from cancelled fresh login verification
+      if (errorMsg === 'Fresh login verification cancelled') {
+        return;
+      }
       setErrorMessage(errorMsg);
       addAlert({
         variant: AlertVariant.Failure,
@@ -106,6 +83,9 @@ export function CreateUserModal(props: CreateUserModalProps) {
       email: data.email,
       password: data.password,
     });
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    handleClose();
   };
 
   const handleClose = () => {
@@ -256,13 +236,6 @@ export function CreateUserModal(props: CreateUserModalProps) {
           </FormGroup>
         </Form>
       </Modal>
-      <FreshLoginModal
-        isOpen={isFreshLoginModalOpen}
-        onVerify={handleVerify}
-        onCancel={handleFreshLoginCancel}
-        isLoading={isFreshLoginLoading}
-        error={freshLoginError}
-      />
     </>
   );
 }

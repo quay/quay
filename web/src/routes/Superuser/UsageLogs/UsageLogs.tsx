@@ -12,8 +12,6 @@ import {
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {Navigate} from 'react-router-dom';
-import {useFreshLogin} from 'src/hooks/UseFreshLogin';
-import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 import UsageLogsGraph from '../../UsageLogs/UsageLogsGraph';
 import {UsageLogsTable} from '../../UsageLogs/UsageLogsTable';
 import React from 'react';
@@ -45,7 +43,6 @@ function formatDate(date: string) {
 
 export default function UsageLogs() {
   const {isSuperUser, loading} = useCurrentUser();
-  const freshLogin = useFreshLogin();
 
   // Date state and logic
   const maxDate = new Date();
@@ -156,10 +153,6 @@ export default function UsageLogs() {
                 org=""
                 type="superuser"
                 isSuperuser={true}
-                freshLogin={{
-                  showFreshLoginModal: freshLogin.showFreshLoginModal,
-                  isFreshLoginRequired: freshLogin.isFreshLoginRequired,
-                }}
               />
             )}
           </FlexItem>
@@ -171,22 +164,10 @@ export default function UsageLogs() {
               org=""
               type="superuser"
               isSuperuser={true}
-              freshLogin={{
-                showFreshLoginModal: freshLogin.showFreshLoginModal,
-                isFreshLoginRequired: freshLogin.isFreshLoginRequired,
-              }}
             />
           </FlexItem>
         </Flex>
       </PageSection>
-
-      <FreshLoginModal
-        isOpen={freshLogin.isModalOpen}
-        onCancel={freshLogin.handleCancel}
-        onVerify={freshLogin.handleVerify}
-        isLoading={freshLogin.isLoading}
-        error={freshLogin.error}
-      />
     </>
   );
 }

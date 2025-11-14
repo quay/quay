@@ -46,6 +46,7 @@ type QuotaManagementProps = {
   organizationName: string;
   isUser: boolean;
   view?: 'organization-view' | 'super-user'; // Add view parameter
+  onOperationSubmit?: () => void; // Callback to close modal when operation is submitted
 };
 
 const QUOTA_UNITS = ['KiB', 'MiB', 'GiB', 'TiB'];
@@ -329,6 +330,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     } else {
       createQuotaMutation({limit_bytes});
     }
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleDeleteQuota = () => {
@@ -339,6 +344,9 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     if (organizationQuota) {
       deleteQuotaMutation(organizationQuota.id);
       setIsDeleteModalOpen(false);
+      // Close parent modal immediately after submitting the request
+      // If fresh login is required, the request will be queued and retried after verification
+      props.onOperationSubmit?.();
     }
   };
 
@@ -397,6 +405,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         threshold_percent: Number(newLimit.limit_percent),
       },
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleUpdateLimit = (limitId: string, updatedLimit: IQuotaLimit) => {
@@ -419,6 +431,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         threshold_percent: updatedLimit.limit_percent,
       },
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleDeleteLimit = (limitId: string) => {
@@ -428,6 +444,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       quotaId: organizationQuota.id,
       limitId: limitId,
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleLimitChange = (

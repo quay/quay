@@ -7,17 +7,15 @@ interface AppWithFreshLoginProps {
 }
 
 export function AppWithFreshLogin({children}: AppWithFreshLoginProps) {
-  const {isModalOpen, isLoading, error, handleVerify, handleCancel} =
-    useGlobalFreshLogin();
-  const [showModal, setShowModal] = useState(false);
+  const {isLoading, error, handleVerify, handleCancel} = useGlobalFreshLogin();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const handleFreshLoginRequired = () => {
-      setShowModal(true);
+      setIsModalOpen(true);
     };
 
     window.addEventListener('freshLoginRequired', handleFreshLoginRequired);
-
     return () => {
       window.removeEventListener(
         'freshLoginRequired',
@@ -28,19 +26,19 @@ export function AppWithFreshLogin({children}: AppWithFreshLoginProps) {
 
   const handleVerifyWrapper = async (password: string) => {
     await handleVerify(password);
-    setShowModal(false);
+    setIsModalOpen(false);
   };
 
   const handleCancelWrapper = () => {
     handleCancel();
-    setShowModal(false);
+    setIsModalOpen(false);
   };
 
   return (
     <>
       {children}
       <FreshLoginModal
-        isOpen={showModal || isModalOpen}
+        isOpen={isModalOpen}
         onVerify={handleVerifyWrapper}
         onCancel={handleCancelWrapper}
         isLoading={isLoading}
