@@ -345,19 +345,33 @@ describe('Superuser User Management', () => {
         body: {organizations: []},
       }).as('getOrgs');
 
+      // Use call counter to handle sequential requests deterministically
+      let changeEmailCallCount = 0;
+      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
+        changeEmailCallCount += 1;
+        if (changeEmailCallCount === 1) {
+          // First attempt returns fresh_login_required error
+          req.reply({
+            statusCode: 401,
+            body: {
+              title: 'fresh_login_required',
+              error_message: 'Fresh login required',
+            },
+          });
+        } else if (req.body.email) {
+          // Successful email change after verification
+          req.reply({statusCode: 200, body: {}});
+        }
+      }).as('changeEmail');
+
       cy.visit('/organization');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
-      cy.wait(['@getUsers', '@getOrgs']);
+      cy.wait('@getUsers');
+      cy.wait('@getOrgs');
 
-      // First attempt returns fresh_login_required error
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', {
-        statusCode: 401,
-        body: {
-          title: 'fresh_login_required',
-          error_message: 'Fresh login required',
-        },
-      }).as('changeEmailRequiresFresh');
+      // Wait for loading spinner to disappear
+      cy.get('.pf-v5-l-bullseye').should('not.exist');
 
       cy.get('[data-testid="tom-options-toggle"]').click();
       cy.contains('Change E-mail Address').click();
@@ -372,7 +386,7 @@ describe('Superuser User Management', () => {
       });
 
       // Wait for the fresh login required response
-      cy.wait('@changeEmailRequiresFresh');
+      cy.wait('@changeEmail');
 
       // Should show fresh login modal
       cy.contains('Please Verify').should('exist');
@@ -387,13 +401,6 @@ describe('Superuser User Management', () => {
         body: {success: true},
       }).as('verifyPassword');
 
-      // Mock successful email change after verification
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
-        if (req.body.email) {
-          req.reply({statusCode: 200, body: {}});
-        }
-      }).as('changeEmailSuccess');
-
       // Enter password and verify
       cy.get('#fresh-password').type('password');
       cy.get('button').contains('Verify').click();
@@ -402,7 +409,7 @@ describe('Superuser User Management', () => {
       cy.wait('@verifyPassword');
 
       // Should retry email change and succeed
-      cy.wait('@changeEmailSuccess');
+      cy.wait('@changeEmail');
 
       // Fresh login modal should close
       cy.contains('Please Verify').should('not.exist');
@@ -445,6 +452,25 @@ describe('Superuser User Management', () => {
     });
 
     it('should show password verification when fresh login is required', () => {
+      // Use call counter to handle sequential requests deterministically
+      let changePasswordCallCount = 0;
+      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
+        changePasswordCallCount += 1;
+        if (changePasswordCallCount === 1) {
+          // First attempt returns fresh_login_required error
+          req.reply({
+            statusCode: 401,
+            body: {
+              title: 'fresh_login_required',
+              error_message: 'Fresh login required',
+            },
+          });
+        } else if (req.body.password) {
+          // Successful password change after verification
+          req.reply({statusCode: 200, body: {}});
+        }
+      }).as('changePassword');
+
       cy.intercept('GET', '/api/v1/superuser/users/', {
         fixture: 'superuser-users.json',
       }).as('getUsers');
@@ -457,15 +483,6 @@ describe('Superuser User Management', () => {
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
       cy.wait(['@getUsers', '@getOrgs']);
-
-      // First attempt returns fresh_login_required error
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', {
-        statusCode: 401,
-        body: {
-          title: 'fresh_login_required',
-          error_message: 'Fresh login required',
-        },
-      }).as('changePasswordRequiresFresh');
 
       cy.get('[data-testid="tom-options-toggle"]').click();
       cy.contains('Change Password').click();
@@ -480,7 +497,7 @@ describe('Superuser User Management', () => {
       });
 
       // Wait for the fresh login required response
-      cy.wait('@changePasswordRequiresFresh');
+      cy.wait('@changePassword');
 
       // Should show fresh login modal
       cy.contains('Please Verify').should('exist');
@@ -495,13 +512,6 @@ describe('Superuser User Management', () => {
         body: {success: true},
       }).as('verifyPassword');
 
-      // Mock successful password change after verification
-      cy.intercept('PUT', '/api/v1/superuser/users/tom', (req) => {
-        if (req.body.password) {
-          req.reply({statusCode: 200, body: {}});
-        }
-      }).as('changePasswordSuccess');
-
       // Enter password and verify
       cy.get('#fresh-password').type('password');
       cy.get('button').contains('Verify').click();
@@ -510,7 +520,7 @@ describe('Superuser User Management', () => {
       cy.wait('@verifyPassword');
 
       // Should retry password change and succeed
-      cy.wait('@changePasswordSuccess');
+      cy.wait('@changePassword');
 
       // Fresh login modal should close
       cy.contains('Please Verify').should('not.exist');
@@ -638,6 +648,25 @@ describe('Superuser User Management', () => {
     });
 
     it('should show password verification when fresh login is required', () => {
+      // Use call counter to handle sequential requests deterministically
+      let deleteUserCallCount = 0;
+      cy.intercept('DELETE', '/api/v1/superuser/users/tom', (req) => {
+        deleteUserCallCount += 1;
+        if (deleteUserCallCount === 1) {
+          // First attempt returns fresh_login_required error
+          req.reply({
+            statusCode: 401,
+            body: {
+              title: 'fresh_login_required',
+              error_message: 'Fresh login required',
+            },
+          });
+        } else {
+          // Successful delete after verification
+          req.reply({statusCode: 204});
+        }
+      }).as('deleteUser');
+
       cy.intercept('GET', '/api/v1/superuser/users/', {
         fixture: 'superuser-users.json',
       }).as('getUsers');
@@ -651,15 +680,6 @@ describe('Superuser User Management', () => {
       cy.wait('@getSuperUser');
       cy.wait(['@getUsers', '@getOrgs']);
 
-      // First attempt returns fresh_login_required error
-      cy.intercept('DELETE', '/api/v1/superuser/users/tom', {
-        statusCode: 401,
-        body: {
-          title: 'fresh_login_required',
-          error_message: 'Fresh login required',
-        },
-      }).as('deleteRequiresFresh');
-
       cy.get('[data-testid="tom-options-toggle"]').click();
       cy.contains('Delete User').click();
 
@@ -670,7 +690,7 @@ describe('Superuser User Management', () => {
       cy.contains('button', 'Delete User').click();
 
       // Wait for the fresh login required response
-      cy.wait('@deleteRequiresFresh');
+      cy.wait('@deleteUser');
 
       // Should show fresh login modal
       cy.contains('Please Verify').should('exist');
@@ -685,11 +705,6 @@ describe('Superuser User Management', () => {
         body: {success: true},
       }).as('verifyPassword');
 
-      // Mock successful delete after verification
-      cy.intercept('DELETE', '/api/v1/superuser/users/tom', {
-        statusCode: 204,
-      }).as('deleteSuccess');
-
       // Enter password and verify
       cy.get('#fresh-password').type('password');
       cy.get('button').contains('Verify').click();
@@ -698,7 +713,7 @@ describe('Superuser User Management', () => {
       cy.wait('@verifyPassword');
 
       // Should retry delete and succeed
-      cy.wait('@deleteSuccess');
+      cy.wait('@deleteUser');
 
       // Fresh login modal should close
       cy.contains('Please Verify').should('not.exist');
