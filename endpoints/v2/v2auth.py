@@ -2,6 +2,10 @@ import logging
 import re
 from collections import namedtuple
 
+from util.metrics.otel import trace
+
+tracer = trace.get_tracer("quay.endpoints.v2.v2auth")
+
 from cachetools.func import lru_cache
 from flask import jsonify, request
 
@@ -67,6 +71,11 @@ scopeResult = namedtuple(
 @process_basic_auth
 @no_cache
 @anon_protect
+@tracer.start_as_current_span(
+    "quay.endpoints.v2.v2auth.generate_registry_jwt",
+    record_exception=True,
+    set_status_on_exception=True,
+)
 def generate_registry_jwt(auth_result):
     """
     This endpoint will generate a JWT conforming to the Docker Registry v2 Auth Spec:
