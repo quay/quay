@@ -237,8 +237,8 @@ class EC2Executor(BuilderExecutor):
         return boto3.client(
             "ec2",
             region_name=self.executor_config["EC2_REGION"],
-            aws_access_key_id=self.executor_config["AWS_ACCESS_KEY"],
-            aws_secret_access_key=self.executor_config["AWS_SECRET_KEY"],
+            aws_access_key_id=self.executor_config.get("AWS_ACCESS_KEY", ""),
+            aws_secret_access_key=self.executor_config.get("AWS_SECRET_KEY", ""),
         )
 
     @property

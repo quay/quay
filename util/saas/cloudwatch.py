@@ -20,8 +20,8 @@ def start_cloudwatch_sender(metrics, app):
     """
     Starts sending from metrics to a new CloudWatchSender.
     """
-    access_key = app.config.get("CLOUDWATCH_AWS_ACCESS_KEY")
-    secret_key = app.config.get("CLOUDWATCH_AWS_SECRET_KEY")
+    access_key = app.config.get("CLOUDWATCH_AWS_ACCESS_KEY", "")
+    secret_key = app.config.get("CLOUDWATCH_AWS_SECRET_KEY", "")
     namespace = app.config.get("CLOUDWATCH_NAMESPACE")
 
     if not namespace:
@@ -36,6 +36,8 @@ class CloudWatchSender(Thread):
     """
     CloudWatchSender loops indefinitely and pulls metrics off of a queue then sends it to
     CloudWatch.
+
+    Supports both IAM key based auth and STS roles
     """
 
     def __init__(self, metrics, aws_access_key, aws_secret_key, namespace):
