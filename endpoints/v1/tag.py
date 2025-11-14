@@ -3,6 +3,10 @@ import logging
 
 from flask import abort, jsonify, make_response, request, session
 
+from util.metrics.otel import trace
+
+tracer = trace.get_tracer("quay.v1.tag")
+
 from app import docker_v2_signing_key, model_cache, storage
 from auth.decorators import process_auth
 from auth.permissions import ModifyRepositoryPermission, ReadRepositoryPermission
@@ -25,6 +29,9 @@ logger = logging.getLogger(__name__)
 @process_auth
 @anon_protect
 @parse_repository_name()
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.tag.get_tags", record_exception=True, set_status_on_exception=True
+)
 def get_tags(namespace_name, repo_name):
     permission = ReadRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(
@@ -44,6 +51,9 @@ def get_tags(namespace_name, repo_name):
 @process_auth
 @anon_protect
 @parse_repository_name()
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.tag.get_tag", record_exception=True, set_status_on_exception=True
+)
 def get_tag(namespace_name, repo_name, tag):
     permission = ReadRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(
@@ -71,6 +81,9 @@ def get_tag(namespace_name, repo_name, tag):
 @check_repository_state
 @check_v1_push_enabled()
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.tag.put_tag", record_exception=True, set_status_on_exception=True
+)
 def put_tag(namespace_name, repo_name, tag):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(
@@ -122,6 +135,9 @@ def put_tag(namespace_name, repo_name, tag):
 @check_repository_state
 @check_v1_push_enabled()
 @check_readonly
+@tracer.start_as_current_span(
+    "quay.endpoints.v1.tag.delete_tag", record_exception=True, set_status_on_exception=True
+)
 def delete_tag(namespace_name, repo_name, tag):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
     repository_ref = registry_model.lookup_repository(
