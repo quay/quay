@@ -729,6 +729,82 @@ describe('Account Settings Page', () => {
     );
   });
 
+  it('Application Tokens Pagination and Filtering', () => {
+    // Mock 15 tokens to test pagination (default is 10 per page)
+    const tokens = Array.from({length: 15}, (_, i) => ({
+      uuid: `token${i + 1}-uuid`,
+      title: `Token ${i + 1}`,
+      last_accessed: i % 2 === 0 ? '2024-01-15T10:30:00Z' : null,
+      created: '2024-01-01T09:00:00Z',
+      expiration: null,
+    }));
+
+    cy.intercept('GET', '/api/v1/user/apptoken', {
+      body: {
+        tokens,
+        only_expiring: false,
+      },
+    }).as('getTokens');
+
+    cy.visit('/organization/user1?tab=Settings');
+
+    // Navigate to CLI configuration tab
+    cy.contains('CLI configuration').click();
+    cy.wait('@getTokens');
+
+    // Verify pagination controls appear
+    cy.get('[id="application-tokens-search"]').should('exist');
+    cy.get('[id="toolbar-pagination"]').should('exist');
+
+    // Check that only first 10 tokens are visible initially
+    cy.get('table')
+      .last()
+      .within(() => {
+        cy.contains('Token 1').should('exist');
+        cy.contains('Token 10').should('exist');
+        cy.contains('Token 11').should('not.exist');
+      });
+
+    // Test pagination - go to page 2
+    cy.get('[data-action="next"]').click();
+
+    // Check that tokens 11-15 are visible
+    cy.get('table')
+      .last()
+      .within(() => {
+        cy.contains('Token 11').should('exist');
+        cy.contains('Token 15').should('exist');
+        cy.contains('Token 1').should('not.exist');
+      });
+
+    // Go back to page 1
+    cy.get('[data-action="previous"]').click();
+
+    // Test filtering
+    cy.get('[id="application-tokens-search"]').type('Token 5');
+
+    // Should only show Token 5 (and possibly Token 15 if it contains "5")
+    cy.get('table')
+      .last()
+      .within(() => {
+        cy.contains('Token 5').should('exist');
+        // Other tokens should not be visible
+        cy.contains('Token 1').should('not.exist');
+        cy.contains('Token 2').should('not.exist');
+      });
+
+    // Clear the filter
+    cy.get('[id="application-tokens-search"]').clear();
+
+    // All tokens should be visible again (first 10)
+    cy.get('table')
+      .last()
+      .within(() => {
+        cy.contains('Token 1').should('exist');
+        cy.contains('Token 10').should('exist');
+      });
+  });
+
   it('Feature Visibility Based on User Type and Auth', () => {
     // Intercept user API call as well
     cy.intercept('GET', '/api/v1/user').as('getUser');
