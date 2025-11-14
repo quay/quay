@@ -74,25 +74,14 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
       ]}
     >
       <Text>
-        Are you sure you want to delete user <strong>{props.username}</strong>
-        ?
+        Are you sure you want to delete user <strong>{props.username}</strong>?
       </Text>
-      <Alert
-        variant="warning"
-        title="Warning"
-        isInline
-        style={{marginTop: 16}}
-      >
+      <Alert variant="warning" title="Warning" isInline style={{marginTop: 16}}>
         This action cannot be undone. All repositories and data owned by this
         user will be permanently deleted.
       </Alert>
       {error && (
-        <Alert
-          variant="danger"
-          title="Error"
-          isInline
-          style={{marginTop: 16}}
-        >
+        <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
           {error}
         </Alert>
       )}

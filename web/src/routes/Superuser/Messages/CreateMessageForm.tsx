@@ -42,10 +42,7 @@ interface CreateMessageFormProps {
   onClose: () => void;
 }
 
-export function CreateMessageForm({
-  isOpen,
-  onClose,
-}: CreateMessageFormProps) {
+export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>('write');
   const createMessage = useCreateGlobalMessage();
 

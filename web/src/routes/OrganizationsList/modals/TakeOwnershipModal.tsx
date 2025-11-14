@@ -80,12 +80,7 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
         <strong>{props.organizationName}</strong>?
       </Text>
       {props.isUser && (
-        <Alert
-          variant="warning"
-          title="Note"
-          isInline
-          style={{marginTop: 16}}
-        >
+        <Alert variant="warning" title="Note" isInline style={{marginTop: 16}}>
           This will convert the user namespace into an organization.{' '}
           <strong>
             The user will no longer be able to login to this account.
@@ -93,12 +88,7 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
         </Alert>
       )}
       {error && (
-        <Alert
-          variant="danger"
-          title="Error"
-          isInline
-          style={{marginTop: 16}}
-        >
+        <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
           {error}
         </Alert>
       )}

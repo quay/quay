@@ -80,12 +80,7 @@ export default function DeleteOrganizationModal(
         deleted with it.
       </Text>
       {error && (
-        <Alert
-          variant="danger"
-          title="Error"
-          isInline
-          style={{marginTop: 16}}
-        >
+        <Alert variant="danger" title="Error" isInline style={{marginTop: 16}}>
           {error}
         </Alert>
       )}

@@ -8,7 +8,7 @@ import {
 } from '@patternfly/react-charts';
 import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
 
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
@@ -26,8 +26,6 @@ interface UsageLogsGraphProps {
 }
 
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
-  const queryClient = useQueryClient();
-
   // D3 Category20 colors (same as Angular)
   const d3Category20Colors = [
     '#1f77b4',
@@ -69,17 +67,13 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
       },
     ],
     async () => {
-      try {
-        return await getAggregateLogs(
-          props.org,
-          props.repo,
-          props.starttime,
-          props.endtime,
-          props.isSuperuser,
-        );
-      } catch (error: unknown) {
-        throw error;
-      }
+      return await getAggregateLogs(
+        props.org,
+        props.repo,
+        props.starttime,
+        props.endtime,
+        props.isSuperuser,
+      );
     },
   );
 
