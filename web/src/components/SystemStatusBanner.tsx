@@ -1,10 +1,15 @@
+import React from 'react';
 import {Banner, Flex, FlexItem} from '@patternfly/react-core';
 import {ExclamationTriangleIcon} from '@patternfly/react-icons';
 import {useQuayState} from 'src/hooks/UseQuayState';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import PropTypes from 'prop-types';
 
-const BannerContent = ({icon, children}) => (
+interface BannerContentProps {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}
+
+const BannerContent: React.FC<BannerContentProps> = ({icon, children}) => (
   <Flex
     spaceItems={{default: 'spaceItemsSm'}}
     justifyContent={{default: 'justifyContentCenter'}}
@@ -14,11 +19,6 @@ const BannerContent = ({icon, children}) => (
     <FlexItem>{children}</FlexItem>
   </Flex>
 );
-
-BannerContent.propTypes = {
-  icon: PropTypes.node.isRequired,
-  children: PropTypes.node.isRequired,
-};
 
 export default function SystemStatusBanner() {
   const {inReadOnlyMode, inAccountRecoveryMode} = useQuayState();
