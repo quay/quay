@@ -12,8 +12,6 @@ import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import Empty from 'src/components/empty/Empty';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useChangeLog} from 'src/hooks/UseChangeLog';
-import {useFreshLogin} from 'src/hooks/UseFreshLogin';
-import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 import {Navigate} from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -34,15 +32,11 @@ function ChangeLogHeader() {
 
 export default function ChangeLog() {
   const {isSuperUser, loading: userLoading} = useCurrentUser();
-  const freshLogin = useFreshLogin();
   const {
     changeLog,
     isLoading: changeLogLoading,
     error,
-  } = useChangeLog({
-    showFreshLoginModal: freshLogin.showFreshLoginModal,
-    isFreshLoginRequired: freshLogin.isFreshLoginRequired,
-  });
+  } = useChangeLog();
 
   if (userLoading) {
     return null;
@@ -116,15 +110,6 @@ export default function ChangeLog() {
           />
         )}
       </PageSection>
-
-      {/* Fresh Login Modal */}
-      <FreshLoginModal
-        isOpen={freshLogin.isModalOpen}
-        onVerify={freshLogin.handleVerify}
-        onCancel={freshLogin.handleCancel}
-        isLoading={freshLogin.isLoading}
-        error={freshLogin.error}
-      />
     </>
   );
 }

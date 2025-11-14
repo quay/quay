@@ -23,10 +23,6 @@ interface UsageLogsGraphProps {
   type: string;
   isSuperuser?: boolean;
   isHidden?: boolean;
-  freshLogin?: {
-    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
-    isFreshLoginRequired: (error: unknown) => boolean;
-  };
 }
 
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
@@ -82,37 +78,8 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
           props.isSuperuser,
         );
       } catch (error: unknown) {
-        // Check if this is a fresh login required error and we have fresh login integration
-        if (
-          props.isSuperuser &&
-          props.freshLogin?.isFreshLoginRequired(error)
-        ) {
-          // Show fresh login modal with retry operation
-          props.freshLogin.showFreshLoginModal(async () => {
-            // Retry the query after successful verification
-            queryClient.invalidateQueries({
-              queryKey: [
-                'usageLogs',
-                props.starttime,
-                props.endtime,
-                {
-                  org: props.org,
-                  repo: props.repo ? props.repo : 'isOrg',
-                  type: 'chart',
-                  isSuperuser: props.isSuperuser,
-                },
-              ],
-            });
-          });
-
-          // Don't throw the error - the modal will handle retry
-          throw new Error('Fresh login required');
-        }
         throw error;
       }
-    },
-    {
-      retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
     },
   );
 
