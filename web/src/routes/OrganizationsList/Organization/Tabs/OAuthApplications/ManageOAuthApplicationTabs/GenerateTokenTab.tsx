@@ -23,8 +23,7 @@ import EntitySearch from 'src/components/EntitySearch';
 import {Entity} from 'src/resources/UserResource';
 import {GlobalAuthState} from 'src/resources/AuthResource';
 import {OAUTH_SCOPES, OAuthScope} from '../types';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface GenerateTokenTabProps {
   application: IOAuthApplication | null;
@@ -45,7 +44,7 @@ export default function GenerateTokenTab(props: GenerateTokenTabProps) {
   const [isTokenDisplayModalOpen, setIsTokenDisplayModalOpen] = useState(false);
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   // Initialize form with all scopes set to false
   const defaultValues: GenerateTokenFormData = {};

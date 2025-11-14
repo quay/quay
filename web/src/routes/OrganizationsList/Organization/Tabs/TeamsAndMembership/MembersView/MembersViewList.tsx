@@ -12,8 +12,7 @@ import {useEffect, useState} from 'react';
 import MembersViewToolbar from './MembersViewToolbar';
 import {useFetchMembers} from 'src/hooks/UseMembers';
 import {IMemberTeams, IMembers} from 'src/resources/MembersResource';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {getTeamMemberPath} from 'src/routes/NavigationPath';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {usePaginatedSortableTable} from '../../../../../../hooks/usePaginatedSortableTable';
@@ -59,7 +58,7 @@ export default function MembersViewList(props: MembersViewListProps) {
   const [selectedMembers, setSelectedMembers] = useState<IMembers[]>([]);
   const [isPopoverOpen, setPopoverOpen] = useState(false);
   const [searchParams] = useSearchParams();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   useEffect(() => {
     if (error) {

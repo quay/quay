@@ -1,9 +1,8 @@
 import {Button, Spinner, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {useNamespaceAutoPrunePolicies} from 'src/hooks/UseNamespaceAutoPrunePolicies';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {
@@ -23,7 +22,7 @@ import {getErrorMessageFromUnknown} from 'src/resources/ErrorHandling';
 
 export default function RepositoryAutoPruning(props: RepositoryAutoPruning) {
   const [policies, setPolicies] = useState([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {organization} = useOrganization(props.organizationName);
   const {user} = useCurrentUser();
   const config = useQuayConfig();

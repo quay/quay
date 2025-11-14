@@ -350,11 +350,24 @@ def require_repo_permission(permission_class, scope, allow_public=False):
                 ):
                     return func(self, namespace, repository, *args, **kwargs)
 
-                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
+                if allow_for_superuser:
                     user = get_authenticated_user()
 
-                    if user is not None and allow_if_superuser():
-                        return func(self, namespace, repository, *args, **kwargs)
+                    if user is not None:
+                        # For read operations that also allow global readonly superusers,
+                        # allow any superuser with FULL_ACCESS
+                        if (
+                            allow_for_global_readonly_superuser
+                            and features.SUPERUSERS_FULL_ACCESS
+                            and allow_if_any_superuser()
+                        ):
+                            return func(self, namespace, repository, *args, **kwargs)
+                        # For write operations, only allow regular superusers with FULL_ACCESS
+                        elif (
+                            not allow_for_global_readonly_superuser
+                            and allow_if_superuser_with_full_access()
+                        ):
+                            return func(self, namespace, repository, *args, **kwargs)
 
                 if allow_for_global_readonly_superuser and allow_if_global_readonly_superuser():
                     return func(self, namespace, repository, *args, **kwargs)
@@ -395,7 +408,7 @@ def require_user_permission(permission_class, scope=None):
                 if permission.can():
                     return func(self, *args, **kwargs)
 
-                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser and allow_if_superuser():
+                if allow_for_superuser and allow_if_superuser_with_full_access():
                     return func(self, *args, **kwargs)
 
                 raise Unauthorized()
@@ -493,18 +506,47 @@ log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():
+    """
+    Returns True if the user is a regular superuser (not global readonly).
+
+    This is for basic superuser panel access and should work when FEATURE_SUPER_USERS
+    is enabled, regardless of SUPERUSERS_FULL_ACCESS. This does NOT grant permission
+    to bypass normal access controls on other users' resources.
+
+    For operations that need to bypass normal permission checks (like accessing other
+    organizations or creating repos in other namespaces), use allow_if_superuser_with_full_access().
+    """
+    return SuperUserPermission().can()
+
+
+def allow_if_superuser_with_full_access():
+    """
+    Returns True if the user is a superuser with full access enabled.
+
+    This is for operations that bypass normal permission checks to access or modify
+    resources owned by other users/organizations. Examples include:
+    - Creating repositories in other namespaces
+    - Modifying teams/robots in other organizations
+    - Accessing private data of other organizations
+
+    Requires both:
+    - User is a superuser (FEATURE_SUPER_USERS enabled and user in SUPER_USERS list)
+    - FEATURE_SUPERUSERS_FULL_ACCESS is enabled
+
+    Note: Global readonly superusers are explicitly excluded from this permission.
+    """
     return bool(features.SUPERUSERS_FULL_ACCESS and SuperUserPermission().can())
 
 
 def allow_if_any_superuser():
     """
-    Returns True if the user is either a regular superuser (with SUPERUSERS_FULL_ACCESS enabled)
-    or a global readonly superuser.
+    Returns True if the user is either a regular superuser or a global readonly superuser.
 
     Since these two types are mutually exclusive, this is a convenience helper for read-only
-    endpoints that should be accessible to both types of superusers.
+    endpoints that should be accessible to both types of superusers (like viewing user lists,
+    logs, organizations in the superuser panel).
 
-    Note: Regular superusers require SUPERUSERS_FULL_ACCESS to be enabled, but global readonly
+    Note: Regular superusers work with just FEATURE_SUPER_USERS enabled. Global readonly
     superusers are always allowed (when the feature is enabled) since they're read-only by design.
     """
     return allow_if_superuser() or allow_if_global_readonly_superuser()

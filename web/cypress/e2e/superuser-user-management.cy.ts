@@ -1,8 +1,11 @@
 /// <reference types="cypress" />
 
 describe('Superuser User Management', () => {
-  beforeEach(() => {
+  before(() => {
     cy.exec('npm run quay:seed');
+  });
+
+  beforeEach(() => {
     cy.request('GET', `${Cypress.env('REACT_QUAY_APP_API_URL')}/csrf_token`)
       .then((response) => response.body.csrf_token)
       .then((token) => {
@@ -748,6 +751,250 @@ describe('Superuser User Management', () => {
 
       // Should not show any kebab menus
       cy.get('[data-testid$="-options-toggle"]').should('not.exist');
+    });
+  });
+
+  describe('Authentication Type - User Actions Menu', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+
+      cy.intercept('GET', '/api/v1/superuser/users/', {
+        body: {
+          users: [
+            {
+              username: 'user1',
+              email: 'user1@example.com',
+              enabled: true,
+              super_user: true,
+            },
+            {
+              username: 'tom',
+              email: 'tom@example.com',
+              enabled: true,
+              super_user: false,
+            },
+          ],
+        },
+      }).as('getUsers');
+    });
+
+    it('hides Change Email and Change Password for LDAP authentication', () => {
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'LDAP';
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = true;
+        cy.intercept('GET', '/config', config).as('getConfigLDAP');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigLDAP', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should NOT see Change Email and Change Password
+      cy.contains('Change E-mail Address').should('not.exist');
+      cy.contains('Change Password').should('not.exist');
+
+      // Should still see other options
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+
+      // Should NOT see Send Recovery E-mail for LDAP
+      cy.contains('Send Recovery E-mail').should('not.exist');
+    });
+
+    it('hides Change Email and Change Password for OIDC authentication', () => {
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'OIDC';
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = true;
+        cy.intercept('GET', '/config', config).as('getConfigOIDC');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigOIDC', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should NOT see Change Email and Change Password
+      cy.contains('Change E-mail Address').should('not.exist');
+      cy.contains('Change Password').should('not.exist');
+
+      // Should still see other options
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+
+      // Should NOT see Send Recovery E-mail for OIDC
+      cy.contains('Send Recovery E-mail').should('not.exist');
+    });
+
+    it('shows Change Email and Change Password for Database authentication', () => {
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'Database';
+        config.features.SUPER_USERS = true;
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        config.features.MAILING = true;
+        cy.intercept('GET', '/config', config).as('getConfigDatabase');
+      });
+
+      cy.visit('/organization');
+      cy.wait(['@getConfigDatabase', '@getUsers', '@getOrgs']);
+
+      // Click kebab menu for regular user
+      cy.get('[data-testid="tom-options-toggle"]').click();
+
+      // Should see Change Email and Change Password for Database auth
+      cy.contains('Change E-mail Address').should('be.visible');
+      cy.contains('Change Password').should('be.visible');
+
+      // Should see all other options
+      cy.contains('Send Recovery E-mail').should('be.visible');
+      cy.contains('Disable User').should('be.visible');
+      cy.contains('Delete User').should('be.visible');
+      cy.contains('Take Ownership').should('be.visible');
+    });
+  });
+
+  describe('Authentication Type - Create User Button', () => {
+    beforeEach(() => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', {
+        body: {organizations: []},
+      }).as('getOrgs');
+    });
+
+    describe('Database authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'Database';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigDatabase');
+      });
+
+      it('shows Create User button', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigDatabase', '@getSuperUser', '@getOrgs']);
+
+        // Should show Create User button
+        cy.get('[data-testid="create-user-button"]').should('be.visible');
+
+        // Should NOT show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('not.exist');
+      });
+    });
+
+    describe('LDAP authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'LDAP';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigLDAP');
+      });
+
+      it('hides Create User button and shows alert', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigLDAP', '@getSuperUser', '@getOrgs']);
+
+        // Should NOT show Create User button
+        cy.get('[data-testid="create-user-button"]').should('not.exist');
+
+        // Should show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('be.visible');
+        cy.get('[data-testid="external-auth-alert"]').should(
+          'contain',
+          'Red Hat Quay is configured to use external authentication',
+        );
+        cy.get('[data-testid="external-auth-alert"]').should(
+          'contain',
+          'users can only be created in that system',
+        );
+      });
+    });
+
+    describe('OIDC authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'OIDC';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigOIDC');
+      });
+
+      it('hides Create User button and shows alert', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigOIDC', '@getSuperUser', '@getOrgs']);
+
+        // Should NOT show Create User button
+        cy.get('[data-testid="create-user-button"]').should('not.exist');
+
+        // Should show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('be.visible');
+      });
+    });
+
+    describe('AppToken authentication', () => {
+      beforeEach(() => {
+        cy.intercept('GET', '/config', (req) => {
+          req.continue((res) => {
+            res.body.config.AUTHENTICATION_TYPE = 'AppToken';
+            res.body.features.SUPER_USERS = true;
+            res.body.features.SUPERUSERS_FULL_ACCESS = true;
+          });
+        }).as('getConfigAppToken');
+      });
+
+      it('shows Create User button', () => {
+        cy.visit('/organization');
+        cy.wait(['@getConfigAppToken', '@getSuperUser']);
+
+        // Should show Create User button (AppToken is not external auth)
+        cy.get('[data-testid="create-user-button"]').should('be.visible');
+
+        // Should NOT show external auth alert
+        cy.get('[data-testid="external-auth-alert"]').should('not.exist');
+      });
+    });
+
+    describe('non-superuser with external auth', () => {
+      beforeEach(() => {
+        cy.fixture('config.json').then((config) => {
+          config.config.AUTHENTICATION_TYPE = 'LDAP';
+          config.features.SUPER_USERS = false;
+          cy.intercept('GET', '/config', config).as('getConfigLDAPNonSuper');
+
+          cy.fixture('user.json').then((user) => {
+            user.super_user = false;
+            cy.intercept('GET', '/api/v1/user/', user).as('getNonSuperUser');
+
+            // Visit after both intercepts are set up
+            cy.visit('/organization');
+            cy.wait(['@getConfigLDAPNonSuper', '@getNonSuperUser']);
+          });
+        });
+      });
+
+      it('hides both button and alert', () => {
+        // Should NOT show Create User button
+        cy.get('[data-testid="create-user-button"]').should('not.exist');
+
+        // Should NOT show external auth alert (not a superuser)
+        cy.get('[data-testid="external-auth-alert"]').should('not.exist');
+      });
     });
   });
 });

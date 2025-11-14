@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {useForm} from 'react-hook-form';
 import {MirroringFormData} from 'src/routes/RepositoryDetails/Mirroring/types';
 import {Entity, EntityKind} from 'src/resources/UserResource';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant} from 'src/contexts/UIContext';
 
 // Default form values
 const defaultFormValues: MirroringFormData = {

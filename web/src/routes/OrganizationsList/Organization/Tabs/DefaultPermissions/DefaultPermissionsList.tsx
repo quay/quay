@@ -25,8 +25,7 @@ import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemp
 import Conditional from 'src/components/empty/Conditional';
 import {BulkOperationError, addDisplayError} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import ErrorModal from 'src/components/errors/ErrorModal';
 import {usePaginatedSortableTable} from '../../../../../hooks/usePaginatedSortableTable';
 
@@ -80,7 +79,7 @@ export default function DefaultPermissionsList(
   >([]);
   const [bulkDeleteModalIsOpen, setBulkDeleteModalIsOpen] = useState(false);
   const [err, setError] = useState<string[]>();
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const onSelectPermission = (
     permission: IDefaultPermission,

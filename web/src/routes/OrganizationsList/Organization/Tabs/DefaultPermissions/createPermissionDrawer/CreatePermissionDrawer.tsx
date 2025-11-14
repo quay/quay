@@ -34,8 +34,7 @@ import Conditional from 'src/components/empty/Conditional';
 import {useFetchTeams} from 'src/hooks/UseTeams';
 import {repoPermissions} from 'src/routes/OrganizationsList/Organization/Tabs/DefaultPermissions/DefaultPermissionsList';
 import {RepoPermissionDropdownItems} from 'src/routes/RepositoriesList/RobotAccountsList';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {validateTeamName} from 'src/libs/utils';
 
 export default function CreatePermissionDrawer(
@@ -74,7 +73,7 @@ export default function CreatePermissionDrawer(
   const {robots, isLoadingRobots} = useFetchRobotAccounts(props.orgName);
   // Get teams
   const {teams, isLoadingTeams} = useFetchTeams(props.orgName);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const permissionRadioButtons = (
     <>

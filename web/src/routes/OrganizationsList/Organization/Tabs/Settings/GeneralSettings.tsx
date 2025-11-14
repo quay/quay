@@ -17,8 +17,7 @@ import {
 import {useForm, Controller} from 'react-hook-form';
 import moment from 'moment';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useCurrentUser, useUpdateUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
 import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
@@ -65,7 +64,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
   const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
     useOrganization(organizationName);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
 
   const {updateOrgSettings} = useOrganizationSettings({
     name: organizationName,
@@ -279,8 +278,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   const deleteAccountMutator = useDeleteAccount({
     onSuccess: () => {
-      // Account deleted successfully - redirect to signin
-      window.location.href = '/signin';
+      // Success handling is done in handleDeleteAccountConfirm
     },
     onError: (err) => {
       addAlert({
@@ -301,8 +299,12 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     try {
       if (isUserOrganization) {
         await deleteAccountMutator.deleteUser();
+        // User account deleted - redirect to signin
+        window.location.href = '/signin';
       } else {
         await deleteAccountMutator.deleteOrg(organizationName);
+        // Organization deleted - redirect to home page
+        window.location.href = '/';
       }
     } catch (error) {
       // Error handling is done in the onError callback

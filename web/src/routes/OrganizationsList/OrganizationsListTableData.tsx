@@ -1,5 +1,5 @@
 import {Td} from '@patternfly/react-table';
-import {Skeleton, Flex, FlexItem} from '@patternfly/react-core';
+import {Skeleton, Flex, FlexItem, Label} from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {Link} from 'react-router-dom';
 import {fetchOrg} from 'src/resources/OrganizationResource';
@@ -52,15 +52,6 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const config = useQuayConfig();
   // Get current user data for user avatars
   const {user: currentUser} = useCurrentUser();
-  // const queryClient = useQueryClient();
-  // useEffect(() => {
-  //   return () => {
-  //     queryClient.cancelQueries(['organization', props.name]);
-  //     queryClient.cancelQueries(['organization', props.name, 'members']);
-  //     queryClient.cancelQueries(['organization', props.name, 'robots']);
-  //     queryClient.cancelQueries(['organization', props.name, 'repositories']);
-  //   };
-  // }, [props.name]);
 
   const {isSuperUser} = useCurrentUser();
 
@@ -75,14 +66,18 @@ export default function OrgTableData(props: OrgTableDataProps) {
   const {data: members} = useQuery(
     ['organization', props.name, 'members'],
     ({signal}) => fetchMembersForOrg(props.name, signal),
-    {placeholderData: props.isUser ? [] : undefined},
+    {
+      placeholderData: props.isUser ? [] : undefined,
+      enabled: !props.isUser,
+    },
   );
   const memberCount = props.isUser ? 0 : members ? members.length : null;
 
   // Get robots
   const {data: robots} = useQuery(
     ['organization', props.name, 'robots'],
-    ({signal}) => fetchRobotsForNamespace(props.name, false, signal),
+    ({signal}) => fetchRobotsForNamespace(props.name, props.isUser, signal),
+    {placeholderData: []},
   );
   const robotCount = robots ? robots.length : null;
 
@@ -110,40 +105,58 @@ export default function OrgTableData(props: OrgTableDataProps) {
       : [],
   );
 
-  let teamCountVal: string;
-  if (!props.isUser) {
-    useQuery(
-      ['organization', props.name, 'teams'],
-      () => organization?.teams || [],
-    );
-    teamCountVal = organization?.teams
-      ? Object.keys(organization?.teams)?.length.toString()
-      : '0';
-  } else {
-    teamCountVal = 'N/A';
-  }
+  const teamCountVal: string = props.isUser
+    ? 'N/A'
+    : organization?.teams
+    ? Object.keys(organization.teams).length.toString()
+    : '0';
 
   return (
     <>
       <Td dataLabel={ColumnNames.name}>
-        <Flex alignItems={{default: 'alignItemsCenter'}}>
-          {/* Show avatar for organizations OR current user */}
-          {((props.isUser &&
-            currentUser?.username === props.name &&
-            currentUser?.avatar) ||
-            (!props.isUser && organization?.avatar)) && (
-            <FlexItem spacer={{default: 'spacerSm'}}>
-              <Avatar
-                avatar={
-                  props.isUser ? currentUser?.avatar : organization?.avatar
-                }
-                size="sm"
-              />
+        <Flex
+          alignItems={{default: 'alignItemsCenter'}}
+          justifyContent={{default: 'justifyContentSpaceBetween'}}
+        >
+          <Flex alignItems={{default: 'alignItemsCenter'}}>
+            {/* Show avatar for organizations OR current user */}
+            {((props.isUser &&
+              currentUser?.username === props.name &&
+              currentUser?.avatar) ||
+              (!props.isUser && organization?.avatar)) && (
+              <FlexItem spacer={{default: 'spacerSm'}}>
+                <Avatar
+                  avatar={
+                    props.isUser ? currentUser?.avatar : organization?.avatar
+                  }
+                  size="sm"
+                />
+              </FlexItem>
+            )}
+            <FlexItem>
+              <Link to={props.name}>{props.name}</Link>
             </FlexItem>
+          </Flex>
+          {/* Show status labels for users (right-aligned, superuser only) */}
+          {isSuperUser && props.isUser && (
+            <Flex spaceItems={{default: 'spaceItemsXs'}}>
+              {currentUser?.username === props.name && (
+                <FlexItem>
+                  <Label color="green">You</Label>
+                </FlexItem>
+              )}
+              {props.userSuperuser && (
+                <FlexItem>
+                  <Label color="blue">Superuser</Label>
+                </FlexItem>
+              )}
+              {props.userEnabled === false && (
+                <FlexItem>
+                  <Label>Disabled</Label>
+                </FlexItem>
+              )}
+            </Flex>
           )}
-          <FlexItem>
-            <Link to={props.name}>{props.name}</Link>
-          </FlexItem>
         </Flex>
       </Td>
       {isSuperUser && config?.features?.MAILING && (

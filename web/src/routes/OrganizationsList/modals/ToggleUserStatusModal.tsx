@@ -1,8 +1,7 @@
 import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useToggleUserStatus} from 'src/hooks/UseUserActions';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 
 interface ToggleUserStatusModalProps {
   isOpen: boolean;
@@ -15,14 +14,15 @@ export default function ToggleUserStatusModal(
   props: ToggleUserStatusModalProps,
 ) {
   const [error, setError] = useState<string | null>(null);
-  const {addAlert} = useAlerts();
-  const action = props.currentlyEnabled ? 'disabled' : 'enabled';
+  const {addAlert} = useUI();
+  const action = props.currentlyEnabled ? 'Disable' : 'Enable';
+  const actionLower = action.toLowerCase();
 
   const {toggleStatus, isLoading} = useToggleUserStatus({
     onSuccess: () => {
       addAlert({
         variant: AlertVariant.Success,
-        title: `Successfully ${action} user ${props.username}`,
+        title: `Successfully ${actionLower}d user ${props.username}`,
       });
       handleClose();
     },
@@ -32,9 +32,7 @@ export default function ToggleUserStatusModal(
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
-        title: `Failed to ${
-          action === 'disabled' ? 'disable' : 'enable'
-        } user ${props.username}`,
+        title: `Failed to ${actionLower} user ${props.username}`,
         message: errorMessage,
       });
     },
@@ -49,9 +47,6 @@ export default function ToggleUserStatusModal(
     setError(null);
     toggleStatus(props.username, !props.currentlyEnabled);
   };
-
-  const action = props.currentlyEnabled ? 'Disable' : 'Enable';
-  const actionLower = action.toLowerCase();
 
   return (
     <Modal

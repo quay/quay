@@ -14,22 +14,31 @@ import {
   CodeBlockCode,
   Text,
 } from '@patternfly/react-core';
-import {IApplicationToken} from 'src/resources/UserResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
-interface ApplicationTokenCredentialsProps {
+export interface Credentials {
+  username: string;
+  password: string;
+  title: string;
+}
+
+export type CredentialsType = 'token' | 'encrypted-password';
+
+interface CredentialsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  token: IApplicationToken;
+  credentials: Credentials;
+  type: CredentialsType;
   isNewlyCreated?: boolean;
 }
 
-export default function ApplicationTokenCredentials({
+export default function CredentialsModal({
   isOpen,
   onClose,
-  token,
+  credentials,
+  type,
   isNewlyCreated = false,
-}: ApplicationTokenCredentialsProps) {
+}: CredentialsModalProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   const quayConfig = useQuayConfig();
 
@@ -38,7 +47,9 @@ export default function ApplicationTokenCredentials({
   };
 
   const getContainerLoginCommand = (runtime: 'docker' | 'podman') => {
-    return `${runtime} login -u="$app" -p="${token?.token_code}" ${getServerHostname()}`;
+    return `${runtime} login -u='${credentials.username}' -p='${
+      credentials.password
+    }' ${getServerHostname()}`;
   };
 
   const kubernetesYaml = useMemo(() => {
@@ -46,7 +57,7 @@ export default function ApplicationTokenCredentials({
     const dockerConfigJson = {
       auths: {
         [hostname]: {
-          auth: btoa(`$app:${token?.token_code}`),
+          auth: btoa(`${credentials.username}:${credentials.password}`),
           email: '',
         },
       },
@@ -55,11 +66,16 @@ export default function ApplicationTokenCredentials({
     return `apiVersion: v1
 kind: Secret
 metadata:
-  name: ${token?.title}-pull-secret
+  name: ${credentials.title}-pull-secret
 data:
   .dockerconfigjson: ${btoa(JSON.stringify(dockerConfigJson))}
 type: kubernetes.io/dockerconfigjson`;
-  }, [token?.title, token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
+  }, [
+    credentials.title,
+    credentials.username,
+    credentials.password,
+    quayConfig?.config?.SERVER_HOSTNAME,
+  ]);
 
   const rktConfig = useMemo(() => {
     const hostname = getServerHostname();
@@ -69,43 +85,55 @@ type: kubernetes.io/dockerconfigjson`;
   "domains": ["${hostname}"],
   "type": "basic",
   "credentials": {
-    "user": "$app",
-    "password": "${token?.token_code}"
+    "user": "${credentials.username}",
+    "password": "${credentials.password}"
   }
 }`;
-  }, [token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
+  }, [
+    credentials.username,
+    credentials.password,
+    quayConfig?.config?.SERVER_HOSTNAME,
+  ]);
 
   const dockerConfig = useMemo(() => {
     const hostname = getServerHostname();
     return `{
   "auths": {
     "${hostname}": {
-      "auth": "${btoa(`$app:${token?.token_code}`)}",
+      "auth": "${btoa(`${credentials.username}:${credentials.password}`)}",
       "email": ""
     }
   }
 }`;
-  }, [token?.token_code, quayConfig?.config?.SERVER_HOSTNAME]);
+  }, [
+    credentials.username,
+    credentials.password,
+    quayConfig?.config?.SERVER_HOSTNAME,
+  ]);
+
+  const isToken = type === 'token';
+  const firstTabTitle = isToken ? 'Application Token' : 'Encrypted Password';
+  const passwordFieldLabel = isToken ? 'Token' : 'Encrypted Password';
 
   return (
     <Modal
       variant={ModalVariant.large}
-      title={`Credentials for ${token.title}`}
+      title={`Credentials for ${credentials.title}`}
       isOpen={isOpen}
       onClose={onClose}
-      data-testid="token-credentials-modal"
+      data-testid="credentials-modal"
       actions={[
         <Button
           key="done"
           variant="primary"
           onClick={onClose}
-          data-testid="token-credentials-close"
+          data-testid="credentials-modal-close"
         >
           Done
         </Button>,
       ]}
     >
-      {isNewlyCreated ? (
+      {isNewlyCreated && isToken && (
         <Alert
           variant="success"
           isInline
@@ -116,7 +144,8 @@ type: kubernetes.io/dockerconfigjson`;
           your password for Docker and other CLI commands. Make sure to copy and
           save it securely.
         </Alert>
-      ) : (
+      )}
+      {!isNewlyCreated && isToken && (
         <Alert
           variant="info"
           isInline
@@ -127,15 +156,24 @@ type: kubernetes.io/dockerconfigjson`;
           CLI commands. Keep it secure and do not share it.
         </Alert>
       )}
+      {!isToken && (
+        <Alert
+          variant="info"
+          isInline
+          title="Encrypted Password"
+          className="pf-v5-u-mb-md"
+        >
+          This encrypted password can be used for <code>docker login</code> and
+          other CLI commands. It is recommended to use this instead of your
+          plaintext password.
+        </Alert>
+      )}
 
       <Tabs
         activeKey={activeTabKey}
         onSelect={(_event, tabIndex) => setActiveTabKey(tabIndex)}
       >
-        <Tab
-          eventKey={0}
-          title={<TabTitleText>Application Token</TabTitleText>}
-        >
+        <Tab eventKey={0} title={<TabTitleText>{firstTabTitle}</TabTitleText>}>
           <Form className="pf-v5-u-p-md">
             <FormGroup
               label="Username"
@@ -146,20 +184,20 @@ type: kubernetes.io/dockerconfigjson`;
                 hoverTip="Copy"
                 clickTip="Copied"
                 isReadOnly
-                data-testid="copy-username"
+                data-testid="credentials-modal-copy-username"
               >
-                $app
+                {credentials.username}
               </ClipboardCopy>
             </FormGroup>
-            <FormGroup label="Token" fieldId="token-code">
+            <FormGroup label={passwordFieldLabel} fieldId="password">
               <ClipboardCopy
                 hoverTip="Copy"
                 clickTip="Copied"
                 variant="expansion"
                 isReadOnly
-                data-testid="copy-token-button"
+                data-testid="credentials-modal-copy-password"
               >
-                {token.token_code}
+                {credentials.password}
               </ClipboardCopy>
             </FormGroup>
           </Form>
@@ -183,7 +221,7 @@ type: kubernetes.io/dockerconfigjson`;
               className="pf-v5-u-mb-md"
             >
               <ClipboardCopy hoverTip="Copy" clickTip="Copied" isReadOnly>
-                {`kubectl create -f ${token?.title}-pull-secret.yaml --namespace=NAMESPACE`}
+                {`kubectl create -f ${credentials.title}-pull-secret.yaml --namespace=NAMESPACE`}
               </ClipboardCopy>
             </FormGroup>
             <FormGroup label="Step 3: Reference in pod spec">
@@ -192,7 +230,7 @@ type: kubernetes.io/dockerconfigjson`;
               </Text>
               <CodeBlock>
                 <CodeBlockCode>
-                  {`imagePullSecrets:\n  - name: ${token?.title}-pull-secret`}
+                  {`imagePullSecrets:\n  - name: ${credentials.title}-pull-secret`}
                 </CodeBlockCode>
               </CodeBlock>
             </FormGroup>

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   DropdownItem,
   Modal,
@@ -8,7 +9,6 @@ import {
   PanelFooter,
   Title,
 } from '@patternfly/react-core';
-import PropTypes from 'prop-types';
 import {CubesIcon} from '@patternfly/react-icons';
 import {Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
@@ -42,12 +42,24 @@ import {CreateOrganizationModal} from './CreateOrganizationModal';
 import {OrganizationToolBar} from './OrganizationToolBar';
 import OrgTableData from './OrganizationsListTableData';
 import './css/Organizations.scss';
+import {IRegistrySize} from 'src/resources/RegistrySizeResource';
 
 export interface OrganizationsTableItem {
   name: string;
   isUser: boolean;
   userEnabled?: boolean; // Only used when isUser is true
   userSuperuser?: boolean; // Only used when isUser is true
+}
+
+interface OrgListHeaderProps {
+  registrySize: IRegistrySize | null;
+  formatLastRan: (lastRan: number | null) => string;
+  getRegistrySizeStatus: () => string;
+  handleCalculateClick: () => void;
+  isQueuing: boolean;
+  showRegistrySize: boolean;
+  isExternalAuth: boolean;
+  isSuperUser: boolean;
 }
 
 function OrgListHeader({
@@ -57,7 +69,9 @@ function OrgListHeader({
   handleCalculateClick,
   isQueuing,
   showRegistrySize,
-}) {
+  isExternalAuth,
+  isSuperUser,
+}: OrgListHeaderProps) {
   return (
     <>
       <QuayBreadcrumb />
@@ -89,18 +103,22 @@ function OrgListHeader({
           )}
         </div>
       </PageSection>
+      {isSuperUser && isExternalAuth && (
+        <PageSection variant={PageSectionVariants.light}>
+          <Alert
+            variant="info"
+            isInline
+            title="External authentication configured"
+            data-testid="external-auth-alert"
+          >
+            Red Hat Quay is configured to use external authentication, so users
+            can only be created in that system
+          </Alert>
+        </PageSection>
+      )}
     </>
   );
 }
-
-OrgListHeader.propTypes = {
-  registrySize: PropTypes.object,
-  formatLastRan: PropTypes.func.isRequired,
-  getRegistrySizeStatus: PropTypes.func.isRequired,
-  handleCalculateClick: PropTypes.func.isRequired,
-  isQueuing: PropTypes.bool.isRequired,
-  showRegistrySize: PropTypes.bool.isRequired,
-};
 
 export default function OrganizationsList() {
   const [isOrganizationModalOpen, setOrganizationModalOpen] = useState(false);
@@ -114,6 +132,12 @@ export default function OrganizationsList() {
   // Get current user for superuser check
   const {user} = useCurrentUser();
   const quayConfig = useQuayConfig();
+
+  // Determine authentication type for external auth alert
+  const isExternalAuth =
+    quayConfig?.config?.AUTHENTICATION_TYPE &&
+    quayConfig.config.AUTHENTICATION_TYPE !== 'Database' &&
+    quayConfig.config.AUTHENTICATION_TYPE !== 'AppToken';
 
   // Registry size data (only fetch if superuser)
   const {registrySize, refetch: refetchRegistrySize} = useRegistrySize();
@@ -349,6 +373,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <LoadingPage />
       </>
@@ -366,6 +392,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <RequestError err={error} />
       </>
@@ -383,6 +411,8 @@ export default function OrganizationsList() {
           handleCalculateClick={() => undefined}
           isQueuing={false}
           showRegistrySize={false}
+          isExternalAuth={!!isExternalAuth}
+          isSuperUser={!!user?.super_user}
         />
         <Empty
           icon={CubesIcon}
@@ -411,10 +441,14 @@ export default function OrganizationsList() {
         handleCalculateClick={handleCalculateClick}
         isQueuing={isQueuing}
         showRegistrySize={
-          user?.super_user &&
-          quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA
+          !!(
+            user?.super_user &&
+            quayConfig?.features?.QUOTA_MANAGEMENT &&
+            quayConfig?.features?.EDIT_QUOTA
+          )
         }
+        isExternalAuth={!!isExternalAuth}
+        isSuperUser={!!user?.super_user}
       />
       <ErrorModal title="Org deletion failed" error={err} setError={setErr} />
 
@@ -440,6 +474,7 @@ export default function OrganizationsList() {
           setSelectedOrganization={setSelectedOrganization}
           paginatedOrganizationsList={paginatedOrganizationsList}
           onSelectOrganization={onSelectOrganization}
+          isExternalAuth={!!isExternalAuth}
         />
         <Table aria-label="Selectable table" variant="compact">
           <Thead>

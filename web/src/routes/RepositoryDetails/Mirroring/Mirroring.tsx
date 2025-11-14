@@ -21,7 +21,7 @@ import {
 } from '@patternfly/react-core';
 import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
 import {useRepository} from 'src/hooks/UseRepository';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {useUI} from 'src/contexts/UIContext';
 import FormError from 'src/components/errors/FormError';
 import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
 import {useFetchTeams} from 'src/hooks/UseTeams';
@@ -40,7 +40,7 @@ export const Mirroring: React.FC<MirroringProps> = ({namespace, repoName}) => {
     errorLoadingRepoDetails,
     isLoading: isLoadingRepo,
   } = useRepository(namespace, repoName);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const queryClient = useQueryClient();
 
   // Initialize form hook

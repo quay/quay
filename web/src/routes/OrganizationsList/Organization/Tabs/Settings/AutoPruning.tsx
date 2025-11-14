@@ -1,9 +1,8 @@
 import {Button, Spinner, Title} from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import Conditional from 'src/components/empty/Conditional';
 import RequestError from 'src/components/errors/RequestError';
-import {useAlerts} from 'src/hooks/UseAlerts';
 import {
   useCreateNamespaceAutoPrunePolicy,
   useDeleteNamespaceAutoPrunePolicy,
@@ -31,7 +30,7 @@ export const shorthandTimeUnits = {
 
 export default function AutoPruning(props: AutoPruning) {
   const [policies, setPolicies] = useState([]);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const config = useQuayConfig();
   const {
     error,

@@ -14,8 +14,7 @@ import BuildTriggerDescription from './BuildTriggerDescription';
 import Conditional from 'src/components/empty/Conditional';
 import {useState} from 'react';
 import {useStartBuild} from 'src/hooks/UseBuilds';
-import {useAlerts} from 'src/hooks/UseAlerts';
-import {AlertVariant} from 'src/atoms/AlertState';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {useSourceRefs} from 'src/hooks/UseBuildTriggers';
 import TypeAheadSelect from 'src/components/TypeAheadSelect';
 import {isNullOrUndefined} from 'src/libs/utils';
@@ -25,7 +24,7 @@ export default function ManuallyStartTrigger(props: ManuallyStartTriggerProps) {
   const [commit, setCommit] = useState<string>('');
   const [ref, setRef] = useState<SourceRef>({name: '', kind: null});
   const [isValid, setIsValid] = useState<boolean>(false);
-  const {addAlert} = useAlerts();
+  const {addAlert} = useUI();
   const {refs, isLoading, isError, error} = useSourceRefs(
     org,
     repo,

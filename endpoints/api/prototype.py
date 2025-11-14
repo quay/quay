@@ -4,6 +4,7 @@ Manage default permissions added to repositories.
 
 from flask import request
 
+import features
 from app import avatar
 from auth import scopes
 from auth.auth_context import get_authenticated_user
@@ -14,6 +15,7 @@ from endpoints.api import (
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     log_action,
     nickname,
     path_param,
@@ -147,7 +149,7 @@ class PermissionPrototypeList(ApiResource):
         List the existing prototypes for this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_any_superuser():
+        if permission.can() or (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -173,7 +175,7 @@ class PermissionPrototypeList(ApiResource):
         Create a new permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -264,7 +266,7 @@ class PermissionPrototype(ApiResource):
         Delete an existing permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -288,7 +290,7 @@ class PermissionPrototype(ApiResource):
         Update the role of an existing permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or allow_if_superuser():
+        if permission.can() or allow_if_superuser_with_full_access():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:

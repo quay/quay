@@ -44,7 +44,7 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
             isModalOpen={props.isOrganizationModalOpen}
             setModalOpen={props.setOrganizationModalOpen}
           />
-          {canModify && (
+          {canModify && !props.isExternalAuth && (
             <ToolbarItem>
               <Button
                 variant="primary"
@@ -77,7 +77,7 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
       </Toolbar>
 
       {/* Create User Modal */}
-      {canModify && (
+      {canModify && !props.isExternalAuth && (
         <CreateUserModal
           isOpen={isCreateUserModalOpen}
           onClose={() => setIsCreateUserModalOpen(false)}
@@ -112,4 +112,5 @@ type OrganizationToolBarProps = {
   setSelectedOrganization: (selectedOrgList) => void;
   paginatedOrganizationsList: any[];
   onSelectOrganization: (Org, rowIndex, isSelecting) => void;
+  isExternalAuth: boolean;
 };

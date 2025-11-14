@@ -12,8 +12,7 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
-import {AlertVariant} from 'src/atoms/AlertState';
-import {useAlerts} from 'src/hooks/UseAlerts';
+import {AlertVariant, useUI} from 'src/contexts/UIContext';
 import {
   IProxyCacheConfig,
   useCreateProxyCacheConfig,
@@ -41,7 +40,7 @@ export const ProxyCacheConfig = (props: ProxyCacheConfigProps) => {
   const [proxyCacheConfig, setProxyCacheConfig] = useState<IProxyCacheConfig>(
     defaultProxyCacheConfig,
   );
-  const {addAlert, clearAllAlerts} = useAlerts();
+  const {addAlert, clearAllAlerts} = useUI();
 
   const {fetchedProxyCacheConfig, isLoadingProxyCacheConfig} =
     useFetchProxyCacheConfig(props.organizationName);
