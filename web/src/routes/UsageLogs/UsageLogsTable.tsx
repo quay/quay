@@ -16,7 +16,7 @@ import {
   Thead,
   Tr,
 } from '@patternfly/react-table';
-import {useInfiniteQuery, useQueryClient} from '@tanstack/react-query';
+import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
@@ -82,8 +82,6 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     setFilterValue(value);
   };
 
-  const queryClient = useQueryClient();
-
   const {
     data: logs,
     isLoading: loadingLogs,
@@ -101,19 +99,15 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       },
     ],
     queryFn: async ({pageParam = undefined}) => {
-      try {
-        const logResp = await getLogs(
-          props.org,
-          props.repo,
-          props.starttime,
-          props.endtime,
-          pageParam,
-          props.isSuperuser,
-        );
-        return logResp;
-      } catch (error: unknown) {
-        throw error;
-      }
+      const logResp = await getLogs(
+        props.org,
+        props.repo,
+        props.starttime,
+        props.endtime,
+        pageParam,
+        props.isSuperuser,
+      );
+      return logResp;
     },
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
   });

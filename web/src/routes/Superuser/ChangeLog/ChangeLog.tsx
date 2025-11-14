@@ -32,11 +32,7 @@ function ChangeLogHeader() {
 
 export default function ChangeLog() {
   const {isSuperUser, loading: userLoading} = useCurrentUser();
-  const {
-    changeLog,
-    isLoading: changeLogLoading,
-    error,
-  } = useChangeLog();
+  const {changeLog, isLoading: changeLogLoading, error} = useChangeLog();
 
   if (userLoading) {
     return null;
