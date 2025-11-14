@@ -26,6 +26,7 @@ from endpoints.api import (
     path_param,
     query_param,
     require_repo_read,
+    require_repo_read_grant,
     require_repo_write,
     resource,
     show_if,
@@ -430,12 +431,14 @@ class RepositoryTagPullStatistics(RepositoryParamResource):
     Resource for retrieving pull statistics for a specific repository tag.
     """
 
-    @require_repo_read(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
+    @require_repo_read_grant(allow_for_superuser=True, allow_for_global_readonly_superuser=True)
     @disallow_for_app_repositories
     @nickname("getTagPullStatistics")
     def get(self, namespace, repository, tag):
         """
         Get pull statistics for a specific tag.
+
+        Note: Requires explicit repository permissions. Not publicly accessible even for public repositories.
         """
 
         repo_ref = registry_model.lookup_repository(namespace, repository)
