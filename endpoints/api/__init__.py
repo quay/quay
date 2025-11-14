@@ -385,6 +385,10 @@ require_repo_read = require_repo_permission(ReadRepositoryPermission, scopes.REA
 require_repo_write = require_repo_permission(ModifyRepositoryPermission, scopes.WRITE_REPO)
 require_repo_admin = require_repo_permission(AdministerRepositoryPermission, scopes.ADMIN_REPO)
 
+# Decorator for read operations that should NOT allow public access (e.g., pull statistics, audit data)
+# Requires explicit repository permissions even for public repositories
+require_repo_read_grant = require_repo_permission(ReadRepositoryPermission, scopes.READ_REPO, False)
+
 
 def require_user_permission(permission_class, scope=None):
     def _require_permission(allow_for_superuser=False, disallow_for_restricted_users=False):
