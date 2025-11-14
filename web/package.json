@@ -22,7 +22,7 @@
     "@types/node": "^20.6.5",
     "@types/react": "^18.2.0",
     "@types/react-google-recaptcha": "^2.1.9",
-    "axios": "^1.7.7",
+    "axios": "^1.12.0",
     "https-proxy-agent": "^5.0.1",
     "js-sha1": "^0.6.0",
     "mini-css-extract-plugin": "^2.7.6",
