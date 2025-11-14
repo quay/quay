@@ -278,8 +278,7 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
 
   const deleteAccountMutator = useDeleteAccount({
     onSuccess: () => {
-      // Account deleted successfully - redirect to signin
-      window.location.href = '/signin';
+      // Success handling is done in handleDeleteAccountConfirm
     },
     onError: (err) => {
       addAlert({
@@ -300,8 +299,12 @@ export const GeneralSettings = (props: GeneralSettingsProps) => {
     try {
       if (isUserOrganization) {
         await deleteAccountMutator.deleteUser();
+        // User account deleted - redirect to signin
+        window.location.href = '/signin';
       } else {
         await deleteAccountMutator.deleteOrg(organizationName);
+        // Organization deleted - redirect to home page
+        window.location.href = '/';
       }
     } catch (error) {
       // Error handling is done in the onError callback
