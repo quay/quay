@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useDeleteUser} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface DeleteUserModalProps {
   isOpen: boolean;
@@ -26,8 +27,8 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
         err?.response?.data?.error_message ||
         err?.message ||
         'Failed to delete user';
-      // Ignore errors from cancelled fresh login verification
-      if (errorMessage === 'Fresh login verification cancelled') {
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
         return;
       }
       setError(errorMessage);
@@ -47,8 +48,7 @@ export default function DeleteUserModal(props: DeleteUserModalProps) {
   const handleDelete = () => {
     setError(null);
     deleteUser(props.username);
-    // Close modal immediately after submitting the request
-    // If fresh login is required, the request will be queued and retried after verification
+    // Close modal; request is queued if fresh login required
     handleClose();
   };
 

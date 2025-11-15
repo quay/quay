@@ -11,6 +11,7 @@ import {
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -61,8 +62,8 @@ export function CreateUserModal(props: CreateUserModalProps) {
         err?.response?.data?.message ||
         err?.message ||
         'Failed to create user';
-      // Ignore errors from cancelled fresh login verification
-      if (errorMsg === 'Fresh login verification cancelled') {
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMsg)) {
         return;
       }
       setErrorMessage(errorMsg);
@@ -83,8 +84,7 @@ export function CreateUserModal(props: CreateUserModalProps) {
       email: data.email,
       password: data.password,
     });
-    // Close modal immediately after submitting the request
-    // If fresh login is required, the request will be queued and retried after verification
+    // Close modal; request is queued if fresh login required
     handleClose();
   };
 

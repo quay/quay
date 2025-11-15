@@ -111,9 +111,12 @@ export function retryPendingFreshLoginRequests() {
 }
 
 // Clear all pending requests when user cancels password verification
-export function clearPendingFreshLoginRequests() {
+export function clearPendingFreshLoginRequests(
+  errorMessage = 'Fresh login verification cancelled',
+) {
+  // Reject all pending requests with error
   pendingFreshLoginRequests.forEach(({reject}) =>
-    reject(new Error('Fresh login verification cancelled')),
+    reject(new Error(errorMessage)),
   );
   pendingFreshLoginRequests = [];
   freshLoginModalShown = false;
