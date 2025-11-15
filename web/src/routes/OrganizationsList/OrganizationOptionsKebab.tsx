@@ -132,8 +132,9 @@ export default function OrganizationOptionsKebab(
     >
       Take Ownership
     </DropdownItem>,
-    // Add Configure Quota option (only for organizations, not users)
-    ...(quayConfig?.features?.QUOTA_MANAGEMENT &&
+    // Add Configure Quota option (only for superusers with canModify permission)
+    ...(canModify &&
+    quayConfig?.features?.QUOTA_MANAGEMENT &&
     quayConfig?.features?.EDIT_QUOTA
       ? [
           <DropdownItem
@@ -152,8 +153,9 @@ export default function OrganizationOptionsKebab(
     isCurrentUser && isRowSuperuser
       ? [
           // Currently logged-in SUPERUSER viewing their own row
-          // ONLY show Configure Quota (if features enabled)
-          ...(quayConfig?.features?.QUOTA_MANAGEMENT &&
+          // ONLY show Configure Quota (if features enabled and canModify)
+          ...(canModify &&
+          quayConfig?.features?.QUOTA_MANAGEMENT &&
           quayConfig?.features?.EDIT_QUOTA
             ? [
                 <DropdownItem
@@ -217,20 +219,6 @@ export default function OrganizationOptionsKebab(
           >
             Take Ownership
           </DropdownItem>,
-
-          // Add Configure Quota for regular users
-          ...(quayConfig?.features?.QUOTA_MANAGEMENT &&
-          quayConfig?.features?.EDIT_QUOTA
-            ? [
-                <DropdownItem
-                  key="configureQuota"
-                  onClick={() => setIsConfigureQuotaModalOpen(true)}
-                  data-testid="configure-quota-option"
-                >
-                  Configure Quota
-                </DropdownItem>,
-              ]
-            : []),
         ];
 
   const menuItems = props.isUser ? userMenuItems : organizationMenuItems;
