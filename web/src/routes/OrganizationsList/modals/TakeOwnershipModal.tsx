@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useTakeOwnership} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface TakeOwnershipModalProps {
   isOpen: boolean;
@@ -28,8 +29,8 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
         err?.response?.data?.error_message ||
         err?.message ||
         'Failed to take ownership';
-      // Ignore errors from cancelled fresh login verification
-      if (errorMessage === 'Fresh login verification cancelled') {
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
         return;
       }
       setError(errorMessage);
@@ -49,8 +50,7 @@ export default function TakeOwnershipModal(props: TakeOwnershipModalProps) {
   const handleTakeOwnership = () => {
     setError(null);
     takeOwnership(props.organizationName);
-    // Close modal immediately after submitting the request
-    // If fresh login is required, the request will be queued and retried after verification
+    // Close modal; request is queued if fresh login required
     handleClose();
   };
 

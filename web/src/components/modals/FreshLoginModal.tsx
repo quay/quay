@@ -7,7 +7,6 @@ import {
   FormGroup,
   TextInput,
   Text,
-  Alert,
 } from '@patternfly/react-core';
 
 interface FreshLoginModalProps {
@@ -15,7 +14,6 @@ interface FreshLoginModalProps {
   onVerify: (password: string) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
-  error?: string;
 }
 
 export function FreshLoginModal({
@@ -23,7 +21,6 @@ export function FreshLoginModal({
   onVerify,
   onCancel,
   isLoading = false,
-  error,
 }: FreshLoginModalProps) {
   const [password, setPassword] = useState('');
 
@@ -33,9 +30,10 @@ export function FreshLoginModal({
 
     try {
       await onVerify(password);
-      setPassword(''); // Clear password on success
-    } catch (err) {
-      // Error handling is done by parent component
+      setPassword('');
+    } catch {
+      // Parent component handles error display, just clear the password field
+      setPassword('');
     }
   };
 
@@ -69,12 +67,6 @@ export function FreshLoginModal({
         It has been more than a few minutes since you last logged in, so please
         verify your password to perform this sensitive operation:
       </Text>
-
-      {error && (
-        <Alert variant="danger" title="Verification failed" isInline>
-          {error}
-        </Alert>
-      )}
 
       <Form onSubmit={handleSubmit}>
         <FormGroup label="Current Password" fieldId="fresh-password" isRequired>

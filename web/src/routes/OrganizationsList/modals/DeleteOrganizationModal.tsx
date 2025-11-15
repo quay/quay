@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Modal, ModalVariant, Button, Text, Alert} from '@patternfly/react-core';
 import {useDeleteSingleOrganization} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface DeleteOrganizationModalProps {
   isOpen: boolean;
@@ -28,8 +29,8 @@ export default function DeleteOrganizationModal(
         err?.response?.data?.error_message ||
         err?.message ||
         'Failed to delete organization';
-      // Ignore errors from cancelled fresh login verification
-      if (errorMessage === 'Fresh login verification cancelled') {
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
         return;
       }
       setError(errorMessage);
@@ -49,8 +50,7 @@ export default function DeleteOrganizationModal(
   const handleDelete = () => {
     setError(null);
     deleteOrganization(props.organizationName);
-    // Close modal immediately after submitting the request
-    // If fresh login is required, the request will be queued and retried after verification
+    // Close modal; request is queued if fresh login required
     handleClose();
   };
 

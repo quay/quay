@@ -9,11 +9,9 @@ import {verifyUser} from 'src/resources/AuthResource';
 
 export function useGlobalFreshLogin() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleVerify = useCallback(async (password: string) => {
     setIsLoading(true);
-    setError(null);
 
     try {
       // Verify password with backend
@@ -27,27 +25,29 @@ export function useGlobalFreshLogin() {
 
       // Reset state
       setIsLoading(false);
-      setError(null);
     } catch (err: unknown) {
       const axiosError = err as AxiosError;
       const errorMessage =
         ((axiosError?.response?.data as Record<string, unknown>)
           ?.message as string) || 'Invalid verification credentials';
       setIsLoading(false);
-      setError(errorMessage);
+
+      // Reject all queued requests with error
+      clearPendingFreshLoginRequests(errorMessage);
+
+      // Throw error to allow parent component to handle verification failure
+      throw new Error(errorMessage);
     }
   }, []);
 
   const handleCancel = useCallback(() => {
     // Reject all queued requests
-    clearPendingFreshLoginRequests();
+    clearPendingFreshLoginRequests('Verification canceled');
     setIsLoading(false);
-    setError(null);
   }, []);
 
   return {
     isLoading,
-    error,
     handleVerify,
     handleCancel,
   };

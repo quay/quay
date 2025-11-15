@@ -10,6 +10,7 @@ import {
 } from '@patternfly/react-core';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface ChangeEmailModalProps {
   isOpen: boolean;
@@ -35,8 +36,8 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
         err?.response?.data?.error_message ||
         err?.message ||
         'Failed to change email';
-      // Ignore errors from cancelled fresh login verification
-      if (errorMessage === 'Fresh login verification cancelled') {
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
         return;
       }
       setError(errorMessage);
@@ -67,8 +68,7 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
     }
     setError(null);
     changeEmail(props.username, newEmail.trim());
-    // Close modal immediately after submitting the request
-    // If fresh login is required, the request will be queued and retried after verification
+    // Close modal; request is queued if fresh login required
     handleClose();
   };
 
