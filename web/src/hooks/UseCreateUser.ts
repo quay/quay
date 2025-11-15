@@ -6,7 +6,7 @@ import {
 
 interface UseCreateUserOptions {
   onSuccess?: (username: string) => void;
-  onError?: (error: string) => void;
+  onError?: (error: any) => void;
 }
 
 export function useCreateUser(options?: UseCreateUserOptions) {
@@ -32,14 +32,8 @@ export function useCreateUser(options?: UseCreateUserOptions) {
         }
       },
       onError: (error: any) => {
-        const errorMessage =
-          error?.response?.data?.error_message ||
-          error?.response?.data?.message ||
-          error?.message ||
-          'Failed to create user';
-
         if (options?.onError) {
-          options.onError(errorMessage);
+          options.onError(error);
         }
       },
     },

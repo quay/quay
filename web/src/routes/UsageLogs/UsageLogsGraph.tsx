@@ -8,7 +8,7 @@ import {
 } from '@patternfly/react-charts';
 import {getAggregateLogs} from 'src/hooks/UseUsageLogs';
 
-import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
@@ -23,15 +23,9 @@ interface UsageLogsGraphProps {
   type: string;
   isSuperuser?: boolean;
   isHidden?: boolean;
-  freshLogin?: {
-    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
-    isFreshLoginRequired: (error: unknown) => boolean;
-  };
 }
 
 export default function UsageLogsGraph(props: UsageLogsGraphProps) {
-  const queryClient = useQueryClient();
-
   // D3 Category20 colors (same as Angular)
   const d3Category20Colors = [
     '#1f77b4',
@@ -73,46 +67,13 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
       },
     ],
     async () => {
-      try {
-        return await getAggregateLogs(
-          props.org,
-          props.repo,
-          props.starttime,
-          props.endtime,
-          props.isSuperuser,
-        );
-      } catch (error: unknown) {
-        // Check if this is a fresh login required error and we have fresh login integration
-        if (
-          props.isSuperuser &&
-          props.freshLogin?.isFreshLoginRequired(error)
-        ) {
-          // Show fresh login modal with retry operation
-          props.freshLogin.showFreshLoginModal(async () => {
-            // Retry the query after successful verification
-            queryClient.invalidateQueries({
-              queryKey: [
-                'usageLogs',
-                props.starttime,
-                props.endtime,
-                {
-                  org: props.org,
-                  repo: props.repo ? props.repo : 'isOrg',
-                  type: 'chart',
-                  isSuperuser: props.isSuperuser,
-                },
-              ],
-            });
-          });
-
-          // Don't throw the error - the modal will handle retry
-          throw new Error('Fresh login required');
-        }
-        throw error;
-      }
-    },
-    {
-      retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
+      return await getAggregateLogs(
+        props.org,
+        props.repo,
+        props.starttime,
+        props.endtime,
+        props.isSuperuser,
+      );
     },
   );
 

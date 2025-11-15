@@ -54,15 +54,6 @@ export async function getOrganization(orgName: string) {
   return response;
 }
 
-interface EmailVerificationRequest {
-  code: string;
-  username?: string;
-}
-
-interface ExternalLoginAuthRequest {
-  kind: string;
-}
-
 export async function getExternalLoginAuthUrl(
   serviceId: string,
   action = 'login',
@@ -80,8 +71,19 @@ export async function detachExternalLogin(serviceId: string) {
   return response.data;
 }
 
-export async function verifyEmailAddress(data: EmailVerificationRequest) {
-  const response = await axios.post('/api/v1/signin/verify', data);
+interface VerifyUserRequest {
+  password: string;
+}
+
+interface VerifyUserResponse {
+  success: boolean;
+}
+
+export async function verifyUser(password: string) {
+  const response = await axios.post<VerifyUserResponse>(
+    '/api/v1/signin/verify',
+    {password} as VerifyUserRequest,
+  );
   assertHttpCode(response.status, 200);
   return response.data;
 }

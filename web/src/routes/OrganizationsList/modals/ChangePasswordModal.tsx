@@ -10,6 +10,7 @@ import {
 } from '@patternfly/react-core';
 import {useChangeUserPassword} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -32,7 +33,13 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
     },
     onError: (err) => {
       const errorMessage =
-        err?.response?.data?.error_message || 'Failed to change password';
+        err?.response?.data?.error_message ||
+        err?.message ||
+        'Failed to change password';
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
+        return;
+      }
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
@@ -59,6 +66,8 @@ export default function ChangePasswordModal(props: ChangePasswordModalProps) {
     }
     setError(null);
     changePassword(props.username, newPassword);
+    // Close modal; request is queued if fresh login required
+    handleClose();
   };
 
   return (

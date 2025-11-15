@@ -33,8 +33,6 @@ import {
   useGlobalMessages,
   useDeleteGlobalMessage,
 } from 'src/hooks/UseGlobalMessages';
-import {useFreshLogin} from 'src/hooks/UseFreshLogin';
-import {FreshLoginModal} from 'src/components/modals/FreshLoginModal';
 import {Navigate} from 'react-router-dom';
 import {IGlobalMessage} from 'src/resources/GlobalMessagesResource';
 import {CreateMessageForm} from './CreateMessageForm';
@@ -130,7 +128,6 @@ function SeverityDisplay({severity}: {severity: IGlobalMessage['severity']}) {
 
 export default function Messages() {
   const {isSuperUser, loading: userLoading} = useCurrentUser();
-  const freshLogin = useFreshLogin();
   const {
     data: messages = [],
     isLoading: messagesLoading,
@@ -170,25 +167,6 @@ export default function Messages() {
       setMessageToDelete(null);
     } catch (error) {
       console.error('Failed to delete message:', error);
-      // If fresh login is required, close the delete modal and show fresh login modal
-      if (freshLogin.isFreshLoginRequired(error)) {
-        setIsDeleteModalOpen(false);
-        freshLogin.showFreshLoginModal(async () => {
-          try {
-            // Retry the delete operation after fresh login
-            await deleteMessage.mutateAsync(messageToDelete.uuid);
-            setMessageToDelete(null);
-          } catch (retryError) {
-            console.error(
-              'Failed to delete message after fresh login:',
-              retryError,
-            );
-            setMessageToDelete(null);
-          }
-        });
-        return;
-      }
-      // For other errors, reset the state
       setIsDeleteModalOpen(false);
       setMessageToDelete(null);
     }
@@ -315,23 +293,10 @@ export default function Messages() {
       <MessagesHeader onCreateMessage={handleCreateMessage} />
       <PageSection>{renderContent()}</PageSection>
 
-      {/* Fresh Login Modal */}
-      <FreshLoginModal
-        isOpen={freshLogin.isModalOpen}
-        onVerify={freshLogin.handleVerify}
-        onCancel={freshLogin.handleCancel}
-        isLoading={freshLogin.isLoading}
-        error={freshLogin.error}
-      />
-
       {/* Create Message Modal */}
       <CreateMessageForm
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        freshLogin={{
-          showFreshLoginModal: freshLogin.showFreshLoginModal,
-          isFreshLoginRequired: freshLogin.isFreshLoginRequired,
-        }}
       />
 
       {/* Delete Confirmation Modal */}
