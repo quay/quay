@@ -85,11 +85,9 @@ export function getErrorMessage(error: AxiosError<ErrorResponse>) {
       return 'an unexpected issue occurred. Please try again or contact support';
     }
 
-    let message = `HTTP${error.response.status}`;
     if (error.response.data?.error_message) {
-      message = message + ` - ${error.response.data?.error_message}`;
+      return error.response.data?.error_message;
     }
-    return message;
   }
 
   return 'unable to make request';
