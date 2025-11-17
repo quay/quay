@@ -275,7 +275,7 @@ export const logKinds = {
   disable_team_sync: 'Disable Team Sync',
   add_repo_webhook: 'Add webhook',
   delete_repo_webhook: 'Delete webhook',
-  delete_tag_failed: 'Delete Tag Failed',
+  delete_tag_failed: 'Delete Tag failed',
   login_failure: 'Login failure',
   pull_repo_failed: 'Pull repository failed',
   push_repo_failed: 'Push to repository failed',
