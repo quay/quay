@@ -2,6 +2,7 @@ import {useState, useCallback} from 'react';
 import axios from 'src/libs/axios';
 import {AxiosResponse, AxiosError} from 'axios';
 import {assertHttpCode} from 'src/resources/ErrorHandling';
+import {useQuayConfig} from './UseQuayConfig';
 
 interface VerifyUserRequest {
   password: string;
@@ -27,6 +28,7 @@ async function verifyUser(password: string): Promise<void> {
 }
 
 export function useFreshLogin() {
+  const quayConfig = useQuayConfig();
   const [state, setState] = useState<FreshLoginState>({
     isModalOpen: false,
     isLoading: false,
@@ -36,6 +38,16 @@ export function useFreshLogin() {
 
   const showFreshLoginModal = useCallback(
     (retryOperation: () => Promise<void>) => {
+      // Check if authentication type is OIDC
+      if (quayConfig?.config?.AUTHENTICATION_TYPE === 'OIDC') {
+        // For OIDC, redirect to re-authentication instead of showing password modal
+        // Pass current URL as redirect_url parameter to return after re-auth
+        const currentUrl = encodeURIComponent(window.location.href);
+        window.location.href = `/signin?redirect_url=${currentUrl}`;
+        return;
+      }
+
+      // For Database/LDAP authentication, show the password modal
       setState((prevState) => ({
         ...prevState,
         isModalOpen: true,
@@ -43,7 +55,7 @@ export function useFreshLogin() {
         pendingOperations: [...prevState.pendingOperations, retryOperation],
       }));
     },
-    [],
+    [quayConfig],
   );
 
   const handleVerify = useCallback(

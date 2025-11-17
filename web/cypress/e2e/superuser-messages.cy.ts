@@ -333,4 +333,157 @@ describe('Superuser Messages', () => {
       cy.get('[role="dialog"]').should('not.exist');
     });
   });
+
+  describe('Fresh Login - OIDC Authentication', () => {
+    beforeEach(() => {
+      // Setup OIDC authentication
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'OIDC';
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+    });
+
+    it('should redirect to signin with redirect_url when fresh login required for OIDC', () => {
+      // Mock messages endpoint
+      cy.intercept('GET', '/api/v1/messages', mockMessagesResponse).as(
+        'getMessages',
+      );
+
+      // Mock delete endpoint to return fresh_login_required error
+      cy.intercept('DELETE', '/api/v1/message/msg-1', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+          message: 'Fresh login required for this operation',
+        },
+      }).as('deleteMessageFreshLoginRequired');
+
+      cy.visit('/messages');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getMessages');
+
+      // Try to delete a message (which requires fresh login)
+      cy.get('[data-testid="msg-1-actions-toggle"]').click();
+      cy.contains('Delete').click();
+
+      // Confirm deletion in modal
+      cy.get('button').contains('Delete').click();
+
+      // Wait for the API call that returns fresh_login_required
+      cy.wait('@deleteMessageFreshLoginRequired');
+
+      // Should redirect to signin page with redirect_url parameter
+      cy.url().should('include', '/signin');
+      cy.url().should('include', 'redirect_url=');
+      cy.url().should('include', 'messages');
+
+      // Should NOT show password verification modal
+      cy.contains('Please Verify').should('not.exist');
+      cy.get('input[type="password"][placeholder="Current Password"]').should(
+        'not.exist',
+      );
+    });
+
+    it('should not show password modal for create message operation with OIDC', () => {
+      cy.intercept('GET', '/api/v1/messages', {messages: []}).as(
+        'getEmptyMessages',
+      );
+
+      // Mock create message endpoint to return fresh_login_required
+      cy.intercept('POST', '/api/v1/messages', {
+        statusCode: 401,
+        body: {
+          error_type: 'fresh_login_required',
+          message: 'Fresh login required',
+        },
+      }).as('createMessageFreshLoginRequired');
+
+      cy.visit('/messages');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getEmptyMessages');
+
+      // Open create message modal
+      cy.contains('Create Message').click();
+
+      // Fill in form
+      cy.get('textarea[placeholder="Enter your message here..."]').type(
+        'Test message requiring fresh login',
+      );
+      cy.get('select').select('info');
+
+      // Submit form
+      cy.get('[role="dialog"]').within(() => {
+        cy.get('button').contains('Create Message').click();
+      });
+
+      // Wait for fresh login required error
+      cy.wait('@createMessageFreshLoginRequired');
+
+      // Should redirect to signin
+      cy.url().should('include', '/signin');
+
+      // Should NOT show password modal
+      cy.contains('Please Verify').should('not.exist');
+    });
+  });
+
+  describe('Fresh Login - Database Authentication', () => {
+    beforeEach(() => {
+      // Setup Database authentication
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'Database';
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+    });
+
+    it('should show password modal when fresh login required for Database auth', () => {
+      cy.intercept('GET', '/api/v1/messages', mockMessagesResponse).as(
+        'getMessages',
+      );
+
+      // Mock delete to return fresh_login_required
+      cy.intercept('DELETE', '/api/v1/message/msg-1', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+          message: 'Fresh login required',
+        },
+      }).as('deleteMessageFreshLoginRequired');
+
+      cy.visit('/messages');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getMessages');
+
+      // Try to delete a message
+      cy.get('[data-testid="msg-1-actions-toggle"]').click();
+      cy.contains('Delete').click();
+      cy.get('button').contains('Delete').click();
+
+      cy.wait('@deleteMessageFreshLoginRequired');
+
+      // Should show password verification modal for Database auth
+      cy.contains('Please Verify').should('exist');
+      cy.contains(
+        'It has been more than a few minutes since you last logged in',
+      ).should('exist');
+      cy.get('input[type="password"]#fresh-password').should('exist');
+
+      // Should NOT redirect to signin
+      cy.url().should('include', '/messages');
+      cy.url().should('not.include', '/signin');
+    });
+  });
 });

@@ -659,4 +659,142 @@ describe('Service Keys Management', () => {
       cy.get('[data-testid="bulk-delete-modal"]').should('not.exist');
     });
   });
+
+  describe('Fresh Login - OIDC Authentication', () => {
+    beforeEach(() => {
+      // Setup OIDC authentication
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'OIDC';
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.intercept('GET', '/api/v1/superuser/keys', {
+        fixture: 'service-keys.json',
+      }).as('getServiceKeys');
+    });
+
+    it('should redirect to signin when deleting service key requires fresh login with OIDC', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Mock delete to return fresh_login_required
+      cy.intercept('DELETE', '/api/v1/superuser/keys/test-key-1', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+          message: 'Fresh login required for this operation',
+        },
+      }).as('deleteKeyFreshLoginRequired');
+
+      // Try to delete a service key
+      cy.get('[data-testid="test-key-1-actions-toggle"]').click();
+      cy.contains('Delete Key').click();
+      cy.get('[data-testid="confirm-delete-button"]').click();
+
+      cy.wait('@deleteKeyFreshLoginRequired');
+
+      // Should redirect to signin page with redirect_url parameter
+      cy.url().should('include', '/signin');
+      cy.url().should('include', 'redirect_url=');
+      cy.url().should('include', 'service-keys');
+
+      // Should NOT show password verification modal
+      cy.contains('Please Verify').should('not.exist');
+      cy.get('input[type="password"][placeholder="Current Password"]').should(
+        'not.exist',
+      );
+    });
+
+    it('should not show password modal when updating expiration with OIDC', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Mock update to return fresh_login_required
+      cy.intercept('PUT', '/api/v1/superuser/keys/test-key-1', {
+        statusCode: 401,
+        body: {
+          error_type: 'fresh_login_required',
+        },
+      }).as('updateKeyFreshLoginRequired');
+
+      // Try to update expiration
+      cy.get('[data-testid="test-key-1-actions-toggle"]').click();
+      cy.contains('Change Expiration Time').click();
+      cy.get('[data-testid="expiration-date-input"]')
+        .clear()
+        .type('2026-01-15T10:30');
+      cy.get('[data-testid="save-expiration-button"]').click();
+
+      cy.wait('@updateKeyFreshLoginRequired');
+
+      // Password modal should NOT appear
+      cy.contains('Please Verify').should('not.exist');
+      cy.get('input[type="password"]#fresh-password').should('not.exist');
+
+      // Should redirect instead
+      cy.url().should('include', '/signin');
+    });
+  });
+
+  describe('Fresh Login - Database Authentication', () => {
+    beforeEach(() => {
+      // Setup Database authentication
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'Database';
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+
+      cy.intercept('GET', '/api/v1/superuser/keys', {
+        fixture: 'service-keys.json',
+      }).as('getServiceKeys');
+    });
+
+    it('should show password modal when deleting service key requires fresh login with Database auth', () => {
+      cy.visit('/service-keys');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getServiceKeys');
+
+      // Mock delete to return fresh_login_required
+      cy.intercept('DELETE', '/api/v1/superuser/keys/test-key-1', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+        },
+      }).as('deleteKeyFreshLoginRequired');
+
+      // Try to delete a service key
+      cy.get('[data-testid="test-key-1-actions-toggle"]').click();
+      cy.contains('Delete Key').click();
+      cy.get('[data-testid="confirm-delete-button"]').click();
+
+      cy.wait('@deleteKeyFreshLoginRequired');
+
+      // Should show password verification modal for Database auth
+      cy.contains('Please Verify').should('exist');
+      cy.contains(
+        'It has been more than a few minutes since you last logged in',
+      ).should('exist');
+      cy.get('input[type="password"]#fresh-password').should('exist');
+
+      // Should NOT redirect to signin
+      cy.url().should('include', '/service-keys');
+      cy.url().should('not.include', '/signin');
+    });
+  });
+
 });

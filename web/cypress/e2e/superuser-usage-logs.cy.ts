@@ -216,4 +216,68 @@ describe('Superuser Usage Logs', () => {
       });
     });
   });
+
+  describe('Fresh Login - OIDC Authentication', () => {
+    beforeEach(() => {
+      // Setup OIDC authentication
+      cy.fixture('config.json').then((config) => {
+        config.config.AUTHENTICATION_TYPE = 'OIDC';
+        config.features.SUPERUSERS_FULL_ACCESS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('superuser.json').then((user) => {
+        cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
+      });
+    });
+
+    it('should redirect to signin with redirect_url when fresh login required for OIDC', () => {
+      // Mock API to return fresh_login_required error
+      cy.intercept('GET', '/api/v1/superuser/logs*', {
+        statusCode: 401,
+        body: {
+          title: 'fresh_login_required',
+          message: 'Fresh login required for this operation',
+        },
+      }).as('getLogsFreshLoginRequired');
+
+      cy.visit('/usage-logs');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getLogsFreshLoginRequired');
+
+      // Should redirect to signin page with redirect_url parameter
+      cy.url().should('include', '/signin');
+      cy.url().should('include', 'redirect_url=');
+      cy.url().should('include', 'usage-logs');
+
+      // Should NOT show password verification modal
+      cy.contains('Please Verify').should('not.exist');
+      cy.get('input[type="password"][placeholder="Current Password"]').should(
+        'not.exist',
+      );
+    });
+
+    it('should not show password modal for OIDC authentication', () => {
+      cy.intercept('GET', '/api/v1/superuser/logs*', {
+        statusCode: 401,
+        body: {
+          error_type: 'fresh_login_required',
+        },
+      }).as('getFreshLoginRequired');
+
+      cy.visit('/usage-logs');
+      cy.wait('@getConfig');
+      cy.wait('@getSuperUser');
+      cy.wait('@getFreshLoginRequired');
+
+      // Password modal should NOT appear
+      cy.contains('Please Verify').should('not.exist');
+      cy.get('input[type="password"]#fresh-password').should('not.exist');
+
+      // Should redirect instead
+      cy.url().should('include', '/signin');
+    });
+  });
+
 });
