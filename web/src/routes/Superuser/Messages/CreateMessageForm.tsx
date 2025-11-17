@@ -40,17 +40,9 @@ interface CreateMessageFormData {
 interface CreateMessageFormProps {
   isOpen: boolean;
   onClose: () => void;
-  freshLogin?: {
-    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
-    isFreshLoginRequired: (error: unknown) => boolean;
-  };
 }
 
-export function CreateMessageForm({
-  isOpen,
-  onClose,
-  freshLogin,
-}: CreateMessageFormProps) {
+export function CreateMessageForm({isOpen, onClose}: CreateMessageFormProps) {
   const [activeTabKey, setActiveTabKey] = useState<string | number>('write');
   const createMessage = useCreateGlobalMessage();
 
@@ -107,28 +99,6 @@ export function CreateMessageForm({
       formHook.reset();
     } catch (error) {
       console.error('Failed to create message:', error);
-      // If fresh login is required, show fresh login modal
-      if (freshLogin?.isFreshLoginRequired(error)) {
-        freshLogin.showFreshLoginModal(async () => {
-          try {
-            // Retry the create operation after fresh login
-            await createMessage.mutateAsync({
-              message: {
-                content: data.content,
-                media_type: 'text/markdown',
-                severity: data.severity,
-              },
-            });
-            onClose();
-            formHook.reset();
-          } catch (retryError) {
-            console.error(
-              'Failed to create message after fresh login:',
-              retryError,
-            );
-          }
-        });
-      }
     }
   };
 

@@ -7,6 +7,7 @@ import {UIProvider} from './contexts/UIContext';
 
 // Load App after patternfly so custom CSS that overrides patternfly doesn't require !important
 import App from './App';
+import {AppWithFreshLogin} from './AppWithFreshLogin';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,7 +26,9 @@ root.render(
     <RecoilRoot>
       <UIProvider>
         <QueryClientProvider client={queryClient}>
-          <App />
+          <AppWithFreshLogin>
+            <App />
+          </AppWithFreshLogin>
         </QueryClientProvider>
       </UIProvider>
     </RecoilRoot>

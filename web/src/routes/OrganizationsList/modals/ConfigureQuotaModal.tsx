@@ -21,6 +21,7 @@ export function ConfigureQuotaModal(props: ConfigureQuotaModalProps) {
         organizationName={props.organizationName}
         isUser={props.isUser}
         view="super-user"
+        onOperationSubmit={props.onClose}
       />
     </Modal>
   );
