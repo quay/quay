@@ -1,4 +1,5 @@
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -7,6 +8,9 @@ import redis
 logger = logging.getLogger(__name__)
 
 DEFAULT_PULL_METRICS_WORKER_COUNT = 5
+DEFAULT_REDIS_CONNECTION_TIMEOUT = 5
+DEFAULT_REDIS_RETRY_ATTEMPTS = 3
+DEFAULT_REDIS_RETRY_DELAY = 1.0
 
 
 class CannotReadPullMetricsException(Exception):
@@ -65,18 +69,92 @@ class PullMetricsBuilderModule(object):
 class PullMetrics(object):
     """
     Defines a helper class for tracking pull metrics as backed by Redis.
+
+    Uses lazy initialization for Redis connection to handle cases where Redis
+    may not be immediately available during application startup.
     """
 
     def __init__(self, redis_config, max_workers=None):
-        self._redis = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
+        redis_config = (redis_config.copy() if redis_config else {}) or {}
+
+        # Extract internal flags and connection settings (not passed to Redis)
+        testing_mode = redis_config.pop("_testing", False)
+        self._connection_timeout = redis_config.pop(
+            "socket_connect_timeout", DEFAULT_REDIS_CONNECTION_TIMEOUT
+        )
+        self._socket_timeout = redis_config.pop("socket_timeout", DEFAULT_REDIS_CONNECTION_TIMEOUT)
+        self._retry_attempts = redis_config.pop("retry_attempts", DEFAULT_REDIS_RETRY_ATTEMPTS)
+        self._retry_delay = redis_config.pop("retry_delay", DEFAULT_REDIS_RETRY_DELAY)
+
+        # Store only Redis connection parameters
+        self._redis_config = redis_config
+        self._redis = None
+
+        # Initialize thread pool (skip in testing mode)
         worker_count = max_workers or DEFAULT_PULL_METRICS_WORKER_COUNT
-        # Skip thread pool creation during tests to avoid interference
-        if not redis_config.get("_testing", False):
-            self._executor = ThreadPoolExecutor(
-                max_workers=worker_count, thread_name_prefix="pullmetrics"
-            )
-        else:
-            self._executor = None
+        self._executor = (
+            None
+            if testing_mode
+            else ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="pullmetrics")
+        )
+
+    def _ensure_redis_connection(self):
+        """
+        Ensure Redis connection is established with retry logic.
+
+        Returns:
+            redis.StrictRedis: Connected Redis client
+
+        Raises:
+            redis.RedisError: If connection fails after retries
+        """
+        # If we have a working connection, return it
+        if self._redis is not None:
+            try:
+                # Quick health check - ping the connection
+                self._redis.ping()
+                return self._redis
+            except (redis.ConnectionError, redis.TimeoutError, AttributeError):
+                # Connection is broken, reset and reconnect
+                logger.debug("Redis connection lost, reconnecting...")
+                self._redis = None
+
+        # Try to establish connection with retries
+        last_exception = None
+        for attempt in range(1, self._retry_attempts + 1):
+            try:
+                self._redis = redis.StrictRedis(
+                    socket_connect_timeout=self._connection_timeout,
+                    socket_timeout=self._socket_timeout,
+                    **self._redis_config,
+                )
+                self._redis.ping()
+                if attempt > 1:
+                    logger.info(
+                        "Redis connection established after %d attempt(s) for pull metrics", attempt
+                    )
+                return self._redis
+            except (redis.ConnectionError, redis.TimeoutError) as e:
+                last_exception = e
+                self._redis = None
+                if attempt < self._retry_attempts:
+                    logger.warning(
+                        "Redis connection attempt %d/%d failed for pull metrics: %s. Retrying in %.1fs...",
+                        attempt,
+                        self._retry_attempts,
+                        str(e),
+                        self._retry_delay,
+                    )
+                    time.sleep(self._retry_delay)
+                else:
+                    logger.error(
+                        "Failed to connect to Redis after %d attempts for pull metrics: %s",
+                        self._retry_attempts,
+                        str(e),
+                    )
+
+        # All retries failed
+        raise last_exception or redis.ConnectionError("Failed to connect to Redis for pull metrics")
 
     @staticmethod
     def _tag_pull_key(repository_id, tag_name, manifest_digest):
@@ -109,6 +187,8 @@ class PullMetrics(object):
             tag_name: Name of the tag
             manifest_digest: Manifest digest
         """
+        # Ensure Redis connection is available
+        redis_client = self._ensure_redis_connection()
 
         # Get repository_id if object is passed
         repository_id = repository_ref.id if hasattr(repository_ref, "id") else repository_ref
@@ -119,7 +199,7 @@ class PullMetrics(object):
         manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
 
         # Use Redis pipeline for atomic operations
-        pipe = self._redis.pipeline()
+        pipe = redis_client.pipeline()
 
         # Tag pull event - the worker will create both tag and manifest stats from this
         pipe.hset(tag_key, "repository_id", repository_id)
@@ -148,8 +228,16 @@ class PullMetrics(object):
         def conduct():
             try:
                 self.track_tag_pull_sync(repository, tag_name, manifest_digest)
-            except redis.RedisError:
-                logger.exception("Could not track tag pull metrics")
+            except (redis.ConnectionError, redis.TimeoutError) as e:
+                logger.warning(
+                    "Could not track tag pull metrics (connection error): %s. "
+                    "Pull statistics may not be recorded until Redis is available.",
+                    str(e),
+                )
+            except redis.RedisError as e:
+                logger.warning("Could not track tag pull metrics (Redis error): %s", str(e))
+            except Exception as e:
+                logger.exception("Unexpected error tracking tag pull metrics: %s", e)
 
         if self._executor:
             self._executor.submit(conduct)
@@ -165,6 +253,8 @@ class PullMetrics(object):
             repository_ref: Repository object or repository_id
             manifest_digest: Manifest digest
         """
+        # Ensure Redis connection is available
+        redis_client = self._ensure_redis_connection()
 
         # Get repository_id if object is passed
         repository_id = repository_ref.id if hasattr(repository_ref, "id") else repository_ref
@@ -173,7 +263,7 @@ class PullMetrics(object):
 
         manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
 
-        pipe = self._redis.pipeline()
+        pipe = redis_client.pipeline()
         pipe.hset(manifest_key, "repository_id", repository_id)
         pipe.hset(manifest_key, "manifest_digest", manifest_digest)
         pipe.hincrby(manifest_key, "pull_count", 1)
@@ -193,8 +283,16 @@ class PullMetrics(object):
         def conduct():
             try:
                 self.track_manifest_pull_sync(repository, manifest_digest)
-            except redis.RedisError:
-                logger.exception("Could not track manifest pull metrics")
+            except (redis.ConnectionError, redis.TimeoutError) as e:
+                logger.warning(
+                    "Could not track manifest pull metrics (connection error): %s. "
+                    "Pull statistics may not be recorded until Redis is available.",
+                    str(e),
+                )
+            except redis.RedisError as e:
+                logger.warning("Could not track manifest pull metrics (Redis error): %s", str(e))
+            except Exception as e:
+                logger.exception("Unexpected error tracking manifest pull metrics: %s", e)
 
         if self._executor:
             self._executor.submit(conduct)
@@ -207,7 +305,8 @@ class PullMetrics(object):
         Get pull statistics for a given Redis key.
         """
         try:
-            data = self._redis.hgetall(key)
+            redis_client = self._ensure_redis_connection()
+            data = redis_client.hgetall(key)
             if not data:
                 return None
 
@@ -225,8 +324,11 @@ class PullMetrics(object):
                     result[key] = value
 
             return result
+        except (redis.ConnectionError, redis.TimeoutError) as e:
+            logger.warning("Could not get pull statistics (connection error): %s", str(e))
+            return None
         except redis.RedisError as e:
-            logger.exception("Could not get pull statistics: %s", e)
+            logger.warning("Could not get pull statistics (Redis error): %s", str(e))
             return None
 
     def get_tag_pull_statistics(self, repository_id, tag_name, manifest_digest):

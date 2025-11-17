@@ -179,20 +179,130 @@ class TestPullMetrics:
     """Test PullMetrics class."""
 
     def test_pullmetrics_initialization_testing_mode(self, mock_redis):
-        """Test PullMetrics initialization in testing mode."""
+        """Test PullMetrics initialization in testing mode - lazy connection."""
         redis_config = {"host": "localhost", "port": 6379, "_testing": True}
         pm = PullMetrics(redis_config)
 
-        assert pm._redis is not None
+        # With lazy initialization, Redis connection should be None until first use
+        assert pm._redis is None
         assert pm._executor is None  # No thread pool in testing mode
 
     def test_pullmetrics_initialization_production_mode(self, mock_redis):
-        """Test PullMetrics initialization in production mode."""
+        """Test PullMetrics initialization in production mode - lazy connection."""
         redis_config = {"host": "localhost", "port": 6379}
         pm = PullMetrics(redis_config)
 
-        assert pm._redis is not None
+        # With lazy initialization, Redis connection should be None until first use
+        assert pm._redis is None
         assert pm._executor is not None  # Thread pool in production mode
+
+    def test_lazy_redis_connection_on_first_use(self, mock_redis):
+        """Test that Redis connection is established on first use, not during init."""
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+        pm = PullMetrics(redis_config)
+
+        # Initially no connection
+        assert pm._redis is None
+
+        # Mock ping to succeed
+        mock_redis.ping.return_value = True
+        mock_pipeline = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipeline
+
+        # First use should establish connection
+        repository = Mock()
+        repository.id = 123
+        pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
+
+        # Now connection should be established
+        assert pm._redis is not None
+        # Verify StrictRedis was called to create connection
+        from util.pullmetrics import redis
+
+        redis.StrictRedis.assert_called()
+
+    def test_redis_connection_retry_logic(self, mock_redis):
+        """Test that Redis connection retries on failure."""
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True, "retry_attempts": 3}
+        pm = PullMetrics(redis_config)
+
+        # Mock connection failures then success
+        from util.pullmetrics import redis
+
+        call_count = 0
+
+        def mock_redis_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            mock_client = MagicMock()
+            if call_count < 3:
+                # First two attempts fail
+                mock_client.ping.side_effect = redis.ConnectionError("Connection failed")
+            else:
+                # Third attempt succeeds
+                mock_client.ping.return_value = True
+            return mock_client
+
+        redis.StrictRedis.side_effect = mock_redis_side_effect
+
+        repository = Mock()
+        repository.id = 123
+        mock_pipeline = MagicMock()
+
+        # After retries, should eventually succeed
+        with patch.object(pm, "_ensure_redis_connection") as mock_ensure:
+            mock_redis_client = MagicMock()
+            mock_redis_client.pipeline.return_value = mock_pipeline
+            mock_ensure.return_value = mock_redis_client
+            pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
+
+    def test_redis_connection_health_check(self, mock_redis):
+        """Test that existing connection is health-checked before reuse."""
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+        pm = PullMetrics(redis_config)
+
+        # Establish initial connection
+        mock_redis.ping.return_value = True
+        mock_pipeline = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipeline
+
+        repository = Mock()
+        repository.id = 123
+        pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
+
+        # Connection should be established
+        assert pm._redis is not None
+
+        # Verify ping was called for health check
+        # (ping is called in _ensure_redis_connection)
+        assert mock_redis.ping.called
+
+    def test_redis_connection_reconnect_on_failure(self, mock_redis):
+        """Test that connection is re-established if health check fails."""
+        redis_config = {"host": "localhost", "port": 6379, "_testing": True}
+        pm = PullMetrics(redis_config)
+
+        # First connection succeeds
+        mock_redis.ping.return_value = True
+        mock_pipeline = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipeline
+
+        repository = Mock()
+        repository.id = 123
+        pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
+
+        # Simulate connection failure on health check
+        from util.pullmetrics import redis
+
+        original_redis = pm._redis
+        original_redis.ping.side_effect = redis.ConnectionError("Connection lost")
+
+        # Next use should reconnect
+        mock_redis.ping.return_value = True  # Reconnection succeeds
+        pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
+
+        # Should have attempted to reconnect
+        assert mock_redis.ping.call_count >= 2
 
     def test_track_tag_pull_sync(self, pull_metrics_testing, mock_redis):
         """Test synchronous tag pull tracking."""
@@ -202,13 +312,16 @@ class TestPullMetrics:
         tag_name = "latest"
         manifest_digest = "sha256:abc123"
 
-        # Mock pipeline
+        # Mock connection establishment (ping) and pipeline
+        mock_redis.ping.return_value = True
         mock_pipeline = MagicMock()
         mock_redis.pipeline.return_value = mock_pipeline
 
         # Execute
         pull_metrics_testing.track_tag_pull_sync(repository, tag_name, manifest_digest)
 
+        # Verify Redis connection was established (ping called)
+        assert mock_redis.ping.called
         # Verify Redis pipeline calls
         mock_redis.pipeline.assert_called_once()
         mock_pipeline.hset.assert_any_call(
@@ -330,13 +443,14 @@ class TestPullMetrics:
         tag_name = "latest"
         manifest_digest = "sha256:abc123"
 
-        # Mock Redis to raise error
-        mock_redis.pipeline.side_effect = redis.RedisError("Connection failed")
+        # Mock connection to fail
+        mock_redis.ping.side_effect = redis.ConnectionError("Connection failed")
 
-        # Execute - should not raise exception
+        # Execute - should not raise exception, should log warning
         with patch("util.pullmetrics.logger") as mock_logger:
             pull_metrics_testing.track_tag_pull(repository, tag_name, manifest_digest)
-            mock_logger.exception.assert_called_once()
+            # Should log warning, not exception
+            mock_logger.warning.assert_called()
 
     def test_track_manifest_pull_async_testing_mode(self, pull_metrics_testing, mock_redis):
         """Test async manifest pull tracking in testing mode."""
