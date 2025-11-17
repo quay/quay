@@ -62,9 +62,22 @@ const defaultFormValues: QuotaFormData = {
 };
 
 export const QuotaManagement = (props: QuotaManagementProps) => {
+  // Determine the correct viewMode based on context
+  // - If view is 'organization-view' and isUser is true: user viewing their own quota
+  // - If view is 'organization-view' and isUser is false: organization viewing org quota
+  // - If view is 'super-user': superuser managing quota (use 'superuser' for users, 'organization' for orgs)
+  const viewMode =
+    props.view === 'organization-view'
+      ? props.isUser
+        ? 'self'
+        : 'organization'
+      : props.isUser
+      ? 'superuser'
+      : 'organization';
+
   const {organizationQuota, isLoadingQuotas} = useFetchOrganizationQuota(
     props.organizationName,
-    props.isUser,
+    viewMode,
   );
 
   // Determine read-only mode based on view context and permissions
@@ -168,7 +181,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {updateQuotaMutation} = useUpdateOrganizationQuota(
@@ -187,7 +200,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {deleteQuotaMutation} = useDeleteOrganizationQuota(
@@ -209,7 +222,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {createLimitMutation} = useCreateQuotaLimit(
@@ -230,7 +243,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {updateLimitMutation} = useUpdateQuotaLimit(
@@ -250,7 +263,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {deleteLimitMutation} = useDeleteQuotaLimit(
@@ -269,7 +282,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   // Validation functions
