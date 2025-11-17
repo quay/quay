@@ -282,6 +282,94 @@ describe('Usage Logs', () => {
       )
       .should('not.exist');
   });
+
+  // Test for verifying all logs can be loaded across multiple pages
+  it('loads all logs across multiple pages', () => {
+    const firstPageLogs = {
+      start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
+      end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
+      logs: Array.from({length: 20}, (_, i) => ({
+        kind: 'push_repo',
+        metadata: {
+          repo: `repo${i}`,
+          namespace: 'projectquay',
+        },
+        ip: '192.168.1.1',
+        datetime: `Wed, 21 Feb 2024 17:${59 - i}:00 -0000`,
+        performer: {
+          kind: 'user',
+          name: 'user1',
+          is_robot: false,
+        },
+      })),
+      next_page: 'page2_token',
+    };
+
+    const secondPageLogs = {
+      start_time: 'Tue, 20 Feb 2024 17:33:43 -0000',
+      end_time: 'Thu, 22 Feb 2024 17:33:43 -0000',
+      logs: Array.from({length: 6}, (_, i) => ({
+        kind: 'pull_repo',
+        metadata: {
+          repo: `repo${i + 20}`,
+          namespace: 'projectquay',
+        },
+        ip: '192.168.1.1',
+        datetime: `Wed, 21 Feb 2024 16:${59 - i}:00 -0000`,
+        performer: {
+          kind: 'user',
+          name: 'user2',
+          is_robot: false,
+        },
+      })),
+      next_page: undefined, // No more pages
+    };
+
+    cy.intercept(
+      'GET',
+      '/api/v1/organization/projectquay/aggregatelogs?*',
+      aggregateLogsResp,
+    ).as('getAggregateLogs');
+
+    cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', (req) => {
+      // Check if next_page parameter has a value (not just empty)
+      const url = new URL(req.url);
+      const nextPage = url.searchParams.get('next_page');
+
+      if (nextPage && nextPage.length > 0) {
+        // Second page request (has next_page token)
+        req.reply(secondPageLogs);
+      } else {
+        // First page request (no next_page or empty next_page)
+        req.reply(firstPageLogs);
+      }
+    }).as('getLogs');
+
+    cy.visit('/organization/projectquay?tab=Logs');
+    cy.wait('@getAggregateLogs');
+    cy.wait('@getLogs');
+
+    // Scroll to pagination section to ensure logs are visible
+    cy.contains(/of\s+20/)
+      .scrollIntoView()
+      .should('be.visible');
+
+    // Click Load More to fetch second page
+    cy.contains('button', 'Load More Logs').click();
+    cy.wait('@getLogs');
+
+    // Verify pagination now shows all 26 logs (20 + 6)
+    cy.contains(/of\s+26/).should('be.visible');
+
+    // Verify Load More button is hidden (no more pages)
+    cy.contains('button', 'Load More Logs').should('not.exist');
+
+    // Verify we can access logs from second page through table pagination
+    cy.get('button[aria-label="Go to next page"]:visible').first().click();
+
+    // Should now show second page of client-side pagination
+    cy.contains(/of\s+26/).should('be.visible');
+  });
 });
 
 describe('Usage Logs - Superuser', () => {
