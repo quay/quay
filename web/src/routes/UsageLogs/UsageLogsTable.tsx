@@ -1,4 +1,5 @@
 import {
+  Button,
   Flex,
   FlexItem,
   PanelFooter,
@@ -23,7 +24,7 @@ import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {extractTextFromReactNode} from 'src/libs/utils';
-import {useState, useMemo} from 'react';
+import {useState, useMemo, useEffect, useRef} from 'react';
 
 interface LogEntry {
   datetime: string;
@@ -92,6 +93,9 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     data: logs,
     isLoading: loadingLogs,
     isError: errorLogs,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: [
       'usageLogs',
@@ -145,6 +149,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
         throw error;
       }
     },
+    initialPageParam: undefined,
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
     retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
   });
@@ -207,6 +212,26 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     initialPerPage: 20,
     initialSort: {columnIndex: 0, direction: 'desc'}, // Default sort: newest first
   });
+
+  // Add intersection observer ref for infinite scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {threshold: 0.1},
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (loadingLogs) return <Spinner />;
   if (errorLogs) return <RequestError message="Unable to retrieve logs" />;
@@ -282,6 +307,25 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
             </Table>
           </div>
         </FlexItem>
+
+        {/* Intersection observer trigger for infinite scroll */}
+        <div ref={loadMoreRef} style={{height: '20px'}} />
+
+        {/* Load More button and loading indicator */}
+        {hasNextPage && (
+          <FlexItem>
+            <div style={{textAlign: 'center', margin: '20px'}}>
+              {isFetchingNextPage ? (
+                <Spinner size="lg" />
+              ) : (
+                <Button variant="secondary" onClick={() => fetchNextPage()}>
+                  Load More Logs
+                </Button>
+              )}
+            </div>
+          </FlexItem>
+        )}
+
         <PanelFooter>
           <ToolbarPagination {...paginationProps} bottom={true} />
         </PanelFooter>
