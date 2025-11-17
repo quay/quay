@@ -308,7 +308,8 @@ class TestPullMetrics:
             return True
 
         original_redis.ping.side_effect = ping_side_effect
-        mock_redis.ping.return_value = True  # Reconnection succeeds
+        # Note: side_effect takes precedence over return_value, so the callable
+        # side_effect handles both failure and success cases
         pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
 
         # Should have attempted to reconnect
@@ -447,20 +448,22 @@ class TestPullMetrics:
         assert pm._executor is not None
 
     def test_track_tag_pull_redis_error_handling(self, pull_metrics_testing, mock_redis):
-        """Test tag pull tracking handles Redis errors gracefully."""
+        """Test tag pull tracking handles Redis connection errors gracefully."""
         repository = Mock()
         repository.id = 123
         tag_name = "latest"
         manifest_digest = "sha256:abc123"
 
-        # Mock connection to fail
+        # Mock connection to fail during health check
         mock_redis.ping.side_effect = redis.ConnectionError("Connection failed")
 
         # Execute - should not raise exception, should log warning
         with patch("util.pullmetrics.logger") as mock_logger:
             pull_metrics_testing.track_tag_pull(repository, tag_name, manifest_digest)
-            # Should log warning, not exception
+            # Connection errors are logged as warnings, not exceptions
             mock_logger.warning.assert_called()
+            # Verify no exception was logged (only warnings for connection errors)
+            mock_logger.exception.assert_not_called()
 
     def test_track_manifest_pull_async_testing_mode(self, pull_metrics_testing, mock_redis):
         """Test async manifest pull tracking in testing mode."""
@@ -485,13 +488,55 @@ class TestPullMetrics:
         repository.id = 789
         manifest_digest = "sha256:xyz789"
 
-        # Mock Redis to raise error
+        # Ensure connection can be established (ping succeeds)
+        mock_redis.ping.return_value = True
+        # Mock pipeline to raise error when called
         mock_redis.pipeline.side_effect = redis.RedisError("Connection failed")
 
-        # Execute - should not raise exception
+        # Execute - should not raise exception, should log warning
         with patch("util.pullmetrics.logger") as mock_logger:
             pull_metrics_testing.track_manifest_pull(repository, manifest_digest)
-            mock_logger.exception.assert_called_once()
+            # Redis errors are logged as warnings, not exceptions
+            mock_logger.warning.assert_called()
+            # Verify no exception was logged (only warnings for Redis errors)
+            mock_logger.exception.assert_not_called()
+
+    def test_track_tag_pull_timeout_error_handling(self, pull_metrics_testing, mock_redis):
+        """Test tag pull tracking handles Redis timeout errors gracefully."""
+        repository = Mock()
+        repository.id = 123
+        tag_name = "latest"
+        manifest_digest = "sha256:abc123"
+
+        # Mock connection to fail with timeout during health check
+        mock_redis.ping.side_effect = redis.TimeoutError("Operation timed out")
+
+        # Execute - should not raise exception, should log warning
+        with patch("util.pullmetrics.logger") as mock_logger:
+            pull_metrics_testing.track_tag_pull(repository, tag_name, manifest_digest)
+            # Timeout errors are logged as warnings, not exceptions
+            mock_logger.warning.assert_called()
+            mock_logger.exception.assert_not_called()
+
+    def test_track_manifest_pull_pipeline_execute_error(self, pull_metrics_testing, mock_redis):
+        """Test manifest pull tracking handles pipeline execute errors gracefully."""
+        repository = Mock()
+        repository.id = 789
+        manifest_digest = "sha256:xyz789"
+
+        # Ensure connection can be established (ping succeeds)
+        mock_redis.ping.return_value = True
+        # Mock pipeline and make execute() raise error
+        mock_pipeline = MagicMock()
+        mock_pipeline.execute.side_effect = redis.RedisError("Pipeline execution failed")
+        mock_redis.pipeline.return_value = mock_pipeline
+
+        # Execute - should not raise exception, should log warning
+        with patch("util.pullmetrics.logger") as mock_logger:
+            pull_metrics_testing.track_manifest_pull(repository, manifest_digest)
+            # Redis errors are logged as warnings, not exceptions
+            mock_logger.warning.assert_called()
+            mock_logger.exception.assert_not_called()
 
     def test_get_pull_statistics_success(self, pull_metrics_testing, mock_redis):
         """Test retrieving pull statistics from Redis."""
@@ -534,16 +579,20 @@ class TestPullMetrics:
         """Test pull statistics retrieval handles Redis errors."""
         key = "pull_events:repo:123:tag:latest:sha256:abc123"
 
-        # Mock Redis to raise error
+        # Ensure connection can be established (ping succeeds)
+        mock_redis.ping.return_value = True
+        # Mock hgetall to raise error when called
         mock_redis.hgetall.side_effect = redis.RedisError("Connection failed")
 
         # Execute
         with patch("util.pullmetrics.logger") as mock_logger:
             result = pull_metrics_testing._get_pull_statistics(key)
 
-            # Should return None and log error
+            # Should return None and log warning (Redis errors are logged as warnings)
             assert result is None
-            mock_logger.exception.assert_called_once()
+            mock_logger.warning.assert_called()
+            # Verify no exception was logged
+            mock_logger.exception.assert_not_called()
 
     def test_get_tag_pull_statistics(self, pull_metrics_testing, mock_redis):
         """Test get_tag_pull_statistics method."""
