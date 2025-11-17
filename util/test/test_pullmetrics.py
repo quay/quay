@@ -295,9 +295,19 @@ class TestPullMetrics:
         from util.pullmetrics import redis
 
         original_redis = pm._redis
-        original_redis.ping.side_effect = redis.ConnectionError("Connection lost")
+        # Use a callable side_effect that only fails on the first call (health check)
+        # Subsequent calls (reconnection) will succeed
+        ping_call_count = [0]
 
-        # Next use should reconnect
+        def ping_side_effect():
+            ping_call_count[0] += 1
+            if ping_call_count[0] == 1:
+                # First call (health check) fails
+                raise redis.ConnectionError("Connection lost")
+            # Subsequent calls succeed
+            return True
+
+        original_redis.ping.side_effect = ping_side_effect
         mock_redis.ping.return_value = True  # Reconnection succeeds
         pm.track_tag_pull_sync(repository, "latest", "sha256:abc123")
 
