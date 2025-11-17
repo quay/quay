@@ -5,7 +5,7 @@ import {
 } from 'src/resources/UserResource';
 
 interface UseCreateUserOptions {
-  onSuccess?: (username: string) => void;
+  onSuccess?: (username: string, password: string) => void;
   onError?: (error: any) => void;
 }
 
@@ -28,7 +28,7 @@ export function useCreateUser(options?: UseCreateUserOptions) {
         queryClient.invalidateQueries(['user']);
 
         if (options?.onSuccess) {
-          options.onSuccess(variables.username);
+          options.onSuccess(variables.username, data.password);
         }
       },
       onError: (error: any) => {
