@@ -532,10 +532,10 @@ describe('Org List Page', () => {
     cy.wait('@getSuperuserOrganizations');
     cy.wait('@getSuperuserUsers');
 
-    // Settings column header should be visible
-    cy.contains('th', 'Settings').should('exist');
+    // Settings column header should NOT be visible for read-only superusers
+    cy.contains('th', 'Settings').should('not.exist');
 
-    // But no kebab menus should be visible (canModify = false for read-only superuser)
+    // No kebab menus should be visible (canModify = false for read-only superuser)
     cy.get('[data-testid$="-options-toggle"]').should('not.exist');
 
     // Create Organization button SHOULD exist (regular user action, not superuser action)
