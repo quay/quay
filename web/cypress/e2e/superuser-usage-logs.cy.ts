@@ -279,4 +279,5 @@ describe('Superuser Usage Logs', () => {
       cy.url().should('include', '/signin');
     });
   });
+
 });
