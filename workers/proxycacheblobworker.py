@@ -1,6 +1,8 @@
 import logging
 import time
 
+from peewee import fn
+
 import features
 from app import app, proxy_cache_blob_queue
 from data.database import (
@@ -38,24 +40,18 @@ class ProxyCacheBlobWorker(QueueWorker):
         Check if all blobs associated with a manifest have ImageStoragePlacement.
         Returns True if all blobs are downloaded, False otherwise.
         """
-        # Get all blobs for this manifest
-        blobs = (
-            ImageStorage.select(ImageStorage.id)
-            .join(ManifestBlob)
-            .where(
-                ManifestBlob.manifest_id == manifest_id,
-                ManifestBlob.repository_id == repo_id,
-            )
+        # Check if there exists a blob in the manifest that does not have a placement.
+        missing_placement = ManifestBlob.select().where(
+            ManifestBlob.manifest == manifest_id,
+            ManifestBlob.repository == repo_id,
+            ~fn.EXISTS(
+                ImageStoragePlacement.select().where(
+                    ImageStoragePlacement.storage == ManifestBlob.blob
+                )
+            ),
         )
 
-        # Check if each blob has a placement
-        for blob in blobs:
-            try:
-                ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
-            except ImageStoragePlacement.DoesNotExist:
-                return False
-
-        return True
+        return not missing_placement.exists()
 
     def _reset_security_status_if_complete(self, blob_digest, repo_id):
         """
