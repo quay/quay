@@ -325,7 +325,6 @@ class TestOrganizationLogsAccessWithoutFullAccess:
             model.team.get_organization_team("testorglogs", "owners")
         except model.InvalidTeamException:
             model.team.create_team("owners", org, "admin", "Team for owners")
-
         yield
         # Note: We don't clean up the organization because it has foreign key constraints
         # and the test database is reset between test runs anyway
