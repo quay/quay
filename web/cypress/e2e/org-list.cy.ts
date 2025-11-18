@@ -449,4 +449,157 @@ describe('Org List Page', () => {
       .parents('tr')
       .should('have.length', 1);
   });
+
+  it('Read-only superuser can see all organizations and users', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock read-only superuser (global_readonly_super_user = true)
+    cy.fixture('superuser.json').then((user) => {
+      user.global_readonly_super_user = true;
+      user.super_user = false; // Regular superuser flag is false
+      cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+    });
+
+    // Mock successful superuser API calls
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    // Mock organization details
+    cy.intercept('GET', '/api/v1/organization/testorg', {
+      statusCode: 200,
+      body: {
+        name: 'testorg',
+        email: 'testorg@example.com',
+        teams: {owners: 'admin'},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/projectquay', {
+      statusCode: 200,
+      body: {
+        name: 'projectquay',
+        email: 'projectquay@example.com',
+        teams: {},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/coreos', {
+      statusCode: 200,
+      body: {
+        name: 'coreos',
+        email: 'coreos@example.com',
+        teams: {owners: 'admin'},
+      },
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getReadOnlySuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Should show user's own org (testorg)
+    cy.contains('testorg').should('exist');
+
+    // Should show additional orgs from superuser API (same as regular superuser)
+    cy.contains('projectquay').should('exist');
+    cy.contains('coreos').should('exist');
+
+    // Should show current user
+    cy.contains('superuser').should('exist');
+
+    // Should show other users from superuser API
+    cy.contains('user1').should('exist');
+  });
+
+  it('Read-only superuser cannot perform actions (no kebab menus)', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock read-only superuser
+    cy.fixture('superuser.json').then((user) => {
+      user.global_readonly_super_user = true;
+      user.super_user = false;
+      cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+    });
+
+    // Mock superuser API calls
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/robots', {
+      statusCode: 200,
+      body: {robots: []},
+    });
+
+    cy.intercept('GET', '/api/v1/organization/*/members', {
+      statusCode: 200,
+      body: {members: []},
+    });
+
+    cy.intercept('GET', '/api/v1/repository?namespace=*', {
+      statusCode: 200,
+      body: {repositories: []},
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getReadOnlySuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Settings column header should be visible
+    cy.contains('th', 'Settings').should('exist');
+
+    // But no kebab menus should be visible (canModify = false for read-only superuser)
+    cy.get('[data-testid$="-options-toggle"]').should('not.exist');
+
+    // Create Organization button SHOULD exist (regular user action, not superuser action)
+    cy.get('#create-organization-button').should('exist');
+
+    // Create User button should NOT exist (superuser-only action)
+    cy.get('[data-testid="create-user-button"]').should('not.exist');
+  });
 });
