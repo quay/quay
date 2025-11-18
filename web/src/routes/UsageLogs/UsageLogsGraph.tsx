@@ -12,6 +12,7 @@ import {useQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {Flex, FlexItem, Spinner} from '@patternfly/react-core';
 import {logKinds} from './UsageLogs';
+import {AxiosError} from 'axios';
 
 import './css/UsageLogs.scss';
 
@@ -53,6 +54,7 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
   const {
     data: aggregateLogs,
     isError: errorFetchingLogs,
+    error: fetchError,
     isLoading: loadingAggregateLogs,
   } = useQuery(
     [
@@ -79,8 +81,20 @@ export default function UsageLogsGraph(props: UsageLogsGraphProps) {
 
   // tslint:disable-next-line:curly
   if (loadingAggregateLogs) return <Spinner />;
+
   // tslint:disable-next-line:curly
-  if (errorFetchingLogs) return <RequestError message="Unable to get logs" />;
+  if (errorFetchingLogs) {
+    // Check if this is a 501 NOT IMPLEMENTED error from Splunk
+    if (
+      fetchError instanceof AxiosError &&
+      fetchError.response?.status === 501
+    ) {
+      const errorMessage =
+        fetchError.response?.data?.message || 'Unable to get logs';
+      return <RequestError message={errorMessage} title="" />;
+    }
+    return <RequestError message="Unable to get logs" />;
+  }
 
   let maxRange = 0;
 
