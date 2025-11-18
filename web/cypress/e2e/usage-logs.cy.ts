@@ -260,6 +260,33 @@ describe('Usage Logs', () => {
     cy.contains('No data to display.').should('be.visible');
   });
 
+  it('shows Splunk error message when logs are not implemented', () => {
+    // Mock 501 NOT IMPLEMENTED error from Splunk
+    cy.intercept('GET', '/api/v1/organization/projectquay/aggregatelogs?*', {
+      statusCode: 501,
+      body: {
+        message: 'Method not implemented, Splunk does not support log lookups',
+      },
+    }).as('aggregateLogsError');
+
+    cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', {
+      statusCode: 501,
+      body: {
+        message: 'Method not implemented, Splunk does not support log lookups',
+      },
+    }).as('logsError');
+
+    cy.visit('/organization/projectquay?tab=Logs');
+
+    // Verify the specific Splunk error message is displayed (not generic error)
+    cy.contains(
+      'Method not implemented, Splunk does not support log lookups',
+    ).should('be.visible');
+
+    // Verify generic error is NOT displayed
+    cy.contains('Unable to complete request').should('not.exist');
+  });
+
   it('filter logs', () => {
     cy.intercept('GET', '/api/v1/organization/projectquay/logs?*', logsResp);
 
@@ -624,5 +651,32 @@ describe('Usage Logs - Superuser', () => {
     cy.contains('th', 'Repository').should('be.visible');
     cy.contains('th', 'Performed by').should('be.visible');
     cy.contains('th', 'IP Address').should('be.visible');
+  });
+
+  it('shows Splunk error message on superuser page when logs are not implemented', () => {
+    // Mock 501 NOT IMPLEMENTED error from Splunk
+    cy.intercept('GET', '/api/v1/superuser/aggregatelogs?*', {
+      statusCode: 501,
+      body: {
+        message: 'Method not implemented, Splunk does not support log lookups',
+      },
+    }).as('aggregateLogsError');
+
+    cy.intercept('GET', '/api/v1/superuser/logs?*', {
+      statusCode: 501,
+      body: {
+        message: 'Method not implemented, Splunk does not support log lookups',
+      },
+    }).as('logsError');
+
+    cy.visit('/usage-logs');
+
+    // Verify the specific Splunk error message is displayed (not generic error)
+    cy.contains(
+      'Method not implemented, Splunk does not support log lookups',
+    ).should('be.visible');
+
+    // Verify generic error is NOT displayed
+    cy.contains('Unable to complete request').should('not.exist');
   });
 });
