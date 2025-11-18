@@ -164,6 +164,7 @@ export default function OrganizationsList() {
     search,
     setSearch,
     deleteOrganizations,
+    deleteUsers,
     userEmailMap,
   } = useOrganizations();
 
@@ -271,9 +272,30 @@ export default function OrganizationsList() {
   };
 
   const handleOrgDeletion = async () => {
-    const orgs = selectedOrganization.map((org) => org.name);
+    // Separate selected items into users and organizations
+    const users = selectedOrganization
+      .filter((item) => item.isUser)
+      .map((item) => item.name);
+    const orgs = selectedOrganization
+      .filter((item) => !item.isUser)
+      .map((item) => item.name);
+
     try {
-      await deleteOrganizations(orgs);
+      // Delete both users and organizations in parallel
+      const promises = [];
+      if (orgs.length > 0) {
+        promises.push(deleteOrganizations(orgs));
+      }
+      if (users.length > 0) {
+        promises.push(deleteUsers(users));
+      }
+
+      const results = await Promise.allSettled(promises);
+      const failures = results.filter((r) => r.status === 'rejected');
+      if (failures.length > 0) {
+        throw failures[0].reason;
+      }
+
       setDeleteModalIsOpen(!deleteModalIsOpen);
       setSelectedOrganization([]);
     } catch (err) {
@@ -282,16 +304,15 @@ export default function OrganizationsList() {
         const errMessages = [];
         // TODO: Would like to use for .. of instead of foreach
         // typescript complains saying we're using version prior to es6?
-        err.getErrors().forEach((error, org) => {
+        err.getErrors().forEach((error, name) => {
           errMessages.push(
-            addDisplayError(`Failed to delete org ${org}`, error.error),
+            addDisplayError(`Failed to delete ${name}`, error.error),
           );
         });
         setErr(errMessages);
       } else {
-        setErr([addDisplayError('Failed to delete orgs', err)]);
+        setErr([addDisplayError('Failed to delete selected items', err)]);
       }
-      setDeleteModalIsOpen(!deleteModalIsOpen);
       setSelectedOrganization([]);
     }
   };
@@ -338,7 +359,7 @@ export default function OrganizationsList() {
           (selectedOrg) => org.name === selectedOrg.name,
         ),
       )}
-      resourceName={'organizations'}
+      resourceName={'selected items'}
     />
   );
   useEffect(() => {

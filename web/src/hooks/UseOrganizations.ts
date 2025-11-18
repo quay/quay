@@ -12,7 +12,11 @@ import {
   createOrg,
   fetchOrgsAsSuperUser,
 } from 'src/resources/OrganizationResource';
-import {fetchUsersAsSuperUser} from 'src/resources/UserResource';
+import {
+  fetchUsersAsSuperUser,
+  deleteSuperuserUser,
+} from 'src/resources/UserResource';
+import {BulkOperationError} from 'src/resources/ErrorHandling';
 import {useCurrentUser} from './UseCurrentUser';
 
 export type OrganizationDetail = {
@@ -173,6 +177,46 @@ export function useOrganizations() {
     },
   );
 
+  const deleteUsersMutator = useMutation(
+    async (usernames: string[]) => {
+      const responses = await Promise.allSettled(
+        usernames.map((username) =>
+          deleteSuperuserUser(username).catch((err) => {
+            throw Object.assign(err, {username});
+          }),
+        ),
+      );
+
+      // Aggregate failed responses
+      const errResponses = responses.filter(
+        (r) => r.status === 'rejected',
+      ) as PromiseRejectedResult[];
+
+      // If errors, collect and throw
+      if (errResponses.length > 0) {
+        const bulkDeleteError = new BulkOperationError('error deleting users');
+        for (const response of errResponses) {
+          const reason = response.reason;
+          bulkDeleteError.addError(reason.username || 'unknown', reason);
+        }
+        throw bulkDeleteError;
+      }
+
+      return responses;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['user']);
+        queryClient.invalidateQueries([
+          'organization',
+          'superuser',
+          'organizations',
+        ]);
+        queryClient.invalidateQueries(['organization', 'superuser', 'users']);
+      },
+    },
+  );
+
   return {
     // Data
     superUserOrganizations,
@@ -200,7 +244,9 @@ export function useOrganizations() {
     createOrganization: async (name: string, email: string) =>
       createOrganizationMutator.mutate({name, email}),
     deleteOrganizations: async (names: string[]) =>
-      deleteOrganizationMutator.mutate(names),
+      deleteOrganizationMutator.mutateAsync(names),
+    deleteUsers: async (usernames: string[]) =>
+      deleteUsersMutator.mutateAsync(usernames),
     usernames,
   };
 }
