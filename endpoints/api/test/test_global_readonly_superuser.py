@@ -225,12 +225,7 @@ class TestAuditLogAccess:
         """Test that organization logs are accessible to global readonly superusers."""
         from unittest.mock import patch
 
-        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
-            "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro, patch("endpoints.api.logs.allow_if_any_superuser", return_value=True):
-            mock_super.return_value.can.return_value = False
-            mock_global_ro.return_value.can.return_value = True
-
+        with patch("endpoints.api.logs.allow_if_global_readonly_superuser", return_value=True):
             with client_with_identity("reader", app) as cl:
                 resp = conduct_api_call(cl, OrgLogs, "GET", {"orgname": "buynlarge"}, None, 200)
                 assert resp.status_code == 200
@@ -240,12 +235,7 @@ class TestAuditLogAccess:
         """Test that organization aggregated logs are accessible to global readonly superusers."""
         from unittest.mock import patch
 
-        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
-            "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro, patch("endpoints.api.logs.allow_if_any_superuser", return_value=True):
-            mock_super.return_value.can.return_value = False
-            mock_global_ro.return_value.can.return_value = True
-
+        with patch("endpoints.api.logs.allow_if_global_readonly_superuser", return_value=True):
             with client_with_identity("reader", app) as cl:
                 resp = conduct_api_call(
                     cl, OrgAggregateLogs, "GET", {"orgname": "buynlarge"}, None, 200
@@ -289,3 +279,276 @@ class TestLogExportOperations:
                     assert "Global readonly users cannot export logs" not in resp.json.get(
                         "message", ""
                     )
+
+
+# =============================================================================
+# Organization Logs Access Without Full Access (Bug PROJQUAY-9790)
+# =============================================================================
+
+
+class TestOrganizationLogsAccessWithoutFullAccess:
+    """
+    Test that global readonly superusers can access organization logs even when
+    FEATURE_SUPERUSERS_FULL_ACCESS is disabled.
+
+    This verifies the fix for bug PROJQUAY-9790 where global readonly superusers
+    were incorrectly blocked from accessing organization logs when
+    FEATURE_SUPERUSERS_FULL_ACCESS was set to false.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        """Configure test environment with SUPERUSERS_FULL_ACCESS disabled."""
+        import features
+        from data import model
+
+        # Disable SUPERUSERS_FULL_ACCESS to test the bug scenario
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_SUPERUSERS_FULL_ACCESS": False,
+            }
+        )
+
+        # Create a test organization owned by randomuser (not devtable or globalreadonlysuperuser)
+        # This ensures devtable has no admin permissions on it
+        randomuser = model.user.get_user("randomuser")
+        try:
+            model.organization.get_organization("testorglogs")
+        except model.InvalidOrganizationException:
+            model.organization.create_organization(
+                "testorglogs", "testorglogs@test.com", randomuser
+            )
+
+        yield
+        # Note: We don't clean up the organization because it has foreign key constraints
+        # and the test database is reset between test runs anyway
+
+        # Reset to default test config
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_SUPERUSERS_FULL_ACCESS": True,
+            }
+        )
+
+    def test_global_readonly_superuser_can_access_org_logs_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization logs even when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This is the main test for bug PROJQUAY-9790. Global readonly superusers should
+        always be able to access logs for auditing purposes, regardless of the
+        SUPERUSERS_FULL_ACCESS setting.
+        """
+        from endpoints.api.logs import ExportOrgLogs
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization logs
+            resp = conduct_api_call(cl, OrgLogs, "GET", {"orgname": "testorglogs"}, None, 200)
+            assert resp.status_code == 200
+            assert "logs" in resp.json
+
+            # Should also be able to access aggregated logs
+            resp = conduct_api_call(
+                cl, OrgAggregateLogs, "GET", {"orgname": "testorglogs"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "aggregated" in resp.json
+
+            # Should be able to export logs (read operation even though it uses POST)
+            export_data = {"callback_email": "test@example.com"}
+            try:
+                resp = conduct_api_call(
+                    cl, ExportOrgLogs, "POST", {"orgname": "testorglogs"}, export_data, 200
+                )
+                assert resp.status_code == 200
+            except AssertionError:
+                # May fail with 400 for validation reasons, but should NOT be a permission error
+                resp = conduct_api_call(
+                    cl, ExportOrgLogs, "POST", {"orgname": "testorglogs"}, export_data, 400
+                )
+                # Verify it's not a permission error
+                error_type = resp.json.get("error_type", "")
+                assert (
+                    error_type != "insufficient_scope"
+                ), f"Global readonly superuser should be able to export org logs, got: {resp.json}"
+
+    def test_regular_superuser_cannot_access_org_logs_without_full_access(self, app):
+        """
+        Test that regular superusers CANNOT access organization logs when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This verifies that the fix for PROJQUAY-9790 doesn't accidentally grant
+        regular superusers access to organization logs when they shouldn't have it.
+        """
+        from endpoints.api.logs import ExportOrgLogs
+
+        # Use devtable (regular superuser, not global readonly)
+        with client_with_identity("devtable", app) as cl:
+            # Should NOT be able to access organization logs without FULL_ACCESS
+            resp = conduct_api_call(cl, OrgLogs, "GET", {"orgname": "testorglogs"}, None, 403)
+            assert resp.status_code == 403
+
+            # Should NOT be able to access aggregated logs
+            resp = conduct_api_call(
+                cl, OrgAggregateLogs, "GET", {"orgname": "testorglogs"}, None, 403
+            )
+            assert resp.status_code == 403
+
+            # Should NOT be able to export logs
+            export_data = {"callback_email": "test@example.com"}
+            resp = conduct_api_call(
+                cl, ExportOrgLogs, "POST", {"orgname": "testorglogs"}, export_data, 403
+            )
+            assert resp.status_code == 403
+
+    def test_global_readonly_superuser_can_access_team_members_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access team members when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This tests the fix for team member access. Global readonly superusers should
+        be able to view team members for auditing purposes.
+        """
+        from endpoints.api.team import TeamMemberList
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access team members
+            resp = conduct_api_call(
+                cl, TeamMemberList, "GET", {"orgname": "buynlarge", "teamname": "owners"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "members" in resp.json
+
+    def test_global_readonly_superuser_can_access_team_permissions_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access team permissions when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This tests the fix for the reported issue. Global readonly superusers should
+        be able to view team permissions for auditing purposes.
+        """
+        from endpoints.api.team import TeamPermissions
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access team permissions
+            resp = conduct_api_call(
+                cl,
+                TeamPermissions,
+                "GET",
+                {"orgname": "buynlarge", "teamname": "owners"},
+                None,
+                200,
+            )
+            assert resp.status_code == 200
+            assert "permissions" in resp.json
+
+    def test_regular_superuser_cannot_access_team_data_without_full_access(self, app):
+        """
+        Test that regular superusers CANNOT access team members/permissions when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This verifies that the fix doesn't accidentally grant regular superusers
+        access to team data when they shouldn't have it.
+        """
+        from endpoints.api.team import TeamMemberList, TeamPermissions
+
+        # Use devtable (regular superuser, not global readonly)
+        with client_with_identity("devtable", app) as cl:
+            # Should NOT be able to access team members without FULL_ACCESS
+            # May get 403 (permission denied) or 404 (team not found), both indicate access is blocked
+            try:
+                resp = conduct_api_call(
+                    cl,
+                    TeamMemberList,
+                    "GET",
+                    {"orgname": "testorglogs", "teamname": "owners"},
+                    None,
+                    403,
+                )
+                assert resp.status_code == 403
+            except AssertionError:
+                resp = conduct_api_call(
+                    cl,
+                    TeamMemberList,
+                    "GET",
+                    {"orgname": "testorglogs", "teamname": "owners"},
+                    None,
+                    404,
+                )
+                assert resp.status_code == 404
+
+            # The important thing is it's not 200 (success)
+            assert resp.status_code != 200
+
+    def test_global_readonly_superuser_can_access_org_members_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization members when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.organization import (
+            OrganizationMember,
+            OrganizationMemberList,
+        )
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization member list
+            resp = conduct_api_call(
+                cl, OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "members" in resp.json
+
+            # Should be able to access individual member details
+            resp = conduct_api_call(
+                cl,
+                OrganizationMember,
+                "GET",
+                {"orgname": "buynlarge", "membername": "devtable"},
+                None,
+                200,
+            )
+            assert resp.status_code == 200
+            assert "name" in resp.json
+
+    def test_global_readonly_superuser_can_access_org_applications_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization OAuth applications
+        when FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.organization import OrganizationApplications
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization applications
+            resp = conduct_api_call(
+                cl, OrganizationApplications, "GET", {"orgname": "buynlarge"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "applications" in resp.json
+
+    def test_global_readonly_superuser_can_access_org_prototypes_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization prototype
+        permissions when FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.prototype import PermissionPrototypeList
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization prototype permissions
+            resp = conduct_api_call(
+                cl,
+                PermissionPrototypeList,
+                "GET",
+                {"orgname": "buynlarge"},
+                None,
+                200,
+            )
+            assert resp.status_code == 200
+            assert "prototypes" in resp.json
