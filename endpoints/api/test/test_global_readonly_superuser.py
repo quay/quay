@@ -6,6 +6,7 @@ permissions - read access to all content but blocked from write operations.
 """
 
 import pytest
+from mock import patch
 
 from data import model
 from endpoints.api import allow_if_global_readonly_superuser, allow_if_superuser
@@ -17,6 +18,7 @@ from endpoints.api.superuser import SuperUserAggregateLogs, SuperUserLogs
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.user import User
 from endpoints.test.shared import client_with_identity
+from features import FeatureNameValue
 from test.fixtures import *
 
 
@@ -99,9 +101,12 @@ class TestRepositoryWriteOperationsBlocking:
         mock_permission = MagicMock()
         mock_permission.can.return_value = False
 
-        with patch(
-            "endpoints.api.repository.CreateRepositoryPermission", return_value=mock_permission
-        ), patch("endpoints.api.repository.allow_if_superuser", return_value=False):
+        with (
+            patch(
+                "endpoints.api.repository.CreateRepositoryPermission", return_value=mock_permission
+            ),
+            patch("endpoints.api.repository.allow_if_superuser", return_value=False),
+        ):
             with client_with_identity("reader", app) as cl:
                 repo_data = {
                     "repository": "test-blocked-repo",
@@ -171,10 +176,10 @@ class TestAuditLogAccess:
         """Test that superuser audit logs are accessible to global readonly superusers."""
         from unittest.mock import patch
 
-        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
-            "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro, patch(
-            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
+        with (
+            patch("endpoints.api.SuperUserPermission") as mock_super,
+            patch("endpoints.api.GlobalReadOnlySuperUserPermission") as mock_global_ro,
+            patch("endpoints.api.superuser.allow_if_any_superuser", return_value=True),
         ):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
@@ -188,10 +193,10 @@ class TestAuditLogAccess:
         """Test that superuser aggregated logs are accessible to global readonly superusers."""
         from unittest.mock import patch
 
-        with patch("endpoints.api.SuperUserPermission") as mock_super, patch(
-            "endpoints.api.GlobalReadOnlySuperUserPermission"
-        ) as mock_global_ro, patch(
-            "endpoints.api.superuser.allow_if_any_superuser", return_value=True
+        with (
+            patch("endpoints.api.SuperUserPermission") as mock_super,
+            patch("endpoints.api.GlobalReadOnlySuperUserPermission") as mock_global_ro,
+            patch("endpoints.api.superuser.allow_if_any_superuser", return_value=True),
         ):
             mock_super.return_value.can.return_value = False
             mock_global_ro.return_value.can.return_value = True
@@ -732,3 +737,70 @@ class TestQuotaAccessWithoutFullAccess:
             # Note: orgwithnosuperuser may already have a quota from initdb.py (line 1421)
             # so we only clean up if we created it in this test
             pass
+
+
+class TestUserAPIGlobalReadOnlySuperuserField:
+    """Test that the User API correctly includes global_readonly_super_user field."""
+
+    def test_global_readonly_superuser_sees_field_in_user_api(self, app):
+        """
+        Test that global readonly superusers see the global_readonly_super_user field
+        in their user API response.
+        """
+        with patch(
+            "endpoints.api.user.features.SUPER_USERS", FeatureNameValue("SUPER_USERS", True)
+        ):
+            with patch(
+                "endpoints.api.user.GlobalReadOnlySuperUserPermission"
+            ) as mock_global_ro_perm:
+                # Mock the permission to return True for global readonly superuser
+                mock_global_ro_perm.return_value.can.return_value = True
+
+                with client_with_identity("globalreadonlysuperuser", app) as cl:
+                    resp = conduct_api_call(cl, User, "GET", None, None, 200)
+                    assert resp.status_code == 200
+
+                    # Global readonly superuser should see the field
+                    assert "global_readonly_super_user" in resp.json
+                    # And it should be True for themselves
+                    assert resp.json["global_readonly_super_user"] is True
+
+    def test_regular_superuser_does_not_see_global_readonly_field(self, app):
+        """
+        Test that regular superusers do not see the global_readonly_super_user field
+        in their user API response (since they're not global readonly superusers).
+        """
+        with patch(
+            "endpoints.api.user.features.SUPER_USERS", FeatureNameValue("SUPER_USERS", True)
+        ):
+            with patch("endpoints.api.user.SuperUserPermission") as mock_super_perm:
+                # Mock the permission to return True for regular superuser
+                mock_super_perm.return_value.can.return_value = True
+
+                with client_with_identity("devtable", app) as cl:
+                    resp = conduct_api_call(cl, User, "GET", None, None, 200)
+                    assert resp.status_code == 200
+
+                    # Regular superuser should see super_user field
+                    assert "super_user" in resp.json
+                    assert resp.json["super_user"] is True
+
+                    # But should NOT see global_readonly_super_user field since they're not one
+                    assert "global_readonly_super_user" not in resp.json
+
+    def test_regular_user_does_not_see_global_readonly_field(self, app):
+        """
+        Test that regular users do not see the global_readonly_super_user field
+        in their user API response.
+        """
+        with patch(
+            "endpoints.api.user.features.SUPER_USERS", FeatureNameValue("SUPER_USERS", True)
+        ):
+            with client_with_identity("freshuser", app) as cl:
+                resp = conduct_api_call(cl, User, "GET", None, None, 200)
+                assert resp.status_code == 200
+
+                # Regular user should NOT see global_readonly_super_user field
+                assert "global_readonly_super_user" not in resp.json
+                # Regular user should also NOT see super_user field
+                assert "super_user" not in resp.json
