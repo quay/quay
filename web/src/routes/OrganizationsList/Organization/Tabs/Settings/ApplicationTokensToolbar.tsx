@@ -14,8 +14,10 @@ export default function ApplicationTokensToolbar(
           id="application-tokens-search"
           searchState={props.search}
           onChange={props.setSearch}
+          allowSpaces={true}
         />
         <ToolbarPagination
+          id="application-tokens-pagination"
           itemsList={props.filteredTokens}
           perPage={props.perPage}
           page={props.page}

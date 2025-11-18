@@ -766,7 +766,9 @@ describe('Account Settings Page', () => {
       });
 
     // Test pagination - go to page 2
-    cy.get('[data-action="next"]').click();
+    cy.get('[id="application-tokens-pagination"]')
+      .find('button[aria-label="Go to next page"]')
+      .click();
 
     // Check that tokens 11-15 are visible
     cy.get('table')
@@ -774,11 +776,13 @@ describe('Account Settings Page', () => {
       .within(() => {
         cy.contains('Token 11').should('exist');
         cy.contains('Token 15').should('exist');
-        cy.contains('Token 1').should('not.exist');
+        cy.contains('Token 6').should('not.exist');
       });
 
     // Go back to page 1
-    cy.get('[data-action="previous"]').click();
+    cy.get('[id="application-tokens-pagination"]')
+      .find('button[aria-label="Go to previous page"]')
+      .click();
 
     // Test filtering
     cy.get('[id="application-tokens-search"]').type('Token 5');
