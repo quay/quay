@@ -223,6 +223,19 @@ def user_view(user, previous_username=None):
             }
         )
 
+    # Add global_readonly_super_user field for read-only superusers
+    # This is separate from super_user to distinguish the two types
+    from auth.permissions import GlobalReadOnlySuperUserPermission
+
+    if GlobalReadOnlySuperUserPermission().can():
+        user_response.update(
+            {
+                "global_readonly_super_user": user
+                and user == get_authenticated_user()
+                and GlobalReadOnlySuperUserPermission().can()
+            }
+        )
+
     return user_response
 
 
