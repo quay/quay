@@ -25,6 +25,7 @@ import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {extractTextFromReactNode} from 'src/libs/utils';
 import {useState, useMemo, useEffect, useRef} from 'react';
+import {AxiosError} from 'axios';
 
 interface LogEntry {
   datetime: string;
@@ -87,6 +88,7 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     data: logs,
     isLoading: loadingLogs,
     isError: errorLogs,
+    error: fetchError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -197,7 +199,19 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (loadingLogs) return <Spinner />;
-  if (errorLogs) return <RequestError message="Unable to retrieve logs" />;
+
+  if (errorLogs) {
+    // Check if this is a 501 NOT IMPLEMENTED error from Splunk
+    if (
+      fetchError instanceof AxiosError &&
+      fetchError.response?.status === 501
+    ) {
+      const errorMessage =
+        fetchError.response?.data?.message || 'Unable to retrieve logs';
+      return <RequestError message={errorMessage} title="" />;
+    }
+    return <RequestError message="Unable to retrieve logs" />;
+  }
 
   return (
     <>
