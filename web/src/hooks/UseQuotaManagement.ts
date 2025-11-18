@@ -11,26 +11,30 @@ import {
   ICreateQuotaParams,
   IUpdateQuotaParams,
   ICreateQuotaLimitParams,
+  QuotaViewMode,
 } from 'src/resources/QuotaResource';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 import {AxiosError} from 'axios';
 
-// Hook to fetch organization quota (or user quota if isUser=true)
-export function useFetchOrganizationQuota(orgName: string, isUser?: boolean) {
+// Hook to fetch quota based on view context
+export function useFetchOrganizationQuota(
+  orgName: string,
+  viewMode?: QuotaViewMode,
+) {
   const {
     data: organizationQuotas,
     isLoading: isLoadingQuotas,
     isSuccess: isSuccessLoadingQuotas,
     isError: errorLoadingQuotas,
   } = useQuery<IQuota[]>(
-    ['organizationquota', orgName, isUser],
-    ({signal}) => fetchOrganizationQuota(orgName, signal, isUser),
+    ['organizationquota', orgName, viewMode],
+    ({signal}) => fetchOrganizationQuota(orgName, signal, viewMode),
     {
-      enabled: !!orgName,
+      enabled: !!orgName || viewMode === 'self',
     },
   );
 
-  // Return the first quota (organization can only have one quota currently)
+  // Return the first quota (organization/user can only have one quota currently)
   const organizationQuota = organizationQuotas?.[0] || null;
 
   return {
@@ -42,22 +46,22 @@ export function useFetchOrganizationQuota(orgName: string, isUser?: boolean) {
   };
 }
 
-// Hook to create organization quota (or user quota if isUser=true)
+// Hook to create quota (only superusers can create quotas)
 export function useCreateOrganizationQuota(
   orgName: string,
   {onSuccess, onError},
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ) {
   const queryClient = useQueryClient();
 
   const {mutate: createQuotaMutation, isLoading: isCreatingQuota} = useMutation(
     async (params: ICreateQuotaParams) => {
-      return createOrganizationQuota(orgName, params, isUser);
+      return createOrganizationQuota(orgName, params, viewMode);
     },
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['organizationquota', orgName, isUser]);
+        queryClient.invalidateQueries(['organizationquota', orgName, viewMode]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('quota creation error', err));
@@ -71,11 +75,11 @@ export function useCreateOrganizationQuota(
   };
 }
 
-// Hook to update organization quota (or user quota if isUser=true)
+// Hook to update quota (only superusers can update quotas)
 export function useUpdateOrganizationQuota(
   orgName: string,
   {onSuccess, onError},
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ) {
   const queryClient = useQueryClient();
 
@@ -87,12 +91,12 @@ export function useUpdateOrganizationQuota(
       quotaId: string;
       params: IUpdateQuotaParams;
     }) => {
-      return updateOrganizationQuota(orgName, quotaId, params, isUser);
+      return updateOrganizationQuota(orgName, quotaId, params, viewMode);
     },
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['organizationquota', orgName, isUser]);
+        queryClient.invalidateQueries(['organizationquota', orgName, viewMode]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('quota update error', err));
@@ -106,22 +110,22 @@ export function useUpdateOrganizationQuota(
   };
 }
 
-// Hook to delete organization quota (or user quota if isUser=true)
+// Hook to delete quota (only superusers can delete quotas)
 export function useDeleteOrganizationQuota(
   orgName: string,
   {onSuccess, onError},
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ) {
   const queryClient = useQueryClient();
 
   const {mutate: deleteQuotaMutation, isLoading: isDeletingQuota} = useMutation(
     async (quotaId: string) => {
-      return deleteOrganizationQuota(orgName, quotaId, isUser);
+      return deleteOrganizationQuota(orgName, quotaId, viewMode);
     },
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['organizationquota', orgName, isUser]);
+        queryClient.invalidateQueries(['organizationquota', orgName, viewMode]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('quota deletion error', err));
@@ -139,7 +143,7 @@ export function useDeleteOrganizationQuota(
 export function useCreateQuotaLimit(
   orgName: string,
   {onSuccess, onError},
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ) {
   const queryClient = useQueryClient();
 
@@ -156,7 +160,7 @@ export function useCreateQuotaLimit(
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['organizationquota', orgName, isUser]);
+        queryClient.invalidateQueries(['organizationquota', orgName, viewMode]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('quota limit creation error', err));
@@ -174,7 +178,7 @@ export function useCreateQuotaLimit(
 export function useUpdateQuotaLimit(
   orgName: string,
   {onSuccess, onError},
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ) {
   const queryClient = useQueryClient();
 
@@ -193,7 +197,7 @@ export function useUpdateQuotaLimit(
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['organizationquota', orgName, isUser]);
+        queryClient.invalidateQueries(['organizationquota', orgName, viewMode]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('quota limit update error', err));
@@ -211,7 +215,7 @@ export function useUpdateQuotaLimit(
 export function useDeleteQuotaLimit(
   orgName: string,
   {onSuccess, onError},
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ) {
   const queryClient = useQueryClient();
 
@@ -222,7 +226,7 @@ export function useDeleteQuotaLimit(
     {
       onSuccess: () => {
         onSuccess();
-        queryClient.invalidateQueries(['organizationquota', orgName, isUser]);
+        queryClient.invalidateQueries(['organizationquota', orgName, viewMode]);
       },
       onError: (err: AxiosError) => {
         onError(addDisplayError('quota limit deletion error', err));

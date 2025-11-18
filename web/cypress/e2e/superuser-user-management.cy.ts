@@ -87,8 +87,6 @@ describe('Superuser User Management', () => {
       cy.get('[data-testid="create-user-button"]').click();
       cy.get('[data-testid="username-input"]').type('newuser');
       cy.get('[data-testid="email-input"]').type('newuser@example.com');
-      cy.get('[data-testid="password-input"]').type('password123');
-      cy.get('[data-testid="confirm-password-input"]').type('password123');
       cy.get('[data-testid="create-user-submit"]').click();
 
       cy.wait('@createUser');
