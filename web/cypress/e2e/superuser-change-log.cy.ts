@@ -277,9 +277,11 @@ describe('Superuser Change Log', () => {
 
     it('should show password modal when fresh login required for Database auth', () => {
       // Mock initial successful load
-      cy.intercept('GET', '/api/v1/superuser/changelog/', mockChangeLogResponse).as(
-        'getChangeLog',
-      );
+      cy.intercept(
+        'GET',
+        '/api/v1/superuser/changelog/',
+        mockChangeLogResponse,
+      ).as('getChangeLog');
 
       cy.visit('/change-log');
       cy.wait('@getConfig');
