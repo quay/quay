@@ -18,6 +18,7 @@ import {
 } from 'src/resources/UserResource';
 import {BulkOperationError} from 'src/resources/ErrorHandling';
 import {useCurrentUser} from './UseCurrentUser';
+import {useSuperuserPermissions} from './UseSuperuserPermissions';
 
 export type OrganizationDetail = {
   name: string;
@@ -30,6 +31,7 @@ export type OrganizationDetail = {
 export function useOrganizations() {
   // Get user and config data
   const {isSuperUser, user, loading, error} = useCurrentUser();
+  const {canModify} = useSuperuserPermissions();
 
   // Keep state of current search in this hook
   const [page, setPage] = useState(1);
@@ -162,7 +164,8 @@ export function useOrganizations() {
 
   const deleteOrganizationMutator = useMutation(
     async (names: string[]) => {
-      return bulkDeleteOrganizations(names, isSuperUser);
+      // Use canModify instead of isSuperUser to prevent read-only superusers from deleting
+      return bulkDeleteOrganizations(names, canModify);
     },
     {
       onSuccess: () => {
