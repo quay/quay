@@ -30,6 +30,7 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useSuperuserPermissions} from 'src/hooks/UseSuperuserPermissions';
 import {
   useRegistrySize,
   useQueueRegistrySizeCalculation,
@@ -131,6 +132,7 @@ export default function OrganizationsList() {
 
   // Get current user for superuser check
   const {user, isSuperUser} = useCurrentUser();
+  const {isReadOnlySuperUser} = useSuperuserPermissions();
   const quayConfig = useQuayConfig();
 
   // Determine authentication type for external auth alert
@@ -219,7 +221,28 @@ export default function OrganizationsList() {
     initialPerPage: 20,
   });
 
-  const isOrgSelectable = (org) => org.name !== ''; // Arbitrary logic for this example
+  const isOrgSelectable = (org) => {
+    if (org.name === '') return false;
+
+    // For read-only superusers, only allow selection of orgs/users they own
+    if (isReadOnlySuperUser) {
+      // Check if it's their own user account
+      if (org.isUser && org.name === user?.username) {
+        return true;
+      }
+      // Check if it's an organization they're a member of
+      if (
+        !org.isUser &&
+        user?.organizations?.some((o) => o.name === org.name)
+      ) {
+        return true;
+      }
+      // Otherwise, it's from the superuser endpoint - cannot select/delete
+      return false;
+    }
+
+    return true; // Regular users and full superusers can select anything
+  };
 
   // Logic for handling row-wise checkbox selection in <Td>
   const isOrganizationSelected = (ns: OrganizationsTableItem) =>
@@ -513,21 +536,26 @@ export default function OrganizationsList() {
               {isSuperUser &&
                 quayConfig?.features?.QUOTA_MANAGEMENT &&
                 quayConfig?.features?.EDIT_QUOTA && <Th>{ColumnNames.size}</Th>}
-              {isSuperUser && <Th>{ColumnNames.options}</Th>}
+              {isSuperUser && !isReadOnlySuperUser && (
+                <Th>{ColumnNames.options}</Th>
+              )}
             </Tr>
           </Thead>
           <Tbody>
             {paginatedOrganizationsList?.map((org, rowIndex) => (
               <Tr key={org.name}>
-                <Td
-                  select={{
-                    rowIndex,
-                    onSelect: (_event, isSelecting) =>
-                      onSelectOrganization(org, rowIndex, isSelecting),
-                    isSelected: isOrganizationSelected(org),
-                    isDisabled: !isOrgSelectable(org),
-                  }}
-                />
+                {isOrgSelectable(org) ? (
+                  <Td
+                    select={{
+                      rowIndex,
+                      onSelect: (_event, isSelecting) =>
+                        onSelectOrganization(org, rowIndex, isSelecting),
+                      isSelected: isOrganizationSelected(org),
+                    }}
+                  />
+                ) : (
+                  <Td />
+                )}
                 <OrgTableData
                   name={org.name}
                   isUser={org.isUser}

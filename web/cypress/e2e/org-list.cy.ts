@@ -544,4 +544,74 @@ describe('Org List Page', () => {
     // Create User button should NOT exist (superuser-only action)
     cy.get('[data-testid="create-user-button"]').should('not.exist');
   });
+
+  it('Read-only superuser cannot select orgs/users they do not own', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock read-only superuser with their own org (testorg)
+    cy.fixture('superuser.json').then((user) => {
+      user.global_readonly_super_user = true;
+      user.super_user = false;
+      cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+    });
+
+    // Mock superuser API calls with additional orgs
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getReadOnlySuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Verify Settings column header does NOT exist for read-only superusers
+    cy.contains('th', 'Settings').should('not.exist');
+
+    // Find the row for 'testorg' (org the readonly user owns)
+    cy.contains('a', 'testorg')
+      .parents('tr')
+      .within(() => {
+        // Should have a checkbox (can delete own org)
+        cy.get('input[type="checkbox"]').should('exist');
+      });
+
+    // Find the row for 'projectquay' (org from superuser endpoint, not owned)
+    cy.contains('a', 'projectquay')
+      .parents('tr')
+      .within(() => {
+        // Should NOT have a checkbox (cannot delete other's org)
+        cy.get('input[type="checkbox"]').should('not.exist');
+      });
+
+    // Find the row for current user 'superuser'
+    cy.contains('a', 'superuser')
+      .parents('tr')
+      .within(() => {
+        // Should have a checkbox (can delete own user account)
+        cy.get('input[type="checkbox"]').should('exist');
+      });
+
+    // Find the row for other user 'user1'
+    cy.contains('a', 'user1')
+      .parents('tr')
+      .within(() => {
+        // Should NOT have a checkbox (cannot delete other users)
+        cy.get('input[type="checkbox"]').should('not.exist');
+      });
+  });
 });
