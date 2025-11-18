@@ -48,7 +48,7 @@ export enum NavigationPath {
   changeLog = '/change-log',
   usageLogs = '/usage-logs',
   messages = '/messages',
-  buildLogs = '/superuser/build-logs',
+  buildLogs = '/build-logs',
 
   // Organization detail
   organizationDetail = '/organization/:organizationName',

@@ -532,23 +532,30 @@ export default function ManageMembersList(props: ManageMembersListProps) {
                   <TextListItem component={TextListItemVariants.dd}>
                     {directoryGroupName}
                   </TextListItem>
-                  <TextListItem component={TextListItemVariants.dt}>
-                    Last Updated
-                  </TextListItem>
-                  <TextListItem component={TextListItemVariants.dd}>
-                    {!teamSyncLastUpdated || teamSyncLastUpdated === 'Never' ? (
-                      <Flex spaceItems={{default: 'spaceItemsSm'}}>
-                        <FlexItem>
-                          <Spinner size="md" />
-                        </FlexItem>
-                        <FlexItem>Waiting for first sync...</FlexItem>
-                      </Flex>
-                    ) : (
-                      <Tooltip content={formatDate(teamSyncLastUpdated)}>
-                        <span>{formatRelativeTime(teamSyncLastUpdated)}</span>
-                      </Tooltip>
-                    )}
-                  </TextListItem>
+                  {teamSyncInfo?.service !== 'oidc' && (
+                    <>
+                      <TextListItem component={TextListItemVariants.dt}>
+                        Last Updated
+                      </TextListItem>
+                      <TextListItem component={TextListItemVariants.dd}>
+                        {!teamSyncLastUpdated ||
+                        teamSyncLastUpdated === 'Never' ? (
+                          <Flex spaceItems={{default: 'spaceItemsSm'}}>
+                            <FlexItem>
+                              <Spinner size="md" />
+                            </FlexItem>
+                            <FlexItem>Waiting for first sync...</FlexItem>
+                          </Flex>
+                        ) : (
+                          <Tooltip content={formatDate(teamSyncLastUpdated)}>
+                            <span>
+                              {formatRelativeTime(teamSyncLastUpdated)}
+                            </span>
+                          </Tooltip>
+                        )}
+                      </TextListItem>
+                    </>
+                  )}
                 </TextList>
               </TextContent>
             </AccordionContent>
