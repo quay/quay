@@ -138,13 +138,13 @@ export async function createUser(
 
 export interface CreateSuperuserUserRequest {
   username: string;
-  password: string;
   email: string;
 }
 
 export interface CreateSuperuserUserResponse {
   username: string;
   email: string;
+  password: string;
   enabled: boolean;
 }
 

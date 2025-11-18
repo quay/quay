@@ -7,6 +7,7 @@ import {
   TextInput,
   Button,
   Alert,
+  ClipboardCopy,
 } from '@patternfly/react-core';
 import {useForm} from 'react-hook-form';
 import {useCreateUser} from 'src/hooks/UseCreateUser';
@@ -22,39 +23,33 @@ interface CreateUserModalProps {
 interface CreateUserFormData {
   username: string;
   email: string;
-  password: string;
-  confirmPassword: string;
 }
 
 export function CreateUserModal(props: CreateUserModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(
+    null,
+  );
   const {addAlert} = useUI();
 
   const {
     register,
     handleSubmit,
     formState: {errors, isValid},
-    watch,
     reset,
   } = useForm<CreateUserFormData>({
     mode: 'onChange',
     defaultValues: {
       username: '',
       email: '',
-      password: '',
-      confirmPassword: '',
     },
   });
 
   const {createUser, isLoading} = useCreateUser({
-    onSuccess: (username: string) => {
-      addAlert({
-        variant: AlertVariant.Success,
-        title: `Successfully created user ${username}`,
-      });
-      reset();
+    onSuccess: (username: string, password: string) => {
+      setGeneratedPassword(password);
       setErrorMessage(null);
-      props.onSuccess();
+      // Don't close modal or call onSuccess yet - show password first
     },
     onError: (err: any) => {
       const errorMsg =
@@ -75,55 +70,100 @@ export function CreateUserModal(props: CreateUserModalProps) {
     },
   });
 
-  const password = watch('password');
-
   const onSubmit = (data: CreateUserFormData) => {
     setErrorMessage(null);
     createUser({
       username: data.username,
       email: data.email,
-      password: data.password,
     });
-    // Close modal; request is queued if fresh login required
-    handleClose();
   };
 
   const handleClose = () => {
+    // Check if user was created successfully BEFORE clearing state
+    if (generatedPassword) {
+      props.onSuccess();
+      addAlert({
+        variant: AlertVariant.Success,
+        title: `Successfully created user`,
+      });
+    }
+
+    // Then clear state and close
     reset();
     setErrorMessage(null);
+    setGeneratedPassword(null);
     props.onClose();
   };
 
   return (
-    <>
-      <Modal
-        variant={ModalVariant.medium}
-        title="Create New User"
-        isOpen={props.isOpen}
-        onClose={handleClose}
-        data-testid="create-user-modal"
-        actions={[
-          <Button
-            key="submit"
-            type="submit"
-            variant="primary"
-            isDisabled={!isValid || isLoading}
-            isLoading={isLoading}
-            onClick={handleSubmit(onSubmit)}
-            data-testid="create-user-submit"
+    <Modal
+      variant={ModalVariant.medium}
+      title="Create New User"
+      isOpen={props.isOpen}
+      onClose={handleClose}
+      data-testid="create-user-modal"
+      actions={
+        generatedPassword
+          ? [
+              <Button
+                key="close"
+                variant="primary"
+                onClick={handleClose}
+                data-testid="create-user-done"
+              >
+                Done
+              </Button>,
+            ]
+          : [
+              <Button
+                key="submit"
+                type="submit"
+                variant="primary"
+                isDisabled={!isValid || isLoading}
+                isLoading={isLoading}
+                onClick={handleSubmit(onSubmit)}
+                data-testid="create-user-submit"
+              >
+                Create User
+              </Button>,
+              <Button
+                key="cancel"
+                variant="link"
+                onClick={handleClose}
+                data-testid="create-user-cancel"
+              >
+                Cancel
+              </Button>,
+            ]
+      }
+    >
+      {generatedPassword ? (
+        <>
+          <Alert
+            variant="success"
+            title="User created successfully"
+            isInline
+            style={{marginBottom: '1em'}}
           >
-            Create User
-          </Button>,
-          <Button
-            key="cancel"
-            variant="link"
-            onClick={handleClose}
-            data-testid="create-user-cancel"
+            The user has been created with a temporary password. Please provide
+            this password to the user securely.
+          </Alert>
+          <FormGroup
+            label="Temporary Password"
+            fieldId="generated-password"
+            helperText="This password will only be displayed once. Make sure to copy it before closing."
           >
-            Cancel
-          </Button>,
-        ]}
-      >
+            <ClipboardCopy
+              isReadOnly
+              hoverTip="Copy"
+              clickTip="Copied"
+              data-testid="generated-password-copy"
+            >
+              {generatedPassword}
+            </ClipboardCopy>
+          </FormGroup>
+        </>
+      ) : (
         <Form onSubmit={handleSubmit(onSubmit)}>
           {errorMessage && (
             <Alert
@@ -190,52 +230,8 @@ export function CreateUserModal(props: CreateUserModalProps) {
               })}
             />
           </FormGroup>
-
-          <FormGroup
-            label="Password"
-            isRequired
-            fieldId="password"
-            helperTextInvalid={errors.password?.message}
-            validated={errors.password ? 'error' : 'default'}
-          >
-            <TextInput
-              id="password"
-              type="password"
-              data-testid="password-input"
-              validated={errors.password ? 'error' : 'default'}
-              isDisabled={isLoading}
-              {...register('password', {
-                required: 'Password is required',
-                minLength: {
-                  value: 8,
-                  message: 'Password must be at least 8 characters',
-                },
-              })}
-            />
-          </FormGroup>
-
-          <FormGroup
-            label="Confirm Password"
-            isRequired
-            fieldId="confirmPassword"
-            helperTextInvalid={errors.confirmPassword?.message}
-            validated={errors.confirmPassword ? 'error' : 'default'}
-          >
-            <TextInput
-              id="confirmPassword"
-              type="password"
-              data-testid="confirm-password-input"
-              validated={errors.confirmPassword ? 'error' : 'default'}
-              isDisabled={isLoading}
-              {...register('confirmPassword', {
-                required: 'Please confirm your password',
-                validate: (value) =>
-                  value === password || 'Passwords do not match',
-              })}
-            />
-          </FormGroup>
         </Form>
-      </Modal>
-    </>
+      )}
+    </Modal>
   );
 }
