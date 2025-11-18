@@ -478,49 +478,6 @@ describe('Org List Page', () => {
       );
     });
 
-    // Mock organization details
-    cy.intercept('GET', '/api/v1/organization/testorg', {
-      statusCode: 200,
-      body: {
-        name: 'testorg',
-        email: 'testorg@example.com',
-        teams: {owners: 'admin'},
-      },
-    });
-
-    cy.intercept('GET', '/api/v1/organization/projectquay', {
-      statusCode: 200,
-      body: {
-        name: 'projectquay',
-        email: 'projectquay@example.com',
-        teams: {},
-      },
-    });
-
-    cy.intercept('GET', '/api/v1/organization/coreos', {
-      statusCode: 200,
-      body: {
-        name: 'coreos',
-        email: 'coreos@example.com',
-        teams: {owners: 'admin'},
-      },
-    });
-
-    cy.intercept('GET', '/api/v1/organization/*/robots', {
-      statusCode: 200,
-      body: {robots: []},
-    });
-
-    cy.intercept('GET', '/api/v1/organization/*/members', {
-      statusCode: 200,
-      body: {members: []},
-    });
-
-    cy.intercept('GET', '/api/v1/repository?namespace=*', {
-      statusCode: 200,
-      body: {repositories: []},
-    });
-
     cy.visit('/organization');
     cy.wait('@getConfig');
     cy.wait('@getReadOnlySuperUser');
@@ -567,21 +524,6 @@ describe('Org List Page', () => {
       cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
         'getSuperuserUsers',
       );
-    });
-
-    cy.intercept('GET', '/api/v1/organization/*/robots', {
-      statusCode: 200,
-      body: {robots: []},
-    });
-
-    cy.intercept('GET', '/api/v1/organization/*/members', {
-      statusCode: 200,
-      body: {members: []},
-    });
-
-    cy.intercept('GET', '/api/v1/repository?namespace=*', {
-      statusCode: 200,
-      body: {repositories: []},
     });
 
     cy.visit('/organization');
