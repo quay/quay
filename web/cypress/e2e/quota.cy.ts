@@ -889,4 +889,129 @@ describe('Quota Management', () => {
       cy.wait('@deleteQuotaLimit');
     });
   });
+
+  describe('User Quota Display (PROJQUAY-9785)', () => {
+    it('should display quota configured by superuser in user Settings > Quota tab', () => {
+      // Mock regular user
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('user.json').then((user) => {
+        user.super_user = false;
+        user.username = 'user2';
+        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+      });
+
+      // Mock user quota endpoint (new endpoint for self-view)
+      cy.intercept('GET', '/api/v1/user/quota', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 104857600, // 100 MiB
+            limits: [
+              {
+                id: 1,
+                type: 'Warning',
+                limit_percent: 70,
+              },
+              {
+                id: 2,
+                type: 'Reject',
+                limit_percent: 100,
+              },
+            ],
+          },
+        ],
+      }).as('getUserQuota');
+
+      cy.visit('/organization/user2?tab=Settings');
+      cy.wait('@getConfig');
+      cy.wait('@getUser');
+
+      cy.get('[data-testid="Quota"]').should('be.visible').click();
+      cy.wait('@getUserQuota');
+
+      // Should see read-only quota (not "No Quota Configured")
+      cy.get('[data-testid="readonly-quota-alert"]').should('be.visible');
+
+      // Should display quota value
+      cy.get('[data-testid="quota-value-input"]').should('have.value', '100');
+      cy.get('[data-testid="quota-unit-select-toggle"]').should(
+        'contain.text',
+        'MiB',
+      );
+
+      // Should show quota limits
+      cy.get('[data-testid="quota-limit-1"]').should('exist');
+      cy.get('[data-testid="quota-limit-2"]').should('exist');
+
+      // Fields should be disabled (read-only for users)
+      cy.get('[data-testid="quota-value-input"]').should('be.disabled');
+      cy.get('[data-testid="quota-unit-select-toggle"]').should('be.disabled');
+    });
+
+    it('should display quota in user Repositories tab header', () => {
+      // Mock regular user
+      cy.fixture('config.json').then((config) => {
+        config.features.QUOTA_MANAGEMENT = true;
+        config.features.EDIT_QUOTA = true;
+        config.features.SUPER_USERS = true;
+        cy.intercept('GET', '/config', config).as('getConfig');
+      });
+
+      cy.fixture('user.json').then((user) => {
+        user.super_user = false;
+        user.username = 'user2';
+        cy.intercept('GET', '/api/v1/user/', user).as('getUser');
+      });
+
+      // Mock user quota endpoint
+      cy.intercept('GET', '/api/v1/user/quota', {
+        statusCode: 200,
+        body: [
+          {
+            id: 1,
+            limit_bytes: 104857600, // 100 MiB
+            limits: [],
+          },
+        ],
+      }).as('getUserQuota');
+
+      // Mock repositories with quota data
+      cy.intercept('GET', '/api/v1/repository*', {
+        statusCode: 200,
+        body: {
+          repositories: [
+            {
+              namespace: 'user2',
+              name: 'repo1',
+              is_public: false,
+              last_modified: 1700000000,
+              quota_report: {
+                quota_bytes: 2796202, // 2.67 MiB
+                configured_quota: 104857600, // 100 MiB
+              },
+            },
+          ],
+        },
+      }).as('getRepositories');
+
+      cy.visit('/organization/user2');
+      cy.wait('@getConfig');
+      cy.wait('@getUser');
+      cy.wait('@getUserQuota');
+      cy.wait('@getRepositories');
+
+      // Should display quota in header: "Total Quota Consumed: 2.67 MiB (3%) of 100 MiB"
+      cy.contains('Total Quota Consumed:').should('be.visible');
+      cy.contains('2.67 MiB').should('be.visible');
+      cy.contains('(3%)').should('be.visible');
+      cy.contains('of 100 MiB').should('be.visible');
+    });
+  });
 });

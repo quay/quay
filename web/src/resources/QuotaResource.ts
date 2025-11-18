@@ -27,17 +27,27 @@ export interface ICreateQuotaLimitParams {
   threshold_percent: number;
 }
 
-// Fetch organization quota (or user quota if isUser=true)
+export type QuotaViewMode = 'self' | 'organization' | 'superuser';
+
+// Fetch quota based on view context
 export async function fetchOrganizationQuota(
   orgName: string,
   signal?: AbortSignal,
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ): Promise<IQuota[]> {
   try {
-    // Build endpoint based on whether it's a user or organization
-    const endpoint = isUser
-      ? `/api/v1/superuser/users/${orgName}/quota`
-      : `/api/v1/organization/${orgName}/quota`;
+    // Build endpoint based on view context
+    let endpoint: string;
+    if (viewMode === 'self') {
+      // User viewing their own quota (no username in path - auth determines user)
+      endpoint = '/api/v1/user/quota';
+    } else if (viewMode === 'superuser') {
+      // Superuser managing a user's quota
+      endpoint = `/api/v1/superuser/users/${orgName}/quota`;
+    } else {
+      // Organization quota (default)
+      endpoint = `/api/v1/organization/${orgName}/quota`;
+    }
 
     const response = await axios.get(endpoint, {
       signal,
@@ -63,40 +73,43 @@ export async function fetchOrganizationQuota(
   }
 }
 
-// Create organization quota (or user quota if isUser=true)
+// Create quota (only superusers can create quotas)
 export async function createOrganizationQuota(
   orgName: string,
   params: ICreateQuotaParams,
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ): Promise<void> {
-  const endpoint = isUser
-    ? `/api/v1/superuser/users/${orgName}/quota`
-    : `/api/v1/organization/${orgName}/quota`;
+  const endpoint =
+    viewMode === 'superuser'
+      ? `/api/v1/superuser/users/${orgName}/quota`
+      : `/api/v1/organization/${orgName}/quota`;
   await axios.post(endpoint, params);
 }
 
-// Update organization quota (or user quota if isUser=true)
+// Update quota (only superusers can update quotas)
 export async function updateOrganizationQuota(
   orgName: string,
   quotaId: string,
   params: IUpdateQuotaParams,
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ): Promise<void> {
-  const endpoint = isUser
-    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
-    : `/api/v1/organization/${orgName}/quota/${quotaId}`;
+  const endpoint =
+    viewMode === 'superuser'
+      ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
+      : `/api/v1/organization/${orgName}/quota/${quotaId}`;
   await axios.put(endpoint, params);
 }
 
-// Delete organization quota (or user quota if isUser=true)
+// Delete quota (only superusers can delete quotas)
 export async function deleteOrganizationQuota(
   orgName: string,
   quotaId: string,
-  isUser?: boolean,
+  viewMode?: QuotaViewMode,
 ): Promise<void> {
-  const endpoint = isUser
-    ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
-    : `/api/v1/organization/${orgName}/quota/${quotaId}`;
+  const endpoint =
+    viewMode === 'superuser'
+      ? `/api/v1/superuser/users/${orgName}/quota/${quotaId}`
+      : `/api/v1/organization/${orgName}/quota/${quotaId}`;
   await axios.delete(endpoint);
 }
 

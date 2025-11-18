@@ -107,7 +107,12 @@ export default function Organization() {
   const repositoriesSubNav = [
     {
       name: 'Repositories',
-      component: <RepositoriesList organizationName={organizationName} />,
+      component: (
+        <RepositoriesList
+          organizationName={organizationName}
+          isUserOrganization={isUserOrganization}
+        />
+      ),
       visible: true,
     },
     {

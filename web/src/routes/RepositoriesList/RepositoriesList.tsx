@@ -69,8 +69,9 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
 
-  // Fetch quota information for the organization
-  const {organizationQuota} = useFetchOrganizationQuota(currentOrg);
+  // Fetch quota information - use 'self' viewMode for user namespaces, 'organization' for orgs
+  const viewMode = props.isUserOrganization ? 'self' : 'organization';
+  const {organizationQuota} = useFetchOrganizationQuota(currentOrg, viewMode);
   const {repos, loading, error, search, setSearch, searchFilter} =
     useRepositories(currentOrg);
 
@@ -491,4 +492,5 @@ export interface RepoListTableItem {
 
 interface RepositoriesListProps {
   organizationName: string;
+  isUserOrganization?: boolean;
 }
