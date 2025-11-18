@@ -314,11 +314,17 @@ class TestOrganizationLogsAccessWithoutFullAccess:
         # This ensures devtable has no admin permissions on it
         randomuser = model.user.get_user("randomuser")
         try:
-            model.organization.get_organization("testorglogs")
+            org = model.organization.get_organization("testorglogs")
         except model.InvalidOrganizationException:
-            model.organization.create_organization(
+            org = model.organization.create_organization(
                 "testorglogs", "testorglogs@test.com", randomuser
             )
+
+        # Create an owners team for testing team access (if it doesn't exist)
+        try:
+            model.team.get_organization_team("testorglogs", "owners")
+        except model.InvalidTeamException:
+            model.team.create_team("owners", org, "admin", "Team for owners")
 
         yield
         # Note: We don't clean up the organization because it has foreign key constraints
@@ -460,30 +466,16 @@ class TestOrganizationLogsAccessWithoutFullAccess:
         # Use devtable (regular superuser, not global readonly)
         with client_with_identity("devtable", app) as cl:
             # Should NOT be able to access team members without FULL_ACCESS
-            # May get 403 (permission denied) or 404 (team not found), both indicate access is blocked
-            try:
-                resp = conduct_api_call(
-                    cl,
-                    TeamMemberList,
-                    "GET",
-                    {"orgname": "testorglogs", "teamname": "owners"},
-                    None,
-                    403,
-                )
-                assert resp.status_code == 403
-            except AssertionError:
-                resp = conduct_api_call(
-                    cl,
-                    TeamMemberList,
-                    "GET",
-                    {"orgname": "testorglogs", "teamname": "owners"},
-                    None,
-                    404,
-                )
-                assert resp.status_code == 404
-
-            # The important thing is it's not 200 (success)
-            assert resp.status_code != 200
+            # Using testorglogs org where devtable has no membership
+            resp = conduct_api_call(
+                cl,
+                TeamMemberList,
+                "GET",
+                {"orgname": "testorglogs", "teamname": "owners"},
+                None,
+                403,
+            )
+            assert resp.status_code == 403
 
     def test_global_readonly_superuser_can_access_org_members_without_full_access(self, app):
         """
