@@ -113,8 +113,8 @@ describe('OIDC Team Sync', () => {
     cy.contains('Team Synchronization Config').should('exist');
     cy.contains('Bound to group').should('exist');
     cy.contains('testteam_teamsync_group').should('exist');
-    cy.contains('Last Updated').should('exist');
-    cy.contains('Never').should('exist');
+    // Last Updated should not be visible for OIDC team sync
+    cy.contains('Last Updated').should('not.exist');
     cy.contains('tr', 'teamsyncorg+robotacct');
   });
 
