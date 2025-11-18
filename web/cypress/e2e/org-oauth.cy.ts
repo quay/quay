@@ -1127,24 +1127,14 @@ describe('Organization OAuth Applications', () => {
         }),
       ).as('getConfig');
 
-      // Mock user2's organization data
-      cy.intercept('GET', '/api/v1/organization/user2', {
-        body: {
-          name: 'user2',
-          email: 'user2@example.com',
-          is_admin: false,
-          is_member: true,
-        },
-      }).as('getUser2Org');
-
-      // Mock user2's already authorized applications (empty for this test)
+      // Mock user1's already authorized applications (empty for this test)
       cy.intercept('GET', '/api/v1/user/authorizations', {
         body: {
           authorizations: [],
         },
       }).as('getAuthorizedApps');
 
-      // Mock user2's ASSIGNED applications (apps waiting for authorization)
+      // Mock user1's ASSIGNED applications (apps waiting for authorization)
       cy.intercept('GET', '/api/v1/user/assignedauthorization', {
         body: {
           authorizations: [
@@ -1209,10 +1199,9 @@ describe('Organization OAuth Applications', () => {
         },
       }).as('getAuthorizationData');
 
-      // Visit user2's external logins page
-      cy.visit('/organization/user2?tab=Externallogins');
+      // Visit user1's external logins page (user1 is already logged in from beforeEach)
+      cy.visit('/organization/user1?tab=Externallogins');
       cy.wait('@getConfig');
-      cy.wait('@getUser2Org');
       cy.wait('@getAuthorizedApps');
       cy.wait('@getAssignedApps');
 
@@ -1272,7 +1261,7 @@ describe('Organization OAuth Applications', () => {
       );
 
       // Verify user is still in the External Logins tab (no redirect)
-      cy.url().should('include', '/organization/user2');
+      cy.url().should('include', '/organization/user1');
       cy.url().should('include', 'tab=Externallogins');
     });
   });
