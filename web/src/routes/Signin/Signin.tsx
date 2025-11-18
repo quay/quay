@@ -215,7 +215,31 @@ export function Signin() {
       } else if (authErr && err.response.data.invalidCredentials) {
         setErr(err.response.data.message || 'Invalid login credentials');
       } else if (authErr) {
-        setErr('CSRF token expired - please refresh');
+        // CSRF token expired - refresh it and retry automatically
+        try {
+          await getCsrfToken();
+          // Retry the login with the fresh CSRF token
+          const retryResponse = await loginUser(username, password);
+          if (retryResponse.success === true) {
+            setAuthState((old) => ({
+              ...old,
+              isSignedIn: true,
+              username: username,
+            }));
+            GlobalAuthState.isLoggedIn = true;
+
+            const redirectUrl = searchParams.get('redirect_url');
+            if (redirectUrl) {
+              window.location.href = redirectUrl;
+            } else {
+              navigate('/organization');
+            }
+          } else {
+            setErr('Invalid login credentials');
+          }
+        } catch (retryErr) {
+          setErr(addDisplayError('Unable to sign in', retryErr));
+        }
       } else {
         setErr(addDisplayError('Unable to sign in', err));
       }
