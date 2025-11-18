@@ -115,3 +115,323 @@ def test_process_queue_item_with_username(proxy_cache_blob_worker, initialized_d
     with patch.object(proxy_cache_blob_worker, "_should_download_blob", return_value=False):
         # This should work normally
         proxy_cache_blob_worker.process_queue_item(job_details)
+
+
+def test_all_blobs_downloaded_for_manifest_all_complete(proxy_cache_blob_worker, initialized_db):
+    """Test detection when all blobs for a manifest have been downloaded"""
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        Manifest,
+        ManifestBlob,
+        MediaType,
+        Repository,
+    )
+
+    # Get a test repository
+    repo = Repository.get(Repository.name == "simple")
+
+    # Get or create media type for manifest
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+
+    # Create a test manifest
+    manifest = Manifest.create(
+        digest="sha256:test_manifest_complete",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+
+    # Create test blobs with placements
+    location = ImageStorageLocation.get()
+
+    blob1 = ImageStorage.create(
+        content_checksum="sha256:blob1_complete",
+        image_size=1024,
+        uncompressed_size=2048,
+    )
+    ImageStoragePlacement.create(storage=blob1, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob1, repository=repo)
+
+    blob2 = ImageStorage.create(
+        content_checksum="sha256:blob2_complete",
+        image_size=2048,
+        uncompressed_size=4096,
+    )
+    ImageStoragePlacement.create(storage=blob2, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob2, repository=repo)
+
+    # All blobs have placements, should return True
+    result = proxy_cache_blob_worker._all_blobs_downloaded_for_manifest(manifest.id, repo.id)
+    assert result is True
+
+
+def test_all_blobs_downloaded_for_manifest_incomplete(proxy_cache_blob_worker, initialized_db):
+    """Test detection when some blobs for a manifest are still pending download"""
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        Manifest,
+        ManifestBlob,
+        MediaType,
+        Repository,
+    )
+
+    # Get a test repository
+    repo = Repository.get(Repository.name == "simple")
+
+    # Get or create media type for manifest
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+
+    # Create a test manifest
+    manifest = Manifest.create(
+        digest="sha256:test_manifest_incomplete",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+
+    # Create test blobs - one with placement, one without (placeholder)
+    location = ImageStorageLocation.get()
+
+    blob1 = ImageStorage.create(
+        content_checksum="sha256:blob1_incomplete",
+        image_size=1024,
+        uncompressed_size=2048,
+    )
+    ImageStoragePlacement.create(storage=blob1, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob1, repository=repo)
+
+    # This blob is a placeholder - no ImageStoragePlacement
+    blob2 = ImageStorage.create(
+        content_checksum="sha256:blob2_incomplete",
+        image_size=2048,
+        uncompressed_size=4096,
+    )
+    ManifestBlob.create(manifest=manifest, blob=blob2, repository=repo)
+
+    # One blob missing placement, should return False
+    result = proxy_cache_blob_worker._all_blobs_downloaded_for_manifest(manifest.id, repo.id)
+    assert result is False
+
+
+def test_reset_security_status_when_blobs_complete(proxy_cache_blob_worker, initialized_db):
+    """Test that security status is reset when all blobs for a manifest are downloaded"""
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        IndexerVersion,
+        IndexStatus,
+        Manifest,
+        ManifestBlob,
+        ManifestSecurityStatus,
+        MediaType,
+        Repository,
+    )
+
+    # Get a test repository
+    repo = Repository.get(Repository.name == "simple")
+
+    # Get or create media type for manifest
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+
+    # Create a test manifest
+    manifest = Manifest.create(
+        digest="sha256:test_manifest_reset",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+
+    # Mark manifest as MANIFEST_UNSUPPORTED
+    ManifestSecurityStatus.create(
+        manifest=manifest,
+        repository=repo,
+        index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+        indexer_hash="none",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    # Create test blobs with placements
+    location = ImageStorageLocation.get()
+
+    blob1 = ImageStorage.create(
+        content_checksum="sha256:blob1_reset",
+        image_size=1024,
+        uncompressed_size=2048,
+    )
+    ImageStoragePlacement.create(storage=blob1, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob1, repository=repo)
+
+    blob2 = ImageStorage.create(
+        content_checksum="sha256:blob2_reset",
+        image_size=2048,
+        uncompressed_size=4096,
+    )
+    ImageStoragePlacement.create(storage=blob2, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob2, repository=repo)
+
+    # Verify security status exists before reset
+    status = ManifestSecurityStatus.get(
+        ManifestSecurityStatus.manifest == manifest,
+        ManifestSecurityStatus.repository == repo,
+    )
+    assert status.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+
+    # Trigger the reset by calling with one of the blob digests
+    proxy_cache_blob_worker._reset_security_status_if_complete("sha256:blob2_reset", repo.id)
+
+    # Verify security status was deleted
+    status_count = (
+        ManifestSecurityStatus.select()
+        .where(
+            ManifestSecurityStatus.manifest == manifest,
+            ManifestSecurityStatus.repository == repo,
+        )
+        .count()
+    )
+    assert status_count == 0
+
+
+def test_reset_security_status_partial_download_no_reset(proxy_cache_blob_worker, initialized_db):
+    """Test that security status is NOT reset when only some blobs are downloaded"""
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        IndexerVersion,
+        IndexStatus,
+        Manifest,
+        ManifestBlob,
+        ManifestSecurityStatus,
+        MediaType,
+        Repository,
+    )
+
+    # Get a test repository
+    repo = Repository.get(Repository.name == "simple")
+
+    # Get or create media type for manifest
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+
+    # Create a test manifest
+    manifest = Manifest.create(
+        digest="sha256:test_manifest_partial",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+
+    # Mark manifest as MANIFEST_UNSUPPORTED
+    ManifestSecurityStatus.create(
+        manifest=manifest,
+        repository=repo,
+        index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+        indexer_hash="none",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    # Create test blobs - only one with placement
+    location = ImageStorageLocation.get()
+
+    blob1 = ImageStorage.create(
+        content_checksum="sha256:blob1_partial",
+        image_size=1024,
+        uncompressed_size=2048,
+    )
+    ImageStoragePlacement.create(storage=blob1, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob1, repository=repo)
+
+    # This blob is a placeholder - no ImageStoragePlacement
+    blob2 = ImageStorage.create(
+        content_checksum="sha256:blob2_partial",
+        image_size=2048,
+        uncompressed_size=4096,
+    )
+    ManifestBlob.create(manifest=manifest, blob=blob2, repository=repo)
+
+    # Trigger the reset attempt
+    proxy_cache_blob_worker._reset_security_status_if_complete("sha256:blob1_partial", repo.id)
+
+    # Verify security status still exists (not deleted)
+    status = ManifestSecurityStatus.get(
+        ManifestSecurityStatus.manifest == manifest,
+        ManifestSecurityStatus.repository == repo,
+    )
+    assert status.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+
+
+def test_reset_security_status_only_affects_unsupported(proxy_cache_blob_worker, initialized_db):
+    """Test that reset only deletes MANIFEST_UNSUPPORTED status, not other statuses"""
+    from data.database import (
+        ImageStorage,
+        ImageStorageLocation,
+        ImageStoragePlacement,
+        IndexerVersion,
+        IndexStatus,
+        Manifest,
+        ManifestBlob,
+        ManifestSecurityStatus,
+        MediaType,
+        Repository,
+    )
+
+    # Get a test repository
+    repo = Repository.get(Repository.name == "simple")
+
+    # Get or create media type for manifest
+    media_type, _ = MediaType.get_or_create(
+        name="application/vnd.docker.distribution.manifest.v2+json"
+    )
+
+    # Create a test manifest
+    manifest = Manifest.create(
+        digest="sha256:test_manifest_failed",
+        manifest_bytes='{"test": "manifest"}',
+        media_type=media_type,
+        repository=repo,
+    )
+
+    # Mark manifest as FAILED (not UNSUPPORTED)
+    ManifestSecurityStatus.create(
+        manifest=manifest,
+        repository=repo,
+        index_status=IndexStatus.FAILED,
+        indexer_hash="test_hash",
+        indexer_version=IndexerVersion.V4,
+        metadata_json={},
+    )
+
+    # Create test blobs with placements
+    location = ImageStorageLocation.get()
+
+    blob1 = ImageStorage.create(
+        content_checksum="sha256:blob1_failed",
+        image_size=1024,
+        uncompressed_size=2048,
+    )
+    ImageStoragePlacement.create(storage=blob1, location=location.id)
+    ManifestBlob.create(manifest=manifest, blob=blob1, repository=repo)
+
+    # Trigger the reset attempt
+    proxy_cache_blob_worker._reset_security_status_if_complete("sha256:blob1_failed", repo.id)
+
+    # Verify security status still exists (should not be deleted because it's FAILED not UNSUPPORTED)
+    status = ManifestSecurityStatus.get(
+        ManifestSecurityStatus.manifest == manifest,
+        ManifestSecurityStatus.repository == repo,
+    )
+    assert status.index_status == IndexStatus.FAILED
