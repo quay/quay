@@ -195,4 +195,69 @@ describe('Create Account Page', () => {
     cy.contains('Already have an account?');
     cy.contains('Sign in');
   });
+
+  it('Shows email verification message when awaiting_verification is true', () => {
+    const testUser = {
+      username: `testuser${Date.now()}`,
+      email: `test${Date.now()}@example.com`,
+      password: 'validpassword123',
+    };
+
+    // Setup account creation with awaiting_verification response
+    cy.intercept('POST', '/api/v1/user/', {
+      statusCode: 200,
+      body: {awaiting_verification: true},
+    }).as('createUserAwaitingVerification');
+
+    // Setup signin intercept to verify it's NOT called
+    cy.intercept('POST', '/api/v1/signin', (req) => {
+      throw new Error('Signin should not be called when awaiting verification');
+    }).as('signinShouldNotBeCalled');
+
+    cy.visit('/createaccount');
+
+    // Fill form with valid data
+    cy.get('#username').type(testUser.username);
+    cy.get('#email').type(testUser.email);
+    cy.get('#password').type(testUser.password);
+    cy.get('#confirm-password').type(testUser.password);
+
+    // Submit form
+    cy.get('button[type=submit]').click();
+
+    // Wait for create user API call
+    cy.wait('@createUserAwaitingVerification').then((interception) => {
+      expect(interception.request.body).to.deep.equal({
+        username: testUser.username,
+        email: testUser.email,
+        password: testUser.password,
+      });
+    });
+
+    // Should show verification message
+    cy.get('[data-testid="awaiting-verification-alert"]').should('be.visible');
+    cy.contains(
+      'Thank you for registering! We have sent you an activation email.',
+    );
+    cy.contains('verify your email address').should('be.visible');
+
+    // Form should be hidden (check visibility, not existence since display:none keeps elements in DOM)
+    cy.get('#username').should('not.be.visible');
+    cy.get('#email').should('not.be.visible');
+    cy.get('#password').should('not.be.visible');
+
+    // Should not redirect to organization page
+    cy.url().should('include', '/createaccount');
+    cy.url().should('not.include', '/organization');
+
+    // Should show sign in link (it's outside the form when awaiting verification)
+    // Find the visible link that's not inside a hidden form
+    cy.get('a[href="/signin"]').should('be.visible');
+    // The text should also be visible (rendered outside the hidden form)
+    cy.contains('body', 'Already have an account?').should('be.visible');
+
+    // Verify no auto-login was attempted - signin API should not be called
+    // If signin was attempted, it would have thrown an error from the intercept
+    cy.wait(500); // Small wait to ensure no signin API call is made
+  });
 });
