@@ -46,6 +46,7 @@ type QuotaManagementProps = {
   organizationName: string;
   isUser: boolean;
   view?: 'organization-view' | 'super-user'; // Add view parameter
+  onOperationSubmit?: () => void; // Callback to close modal when operation is submitted
 };
 
 const QUOTA_UNITS = ['KiB', 'MiB', 'GiB', 'TiB'];
@@ -62,9 +63,22 @@ const defaultFormValues: QuotaFormData = {
 };
 
 export const QuotaManagement = (props: QuotaManagementProps) => {
+  // Determine the correct viewMode based on context
+  // - If view is 'organization-view' and isUser is true: user viewing their own quota
+  // - If view is 'organization-view' and isUser is false: organization viewing org quota
+  // - If view is 'super-user': superuser managing quota (use 'superuser' for users, 'organization' for orgs)
+  const viewMode =
+    props.view === 'organization-view'
+      ? props.isUser
+        ? 'self'
+        : 'organization'
+      : props.isUser
+      ? 'superuser'
+      : 'organization';
+
   const {organizationQuota, isLoadingQuotas} = useFetchOrganizationQuota(
     props.organizationName,
-    props.isUser,
+    viewMode,
   );
 
   // Determine read-only mode based on view context and permissions
@@ -168,7 +182,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {updateQuotaMutation} = useUpdateOrganizationQuota(
@@ -187,7 +201,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {deleteQuotaMutation} = useDeleteOrganizationQuota(
@@ -209,7 +223,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {createLimitMutation} = useCreateQuotaLimit(
@@ -230,7 +244,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {updateLimitMutation} = useUpdateQuotaLimit(
@@ -250,7 +264,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   const {deleteLimitMutation} = useDeleteQuotaLimit(
@@ -269,7 +283,7 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         });
       },
     },
-    props.isUser,
+    viewMode,
   );
 
   // Validation functions
@@ -329,6 +343,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     } else {
       createQuotaMutation({limit_bytes});
     }
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleDeleteQuota = () => {
@@ -339,6 +357,9 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
     if (organizationQuota) {
       deleteQuotaMutation(organizationQuota.id);
       setIsDeleteModalOpen(false);
+      // Close parent modal immediately after submitting the request
+      // If fresh login is required, the request will be queued and retried after verification
+      props.onOperationSubmit?.();
     }
   };
 
@@ -397,6 +418,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         threshold_percent: Number(newLimit.limit_percent),
       },
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleUpdateLimit = (limitId: string, updatedLimit: IQuotaLimit) => {
@@ -419,6 +444,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
         threshold_percent: updatedLimit.limit_percent,
       },
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleDeleteLimit = (limitId: string) => {
@@ -428,6 +457,10 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
       quotaId: organizationQuota.id,
       limitId: limitId,
     });
+
+    // Close modal immediately after submitting the request
+    // If fresh login is required, the request will be queued and retried after verification
+    props.onOperationSubmit?.();
   };
 
   const handleLimitChange = (

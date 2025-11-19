@@ -1,4 +1,5 @@
 import {
+  Button,
   Flex,
   FlexItem,
   PanelFooter,
@@ -16,14 +17,14 @@ import {
   Thead,
   Tr,
 } from '@patternfly/react-table';
-import {useInfiniteQuery, useQueryClient} from '@tanstack/react-query';
+import {useInfiniteQuery} from '@tanstack/react-query';
 import RequestError from 'src/components/errors/RequestError';
 import {getLogs} from 'src/hooks/UseUsageLogs';
 import {useLogDescriptions} from 'src/hooks/UseLogDescriptions';
 import {usePaginatedSortableTable} from '../../hooks/usePaginatedSortableTable';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {extractTextFromReactNode} from 'src/libs/utils';
-import {useState, useMemo} from 'react';
+import {useState, useMemo, useEffect, useRef} from 'react';
 
 interface LogEntry {
   datetime: string;
@@ -56,10 +57,6 @@ interface UsageLogsTableProps {
   repo: string;
   type: string;
   isSuperuser?: boolean;
-  freshLogin?: {
-    showFreshLoginModal: (retryOperation: () => Promise<void>) => void;
-    isFreshLoginRequired: (error: unknown) => boolean;
-  };
 }
 
 interface LogEntry {
@@ -86,12 +83,13 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     setFilterValue(value);
   };
 
-  const queryClient = useQueryClient();
-
   const {
     data: logs,
     isLoading: loadingLogs,
     isError: errorLogs,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: [
       'usageLogs',
@@ -105,48 +103,18 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
       },
     ],
     queryFn: async ({pageParam = undefined}) => {
-      try {
-        const logResp = await getLogs(
-          props.org,
-          props.repo,
-          props.starttime,
-          props.endtime,
-          pageParam,
-          props.isSuperuser,
-        );
-        return logResp;
-      } catch (error: unknown) {
-        // Check if this is a fresh login required error and we have fresh login integration
-        if (
-          props.isSuperuser &&
-          props.freshLogin?.isFreshLoginRequired(error)
-        ) {
-          // Show fresh login modal with retry operation
-          props.freshLogin.showFreshLoginModal(async () => {
-            // Retry the query after successful verification
-            queryClient.invalidateQueries({
-              queryKey: [
-                'usageLogs',
-                props.starttime,
-                props.endtime,
-                {
-                  org: props.org,
-                  repo: props.repo ? props.repo : 'isOrg',
-                  type: 'table',
-                  isSuperuser: props.isSuperuser,
-                },
-              ],
-            });
-          });
-
-          // Don't throw the error - the modal will handle retry
-          throw new Error('Fresh login required');
-        }
-        throw error;
-      }
+      const logResp = await getLogs(
+        props.org,
+        props.repo,
+        props.starttime,
+        props.endtime,
+        pageParam,
+        props.isSuperuser,
+      );
+      return logResp;
     },
+    initialPageParam: undefined,
     getNextPageParam: (lastPage: LogPage) => lastPage.nextPage,
-    retry: props.isSuperuser && props.freshLogin ? false : true, // Don't auto-retry when fresh login is available
   });
 
   // Flatten all log pages into a single array for our table hook
@@ -207,6 +175,26 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
     initialPerPage: 20,
     initialSort: {columnIndex: 0, direction: 'desc'}, // Default sort: newest first
   });
+
+  // Add intersection observer ref for infinite scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {threshold: 0.1},
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (loadingLogs) return <Spinner />;
   if (errorLogs) return <RequestError message="Unable to retrieve logs" />;
@@ -282,6 +270,25 @@ export function UsageLogsTable(props: UsageLogsTableProps) {
             </Table>
           </div>
         </FlexItem>
+
+        {/* Intersection observer trigger for infinite scroll */}
+        <div ref={loadMoreRef} style={{height: '20px'}} />
+
+        {/* Load More button and loading indicator */}
+        {hasNextPage && (
+          <FlexItem>
+            <div style={{textAlign: 'center', margin: '20px'}}>
+              {isFetchingNextPage ? (
+                <Spinner size="lg" />
+              ) : (
+                <Button variant="secondary" onClick={() => fetchNextPage()}>
+                  Load More Logs
+                </Button>
+              )}
+            </div>
+          </FlexItem>
+        )}
+
         <PanelFooter>
           <ToolbarPagination {...paginationProps} bottom={true} />
         </PanelFooter>

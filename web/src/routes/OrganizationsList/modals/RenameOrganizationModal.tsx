@@ -10,6 +10,7 @@ import {
 } from '@patternfly/react-core';
 import {useRenameOrganization} from 'src/hooks/UseOrganizationActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface RenameOrganizationModalProps {
   isOpen: boolean;
@@ -34,7 +35,13 @@ export default function RenameOrganizationModal(
     },
     onError: (err) => {
       const errorMessage =
-        err?.response?.data?.error_message || 'Failed to rename organization';
+        err?.response?.data?.error_message ||
+        err?.message ||
+        'Failed to rename organization';
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
+        return;
+      }
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
@@ -57,6 +64,8 @@ export default function RenameOrganizationModal(
     }
     setError(null);
     renameOrganization(props.organizationName, newName.trim());
+    // Close modal; request is queued if fresh login required
+    handleClose();
   };
 
   return (

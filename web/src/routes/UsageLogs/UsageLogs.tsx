@@ -143,15 +143,14 @@ export default function UsageLogs(props: UsageLogsProps) {
           </Split>
         </FlexItem>
         <FlexItem>
-          {chartHidden ? null : (
-            <UsageLogsGraph
-              starttime={logStartDate}
-              endtime={logEndDate}
-              repo={props.repository}
-              org={props.organization}
-              type={props.type}
-            />
-          )}
+          <UsageLogsGraph
+            starttime={logStartDate}
+            endtime={logEndDate}
+            repo={props.repository}
+            org={props.organization}
+            type={props.type}
+            isHidden={chartHidden}
+          />
         </FlexItem>
         <FlexItem>
           <UsageLogsTable
@@ -274,6 +273,12 @@ export const logKinds = {
   oauth_token_assigned: 'OAuth token assigned',
   enable_team_sync: 'Enable Team Sync',
   disable_team_sync: 'Disable Team Sync',
+  add_repo_webhook: 'Add webhook',
+  delete_repo_webhook: 'Delete webhook',
+  delete_tag_failed: 'Delete Tag failed',
+  login_failure: 'Login failure',
+  pull_repo_failed: 'Pull repository failed',
+  push_repo_failed: 'Push to repository failed',
   export_logs_success: 'Export logs queued for delivery',
   export_logs_failure: 'Export logs failure',
 };
