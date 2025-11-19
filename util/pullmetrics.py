@@ -74,6 +74,61 @@ class PullMetrics(object):
     may not be immediately available during application startup.
     """
 
+    # Lua script for atomic tag pull tracking
+    _TRACK_TAG_PULL_SCRIPT = """
+    local key = KEYS[1]
+    local repo_id = ARGV[1]
+    local tag_name = ARGV[2]
+    local manifest_digest = ARGV[3]
+    local timestamp = ARGV[4]
+    local pull_method = ARGV[5]
+
+    local exists = redis.call('EXISTS', key)
+
+    if exists == 0 then
+        redis.call('HSET', key,
+            'repository_id', repo_id,
+            'tag_name', tag_name,
+            'manifest_digest', manifest_digest,
+            'pull_count', 1,
+            'last_pull_timestamp', timestamp,
+            'pull_method', pull_method
+        )
+    else
+        redis.call('HINCRBY', key, 'pull_count', 1)
+        redis.call('HSET', key, 'last_pull_timestamp', timestamp)
+    end
+
+    return redis.call('HGET', key, 'pull_count')
+    """
+
+    # Lua script for atomic manifest pull tracking
+    _TRACK_MANIFEST_PULL_SCRIPT = """
+    local key = KEYS[1]
+    local repo_id = ARGV[1]
+    local manifest_digest = ARGV[2]
+    local timestamp = ARGV[3]
+    local pull_method = ARGV[4]
+
+    local exists = redis.call('EXISTS', key)
+
+    if exists == 0 then
+        redis.call('HSET', key,
+            'repository_id', repo_id,
+            'manifest_digest', manifest_digest,
+            'pull_count', 1,
+            'last_pull_timestamp', timestamp,
+            'pull_method', pull_method,
+            'tag_name', ''
+        )
+    else
+        redis.call('HINCRBY', key, 'pull_count', 1)
+        redis.call('HSET', key, 'last_pull_timestamp', timestamp)
+    end
+
+    return redis.call('HGET', key, 'pull_count')
+    """
+
     def __init__(self, redis_config, max_workers=None):
         redis_config = (redis_config.copy() if redis_config else {}) or {}
 
@@ -123,10 +178,15 @@ class PullMetrics(object):
         last_exception = None
         for attempt in range(1, self._retry_attempts + 1):
             try:
+                redis_config_with_decode = self._redis_config.copy()
+                # Ensure decode_responses=True for proper Lua script return value handling
+                if "decode_responses" not in redis_config_with_decode:
+                    redis_config_with_decode["decode_responses"] = True
+
                 self._redis = redis.StrictRedis(
                     socket_connect_timeout=self._connection_timeout,
                     socket_timeout=self._socket_timeout,
-                    **self._redis_config,
+                    **redis_config_with_decode,
                 )
                 self._redis.ping()
                 if attempt > 1:
@@ -196,27 +256,43 @@ class PullMetrics(object):
         timestamp = int(datetime.now(timezone.utc).timestamp())
 
         tag_key = self._tag_pull_key(repository_id, tag_name, manifest_digest)
-        manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
 
-        # Use Redis pipeline for atomic operations
-        pipe = redis_client.pipeline()
+        try:
+            pull_count = redis_client.eval(
+                self._TRACK_TAG_PULL_SCRIPT,
+                1,  # number of keys
+                tag_key,  # KEYS[1]
+                str(repository_id),  # ARGV[1]
+                tag_name,  # ARGV[2]
+                manifest_digest,  # ARGV[3]
+                str(timestamp),  # ARGV[4]
+                "tag",  # ARGV[5]
+            )
 
-        # Tag pull event - the worker will create both tag and manifest stats from this
-        pipe.hset(tag_key, "repository_id", repository_id)
-        pipe.hset(tag_key, "tag_name", tag_name)
-        pipe.hset(tag_key, "manifest_digest", manifest_digest)
-        pipe.hincrby(tag_key, "pull_count", 1)
-        pipe.hset(tag_key, "last_pull_timestamp", timestamp)
-        pipe.hset(tag_key, "pull_method", "tag")
-
-        pipe.execute()
-
-        logger.debug(
-            "Tracked tag pull: repo_id=%s tag=%s digest=%s",
-            repository_id,
-            tag_name,
-            manifest_digest,
-        )
+            logger.debug(
+                "Tracked tag pull: repo_id=%s tag=%s digest=%s count=%s",
+                repository_id,
+                tag_name,
+                manifest_digest,
+                pull_count,
+            )
+        except redis.RedisError as e:
+            logger.error(
+                "Failed to track tag pull (Redis error): repo_id=%s tag=%s error=%s",
+                repository_id,
+                tag_name,
+                str(e),
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                "Failed to track tag pull: repo_id=%s tag=%s error=%s",
+                repository_id,
+                tag_name,
+                str(e),
+                exc_info=True,
+            )
+            raise
 
     def track_tag_pull(self, repository, tag_name, manifest_digest):
         """
@@ -235,7 +311,7 @@ class PullMetrics(object):
                     str(e),
                 )
             except redis.RedisError as e:
-                logger.warning("Could not track tag pull metrics (Redis error): %s", str(e))
+                logger.error("Could not track tag pull metrics (Redis error): %s", str(e))
             except Exception as e:
                 logger.exception("Unexpected error tracking tag pull metrics: %s", e)
 
@@ -247,7 +323,7 @@ class PullMetrics(object):
 
     def track_manifest_pull_sync(self, repository_ref, manifest_digest):
         """
-        Synchronously track a manifest pull event (direct digest pull).
+        Synchronously track a manifest (digest) pull event.
 
         Args:
             repository_ref: Repository object or repository_id
@@ -263,15 +339,40 @@ class PullMetrics(object):
 
         manifest_key = self._manifest_pull_key(repository_id, manifest_digest)
 
-        pipe = redis_client.pipeline()
-        pipe.hset(manifest_key, "repository_id", repository_id)
-        pipe.hset(manifest_key, "manifest_digest", manifest_digest)
-        pipe.hincrby(manifest_key, "pull_count", 1)
-        pipe.hset(manifest_key, "last_pull_timestamp", timestamp)
-        pipe.hset(manifest_key, "pull_method", "digest")
-        pipe.execute()
+        try:
+            pull_count = redis_client.eval(
+                self._TRACK_MANIFEST_PULL_SCRIPT,
+                1,  # number of keys
+                manifest_key,  # KEYS[1]
+                str(repository_id),  # ARGV[1]
+                manifest_digest,  # ARGV[2]
+                str(timestamp),  # ARGV[3]
+                "digest",  # ARGV[4]
+            )
 
-        logger.debug("Tracked manifest pull: repo_id=%s digest=%s", repository_id, manifest_digest)
+            logger.debug(
+                "Tracked manifest pull: repo_id=%s digest=%s count=%s",
+                repository_id,
+                manifest_digest,
+                pull_count,
+            )
+        except redis.RedisError as e:
+            logger.error(
+                "Failed to track manifest pull (Redis error): repo_id=%s digest=%s error=%s",
+                repository_id,
+                manifest_digest,
+                str(e),
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                "Failed to track manifest pull: repo_id=%s digest=%s error=%s",
+                repository_id,
+                manifest_digest,
+                str(e),
+                exc_info=True,
+            )
+            raise
 
     def track_manifest_pull(self, repository, manifest_digest):
         """
@@ -290,7 +391,7 @@ class PullMetrics(object):
                     str(e),
                 )
             except redis.RedisError as e:
-                logger.warning("Could not track manifest pull metrics (Redis error): %s", str(e))
+                logger.error("Could not track manifest pull metrics (Redis error): %s", str(e))
             except Exception as e:
                 logger.exception("Unexpected error tracking manifest pull metrics: %s", e)
 
