@@ -83,6 +83,17 @@ class PullMetrics(object):
     local timestamp = ARGV[4]
     local pull_method = ARGV[5]
 
+    -- Basic validation: ensure required fields are present
+    if not repo_id or repo_id == '' or not tag_name or tag_name == '' or not manifest_digest or manifest_digest == '' then
+        return redis.error_reply('Invalid input: missing required fields')
+    end
+
+    -- Validate timestamp is numeric
+    local timestamp_num = tonumber(timestamp)
+    if not timestamp_num or timestamp_num <= 0 then
+        return redis.error_reply('Invalid input: timestamp must be positive number')
+    end
+
     local exists = redis.call('EXISTS', key)
 
     if exists == 0 then
@@ -109,6 +120,17 @@ class PullMetrics(object):
     local manifest_digest = ARGV[2]
     local timestamp = ARGV[3]
     local pull_method = ARGV[4]
+
+    -- Basic validation: ensure required fields are present
+    if not repo_id or repo_id == '' or not manifest_digest or manifest_digest == '' then
+        return redis.error_reply('Invalid input: missing required fields')
+    end
+
+    -- Validate timestamp is numeric
+    local timestamp_num = tonumber(timestamp)
+    if not timestamp_num or timestamp_num <= 0 then
+        return redis.error_reply('Invalid input: timestamp must be positive number')
+    end
 
     local exists = redis.call('EXISTS', key)
 
