@@ -77,8 +77,17 @@ export function ModelCard(props: ModelCardProps) {
               ],
             ]}
             components={{
-              code({node, inline, className, children, ...props}) {
-                return <MarkdownCodeBlock code={children} />;
+              code({children}) {
+                const childText =
+                  typeof children === 'string' ? children : String(children);
+                // Detect inline code by checking for newlines
+                // react-markdown v10.x doesn't reliably pass the inline prop
+                const isInline = !childText.includes('\n');
+                return isInline ? (
+                  <code className="inline-code">{children}</code>
+                ) : (
+                  <MarkdownCodeBlock code={childText} />
+                );
               },
               table: ({children}) => (
                 <Table borders={true} variant={'compact'}>

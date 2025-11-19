@@ -215,12 +215,15 @@ export default function Information(props: InformationProps) {
                       <Markdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          code({inline, children}) {
+                          code({children}) {
                             const childText =
                               typeof children === 'string'
                                 ? children
                                 : String(children);
-                            return inline ? (
+                            // Detect inline code by checking for newlines
+                            // react-markdown v10.x doesn't reliably pass the inline prop
+                            const isInline = !childText.includes('\n');
+                            return isInline ? (
                               <code className="inline-code">{children}</code>
                             ) : (
                               <MarkdownCodeBlock code={childText} />
