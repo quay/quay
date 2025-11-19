@@ -12,7 +12,7 @@ from data.logs_model.logs_producer.util import logs_json_serializer
 logger = logging.getLogger(__name__)
 
 
-TEST_DATETIME = datetime.utcnow()
+TEST_DATETIME = datetime(2025, 11, 19, 21, 45, 38, 467084)
 
 TEST_JSON_STRING = '{"a": "b", "c": "d"}'
 TEST_JSON_STRING_WITH_UNICODE = '{"éëê": "îôû"}'
