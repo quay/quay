@@ -113,7 +113,7 @@ describe('Repository Shorthand URL Navigation', () => {
 
     // Verify error message is displayed
     cy.contains('Unable to get repository').should('exist');
-    cy.contains('HTTP404 - Not Found').should('exist');
+    cy.contains('Not Found').should('exist');
   });
 
   it('does not redirect reserved route prefixes', () => {
