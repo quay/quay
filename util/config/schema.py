@@ -631,6 +631,11 @@ CONFIG_SCHEMA = {
                     "description": "Main logo image URL",
                     "x-example": "/static/img/quay-horizontal-color.svg",
                 },
+                "logo_dark": {
+                    "type": "string",
+                    "description": "Dark theme variant of main logo (for dark backgrounds)",
+                    "x-example": "/static/img/quay-horizontal-white.svg",
+                },
                 "footer_img": {
                     "type": "string",
                     "description": "Logo for UI footer",
