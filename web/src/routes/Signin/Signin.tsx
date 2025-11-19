@@ -75,9 +75,10 @@ export function Signin() {
   useEffect(() => {
     if (shouldAutoRedirectSSO() && externalLogins.length > 0) {
       const singleProvider = externalLogins[0];
-      startExternalLogin(singleProvider);
+      const redirectUrl = searchParams.get('redirect_url') || undefined;
+      startExternalLogin(singleProvider, redirectUrl);
     }
-  }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin]);
+  }, [shouldAutoRedirectSSO, externalLogins, startExternalLogin, searchParams]);
 
   // Check for external login errors in URL parameters
   useEffect(() => {
