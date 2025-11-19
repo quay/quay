@@ -51,6 +51,7 @@ CONFIG_LAYER_JSON = json.dumps(
 )
 
 
+@pytest.mark.xdist_group("quota_db")
 class TestQuota:
     @pytest.fixture(autouse=True)
     def setup(self, initialized_db):

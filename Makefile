@@ -21,30 +21,30 @@ all: clean test build
 
 unit-test:
 	TEST=true PYTHONPATH="." py.test \
-	--cov="." --cov-report=html --cov-report=term-missing \
+	-n auto --cov="." --cov-report=html --cov-report=term-missing \
 	-m 'not e2e' --timeout=3600 --verbose -x --ignore=buildman/ \
 	./
 
 e2e-test:
 	TEST=true PYTHONPATH="." py.test \
-	--cov="." --cov-report=html --cov-report=term-missing \
+	-n auto --cov="." --cov-report=html --cov-report=term-missing \
 	-m 'e2e' --timeout=3600 --verbose -x --ignore=buildman/ \
 	./
 
 integration-test:
 	TEST=true PYTHONPATH="." py.test \
-	--verbose --ignore=buildman/ \
+	-n auto --verbose --ignore=buildman/ \
 	test/integration/*
 
 registry-test:
 	TEST=true PYTHONPATH="." py.test  \
-	--cov="." --cov-report=html --cov-report=term-missing \
+	-n auto --cov="." --cov-report=html --cov-report=term-missing \
 	-m 'not e2e' --timeout=3600 --verbose -x \
 	test/registry/registry_tests.py
 
 buildman-test:
 	TEST=true PYTHONPATH="." py.test \
-	--cov="." --cov-report=html --cov-report=term-missing \
+	-n auto --cov="." --cov-report=html --cov-report=term-missing \
 	-m 'not e2e' --timeout=3600 --verbose -x \
 	./buildman/
 
