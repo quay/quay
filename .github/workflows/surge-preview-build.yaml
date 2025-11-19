@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build Preview
-    runs-on: ubuntu-22.04
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
     - name: Checkout PR code
       uses: actions/checkout@v5

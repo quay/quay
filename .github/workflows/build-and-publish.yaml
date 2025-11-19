@@ -19,7 +19,7 @@ jobs:
       REGISTRY: ${{ secrets.REGISTRY || 'quay.io/projectquay' }}
       REPO_NAME: ${{ github.event.repository.name }}
       TAG_SUFFIX: -unstable
-    runs-on: 'ubuntu-latest'
+    runs-on: 'quay-001-large-ubuntu-24-x64'
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3

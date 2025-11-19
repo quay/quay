@@ -13,7 +13,7 @@ on:
 
 jobs:
   scheduled:
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
       - name: Check out repo
         uses: actions/checkout@v3

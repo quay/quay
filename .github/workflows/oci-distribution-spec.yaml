@@ -12,7 +12,7 @@ on:
 jobs:
   oci:
     name: OCI Distribution Spec
-    runs-on: ubuntu-22.04
+    runs-on: quay-001-large-ubuntu-24-x64
     services:
       postgres:
         image: postgres:latest

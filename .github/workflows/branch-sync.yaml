@@ -7,7 +7,7 @@ on:
 
 jobs:
   sync_master_to_release:
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4

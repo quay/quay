@@ -18,7 +18,7 @@ on:
 jobs:
   prepare:
     name: Prepare Release
-    runs-on: 'ubuntu-latest'
+    runs-on: 'quay-001-large-ubuntu-24-x64'
     steps:
       - name: Checkout
         uses: actions/checkout@v3

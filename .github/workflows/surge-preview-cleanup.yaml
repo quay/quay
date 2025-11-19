@@ -9,7 +9,7 @@ on:
 jobs:
   cleanup:
     name: Teardown Preview
-    runs-on: ubuntu-22.04
+    runs-on: quay-001-large-ubuntu-24-x64
     permissions:
       pull-requests: write
       contents: read

@@ -9,7 +9,7 @@ on:
 jobs:
   release-archive:
     name: Create Release Archive
-    runs-on: 'ubuntu-latest'
+    runs-on: 'quay-001-large-ubuntu-24-x64'
     steps:
       - name: Setup
         run: |
@@ -48,7 +48,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: 'ubuntu-latest'
+    runs-on: 'quay-001-large-ubuntu-24-x64'
     permissions:
       contents: write
     if: github.event_name == 'push'
@@ -86,7 +86,7 @@ jobs:
 
   publish-container:
     name: Publish Container
-    runs-on: 'ubuntu-latest'
+    runs-on: 'quay-001-large-ubuntu-24-x64'
     needs: [release-archive, release]
     steps:
       - name: Setup

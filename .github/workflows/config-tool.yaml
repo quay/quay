@@ -14,7 +14,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -30,7 +30,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v4
@@ -46,7 +46,7 @@ jobs:
 
   tests:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     container: docker.io/library/golang:1.23
     services:
       postgres:
@@ -79,7 +79,7 @@ jobs:
 
   cypress:
     name: Cypress
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
       - name: Checkout
         uses: actions/checkout@v3

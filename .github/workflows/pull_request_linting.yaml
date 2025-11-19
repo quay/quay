@@ -6,7 +6,7 @@ on:
 
 jobs:
   conventional-commit:
-    runs-on: ubuntu-latest
+    runs-on: quay-001-large-ubuntu-24-x64
     name: conventional commit check
     steps:
       - name: Checkout
