@@ -323,29 +323,26 @@ class TestPullMetrics:
         tag_name = "latest"
         manifest_digest = "sha256:abc123"
 
-        # Mock connection establishment (ping) and pipeline
+        # Mock connection establishment (ping) and Lua script execution
         mock_redis.ping.return_value = True
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value = mock_pipeline
+        mock_redis.eval.return_value = "1"  # Return pull_count as string
 
         # Execute
         pull_metrics_testing.track_tag_pull_sync(repository, tag_name, manifest_digest)
 
         # Verify Redis connection was established (ping called)
         assert mock_redis.ping.called
-        # Verify Redis pipeline calls
-        mock_redis.pipeline.assert_called_once()
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:123:tag:latest:sha256:abc123", "repository_id", 123
-        )
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:123:tag:latest:sha256:abc123", "tag_name", "latest"
-        )
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:123:tag:latest:sha256:abc123", "manifest_digest", "sha256:abc123"
-        )
-        mock_pipeline.hincrby.assert_called_once()
-        mock_pipeline.execute.assert_called_once()
+        # Verify Lua script was called with correct arguments
+        mock_redis.eval.assert_called_once()
+        call_args = mock_redis.eval.call_args
+        assert call_args[0][0] == pull_metrics_testing._TRACK_TAG_PULL_SCRIPT
+        assert call_args[0][1] == 1  # number of keys
+        assert call_args[0][2] == "pull_events:repo:123:tag:latest:sha256:abc123"  # KEYS[1]
+        assert call_args[0][3] == "123"  # ARGV[1] - repository_id
+        assert call_args[0][4] == "latest"  # ARGV[2] - tag_name
+        assert call_args[0][5] == "sha256:abc123"  # ARGV[3] - manifest_digest
+        # ARGV[4] is timestamp (dynamic, skip check)
+        assert call_args[0][7] == "tag"  # ARGV[5] - pull_method
 
     def test_track_tag_pull_sync_with_repository_id(self, pull_metrics_testing, mock_redis):
         """Test synchronous tag pull tracking with repository ID instead of object."""
@@ -354,17 +351,16 @@ class TestPullMetrics:
         tag_name = "v1.0"
         manifest_digest = "sha256:def456"
 
-        # Mock pipeline
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value = mock_pipeline
+        # Mock Lua script execution
+        mock_redis.eval.return_value = "1"  # Return pull_count as string
 
         # Execute
         pull_metrics_testing.track_tag_pull_sync(repository_id, tag_name, manifest_digest)
 
-        # Verify Redis pipeline calls with correct repository_id
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:456:tag:v1.0:sha256:def456", "repository_id", 456
-        )
+        # Verify Lua script was called with correct repository_id
+        mock_redis.eval.assert_called_once()
+        call_args = mock_redis.eval.call_args
+        assert call_args[0][3] == "456"  # ARGV[1] - repository_id as string
 
     def test_track_manifest_pull_sync(self, pull_metrics_testing, mock_redis):
         """Test synchronous manifest pull tracking."""
@@ -373,23 +369,22 @@ class TestPullMetrics:
         repository.id = 789
         manifest_digest = "sha256:xyz789"
 
-        # Mock pipeline
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value = mock_pipeline
+        # Mock Lua script execution
+        mock_redis.eval.return_value = "1"  # Return pull_count as string
 
         # Execute
         pull_metrics_testing.track_manifest_pull_sync(repository, manifest_digest)
 
-        # Verify Redis pipeline calls
-        mock_redis.pipeline.assert_called_once()
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:789:digest:sha256:xyz789", "repository_id", 789
-        )
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:789:digest:sha256:xyz789", "manifest_digest", "sha256:xyz789"
-        )
-        mock_pipeline.hincrby.assert_called_once()
-        mock_pipeline.execute.assert_called_once()
+        # Verify Lua script was called with correct arguments
+        mock_redis.eval.assert_called_once()
+        call_args = mock_redis.eval.call_args
+        assert call_args[0][0] == pull_metrics_testing._TRACK_MANIFEST_PULL_SCRIPT
+        assert call_args[0][1] == 1  # number of keys
+        assert call_args[0][2] == "pull_events:repo:789:digest:sha256:xyz789"  # KEYS[1]
+        assert call_args[0][3] == "789"  # ARGV[1] - repository_id
+        assert call_args[0][4] == "sha256:xyz789"  # ARGV[2] - manifest_digest
+        # ARGV[3] is timestamp (dynamic, skip check)
+        assert call_args[0][6] == "digest"  # ARGV[4] - pull_method
 
     def test_track_manifest_pull_sync_with_repository_id(self, pull_metrics_testing, mock_redis):
         """Test synchronous manifest pull tracking with repository ID."""
@@ -397,17 +392,16 @@ class TestPullMetrics:
         repository_id = 999
         manifest_digest = "sha256:test999"
 
-        # Mock pipeline
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value = mock_pipeline
+        # Mock Lua script execution
+        mock_redis.eval.return_value = "1"  # Return pull_count as string
 
         # Execute
         pull_metrics_testing.track_manifest_pull_sync(repository_id, manifest_digest)
 
-        # Verify
-        mock_pipeline.hset.assert_any_call(
-            "pull_events:repo:999:digest:sha256:test999", "repository_id", 999
-        )
+        # Verify Lua script was called with correct repository_id
+        mock_redis.eval.assert_called_once()
+        call_args = mock_redis.eval.call_args
+        assert call_args[0][3] == "999"  # ARGV[1] - repository_id as string
 
     def test_track_tag_pull_async_testing_mode(self, pull_metrics_testing, mock_redis):
         """Test async tag pull tracking in testing mode (runs synchronously)."""
@@ -416,16 +410,14 @@ class TestPullMetrics:
         tag_name = "latest"
         manifest_digest = "sha256:abc123"
 
-        # Mock pipeline
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value = mock_pipeline
+        # Mock Lua script execution
+        mock_redis.eval.return_value = "1"  # Return pull_count as string
 
         # Execute
         pull_metrics_testing.track_tag_pull(repository, tag_name, manifest_digest)
 
         # In testing mode, should run synchronously
-        mock_redis.pipeline.assert_called_once()
-        mock_pipeline.execute.assert_called_once()
+        mock_redis.eval.assert_called_once()
 
     def test_track_tag_pull_async_production_mode(self, mock_redis):
         """Test async tag pull tracking in production mode (runs in thread pool)."""
@@ -471,16 +463,14 @@ class TestPullMetrics:
         repository.id = 789
         manifest_digest = "sha256:xyz789"
 
-        # Mock pipeline
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value = mock_pipeline
+        # Mock Lua script execution
+        mock_redis.eval.return_value = "1"  # Return pull_count as string
 
         # Execute
         pull_metrics_testing.track_manifest_pull(repository, manifest_digest)
 
         # In testing mode, should run synchronously
-        mock_redis.pipeline.assert_called_once()
-        mock_pipeline.execute.assert_called_once()
+        mock_redis.eval.assert_called_once()
 
     def test_track_manifest_pull_redis_error_handling(self, pull_metrics_testing, mock_redis):
         """Test manifest pull tracking handles Redis errors gracefully."""
@@ -490,15 +480,15 @@ class TestPullMetrics:
 
         # Ensure connection can be established (ping succeeds)
         mock_redis.ping.return_value = True
-        # Mock pipeline to raise error when called
-        mock_redis.pipeline.side_effect = redis.RedisError("Connection failed")
+        # Mock Lua script execution to raise error
+        mock_redis.eval.side_effect = redis.RedisError("Connection failed")
 
-        # Execute - should not raise exception, should log warning
+        # Execute - should not raise exception, should log error
         with patch("util.pullmetrics.logger") as mock_logger:
             pull_metrics_testing.track_manifest_pull(repository, manifest_digest)
-            # Redis errors are logged as warnings, not exceptions
-            mock_logger.warning.assert_called()
-            # Verify no exception was logged (only warnings for Redis errors)
+            # Redis errors are logged as errors, not exceptions
+            mock_logger.error.assert_called()
+            # Verify no exception was logged (only errors for Redis errors)
             mock_logger.exception.assert_not_called()
 
     def test_track_tag_pull_timeout_error_handling(self, pull_metrics_testing, mock_redis):
@@ -519,23 +509,21 @@ class TestPullMetrics:
             mock_logger.exception.assert_not_called()
 
     def test_track_manifest_pull_pipeline_execute_error(self, pull_metrics_testing, mock_redis):
-        """Test manifest pull tracking handles pipeline execute errors gracefully."""
+        """Test manifest pull tracking handles Lua script execution errors gracefully."""
         repository = Mock()
         repository.id = 789
         manifest_digest = "sha256:xyz789"
 
         # Ensure connection can be established (ping succeeds)
         mock_redis.ping.return_value = True
-        # Mock pipeline and make execute() raise error
-        mock_pipeline = MagicMock()
-        mock_pipeline.execute.side_effect = redis.RedisError("Pipeline execution failed")
-        mock_redis.pipeline.return_value = mock_pipeline
+        # Mock Lua script execution to raise error
+        mock_redis.eval.side_effect = redis.RedisError("Lua script execution failed")
 
-        # Execute - should not raise exception, should log warning
+        # Execute - should not raise exception, should log error
         with patch("util.pullmetrics.logger") as mock_logger:
             pull_metrics_testing.track_manifest_pull(repository, manifest_digest)
-            # Redis errors are logged as warnings, not exceptions
-            mock_logger.warning.assert_called()
+            # Redis errors are logged as errors, not exceptions
+            mock_logger.error.assert_called()
             mock_logger.exception.assert_not_called()
 
     def test_get_pull_statistics_success(self, pull_metrics_testing, mock_redis):
