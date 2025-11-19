@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 from typing import Optional
 
 import jwt
+import pytest
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -345,6 +346,7 @@ class JWTAuthTestMixin:
                 assert check_is_restricted_user == True
 
 
+@pytest.mark.xdist_group("jwt_auth")
 class JWTAuthNoEmailTestCase(JWTAuthTestMixin, unittest.TestCase):
     """
     Test cases for JWT auth, with emails disabled.
@@ -355,6 +357,7 @@ class JWTAuthNoEmailTestCase(JWTAuthTestMixin, unittest.TestCase):
         return False
 
 
+@pytest.mark.xdist_group("jwt_auth")
 class JWTAuthTestCase(JWTAuthTestMixin, unittest.TestCase):
     """
     Test cases for JWT auth, with emails enabled.

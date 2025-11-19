@@ -5,6 +5,7 @@ import unittest.util
 from contextlib import contextmanager
 from typing import Optional
 
+import pytest
 import requests
 from flask import Flask, abort, make_response, request
 from mock import patch
@@ -339,6 +340,7 @@ class KeystoneAuthTestsMixin:
             self.assertEqual(user.email, "some.neat.user@example.com" if self.emails else None)
 
 
+@pytest.mark.xdist_group("keystone_auth")
 class KeystoneV2AuthNoEmailTests(KeystoneAuthTestsMixin, unittest.TestCase):
     def fake_keystone(self):
         return fake_keystone(2, requires_email=False)
@@ -348,6 +350,7 @@ class KeystoneV2AuthNoEmailTests(KeystoneAuthTestsMixin, unittest.TestCase):
         return False
 
 
+@pytest.mark.xdist_group("keystone_auth")
 class KeystoneV3AuthNoEmailTests(KeystoneAuthTestsMixin, unittest.TestCase):
     def fake_keystone(self):
         return fake_keystone(3, requires_email=False)
@@ -357,6 +360,7 @@ class KeystoneV3AuthNoEmailTests(KeystoneAuthTestsMixin, unittest.TestCase):
         return False
 
 
+@pytest.mark.xdist_group("keystone_auth")
 class KeystoneV2AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
     def fake_keystone(self):
         return fake_keystone(2, requires_email=True)
@@ -366,6 +370,7 @@ class KeystoneV2AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
         return True
 
 
+@pytest.mark.xdist_group("keystone_auth")
 class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
     def fake_keystone(self):
         return fake_keystone(3, requires_email=True)
@@ -435,6 +440,7 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
             self.assertEqual("cool.user", results[1][0].id)
 
 
+@pytest.mark.xdist_group("keystone_auth")
 class KeystoneRestrictedUsers(KeystoneAuthTestsMixin, unittest.TestCase):
     def fake_keystone(self):
         return fake_keystone(3, requires_email=True)
