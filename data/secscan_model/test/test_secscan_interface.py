@@ -17,6 +17,7 @@ from test.fixtures import *
 from app import app as flask_app  # isort: skip
 
 
+@pytest.mark.xdist_group("secscan_db")
 @pytest.mark.parametrize(
     "indexed_v4, expected_status",
     [
@@ -49,6 +50,7 @@ def test_load_security_information(indexed_v4, expected_status, initialized_db):
     assert result.status == expected_status
 
 
+@pytest.mark.xdist_group("secscan_db")
 @pytest.mark.parametrize(
     "next_token, expected_next_token, expected_error",
     [
