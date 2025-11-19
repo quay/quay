@@ -108,7 +108,7 @@ describe('System Status Banner', () => {
   });
 
   describe('Banner positioning', () => {
-    it('appears after the feedback banner', () => {
+    it('displays correctly in page layout', () => {
       cy.intercept('GET', '/config', (req) =>
         req.reply((res) => {
           res.body.registry_state = 'readonly';
@@ -119,8 +119,7 @@ describe('System Status Banner', () => {
       cy.visit('/organization');
       cy.wait('@getConfig');
 
-      // The read-only banner should exist after the feedback banner
-      // We can verify this by checking the DOM order
+      // The read-only banner should be visible in the page
       cy.get('[data-testid="readonly-mode-banner"]')
         .should('be.visible')
         .parent()

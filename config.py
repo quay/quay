@@ -872,7 +872,7 @@ class DefaultConfig(ImmutableConfig):
     }
 
     # User feedback form for UI-V2
-    UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
+    UI_V2_FEEDBACK_FORM = None
 
     # Default to new UI
     DEFAULT_UI = "react"
