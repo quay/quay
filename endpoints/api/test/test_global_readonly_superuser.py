@@ -314,11 +314,17 @@ class TestOrganizationLogsAccessWithoutFullAccess:
         # This ensures devtable has no admin permissions on it
         randomuser = model.user.get_user("randomuser")
         try:
-            model.organization.get_organization("testorglogs")
+            org = model.organization.get_organization("testorglogs")
         except model.InvalidOrganizationException:
-            model.organization.create_organization(
+            org = model.organization.create_organization(
                 "testorglogs", "testorglogs@test.com", randomuser
             )
+
+        # Create an owners team for testing team access (if it doesn't exist)
+        try:
+            model.team.get_organization_team("testorglogs", "owners")
+        except model.InvalidTeamException:
+            model.team.create_team("owners", org, "admin", "Team for owners")
 
         yield
         # Note: We don't clean up the organization because it has foreign key constraints
@@ -403,3 +409,138 @@ class TestOrganizationLogsAccessWithoutFullAccess:
                 cl, ExportOrgLogs, "POST", {"orgname": "testorglogs"}, export_data, 403
             )
             assert resp.status_code == 403
+
+    def test_global_readonly_superuser_can_access_team_members_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access team members when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This tests the fix for team member access. Global readonly superusers should
+        be able to view team members for auditing purposes.
+        """
+        from endpoints.api.team import TeamMemberList
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access team members
+            resp = conduct_api_call(
+                cl, TeamMemberList, "GET", {"orgname": "buynlarge", "teamname": "owners"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "members" in resp.json
+
+    def test_global_readonly_superuser_can_access_team_permissions_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access team permissions when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This tests the fix for the reported issue. Global readonly superusers should
+        be able to view team permissions for auditing purposes.
+        """
+        from endpoints.api.team import TeamPermissions
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access team permissions
+            resp = conduct_api_call(
+                cl,
+                TeamPermissions,
+                "GET",
+                {"orgname": "buynlarge", "teamname": "owners"},
+                None,
+                200,
+            )
+            assert resp.status_code == 200
+            assert "permissions" in resp.json
+
+    def test_regular_superuser_cannot_access_team_data_without_full_access(self, app):
+        """
+        Test that regular superusers CANNOT access team members/permissions when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This verifies that the fix doesn't accidentally grant regular superusers
+        access to team data when they shouldn't have it.
+        """
+        from endpoints.api.team import TeamMemberList, TeamPermissions
+
+        # Use devtable (regular superuser, not global readonly)
+        with client_with_identity("devtable", app) as cl:
+            # Should NOT be able to access team members without FULL_ACCESS
+            # Using testorglogs org where devtable has no membership
+            resp = conduct_api_call(
+                cl,
+                TeamMemberList,
+                "GET",
+                {"orgname": "testorglogs", "teamname": "owners"},
+                None,
+                403,
+            )
+            assert resp.status_code == 403
+
+    def test_global_readonly_superuser_can_access_org_members_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization members when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.organization import (
+            OrganizationMember,
+            OrganizationMemberList,
+        )
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization member list
+            resp = conduct_api_call(
+                cl, OrganizationMemberList, "GET", {"orgname": "buynlarge"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "members" in resp.json
+
+            # Should be able to access individual member details
+            resp = conduct_api_call(
+                cl,
+                OrganizationMember,
+                "GET",
+                {"orgname": "buynlarge", "membername": "devtable"},
+                None,
+                200,
+            )
+            assert resp.status_code == 200
+            assert "name" in resp.json
+
+    def test_global_readonly_superuser_can_access_org_applications_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization OAuth applications
+        when FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.organization import OrganizationApplications
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization applications
+            resp = conduct_api_call(
+                cl, OrganizationApplications, "GET", {"orgname": "buynlarge"}, None, 200
+            )
+            assert resp.status_code == 200
+            assert "applications" in resp.json
+
+    def test_global_readonly_superuser_can_access_org_prototypes_without_full_access(self, app):
+        """
+        Test that global readonly superusers can access organization prototype
+        permissions when FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.prototype import PermissionPrototypeList
+
+        # Use globalreadonlysuperuser (configured in testconfig.py)
+        with client_with_identity("globalreadonlysuperuser", app) as cl:
+            # Should be able to access organization prototype permissions
+            resp = conduct_api_call(
+                cl,
+                PermissionPrototypeList,
+                "GET",
+                {"orgname": "buynlarge"},
+                None,
+                200,
+            )
+            assert resp.status_code == 200
+            assert "prototypes" in resp.json
