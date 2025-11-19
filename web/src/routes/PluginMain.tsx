@@ -128,27 +128,29 @@ function PluginMain() {
           </Flex>
         </Banner>
       )}
-      <Banner variant="blue">
-        <Flex
-          spaceItems={{default: 'spaceItemsSm'}}
-          justifyContent={{default: 'justifyContentCenter'}}
-        >
-          <FlexItem>
-            <InfoCircleIcon />
-          </FlexItem>
-          <FlexItem>
-            Please use{' '}
-            <a
-              href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
-              target="_blank"
-              rel="noreferrer"
-            >
-              this form
-            </a>{' '}
-            to provide feedback on your experience
-          </FlexItem>
-        </Flex>
-      </Banner>
+      {quayConfig?.config?.UI_V2_FEEDBACK_FORM && (
+        <Banner variant="blue">
+          <Flex
+            spaceItems={{default: 'spaceItemsSm'}}
+            justifyContent={{default: 'justifyContentCenter'}}
+          >
+            <FlexItem>
+              <InfoCircleIcon />
+            </FlexItem>
+            <FlexItem>
+              Please use{' '}
+              <a
+                href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
+                target="_blank"
+                rel="noreferrer"
+              >
+                this form
+              </a>{' '}
+              to provide feedback on your experience
+            </FlexItem>
+          </Flex>
+        </Banner>
+      )}
       <SystemStatusBanner />
       {user && (
         <CreateNewUser
