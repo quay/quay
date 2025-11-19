@@ -210,15 +210,58 @@ export function Signin() {
         err instanceof AxiosError &&
         err.response &&
         err.response.status === 403;
+
+      // Check if it's a CSRF token error
+      const isCsrfError =
+        authErr &&
+        err.response.data?.error &&
+        err.response.data.error.toLowerCase().includes('csrf');
+
       if (authErr && err.response.data.needsEmailVerification) {
         setErr('You must verify your email address before you can sign in');
       } else if (authErr && err.response.data.invalidCredentials) {
         setErr(err.response.data.message || 'Invalid login credentials');
-      } else if (authErr) {
+      } else if (isCsrfError) {
         // CSRF token expired - refresh it and retry automatically
         try {
           await getCsrfToken();
           // Retry the login with the fresh CSRF token
+          const retryResponse = await loginUser(username, password);
+          if (retryResponse.success === true) {
+            setAuthState((old) => ({
+              ...old,
+              isSignedIn: true,
+              username: username,
+            }));
+            GlobalAuthState.isLoggedIn = true;
+
+            const redirectUrl = searchParams.get('redirect_url');
+            if (redirectUrl) {
+              window.location.href = redirectUrl;
+            } else {
+              navigate('/organization');
+            }
+          } else {
+            setErr('Invalid login credentials');
+          }
+        } catch (retryErr) {
+          // Check if the retry also failed with a CSRF error
+          const retryIsCsrfError =
+            retryErr instanceof AxiosError &&
+            retryErr.response?.status === 403 &&
+            retryErr.response.data?.error &&
+            retryErr.response.data.error.toLowerCase().includes('csrf');
+
+          if (retryIsCsrfError) {
+            setErr('CSRF token expired - please refresh');
+          } else {
+            setErr(addDisplayError('Unable to sign in', retryErr));
+          }
+        }
+      } else if (authErr) {
+        // Generic 403 error without specific indicators - try CSRF refresh as fallback
+        try {
+          await getCsrfToken();
           const retryResponse = await loginUser(username, password);
           if (retryResponse.success === true) {
             setAuthState((old) => ({

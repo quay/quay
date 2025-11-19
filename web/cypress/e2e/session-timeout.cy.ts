@@ -1,28 +1,6 @@
 /// <reference types="cypress" />
 
 describe('Session Timeout Modal', () => {
-  beforeEach(() => {
-    cy.exec('npm run quay:seed');
-
-    // Mock config endpoint
-    cy.intercept('GET', '/config', {
-      body: {
-        features: {
-          DIRECT_LOGIN: true,
-        },
-        config: {
-          AUTHENTICATION_TYPE: 'Database',
-        },
-        external_login: [],
-      },
-    }).as('getConfig');
-
-    // Mock CSRF token endpoint
-    cy.intercept('GET', '/csrf_token', {
-      body: {csrf_token: 'test-token'},
-    }).as('getCsrfToken');
-  });
-
   it('Shows session expired modal when API returns 401', () => {
     // Mock the user API to return 401 to simulate session timeout
     // This needs to be set up BEFORE visiting the page
@@ -184,7 +162,6 @@ describe('Session Timeout Modal', () => {
 
     // Should successfully sign in and redirect
     cy.wait('@signinSuccess');
-    cy.wait('@getCsrfToken');
     cy.wait('@getUser');
     cy.url().should('include', '/organization');
   });
