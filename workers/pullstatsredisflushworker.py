@@ -221,17 +221,9 @@ class RedisFlushWorker(Worker):
                 processing_key = f"{key}:processing:{int(time.time() * 1000)}"
 
                 try:
-                    # RENAME is atomic - if it succeeds, we own this data exclusively
+                    # RENAME is atomic
                     self.redis_client.rename(key, processing_key)
-                except redis.ResponseError as e:
-                    error_msg = str(e)
-                    # Check if Redis is in read-only mode (can't write)
-                    if "MISCONF" in error_msg or "READONLY" in error_msg.upper():
-                        logger.error(
-                            f"RedisFlushWorker: Redis is in read-only mode (RENAME failed): {e}. "
-                            "Redis cannot persist to disk. Check Redis logs and disk space."
-                        )
-                        continue
+                except redis.ResponseError:
                     # Key doesn't exist (already processed or never created)
                     continue
 
