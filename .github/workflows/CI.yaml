@@ -93,7 +93,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
@@ -126,7 +126,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
 
     - name: Check requirements.txt
       run: |
@@ -156,7 +156,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
@@ -180,7 +180,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
@@ -203,7 +203,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
@@ -230,7 +230,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
