@@ -98,8 +98,16 @@ class RedisFlushWorker(Worker):
             logger.debug("RedisFlushWorker: Starting pull metrics flush")
             start_time = time.time()
 
-            # Scan for pull event keys
-            pull_event_keys = self._scan_redis_keys("pull_events:*", BATCH_SIZE)
+            # Scan for pull event keys (exclude processing keys)
+            all_keys = self._scan_redis_keys("pull_events:*", BATCH_SIZE)
+
+            # Filter out processing keys from the main processing list
+            pull_event_keys = [key for key in all_keys if ":processing:" not in key]
+            processing_keys = [key for key in all_keys if ":processing:" in key]
+
+            # Clean up orphaned processing keys
+            if processing_keys:
+                self._cleanup_redis_keys(set(processing_keys))
 
             if not pull_event_keys:
                 logger.debug("RedisFlushWorker: No pull event keys found")
@@ -111,16 +119,8 @@ class RedisFlushWorker(Worker):
             (
                 tag_updates,
                 manifest_updates,
-                cleanable_keys,
                 database_dependent_keys,
             ) = self._process_redis_events(pull_event_keys)
-
-            # Always clean up empty/invalid keys first
-            if cleanable_keys:
-                self._cleanup_redis_keys(cleanable_keys)
-                logger.debug(
-                    f"RedisFlushWorker: Cleaned up {len(cleanable_keys)} empty/invalid keys"
-                )
 
             # Perform bulk database operations
             success = self._flush_to_database(tag_updates, manifest_updates)
@@ -130,7 +130,7 @@ class RedisFlushWorker(Worker):
                 self._cleanup_redis_keys(database_dependent_keys)
 
                 elapsed_time = time.time() - start_time
-                total_processed = len(cleanable_keys) + len(database_dependent_keys)
+                total_processed = len(database_dependent_keys)
                 logger.info(
                     f"RedisFlushWorker: Successfully processed {total_processed} keys "
                     f"({len(tag_updates)} tag updates, {len(manifest_updates)} manifest updates) "
@@ -187,9 +187,7 @@ class RedisFlushWorker(Worker):
             logger.error(f"RedisFlushWorker: Error scanning Redis keys: {e}")
             return []
 
-    def _process_redis_events(
-        self, keys: List[str]
-    ) -> Tuple[List[Dict], List[Dict], Set[str], Set[str]]:
+    def _process_redis_events(self, keys: List[str]) -> Tuple[List[Dict], List[Dict], Set[str]]:
         """
         Process Redis events and aggregate data for database updates.
 
@@ -197,14 +195,13 @@ class RedisFlushWorker(Worker):
             keys: List of Redis keys to process
 
         Returns:
-            Tuple of (tag_updates, manifest_updates, cleanable_keys, database_dependent_keys)
+            Tuple of (tag_updates, manifest_updates, database_dependent_keys)
         """
         # Use dictionaries to aggregate updates by unique key
         tag_updates_dict: Dict[Tuple[int, str], Dict] = {}  # Key: (repository_id, tag_name)
         manifest_updates_dict: Dict[
             Tuple[int, str], Dict
         ] = {}  # Key: (repository_id, manifest_digest)
-        cleanable_keys = set()  # Keys that can always be cleaned up (empty/invalid)
         database_dependent_keys = (
             set()
         )  # Keys that should only be cleaned up after successful DB write
@@ -215,17 +212,42 @@ class RedisFlushWorker(Worker):
                 if not key.startswith("pull_events:"):
                     continue
 
-                # Get the data from Redis
+                # Get the data from Redis using atomic RENAME to prevent race conditions
                 if self.redis_client is None:
+                    logger.warning("RedisFlushWorker: Redis client is None, skipping key")
                     continue
-                metrics_data = self.redis_client.hgetall(key)
+
+                # Atomically rename the key to a processing namespace to prevent race conditions
+                processing_key = f"{key}:processing:{int(time.time() * 1000)}"
+
+                try:
+                    # RENAME is atomic - if it succeeds, we own this data exclusively
+                    self.redis_client.rename(key, processing_key)
+                except redis.ResponseError as e:
+                    error_msg = str(e)
+                    # Check if Redis is in read-only mode (can't write)
+                    if "MISCONF" in error_msg or "READONLY" in error_msg.upper():
+                        logger.error(
+                            f"RedisFlushWorker: Redis is in read-only mode (RENAME failed): {e}. "
+                            "Redis cannot persist to disk. Check Redis logs and disk space."
+                        )
+                        continue
+                    # Key doesn't exist (already processed or never created)
+                    continue
+
+                # Read from the processing key (no race condition possible after rename)
+                metrics_data = self.redis_client.hgetall(processing_key)
+
                 if not metrics_data:
-                    cleanable_keys.add(key)  # Empty key, can always be cleaned up
+                    # Clean up the processing key immediately since it's empty
+                    self.redis_client.delete(processing_key)
                     continue
 
                 # Validate data before processing
                 if not self._validate_redis_key_data(key, metrics_data):
-                    cleanable_keys.add(key)  # Invalid key, can be cleaned up
+                    # Invalid key, clean up the processing key immediately
+                    logger.warning(f"RedisFlushWorker: Key {key} failed validation, cleaning up")
+                    self.redis_client.delete(processing_key)
                     continue
 
                 # Extract data from Redis hash
@@ -237,7 +259,8 @@ class RedisFlushWorker(Worker):
                 pull_method = metrics_data.get("pull_method", "")
 
                 if pull_count <= 0:
-                    cleanable_keys.add(key)  # No pulls, can always be cleaned up
+                    # No pulls, clean up the processing key immediately
+                    self.redis_client.delete(processing_key)
                     continue
 
                 # Convert timestamp
@@ -291,9 +314,8 @@ class RedisFlushWorker(Worker):
                             "last_pull_timestamp": pull_timestamp,
                         }
 
-                # Mark this key for cleanup only after successful database write
-                # ToDo: add exception handling after database write implementation
-                database_dependent_keys.add(key)
+                # Mark the processing key for cleanup after successful database write
+                database_dependent_keys.add(processing_key)
 
             except redis.RedisError as re:
                 logger.error(f"RedisFlushWorker: Redis error processing key {key}: {re}")
@@ -306,7 +328,7 @@ class RedisFlushWorker(Worker):
         tag_updates = list(tag_updates_dict.values())
         manifest_updates = list(manifest_updates_dict.values())
 
-        return tag_updates, manifest_updates, cleanable_keys, database_dependent_keys
+        return tag_updates, manifest_updates, database_dependent_keys
 
     def _flush_to_database(self, tag_updates: List[Dict], manifest_updates: List[Dict]) -> bool:
         """
