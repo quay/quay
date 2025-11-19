@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
 import {ListVariant, LoginPage} from '@patternfly/react-core';
-import logo from 'src/assets/quay.svg';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useLogo} from 'src/hooks/UseLogo';
 import {useLoginFooterItems} from 'src/components/LoginFooter';
 import SystemStatusBanner from 'src/components/SystemStatusBanner';
 import {GlobalMessages} from 'src/components/GlobalMessages';
@@ -22,12 +22,7 @@ export function LoginPageLayout({
 }: LoginPageLayoutProps) {
   const quayConfig = useQuayConfig();
   const footerListItems = useLoginFooterItems();
-
-  // Determine logo URL from config
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.BRANDING?.logo) {
-    logoUrl = quayConfig.config.BRANDING.logo;
-  }
+  const logoUrl = useLogo();
 
   // Set document title from registry title
   useEffect(() => {
