@@ -6,14 +6,65 @@ import {
   revokeApplicationToken,
   ApplicationTokenError,
   CreateApplicationTokenResponse,
+  IApplicationToken,
 } from 'src/resources/UserResource';
 import {AxiosError} from 'axios';
+import {useState} from 'react';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 // Hook for fetching application tokens
 export function useApplicationTokens() {
   return useQuery(['applicationTokens'], fetchApplicationTokens, {
     staleTime: 30000, // 30 seconds
   });
+}
+
+// Hook for fetching application tokens with pagination and filtering
+export function useFetchApplicationTokens() {
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [search, setSearch] = useState<SearchState>({
+    query: '',
+    field: 'title',
+  });
+
+  const {
+    data: tokensData,
+    isLoading,
+    isError: error,
+    isPlaceholderData,
+  } = useQuery(['applicationTokens'], fetchApplicationTokens, {
+    staleTime: 30000,
+    placeholderData: {tokens: []},
+  });
+
+  const tokens = tokensData?.tokens || [];
+
+  const filteredTokens =
+    search.query !== ''
+      ? tokens.filter((token: IApplicationToken) =>
+          token.title.toLowerCase().includes(search.query.toLowerCase()),
+        )
+      : tokens;
+
+  const paginatedTokens = filteredTokens.slice(
+    page * perPage - perPage,
+    page * perPage - perPage + perPage,
+  );
+
+  return {
+    tokens,
+    filteredTokens,
+    paginatedTokens,
+    isLoading: isLoading || isPlaceholderData,
+    error,
+    page,
+    setPage,
+    perPage,
+    setPerPage,
+    search,
+    setSearch,
+  };
 }
 
 // Hook for creating application tokens

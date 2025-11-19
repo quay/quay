@@ -25,7 +25,7 @@ import CreateApplicationTokenModal from 'src/components/modals/CreateApplication
 import RevokeTokenModal from 'src/components/modals/RevokeTokenModal';
 import CredentialsModal from 'src/components/modals/CredentialsModal';
 import {
-  useApplicationTokens,
+  useFetchApplicationTokens,
   useApplicationToken,
 } from 'src/hooks/UseApplicationTokens';
 import {IApplicationToken} from 'src/resources/UserResource';
@@ -33,6 +33,8 @@ import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useState} from 'react';
 import {formatRelativeTime, formatDate} from 'src/libs/utils';
+import ApplicationTokensToolbar from './ApplicationTokensToolbar';
+import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 
 export const CliConfiguration = () => {
   const quayConfig = useQuayConfig();
@@ -48,7 +50,19 @@ export const CliConfiguration = () => {
   const [tokenUuidToFetch, setTokenUuidToFetch] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState<Record<string, boolean>>({});
 
-  const {data: tokensData, isLoading, error} = useApplicationTokens();
+  const {
+    tokens,
+    filteredTokens,
+    paginatedTokens,
+    isLoading,
+    error,
+    page,
+    setPage,
+    perPage,
+    setPerPage,
+    search,
+    setSearch,
+  } = useFetchApplicationTokens();
   const {
     data: fetchedToken,
     isLoading: isFetchingToken,
@@ -203,9 +217,9 @@ export const CliConfiguration = () => {
             </Alert>
           )}
 
-          {!isLoading && !error && tokensData?.tokens && (
+          {!isLoading && !error && tokens && (
             <>
-              {tokensData.tokens.length === 0 ? (
+              {tokens.length === 0 ? (
                 <EmptyState>
                   <EmptyStateIcon icon={KeyIcon} />
                   <Title headingLevel="h4" size="lg">
@@ -218,85 +232,107 @@ export const CliConfiguration = () => {
                   </EmptyStateBody>
                 </EmptyState>
               ) : (
-                <Table aria-label="Application tokens table" variant="compact">
-                  <Thead>
-                    <Tr>
-                      <Th>Title</Th>
-                      <Th>Last Accessed</Th>
-                      <Th>Expiration</Th>
-                      <Th>Created</Th>
-                      <Th width={10}></Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {tokensData.tokens.map((token) => (
-                      <Tr key={token.uuid}>
-                        <Td dataLabel="Title">
-                          <Button
-                            variant="link"
-                            isInline
-                            onClick={() => handleViewToken(token)}
-                            className="pf-v5-u-p-0"
-                          >
-                            {token.title}
-                          </Button>
-                        </Td>
-                        <Td dataLabel="Last Accessed">
-                          {renderDateCell(token.last_accessed)}
-                        </Td>
-                        <Td dataLabel="Expiration">
-                          {renderDateCell(token.expiration)}
-                        </Td>
-                        <Td dataLabel="Created">
-                          {renderDateCell(token.created)}
-                        </Td>
-                        <Td isActionCell>
-                          <Dropdown
-                            isOpen={dropdownOpen[token.uuid] || false}
-                            onSelect={() =>
-                              setDropdownOpen((prev) => ({
-                                ...prev,
-                                [token.uuid]: false,
-                              }))
-                            }
-                            onOpenChange={(isOpen) =>
-                              setDropdownOpen((prev) => ({
-                                ...prev,
-                                [token.uuid]: isOpen,
-                              }))
-                            }
-                            toggle={(toggleRef) => (
-                              <MenuToggle
-                                ref={toggleRef}
-                                aria-label={`Actions for ${token.title}`}
-                                variant="plain"
-                                onClick={() => toggleDropdown(token.uuid)}
-                                isExpanded={dropdownOpen[token.uuid] || false}
-                                data-testid="token-actions-dropdown"
-                              >
-                                <EllipsisVIcon />
-                              </MenuToggle>
-                            )}
-                            shouldFocusToggleOnSelect
-                            popperProps={{
-                              position: 'right',
-                              enableFlip: true,
-                            }}
-                          >
-                            <DropdownList>
-                              <DropdownItem
-                                key="revoke"
-                                onClick={() => handleRevokeToken(token)}
-                              >
-                                Revoke Token
-                              </DropdownItem>
-                            </DropdownList>
-                          </Dropdown>
-                        </Td>
+                <>
+                  <ApplicationTokensToolbar
+                    filteredTokens={filteredTokens}
+                    page={page}
+                    setPage={setPage}
+                    perPage={perPage}
+                    setPerPage={setPerPage}
+                    search={search}
+                    setSearch={setSearch}
+                  />
+                  <Table
+                    aria-label="Application tokens table"
+                    variant="compact"
+                  >
+                    <Thead>
+                      <Tr>
+                        <Th>Title</Th>
+                        <Th>Last Accessed</Th>
+                        <Th>Expiration</Th>
+                        <Th>Created</Th>
+                        <Th width={10}></Th>
                       </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
+                    </Thead>
+                    <Tbody>
+                      {paginatedTokens.map((token) => (
+                        <Tr key={token.uuid}>
+                          <Td dataLabel="Title">
+                            <Button
+                              variant="link"
+                              isInline
+                              onClick={() => handleViewToken(token)}
+                              className="pf-v5-u-p-0"
+                            >
+                              {token.title}
+                            </Button>
+                          </Td>
+                          <Td dataLabel="Last Accessed">
+                            {renderDateCell(token.last_accessed)}
+                          </Td>
+                          <Td dataLabel="Expiration">
+                            {renderDateCell(token.expiration)}
+                          </Td>
+                          <Td dataLabel="Created">
+                            {renderDateCell(token.created)}
+                          </Td>
+                          <Td isActionCell>
+                            <Dropdown
+                              isOpen={dropdownOpen[token.uuid] || false}
+                              onSelect={() =>
+                                setDropdownOpen((prev) => ({
+                                  ...prev,
+                                  [token.uuid]: false,
+                                }))
+                              }
+                              onOpenChange={(isOpen) =>
+                                setDropdownOpen((prev) => ({
+                                  ...prev,
+                                  [token.uuid]: isOpen,
+                                }))
+                              }
+                              toggle={(toggleRef) => (
+                                <MenuToggle
+                                  ref={toggleRef}
+                                  aria-label={`Actions for ${token.title}`}
+                                  variant="plain"
+                                  onClick={() => toggleDropdown(token.uuid)}
+                                  isExpanded={dropdownOpen[token.uuid] || false}
+                                  data-testid="token-actions-dropdown"
+                                >
+                                  <EllipsisVIcon />
+                                </MenuToggle>
+                              )}
+                              shouldFocusToggleOnSelect
+                              popperProps={{
+                                position: 'right',
+                                enableFlip: true,
+                              }}
+                            >
+                              <DropdownList>
+                                <DropdownItem
+                                  key="revoke"
+                                  onClick={() => handleRevokeToken(token)}
+                                >
+                                  Revoke Token
+                                </DropdownItem>
+                              </DropdownList>
+                            </Dropdown>
+                          </Td>
+                        </Tr>
+                      ))}
+                    </Tbody>
+                  </Table>
+                  <ToolbarPagination
+                    itemsList={filteredTokens}
+                    perPage={perPage}
+                    page={page}
+                    setPage={setPage}
+                    setPerPage={setPerPage}
+                    bottom={true}
+                  />
+                </>
               )}
             </>
           )}
