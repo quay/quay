@@ -11,26 +11,15 @@ import {
 } from '@patternfly/react-core';
 
 import BarsIcon from '@patternfly/react-icons/dist/js/icons/bars-icon';
-import logo from 'src/assets/quay.svg';
-import rh_logo from 'src/assets/RH_QuayIO2.svg';
 import {HeaderToolbar} from './HeaderToolbar';
 import {Link} from 'react-router-dom';
 import {useUI} from 'src/contexts/UIContext';
-import {useQuayConfig} from 'src/hooks/UseQuayConfig';
+import {useLogo} from 'src/hooks/UseLogo';
 import './QuayHeader.css';
 
 export function QuayHeader({toggleDrawer}: {toggleDrawer: () => void}) {
   const {toggleSidebar} = useUI();
-  const quayConfig = useQuayConfig();
-  let logoUrl = logo;
-  if (quayConfig && quayConfig.config?.BRANDING?.logo) {
-    logoUrl = quayConfig.config.BRANDING.logo;
-  } else if (
-    window?.location?.hostname === 'stage.quay.io' ||
-    window?.location?.hostname === 'quay.io'
-  ) {
-    logoUrl = rh_logo;
-  }
+  const logoUrl = useLogo();
 
   return (
     <Masthead>
