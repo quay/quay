@@ -86,9 +86,9 @@ describe('Org List Page', () => {
     cy.contains('Select page').click();
     cy.contains('Actions').click();
     cy.contains('Delete').click();
-    cy.contains('Permanently delete organizations?');
+    cy.contains('Permanently delete selected items?');
     cy.contains(
-      'This action deletes all organizations and cannot be recovered.',
+      'This action deletes all selected items and cannot be recovered.',
     );
     cy.contains('Confirm deletion by typing "confirm" below:');
     cy.get('#delete-org-cancel').click();
@@ -100,9 +100,9 @@ describe('Org List Page', () => {
     cy.contains('Select page').click();
     cy.contains('Actions').click();
     cy.contains('Delete').click();
-    cy.contains('Permanently delete organizations?');
+    cy.contains('Permanently delete selected items?');
     cy.contains(
-      'This action deletes all organizations and cannot be recovered.',
+      'This action deletes all selected items and cannot be recovered.',
     );
     cy.contains('Confirm deletion by typing "confirm" below:');
     cy.get('input[id="delete-confirmation-input"]').type('confirm');
