@@ -14,6 +14,7 @@ from endpoints.api import (
     allow_if_any_superuser,
     allow_if_global_readonly_superuser,
     allow_if_superuser,
+    allow_if_superuser_with_full_access,
     nickname,
     request_error,
     require_scope,
@@ -286,15 +287,19 @@ class OrganizationQuotaLimitList(ApiResource):
 
     @nickname("listOrganizationQuotaLimit")
     def get(self, orgname, quota_id):
-        orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
-            raise Unauthorized()
+        permission = OrganizationMemberPermission(orgname)
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
+            quota = get_quota(orgname, quota_id)
+            return [
+                limit_view(limit)
+                for limit in model.namespacequota.get_namespace_quota_limit_list(quota)
+            ]
 
-        quota = get_quota(orgname, quota_id)
-        return [
-            limit_view(limit)
-            for limit in model.namespacequota.get_namespace_quota_limit_list(quota)
-        ]
+        raise Unauthorized()
 
     @nickname("createOrganizationQuotaLimit")
     @validate_json_request("NewOrgQuotaLimit")
@@ -356,16 +361,20 @@ class OrganizationQuotaLimit(ApiResource):
 
     @nickname("getOrganizationQuotaLimit")
     def get(self, orgname, quota_id, limit_id):
-        orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can() and not (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
-            raise Unauthorized()
+        permission = OrganizationMemberPermission(orgname)
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
+            quota = get_quota(orgname, quota_id)
+            quota_limit = model.namespacequota.get_namespace_quota_limit(quota, limit_id)
+            if quota_limit is None:
+                raise NotFound()
 
-        quota = get_quota(orgname, quota_id)
-        quota_limit = model.namespacequota.get_namespace_quota_limit(quota, limit_id)
-        if quota_limit is None:
-            raise NotFound()
+            return limit_view(quota_limit)
 
-        return limit_view(quota_limit)
+        raise Unauthorized()
 
     @nickname("changeOrganizationQuotaLimit")
     @validate_json_request("UpdateOrgQuotaLimit")
