@@ -130,7 +130,7 @@ export default function OrganizationsList() {
   const [isCalculateModalOpen, setCalculateModalOpen] = useState(false);
 
   // Get current user for superuser check
-  const {user} = useCurrentUser();
+  const {user, isSuperUser} = useCurrentUser();
   const quayConfig = useQuayConfig();
 
   // Determine authentication type for external auth alert
@@ -140,7 +140,9 @@ export default function OrganizationsList() {
     quayConfig.config.AUTHENTICATION_TYPE !== 'AppToken';
 
   // Registry size data (only fetch if superuser)
-  const {registrySize, refetch: refetchRegistrySize} = useRegistrySize();
+  const {registrySize, refetch: refetchRegistrySize} = useRegistrySize(
+    isSuperUser === true,
+  );
 
   // Registry size calculation mutation
   const {queueCalculation, isQueuing} = useQueueRegistrySizeCalculation({
@@ -165,8 +167,6 @@ export default function OrganizationsList() {
     deleteUsers,
     userEmailMap,
   } = useOrganizations();
-
-  const {isSuperUser} = useCurrentUser();
 
   const searchFilter = useRecoilValue(searchOrgsFilterState);
 
@@ -395,7 +395,7 @@ export default function OrganizationsList() {
           isQueuing={false}
           showRegistrySize={false}
           isExternalAuth={!!isExternalAuth}
-          isSuperUser={!!user?.super_user}
+          isSuperUser={!!isSuperUser}
         />
         <LoadingPage />
       </>
@@ -462,11 +462,9 @@ export default function OrganizationsList() {
         handleCalculateClick={handleCalculateClick}
         isQueuing={isQueuing}
         showRegistrySize={
-          !!(
-            user?.super_user &&
-            quayConfig?.features?.QUOTA_MANAGEMENT &&
-            quayConfig?.features?.EDIT_QUOTA
-          )
+          isSuperUser === true &&
+          quayConfig?.features?.QUOTA_MANAGEMENT === true &&
+          quayConfig?.features?.EDIT_QUOTA === true
         }
         isExternalAuth={!!isExternalAuth}
         isSuperUser={!!user?.super_user}

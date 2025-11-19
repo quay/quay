@@ -88,8 +88,8 @@ export function useTakeOwnership({onSuccess, onError}) {
         ]);
         queryClient.invalidateQueries(['organization', 'superuser', 'users']);
         queryClient.invalidateQueries(['user']);
-        // Navigate to the organization page as Angular does
-        navigate(`/organization/${namespace}?tab=organizations`);
+        // Navigate to the organization page
+        navigate(`/organization/${namespace}`);
         onSuccess();
       },
       onError: (err) => {

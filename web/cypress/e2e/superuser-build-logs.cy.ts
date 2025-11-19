@@ -65,7 +65,7 @@ describe('Superuser Build Logs', () => {
         cy.intercept('GET', '/api/v1/user/', user).as('getUser');
       });
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getUser');
 
@@ -86,7 +86,7 @@ describe('Superuser Build Logs', () => {
         cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
       });
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -107,7 +107,7 @@ describe('Superuser Build Logs', () => {
         cy.intercept('GET', '/api/v1/user/', user).as('getSuperUser');
       });
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -160,7 +160,7 @@ describe('Superuser Build Logs', () => {
         mockBuildSuccess,
       ).as('getBuildLogs');
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -195,7 +195,7 @@ describe('Superuser Build Logs', () => {
         mockBuildSuccess,
       ).as('getBuildLogs');
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -219,7 +219,7 @@ describe('Superuser Build Logs', () => {
         body: mockBuildSuccess,
       }).as('getBuildLogs');
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -237,7 +237,7 @@ describe('Superuser Build Logs', () => {
     });
 
     it('should disable button when input is empty', () => {
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -280,7 +280,7 @@ describe('Superuser Build Logs', () => {
         },
       }).as('getBuildLogsError');
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -315,7 +315,7 @@ describe('Superuser Build Logs', () => {
     });
 
     it('should toggle timestamps on and off', () => {
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -372,7 +372,7 @@ describe('Superuser Build Logs', () => {
         mockBuildNoLogs,
       ).as('getBuildNoLogs');
 
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 
@@ -414,13 +414,13 @@ describe('Superuser Build Logs', () => {
       cy.get('[data-testid="build-logs-nav"]').click();
 
       // Should navigate to build logs page
-      cy.url().should('include', '/superuser/build-logs');
+      cy.url().should('include', '/build-logs');
       cy.contains('Build Logs').should('exist');
       cy.get('[data-testid="build-uuid-input"]').should('exist');
     });
 
     it('should auto-expand Superuser section when on Build Logs page', () => {
-      cy.visit('/superuser/build-logs');
+      cy.visit('/build-logs');
       cy.wait('@getConfig');
       cy.wait('@getSuperUser');
 

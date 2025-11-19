@@ -10,6 +10,7 @@ import {
 } from '@patternfly/react-core';
 import {useChangeUserEmail} from 'src/hooks/UseUserActions';
 import {AlertVariant, useUI} from 'src/contexts/UIContext';
+import {isFreshLoginError} from 'src/utils/freshLoginErrors';
 
 interface ChangeEmailModalProps {
   isOpen: boolean;
@@ -32,7 +33,13 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
     },
     onError: (err) => {
       const errorMessage =
-        err?.response?.data?.error_message || 'Failed to change email';
+        err?.response?.data?.error_message ||
+        err?.message ||
+        'Failed to change email';
+      // Filter out fresh login errors to prevent duplicate alerts
+      if (isFreshLoginError(errorMessage)) {
+        return;
+      }
       setError(errorMessage);
       addAlert({
         variant: AlertVariant.Failure,
@@ -61,6 +68,8 @@ export default function ChangeEmailModal(props: ChangeEmailModalProps) {
     }
     setError(null);
     changeEmail(props.username, newEmail.trim());
+    // Close modal; request is queued if fresh login required
+    handleClose();
   };
 
   return (

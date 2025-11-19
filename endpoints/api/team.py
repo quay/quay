@@ -361,7 +361,11 @@ class TeamMemberList(ApiResource):
         view_permission = ViewTeamPermission(orgname, teamname)
         edit_permission = AdministerOrganizationPermission(orgname)
 
-        if view_permission.can() or (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
+        if (
+            view_permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
             team = None
             try:
                 team = model.team.get_organization_team(orgname, teamname)
@@ -581,7 +585,11 @@ class TeamPermissions(ApiResource):
         Returns the list of repository permissions for the org's team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can() or (features.SUPERUSERS_FULL_ACCESS and allow_if_any_superuser()):
+        if (
+            permission.can()
+            or allow_if_global_readonly_superuser()
+            or allow_if_superuser_with_full_access()
+        ):
             try:
                 team = model.team.get_organization_team(orgname, teamname)
             except model.InvalidTeamException:

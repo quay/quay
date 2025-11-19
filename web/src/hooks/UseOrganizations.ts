@@ -42,8 +42,8 @@ export function useOrganizations() {
     ['organization', 'superuser', 'organizations'],
     fetchOrgsAsSuperUser,
     {
-      enabled: isSuperUser,
       retry: false,
+      enabled: isSuperUser === true && !loading,
     },
   );
 
@@ -52,8 +52,8 @@ export function useOrganizations() {
     ['organization', 'superuser', 'users'],
     fetchUsersAsSuperUser,
     {
-      enabled: isSuperUser,
       retry: false,
+      enabled: isSuperUser === true && !loading,
     },
   );
 

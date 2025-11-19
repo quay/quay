@@ -8,7 +8,7 @@ import {AxiosError} from 'axios';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 
 // Hook to fetch registry size data
-export function useRegistrySize() {
+export function useRegistrySize(enabled = true) {
   const {
     data: registrySize,
     isLoading,
@@ -16,6 +16,7 @@ export function useRegistrySize() {
     refetch,
   } = useQuery<IRegistrySize>(['registrysize'], fetchRegistrySize, {
     retry: false,
+    enabled: enabled,
   });
 
   return {
