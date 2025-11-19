@@ -303,9 +303,9 @@ function NotificationConfig({notification}: {notification: RepoNotification}) {
       );
     case NotificationMethodType.quaynotification:
       return (
-        <Flex direction={{default: 'column'}}>
-          <FlexItem style={{marginBottom: 0}}>{notification.title}</FlexItem>
-        </Flex>
+        <FlexItem id="quay-notification-recipient" style={{color: 'grey'}}>
+          Recipient: {notification.config?.target?.name}
+        </FlexItem>
       );
   }
 }
