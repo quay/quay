@@ -195,6 +195,10 @@ describe('Repository Settings - Notifications', () => {
         'Red Hat Quay Notification',
       );
       cy.get(`[data-label="status"]`).should('have.text', 'Enabled');
+      cy.get('button').first().click();
+      cy.get('#notification-config-details').within(() => {
+        cy.contains('Recipient: user2').should('exist');
+      });
     });
   });
 
@@ -414,6 +418,263 @@ describe('Repository Settings - Notifications', () => {
       );
       cy.get('#notification-title').type('image expiry notification');
       cy.contains('button', 'Submit').should('be.disabled');
+    });
+  });
+
+  // Tests for PROJQUAY-9727: Recipient field functionality
+  describe('Red Hat Quay Notification - Recipient Field', () => {
+    it('Shows default options when recipient field is clicked', () => {
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Click on recipient field to open dropdown
+        cy.get('#entity-search-input').click();
+
+        // Verify "Create team" option is visible (should appear for organizations)
+        cy.get('[data-testid="create-new-team-btn"]').should('exist');
+      });
+    });
+
+    it('Shows teams in recipient dropdown for organization repository', () => {
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Click on recipient field to open dropdown
+        cy.get('#entity-search-input').click();
+      });
+
+      // Verify teams are shown in the dropdown
+      // Note: This checks outside the form context since the dropdown menu is rendered outside
+      // Check if teams exist (testorg should have teams from seed data)
+      cy.get('[data-testid$="-team"]').should('have.length.at.least', 1);
+    });
+
+    it('Allows selecting a team as recipient', () => {
+      // First, create a team to select
+      cy.visit('/organization/testorg?tab=Teamsandmembership');
+      cy.contains('Create new team').click();
+      cy.get('[data-testid="new-team-name-input"]').type('testteam');
+      cy.get('[data-testid="new-team-description-input"]').type(
+        'Test team for notifications',
+      );
+      cy.get('[data-testid="create-team-confirm"]').click();
+
+      // Now go back to notifications and select the team
+      cy.visit('/repository/testorg/testrepo?tab=settings');
+      cy.contains('Events and notifications').click();
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Click recipient field to open dropdown
+        cy.get('#entity-search-input').click();
+
+        // Select the team we just created
+        cy.get('[data-testid="testteam-team"]').click();
+
+        // Verify the team name appears in the input
+        cy.get('#entity-search-input input').should('have.value', 'testteam');
+
+        cy.get('#notification-title').type('team-notification');
+        cy.contains('Submit').click();
+      });
+
+      // Verify notification was created
+      const teamNotificationRow = cy.get('tbody:contains("team-notification")');
+      teamNotificationRow.within(() => {
+        cy.get(`[data-label="title"]`).should('have.text', 'team-notification');
+        cy.get(`[data-label="status"]`).should('have.text', 'Enabled');
+
+        // Expand row to see recipient
+        cy.get('button').first().click();
+        cy.get('#notification-config-details').within(() => {
+          cy.contains('Recipient: testteam').should('exist');
+        });
+      });
+    });
+
+    it('Allows searching for and selecting a user as recipient', () => {
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Type to search for user
+        cy.get('#entity-search-input').type('user2');
+        cy.contains('user2').click();
+
+        // Verify user2 appears in the input
+        cy.get('#entity-search-input input').should('have.value', 'user2');
+
+        cy.get('#notification-title').type('user-notification');
+        cy.contains('Submit').click();
+      });
+
+      // Verify notification was created with correct recipient
+      const userNotificationRow = cy.get('tbody:contains("user-notification")');
+      userNotificationRow.within(() => {
+        cy.get('button').first().click();
+        cy.get('#notification-config-details').within(() => {
+          cy.contains('Recipient: user2').should('exist');
+        });
+      });
+    });
+
+    it('Allows clearing selected recipient', () => {
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Select a user
+        cy.get('#entity-search-input').type('user2');
+        cy.contains('user2').click();
+
+        // Verify user2 appears
+        cy.get('#entity-search-input input').should('have.value', 'user2');
+
+        // Clear the selection using the clear button
+        cy.get('#entity-search-input')
+          .parent()
+          .parent()
+          .within(() => {
+            cy.get('button[aria-label="Clear input value"]').click();
+          });
+
+        // Verify field is cleared
+        cy.get('#entity-search-input input').should('have.value', '');
+
+        // Submit button should be disabled (no recipient selected)
+        cy.contains('Submit').should('be.disabled');
+      });
+    });
+
+    it('Opens Create team modal from recipient dropdown', () => {
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Click recipient field to open dropdown
+        cy.get('#entity-search-input').click();
+
+        // Click "Create team" button
+        cy.get('[data-testid="create-new-team-btn"]').click();
+      });
+
+      // Verify Create team modal opened
+      cy.contains('Create team').should('exist');
+      cy.get('[data-testid="new-team-name-input"]').should('exist');
+      cy.get('[data-testid="new-team-description-input"]').should('exist');
+
+      // Close modal
+      cy.contains('button', 'Cancel').click();
+    });
+
+    it('Creates team from modal and uses it as recipient', () => {
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+
+        // Click recipient field and open Create team modal
+        cy.get('#entity-search-input').click();
+        cy.get('[data-testid="create-new-team-btn"]').click();
+      });
+
+      // Create a new team
+      cy.get('[data-testid="new-team-name-input"]').type('notificationteam');
+      cy.get('[data-testid="new-team-description-input"]').type(
+        'Team created from notification flow',
+      );
+      cy.get('[data-testid="create-team-confirm"]').click();
+
+      // Wait for modal to close and verify team was created
+      cy.contains('Successfully created new team').should('exist');
+
+      // Continue with notification creation
+      cy.get('#create-notification-form').within(() => {
+        // The newly created team should now be available in the dropdown
+        cy.get('#entity-search-input').click();
+        cy.get('[data-testid="notificationteam-team"]').click();
+
+        cy.get('#notification-title').type('new-team-notification');
+        cy.contains('Submit').click();
+      });
+
+      // Verify notification was created with the new team
+      const newTeamNotificationRow = cy.get(
+        'tbody:contains("new-team-notification")',
+      );
+      newTeamNotificationRow.within(() => {
+        cy.get('button').first().click();
+        cy.get('#notification-config-details').within(() => {
+          cy.contains('Recipient: notificationteam').should('exist');
+        });
+      });
+    });
+
+    it('Displays recipient in notification table for existing notifications', () => {
+      // This test verifies that existing Quay notifications show their recipient
+      // First, let's create a notification
+      cy.contains('Create notification').click();
+      cy.get('#create-notification-form').within(() => {
+        cy.contains('Select event').click();
+        cy.contains('Push to Repository').click();
+        cy.contains('Select method').click();
+        cy.contains('Red Hat Quay Notification').click();
+        cy.get('#entity-search-input').type('user2');
+        cy.contains('user2').click();
+        cy.get('#notification-title').type('display-test');
+        cy.contains('Submit').click();
+      });
+
+      // Now reload the page to verify recipient is still displayed
+      cy.reload();
+      cy.contains('Events and notifications').click();
+
+      const displayTestRow = cy.get('tbody:contains("display-test")');
+      displayTestRow.within(() => {
+        cy.get(`[data-label="notification"]`).should(
+          'contain.text',
+          'Red Hat Quay Notification',
+        );
+
+        // Expand the row
+        cy.get('button').first().click();
+
+        // Verify recipient is displayed in the expanded config
+        cy.get('#notification-config-details').within(() => {
+          cy.get('#quay-notification-recipient').should('exist');
+          cy.get('#quay-notification-recipient').should(
+            'contain.text',
+            'Recipient:',
+          );
+          cy.get('#quay-notification-recipient').should(
+            'contain.text',
+            'user2',
+          );
+        });
+      });
     });
   });
 });
