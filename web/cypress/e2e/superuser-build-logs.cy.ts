@@ -4,7 +4,7 @@ describe('Superuser Build Logs', () => {
   const validBuildUuid = 'abc-123-valid-build-uuid';
   const invalidBuildUuid = 'invalid-uuid-does-not-exist';
 
-  const mockBuildSuccess = {
+  const mockBuildInfo = {
     id: '12345',
     uuid: validBuildUuid,
     status: 'complete',
@@ -15,6 +15,9 @@ describe('Superuser Build Logs', () => {
       name: 'testrepo',
     },
     phase: 'pushing',
+  };
+
+  const mockBuildLogs = {
     logs: [
       {
         message: 'Step 1: Building image...',
@@ -157,7 +160,13 @@ describe('Superuser Build Logs', () => {
       cy.intercept(
         'GET',
         `/api/v1/superuser/${validBuildUuid}/build`,
-        mockBuildSuccess,
+        mockBuildInfo,
+      ).as('getBuildInfo');
+
+      cy.intercept(
+        'GET',
+        `/api/v1/superuser/${validBuildUuid}/logs`,
+        mockBuildLogs,
       ).as('getBuildLogs');
 
       cy.visit('/build-logs');
@@ -170,7 +179,8 @@ describe('Superuser Build Logs', () => {
       // Click Get Logs button
       cy.get('[data-testid="load-build-button"]').click();
 
-      // Wait for API call
+      // Wait for both API calls
+      cy.wait('@getBuildInfo');
       cy.wait('@getBuildLogs');
 
       // Verify build information is displayed
@@ -192,7 +202,13 @@ describe('Superuser Build Logs', () => {
       cy.intercept(
         'GET',
         `/api/v1/superuser/${validBuildUuid}/build`,
-        mockBuildSuccess,
+        mockBuildInfo,
+      ).as('getBuildInfo');
+
+      cy.intercept(
+        'GET',
+        `/api/v1/superuser/${validBuildUuid}/logs`,
+        mockBuildLogs,
       ).as('getBuildLogs');
 
       cy.visit('/build-logs');
@@ -201,6 +217,7 @@ describe('Superuser Build Logs', () => {
 
       cy.get('[data-testid="build-uuid-input"]').type(validBuildUuid);
       cy.get('[data-testid="load-build-button"]').click();
+      cy.wait('@getBuildInfo');
       cy.wait('@getBuildLogs');
 
       // Timestamps checkbox should be checked
@@ -216,7 +233,12 @@ describe('Superuser Build Logs', () => {
     it('should show loading state while fetching', () => {
       cy.intercept('GET', `/api/v1/superuser/${validBuildUuid}/build`, {
         delay: 1000,
-        body: mockBuildSuccess,
+        body: mockBuildInfo,
+      }).as('getBuildInfo');
+
+      cy.intercept('GET', `/api/v1/superuser/${validBuildUuid}/logs`, {
+        delay: 1000,
+        body: mockBuildLogs,
       }).as('getBuildLogs');
 
       cy.visit('/build-logs');
@@ -230,6 +252,7 @@ describe('Superuser Build Logs', () => {
       cy.contains('Loading...').should('exist');
       cy.contains('Loading build logs...').should('exist');
 
+      cy.wait('@getBuildInfo');
       cy.wait('@getBuildLogs');
 
       // Loading state should disappear
@@ -278,6 +301,14 @@ describe('Superuser Build Logs', () => {
           error: 'Build not found',
           message: 'No build exists with this UUID',
         },
+      }).as('getBuildInfoError');
+
+      cy.intercept('GET', `/api/v1/superuser/${invalidBuildUuid}/logs`, {
+        statusCode: 404,
+        body: {
+          error: 'Build not found',
+          message: 'No build exists with this UUID',
+        },
       }).as('getBuildLogsError');
 
       cy.visit('/build-logs');
@@ -287,7 +318,8 @@ describe('Superuser Build Logs', () => {
       cy.get('[data-testid="build-uuid-input"]').type(invalidBuildUuid);
       cy.get('[data-testid="load-build-button"]').click();
 
-      cy.wait('@getBuildLogsError');
+      // Either endpoint failing should show error
+      cy.wait('@getBuildInfoError');
 
       // Should show error alert
       cy.get('[data-testid="build-error-alert"]').should('exist');
@@ -310,7 +342,13 @@ describe('Superuser Build Logs', () => {
       cy.intercept(
         'GET',
         `/api/v1/superuser/${validBuildUuid}/build`,
-        mockBuildSuccess,
+        mockBuildInfo,
+      ).as('getBuildInfo');
+
+      cy.intercept(
+        'GET',
+        `/api/v1/superuser/${validBuildUuid}/logs`,
+        mockBuildLogs,
       ).as('getBuildLogs');
     });
 
@@ -321,6 +359,7 @@ describe('Superuser Build Logs', () => {
 
       cy.get('[data-testid="build-uuid-input"]').type(validBuildUuid);
       cy.get('[data-testid="load-build-button"]').click();
+      cy.wait('@getBuildInfo');
       cy.wait('@getBuildLogs');
 
       // Timestamps should be visible initially
@@ -370,7 +409,11 @@ describe('Superuser Build Logs', () => {
         'GET',
         `/api/v1/superuser/build-uuid-no-logs/build`,
         mockBuildNoLogs,
-      ).as('getBuildNoLogs');
+      ).as('getBuildInfo');
+
+      cy.intercept('GET', `/api/v1/superuser/build-uuid-no-logs/logs`, {
+        logs: [],
+      }).as('getBuildLogs');
 
       cy.visit('/build-logs');
       cy.wait('@getConfig');
@@ -378,7 +421,8 @@ describe('Superuser Build Logs', () => {
 
       cy.get('[data-testid="build-uuid-input"]').type('build-uuid-no-logs');
       cy.get('[data-testid="load-build-button"]').click();
-      cy.wait('@getBuildNoLogs');
+      cy.wait('@getBuildInfo');
+      cy.wait('@getBuildLogs');
 
       // Should show build info
       cy.contains('Build Information').should('exist');
