@@ -3,6 +3,36 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.15/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.15.3"></a>
+## [v3.15.3] - 2025-11-10
+### [Redhat-3.15] Bug
+- [fc939a84](https://github.com/quay/quay/commit/fc939a840a8849f05a16253564b7fa15eb612411): Add configurable timeout to Splunk HEC requests (PROJQUAY-9375) ([#4249](https://github.com/quay/quay/issues/4249))
+### [Redhat-3.15] Chore
+- [bd2a6cb2](https://github.com/quay/quay/commit/bd2a6cb259605094c96b13da94ff422a3213b7f8): set popperProps for leaking dropdowns ([#4391](https://github.com/quay/quay/issues/4391))
+### [Redhat-3.15] Ci
+- [38be3de6](https://github.com/quay/quay/commit/38be3de66ecf45f7e2c0d027920e78ac42243316): fix log archiving for cypress tests (PROJQUAY-9535) ([#4347](https://github.com/quay/quay/issues/4347))
+### [Redhat-3.15] Feat(Ui)
+- [c1c6750a](https://github.com/quay/quay/commit/c1c6750a3bec50ea2c01daed8496bc799faf64a6): add manifest layers tab to tag details (PROJQUAY-9269) ([#4373](https://github.com/quay/quay/issues/4373))
+- [6ae6c963](https://github.com/quay/quay/commit/6ae6c963eaf5a6ec73f8f774031e577e8625432b): display customized REGISTRY_TITLE (PROJQUAY-9525) ([#4361](https://github.com/quay/quay/issues/4361))
+### [Redhat-3.15] Fix(Web)
+- [b79bf0f9](https://github.com/quay/quay/commit/b79bf0f9ed0b2e61bf9791266c3e4919538063d8): enable Red Hat Quay Notification in new UI (PROJQUAY-9020) ([#4394](https://github.com/quay/quay/issues/4394))
+### [Redhat-3.15] Notifications
+- [590b1511](https://github.com/quay/quay/commit/590b1511d3e1d0a1040059f2193a95d6bcf31b7a): Support slash in repository names (PROJQUAY-7538) ([#4424](https://github.com/quay/quay/issues/4424))
+### [Redhat-3.15] Proxy
+- [17313c6e](https://github.com/quay/quay/commit/17313c6e5b1edfda77d3ac314d3d7bab51c6a7af): Drop error 403 token requests for anonymous pulls (PROJQUAY-9012) ([#4449](https://github.com/quay/quay/issues/4449))
+### [Redhat-3.15] Ui
+- [8710e7bd](https://github.com/quay/quay/commit/8710e7bdd13ff62a4253aa4f42cbb302468616be): Add column sorting to all tables in UI (PROJQUAY-9271) ([#4319](https://github.com/quay/quay/issues/4319))
+- [f0d4755f](https://github.com/quay/quay/commit/f0d4755f6d6cfed4655a018033f3f45c47ec0f13): fix Popper positioning in FilterInput advanced search (PROJQUAY-9272) ([#4368](https://github.com/quay/quay/issues/4368))
+- [af91487d](https://github.com/quay/quay/commit/af91487dca3d2660c209f5cd0e4ea857758e355e): mark regex search test as skipped (PROJQUAY-9272) ([#4345](https://github.com/quay/quay/issues/4345))
+- [9002eb81](https://github.com/quay/quay/commit/9002eb81898447cbc0379c0ac9fd72cf2ee35b4e): show custom REGISTRY_TITLE on login page (PROJQUAY-9522) ([#4335](https://github.com/quay/quay/issues/4335))
+- [2ad79ee2](https://github.com/quay/quay/commit/2ad79ee2dcba54f9ec6813498dfa8099c58a4c7d): Add OAuth applications to UI (PROJQUAY-7737) ([#4278](https://github.com/quay/quay/issues/4278))
+### [Redhat-3.15] Web
+- [56a378d7](https://github.com/quay/quay/commit/56a378d7255f4334cd6d630a50e1621fadba4da9): consolidate organization hooks and fix cache invalidation (PROJQUAY-9513) ([#4327](https://github.com/quay/quay/issues/4327))
+- [48474af9](https://github.com/quay/quay/commit/48474af98cbcea991f3e075755fd32e349361f93): make team name clickable in Teams View (PROJQUAY-9512) ([#4326](https://github.com/quay/quay/issues/4326))
+### [Redhat-3.15] Workers(Quotaregistrysize)
+- [f01d0cb9](https://github.com/quay/quay/commit/f01d0cb978537eb57f59ba208a949d4a84886e6a): fixed wrong condition to run quotasizeworker from PROJQUAY-8086 (PROJQUAY-9460) ([#4314](https://github.com/quay/quay/issues/4314))
+- [181b5291](https://github.com/quay/quay/commit/181b52918fe38930093376c2dbb1d66d71b62644): added to run quotasizeworker when SUPERUSERS are retrieved from LDAP (PROJQUAY-8086) ([#4282](https://github.com/quay/quay/issues/4282))
+
 <a name="v3.15.2"></a>
 ## [v3.15.2] - 2025-09-02
 ### Deps
@@ -190,6 +220,31 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### [Redhat-3.15] Ui
 - [8bc4c4e6](https://github.com/quay/quay/commit/8bc4c4e6b1d9f18e1ea129b3fa3ddcbe6dfad48f): loading repository list immediately (PROJQUAY-5752) ([#4088](https://github.com/quay/quay/issues/4088))
 - [0ec617c1](https://github.com/quay/quay/commit/0ec617c127d8036805ba54dd6efaa6de8614fc85): Add notification drawer to ui (PROJQUAY-6305) ([#4020](https://github.com/quay/quay/issues/4020))
+
+<a name="v3.14.5"></a>
+## [v3.14.5] - 2025-09-03
+### Deps
+- [f595cd2f](https://github.com/quay/quay/commit/f595cd2ff83267698e6bb80d1a1fd671094c8f7e): upgrading crypto and azure config-tool packages (PROJQUAY-9159) ([#4186](https://github.com/quay/quay/issues/4186))
+### Konflux
+- [9eae3154](https://github.com/quay/quay/commit/9eae315449d44c90bfc06417c2b8349fcc075d81): update rpms lockfile (PROJQUAY-0000) ([#4213](https://github.com/quay/quay/issues/4213))
+- [56a3c3fa](https://github.com/quay/quay/commit/56a3c3fa7e52c4703ccfcc8d8a9165a0b75af99d): build platforms (PROJQUAY-8804) ([#4197](https://github.com/quay/quay/issues/4197))
+- [3fa8a935](https://github.com/quay/quay/commit/3fa8a935cb0e87f3ffa5e0599c58ce883d9eb1c4): update to nodejs-22 (PROJQUAY-9279) ([#4195](https://github.com/quay/quay/issues/4195))
+- [90cb62bf](https://github.com/quay/quay/commit/90cb62bf253c17decee8d1dc0188cc418f699c5f): add additional base images (PROJQUAY-9279) ([#4187](https://github.com/quay/quay/issues/4187))
+- [f5fbd793](https://github.com/quay/quay/commit/f5fbd79360e2d0d0e025c87c94b464cd5a9c5eec): update rpm lock file (PROJQUAY-0000) ([#4183](https://github.com/quay/quay/issues/4183))
+### [Redhat 3.14] Deps
+- [8caa4ee2](https://github.com/quay/quay/commit/8caa4ee2f924adf22b325c6055a2f0d578ddf2c7): update sha.js to 2.4.12 (PROJQUAY-9340) ([#4219](https://github.com/quay/quay/issues/4219))
+### [Redhat-3.14] Db
+- [a5424835](https://github.com/quay/quay/commit/a542483538c261745ccbbc6acb73b317d3704e93): enable WAL mode and other PRAGMA stmts for SQLite to avoid db locking during concurrent writes (PROJQUAY-8758) ([#4208](https://github.com/quay/quay/issues/4208))
+### [Redhat-3.14] Deps
+- [19186753](https://github.com/quay/quay/commit/191867530acebb1d9baa8d4d4bec10ef1d2de548): update cipher-base to version 1.0.6 (PROJQUAY-9334) ([#4225](https://github.com/quay/quay/issues/4225))
+### [Redhat-3.14] Dockerfile
+- [c85ebb44](https://github.com/quay/quay/commit/c85ebb44bc642110fcd463de4bd0d2e8fea98404): update nodejs-16 to nodejs-18 (PROJQUAY-0000) ([#4178](https://github.com/quay/quay/issues/4178))
+### [Redhat-3.14] Ldap
+- [ca378de8](https://github.com/quay/quay/commit/ca378de84cb275264a18c10a64f2bd4b09ce66fd): Get federated login identifier and use that when checking user privileges in FederatedUserManager (PROJQUAY-8879) (PROJQUAY-5880) ([#4182](https://github.com/quay/quay/issues/4182))
+### [Redhat-3.14] Quota
+- [54cbf8d6](https://github.com/quay/quay/commit/54cbf8d6169cdff8527ff7f36b568b20e2b3f65d): only create notification if one doesn't already exist (PROJQUAY-8857) ([#4237](https://github.com/quay/quay/issues/4237))
+### [Redhat-3.14] Ui
+- [6e81ac64](https://github.com/quay/quay/commit/6e81ac64ea7b8c83749dcd20be099e6c9a9f9317): conditionally rendering site unavailable message (PROJQUAY-7270) ([#4204](https://github.com/quay/quay/issues/4204))
 
 <a name="v3.14.4"></a>
 ## [v3.14.4] - 2025-08-05
@@ -426,6 +481,13 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [ff9b0bfb](https://github.com/quay/quay/commit/ff9b0bfb26108458747afad2eec248e037ebd6c8): looking up layer by artifact type (PROJQUAY-8644) ([#3703](https://github.com/quay/quay/issues/3703))
 ### [Redhat-3.14] Bug
 - [f17e1f94](https://github.com/quay/quay/commit/f17e1f94210170ed63fff7af024e38aa6e5564a2): Fix security url template variable (PROJQUAY-8650) ([#3719](https://github.com/quay/quay/issues/3719))
+
+<a name="v3.13.9"></a>
+## [v3.13.9] - 2025-09-17
+### [Redhat 3.13] Deps
+- [156e60b3](https://github.com/quay/quay/commit/156e60b38df2428c20d33a509088407fb0166943): update sha.js to 2.4.12 (PROJQUAY-9341) ([#4220](https://github.com/quay/quay/issues/4220))
+### [Redhat-3.13] Deps
+- [f8084d9c](https://github.com/quay/quay/commit/f8084d9c826e4b5cdccce016c19c333ad075af43): update cipher-base to version 1.0.6 (PROJQUAY-9335) ([#4226](https://github.com/quay/quay/issues/4226))
 
 <a name="v3.13.8"></a>
 ## [v3.13.8] - 2025-08-19
@@ -690,6 +752,17 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.12"></a>
+## [v3.12.12] - 2025-09-08
+### [Redhat 3.12] Deps
+- [583c916c](https://github.com/quay/quay/commit/583c916c5f82d3f090529a0e99aa562464d47b1c): update sha.js to 2.4.12 (PROJQUAY-9341) ([#4221](https://github.com/quay/quay/issues/4221))
+### [Redhat-3.12] Db
+- [e79efdc8](https://github.com/quay/quay/commit/e79efdc845bb42d8496decbc38165e73d17354cd): enable WAL mode and other PRAGMA stmts for SQLite to avoid db locking during concurrent writes (PROJQUAY-8758) ([#4231](https://github.com/quay/quay/issues/4231))
+### [Redhat-3.12] Deps
+- [92550bb4](https://github.com/quay/quay/commit/92550bb48d222b81175863c4bf195fca51027e23): update cipher-base to version 1.0.6 (PROJQUAY-9336) ([#4227](https://github.com/quay/quay/issues/4227))
+### [Redhat-3.12] Sqlite
+- [5142dd43](https://github.com/quay/quay/commit/5142dd4398a3308f4862cb179cec7f482b621804): Add retry with exponential backoff for sqlite (PROJQUAY-8758) ([#4244](https://github.com/quay/quay/issues/4244))
 
 <a name="v3.12.11"></a>
 ## [v3.12.11] - 2025-07-16
@@ -1320,6 +1393,21 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.16"></a>
+## [v3.10.16] - 2025-10-13
+### [Redhat-3.10] Deps
+- [102b9f02](https://github.com/quay/quay/commit/102b9f0202658022b8d7a86ffa434bd241e07bb4): update Authlib version to 1.6.5 (PROJQUAY-9437) ([#4353](https://github.com/quay/quay/issues/4353))
+
+<a name="v3.10.15"></a>
+## [v3.10.15] - 2025-09-10
+
+<a name="v3.10.14"></a>
+## [v3.10.14] - 2025-09-01
+### [Redhat 3.10] Deps
+- [cb03e58a](https://github.com/quay/quay/commit/cb03e58a869c3dfe955c55764236adab0c099180): update sha.js to 2.4.12 (PROJQUAY-9344) ([#4223](https://github.com/quay/quay/issues/4223))
+### [Redhat-3.10] Deps
+- [677d1f24](https://github.com/quay/quay/commit/677d1f24098c6687771c6b22d70f36beb54138b2): update cipher-base to version 1.0.6 (PROJQUAY-9338) ([#4233](https://github.com/quay/quay/issues/4233))
+
 <a name="v3.10.13"></a>
 ## [v3.10.13] - 2025-07-28
 
@@ -1813,6 +1901,13 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.16"></a>
+## [v3.9.16] - 2025-09-09
+### [Redhat 3.9] Deps
+- [096f28f9](https://github.com/quay/quay/commit/096f28f98958ffa9a75f33dc4cf459ed53b3fd40): update sha.js to 2.4.12 (PROJQUAY-9345) ([#4224](https://github.com/quay/quay/issues/4224))
+### [Redhat-3.9] Deps
+- [8dc1301c](https://github.com/quay/quay/commit/8dc1301cf2f7558a5c36af92197968afa39381fa): update cipher-base to version 1.0.6 (PROJQUAY-9339) ([#4234](https://github.com/quay/quay/issues/4234))
 
 <a name="v3.9.15"></a>
 ## [v3.9.15] - 2025-08-15
@@ -3413,15 +3508,18 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.15.2...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.15.3...HEAD
+[v3.15.3]: https://github.com/quay/quay/compare/v3.15.2...v3.15.3
 [v3.15.2]: https://github.com/quay/quay/compare/v3.15.1...v3.15.2
 [v3.15.1]: https://github.com/quay/quay/compare/v3.15.0...v3.15.1
-[v3.15.0]: https://github.com/quay/quay/compare/v3.14.4...v3.15.0
+[v3.15.0]: https://github.com/quay/quay/compare/v3.14.5...v3.15.0
+[v3.14.5]: https://github.com/quay/quay/compare/v3.14.4...v3.14.5
 [v3.14.4]: https://github.com/quay/quay/compare/v3.14.3...v3.14.4
 [v3.14.3]: https://github.com/quay/quay/compare/v3.14.2...v3.14.3
 [v3.14.2]: https://github.com/quay/quay/compare/v3.14.1...v3.14.2
 [v3.14.1]: https://github.com/quay/quay/compare/v3.14.0...v3.14.1
-[v3.14.0]: https://github.com/quay/quay/compare/v3.13.8...v3.14.0
+[v3.14.0]: https://github.com/quay/quay/compare/v3.13.9...v3.14.0
+[v3.13.9]: https://github.com/quay/quay/compare/v3.13.8...v3.13.9
 [v3.13.8]: https://github.com/quay/quay/compare/v3.13.7...v3.13.8
 [v3.13.7]: https://github.com/quay/quay/compare/v3.13.6...v3.13.7
 [v3.13.6]: https://github.com/quay/quay/compare/v3.13.5...v3.13.6
@@ -3430,7 +3528,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.11...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.12...v3.13.0
+[v3.12.12]: https://github.com/quay/quay/compare/v3.12.11...v3.12.12
 [v3.12.11]: https://github.com/quay/quay/compare/v3.12.10...v3.12.11
 [v3.12.10]: https://github.com/quay/quay/compare/v3.12.9...v3.12.10
 [v3.12.9]: https://github.com/quay/quay/compare/v3.12.8...v3.12.9
@@ -3456,7 +3555,10 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.13...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.16...v3.11.0
+[v3.10.16]: https://github.com/quay/quay/compare/v3.10.15...v3.10.16
+[v3.10.15]: https://github.com/quay/quay/compare/v3.10.14...v3.10.15
+[v3.10.14]: https://github.com/quay/quay/compare/v3.10.13...v3.10.14
 [v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
 [v3.10.12]: https://github.com/quay/quay/compare/v3.10.11...v3.10.12
 [v3.10.11]: https://github.com/quay/quay/compare/v3.10.10...v3.10.11
@@ -3470,7 +3572,8 @@ LDAP lookup of robot accounts in the UI for granting permission has been dropped
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.15...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.16...v3.10.0
+[v3.9.16]: https://github.com/quay/quay/compare/v3.9.15...v3.9.16
 [v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
 [v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
