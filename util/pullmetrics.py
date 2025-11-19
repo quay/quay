@@ -178,15 +178,10 @@ class PullMetrics(object):
         last_exception = None
         for attempt in range(1, self._retry_attempts + 1):
             try:
-                redis_config_with_decode = self._redis_config.copy()
-                # Ensure decode_responses=True for proper Lua script return value handling
-                if "decode_responses" not in redis_config_with_decode:
-                    redis_config_with_decode["decode_responses"] = True
-
                 self._redis = redis.StrictRedis(
                     socket_connect_timeout=self._connection_timeout,
                     socket_timeout=self._socket_timeout,
-                    **redis_config_with_decode,
+                    **self._redis_config,
                 )
                 self._redis.ping()
                 if attempt > 1:
