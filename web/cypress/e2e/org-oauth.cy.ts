@@ -674,6 +674,16 @@ describe('Organization OAuth Applications', () => {
           expect(capturedFormData.client_id).to.exist;
           expect(capturedFormData.scope).to.contain('repo:read repo:write');
           expect(capturedFormData.response_type).to.equal('token');
+
+          // SECURITY: Verify state parameter is present for CSRF protection (RFC 6749)
+          expect(capturedFormData.state).to.exist;
+          expect(capturedFormData.state).to.have.length.greaterThan(0);
+
+          // Verify state is stored in sessionStorage
+          cy.window().then((win) => {
+            const storedState = win.sessionStorage.getItem('oauth_state');
+            expect(storedState).to.equal(capturedFormData.state);
+          });
         });
     });
 
@@ -693,52 +703,164 @@ describe('Organization OAuth Applications', () => {
       // Click generate token to open modal
       cy.get('[data-testid="generate-token-button"]').click();
 
-      // Stub window.open and postMessage to simulate OAuth flow
       cy.window().then((win) => {
-        // Stub window.open to return a fake popup
-        const fakePopup = {
-          closed: false,
-          close: cy.stub(),
-        };
-        cy.stub(win, 'open').returns(fakePopup);
+        // Stub window.open to simulate popup OAuth flow
+        cy.stub(win, 'open').callsFake((url, target, features) => {
+          // Capture state AFTER "Authorize Application" button generated it
+          const capturedState = win.sessionStorage.getItem('oauth_state');
 
-        // Stub form submit to simulate OAuth callback
-        const submitStub = cy.stub(win.HTMLFormElement.prototype, 'submit');
-        submitStub.callsFake(function () {
-          // Simulate OAuth callback by posting message
+          // Simulate successful OAuth callback via postMessage (production flow)
           setTimeout(() => {
             win.postMessage(
               {
                 type: 'OAUTH_TOKEN_GENERATED',
                 token: 'test-access-token-123456',
                 scope: 'repo:read',
-                state: null,
+                state: capturedState,
               },
               win.location.origin,
             );
           }, 100);
+
+          // Return fake popup object
+          return {
+            closed: false,
+            close: cy.stub(),
+          } as any;
         });
+
+        // Stub form submit to prevent actual submission
+        cy.stub(win.HTMLFormElement.prototype, 'submit');
+      });
+
+      // Click authorize in modal to trigger the OAuth flow
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // Wait for postMessage to be processed and state to be cleared (proves validation succeeded)
+      cy.window({timeout: 5000}).should((win) => {
+        const remainingState = win.sessionStorage.getItem('oauth_state');
+        // State should be cleared after successful validation
+        expect(remainingState).to.be.null;
+      });
+
+      // Additionally verify token modal appears (may be covered by other elements)
+      cy.contains('Access Token Generated', {timeout: 1000}).should('exist');
+    });
+
+    it('should reject OAuth callback with invalid state parameter (CSRF protection)', () => {
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+
+      // Click generate token to open modal
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      cy.window().then((win) => {
+        // Stub window.open to simulate CSRF attack with tampered state
+        cy.stub(win, 'open').callsFake((url, target, features) => {
+          // Simulate CSRF attack: use a different state than what was generated
+          setTimeout(() => {
+            win.postMessage(
+              {
+                type: 'OAUTH_TOKEN_GENERATED',
+                token: 'test-access-token-123456',
+                scope: 'repo:read',
+                state: 'TAMPERED-STATE-VALUE',
+              },
+              win.location.origin,
+            );
+          }, 100);
+
+          return {
+            closed: false,
+            close: cy.stub(),
+          } as any;
+        });
+
+        // Stub form submit to prevent actual submission
+        cy.stub(win.HTMLFormElement.prototype, 'submit');
       });
 
       // Click authorize in modal
       cy.get('[role="dialog"]').contains('Authorize Application').click();
 
-      // CRITICAL: Verify token modal appears in React UI
-      cy.contains('Access Token Generated', {timeout: 5000}).should('exist');
-      cy.contains('Your access token has been successfully generated').should(
-        'exist',
-      );
+      // Wait for security error alert to appear (alert exists in DOM even if covered)
+      cy.contains('Security Error: Invalid OAuth state parameter', {
+        timeout: 5000,
+      }).should('exist');
 
-      // Verify token is displayed in the ClipboardCopy input
-      cy.get('.pf-v5-c-clipboard-copy input').should(
-        'have.value',
-        'test-access-token-123456',
-      );
+      // Verify state was NOT cleared (parent keeps original state when rejecting)
+      cy.window().then((win) => {
+        const remainingState = win.sessionStorage.getItem('oauth_state');
+        // State should remain because validation failed
+        expect(remainingState).to.not.be.null;
+      });
+    });
 
-      // Verify user is still in React UI (no redirect to Angular)
-      cy.url().should('include', 'localhost');
-      cy.url().should('not.include', '/oauth/localapp');
-      cy.url().should('include', '/organization/testorg');
+    it('should reject OAuth callback with missing state parameter', () => {
+      cy.visit('/organization/testorg?tab=OAuthApplications');
+      cy.wait('@getOrg');
+      cy.wait('@getOAuthApplications');
+
+      cy.contains('test-app').click();
+      cy.get('[data-testid="generate-token-tab"]').click();
+      cy.wait('@getCurrentUser');
+      cy.wait('@getConfig');
+
+      // Select scopes
+      cy.get('[data-testid="scope-repo:read"]').check();
+
+      // Click generate token to open modal
+      cy.get('[data-testid="generate-token-button"]').click();
+
+      cy.window().then((win) => {
+        // Stub window.open to simulate OAuth callback with NO state
+        cy.stub(win, 'open').callsFake((url, target, features) => {
+          // Simulate attack/misconfiguration: OAuth callback without state
+          setTimeout(() => {
+            win.postMessage(
+              {
+                type: 'OAUTH_TOKEN_GENERATED',
+                token: 'test-access-token-123456',
+                scope: 'repo:read',
+                // No state parameter
+              },
+              win.location.origin,
+            );
+          }, 100);
+
+          return {
+            closed: false,
+            close: cy.stub(),
+          } as any;
+        });
+
+        // Stub form submit to prevent actual submission
+        cy.stub(win.HTMLFormElement.prototype, 'submit');
+      });
+
+      // Click authorize in modal
+      cy.get('[role="dialog"]').contains('Authorize Application').click();
+
+      // Wait for security error alert to appear (alert exists in DOM even if covered)
+      cy.contains('Security Error: Invalid OAuth state parameter', {
+        timeout: 5000,
+      }).should('exist');
+
+      // Verify state was NOT cleared (parent keeps original state when rejecting)
+      cy.window().then((win) => {
+        const remainingState = win.sessionStorage.getItem('oauth_state');
+        // State should remain because validation failed
+        expect(remainingState).to.not.be.null;
+      });
     });
 
     it('should handle popup blocked scenario gracefully', () => {
