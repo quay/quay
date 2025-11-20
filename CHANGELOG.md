@@ -3,8 +3,13 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.13/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.13.10"></a>
+## [v3.13.10] - 2025-11-13
+### [Redhat-3.13] Deps
+- [22f843c2](https://github.com/quay/quay/commit/22f843c232fd6ea6ad8282f9796e840fde05ddbc): update Authlib to version 1.6.5 (PROJQUAY-9442) ([#4350](https://github.com/quay/quay/issues/4350))
+
 <a name="v3.13.9"></a>
-## [v3.13.9] - 2025-09-01
+## [v3.13.9] - 2025-09-17
 ### [Redhat 3.13] Deps
 - [156e60b3](https://github.com/quay/quay/commit/156e60b38df2428c20d33a509088407fb0166943): update sha.js to 2.4.12 (PROJQUAY-9341) ([#4220](https://github.com/quay/quay/issues/4220))
 ### [Redhat-3.13] Deps
@@ -273,6 +278,17 @@
 - [fc9a895b](https://github.com/quay/quay/commit/fc9a895b5c33f4d792940cc964758bce8db92015): clear state on delete autoprune policies (PROJQUAY-8003) ([#3279](https://github.com/quay/quay/issues/3279))
 ### [Redhat-3.13] Validator
 - [785a8bd6](https://github.com/quay/quay/commit/785a8bd6c05067c20a65304b20155753d9ecc309): Remove logging of database password (PROJQUAY-8059) ([#3335](https://github.com/quay/quay/issues/3335))
+
+<a name="v3.12.12"></a>
+## [v3.12.12] - 2025-09-08
+### [Redhat 3.12] Deps
+- [583c916c](https://github.com/quay/quay/commit/583c916c5f82d3f090529a0e99aa562464d47b1c): update sha.js to 2.4.12 (PROJQUAY-9341) ([#4221](https://github.com/quay/quay/issues/4221))
+### [Redhat-3.12] Db
+- [e79efdc8](https://github.com/quay/quay/commit/e79efdc845bb42d8496decbc38165e73d17354cd): enable WAL mode and other PRAGMA stmts for SQLite to avoid db locking during concurrent writes (PROJQUAY-8758) ([#4231](https://github.com/quay/quay/issues/4231))
+### [Redhat-3.12] Deps
+- [92550bb4](https://github.com/quay/quay/commit/92550bb48d222b81175863c4bf195fca51027e23): update cipher-base to version 1.0.6 (PROJQUAY-9336) ([#4227](https://github.com/quay/quay/issues/4227))
+### [Redhat-3.12] Sqlite
+- [5142dd43](https://github.com/quay/quay/commit/5142dd4398a3308f4862cb179cec7f482b621804): Add retry with exponential backoff for sqlite (PROJQUAY-8758) ([#4244](https://github.com/quay/quay/issues/4244))
 
 <a name="v3.12.11"></a>
 ## [v3.12.11] - 2025-07-16
@@ -903,6 +919,14 @@
 - [5286c33f](https://github.com/quay/quay/commit/5286c33f8c971c691567d4b46df2c38673eb1d6d): add description for log kind autoprune policy (PROJQUAY-6781) ([#2734](https://github.com/quay/quay/issues/2734))
 - [079484cd](https://github.com/quay/quay/commit/079484cd004c92df200f8e9718bfe2e53cfcdb30): not displaying build tab when repo is mirror or readonly (PROJQUAY-6827) ([#2731](https://github.com/quay/quay/issues/2731))
 
+<a name="v3.10.16"></a>
+## [v3.10.16] - 2025-10-13
+### [Redhat-3.10] Deps
+- [102b9f02](https://github.com/quay/quay/commit/102b9f0202658022b8d7a86ffa434bd241e07bb4): update Authlib version to 1.6.5 (PROJQUAY-9437) ([#4353](https://github.com/quay/quay/issues/4353))
+
+<a name="v3.10.15"></a>
+## [v3.10.15] - 2025-09-10
+
 <a name="v3.10.14"></a>
 ## [v3.10.14] - 2025-09-01
 ### [Redhat 3.10] Deps
@@ -1403,6 +1427,13 @@
 ### Pull Requests
 - Merge pull request [#2065](https://github.com/quay/quay/issues/2065) from dmage/merge-config-tool
 
+
+<a name="v3.9.16"></a>
+## [v3.9.16] - 2025-09-09
+### [Redhat 3.9] Deps
+- [096f28f9](https://github.com/quay/quay/commit/096f28f98958ffa9a75f33dc4cf459ed53b3fd40): update sha.js to 2.4.12 (PROJQUAY-9345) ([#4224](https://github.com/quay/quay/issues/4224))
+### [Redhat-3.9] Deps
+- [8dc1301c](https://github.com/quay/quay/commit/8dc1301cf2f7558a5c36af92197968afa39381fa): update cipher-base to version 1.0.6 (PROJQUAY-9339) ([#4234](https://github.com/quay/quay/issues/4234))
 
 <a name="v3.9.15"></a>
 ## [v3.9.15] - 2025-08-15
@@ -3003,7 +3034,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.13.9...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.13.10...HEAD
+[v3.13.10]: https://github.com/quay/quay/compare/v3.13.9...v3.13.10
 [v3.13.9]: https://github.com/quay/quay/compare/v3.13.8...v3.13.9
 [v3.13.8]: https://github.com/quay/quay/compare/v3.13.7...v3.13.8
 [v3.13.7]: https://github.com/quay/quay/compare/v3.13.6...v3.13.7
@@ -3013,7 +3045,8 @@
 [v3.13.3]: https://github.com/quay/quay/compare/v3.13.2...v3.13.3
 [v3.13.2]: https://github.com/quay/quay/compare/v3.13.1...v3.13.2
 [v3.13.1]: https://github.com/quay/quay/compare/v3.13.0...v3.13.1
-[v3.13.0]: https://github.com/quay/quay/compare/v3.12.11...v3.13.0
+[v3.13.0]: https://github.com/quay/quay/compare/v3.12.12...v3.13.0
+[v3.12.12]: https://github.com/quay/quay/compare/v3.12.11...v3.12.12
 [v3.12.11]: https://github.com/quay/quay/compare/v3.12.10...v3.12.11
 [v3.12.10]: https://github.com/quay/quay/compare/v3.12.9...v3.12.10
 [v3.12.9]: https://github.com/quay/quay/compare/v3.12.8...v3.12.9
@@ -3039,7 +3072,9 @@
 [v3.11.3]: https://github.com/quay/quay/compare/v3.11.2...v3.11.3
 [v3.11.2]: https://github.com/quay/quay/compare/v3.11.1...v3.11.2
 [v3.11.1]: https://github.com/quay/quay/compare/v3.11.0...v3.11.1
-[v3.11.0]: https://github.com/quay/quay/compare/v3.10.14...v3.11.0
+[v3.11.0]: https://github.com/quay/quay/compare/v3.10.16...v3.11.0
+[v3.10.16]: https://github.com/quay/quay/compare/v3.10.15...v3.10.16
+[v3.10.15]: https://github.com/quay/quay/compare/v3.10.14...v3.10.15
 [v3.10.14]: https://github.com/quay/quay/compare/v3.10.13...v3.10.14
 [v3.10.13]: https://github.com/quay/quay/compare/v3.10.12...v3.10.13
 [v3.10.12]: https://github.com/quay/quay/compare/v3.10.11...v3.10.12
@@ -3054,7 +3089,8 @@
 [v3.10.3]: https://github.com/quay/quay/compare/v3.10.2...v3.10.3
 [v3.10.2]: https://github.com/quay/quay/compare/v3.10.1...v3.10.2
 [v3.10.1]: https://github.com/quay/quay/compare/v3.10.0...v3.10.1
-[v3.10.0]: https://github.com/quay/quay/compare/v3.9.15...v3.10.0
+[v3.10.0]: https://github.com/quay/quay/compare/v3.9.16...v3.10.0
+[v3.9.16]: https://github.com/quay/quay/compare/v3.9.15...v3.9.16
 [v3.9.15]: https://github.com/quay/quay/compare/v3.9.14...v3.9.15
 [v3.9.14]: https://github.com/quay/quay/compare/v3.9.13...v3.9.14
 [v3.9.13]: https://github.com/quay/quay/compare/v3.9.12...v3.9.13
