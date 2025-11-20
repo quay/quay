@@ -203,36 +203,36 @@ jobs:
 #    - name: tox
 #      run: |
 #        tox -e py312-registry
-#  mysql:
-#    name: E2E MySQL Test
-#    runs-on: ubuntu-22.04
-#
-#    steps:
-#    - name: Checkout
-#      uses: actions/checkout@v3
-#
-#    - name: Set up Python 3.12
-#      uses: actions/setup-python@v4
-#      with:
-#        python-version: 3.12
-#        cache: 'pip'
-#        cache-dependency-path: |
-#          requirements.txt
-#          requirements-dev.txt
-#
-#    - name: Install dependencies
-#      run: |
-#        sudo apt-get update
-#        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-#        sudo systemctl unmask docker
-#        sudo systemctl start docker
-#        docker version
-#        python -m pip install --upgrade pip
-#        cat requirements-dev.txt | grep tox | xargs pip install
-#
-#    - name: tox
-#      run: |
-#        tox -e py312-mysql
+  mysql:
+    name: E2E MySQL Test
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo systemctl unmask docker
+        sudo systemctl start docker
+        docker version
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: |
+        tox -e py312-mysql
 
   psql:
     name: E2E Postgres Test
