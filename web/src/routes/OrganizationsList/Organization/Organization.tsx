@@ -53,7 +53,26 @@ export default function Organization() {
 
   const [activeTabKey, setActiveTabKey] = useState<string>(() => {
     const tab = searchParams.get('tab') || 'Repositories';
-    return tab === 'external' ? 'Externallogins' : tab;
+    const normalizedTab = tab.toLowerCase();
+    return normalizedTab === 'external'
+      ? 'Externallogins'
+      : normalizedTab === 'externallogins'
+      ? 'Externallogins'
+      : normalizedTab === 'repositories'
+      ? 'Repositories'
+      : normalizedTab === 'teamsandmembership'
+      ? 'Teamsandmembership'
+      : normalizedTab === 'robotaccounts'
+      ? 'Robotaccounts'
+      : normalizedTab === 'defaultpermissions'
+      ? 'Defaultpermissions'
+      : normalizedTab === 'oauthapplications'
+      ? 'OAuthApplications'
+      : normalizedTab === 'logs'
+      ? 'Logs'
+      : normalizedTab === 'settings'
+      ? 'Settings'
+      : tab;
   });
 
   const onTabSelect = useCallback(
