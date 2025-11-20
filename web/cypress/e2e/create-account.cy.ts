@@ -260,4 +260,92 @@ describe('Create Account Page', () => {
     // If signin was attempted, it would have thrown an error from the intercept
     cy.wait(500); // Small wait to ensure no signin API call is made
   });
+
+  it('Redirects to updateuser page when user has prompts after account creation', () => {
+    const testUser = {
+      username: `testuser${Date.now()}`,
+      email: `test${Date.now()}@example.com`,
+      password: 'validpassword123',
+    };
+
+    setupSuccessfulFlow();
+
+    // Mock user API to return user with prompts (e.g., when FEATURE_QUOTA_MANAGEMENT is enabled)
+    cy.intercept('GET', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        anonymous: false,
+        username: testUser.username,
+        email: testUser.email,
+        verified: true,
+        prompts: ['enter_name', 'enter_company'],
+        organizations: [],
+        logins: [],
+      },
+    }).as('getUserWithPrompts');
+
+    cy.visit('/createaccount');
+
+    // Fill form with valid data
+    cy.get('#username').type(testUser.username);
+    cy.get('#email').type(testUser.email);
+    cy.get('#password').type(testUser.password);
+    cy.get('#confirm-password').type(testUser.password);
+
+    // Submit form
+    cy.get('button[type=submit]').click();
+
+    // Wait for API calls
+    cy.wait('@createUser');
+    cy.wait('@getCsrfToken');
+    cy.wait('@signinUser');
+    cy.wait('@getUserWithPrompts');
+
+    // Should redirect to updateuser page for profile completion
+    cy.url().should('include', '/updateuser');
+  });
+
+  it('Redirects to organization page when user has no prompts after account creation', () => {
+    const testUser = {
+      username: `testuser${Date.now()}`,
+      email: `test${Date.now()}@example.com`,
+      password: 'validpassword123',
+    };
+
+    setupSuccessfulFlow();
+
+    // Mock user API to return user without prompts
+    cy.intercept('GET', '/api/v1/user/', {
+      statusCode: 200,
+      body: {
+        anonymous: false,
+        username: testUser.username,
+        email: testUser.email,
+        verified: true,
+        prompts: [],
+        organizations: [],
+        logins: [],
+      },
+    }).as('getUserNoPrompts');
+
+    cy.visit('/createaccount');
+
+    // Fill form with valid data
+    cy.get('#username').type(testUser.username);
+    cy.get('#email').type(testUser.email);
+    cy.get('#password').type(testUser.password);
+    cy.get('#confirm-password').type(testUser.password);
+
+    // Submit form
+    cy.get('button[type=submit]').click();
+
+    // Wait for API calls
+    cy.wait('@createUser');
+    cy.wait('@getCsrfToken');
+    cy.wait('@signinUser');
+    cy.wait('@getUserNoPrompts');
+
+    // Should redirect to organization page
+    cy.url().should('include', '/organization');
+  });
 });
