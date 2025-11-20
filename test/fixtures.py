@@ -5,6 +5,7 @@ import shutil
 from collections import namedtuple
 
 import pytest
+from filelock import FileLock
 from flask import Flask, jsonify
 from flask.testing import FlaskClient
 from flask_login import LoginManager
@@ -56,9 +57,15 @@ def init_db_path(tmpdir_factory):
     # NOTE: We use a global here because pytest runs this code multiple times, due to the fixture
     # being imported instead of being in a conftest. Moving to conftest has its own issues, and this
     # call is quite slow, so we simply cache it here.
-    global INIT_DB_PATH
-    INIT_DB_PATH = INIT_DB_PATH or _init_db_path(tmpdir_factory)
-    return INIT_DB_PATH
+
+    # Use file lock to coordinate database initialization across pytest-xdist workers
+    # tmpdir_factory.getbasetemp() returns py.path.local.LocalPath, use dirpath() for parent
+    lock_file = str(tmpdir_factory.getbasetemp().dirpath("db_init.lock"))
+
+    with FileLock(lock_file, timeout=300):
+        global INIT_DB_PATH
+        INIT_DB_PATH = INIT_DB_PATH or _init_db_path(tmpdir_factory)
+        return INIT_DB_PATH
 
 
 def _init_db_path(tmpdir_factory):
