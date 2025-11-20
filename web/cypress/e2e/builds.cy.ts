@@ -1786,6 +1786,11 @@ describe('Repository Builds - View build logs', () => {
         const expectedData = buildData[index];
         cy.intercept(
           'GET',
+          '/api/v1/repository/testorg/testrepo?includeStats=true&includeTags=false',
+          {fixture: 'testrepo.json'},
+        ).as('getRepo');
+        cy.intercept(
+          'GET',
           `/api/v1/repository/testorg/testrepo/build/${build.id}`,
           build,
         ).as(`getBuild${build.id}`);
@@ -1795,6 +1800,9 @@ describe('Repository Builds - View build logs', () => {
           {fixture: 'build-logs.json'},
         ).as('getBuildLogs');
         cy.visit(`/repository/testorg/testrepo/build/${build.id}`);
+        cy.wait('@getRepo');
+        cy.wait(`@getBuild${build.id}`);
+        cy.wait('@getBuildLogs');
         cy.get('#build-id').contains(build.id);
         cy.get('#started').contains(formatDate(build.started));
         cy.get('#status').contains(getBuildMessage(build.phase));

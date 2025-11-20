@@ -86,9 +86,9 @@ describe('Org List Page', () => {
     cy.contains('Select page').click();
     cy.contains('Actions').click();
     cy.contains('Delete').click();
-    cy.contains('Permanently delete organizations?');
+    cy.contains('Permanently delete selected items?');
     cy.contains(
-      'This action deletes all organizations and cannot be recovered.',
+      'This action deletes all selected items and cannot be recovered.',
     );
     cy.contains('Confirm deletion by typing "confirm" below:');
     cy.get('#delete-org-cancel').click();
@@ -100,9 +100,9 @@ describe('Org List Page', () => {
     cy.contains('Select page').click();
     cy.contains('Actions').click();
     cy.contains('Delete').click();
-    cy.contains('Permanently delete organizations?');
+    cy.contains('Permanently delete selected items?');
     cy.contains(
-      'This action deletes all organizations and cannot be recovered.',
+      'This action deletes all selected items and cannot be recovered.',
     );
     cy.contains('Confirm deletion by typing "confirm" below:');
     cy.get('input[id="delete-confirmation-input"]').type('confirm');
@@ -448,5 +448,170 @@ describe('Org List Page', () => {
       .contains('testorg')
       .parents('tr')
       .should('have.length', 1);
+  });
+
+  it('Read-only superuser can see all organizations and users', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock read-only superuser (global_readonly_super_user = true)
+    cy.fixture('superuser.json').then((user) => {
+      user.global_readonly_super_user = true;
+      user.super_user = false; // Regular superuser flag is false
+      cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+    });
+
+    // Mock successful superuser API calls
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getReadOnlySuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Should show user's own org (testorg)
+    cy.contains('testorg').should('exist');
+
+    // Should show additional orgs from superuser API (same as regular superuser)
+    cy.contains('projectquay').should('exist');
+    cy.contains('coreos').should('exist');
+
+    // Should show current user
+    cy.contains('superuser').should('exist');
+
+    // Should show other users from superuser API
+    cy.contains('user1').should('exist');
+  });
+
+  it('Read-only superuser cannot perform actions (no kebab menus)', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock read-only superuser
+    cy.fixture('superuser.json').then((user) => {
+      user.global_readonly_super_user = true;
+      user.super_user = false;
+      cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+    });
+
+    // Mock superuser API calls
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getReadOnlySuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Settings column header should NOT be visible for read-only superusers
+    cy.contains('th', 'Settings').should('not.exist');
+
+    // No kebab menus should be visible (canModify = false for read-only superuser)
+    cy.get('[data-testid$="-options-toggle"]').should('not.exist');
+
+    // Create Organization button SHOULD exist (regular user action, not superuser action)
+    cy.get('#create-organization-button').should('exist');
+
+    // Create User button should NOT exist (superuser-only action)
+    cy.get('[data-testid="create-user-button"]').should('not.exist');
+  });
+
+  it('Read-only superuser cannot select orgs/users they do not own', () => {
+    // Mock config with superuser features enabled
+    cy.fixture('config.json').then((config) => {
+      config.features.SUPER_USERS = true;
+      config.features.SUPERUSERS_FULL_ACCESS = true;
+      cy.intercept('GET', '/config', config).as('getConfig');
+    });
+
+    // Mock read-only superuser with their own org (testorg)
+    cy.fixture('superuser.json').then((user) => {
+      user.global_readonly_super_user = true;
+      user.super_user = false;
+      cy.intercept('GET', '/api/v1/user/', user).as('getReadOnlySuperUser');
+    });
+
+    // Mock superuser API calls with additional orgs
+    cy.fixture('superuser-organizations.json').then((orgsData) => {
+      cy.intercept('GET', '/api/v1/superuser/organizations/', orgsData).as(
+        'getSuperuserOrganizations',
+      );
+    });
+
+    cy.fixture('superuser-users.json').then((usersData) => {
+      cy.intercept('GET', '/api/v1/superuser/users/', usersData).as(
+        'getSuperuserUsers',
+      );
+    });
+
+    cy.visit('/organization');
+    cy.wait('@getConfig');
+    cy.wait('@getReadOnlySuperUser');
+    cy.wait('@getSuperuserOrganizations');
+    cy.wait('@getSuperuserUsers');
+
+    // Verify Settings column header does NOT exist for read-only superusers
+    cy.contains('th', 'Settings').should('not.exist');
+
+    // Find the row for 'testorg' (org the readonly user owns)
+    cy.contains('a', 'testorg')
+      .parents('tr')
+      .within(() => {
+        // Should have a checkbox (can delete own org)
+        cy.get('input[type="checkbox"]').should('exist');
+      });
+
+    // Find the row for 'projectquay' (org from superuser endpoint, not owned)
+    cy.contains('a', 'projectquay')
+      .parents('tr')
+      .within(() => {
+        // Should NOT have a checkbox (cannot delete other's org)
+        cy.get('input[type="checkbox"]').should('not.exist');
+      });
+
+    // Find the row for current user 'superuser'
+    cy.contains('a', 'superuser')
+      .parents('tr')
+      .within(() => {
+        // Should have a checkbox (can delete own user account)
+        cy.get('input[type="checkbox"]').should('exist');
+      });
+
+    // Find the row for other user 'user1'
+    cy.contains('a', 'user1')
+      .parents('tr')
+      .within(() => {
+        // Should NOT have a checkbox (cannot delete other users)
+        cy.get('input[type="checkbox"]').should('not.exist');
+      });
   });
 });

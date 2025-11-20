@@ -4,7 +4,10 @@ import {SearchState} from './SearchTypes';
 
 export function SearchInput(props: SearchInput) {
   const setSearchState = (val) => {
-    props.onChange((prev: SearchState) => ({...prev, query: val.trim()}));
+    props.onChange((prev: SearchState) => ({
+      ...prev,
+      query: props.allowSpaces ? val : val.trim(),
+    }));
   };
 
   return (
@@ -26,4 +29,5 @@ interface SearchInput {
   searchState: SearchState;
   onChange: SetterOrUpdater<SearchState>;
   id?: string;
+  allowSpaces?: boolean;
 }
