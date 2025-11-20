@@ -544,3 +544,191 @@ class TestOrganizationLogsAccessWithoutFullAccess:
             )
             assert resp.status_code == 200
             assert "prototypes" in resp.json
+
+
+# =============================================================================
+# Quota Access Tests (PROJQUAY-9804)
+# =============================================================================
+
+
+class TestQuotaAccessWithoutFullAccess:
+    """
+    Test that global readonly superusers can access quota limits when
+    FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+    Fixes issue PROJQUAY-9804 where global readonly superusers were blocked from
+    accessing quota limit endpoints.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        """Configure test environment with SUPERUSERS_FULL_ACCESS disabled."""
+        import features
+
+        # Disable SUPERUSERS_FULL_ACCESS to test the bug scenario
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_SUPERUSERS_FULL_ACCESS": False,
+            }
+        )
+        yield
+        # Reset to default test config
+        features.import_features(
+            {
+                "FEATURE_SUPER_USERS": True,
+                "FEATURE_SUPERUSERS_FULL_ACCESS": True,
+            }
+        )
+
+    def test_global_readonly_superuser_can_access_quota_limit_list(self, app):
+        """
+        Test that global readonly superusers can access quota limit list
+        when FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.namespacequota import OrganizationQuotaLimitList
+
+        # Create a test quota with limits for an organization
+        org = model.organization.get_organization("buynlarge")
+
+        # Create quota if it doesn't exist
+        try:
+            quota = model.namespacequota.get_namespace_quota_list("buynlarge")
+            if not quota:
+                quota = model.namespacequota.create_namespace_quota(org, 1024 * 1024 * 1024)  # 1 GB
+            else:
+                quota = quota[0]
+        except Exception:
+            quota = model.namespacequota.create_namespace_quota(org, 1024 * 1024 * 1024)  # 1 GB
+
+        # Create quota limits if they don't exist
+        try:
+            existing_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+            if not existing_limits:
+                model.namespacequota.create_namespace_quota_limit(quota, "Warning", 80)
+                model.namespacequota.create_namespace_quota_limit(quota, "Reject", 95)
+        except Exception:
+            pass  # Limits may already exist
+
+        try:
+            # Use globalreadonlysuperuser (configured in testconfig.py)
+            with client_with_identity("globalreadonlysuperuser", app) as cl:
+                # Should be able to access quota limit list
+                resp = conduct_api_call(
+                    cl,
+                    OrganizationQuotaLimitList,
+                    "GET",
+                    {"orgname": "buynlarge", "quota_id": quota.id},
+                    None,
+                    200,
+                )
+                assert resp.status_code == 200
+                # Should return a list of quota limits
+                assert isinstance(resp.json, list)
+        finally:
+            # Clean up - delete quota limits and quota
+            try:
+                for limit in model.namespacequota.get_namespace_quota_limit_list(quota):
+                    model.namespacequota.delete_namespace_quota_limit(limit)
+                model.namespacequota.delete_namespace_quota(quota)
+            except Exception:
+                pass  # Best effort cleanup
+
+    def test_global_readonly_superuser_can_access_individual_quota_limit(self, app):
+        """
+        Test that global readonly superusers can access individual quota limits
+        when FEATURE_SUPERUSERS_FULL_ACCESS is false.
+        """
+        from endpoints.api.namespacequota import OrganizationQuotaLimit
+
+        # Create a test quota with limits for an organization
+        org = model.organization.get_organization("buynlarge")
+
+        # Create quota if it doesn't exist
+        try:
+            quota = model.namespacequota.get_namespace_quota_list("buynlarge")
+            if not quota:
+                quota = model.namespacequota.create_namespace_quota(org, 1024 * 1024 * 1024)  # 1 GB
+            else:
+                quota = quota[0]
+        except Exception:
+            quota = model.namespacequota.create_namespace_quota(org, 1024 * 1024 * 1024)  # 1 GB
+
+        # Create quota limit
+        try:
+            existing_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+            if existing_limits:
+                limit = existing_limits[0]
+            else:
+                limit = model.namespacequota.create_namespace_quota_limit(quota, "Warning", 80)
+        except Exception:
+            limit = model.namespacequota.create_namespace_quota_limit(quota, "Warning", 80)
+
+        try:
+            # Use globalreadonlysuperuser (configured in testconfig.py)
+            with client_with_identity("globalreadonlysuperuser", app) as cl:
+                # Should be able to access individual quota limit
+                resp = conduct_api_call(
+                    cl,
+                    OrganizationQuotaLimit,
+                    "GET",
+                    {"orgname": "buynlarge", "quota_id": quota.id, "limit_id": limit.id},
+                    None,
+                    200,
+                )
+                assert resp.status_code == 200
+                # Should return quota limit details
+                assert "id" in resp.json
+                assert "type" in resp.json
+                assert "limit_percent" in resp.json
+        finally:
+            # Clean up
+            try:
+                for limit in model.namespacequota.get_namespace_quota_limit_list(quota):
+                    model.namespacequota.delete_namespace_quota_limit(limit)
+                model.namespacequota.delete_namespace_quota(quota)
+            except Exception:
+                pass  # Best effort cleanup
+
+    def test_regular_superuser_cannot_access_quota_limits_without_full_access(self, app):
+        """
+        Test that regular superusers CANNOT access quota limits when
+        FEATURE_SUPERUSERS_FULL_ACCESS is false.
+
+        This verifies that the fix doesn't accidentally grant regular superusers
+        access when they shouldn't have it.
+        """
+        from endpoints.api.namespacequota import OrganizationQuotaLimitList
+
+        # Use orgwithnosuperuser - an org that devtable doesn't belong to
+        org = model.organization.get_organization("orgwithnosuperuser")
+
+        # Get or create quota
+        try:
+            quota = model.namespacequota.get_namespace_quota_list("orgwithnosuperuser")
+            if not quota:
+                quota = model.namespacequota.create_namespace_quota(org, 1024 * 1024 * 1024)  # 1 GB
+            else:
+                quota = quota[0]
+        except Exception:
+            quota = model.namespacequota.create_namespace_quota(org, 1024 * 1024 * 1024)  # 1 GB
+
+        try:
+            # Use devtable (regular superuser, not global readonly)
+            # accessing orgwithnosuperuser where they have no membership
+            with client_with_identity("devtable", app) as cl:
+                # Should NOT be able to access quota limit list without FULL_ACCESS
+                resp = conduct_api_call(
+                    cl,
+                    OrganizationQuotaLimitList,
+                    "GET",
+                    {"orgname": "orgwithnosuperuser", "quota_id": quota.id},
+                    None,
+                    403,
+                )
+                assert resp.status_code == 403
+        finally:
+            # Clean up only if we created the quota
+            # Note: orgwithnosuperuser may already have a quota from initdb.py (line 1421)
+            # so we only clean up if we created it in this test
+            pass
