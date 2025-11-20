@@ -236,7 +236,7 @@ jobs:
 
   psql:
     name: E2E Postgres Test
-    runs-on: ubuntu-22.04
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
 
     - name: Checkout
@@ -254,7 +254,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
