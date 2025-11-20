@@ -255,27 +255,29 @@ export function StandaloneMain() {
         notificationDrawer={notificationDrawer}
         isNotificationDrawerExpanded={isDrawerOpen}
       >
-        <Banner variant="blue">
-          <Flex
-            spaceItems={{default: 'spaceItemsSm'}}
-            justifyContent={{default: 'justifyContentCenter'}}
-          >
-            <FlexItem>
-              <InfoCircleIcon />
-            </FlexItem>
-            <FlexItem>
-              Please use{' '}
-              <a
-                href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
-                target="_blank"
-                rel="noreferrer"
-              >
-                this form
-              </a>{' '}
-              to provide feedback on your experience
-            </FlexItem>
-          </Flex>
-        </Banner>
+        <Conditional if={quayConfig?.config?.UI_V2_FEEDBACK_FORM}>
+          <Banner variant="blue">
+            <Flex
+              spaceItems={{default: 'spaceItemsSm'}}
+              justifyContent={{default: 'justifyContentCenter'}}
+            >
+              <FlexItem>
+                <InfoCircleIcon />
+              </FlexItem>
+              <FlexItem>
+                Please use{' '}
+                <a
+                  href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  this form
+                </a>{' '}
+                to provide feedback on your experience
+              </FlexItem>
+            </Flex>
+          </Banner>
+        </Conditional>
         <SystemStatusBanner />
         <GlobalMessages />
         <Conditional if={quayConfig?.features?.BILLING}>
