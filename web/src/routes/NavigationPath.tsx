@@ -43,6 +43,10 @@ export enum NavigationPath {
   organizationsList = '/organization',
   repositoriesList = '/repository',
 
+  // Static pages
+  about = '/about',
+  security = '/security',
+
   // Superuser sections
   serviceKeys = '/service-keys',
   changeLog = '/change-log',
