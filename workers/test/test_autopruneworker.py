@@ -107,17 +107,18 @@ def test_namespace_prune_multiple_repos_by_tag_count(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     new_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "number_of_tags", "value": 5}, create_task=True
     )
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
     repo3 = model.repository.create_repository(
-        "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo3-{test_id}", None, repo_kind="image", visibility="public"
     )
     manifest_repo1 = create_manifest("sellnsmall", repo1)
     manifest_repo2 = create_manifest("sellnsmall", repo2)
@@ -146,17 +147,18 @@ def test_namespace_prune_multiple_repos_by_creation_date(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     new_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "creation_date", "value": "1w"}, create_task=True
     )
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
     repo3 = model.repository.create_repository(
-        "sellnsmall", "repo3", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo3-{test_id}", None, repo_kind="image", visibility="public"
     )
     manifest_repo1 = create_manifest("sellnsmall", repo1)
     manifest_repo2 = create_manifest("sellnsmall", repo2)
@@ -367,20 +369,21 @@ def test_nspolicy_tagcount_less_than_repopolicy_tagcount(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "number_of_tags", "value": 2}, create_task=True
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 4}, create_task=True
+        "sellnsmall", f"repo1-{test_id}", {"method": "number_of_tags", "value": 4}, create_task=True
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
@@ -409,19 +412,20 @@ def test_repopolicy_tagcount_less_than_nspolicy_tagcount(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "number_of_tags", "value": 4}, create_task=True
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo_policy = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 2}, create_task=True
+        "sellnsmall", f"repo1-{test_id}", {"method": "number_of_tags", "value": 2}, create_task=True
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
@@ -450,20 +454,24 @@ def test_nspolicy_timespan_older_than_repopolicy_timespan(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "creation_date", "value": "5d"}, create_task=True
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "creation_date", "value": "2d"}, create_task=True
+        "sellnsmall",
+        f"repo1-{test_id}",
+        {"method": "creation_date", "value": "2d"},
+        create_task=True,
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
@@ -498,20 +506,24 @@ def test_repopolicy_timespan_older_than_nspolicy_timespan(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "creation_date", "value": "2d"}, create_task=True
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "creation_date", "value": "5d"}, create_task=True
+        "sellnsmall",
+        f"repo1-{test_id}",
+        {"method": "creation_date", "value": "5d"},
+        create_task=True,
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
@@ -546,20 +558,24 @@ def test_nspolicy_tagcount_repopolicy_creation_date_reconcile(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "number_of_tags", "value": 6}, create_task=True
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "creation_date", "value": "3d"}, create_task=True
+        "sellnsmall",
+        f"repo1-{test_id}",
+        {"method": "creation_date", "value": "3d"},
+        create_task=True,
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
@@ -592,20 +608,21 @@ def test_nspolicy_creation_date_repopolicy_tagcount_reconcile(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall", {"method": "creation_date", "value": "3d"}, create_task=True
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo2", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo2-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo1_policy = model.autoprune.create_repository_autoprune_policy(
-        "sellnsmall", "repo1", {"method": "number_of_tags", "value": 6}, create_task=True
+        "sellnsmall", f"repo1-{test_id}", {"method": "number_of_tags", "value": 6}, create_task=True
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
@@ -944,6 +961,7 @@ def test_multiple_policies_for_namespace(initialized_db):
     if "mysql+pymysql" in os.environ.get("TEST_DATABASE_URI", ""):
         model.autoprune.SKIP_LOCKED = False
 
+    test_id = uuid.uuid4().hex[:8]
     ns_policy1 = model.autoprune.create_namespace_autoprune_policy(
         "sellnsmall",
         {
@@ -964,11 +982,11 @@ def test_multiple_policies_for_namespace(initialized_db):
     )
 
     repo1 = model.repository.create_repository(
-        "sellnsmall", "latest", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"latest-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     repo2 = model.repository.create_repository(
-        "sellnsmall", "repo1", None, repo_kind="image", visibility="public"
+        "sellnsmall", f"repo1-{test_id}", None, repo_kind="image", visibility="public"
     )
 
     manifest_repo1 = create_manifest("sellnsmall", repo1)
