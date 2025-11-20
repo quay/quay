@@ -90,8 +90,8 @@ axiosIns.interceptors.response.use(
           GlobalAuthState.bearerToken =
             await window.insights.chrome.auth.getToken();
         } else {
-          // Redirect to login page for standalone
-          window.location.href = '/signin';
+          // Dispatch session expired event to show modal
+          window.dispatchEvent(new CustomEvent('sessionExpired'));
         }
       }
     }

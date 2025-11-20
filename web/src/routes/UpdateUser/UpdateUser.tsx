@@ -28,7 +28,7 @@ function isValidUsername(username: string): boolean {
 
 export default function UpdateUser() {
   const navigate = useNavigate();
-  const {user, loading: userLoading} = useCurrentUser();
+  const {user, loading: userLoading, error} = useCurrentUser();
   const [isUpdating, setIsUpdating] = useState(false);
   const [username, setUsername] = useState('');
   const [metadata, setMetadata] = useState({
@@ -86,6 +86,12 @@ export default function UpdateUser() {
   });
 
   useEffect(() => {
+    // Redirect to signin if there's an authentication error (401)
+    if (!userLoading && error) {
+      navigate('/signin');
+      return;
+    }
+
     if (!userLoading && user) {
       if (user.anonymous) {
         navigate('/signin');
@@ -105,7 +111,7 @@ export default function UpdateUser() {
         validateUsername(initialUsername);
       }
     }
-  }, [user, userLoading, navigate]);
+  }, [user, userLoading, error, navigate]);
 
   const hasPrompt = (promptName: string) => {
     return user?.prompts?.includes(promptName) || false;
