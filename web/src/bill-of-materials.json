@@ -1,0 +1,3817 @@
+[
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "alembic"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "APScheduler"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "asn1crypto"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "autobahn"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "azure-common"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "azure-nspkg"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "azure-storage-blob"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "azure-storage-common"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "azure-storage-nspkg"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "Babel"
+  },
+  {
+    "format": "Python",
+    "license": "PSF License",
+    "project": "backports.tempfile"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "beautifulsoup4"
+  },
+  {
+    "format": "Python",
+    "license": "Bittorrent Open Source License",
+    "project": "bencode"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "bintrees"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "bitmath"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "blinker"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "boto3"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "botocore"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "cachetools"
+  },
+  {
+    "format": "Python",
+    "license": "Mozilla Public License, version 2.0",
+    "project": "certifi"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "cffi"
+  },
+  {
+    "format": "Python",
+    "license": "LGPL",
+    "project": "chardet"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "click"
+  },
+  {
+    "format": "Python",
+    "license": "PSF License",
+    "project": "contextlib2"
+  },
+  {
+    "format": "Python",
+    "license": "BSD or Apache Software License 2.0",
+    "project": "cryptography"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "debtcollector"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 2-Clause License",
+    "project": "decorator"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "enum34"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "Flask"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "Flask-Cors"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "Flask-Login"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "Flask-Mail"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "Flask-Principal"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "Flask-RESTful"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "funcparserlib"
+  },
+  {
+    "format": "Python",
+    "license": "ASL",
+    "project": "funcsigs"
+  },
+  {
+    "format": "Python",
+    "license": "PSF License",
+    "project": "functools32"
+  },
+  {
+    "format": "Python",
+    "license": "Unlicense",
+    "project": "furl"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "geoip2"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "gevent"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "gipc"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "greenlet"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "gunicorn"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "hiredis"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "html5lib"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "httmock"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "httplib2"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "httpretty"
+  },
+  {
+    "format": "Python",
+    "license": "BSD-like",
+    "project": "idna"
+  },
+  {
+    "format": "Python",
+    "license": "PSF License",
+    "project": "ipaddress"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "iso8601"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 3-Clause License",
+    "project": "itsdangerous"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "Jinja2"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "jmespath"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "jsonpath-rw"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "jsonschema"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "keystoneauth1"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "Mako"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "marisa-trie"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "MarkupSafe"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "maxminddb"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "mixpanel"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 2-Clause License",
+    "project": "mock"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "mockredispy"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "monotonic"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "moto"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "msgpack"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "namedlist"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 3-Clause License",
+    "project": "ndg-httpsclient"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "netaddr"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "netifaces"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "oauthlib"
+  },
+  {
+    "format": "Python",
+    "license": "Unlicense",
+    "project": "orderedmultidict"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "oslo.config"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "oslo.i18n"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "oslo.serialization"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "oslo.utils"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "pathvalidate"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "pbr"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "peewee"
+  },
+  {
+    "format": "Python",
+    "license": "Standard Pil License",
+    "project": "Pillow"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "ply"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "psutil"
+  },
+  {
+    "format": "Python",
+    "license": "LGPL with exceptions or ZPL",
+    "project": "psycopg2"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "py-bcrypt"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "pyasn1"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "pyasn1-modules"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "pycparser"
+  },
+  {
+    "format": "Python",
+    "license": "LGPL-3.0",
+    "project": "PyGithub"
+  },
+  {
+    "format": "Python",
+    "license": "LGPL",
+    "project": "pygpgme"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "pyjwkest"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "PyJWT"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "pymemcache"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "PyMySQL"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "pyOpenSSL"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "pyparsing"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 3-Clause License",
+    "project": "PyPDF2"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 2-Clause License",
+    "project": "python-dateutil"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "python-editor"
+  },
+  {
+    "format": "Python",
+    "license": "LGPL-3.0",
+    "project": "python-gitlab"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "python-keystoneclient"
+  },
+  {
+    "format": "Python",
+    "license": "python style",
+    "project": "python-ldap"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "python-magic"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "python-swiftclient"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "pytz"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "PyYAML"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "raven"
+  },
+  {
+    "format": "Python",
+    "license": "WTFPL",
+    "project": "recaptcha2"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "redis"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "redlock"
+  },
+  {
+    "format": "Python",
+    "license": "BSD 3-Clause License",
+    "project": "reportlab"
+  },
+  {
+    "format": "Python",
+    "license": "ISC",
+    "project": "requests-oauthlib"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "rfc3986"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "s3transfer"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "semantic-version"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "six"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "SQLAlchemy"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "stevedore"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "stringscore"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "stripe"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "toposort"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "tzlocal"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "urllib3"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "WebOb"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "Werkzeug"
+  },
+  {
+    "format": "Python",
+    "license": "BSD License",
+    "project": "wrapt"
+  },
+  {
+    "format": "Python",
+    "license": "Apache Software License 2.0",
+    "project": "xhtml2pdf"
+  },
+  {
+    "format": "Python",
+    "license": "MIT License",
+    "project": "xmltodict"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "abbrev"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "accepts"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "acorn"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "acorn-dynamic-import"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "adm-zip"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "after"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "agent-base"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ajv"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ajv-keywords"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "align-text"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "alphanum-sort"
+  },
+  {
+    "format": "JavaScript",
+    "license": "bsd-3-clause or MIT License",
+    "project": "amdefine"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "angular"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "angular-animate"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "angular-cookies"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "angular-mocks"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "angular-route"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "angular-sanitize"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ansi-regex"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ansi-styles"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "any-promise"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "anymatch"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "aproba"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "are-we-there-yet"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "argparse"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "arr-diff"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "arr-flatten"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "array-find-index"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "array-flatten"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "array-slice"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "array-union"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "array-uniq"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "array-unique"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "arraybuffer.slice"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "arrify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "asn1"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "asn1.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "assert"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "assert-plus"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ast-types"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "async"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "async-each"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "asynckit"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "autoprefixer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "aws-sign2"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "aws4"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "babel-code-frame"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "backo2"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "balanced-match"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "base64-arraybuffer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "base64-js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "base64id"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "bcrypt-pbkdf"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "better-assert"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "big.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "binary-extensions"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "blob"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "block-stream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "blocking-proxy"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "bluebird"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "bn.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "body-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "boom"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "bootbox"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "bootstrap"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "bootstrap-datepicker"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "brace-expansion"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "braces"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "brorand"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "browserify-aes"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "browserify-cipher"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "browserify-des"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "browserify-rsa"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "browserify-sign"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "browserify-zlib"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "browserslist"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "buffer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "buffer-shims"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "buffer-xor"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "builtin-modules"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "builtin-status-codes"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "bytes"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "cal-heatmap"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "callsite"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "camel-case"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "camelcase"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "camelcase-keys"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "caniuse-api"
+  },
+  {
+    "format": "JavaScript",
+    "license": "cc-by-4.0",
+    "project": "caniuse-db"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "caseless"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "center-align"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "chalk"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "chokidar"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "cipher-base"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "clap"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "clean-css"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "clipboard"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "cliui"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "clone"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "co"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "coa"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "code-point-at"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "color"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "color-convert"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "color-name"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "color-string"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "colormin"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "colors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "combine-lists"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "combined-stream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "commander"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "component-bind"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "component-emitter"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "component-inherit"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "concat-map"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "connect"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "console-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "console-control-strings"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "constants-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "content-disposition"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "content-type"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "cookie"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "cookie-signature"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "core-js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "core-util-is"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "create-ecdh"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "create-hash"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "create-hmac"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "cryptiles"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "crypto-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "css-color-names"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "css-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "css-selector-tokenizer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "cssesc"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "cssnano"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "csso"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "currently-unhandled"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "custom-event"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "d3"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "dashdash"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "date-now"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "dateformat"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "debug"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "decamelize"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "deep-extend"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "deep-is"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "defined"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "del"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "delayed-stream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "delegate"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "delegates"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "depd"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "des.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "destroy"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "di"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "diff"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "diffie-hellman"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "dom-serialize"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "domain-browser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "duplexer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ecc-jsbn"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ee-first"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "ejs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "electron-to-chromium"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "elliptic"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "emojis-list"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "encodeurl"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "engine.io"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "engine.io-client"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "engine.io-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "enhanced-resolve"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "eonasdan-bootstrap-datetimepicker"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "errno"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "error-ex"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "es5-shim"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "es6-shim"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "es6-templates"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "escape-html"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "escape-string-regexp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "escodegen"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "esprima"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD License",
+    "project": "estraverse"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD License",
+    "project": "esutils"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "etag"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "eventemitter3"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "events"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "evp_bytestokey"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "exit"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "expand-braces"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "expand-brackets"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "expand-range"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "express"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "extend"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "extglob"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "extsprintf"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "fast-levenshtein"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "fastparse"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "file-saver"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "filename-regex"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "filesize"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "fill-range"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "finalhandler"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "find-up"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "flatten"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "for-in"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "for-own"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "forever-agent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "form-data"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "forwarded"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "fresh"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "fs-access"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "fs.realpath"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "fstream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "fstream-ignore"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "function-bind"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "gauge"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "generate-function"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "generate-object-property"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "get-caller-file"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "get-stdin"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "getpass"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "glob"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "glob-base"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "glob-parent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "globby"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "good-listener"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "graceful-fs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "graceful-readlink"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "gzip-size"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "handlebars"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "har-validator"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "has"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "has-ansi"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "has-binary"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "has-cors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "has-flag"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "has-unicode"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "hash.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "hawk"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "he"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "highlight.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "hmac-drbg"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "hoek"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "hosted-git-info"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "html-comment-regex"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "html-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "html-minifier"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "http-errors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "http-proxy"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "http-signature"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "https-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "https-proxy-agent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "iconv-lite"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "icss-replace-symbols"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "ieee754"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "indent-string"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "indexes-of"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "indexof"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "inflight"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "inherits"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "ini"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "interpret"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "invert-kv"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ipaddr.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-absolute-url"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-arrayish"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-binary-path"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-buffer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-builtin-module"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-dotfile"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-equal-shallow"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-extendable"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-extglob"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-finite"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-fullwidth-code-point"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-glob"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-my-json-valid"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-number"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-path-cwd"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-path-in-cwd"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-path-inside"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-plain-obj"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-posix-bracket"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-primitive"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-property"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-svg"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-typedarray"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "is-utf8"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "isarray"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "isbinaryfile"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "isexe"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "isobject"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "isstream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "istanbul"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jasmine"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jasmine-core"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jasmine-ts"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jasminewd2"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jodid25519"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jquery"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "js-base64"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "js-tokens"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "js-yaml"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jsbn"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jsesc"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "json-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "AFL v2.1 and BSD License",
+    "project": "json-schema"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "json-stable-stringify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "json-stringify-safe"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "json3"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "json5"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Public Domain",
+    "project": "jsonify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jsonpointer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "jsprim"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "karma"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "karma-chrome-launcher"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "karma-coverage"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "karma-es6-shim"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "karma-jasmine"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "karma-webpack"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "kind-of"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lazy-cache"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lcid"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "levn"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "load-json-file"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "loader-runner"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "loader-utils"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash._createcompounder"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash._root"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash.camelcase"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash.deburr"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash.memoize"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash.uniq"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lodash.words"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "log4js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "longest"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "loud-rejection"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lower-case"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "lru-cache"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "macaddress"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "make-error"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "map-obj"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "math-expression-evaluator"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "media-typer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "memory-fs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "meow"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "merge-descriptors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "methods"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "micromatch"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "miller-rabin"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "mime"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "mime-db"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "mime-types"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "minimalistic-assert"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "minimalistic-crypto-utils"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "minimatch"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "minimist"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "mkdirp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "moment"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "moment-timezone"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ms"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "nan"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ncname"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "negotiator"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ng-metadata"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ngtemplate-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "no-case"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "node-libs-browser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "node-pre-gyp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "nopt"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "normalize-package-data"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "normalize-path"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "normalize-range"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "normalize-url"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "npmlog"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "null-check"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "num2fraction"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "number-is-nan"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "oauth-sign"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "object-assign"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "object-component"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "object.omit"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "on-finished"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "once"
+  },
+  {
+    "format": "JavaScript",
+    "license": "WTFPL or MIT",
+    "project": "opener"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "optimist"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "optionator"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "options"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "os-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "os-locale"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "os-tmpdir"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "pako"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "param-case"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "parse-asn1"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "parse-glob"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "parse-json"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "parsejson"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "parseqs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "parseuri"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "parseurl"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "path-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "path-exists"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "path-is-absolute"
+  },
+  {
+    "format": "JavaScript",
+    "license": "WTFPL or MIT",
+    "project": "path-is-inside"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "path-parse"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "path-to-regexp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "path-type"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "pbkdf2"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "pify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "pinkie"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "pinkie-promise"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-calc"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-colormin"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-convert-values"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-discard-comments"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-discard-duplicates"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-discard-empty"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-discard-overridden"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-discard-unused"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-filter-plugins"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-merge-idents"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-merge-longhand"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-merge-rules"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-message-helpers"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-minify-font-values"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-minify-gradients"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-minify-params"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-minify-selectors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "postcss-modules-extract-imports"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-modules-local-by-default"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "postcss-modules-scope"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "postcss-modules-values"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-normalize-charset"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-normalize-url"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-ordered-values"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-reduce-idents"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-reduce-initial"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-reduce-transforms"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-selector-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-svgo"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-unique-selectors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-value-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "postcss-zindex"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "prelude-ls"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "prepend-http"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "preserve"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "private"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "process"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "process-nextick-args"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "protractor"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "proxy-addr"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "prr"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "public-encrypt"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "punycode"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "q"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "qjobs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "qs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "query-string"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "querystring"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "querystring-es3"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "querystringify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "randomatic"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "randombytes"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "range-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "raven-js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "raw-body"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "raw-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License or MIT License or Apache Software License 2.0",
+    "project": "rc"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "read-pkg"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "read-pkg-up"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "readable-stream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "readdirp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "recast"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "redent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "reduce-css-calc"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "reduce-function-call"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "regenerate"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "regex-cache"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "regexpu-core"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "regjsgen"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "regjsparser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "relateurl"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "repeat-element"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "repeat-string"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "repeating"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "request"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "require-directory"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "require-main-filename"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "requires-port"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "resolve"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "restangular"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "right-align"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "rimraf"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "ripemd160"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "rxjs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "safe-buffer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "saucelabs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "sax"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC and MIT License",
+    "project": "sax"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "script-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "select"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "selenium-webdriver"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "semver"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "send"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "serve-static"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "set-blocking"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "set-immediate-shim"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "setimmediate"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "setprototypeof"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "sha.js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "showdown"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "signal-exit"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD License",
+    "project": "sntp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "socket.io"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "socket.io-adapter"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "socket.io-client"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "socket.io-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "sort-keys"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "source-list-map"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "source-map"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD License",
+    "project": "source-map"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "source-map-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "source-map-support"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "spdx-correct"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT and cc-by-3.0",
+    "project": "spdx-expression-parse"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Unlicense",
+    "project": "spdx-license-ids"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "sprintf-js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "sshpk"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "statuses"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "stream-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "stream-http"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "strict-uri-encode"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "string-width"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "string_decoder"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "stringstream"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "strip-ansi"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "strip-bom"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "strip-indent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "strip-json-comments"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "style-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "supports-color"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "svgo"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "symbol-observable"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "tapable"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "tar"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "tar-pack"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "through"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "timers-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "tiny-emitter"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "tmp"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "to-array"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "to-arraybuffer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 3-Clause License",
+    "project": "tough-cookie"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "trim-newlines"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ts-loader"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ts-mocks"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ts-node"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "tsconfig"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "tslib"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "tslint"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "tsutils"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "tty-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "tunnel-agent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Unlicense",
+    "project": "tweetnacl"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "type-check"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "type-is"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/angular"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/angular-mocks"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/angular-route"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/angular-sanitize"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/core-js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/jasmine"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/jquery"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/node"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/q"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/selenium-webdriver"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "types/showdown"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "typescript"
+  },
+  {
+    "format": "JavaScript",
+    "license": "BSD 2-Clause License",
+    "project": "uglify-js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "uglify-to-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "uid-number"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ultron"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "underscore"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "uniq"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "uniqid"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "uniqs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "unpipe"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "upper-case"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "urijs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "url"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "url-parse"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "user-home"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "useragent"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "util"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "util-deprecate"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "utils-merge"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "uuid"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "v8flags"
+  },
+  {
+    "format": "JavaScript",
+    "license": "Apache Software License 2.0",
+    "project": "validate-npm-package-license"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "vary"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "vendors"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "verror"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "vm-browserify"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "void-elements"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "watchpack"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "webdriver-js-extender"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "webdriver-manager"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "webpack"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "webpack-bundle-analyzer"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "webpack-dev-middleware"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "webpack-sources"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "whet.extend"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "which"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "which-module"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "wide-align"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "window-size"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "wordwrap"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "wrap-ansi"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "wrappy"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "ws"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "wtf-8"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "xml-char-classes"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "xml2js"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "xmlbuilder"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "xmlhttprequest-ssl"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "xtend"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "y18n"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "yargs"
+  },
+  {
+    "format": "JavaScript",
+    "license": "ISC",
+    "project": "yargs-parser"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "yeast"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "yn"
+  },
+  {
+    "format": "JavaScript",
+    "license": "MIT License",
+    "project": "zeroclipboard"
+  }
+]
