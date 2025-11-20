@@ -40,6 +40,7 @@ objects:
     name: ${{NAME}}
   imagePullSecrets:
   - name: quayio-backup-image-pull-secret
+  annotations: ${{SERVICE_ACCOUNT_ANNOTATIONS}}
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
@@ -480,3 +481,6 @@ parameters:
       }
     displayName: HTTPS service annotations.
     description: HTTPS Service annotations.
+  - name: SERVICE_ACCOUNT_ANNOTATIONS
+    value: "{}"
+    description: Optional annotations to add the service account like for IRSA/ROSA (JSON format)
