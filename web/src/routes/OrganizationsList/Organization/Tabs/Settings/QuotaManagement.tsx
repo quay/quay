@@ -321,6 +321,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
 
   // Form submission
   const onSubmit = async (data: QuotaFormData) => {
+    // Prevent submission in organization-view - quota can only be configured by superusers
+    if (props.view === 'organization-view') {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Quota settings can only be modified by superusers from the Organizations list page.',
+      });
+      return;
+    }
+
     const limitError = validateLimitsUnique();
     if (limitError) {
       addAlert({
@@ -350,6 +360,15 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   };
 
   const handleDeleteQuota = () => {
+    // Prevent quota deletion in organization-view
+    if (props.view === 'organization-view') {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Quota settings can only be modified by superusers from the Organizations list page.',
+      });
+      return;
+    }
     setIsDeleteModalOpen(true);
   };
 
@@ -364,6 +383,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   };
 
   const handleAddLimit = () => {
+    // Prevent limit operations in organization-view
+    if (props.view === 'organization-view') {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Quota settings can only be modified by superusers from the Organizations list page.',
+      });
+      return;
+    }
+
     if (!organizationQuota) {
       addAlert({
         variant: AlertVariantState.Failure,
@@ -425,6 +454,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   };
 
   const handleUpdateLimit = (limitId: string, updatedLimit: IQuotaLimit) => {
+    // Prevent limit operations in organization-view
+    if (props.view === 'organization-view') {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Quota settings can only be modified by superusers from the Organizations list page.',
+      });
+      return;
+    }
+
     if (!organizationQuota) return;
 
     const limitError = validateLimit(updatedLimit.limit_percent);
@@ -451,6 +490,16 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   };
 
   const handleDeleteLimit = (limitId: string) => {
+    // Prevent limit operations in organization-view
+    if (props.view === 'organization-view') {
+      addAlert({
+        variant: AlertVariantState.Failure,
+        title:
+          'Quota settings can only be modified by superusers from the Organizations list page.',
+      });
+      return;
+    }
+
     if (!organizationQuota) return;
 
     deleteLimitMutation({
@@ -521,7 +570,11 @@ export const QuotaManagement = (props: QuotaManagementProps) => {
   const hasQuota = organizationQuota !== null;
 
   return (
-    <Form id="quota-management-form" onSubmit={handleSubmit(onSubmit)}>
+    <Form
+      id="quota-management-form"
+      data-testid="quota-management-form"
+      onSubmit={handleSubmit(onSubmit)}
+    >
       {/* Show appropriate message based on view and user type */}
       {isReadOnly && props.view === 'organization-view' && hasExistingQuota && (
         <Alert
