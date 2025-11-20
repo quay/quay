@@ -57,7 +57,7 @@ location / {
 }
 
 # Capture traffic that needs to go to web_app, see /web.py
-location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/userfiles/(.*)|/health/(.*)|/status|/_internal_ping) {
+location ~* ^(/config|/csrf_token|/oauth/authorize|/oauth/authorizeapp|/oauth/authorize/assignuser|/oauth/denyapp|/oauth1|/oauth2|/webhooks|/keys|/.well-known|/customtrigger|/authrepoemail|/confirm|/recovery|/userfiles/(.*)|/health/(.*)|/status|/_internal_ping) {
     proxy_pass   http://web_app_server;
 }
 
