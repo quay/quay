@@ -143,7 +143,10 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
                 metrics = pullmetrics.get_event()
                 metrics.track_tag_pull(repository_ref, manifest_ref, manifest_digest)
         except Exception as e:
-            logger.debug("Could not track tag pull metrics: %s", e)
+            logger.warning(
+                "Could not track tag pull metrics: %s. " "Pull statistics may not be recorded.",
+                str(e),
+            )
 
     return Response(
         manifest_bytes.as_unicode(),
@@ -201,7 +204,11 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
                 metrics = pullmetrics.get_event()
                 metrics.track_manifest_pull(repository_ref, manifest_ref)
         except Exception as e:
-            logger.debug("Could not track manifest pull metrics: %s", e)
+            logger.warning(
+                "Could not track manifest pull metrics: %s. "
+                "Pull statistics may not be recorded.",
+                str(e),
+            )
 
     return Response(
         manifest.internal_manifest_bytes.as_unicode(),
