@@ -32,10 +32,12 @@ export default function OAuthLocalHandler() {
       return;
     }
 
-    const params = new URLSearchParams(hash);
-    const token = params.get('access_token');
-    const scope = params.get('scope');
-    const state = params.get('state');
+    const hashParams = new URLSearchParams(hash);
+    const token = hashParams.get('access_token');
+
+    // State and scope are in query parameters, not hash
+    const scope = searchParams.get('scope');
+    const state = searchParams.get('state');
 
     if (!token) {
       setError('No access token received');
@@ -60,8 +62,9 @@ export default function OAuthLocalHandler() {
 
     // Check if opened in popup window
     if (window.opener && !window.opener.closed) {
+      // Popup flow: Send token to parent for state validation (RFC 6749 Section 10.12)
+      // Parent validates state as sessionStorage is not shared between windows
       try {
-        // Send token to parent window
         window.opener.postMessage(
           {
             type: 'OAUTH_TOKEN_GENERATED',
@@ -72,17 +75,29 @@ export default function OAuthLocalHandler() {
           window.location.origin,
         );
 
-        // Close popup after message sent
         setTimeout(() => {
           window.close();
         }, 500);
       } catch (err) {
         console.error('Failed to communicate with parent window:', err);
-        // If postMessage fails, show modal in popup
         setIsTokenModalOpen(true);
       }
     } else {
-      // Opened in same tab - show modal
+      // Validate state if present
+      const expectedState = sessionStorage.getItem('oauth_state');
+      if (expectedState && state !== expectedState) {
+        setError(
+          'Invalid state parameter - possible CSRF attack. Please try again.',
+        );
+        sessionStorage.removeItem('oauth_state');
+        setIsLoading(false);
+        return;
+      }
+
+      if (expectedState) {
+        sessionStorage.removeItem('oauth_state');
+      }
+
       setIsTokenModalOpen(true);
     }
 
@@ -104,9 +119,19 @@ export default function OAuthLocalHandler() {
   }
 
   if (error) {
+    // Use danger variant for CSRF/security errors, warning for user cancellations
+    const variant =
+      error.includes('CSRF') || error.includes('Invalid state')
+        ? AlertVariant.danger
+        : AlertVariant.warning;
+    const title =
+      error.includes('CSRF') || error.includes('Invalid state')
+        ? 'Security Error'
+        : 'Authorization Cancelled';
+
     return (
       <PageSection variant={PageSectionVariants.light}>
-        <Alert variant={AlertVariant.warning} title="Authorization Cancelled">
+        <Alert variant={variant} title={title}>
           {error}
         </Alert>
       </PageSection>
