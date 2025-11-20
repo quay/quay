@@ -61,6 +61,8 @@ const ChangeLog = lazy(() => import('./Superuser/ChangeLog/ChangeLog'));
 const UsageLogs = lazy(() => import('./Superuser/UsageLogs/UsageLogs'));
 const Messages = lazy(() => import('./Superuser/Messages/Messages'));
 const BuildLogs = lazy(() => import('./Superuser/BuildLogs/BuildLogs'));
+const About = lazy(() => import('./About/About'));
+const Security = lazy(() => import('./Security/Security'));
 
 /**
  * Interface for shorthand repository route parameters
@@ -181,6 +183,15 @@ const NavigationRoutes = [
   {
     path: NavigationPath.repositoryDetail,
     Component: <RepositoryTagRouter />,
+  },
+  // Static pages
+  {
+    path: NavigationPath.about,
+    Component: <About />,
+  },
+  {
+    path: NavigationPath.security,
+    Component: <Security />,
   },
   // Superuser routes
   {
