@@ -1089,4 +1089,16 @@ describe('Account Settings Page', () => {
     // Should navigate to settings
     cy.url().should('include', 'tab=Settings');
   });
+
+  it('normalizes lowercase "settings" to correct tab', () => {
+    cy.visit('/user/user1?tab=settings');
+    cy.wait('@getConfig');
+
+    // Verify we're on the Settings tab
+    cy.get('[role="tablist"]')
+      .first()
+      .within(() => {
+        cy.get('[aria-selected="true"]').should('contain.text', 'Settings');
+      });
+  });
 });
