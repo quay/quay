@@ -79,7 +79,8 @@ def team_view(orgname, team):
         "description": team.description,
         "role": team.role_name,
         "avatar": avatar.get_data_for_team(team),
-        "can_view": ViewTeamPermission(orgname, team.name).can(),
+        "can_view": ViewTeamPermission(orgname, team.name).can()
+        or allow_if_global_readonly_superuser(),
         "repo_count": team.repo_count,
         "member_count": team.member_count,
         "is_synced": team.is_synced,
@@ -1016,9 +1017,9 @@ class OrganizationProxyCacheConfig(ApiResource):
                     "create_proxy_cache_config",
                     orgname,
                     {
-                        "upstream_registry": data["upstream_registry"]
-                        if data["upstream_registry"]
-                        else None
+                        "upstream_registry": (
+                            data["upstream_registry"] if data["upstream_registry"] else None
+                        )
                     },
                 )
                 return "Created", 201
