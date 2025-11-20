@@ -178,7 +178,7 @@ jobs:
 
   registry:
     name: E2E Registry Tests
-    runs-on: ubuntu-22.04
+    runs-on: quay-001-large-ubuntu-24-x64
     steps:
 
     - name: Checkout
@@ -196,7 +196,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig libfreetype6-dev
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
